@@ -485,6 +485,18 @@ impl ProductWorkspace {
     ) -> bool {
         matches!(&self.body, Body::Source(body) if body.read(cx).retains_mouse_matcher_scope(scope, cx))
     }
+    pub fn accepts_mouse_matcher_scope(
+        &self,
+        scope: &super::mouse_products::MouseMatcherScope,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body, Body::Source(body) if body.read(cx).accepts_mouse_matcher_scope(scope, cx))
+    }
+    pub fn bind_mouse_matcher_requests(&mut self, cx: &mut Context<Self>) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| body.bind_mouse_matcher_requests(cx));
+        }
+    }
     pub fn accept_mouse_matcher_saved_profiles(
         &mut self,
         scope: &super::mouse_products::MouseMatcherScope,
@@ -508,6 +520,19 @@ impl ProductWorkspace {
             body.update(cx, |body, cx| {
                 body.observe_mouse_matcher(scope, observation, window, cx)
             });
+        }
+    }
+    pub fn submit_mouse_matcher_stages(
+        &mut self,
+        scope: &super::mouse_products::MouseMatcherScope,
+        stages: razer_device::mouse_current_dpi::SourceStages,
+        cx: &mut Context<Self>,
+    ) -> anyhow::Result<()> {
+        match &self.body {
+            Body::Source(body) => body.update(cx, |body, cx| {
+                body.submit_mouse_matcher_stages(scope, stages, cx)
+            }),
+            _ => anyhow::bail!("Matcher stage workspace is not a source product"),
         }
     }
     pub fn mouse_dynamic_scope_is_current(
@@ -1503,6 +1528,28 @@ impl ProductWorkspace {
     pub fn sync_current_dpi_controls(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if let Body::Source(body) = &self.body {
             body.update(cx, |body, cx| body.sync_current_dpi_controls(window, cx));
+        }
+    }
+    pub fn current_dpi_profile_save_boundary(
+        &self,
+        scope: super::mouse_polling::MousePollingScope,
+        cx: &App,
+    ) -> Option<super::mouse_products::MouseCurrentDpiProfileSaveBoundary> {
+        if let Body::Source(body) = &self.body {
+            body.read(cx).current_dpi_profile_save_boundary(scope, cx)
+        } else {
+            None
+        }
+    }
+    pub fn current_dpi_matcher_stages_saved(
+        &mut self,
+        boundary: &super::mouse_products::MouseCurrentDpiProfileSaveBoundary,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.current_dpi_matcher_stages_saved(boundary, cx)
+            });
         }
     }
     pub fn prepare_current_dpi_exit(

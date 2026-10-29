@@ -4751,6 +4751,160 @@ class NativeSupplementTests(unittest.TestCase):
 
 
 class FrontendAcquisitionTests(unittest.TestCase):
+    def reuse_fixture(self, root, *, namespace="old", url="https://apps.razer.com/app/main.12345678.js", body=b"/* inert source */"):
+        output = root / ".analysis/inputs/frontend" / namespace
+        original = analysis.raw_path(output, url)
+        original.parent.mkdir(parents=True, exist_ok=True)
+        original.write_bytes(body)
+        row = {"url": url, "path": analysis.rel(original), "bytes": len(body),
+               "sha256": hashlib.sha256(body).hexdigest(), "http_status": 200,
+               "content_type": "application/javascript", "acquired_at_utc": "retained-source"}
+        receipt = output / "acquisition.json"
+        receipt.write_text(json.dumps({"source_current_during_acquisition": True, "files": [row]}), encoding="utf-8")
+        return analysis.rel(receipt), row
+
+    def test_reuse_references_exact_immutable_original_without_copying_or_mutating_receipt(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            with patch.object(analysis, "ROOT", root):
+                receipt, source = self.reuse_fixture(root)
+                before = (root / receipt).read_bytes()
+                fallback = MagicMock()
+                reuse = analysis.FrontendArtifactReuse([receipt, receipt], fallback)
+                destination = root / ".analysis/inputs/frontend/new"
+                actual = reuse.download(source["url"], destination)
+                self.assertEqual(actual["path"], source["path"])
+                self.assertEqual(actual["reused_from_acquisition"], reuse.receipts[0])
+                self.assertEqual(len(reuse.receipts), 1)
+                self.assertFalse(destination.exists())
+                reuse.verify()
+                self.assertEqual((root / receipt).read_bytes(), before)
+                fallback.assert_not_called()
+
+    def test_reuse_never_matches_another_url_query_hashless_root_or_failed_attempt(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            with patch.object(analysis, "ROOT", root):
+                receipt, source = self.reuse_fixture(root)
+                root_receipt, root_source = self.reuse_fixture(root, namespace="root", url="https://apps.razer.com/app/main.js")
+                document = json.loads((root / receipt).read_bytes())
+                failed_url = "https://apps.razer.com/app/missing.12345678.js.map"
+                document["files"].append({"url": failed_url, "http_status": 404, "error": "HTTP Error 404"})
+                (root / receipt).write_text(json.dumps(document), encoding="utf-8")
+                failed = {"url": failed_url, "error": "fresh HTTP failure"}
+                fallback = MagicMock(return_value=failed)
+                reuse = analysis.FrontendArtifactReuse([receipt, root_receipt], fallback)
+                urls = [source["url"].replace("/app/", "/other/"), source["url"] + "?different=1", root_source["url"], failed_url]
+                output = root / ".analysis/inputs/frontend/new"
+                for url in urls:
+                    self.assertIs(reuse.download(url, output), failed)
+                self.assertEqual([call.args[0] for call in fallback.call_args_list], urls)
+
+    def test_reuse_rejects_changed_or_missing_original_without_network_fallback(self):
+        for mutation in ("changed", "missing", "length", "escape"):
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory).resolve()
+                with patch.object(analysis, "ROOT", root):
+                    receipt, source = self.reuse_fixture(root)
+                    if mutation == "changed":
+                        (root / source["path"]).write_bytes(b"X" * source["bytes"])
+                    elif mutation == "missing":
+                        (root / source["path"]).unlink()
+                    else:
+                        document = json.loads((root / receipt).read_bytes())
+                        if mutation == "length":
+                            document["files"][0]["bytes"] += 1
+                        else:
+                            document["files"][0]["path"] = ".analysis/inputs/../../outside.js"
+                        (root / receipt).write_text(json.dumps(document), encoding="utf-8")
+                    fallback = MagicMock()
+                    reuse = analysis.FrontendArtifactReuse([receipt], fallback)
+                    with self.assertRaises((ValueError, OSError)):
+                        reuse.download(source["url"], root / ".analysis/inputs/frontend/new")
+                    fallback.assert_not_called()
+
+    def test_reuse_rejects_conflicting_immutable_identities_and_receipt_mutation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            with patch.object(analysis, "ROOT", root):
+                first, source = self.reuse_fixture(root)
+                second, _ = self.reuse_fixture(root, namespace="conflict", body=b"different retained source")
+                with self.assertRaisesRegex(ValueError, "conflict"):
+                    analysis.FrontendArtifactReuse([first, second], MagicMock())
+                reuse = analysis.FrontendArtifactReuse([first], MagicMock())
+                reuse.download(source["url"], root / ".analysis/inputs/frontend/new")
+                (root / first).write_bytes(b"changed receipt")
+                with self.assertRaisesRegex(ValueError, "identity differs"):
+                    reuse.verify()
+
+    def test_reuse_propagates_fetch_failure_and_cancellation_and_preserves_old_evidence(self):
+        for failure in (RuntimeError("fetch failed"), KeyboardInterrupt()):
+            with self.subTest(failure=type(failure).__name__), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory).resolve()
+                with patch.object(analysis, "ROOT", root):
+                    receipt, source = self.reuse_fixture(root)
+                    before = {name: (root / name).read_bytes() for name in (receipt, source["path"])}
+                    reuse = analysis.FrontendArtifactReuse([receipt], MagicMock(side_effect=failure))
+                    output = root / ".analysis/inputs/frontend/new"
+                    with self.assertRaises(type(failure)):
+                        reuse.download("https://apps.razer.com/app/index.html", output)
+                    self.assertFalse(output.exists())
+                    self.assertEqual({name: (root / name).read_bytes() for name in before}, before)
+
+    def test_fetch_reuses_immutable_paths_but_fetches_roots_and_indexes_only_new_inputs(self):
+        with tempfile.TemporaryDirectory() as directory, redirect_stdout(io.StringIO()):
+            root = Path(directory).resolve()
+            with patch.object(analysis, "ROOT", root):
+                receipt, source = self.reuse_fixture(root)
+                entry, manifest = "https://apps.razer.com/app/index.html", "https://apps.razer.com/app/asset-manifest.json"
+                bodies = {entry: b'<script src="main.12345678.js"></script>', manifest: b'{"files":{}}'}
+                calls, indexed = [], []
+                def downloader(url, output):
+                    calls.append(url)
+                    raw = bodies[url]
+                    path = analysis.raw_path(output, url)
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_bytes(raw)
+                    return {"url": url, "path": analysis.rel(path), "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest(),
+                            "http_status": 200, "content_type": "text/html" if url == entry else "application/json", "acquired_at_utc": "fresh"}
+                def urlopen(request, **kwargs):
+                    response = MagicMock()
+                    response.__enter__.return_value = response
+                    response.read.return_value = bodies[request.full_url]
+                    return response
+                tool = root / "static-analyzer.exe"
+                tool.write_bytes(b"inert analyzer identity")
+                args = argparse.Namespace(url=entry, output=".analysis/inputs/frontend/new", reuse_acquisition=[receipt],
+                    download_artifact=downloader, index_artifacts=indexed.extend, no_refresh_gaps=True)
+                with patch.object(analysis, "wakaru", return_value=tool), \
+                     patch.object(analysis.subprocess, "run", return_value=argparse.Namespace(returncode=0, stdout=b'{"enumeration":{}}', stderr=b"")), \
+                     patch.object(analysis.urllib.request, "urlopen", side_effect=urlopen):
+                    analysis.fetch_frontend(args)
+                self.assertEqual(set(calls), set(bodies))
+                self.assertEqual(len(indexed), 3)
+                self.assertNotIn(source["path"], {row["path"] for row in indexed})
+                result = json.loads((root / args.output / "acquisition.json").read_bytes())
+                retained = next(row for row in result["files"] if row["url"] == source["url"])
+                self.assertEqual(retained["path"], source["path"])
+                self.assertTrue(result["source_current_during_acquisition"])
+                self.assertFalse(analysis.raw_path(root / args.output, source["url"]).exists())
+                frozen = (root / args.output / "acquisition.json").read_bytes()
+                with patch.object(analysis, "wakaru", return_value=tool), \
+                     self.assertRaisesRegex(ValueError, "new output directory"):
+                    analysis.fetch_frontend(args)
+                self.assertEqual((root / args.output / "acquisition.json").read_bytes(), frozen)
+                self.assertEqual(len(calls), 2)
+
+    def test_reuse_cli_is_repeatable_and_incompatible_with_repair(self):
+        parser = argparse.ArgumentParser()
+        analysis.add_commands(parser.add_subparsers(dest="command"))
+        args = parser.parse_args(["fetch-frontend", "--url", "https://apps.razer.com/app/", "--output", ".analysis/inputs/frontend/new",
+                                  "--reuse-acquisition", ".analysis/inputs/frontend/old/acquisition.json",
+                                  "--reuse-acquisition", ".analysis/inputs/frontend/another/acquisition.json", "--repair"])
+        self.assertEqual(len(args.reuse_acquisition), 2)
+        with self.assertRaisesRegex(ValueError, "--repair"):
+            analysis.fetch_frontend(args)
+
     def test_chunk_capture_reuses_only_exact_input_analyzer_and_complete_output_bytes(self):
         with tempfile.TemporaryDirectory() as directory, redirect_stdout(io.StringIO()):
             root = Path(directory).resolve()

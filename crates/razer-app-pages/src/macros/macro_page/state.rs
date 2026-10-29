@@ -323,7 +323,7 @@ impl MacroPage {
         if self
             .next_id
             .checked_add(originals.len() as u64)
-            .is_none_or(|next| next >= u64::MAX)
+            .is_none_or(|next| next == u64::MAX)
         {
             return;
         }

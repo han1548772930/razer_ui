@@ -2,8 +2,14 @@
 //! observations.
 //! UI drafts and transport failures are kept apart from device acknowledgements.
 use super::*;
-use crate::features::mouse_dpi_matcher::{MatcherAction, MatcherObservation, MouseDpiMatcher};
+use crate::features::mouse_dpi_matcher::{
+    MatcherAction, MatcherCommand, MatcherObservation, MouseDpiMatcher,
+};
 use anyhow::{Context as _, ensure};
+use razer_device::{
+    dpi_matcher_storage::{Library, ProfileUpdate},
+    mouse_current_dpi::{SourceStage, SourceStages},
+};
 use razer_model::model::Device;
 
 /// Only the durable Matcher library and its profile-local selection are copied
@@ -124,16 +130,29 @@ pub struct MouseMatcherScope {
     owner: EntityId,
     epoch: u64,
     valid: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    kind: ScopeKind,
+    domain: MousePollingScope,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ScopeKind {
+    Ui,
+    Normalization,
 }
 impl PartialEq for MouseMatcherScope {
     fn eq(&self, other: &Self) -> bool {
-        self.retained_by(other.owner, other.epoch, &other.valid)
+        self.kind == other.kind
+            && self.domain == other.domain
+            && self.retained_by(other.owner, other.epoch, &other.valid)
     }
 }
 impl Eq for MouseMatcherScope {}
 impl MouseMatcherScope {
     pub fn is_valid(&self) -> bool {
         self.valid.load(std::sync::atomic::Ordering::Acquire)
+    }
+
+    pub fn is_normalization(&self) -> bool {
+        self.kind == ScopeKind::Normalization
     }
 
     fn retained_by(
@@ -146,11 +165,127 @@ impl MouseMatcherScope {
     }
 }
 
+pub(super) struct NormalizationState {
+    pending: Option<PendingNormalization>,
+    epoch: u64,
+    valid: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    ready: bool,
+}
+struct PendingNormalization {
+    domain: MousePollingScope,
+    payload: ProfileUpdate,
+    submitted: bool,
+}
+impl Default for NormalizationState {
+    fn default() -> Self {
+        Self {
+            pending: None,
+            epoch: 0,
+            valid: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            ready: false,
+        }
+    }
+}
+impl NormalizationState {
+    fn retain(&mut self, domain: MousePollingScope, payload: ProfileUpdate) {
+        if self
+            .pending
+            .as_ref()
+            .is_some_and(|pending| pending.domain == domain && pending.payload == payload)
+        {
+            return;
+        }
+        self.suspend();
+        self.epoch = self.epoch.wrapping_add(1);
+        self.valid = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(self.ready));
+        self.pending = Some(PendingNormalization {
+            domain,
+            payload,
+            submitted: false,
+        });
+    }
+
+    fn activate(&mut self) {
+        if !self.valid.load(std::sync::atomic::Ordering::Acquire) {
+            self.epoch = self.epoch.wrapping_add(1);
+            self.valid = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(true));
+        }
+    }
+
+    fn bind(&mut self) {
+        self.ready = true;
+        self.activate();
+    }
+
+    pub(super) fn suspend(&mut self) {
+        self.valid
+            .store(false, std::sync::atomic::Ordering::Release);
+        if let Some(pending) = &mut self.pending {
+            pending.submitted = false;
+        }
+    }
+
+    pub(super) fn reset(&mut self) {
+        self.suspend();
+        self.pending = None;
+    }
+
+    fn request(
+        &mut self,
+        owner: EntityId,
+        domain: MousePollingScope,
+    ) -> Option<MouseMatcherRequest> {
+        if !self.ready || !self.valid.load(std::sync::atomic::Ordering::Acquire) {
+            return None;
+        }
+        if self
+            .pending
+            .as_ref()
+            .is_some_and(|pending| pending.domain != domain)
+        {
+            self.pending = None;
+        }
+        let pending = self.pending.as_mut().filter(|pending| !pending.submitted)?;
+        pending.submitted = true;
+        Some(MouseMatcherRequest {
+            scope: MouseMatcherScope {
+                owner,
+                epoch: self.epoch,
+                valid: self.valid.clone(),
+                kind: ScopeKind::Normalization,
+                domain,
+            },
+            action: MatcherAction::NormalizeProfiles,
+            profile_payload: pending.payload.clone(),
+        })
+    }
+
+    fn acknowledge(&mut self, saved: &SavedMatcherProfiles) {
+        if self.pending.as_ref().is_some_and(|pending| {
+            pending.payload.library().file_value() == saved.library
+                && pending.payload.selected() == saved.selected.as_deref()
+        }) {
+            self.pending = None;
+        }
+    }
+
+    fn retry(&mut self) {
+        if let Some(pending) = &mut self.pending {
+            pending.submitted = false;
+        }
+    }
+}
+impl Drop for NormalizationState {
+    fn drop(&mut self) {
+        self.suspend();
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct MouseMatcherRequest {
     scope: MouseMatcherScope,
     action: MatcherAction,
-    profile_payload: Value,
+    profile_payload: ProfileUpdate,
 }
 impl MouseMatcherRequest {
     pub fn scope(&self) -> &MouseMatcherScope {
@@ -160,7 +295,7 @@ impl MouseMatcherRequest {
         &self.action
     }
     /// Exact ON_UPDATE_SENSITIVITY_PROFILE payload for select/rename.
-    pub fn profile_payload(&self) -> &Value {
+    pub fn profile_payload(&self) -> &ProfileUpdate {
         &self.profile_payload
     }
 }
@@ -178,24 +313,52 @@ impl MouseProductWorkspace {
             &matcher,
             window,
             |this, matcher, action: &MatcherAction, window, cx| {
+                let payload = matcher.read(cx).state().profile_update();
+                if matches!(action, MatcherAction::NormalizeProfiles) {
+                    this.draft["sensitivityMatcher"] = payload.library().file_value();
+                    this.draft["selectedSensitivityMatcher"] = json!(payload.selected());
+                    if let Some(domain) = this.mouse_polling_scope(cx) {
+                        this.matcher_normalization.retain(domain, payload);
+                    }
+                    this.matcher_error = None;
+                    cx.emit(MouseProductChanged);
+                    this.flush_matcher_normalization(cx);
+                    cx.notify();
+                    return;
+                }
                 if !this.active || this.page != "TAB_PERFORMANCE" {
                     return;
                 }
-                let payload = matcher.read(cx).state().profile_payload();
+                if matches!(
+                    action,
+                    MatcherAction::SelectProfile(_)
+                        | MatcherAction::RenameProfile(_)
+                        | MatcherAction::Command(
+                            MatcherCommand::Confirm
+                                | MatcherCommand::DeleteProfile(_)
+                                | MatcherCommand::DeleteAllProfiles
+                        )
+                ) {
+                    this.matcher_normalization.reset();
+                }
                 match action {
                     MatcherAction::SetStageValueX { stages, active } => {
-                        set_pointer(&mut this.draft, this.spec.stages_path(), json!(stages));
+                        set_pointer(
+                            &mut this.draft,
+                            this.spec.stages_path(),
+                            Value::Array(stages.iter().map(SourceStage::file_value).collect()),
+                        );
                         set_pointer(&mut this.draft, this.spec.active_path(), json!(active));
                         this.dismiss_dpi_editors(window, cx);
                         cx.emit(MouseProductChanged);
                     }
                     MatcherAction::SelectProfile(_) | MatcherAction::RenameProfile(_) => {
-                        this.draft["sensitivityMatcher"] = payload["sensitivityMatcher"].clone();
-                        this.draft["selectedSensitivityMatcher"] =
-                            payload["selectedSensitivityMatcher"].clone();
+                        this.draft["sensitivityMatcher"] = payload.library().file_value();
+                        this.draft["selectedSensitivityMatcher"] = json!(payload.selected());
                         cx.emit(MouseProductChanged);
                     }
                     MatcherAction::Command(_) => {}
+                    MatcherAction::NormalizeProfiles => unreachable!("retained above"),
                 }
                 this.matcher_error = None;
                 cx.emit(MouseMatcherRequest {
@@ -210,6 +373,29 @@ impl MouseProductWorkspace {
         ));
         self.matcher = Some(matcher);
         self.sync_matcher_profile(window, cx);
+    }
+
+    pub(super) fn flush_matcher_normalization(&mut self, cx: &mut Context<Self>) {
+        let Some(owner) = self.matcher.as_ref().map(Entity::entity_id) else {
+            return;
+        };
+        let Some(domain) = self.mouse_polling_scope(cx) else {
+            return;
+        };
+        if let Some(request) = self.matcher_normalization.request(owner, domain) {
+            cx.emit(request);
+        }
+    }
+
+    pub(super) fn activate_matcher_normalization(&mut self, cx: &mut Context<Self>) {
+        self.matcher_normalization.activate();
+        self.flush_matcher_normalization(cx);
+    }
+
+    /// The shell calls this after its workspace event subscription is installed.
+    pub(in crate::features) fn bind_mouse_matcher_requests(&mut self, cx: &mut Context<Self>) {
+        self.matcher_normalization.bind();
+        self.flush_matcher_normalization(cx);
     }
 
     pub(super) fn sync_matcher_mount(&mut self, cx: &mut Context<Self>) {
@@ -246,16 +432,34 @@ impl MouseProductWorkspace {
             .and_then(Value::as_array)
             .cloned()
             .unwrap_or_default();
+        let stages = match stages
+            .iter()
+            .map(SourceStage::from_source_file)
+            .collect::<anyhow::Result<Vec<_>>>()
+        {
+            Ok(stages) => stages,
+            Err(error) => {
+                eprintln!("[dpi-matcher stages] {error:#}");
+                return;
+            }
+        };
         let active = self
             .draft
             .pointer(self.spec.active_path())
             .and_then(Value::as_u64)
             .unwrap_or(0) as usize;
-        let profiles = self
+        let profiles = match self
             .draft
-            .pointer("/sensitivityMatcher/profiles")
-            .and_then(Value::as_array)
-            .cloned();
+            .get("sensitivityMatcher")
+            .map(Library::from_source_file)
+            .transpose()
+        {
+            Ok(library) => library,
+            Err(error) => {
+                eprintln!("[dpi-matcher profiles] {error:#}");
+                return;
+            }
+        };
         let selected = self.draft["selectedSensitivityMatcher"]
             .as_str()
             .unwrap_or_default()
@@ -266,7 +470,7 @@ impl MouseProductWorkspace {
         });
     }
 
-    pub fn mouse_matcher_scope(&self, _cx: &App) -> Option<MouseMatcherScope> {
+    pub fn mouse_matcher_scope(&self, cx: &App) -> Option<MouseMatcherScope> {
         if !self.active || self.page != "TAB_PERFORMANCE" {
             return None;
         }
@@ -274,15 +478,36 @@ impl MouseProductWorkspace {
             owner: self.matcher.as_ref()?.entity_id(),
             epoch: self.matcher_epoch,
             valid: self.matcher_valid.clone(),
+            kind: ScopeKind::Ui,
+            domain: self.mouse_polling_scope(cx)?,
         })
     }
 
-    /// An admitted durable request keeps its exact owner across exit unmount.
-    /// A remount or profile restoration replaces the epoch/guard identity.
-    pub fn retains_mouse_matcher_scope(&self, scope: &MouseMatcherScope) -> bool {
-        self.matcher.as_ref().is_some_and(|matcher| {
-            scope.retained_by(matcher.entity_id(), self.matcher_epoch, &self.matcher_valid)
-        })
+    /// Accepted saves retain their identity while exit drains them. A successor
+    /// activation or profile restoration replaces the corresponding guard.
+    pub fn retains_mouse_matcher_scope(&self, scope: &MouseMatcherScope, cx: &App) -> bool {
+        self.mouse_polling_scope(cx) == Some(scope.domain)
+            && self
+                .matcher
+                .as_ref()
+                .is_some_and(|matcher| match scope.kind {
+                    ScopeKind::Ui => scope.retained_by(
+                        matcher.entity_id(),
+                        self.matcher_epoch,
+                        &self.matcher_valid,
+                    ),
+                    ScopeKind::Normalization => scope.retained_by(
+                        matcher.entity_id(),
+                        self.matcher_normalization.epoch,
+                        &self.matcher_normalization.valid,
+                    ),
+                })
+    }
+
+    pub fn accepts_mouse_matcher_scope(&self, scope: &MouseMatcherScope, cx: &App) -> bool {
+        scope.is_valid()
+            && self.retains_mouse_matcher_scope(scope, cx)
+            && (scope.is_normalization() || self.mouse_matcher_scope(cx).as_ref() == Some(scope))
     }
 
     pub(in crate::features) fn accept_mouse_matcher_saved_profiles(
@@ -292,10 +517,22 @@ impl MouseProductWorkspace {
         cx: &mut Context<Self>,
     ) -> anyhow::Result<()> {
         ensure!(
-            self.retains_mouse_matcher_scope(scope),
+            self.retains_mouse_matcher_scope(scope, cx),
             "Matcher saved page owner changed"
         );
-        saved.apply_to_draft(&mut self.draft)?;
+        let preserve_newer_normalization = scope.is_normalization()
+            && self
+                .matcher_normalization
+                .pending
+                .as_ref()
+                .is_some_and(|pending| {
+                    pending.payload.library().file_value() != saved.library
+                        || pending.payload.selected() != saved.selected.as_deref()
+                });
+        if !preserve_newer_normalization {
+            saved.apply_to_draft(&mut self.draft)?;
+        }
+        self.matcher_normalization.acknowledge(saved);
         cx.notify();
         Ok(())
     }
@@ -310,6 +547,17 @@ impl MouseProductWorkspace {
             .and_then(Value::as_array)
             .cloned()
             .unwrap_or_default();
+        let stages = match stages
+            .iter()
+            .map(SourceStage::from_source_file)
+            .collect::<anyhow::Result<Vec<_>>>()
+        {
+            Ok(stages) => stages,
+            Err(error) => {
+                eprintln!("[dpi-matcher stages] {error:#}");
+                return;
+            }
+        };
         let active = self
             .draft
             .pointer(self.spec.active_path())
@@ -326,16 +574,34 @@ impl MouseProductWorkspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if !scope.is_valid() || self.mouse_matcher_scope(cx).as_ref() != Some(scope) {
+        if !self.accepts_mouse_matcher_scope(scope, cx)
+            || scope.is_normalization()
+                && !matches!(observation, MatcherObservation::Profiles { .. })
+        {
             return;
         }
-        if let MatcherObservation::Profiles { profiles, selected } = &observation {
-            self.draft["sensitivityMatcher"] = json!({"profiles":profiles});
-            self.draft["selectedSensitivityMatcher"] = json!(selected);
-            cx.emit(MouseProductChanged);
+        if let MatcherObservation::Profiles { library, selected } = &observation {
+            let preserve_newer_normalization = scope.is_normalization()
+                && self
+                    .matcher_normalization
+                    .pending
+                    .as_ref()
+                    .is_some_and(|pending| {
+                        pending.payload.library().file_value() != library.file_value()
+                            || pending.payload.selected() != Some(selected.as_str())
+                    });
+            if !preserve_newer_normalization {
+                self.draft["sensitivityMatcher"] = library.file_value();
+                self.draft["selectedSensitivityMatcher"] = json!(selected);
+                cx.emit(MouseProductChanged);
+            }
         }
         if let MatcherObservation::Stages { stages, active } = &observation {
-            set_pointer(&mut self.draft, self.spec.stages_path(), json!(stages));
+            set_pointer(
+                &mut self.draft,
+                self.spec.stages_path(),
+                Value::Array(stages.iter().map(SourceStage::file_value).collect()),
+            );
             set_pointer(&mut self.draft, self.spec.active_path(), json!(active));
             self.dismiss_dpi_editors(window, cx);
             cx.emit(MouseProductChanged);
@@ -346,13 +612,29 @@ impl MouseProductWorkspace {
         cx.notify();
     }
 
+    pub fn submit_mouse_matcher_stages(
+        &mut self,
+        scope: &MouseMatcherScope,
+        stages: SourceStages,
+        cx: &mut Context<Self>,
+    ) -> anyhow::Result<()> {
+        ensure!(
+            !scope.is_normalization() && self.retains_mouse_matcher_scope(scope, cx),
+            "Matcher stage owner changed"
+        );
+        self.enqueue_matcher_stages(stages, cx)
+    }
+
     pub fn reject_mouse_matcher(
         &mut self,
         scope: &MouseMatcherScope,
         reason: String,
         cx: &mut Context<Self>,
     ) {
-        if scope.is_valid() && self.mouse_matcher_scope(cx).as_ref() == Some(scope) {
+        if self.accepts_mouse_matcher_scope(scope, cx) {
+            if scope.is_normalization() {
+                self.matcher_normalization.retry();
+            }
             // A missing transport is not the source calibration-error response.
             self.matcher_error = Some(reason);
             cx.notify();
@@ -362,10 +644,11 @@ impl MouseProductWorkspace {
 
 #[cfg(test)]
 mod tests {
-    use super::{MouseMatcherScope, SavedMatcherProfiles};
+    use super::{MouseMatcherScope, NormalizationState, SavedMatcherProfiles, ScopeKind};
     use crate::features::mouse_dpi_matcher::{
         MatcherAction, MatcherCommand, MatcherObservation, MatcherState,
     };
+    use crate::features::mouse_polling::MousePollingScope;
     use gpui_kit::EntityId;
     use razer_model::model::{Device, Profile};
     use serde_json::{Value, json};
@@ -381,6 +664,8 @@ mod tests {
             owner: EntityId::from(1),
             epoch: 4,
             valid: valid.clone(),
+            kind: ScopeKind::Ui,
+            domain: domain(0, 0),
         };
         valid.store(false, Ordering::Release);
         assert!(!scope.is_valid());
@@ -394,6 +679,8 @@ mod tests {
             owner: EntityId::from(1),
             epoch: 4,
             valid: valid.clone(),
+            kind: ScopeKind::Ui,
+            domain: domain(0, 0),
         };
         let successor = Arc::new(AtomicBool::new(true));
         assert!(!scope.retained_by(EntityId::from(1), 4, &successor));
@@ -403,8 +690,175 @@ mod tests {
             owner: EntityId::from(2),
             epoch: 4,
             valid,
+            kind: ScopeKind::Ui,
+            domain: domain(0, 0),
         };
         assert_ne!(scope, same_count_other_owner);
+    }
+
+    fn domain(profile: u64, connection: u64) -> MousePollingScope {
+        MousePollingScope::new(EntityId::from(10), profile, connection)
+    }
+
+    fn normalized_payload() -> razer_device::dpi_matcher_storage::ProfileUpdate {
+        let mut state = MatcherState::default();
+        let actions = state.observe_unmounted(MatcherObservation::Profiles {
+            library: razer_device::dpi_matcher_storage::Library::from_source_file(&json!({
+                "libraryExtension":"keep",
+                "profiles":[
+                    {"guid":"first","name":"Mouse"},
+                    {"guid":"second","name":{"en":"Mouse","zh-cn":"Localized"}}
+                ]
+            }))
+            .unwrap(),
+            selected: "second".into(),
+        });
+        assert_eq!(actions, [MatcherAction::NormalizeProfiles]);
+        assert_eq!(state.library().profiles()[1].name().text(), Some("Mouse 1"));
+        state.profile_update()
+    }
+
+    #[test]
+    fn matcher_normalization_retains_before_activation_and_outer_subscription_then_emits_once() {
+        let mut owner = NormalizationState::default();
+        let payload = normalized_payload();
+        owner.retain(domain(1, 2), payload.clone());
+        assert!(owner.request(EntityId::from(1), domain(1, 2)).is_none());
+        owner.activate();
+        assert!(owner.request(EntityId::from(1), domain(1, 2)).is_none());
+        owner.bind();
+        let request = owner.request(EntityId::from(1), domain(1, 2)).unwrap();
+        assert!(request.scope().is_valid());
+        assert!(request.scope().is_normalization());
+        assert_eq!(request.action(), &MatcherAction::NormalizeProfiles);
+        assert_eq!(request.profile_payload(), &payload);
+        owner.retain(domain(1, 2), payload);
+        assert!(owner.request(EntityId::from(1), domain(1, 2)).is_none());
+    }
+
+    #[test]
+    fn matcher_normalization_ready_without_ui_activation_emits_the_retained_payload() {
+        let mut owner = NormalizationState::default();
+        owner.bind();
+        owner.retain(domain(0, 0), normalized_payload());
+        assert!(owner.request(EntityId::from(1), domain(0, 0)).is_some());
+        assert!(owner.request(EntityId::from(1), domain(0, 0)).is_none());
+    }
+
+    #[test]
+    fn matcher_normalization_profile_or_connection_change_discards_pending_payload() {
+        for successor in [
+            domain(2, 1),
+            domain(1, 2),
+            MousePollingScope::new(EntityId::from(11), 1, 1),
+        ] {
+            let mut owner = NormalizationState::default();
+            owner.bind();
+            owner.retain(domain(1, 1), normalized_payload());
+            owner.activate();
+            assert!(owner.request(EntityId::from(1), successor).is_none());
+            assert!(owner.pending.is_none());
+            assert!(owner.request(EntityId::from(1), domain(1, 1)).is_none());
+        }
+    }
+
+    #[test]
+    fn matcher_normalization_reactivation_and_restore_never_revive_an_old_request() {
+        let mut owner = NormalizationState::default();
+        owner.bind();
+        owner.activate();
+        owner.retain(domain(1, 1), normalized_payload());
+        let old = owner.request(EntityId::from(1), domain(1, 1)).unwrap();
+        owner.suspend();
+        assert!(!old.scope().is_valid());
+        assert!(owner.request(EntityId::from(1), domain(1, 1)).is_none());
+        owner.activate();
+        let successor = owner.request(EntityId::from(1), domain(1, 1)).unwrap();
+        assert_ne!(old.scope(), successor.scope());
+        assert!(!old.scope().is_valid());
+        owner.reset();
+        assert!(!successor.scope().is_valid());
+        owner.activate();
+        assert!(owner.request(EntityId::from(1), domain(1, 1)).is_none());
+        owner.retain(domain(2, 1), normalized_payload());
+        let restored = owner.request(EntityId::from(1), domain(2, 1)).unwrap();
+        assert_ne!(restored.scope(), successor.scope());
+        assert!(restored.scope().is_valid());
+    }
+
+    #[test]
+    fn matcher_normalization_acknowledgement_only_consumes_its_exact_pending_library() {
+        let mut owner = NormalizationState::default();
+        let first = normalized_payload();
+        let mut device = saved_device();
+        device.source_device_settings.as_mut().unwrap()["sensitivityMatcher"] =
+            first.library().file_value();
+        device.profiles[0].source_settings.as_mut().unwrap()["selectedSensitivityMatcher"] =
+            json!("second");
+        let saved = SavedMatcherProfiles::from_device(&device).unwrap();
+        owner.retain(domain(1, 1), first.clone());
+        let second = razer_device::dpi_matcher_storage::ProfileUpdate::new(
+            first.library().clone(),
+            Some("first".into()),
+        );
+        owner.retain(domain(1, 1), second.clone());
+        owner.acknowledge(&saved);
+        assert_eq!(owner.pending.as_ref().unwrap().payload, second);
+        device.profiles[0].source_settings.as_mut().unwrap()["selectedSensitivityMatcher"] =
+            json!("first");
+        owner.acknowledge(&SavedMatcherProfiles::from_device(&device).unwrap());
+        assert!(owner.pending.is_none());
+    }
+
+    #[test]
+    fn matcher_normalization_new_payload_or_ui_profile_action_retires_the_old_save_guard() {
+        let mut owner = NormalizationState::default();
+        owner.bind();
+        let first = normalized_payload();
+        owner.retain(domain(0, 0), first.clone());
+        let old = owner.request(EntityId::from(1), domain(0, 0)).unwrap();
+        let newer = razer_device::dpi_matcher_storage::ProfileUpdate::new(
+            first.library().clone(),
+            Some("first".into()),
+        );
+        owner.retain(domain(0, 0), newer.clone());
+        let next = owner.request(EntityId::from(1), domain(0, 0)).unwrap();
+        assert!(!old.scope().is_valid());
+        assert!(
+            !old.scope()
+                .retained_by(EntityId::from(1), owner.epoch, &owner.valid)
+        );
+        assert!(next.scope().is_valid());
+        assert_eq!(next.profile_payload(), &newer);
+        owner.reset();
+        assert!(!next.scope().is_valid());
+        owner.activate();
+        assert!(
+            !next
+                .scope()
+                .retained_by(EntityId::from(1), owner.epoch, &owner.valid)
+        );
+        assert!(owner.request(EntityId::from(1), domain(0, 0)).is_none());
+    }
+
+    #[test]
+    fn matcher_normalization_echo_does_not_queue_a_second_update() {
+        let mut owner = NormalizationState::default();
+        owner.bind();
+        owner.activate();
+        let payload = normalized_payload();
+        owner.retain(domain(0, 0), payload.clone());
+        assert!(owner.request(EntityId::from(1), domain(0, 0)).is_some());
+        let mut state = MatcherState::default();
+        assert!(
+            state
+                .observe_unmounted(MatcherObservation::Profiles {
+                    library: payload.library().clone(),
+                    selected: payload.selected().unwrap().to_owned(),
+                })
+                .is_empty()
+        );
+        assert!(owner.request(EntityId::from(1), domain(0, 0)).is_none());
     }
 
     fn saved_device_for(product_id: u32) -> Device {
@@ -438,10 +892,25 @@ mod tests {
     }
 
     fn commit(device: &mut Device, mutation: razer_device::dpi_matcher_storage::Mutation) {
+        use razer_device::dpi_matcher_storage::Change;
+        if let Some(stages) = mutation.stages() {
+            let before = razer_model::mouse_matcher::source_record(device).unwrap();
+            razer_model::mouse_matcher::Mutation::from_change(
+                &before,
+                &Change::Stages(stages.clone()),
+            )
+            .unwrap()
+            .apply(device)
+            .unwrap();
+        }
         let before = razer_model::mouse_matcher::source_record(device).unwrap();
-        let mutation =
-            razer_model::mouse_matcher::Mutation::from_source(&before, &mutation.data).unwrap();
-        mutation.apply(device).unwrap();
+        razer_model::mouse_matcher::Mutation::from_change(
+            &before,
+            &Change::Profiles(mutation.response().clone()),
+        )
+        .unwrap()
+        .apply(device)
+        .unwrap();
     }
 
     #[test]
@@ -450,10 +919,12 @@ mod tests {
         let mut saved = live.clone();
         let source = razer_model::mouse_matcher::source_record(&saved).unwrap();
         let confirmed = razer_device::dpi_matcher_storage::confirm(
-            source.document(),
+            &razer_device::dpi_matcher_storage::SourceData::from_document(source.document())
+                .unwrap(),
             1450.,
             "measured",
-            json!({"en":"Measured mouse"}),
+            serde_json::from_value(json!({"en":"Measured mouse","zh-cn":"Measured mouse"}))
+                .unwrap(),
         )
         .unwrap();
         commit(&mut saved, confirmed);
@@ -499,10 +970,10 @@ mod tests {
         let mut state = MatcherState::default();
         state.unmount();
         let actions = state.observe_unmounted(MatcherObservation::Profiles {
-            profiles: draft["sensitivityMatcher"]["profiles"]
-                .as_array()
-                .unwrap()
-                .clone(),
+            library: razer_device::dpi_matcher_storage::Library::from_source_file(
+                &draft["sensitivityMatcher"],
+            )
+            .unwrap(),
             selected: draft["selectedSensitivityMatcher"]
                 .as_str()
                 .unwrap()
@@ -527,7 +998,12 @@ mod tests {
         let source = razer_model::mouse_matcher::source_record(&saved).unwrap();
         commit(
             &mut saved,
-            razer_device::dpi_matcher_storage::delete(source.document(), "old").unwrap(),
+            razer_device::dpi_matcher_storage::delete(
+                &razer_device::dpi_matcher_storage::SourceData::from_document(source.document())
+                    .unwrap(),
+                "old",
+            )
+            .unwrap(),
         );
         let mut draft = json!({"sensitivityMatcher":{"profiles":[{"guid":"old"}]},"selectedSensitivityMatcher":"old","edit":"keep"});
         let deleted = SavedMatcherProfiles::from_device(&saved).unwrap();
@@ -547,10 +1023,11 @@ mod tests {
         commit(
             &mut saved,
             razer_device::dpi_matcher_storage::confirm(
-                source.document(),
+                &razer_device::dpi_matcher_storage::SourceData::from_document(source.document())
+                    .unwrap(),
                 1700.,
                 "later",
-                json!("Later"),
+                serde_json::from_value(json!("Later")).unwrap(),
             )
             .unwrap(),
         );

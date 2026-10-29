@@ -4275,10 +4275,55 @@ def enumerate_frontend_chunks(path, tool, report_dir, identifier, tool_identity=
     return completed
 
 
+class FrontendArtifactReuse:
+    """Reference exact immutable URL originals from explicitly selected receipts."""
+    def __init__(self, acquisitions, downloader):
+        self.downloader = downloader
+        self.receipts = []
+        self.rows = {}
+        self.used = {}
+        self.lock = threading.Lock()
+        for name in dict.fromkeys(acquisitions):
+            path = resolve(name, ".analysis/inputs")
+            if path.name != "acquisition.json" or (ROOT / name).is_symlink():
+                raise ValueError("Reuse requires a retained acquisition receipt: " + str(name))
+            raw = path.read_bytes()
+            proof = {"path": rel(path), "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()}
+            receipt = json.loads(raw)
+            if receipt.get("source_current_during_acquisition") is not True:
+                raise ValueError("Reuse acquisition has no verified stable deployment: " + rel(path))
+            self.receipts.append(proof)
+            for row in receipt["files"]:
+                url = row.get("url")
+                if (row.get("http_status") != 200 or "path" not in row or not isinstance(url, str)
+                        or artifact_url(url, url) != url
+                        or not re.search(r"\.[0-9a-f]{8,64}(?:\.chunk)?\.", Path(urllib.parse.urlsplit(url).path).name)):
+                    continue
+                previous = self.rows.get(url)
+                if previous and any(previous.get(key) != row.get(key) for key in ("bytes", "sha256")):
+                    raise ValueError("Reuse receipts conflict for exact immutable URL: " + url)
+                self.rows.setdefault(url, {**row, "reused_from_acquisition": proof})
+
+    def download(self, url, output):
+        row = self.rows.get(url)
+        if row is None:
+            return self.downloader(url, output)
+        verify_source_rows([row])
+        with self.lock:
+            self.used[row["path"]] = row
+        return {**row, "reused_at_utc": stamp()}
+
+    def verify(self):
+        verify_source_rows([*self.receipts, *self.used.values()])
+
+
 def fetch_frontend(args, *, refresh_ledger=True):
     refresh_ledger = refresh_ledger and not getattr(args, "no_refresh_gaps", False)
     output = resolve(args.output, ".analysis/inputs")
+    reuse_acquisitions = getattr(args, "reuse_acquisition", None) or []
     if getattr(args, "repair", False):
+        if reuse_acquisitions:
+            raise ValueError("Explicit immutable reuse cannot modify an acquisition through --repair")
         import families
         repair_entry = artifact_url(args.url, args.url)
         if repair_entry is None:
@@ -4303,6 +4348,9 @@ def fetch_frontend(args, *, refresh_ledger=True):
     tool = wakaru()
     tool_identity = {"path": rel(tool), "bytes": tool.stat().st_size, "sha256": sha(tool)}
     downloader = getattr(args, "download_artifact", download)
+    reuse = FrontendArtifactReuse(reuse_acquisitions, downloader) if reuse_acquisitions else None
+    if reuse is not None:
+        downloader = reuse.download
     entry = artifact_url(args.url, args.url)
     if entry is None:
         raise ValueError("Expected HTTPS static HTML input")
@@ -4311,6 +4359,8 @@ def fetch_frontend(args, *, refresh_ledger=True):
     previous = json.loads(acquisition.read_bytes()) if acquisition.exists() else {}
     if previous and previous["entry_url"] != entry:
         raise ValueError("Output belongs to a different app entry")
+    if reuse is not None and "source_current_during_acquisition" in previous:
+        raise ValueError("Completed immutable snapshot requires a new output directory")
     rows = {}
     for row in previous.get("files", []):
         normalized = artifact_url(entry, row["url"])
@@ -4492,7 +4542,8 @@ def fetch_frontend(args, *, refresh_ledger=True):
                            "reference_parser_version": FRONTEND_REFERENCE_VERSION,
                            "reference_resolution_policy": "response_final_url_with_requested_source_owner_v1",
                            "requested_urls": sorted(queue), "entry_response_url": entry_response_url,
-                           "unresolved": unknown, "target_execution": False})
+                           "unresolved": unknown, "target_execution": False,
+                           **({"reuse_acquisitions": reuse.receipts} if reuse is not None else {})})
         print(json.dumps({"acquired": sum("path" in r for r in rows.values()),
                           "requested": len(queue), "failures": sum("error" in r for r in rows.values())}), flush=True)
     # Re-read the entry and manifest to detect a deployment changing during acquisition.
@@ -4518,9 +4569,11 @@ def fetch_frontend(args, *, refresh_ledger=True):
     save(acquisition, data)
     if tool_identity["sha256"] != sha(tool):
         raise ValueError("Wakaru changed during frontend acquisition")
+    if reuse is not None:
+        reuse.verify()
     indexed_rows = []
     for row in rows.values():
-        if "path" in row:
+        if "path" in row and "reused_from_acquisition" not in row:
             indexed_rows.append({key: row[key] for key in ("path", "bytes", "sha256", "url", "acquired_at_utc")}
                                 | {"kind": "official_frontend_artifact"})
     indexed_rows.append({"path": rel(acquisition), "bytes": acquisition.stat().st_size,
@@ -7864,6 +7917,8 @@ def add_commands(parsers):
     fetch.add_argument("--no-refresh-gaps", action="store_true", help="Leave gap reconciliation to the caller after concurrent analyses finish")
     fetch.add_argument("--manifest-url", dest="seed_urls", action="append",
                        help="Additional product manifest verified by the acquisition caller")
+    fetch.add_argument("--reuse-acquisition", action="append",
+                       help="Reference verified originals for identical immutable URLs from this retained acquisition; repeat for several")
     frozen_sources = parsers.add_parser("acquire-frozen-frontend-sources",
         help="Acquire only exact official dependency URLs missing from the frozen unresolved frontend tasks")
     frozen_sources.add_argument("--workers", type=int, choices=range(2, 17), default=8)

@@ -86,6 +86,23 @@ fn merge_current_dpi_profile(
 mod tests;
 
 impl AppShell {
+    pub(super) fn finish_superseded_current_dpi_save(
+        &mut self,
+        save: &mut PreparedSave,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        let superseded = matches!(&save.product,
+            Some(ProductSave::MouseCurrentDpi(dpi)) if dpi.request.profile().is_none());
+        if !superseded {
+            return false;
+        }
+        let Some(ProductSave::MouseCurrentDpi(dpi)) = save.product.take() else {
+            unreachable!("Only the current DPI save was selected");
+        };
+        self.submit_current_dpi_at(dpi.workspace, dpi.request, save.window, cx);
+        true
+    }
+
     /// Source profile initialization precedes the connection's DPI observation.
     /// The page retains the read key and serializes refresh behind accepted edits.
     pub(super) fn initialize_current_mouse_profiles(&mut self, cx: &mut Context<Self>) {
@@ -190,9 +207,10 @@ impl AppShell {
         let Some(ProductSave::MouseCurrentDpi(dpi)) = &save.product else {
             return Ok(());
         };
-        let Some(source) = dpi.request.profile() else {
-            return Ok(());
-        };
+        let source = dpi
+            .request
+            .profile()
+            .ok_or_else(|| anyhow::anyhow!("Superseded DPI profile cannot be written"))?;
         save.file.devices = self
             .devices
             .iter()
@@ -216,7 +234,7 @@ impl AppShell {
     ) {
         if !succeeded
             || save.request.change().is_none() && !save.request.is_read()
-            || self.close_requested && !save.request.is_cleanup()
+            || self.close_requested && !save.request.can_finish_during_exit()
         {
             save.workspace.update(cx, |workspace, cx| {
                 workspace.finish_current_dpi(&save.request, None, cx)
@@ -243,7 +261,7 @@ impl AppShell {
         window: AnyWindowHandle,
         cx: &mut Context<Self>,
     ) {
-        if self.close_requested && !request.is_cleanup()
+        if self.close_requested && !request.can_finish_during_exit()
             || !self.devices.contains(&workspace)
             || !workspace.read(cx).current_dpi_request_matches(&request, cx)
             || request.change().is_none() && !request.is_read()
@@ -251,8 +269,8 @@ impl AppShell {
             workspace.update(cx, |workspace, cx| {
                 workspace.finish_current_dpi(&request, None, cx)
             });
-            if request.is_cleanup() {
-                self.status = "DPI 退出恢复尚未确认：设备连接或请求范围已改变。".into();
+            if request.can_finish_during_exit() {
+                self.status = "DPI 退出任务尚未确认：设备连接或请求范围已改变。".into();
                 self.cancel_pending_exit(cx);
             }
             return;
@@ -270,7 +288,7 @@ impl AppShell {
             workspace.update(cx, |workspace, cx| {
                 workspace.finish_current_dpi_result(&request, Err(self.status.clone()), cx)
             });
-            if request.is_cleanup() {
+            if request.can_finish_during_exit() {
                 self.cancel_pending_exit(cx);
             }
             cx.notify();

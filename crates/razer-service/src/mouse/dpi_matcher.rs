@@ -4,7 +4,8 @@
 use anyhow::{Context as _, ensure};
 use razer_device::{
     dpi_matcher::{Calibration, InputBatch, Product, Session, State},
-    dpi_matcher_storage::{self, Mutation, ProfileUpdate},
+    dpi_matcher_storage::{self, Change, Mutation, ProfileName, ProfileUpdate, SourceData},
+    mouse_current_dpi::SourceStages,
 };
 use serde_json::Value;
 
@@ -16,21 +17,24 @@ pub mod worker;
 mod tests;
 
 pub trait Backend {
-    fn read_source_data(&mut self) -> anyhow::Result<Value>;
+    fn read_source_data(&mut self) -> anyhow::Result<SourceData>;
     fn start_input_monitoring(&mut self) -> anyhow::Result<()>;
     fn stop_input_monitoring(&mut self) -> anyhow::Result<()>;
     /// Source uses shared/read and exclusive/write requestAllLocks for dpiMatcher.
     fn acquire_matcher_locks(&mut self) -> anyhow::Result<()>;
     fn release_matcher_locks(&mut self) -> anyhow::Result<()>;
-    fn submit_dpi_stages(&mut self, stages: &Value) -> anyhow::Result<()>;
-    fn persist_source_data(&mut self, data: &Value) -> anyhow::Result<()>;
+    fn submit_dpi_stages(&mut self, stages: &SourceStages) -> anyhow::Result<()>;
+    fn persist_source_data(&mut self, change: &Change) -> anyhow::Result<()>;
+    fn report_failure(&mut self, error: String) -> anyhow::Result<()>;
+    fn publish_stage_draft(&mut self, stages: &SourceStages) -> anyhow::Result<()>;
+    fn publish_calibration(&mut self, calibration: Calibration) -> anyhow::Result<()>;
     /// Derive current source dual-link/source-device/computer locale name and
     /// allocate a real UUID, never a canned name or deterministic fake UUID.
     fn confirmation_identity(
         &mut self,
         source_container: &str,
         source_product: Option<u32>,
-    ) -> anyhow::Result<(String, Value)>;
+    ) -> anyhow::Result<(String, ProfileName)>;
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -67,24 +71,7 @@ impl Controller {
             "GET_STATE" => Ok(vec![Response::Calibration(self.response())]),
             "START" => {
                 let data = backend.read_source_data()?;
-                let active = data["activeProfile"]
-                    .as_str()
-                    .context("no observed active profile")?;
-                let profile = data["profiles"]
-                    .as_array()
-                    .context("no observed profiles")?
-                    .iter()
-                    .find(|p| p["guid"].as_str() == Some(active))
-                    .context("active profile missing")?;
-                let stage = profile["dpiStages"]["active"]
-                    .as_u64()
-                    .and_then(|v| v.checked_sub(1))
-                    .context("no observed active DPI stage")?;
-                let current = profile["dpiStages"]["stages"][stage as usize]["x"]
-                    .as_f64()
-                    .filter(|v| *v != 0.)
-                    .unwrap_or(100.);
-                self.session.begin(current)?;
+                self.session.begin(data.baseline()?)?;
                 if let Err(error) = backend.start_input_monitoring() {
                     self.session.reset();
                     return Err(error);
@@ -115,9 +102,9 @@ impl Controller {
                     self.session.source_product_id,
                 )?;
                 let mutation = dpi_matcher_storage::confirm(&data, measured, &guid, name)?;
-                let responses = self.persist(mutation, backend)?;
                 self.session.reset();
-                Ok(responses)
+                backend.publish_calibration(self.response())?;
+                self.persist(mutation, backend)
             }
             "DELETE_PROFILE" => {
                 let guid = payload
@@ -130,14 +117,14 @@ impl Controller {
             }
             "DELETE_ALL_PROFILES" => {
                 let data = backend.read_source_data()?;
-                let responses = self.persist(dpi_matcher_storage::delete_all(&data)?, backend)?;
+                let responses = self.persist(dpi_matcher_storage::delete_all(&data), backend)?;
                 self.session.reset();
                 Ok(responses)
             }
             _ => anyhow::bail!("unsupported DPI_MATCHER_UI_COMMAND {command}"),
         }
     }
-    /// Separate UI action; submit real stages before matcher storage response.
+    /// The stage task maker saves and queues before the independent library task.
     pub fn select(
         &mut self,
         guid: &str,
@@ -148,23 +135,32 @@ impl Controller {
     }
     pub fn update_profiles(
         &mut self,
-        payload: &Value,
+        payload: &ProfileUpdate,
         backend: &mut impl Backend,
     ) -> anyhow::Result<Vec<Response>> {
         let data = backend.read_source_data()?;
-        self.persist(dpi_matcher_storage::update(&data, payload)?, backend)
+        self.persist(dpi_matcher_storage::update(&data, payload), backend)
     }
     fn persist(
         &mut self,
         mutation: Mutation,
         backend: &mut impl Backend,
     ) -> anyhow::Result<Vec<Response>> {
-        if let Some(stages) = &mutation.dpi_stages {
-            backend.submit_dpi_stages(stages)?;
+        if let Some(stages) = mutation.stages() {
+            backend.publish_stage_draft(stages.stages())?;
+            let stage_task = (|| {
+                stages.validate()?;
+                backend.persist_source_data(&Change::Stages(stages.clone()))?;
+                backend.submit_dpi_stages(stages.stages())
+            })();
+            // The source task maker reports its failure and resolves. The next
+            // independent Matcher-library task still runs without rollback.
+            if let Err(error) = stage_task {
+                backend.report_failure(format!("{error:#}"))?;
+            }
         }
-        backend.persist_source_data(&mutation.data)?;
-        // Only actual successful submission and storage emits the source response.
-        Ok(vec![Response::Profiles(mutation.response)])
+        backend.persist_source_data(&Change::Profiles(mutation.response().clone()))?;
+        Ok(vec![Response::Profiles(mutation.response().clone())])
     }
     pub fn ingest(
         &mut self,

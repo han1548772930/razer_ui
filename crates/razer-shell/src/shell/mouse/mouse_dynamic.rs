@@ -382,8 +382,8 @@ impl AppShell {
         }
     }
     fn repeat_mouse_dynamic_start(&mut self, key: Key, queued: Queued, cx: &mut Context<Self>) {
-        // Source j registers F before awaiting the raw START result. Neither a
-        // negative acknowledgement nor an RPC failure removes that listener.
+        // Source F removes and registers j before awaiting the raw START.
+        // Negative acknowledgement or RPC failure keeps the unique callback.
         let reply =
             self.register_mouse_dynamic_observer(&queued, cx)
                 .and_then(|()| {
@@ -435,7 +435,7 @@ impl AppShell {
                     return;
                 };
                 let completion = match acknowledgement {
-                    // j ignores the raw result boolean. Retire this registration
+                    // F ignores the raw result boolean. Retire this registration
                     // without publishing another Monitoring(true) success.
                     Ok(_) => MouseDynamicCompletion::ObserverAttached,
                     Err(error) => MouseDynamicCompletion::Failed(error),

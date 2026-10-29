@@ -1783,7 +1783,10 @@ impl AppShell {
         entity.update(cx, |workspace, cx| {
             workspace.observe_running_games(self.game_observer.running_games(), cx);
         });
-        self.devices.push(entity);
+        self.devices.push(entity.clone());
+        entity.update(cx, |workspace, cx| {
+            workspace.bind_mouse_matcher_requests(cx);
+        });
     }
 
     fn sync_device_contexts(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -2463,6 +2466,10 @@ impl AppShell {
         let Some(mut request) = self.pending_saves.pop_front() else {
             return false;
         };
+        if self.finish_superseded_current_dpi_save(&mut request, cx) {
+            self.continue_save_queue(true, cx);
+            return true;
+        }
         if let Some(error) = &self.storage_error {
             let status = format!("保存已停止：{error}");
             self.cancel_prepared_save(request, cx);

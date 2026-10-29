@@ -25,7 +25,7 @@ mod current_power;
 pub use current_power::device_fields as power_device_fields;
 #[path = "dpi/mouse_dpi_70.rs"]
 mod dpi_70;
-pub use current_dpi::MouseCurrentDpiRequested;
+pub use current_dpi::{MouseCurrentDpiProfileSaveBoundary, MouseCurrentDpiRequested};
 pub use current_power::MouseCurrentPowerRequested;
 pub use current_power::MousePowerSavingRead;
 pub use current_power::{MouseCurrentPowerRead, filter_power_persistence};
@@ -350,6 +350,7 @@ pub struct MouseProductWorkspace {
     matcher: Option<Entity<super::mouse_dpi_matcher::MouseDpiMatcher>>,
     matcher_epoch: u64,
     matcher_valid: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    matcher_normalization: matcher_owner::NormalizationState,
     matcher_error: Option<String>,
     subscriptions: Vec<Subscription>,
     syncing: bool,
@@ -481,6 +482,7 @@ impl MouseProductWorkspace {
             matcher: None,
             matcher_epoch: 0,
             matcher_valid: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(true)),
+            matcher_normalization: matcher_owner::NormalizationState::default(),
             matcher_error: None,
             subscriptions: Vec::new(),
             syncing: false,
@@ -586,6 +588,7 @@ impl MouseProductWorkspace {
                 self.request_mouse_lighting_observation(window, cx);
             }
             self.sync_matcher_mount(cx);
+            self.flush_matcher_normalization(cx);
             if key == "ADVANCED" {
                 if self.spec.rotation {
                     self.rotation_resources.request(cx);
@@ -717,6 +720,7 @@ impl MouseProductWorkspace {
             self.active && self.page == "TAB_PERFORMANCE",
         ));
         self.matcher_error = None;
+        self.matcher_normalization.reset();
         self.scroll_custom_saved = None;
         self.draft_generation = self.draft_generation.wrapping_add(1);
         let previous_draft =
@@ -801,6 +805,7 @@ impl MouseProductWorkspace {
         self.reset_dpi_grids(window, cx);
         self.sync_dpi_single_controls(window, cx);
         self.sync_matcher_profile(window, cx);
+        self.activate_matcher_normalization(cx);
         self.sync_mouse_lighting(window, cx);
         if self.page == "TAB_LIGHTING" {
             self.request_mouse_lighting_observation(window, cx);

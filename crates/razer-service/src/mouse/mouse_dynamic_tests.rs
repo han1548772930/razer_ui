@@ -76,7 +76,7 @@ fn monitor_with(
         admit,
         |json, admitted| {
             // This harness represents the single listener removed by STOP.
-            // Retained PID226 listeners use SpeedHistoryInput below.
+            // Connection-retained registration uses SpeedHistoryInput below.
             if !active.load(Ordering::Acquire) {
                 return Ok(());
             }
@@ -298,7 +298,7 @@ fn mouse_dynamic_filtered_trailing_callback_preserves_each_products_pending_valu
         );
         assert_eq!(
             updates.publish_due(clock(Duration::from_millis(17))),
-            Some(if product_id == 226 { 0. } else { 10. })
+            Some(10.)
         );
         assert!(
             updates
@@ -564,21 +564,18 @@ fn mouse_dynamic_invalid_callback_does_not_request_a_throttle_clock_or_schedule_
 #[test]
 fn mouse_dynamic_monitor_publishes_each_products_native_string_tick_result() {
     for product_id in [190, 192, 196, 222, 226, 229, 239] {
-        for (events, relative, previous_delta) in [
+        for (events, expected) in [
             (
                 r#"[{"timeTick":"9","data":"{\"type\":\"mouseMove\",\"x\":3,\"y\":4}"},{"timeTick":"10","data":"{\"type\":\"mouseMove\",\"x\":6,\"y\":8}"}]"#,
                 0.,
-                50000.,
             ),
             (
                 r#"[{"timeTick":"10000","data":"{\"type\":\"mouseMove\",\"x\":3,\"y\":4}"},{"timeTick":"20000","data":"{\"type\":\"mouseMove\",\"x\":3,\"y\":4}"}]"#,
                 5.,
-                0.,
             ),
             (
                 r#"[{"timeTick":"10000","data":"{\"type\":\"mouseMove\",\"x\":3,\"y\":4}"},{"timeTick":"10000","data":"{\"type\":\"mouseMove\",\"x\":6,\"y\":8}"}]"#,
                 0.,
-                f64::INFINITY,
             ),
         ] {
             let mut backend = Backend::new();
@@ -605,18 +602,7 @@ fn mouse_dynamic_monitor_publishes_each_products_native_string_tick_result() {
             );
             assert!(matches!(result.result, Ok(Outcome::MonitoringStopped)));
             assert!(result.cleanup_failure.is_none());
-            assert_eq!(
-                *updates.borrow(),
-                vec![
-                    -1.,
-                    if product_id == 226 {
-                        previous_delta
-                    } else {
-                        relative
-                    }
-                ],
-                "{product_id}"
-            );
+            assert_eq!(*updates.borrow(), vec![-1., expected], "{product_id}");
             assert_eq!(
                 *backend.calls.borrow(),
                 vec!["start", "poll", "stop", "shutdown", "terminate"]
@@ -665,13 +651,7 @@ fn mouse_dynamic_monitor_preserves_leading_and_latest_trailing_callback_order() 
         assert!(result.cleanup_failure.is_none());
         assert_eq!(
             *observed.borrow(),
-            vec![
-                (Duration::ZERO, if product_id == 226 { 0. } else { 5. }),
-                (
-                    Duration::from_millis(17),
-                    if product_id == 226 { 5. } else { 15. }
-                ),
-            ],
+            vec![(Duration::ZERO, 5.), (Duration::from_millis(17), 15.),],
             "{product_id}"
         );
         assert_eq!(
@@ -1016,7 +996,7 @@ fn mouse_dynamic_history_publishes_while_native_stop_waits_and_survives_restart(
         stopped.recv_timeout(Duration::from_secs(5)).unwrap();
         assert_eq!(history.publication(), (0, 0.));
         history.advance(17);
-        let expected = if product_id == 226 { 5. } else { 10. };
+        let expected = 10.;
         assert_eq!(history.publication(), (17, expected), "{product_id}");
         resume.send(()).unwrap();
         let (completion, calls) = worker.join().unwrap();
@@ -1063,19 +1043,17 @@ fn mouse_dynamic_history_resets_only_after_actual_stop_ack_and_keeps_pending_tim
                 *backend.calls.borrow(),
                 ["start", "stop", "shutdown", "terminate"]
             );
+            history
+                .input
+                .observe(
+                    r#"[{"timeTick":"30000","data":"{\"type\":\"mouseMove\",\"x\":9,\"y\":12}"}]"#,
+                    true,
+                )
+                .unwrap();
             history.advance(17);
             assert_eq!(
                 history.publication(),
-                (
-                    17,
-                    if !stop_failure {
-                        0.
-                    } else if product_id == 226 {
-                        5.
-                    } else {
-                        10.
-                    }
-                )
+                (17, if stop_failure { 15. } else { 0. })
             );
         }
     }
@@ -1159,22 +1137,40 @@ fn mouse_dynamic_history_disposal_rejects_late_callbacks_and_releases_pending_ti
 }
 
 #[test]
-fn mouse_dynamic_history_tracks_pid226_observers_without_releasing_the_connection_owner() {
+fn mouse_dynamic_history_replaces_pid226_observer_without_releasing_the_connection_owner() {
     let (input, owner) = SpeedHistory::new(226).unwrap();
-    assert_eq!(input.observer_count(), 1);
+    assert!(input.has_observer());
     input.register_observer().unwrap();
-    assert_eq!(input.observer_count(), 2);
+    input.register_observer().unwrap();
+    assert!(input.has_observer());
     input.unregister_observer();
-    assert_eq!(input.observer_count(), 1);
+    assert!(!input.has_observer());
     input.unregister_observer();
-    input.unregister_observer();
-    assert_eq!(input.observer_count(), 0);
-    // A stopped source can retain its history with no listeners. The next
-    // mount registers again without inventing a callback for the idle gap.
+    assert!(!input.has_observer());
+    // An idle source retains its history without a callback. The next mount
+    // registers the unique callback without consuming events from the gap.
     input.observe("[]", true).unwrap();
     input.register_observer().unwrap();
-    assert_eq!(input.observer_count(), 1);
+    assert!(input.has_observer());
+    input.close();
+    assert!(!input.has_observer());
+    assert!(input.register_observer().is_err());
     drop(owner);
+}
+
+#[test]
+fn mouse_dynamic_history_repeated_pid226_start_consumes_each_callback_once() {
+    let history = HistoryHarness::new(226);
+    history.input.register_observer().unwrap();
+    history.input.register_observer().unwrap();
+    history.input.observe(RESTART_MOTION, true).unwrap();
+    assert_eq!(history.publication(), (0, 10.));
+    history.advance(18);
+    // A duplicate callback would leave a pending trailing publication before
+    // this marker callback, exposing the duplicated source registration.
+    history.input.observe("[]", true).unwrap();
+    assert_eq!(history.publication(), (18, 0.));
+    assert!(history.publications.try_recv().is_err());
 }
 
 fn received_start(reply: StartReply) -> StartResult {
@@ -1394,11 +1390,11 @@ fn mouse_dynamic_start_queue_is_bounded_and_owner_drop_settles_every_reply() {
 }
 
 #[test]
-fn mouse_dynamic_remaining_pid226_observer_consumes_poll_and_final_stop_before_reset() {
+fn mouse_dynamic_pid226_stop_removes_the_callback_before_poll_and_final_stop_events() {
     let history = HistoryHarness::new(226);
     history.input.register_observer().unwrap();
     history.input.unregister_observer();
-    assert_eq!(history.input.observer_count(), 1);
+    assert!(!history.input.has_observer());
     let active = Arc::new(AtomicBool::new(true));
     let mut backend = Backend::new();
     backend.cancel_on_poll = Some(active.clone());
@@ -1431,7 +1427,7 @@ fn mouse_dynamic_remaining_pid226_observer_consumes_poll_and_final_stop_before_r
                 history.advance(18);
             }
             history.input.observe(json, admitted)?;
-            assert_eq!(history.publication(), (if count == 0 { 0 } else { 18 }, 5.));
+            assert!(history.publications.try_recv().is_err());
             observations.set(count + 1);
             Ok(())
         },
@@ -1449,7 +1445,10 @@ fn mouse_dynamic_remaining_pid226_observer_consumes_poll_and_final_stop_before_r
         *backend.calls.borrow(),
         ["start", "poll", "stop", "shutdown", "terminate"]
     );
-    assert_eq!(history.input.observer_count(), 1);
+    assert!(!history.input.has_observer());
+    history.input.register_observer().unwrap();
+    history.input.observe(RESTART_MOTION, true).unwrap();
+    assert_eq!(history.publication(), (18, 10.));
 }
 
 #[test]
@@ -1463,7 +1462,7 @@ fn mouse_dynamic_final_callback_failure_keeps_cleanup_failure_visible() {
         &active,
         &monitor_requests().1,
         |_| Ok(true),
-        |_, _| anyhow::bail!("remaining listener rejected final callback"),
+        |_, _| anyhow::bail!("source callback rejected final event"),
         || panic!("A failed final handoff cannot masquerade as reset completion"),
         || {},
         || active.store(false, Ordering::Release),
@@ -1472,7 +1471,7 @@ fn mouse_dynamic_final_callback_failure_keeps_cleanup_failure_visible() {
         completion
             .cleanup_failure
             .unwrap()
-            .contains("remaining listener rejected final callback")
+            .contains("source callback rejected final event")
     );
     assert_eq!(
         *backend.calls.borrow(),

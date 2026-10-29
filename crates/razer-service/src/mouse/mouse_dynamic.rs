@@ -15,7 +15,7 @@ use std::{
     future::Future,
     sync::{
         Arc,
-        atomic::{AtomicBool, AtomicUsize, Ordering},
+        atomic::{AtomicBool, Ordering},
         mpsc::{SyncSender, sync_channel},
     },
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
@@ -238,7 +238,7 @@ impl SpeedPublication {
 
     fn stop_acknowledged(&mut self) {
         // K/H resets movement after the awaited STOP, without cancelling or
-        // flushing N. PID226 retains lastTimeTick in the same reset operation.
+        // flushing N. The reset includes lastTimeTick's numeric-zero sentinel.
         self.speed.publish();
     }
 
@@ -304,60 +304,48 @@ enum HistoryCommand {
 #[derive(Clone)]
 pub struct SpeedHistoryInput {
     commands: async_channel::Sender<HistoryCommand>,
-    observers: Arc<AtomicUsize>,
+    observer: Arc<AtomicBool>,
 }
 impl SpeedHistoryInput {
-    /// The first mounted editor owns one callback. PID226 can add callbacks
-    /// while the native monitor is already running; each callback consumes the
-    /// same native event independently, matching the source EventEmitter.
+    /// START removes and registers the same source callback, retaining one
+    /// subscription even when PID226's native monitor is already running.
     pub fn register_observer(&self) -> anyhow::Result<()> {
-        self.observers
-            .try_update(Ordering::AcqRel, Ordering::Acquire, |count| {
-                count.checked_add(1)
-            })
-            .map(|_| ())
-            .map_err(|_| anyhow::anyhow!("Dynamic speed observer count exhausted"))
+        anyhow::ensure!(!self.is_closed(), "Dynamic speed history was closed");
+        self.observer.store(true, Ordering::Release);
+        if self.is_closed() {
+            self.observer.store(false, Ordering::Release);
+            anyhow::bail!("Dynamic speed history was closed");
+        }
+        Ok(())
     }
 
     pub fn unregister_observer(&self) {
-        let _ = self
-            .observers
-            .try_update(Ordering::AcqRel, Ordering::Acquire, |count| {
-                if count == 0 { None } else { Some(count - 1) }
-            });
+        self.observer.store(false, Ordering::Release);
     }
 
-    pub fn observer_count(&self) -> usize {
-        self.observers.load(Ordering::Acquire)
+    fn has_observer(&self) -> bool {
+        self.observer.load(Ordering::Acquire)
     }
 
     fn observe(&self, json: &str, admitted: bool) -> anyhow::Result<()> {
         if self.is_closed() {
             anyhow::bail!("Dynamic speed history was closed");
         }
-        let observers = self.observer_count();
-        if observers == 0 {
+        if !self.has_observer() {
             return Ok(());
         }
-        let mut results = Vec::with_capacity(observers);
-        for _ in 0..observers {
-            let (completed, result) = sync_channel(1);
-            self.commands
-                .send_blocking(HistoryCommand::Callback {
-                    json: json.to_owned(),
-                    admitted,
-                    completed,
-                })
-                .map_err(|_| anyhow::anyhow!("Dynamic speed history was closed"))?;
-            results.push(result);
-        }
-        for result in results {
-            result
-                .recv()
-                .context("Dynamic speed history ended before callback acknowledgement")?
-                .map_err(anyhow::Error::msg)?;
-        }
-        Ok(())
+        let (completed, result) = sync_channel(1);
+        self.commands
+            .send_blocking(HistoryCommand::Callback {
+                json: json.to_owned(),
+                admitted,
+                completed,
+            })
+            .map_err(|_| anyhow::anyhow!("Dynamic speed history was closed"))?;
+        result
+            .recv()
+            .context("Dynamic speed history ended before callback acknowledgement")?
+            .map_err(anyhow::Error::msg)
     }
 
     fn stop_acknowledged(&self) -> anyhow::Result<()> {
@@ -378,7 +366,7 @@ impl SpeedHistoryInput {
     }
 
     pub fn close(&self) {
-        self.observers.store(0, Ordering::Release);
+        self.observer.store(false, Ordering::Release);
         self.commands.close();
     }
 
@@ -397,12 +385,9 @@ impl SpeedHistory {
     pub fn new(product_id: u32) -> anyhow::Result<(SpeedHistoryInput, Self)> {
         let updates = SpeedPublication::new(product_id)?;
         let (commands, receiver) = async_channel::bounded(1);
-        let observers = Arc::new(AtomicUsize::new(1));
+        let observer = Arc::new(AtomicBool::new(true));
         Ok((
-            SpeedHistoryInput {
-                commands,
-                observers,
-            },
+            SpeedHistoryInput { commands, observer },
             Self {
                 updates,
                 commands: receiver,
@@ -538,8 +523,8 @@ fn capture_with(
                 break;
             }
             for event in backend.backend.events()? {
-                // The source's connection-scoped listeners decide whether a
-                // callback still has consumers after one editor sends STOP.
+                // The connection-scoped registration controls whether the
+                // source callback still consumes events after STOP admission.
                 let admitted = (backend.admit)(&event)?;
                 (backend.observe)(event.json_event(), admitted)?;
             }
@@ -613,7 +598,7 @@ pub fn monitor(
         &active,
         &commands,
         |event| {
-            if history.is_closed() || history.observer_count() == 0 {
+            if history.is_closed() || !history.has_observer() {
                 Ok(false)
             } else {
                 admits(&route, event)

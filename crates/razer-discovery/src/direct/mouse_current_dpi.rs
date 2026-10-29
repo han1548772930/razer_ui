@@ -263,11 +263,13 @@ fn decode_reply(
             } else {
                 ensure!(
                     report.write_errors.stages().is_some()
-                        || report
+                        || (report.acknowledgements.iter().any(|ack| {
+                            ack.command == [3 + 7 * packed.number_of_active_stages, 4, 6]
+                        }) && report
                             .stages
                             .as_ref()
-                            .is_some_and(|reading| dpi::same_stages(&packed, reading)),
-                    "Current mouse DPI reply stage readback differs"
+                            .is_some_and(|reading| dpi::same_stages(&packed, reading))),
+                    "Current mouse DPI reply has no stage setter acknowledgement or its readback differs"
                 );
             }
         }
@@ -306,6 +308,83 @@ fn decode_reply(
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn stage_confirmation_requires_its_setter_ack_and_uses_the_source_record_consumer() {
+        let change = DpiChange {
+            stages: Some(dpi::SourceStages::new(
+                true,
+                1,
+                vec![dpi::SourceStage::new(
+                    Some(dpi::SourceNumber::new(400.)),
+                    Some(dpi::SourceNumber::new(500.)),
+                    Some(true),
+                    Some(false),
+                )],
+            )),
+            active: None,
+            profile_guid: None,
+            initialize: false,
+        };
+        let mut reply = json!({
+            "source_class":dpi::capability(190).unwrap().transport().source_class,
+            "profile_scope":"stage_1_active_0",
+            "report":{"requested":change,"active":null,"verified":true,"acknowledgements":[],
+                "stages":{"profile_id":1,"active_stage":9,"number_of_active_stages":7,
+                    "records":[{"index":1,"x":400,"y":500,"z":0},
+                        {"index":0,"x":0,"y":0,"z":0}],"response_bytes":17}}
+        });
+        assert!(decode_reply(190, &reply, Some(change.clone())).is_err());
+        reply["report"]["acknowledgements"] = json!([
+            {"command":[10,4,6],"transaction":0,"response_bytes":0,"data":[]}
+        ]);
+        let actual = decode_reply(190, &reply, Some(change.clone())).unwrap();
+        assert!(actual.verified);
+        assert_eq!(actual.stages.as_ref().unwrap().active_stage, 9);
+        reply["report"]["acknowledgements"][0]["command"] = json!([17, 4, 6]);
+        assert!(decode_reply(190, &reply, Some(change)).is_err());
+    }
+
+    #[test]
+    fn tagged_number_echo_keeps_a_failed_write_and_its_actual_getter_distinct() {
+        let change = DpiChange {
+            stages: Some(dpi::SourceStages::new(
+                true,
+                1,
+                vec![dpi::SourceStage::new(
+                    Some(dpi::SourceNumber::new(f64::from_bits(
+                        0x7ff8_0000_0000_0042,
+                    ))),
+                    Some(dpi::SourceNumber::new(0.)),
+                    Some(true),
+                    Some(false),
+                )],
+            )),
+            active: None,
+            profile_guid: None,
+            initialize: false,
+        };
+        let mut reply = json!({
+            "source_class":dpi::capability(190).unwrap().transport().source_class,
+            "profile_scope":"stage_1_active_0",
+            "report":{"requested":change,"active":null,"verified":false,"acknowledgements":[
+                {"command":[10,4,6],"transaction":0,"response_bytes":0,"data":[]}],
+                "write_errors":{"stages":"strict getter differs","active":null},
+                "stages":{"profile_id":1,"active_stage":1,"number_of_active_stages":1,
+                    "records":[{"index":1,"x":0,"y":0,"z":0},
+                        {"index":0,"x":0,"y":0,"z":0}],"response_bytes":17}}
+        });
+        let report = decode_reply(190, &reply, Some(change.clone())).unwrap();
+        assert!(!report.verified);
+        assert_eq!(report.stages.unwrap().records[0].x, 0);
+        reply["report"]["verified"] = json!(true);
+        reply["report"]["write_errors"] = json!({"stages":null,"active":null});
+        assert!(decode_reply(190, &reply, Some(change.clone())).is_err());
+        reply["report"]["verified"] = json!(false);
+        reply["report"]["write_errors"]["stages"] = json!("strict getter differs");
+        reply["report"]["requested"]["stages"]["stages"][0]["x"] = Value::Null;
+        assert!(decode_reply(190, &reply, Some(change)).is_err());
+    }
 
     #[test]
     fn failed_write_keeps_actual_dpi_without_accepting_a_success_claim() {

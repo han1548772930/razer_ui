@@ -680,7 +680,7 @@ fn mounted_source_dpi_dispatch_reaches_shared_receiver_without_transient_dpi_set
             Some(DpiChange {
                 profile_guid: None,
                 initialize: false,
-                stages: Some(stages),
+                stages: Some(stages.into()),
                 active: None,
             }),
         ] {
@@ -734,7 +734,7 @@ fn source_dpi_dispatch_rejects_foreign_descriptor_offline_peer_and_cancelled_ack
     let change = Some(razer_device::mouse_current_dpi::DpiChange {
         profile_guid: None,
         initialize: false,
-        stages: Some(stages),
+        stages: Some(stages.into()),
         active: None,
     });
     for mode in 0..4 {

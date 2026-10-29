@@ -3,8 +3,14 @@
 //! unrelated settings.
 use crate::model::Device;
 use anyhow::{Context as _, ensure};
+use razer_device::dpi_matcher_storage::Change;
 use serde::Deserialize;
 use serde_json::{Value, json};
+
+const LIBRARY_FIELD: &str = "sensitivityMatcher";
+const SELECTED_FIELD: &str = "selectedSensitivityMatcher";
+const STAGES_FIELD: &str = "dpiStages";
+const VERSION_FIELD: &str = "version";
 
 fn present_field<'de, D: serde::Deserializer<'de>>(
     deserializer: D,
@@ -18,12 +24,40 @@ pub struct Mutation {
     device_identity: String,
     profile_id: String,
     profile_guid: String,
-    previous_library: Option<Value>,
-    library: Value,
-    previous_selected: Option<Value>,
-    selected: Option<Value>,
-    previous_stages: Option<Value>,
-    stages: Option<Value>,
+    fields: ChangedFields,
+}
+
+#[derive(Clone, Debug)]
+enum ChangedFields {
+    Stages {
+        stages: FieldChange,
+        selected: Option<FieldChange>,
+    },
+    Profiles {
+        library: FieldChange,
+        selected: FieldChange,
+    },
+}
+
+#[derive(Clone, Debug)]
+struct FieldChange {
+    previous: Option<Value>,
+    next: Option<Value>,
+}
+
+impl FieldChange {
+    fn apply(&self, fields: &mut serde_json::Map<String, Value>, name: &str) -> anyhow::Result<()> {
+        ensure!(
+            fields.get(name) == self.previous.as_ref(),
+            "Matcher {name} changed before save"
+        );
+        if let Some(next) = &self.next {
+            fields.insert(name.into(), next.clone());
+        } else {
+            fields.remove(name);
+        }
+        Ok(())
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -102,7 +136,7 @@ pub fn source_record(device: &Device) -> anyhow::Result<SourceRecord> {
 }
 
 impl Mutation {
-    pub fn from_source(observed: &SourceRecord, after: &Value) -> anyhow::Result<Self> {
+    pub fn from_change(observed: &SourceRecord, change: &Change) -> anyhow::Result<Self> {
         #[derive(Deserialize)]
         #[serde(rename_all = "camelCase")]
         struct Record {
@@ -121,40 +155,52 @@ impl Mutation {
             dpi_stages: Option<Value>,
         }
         let before: Record = serde_json::from_value(observed.document.clone())?;
-        let after: Record = serde_json::from_value(after.clone())?;
         ensure!(
-            before.active_profile == after.active_profile && !before.active_profile.is_empty(),
-            "Matcher mutation changed its active profile"
+            !before.active_profile.is_empty(),
+            "Matcher active profile is empty"
         );
-        let previous = before
+        let profile = before
             .profiles
             .iter()
             .find(|profile| profile.guid == before.active_profile)
-            .context("Matcher previous active profile is missing")?;
-        let next = after
-            .profiles
-            .iter()
-            .find(|profile| profile.guid == after.active_profile)
-            .context("Matcher next active profile is missing")?;
-        let library = after
-            .sensitivity_matcher
-            .context("Matcher mutation has no library")?;
-        ensure!(
-            library.get("profiles").is_some_and(Value::is_array),
-            "Matcher library has no profiles"
-        );
+            .context("Matcher active profile is missing")?;
+        let fields = match change {
+            Change::Stages(update) => {
+                update.validate()?;
+                let stages = update.stages().source_file_value();
+                ChangedFields::Stages {
+                    stages: FieldChange {
+                        previous: profile.dpi_stages.clone(),
+                        next: Some(stages),
+                    },
+                    selected: update.selected().map(|selected| FieldChange {
+                        previous: profile.selected_sensitivity_matcher.clone(),
+                        next: Some(json!(selected)),
+                    }),
+                }
+            }
+            Change::Profiles(update) => ChangedFields::Profiles {
+                library: FieldChange {
+                    previous: before.sensitivity_matcher,
+                    next: Some(update.library().file_value()),
+                },
+                selected: FieldChange {
+                    previous: profile.selected_sensitivity_matcher.clone(),
+                    next: update.selected().map(|selected| json!(selected)),
+                },
+            },
+        };
         Ok(Self {
             product_id: observed.product_id,
             device_identity: observed.device_identity.clone(),
             profile_id: observed.profile_id.clone(),
             profile_guid: before.active_profile,
-            previous_library: before.sensitivity_matcher,
-            library,
-            previous_selected: previous.selected_sensitivity_matcher.clone(),
-            selected: next.selected_sensitivity_matcher.clone(),
-            previous_stages: previous.dpi_stages.clone(),
-            stages: next.dpi_stages.clone(),
+            fields,
         })
+    }
+
+    pub fn is_profile_update(&self) -> bool {
+        matches!(self.fields, ChangedFields::Profiles { .. })
     }
 
     pub fn apply(&self, device: &mut Device) -> anyhow::Result<()> {
@@ -167,6 +213,10 @@ impl Mutation {
             device.workspace_identity() == self.device_identity,
             "Matcher save belongs to another device"
         );
+        ensure!(
+            device.active_profile == self.profile_id,
+            "Matcher active profile changed before save"
+        );
         let mut candidate = device.clone();
         let profile = candidate
             .profiles
@@ -178,38 +228,31 @@ impl Mutation {
             .as_mut()
             .and_then(Value::as_object_mut)
             .context("Matcher saved profile settings is not an object")?;
+        if let Some(guid) = source.get("guid") {
+            ensure!(
+                guid.as_str() == Some(self.profile_guid.as_str()),
+                "Matcher profile source GUID changed before save"
+            );
+        }
         let root = candidate
             .source_device_settings
             .get_or_insert_with(|| json!({}))
             .as_object_mut()
             .context("Matcher saved device settings is not an object")?;
-        ensure!(
-            root.get("sensitivityMatcher") == self.previous_library.as_ref(),
-            "Matcher library changed before save"
-        );
-        if self.previous_selected != self.selected {
-            ensure!(
-                source.get("selectedSensitivityMatcher") == self.previous_selected.as_ref(),
-                "Matcher selection changed before save"
-            );
-            if let Some(selected) = &self.selected {
-                ensure!(selected.is_string(), "Matcher selection is not a GUID");
-                source.insert("selectedSensitivityMatcher".into(), selected.clone());
-            } else {
-                source.remove("selectedSensitivityMatcher");
+        match &self.fields {
+            ChangedFields::Stages { stages, selected } => {
+                stages.apply(source, STAGES_FIELD)?;
+                if let Some(selected) = selected {
+                    selected.apply(source, SELECTED_FIELD)?;
+                }
+            }
+            ChangedFields::Profiles { library, selected } => {
+                library.apply(root, LIBRARY_FIELD)?;
+                selected.apply(source, SELECTED_FIELD)?;
             }
         }
-        if self.previous_stages != self.stages {
-            ensure!(
-                source.get("dpiStages") == self.previous_stages.as_ref(),
-                "Matcher DPI stages changed before save"
-            );
-            let stages = self.stages.as_ref().context("Matcher removed DPI stages")?;
-            ensure!(stages.is_object(), "Matcher DPI stages is not an object");
-            source.insert("dpiStages".into(), stages.clone());
-        }
         let previous = root
-            .get("version")
+            .get(VERSION_FIELD)
             .map(|value| {
                 value
                     .as_u64()
@@ -217,8 +260,7 @@ impl Mutation {
             })
             .transpose()?;
         let version = razer_device::mapping_submission::next_source_version(previous)?;
-        root.insert("sensitivityMatcher".into(), self.library.clone());
-        root.insert("version".into(), json!(version));
+        root.insert(VERSION_FIELD.into(), json!(version));
         *device = candidate;
         Ok(())
     }

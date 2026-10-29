@@ -4,7 +4,8 @@ use super::{Backend, Controller, Response};
 use anyhow::{Context as _, ensure};
 use razer_device::{
     dpi_matcher::{InputBatch, State},
-    mouse_current_dpi::DpiChange,
+    dpi_matcher_storage::{Change, ProfileName, ProfileUpdate, SourceData},
+    mouse_current_dpi::SourceStages,
 };
 use razer_discovery::{direct, discovery::ObservedDevice};
 use razer_ipc::{ServiceClient, ServiceRequest};
@@ -35,24 +36,7 @@ pub enum Command {
     DeleteProfile(String),
     DeleteAllProfiles,
     Select(String),
-    UpdateProfiles(Value),
-}
-
-pub(super) fn stage_draft(
-    stages: &Value,
-) -> anyhow::Result<razer_device::mouse_dpi_stages::DpiStagesDraft> {
-    #[derive(serde::Deserialize)]
-    struct Stages {
-        stages: Vec<razer_device::mouse_dpi_stages::DpiStage>,
-        active: usize,
-        enable: bool,
-    }
-    let stages: Stages = serde_json::from_value(stages.clone())?;
-    Ok(razer_device::mouse_dpi_stages::DpiStagesDraft {
-        enabled: stages.enable,
-        active_stage: stages.active,
-        stages: stages.stages,
-    })
+    UpdateProfiles(ProfileUpdate),
 }
 
 impl Command {
@@ -106,10 +90,14 @@ pub enum Update {
     ReadSource(Sender<Result<razer_model::mouse_matcher::SourceRecord, String>>),
     Persist {
         mutation: razer_model::mouse_matcher::Mutation,
-        reply: Sender<Result<(), String>>,
+        reply: Sender<Result<razer_model::mouse_matcher::SourceRecord, String>>,
     },
     Response(Response),
-    StageDraft(Value),
+    StageDraft(SourceStages),
+    StageRequest {
+        stages: SourceStages,
+        reply: Sender<Result<(), String>>,
+    },
     Failure(String),
 }
 
@@ -222,12 +210,7 @@ fn reference_name(
     let chinese = device
         .and_then(|device| device.chinese_name.as_deref())
         .unwrap_or(english);
-    if product.product_id() == 226 {
-        Ok(json!(english))
-    } else {
-        // 32807 returns this locale object through W$ without flattening it.
-        Ok(json!({"en":english,"zh-cn":chinese}))
-    }
+    Ok(json!({"en":english,"zh-cn":chinese}))
 }
 
 pub struct Handle {
@@ -351,8 +334,21 @@ impl Handle {
     /// Prior workers must finish native stop, shutdown and thread joining before
     /// this replacement may request the same input/device leases.
     pub fn start(options: Options, predecessors: Vec<Completion>) -> (Self, Updates) {
+        let product = razer_device::dpi_matcher::Product::new(options.route.product_id())
+            .expect("Matcher options validate their logical product");
         Self::spawn(predecessors, move |commands, updates, canceled, closing| {
-            run(options, commands, updates, canceled, closing)
+            run(Some(options), product, commands, updates, canceled, closing)
+        })
+    }
+
+    /// Redux library normalization owns local persistence even without a mounted
+    /// capture component or a current HID route. This owner never starts capture.
+    pub fn start_profiles(
+        product: razer_device::dpi_matcher::Product,
+        predecessors: Vec<Completion>,
+    ) -> (Self, Updates) {
+        Self::spawn(predecessors, move |commands, updates, canceled, closing| {
+            run(None, product, commands, updates, canceled, closing)
         })
     }
 
@@ -462,16 +458,21 @@ impl Drop for Handle {
 }
 
 struct NativeBackend<'a> {
-    options: &'a Options,
+    options: Option<&'a Options>,
     client: Option<ServiceClient>,
     updates: &'a async_channel::Sender<Update>,
     canceled: &'a AtomicBool,
-    source: Option<razer_model::mouse_matcher::SourceRecord>,
-    monitor: InputMonitor,
+    live_source: Option<SourceData>,
+    monitor: Option<InputMonitor>,
     lifecycle: Option<std::sync::MutexGuard<'static, ()>>,
     device_task: Option<razer_ipc::device_tasks::Lease>,
 }
 impl NativeBackend<'_> {
+    fn monitor_started(&self) -> bool {
+        self.monitor
+            .as_ref()
+            .is_some_and(InputMonitor::possibly_started)
+    }
     fn check(&self) -> anyhow::Result<()> {
         ensure!(
             !self.canceled.load(Ordering::Acquire),
@@ -499,6 +500,10 @@ impl NativeBackend<'_> {
     }
 
     fn client(&mut self) -> anyhow::Result<&mut ServiceClient> {
+        ensure!(
+            self.options.is_some(),
+            "Matcher profile owner cannot open native input transport"
+        );
         if self.client.is_none() {
             self.client = Some(ServiceClient::spawn()?);
         }
@@ -513,7 +518,10 @@ impl NativeBackend<'_> {
             .client
             .as_mut()
             .context("Matcher native service is absent")?;
-        self.monitor.events(|request| client.request(request))
+        self.monitor
+            .as_mut()
+            .context("Matcher input monitor is absent")?
+            .events(|request| client.request(request))
     }
 
     fn shutdown(&mut self) -> anyhow::Result<()> {
@@ -564,17 +572,24 @@ fn wait_reply<T>(reply: Receiver<Result<T, String>>, canceled: &AtomicBool) -> a
 }
 
 impl Backend for NativeBackend<'_> {
-    fn read_source_data(&mut self) -> anyhow::Result<Value> {
+    fn read_source_data(&mut self) -> anyhow::Result<SourceData> {
         let (send, reply) = mpsc::channel();
         self.emit(Update::ReadSource(send))?;
         let source = self.wait(reply)?;
-        let data = source.document().clone();
-        self.source = Some(source);
+        let mut data = SourceData::from_document(source.document())?;
+        if let Some(previous) = &self.live_source {
+            data.retain_live(previous);
+        }
+        self.live_source = Some(data.clone());
         Ok(data)
     }
 
     fn start_input_monitoring(&mut self) -> anyhow::Result<()> {
         self.check()?;
+        ensure!(
+            self.options.is_some() && self.monitor.is_some(),
+            "Matcher profile owner cannot start input capture"
+        );
         // Focused capture, software recording and Matcher share this actual
         // native input lifecycle. An unrelated owner is an immediate conflict.
         self.lifecycle = Some(razer_ipc::KEY_CAPTURE_LIFECYCLE.try_lock().map_err(|_| {
@@ -585,17 +600,23 @@ impl Backend for NativeBackend<'_> {
             .client
             .as_mut()
             .context("Matcher native service is absent")?;
-        self.monitor.start(|request| client.request(request))
+        self.monitor
+            .as_mut()
+            .context("Matcher input monitor is absent")?
+            .start(|request| client.request(request))
     }
 
     fn stop_input_monitoring(&mut self) -> anyhow::Result<()> {
-        if self.monitor.possibly_started() {
+        if self.monitor_started() {
             self.client()?;
             let client = self
                 .client
                 .as_mut()
                 .context("Matcher native service is absent")?;
-            self.monitor.stop(|request| client.request(request))?;
+            self.monitor
+                .as_mut()
+                .context("Matcher input monitor is absent")?
+                .stop(|request| client.request(request))?;
         }
         Ok(())
     }
@@ -603,17 +624,21 @@ impl Backend for NativeBackend<'_> {
     fn acquire_matcher_locks(&mut self) -> anyhow::Result<()> {
         self.check()?;
         ensure!(
-            self.monitor.possibly_started() && self.lifecycle.is_some(),
+            self.monitor_started() && self.lifecycle.is_some(),
             "Matcher capture lease is absent"
         );
-        let scope = self.options.route.device_task_scope()?;
+        let scope = self
+            .options
+            .context("Matcher capture options are absent")?
+            .route
+            .device_task_scope()?;
         self.device_task = Some(razer_ipc::device_tasks::Registry::global().try_exclusive(scope)?);
         Ok(())
     }
 
     fn release_matcher_locks(&mut self) -> anyhow::Result<()> {
         ensure!(
-            !self.monitor.possibly_started(),
+            !self.monitor_started(),
             "Matcher monitor has not acknowledged stop"
         );
         self.device_task.take();
@@ -621,78 +646,89 @@ impl Backend for NativeBackend<'_> {
         Ok(())
     }
 
-    fn submit_dpi_stages(&mut self, stages: &Value) -> anyhow::Result<()> {
+    fn submit_dpi_stages(&mut self, stages: &SourceStages) -> anyhow::Result<()> {
         self.check()?;
-        self.emit(Update::StageDraft(stages.clone()))?;
-        let draft = stage_draft(stages)?;
-        let change = DpiChange {
-            stages: Some(draft),
-            active: None,
-            profile_guid: None,
-            initialize: false,
-        };
-        let route = self.options.route.clone();
-        let _device_task = razer_ipc::device_tasks::Registry::global()
-            .shared(route.device_task_scope()?, || {
-                self.canceled.load(Ordering::Acquire)
-            })?;
-        let report = direct::mouse_current_dpi::request(self.client()?, &route, Some(change))?;
-        ensure!(
-            !report.acknowledgements.is_empty(),
-            "Matcher DPI setter has no device acknowledgement"
-        );
-        self.check()
+        let (reply, received) = mpsc::channel();
+        self.emit(Update::StageRequest {
+            stages: stages.clone(),
+            reply,
+        })?;
+        self.wait(received)
     }
 
-    fn persist_source_data(&mut self, data: &Value) -> anyhow::Result<()> {
-        let before = self
-            .source
-            .as_ref()
-            .context("Matcher has no observed storage revision")?;
-        let mutation = razer_model::mouse_matcher::Mutation::from_source(before, data)?;
+    fn persist_source_data(&mut self, change: &Change) -> anyhow::Result<()> {
+        let (send, reply) = mpsc::channel();
+        self.emit(Update::ReadSource(send))?;
+        let before = self.wait(reply)?;
+        let mutation = razer_model::mouse_matcher::Mutation::from_change(&before, change)?;
         let (send, reply) = mpsc::channel();
         self.emit(Update::Persist {
             mutation,
             reply: send,
         })?;
-        self.wait(reply)?;
+        let saved = self.wait(reply)?;
+        let mut source = SourceData::from_document(saved.document())?;
+        if let Some(previous) = &self.live_source {
+            source.retain_live(previous);
+        }
+        source.apply(change);
+        self.live_source = Some(source);
         Ok(())
+    }
+
+    fn publish_stage_draft(&mut self, stages: &SourceStages) -> anyhow::Result<()> {
+        self.emit(Update::StageDraft(stages.clone()))
+    }
+
+    fn publish_calibration(
+        &mut self,
+        calibration: razer_device::dpi_matcher::Calibration,
+    ) -> anyhow::Result<()> {
+        self.emit(Update::Response(Response::Calibration(calibration)))
+    }
+
+    fn report_failure(&mut self, error: String) -> anyhow::Result<()> {
+        self.emit(Update::Failure(error))
     }
 
     fn confirmation_identity(
         &mut self,
         source_container: &str,
         _: Option<u32>,
-    ) -> anyhow::Result<(String, Value)> {
+    ) -> anyhow::Result<(String, ProfileName)> {
         self.check()?;
         Ok((
             uuid::Uuid::new_v4().to_string(),
-            self.options.confirmation_name(source_container)?,
+            serde_json::from_value(
+                self.options
+                    .context("Matcher capture options are absent")?
+                    .confirmation_name(source_container)?,
+            )?,
         ))
     }
 }
 
 fn run(
-    options: Options,
+    options: Option<Options>,
+    product: razer_device::dpi_matcher::Product,
     commands: Receiver<Command>,
     updates: async_channel::Sender<Update>,
     canceled: Arc<AtomicBool>,
     closing: Arc<AtomicBool>,
 ) -> WorkerExit {
     let mut backend = NativeBackend {
-        options: &options,
+        options: options.as_ref(),
         client: None,
         updates: &updates,
         canceled: &canceled,
-        source: None,
-        monitor: InputMonitor::new(uuid::Uuid::new_v4().to_string()),
+        live_source: None,
+        monitor: options
+            .as_ref()
+            .map(|_| InputMonitor::new(uuid::Uuid::new_v4().to_string())),
         lifecycle: None,
         device_task: None,
     };
-    let mut controller = Controller::new(
-        razer_device::dpi_matcher::Product::new(options.route.product_id())
-            .expect("Matcher options validate their logical product"),
-    );
+    let mut controller = Controller::new(product);
     let mut commands = CommandQueue {
         receiver: commands,
         deferred: VecDeque::new(),
@@ -717,10 +753,18 @@ fn run(
                 commands.next(controller.locked)
             };
             let starting = matches!(&command, Ok(Command::Start));
+            let profiles_command = options.is_none() && command.is_ok();
             if starting && closing.load(Ordering::Acquire) {
                 continue;
             }
             let result = match command {
+                Ok(command)
+                    if options.is_none() && !matches!(command, Command::UpdateProfiles(_)) =>
+                {
+                    Err(anyhow::anyhow!(
+                        "Matcher profile owner accepts only UpdateProfiles"
+                    ))
+                }
                 Ok(command) if controller.locked && command.requires_unlocked_device() => {
                     if let Err(error) = commands.defer(command) {
                         backend.emit(Update::Failure(format!("{error:#}")))?;
@@ -755,22 +799,28 @@ fn run(
                 }
                 Err(error) => {
                     backend.emit(Update::Failure(format!("{error:#}")))?;
-                    if !controller.monitoring && backend.monitor.possibly_started() {
+                    if !controller.monitoring && backend.monitor_started() {
                         backend.stop_input_monitoring()?;
                     }
                     if !controller.monitoring {
                         backend.release_matcher_locks()?;
                     }
-                    if starting {
+                    if starting && options.is_some() {
                         backend.emit(Update::Response(Response::Calibration(
                             controller.response(),
                         )))?;
                     }
                 }
             }
+            if profiles_command {
+                break;
+            }
             if !closing.load(Ordering::Acquire) && controller.state() == State::Calibrating {
                 for batch in backend.events()? {
-                    let initial_is_main = options.is_initial_main(batch.product_id)?;
+                    let initial_is_main = options
+                        .as_ref()
+                        .context("Matcher capture options are absent")?
+                        .is_initial_main(batch.product_id)?;
                     let response = controller.ingest(
                         batch,
                         initial_is_main,
@@ -813,6 +863,114 @@ fn elapsed_ms(started: Instant) -> u64 {
 mod tests {
     use super::*;
 
+    fn profiles_device() -> razer_model::model::Device {
+        let mut device = razer_model::product_preview::registered_preview(190).unwrap();
+        device.active_profile = "p".into();
+        device.profiles = vec![razer_model::model::Profile {
+            id: "p".into(),
+            guid: "p".into(),
+            name: "Profile".into(),
+            settings: None,
+            dpi_stages: None,
+            source_settings: Some(json!({
+                "guid":"p", "selectedSensitivityMatcher":"second", "profileExtension":true
+            })),
+        }];
+        device.source_device_settings = Some(json!({
+            "version":7, "deviceExtension":true,
+            "sensitivityMatcher":{"libraryExtension":true,"profiles":[
+                {"guid":"first","name":"Mouse"},
+                {"guid":"second","name":"Mouse"}
+            ]}
+        }));
+        device
+    }
+
+    #[test]
+    fn dpi_matcher_profiles_worker_persists_without_a_route_or_native_capture() {
+        let mut device = profiles_device();
+        let payload = ProfileUpdate::from_payload(&json!({
+            "sensitivityMatcher":{"libraryExtension":true,"profiles":[
+                {"guid":"first","name":"Mouse"},
+                {"guid":"second","name":"Mouse 1"}
+            ]},
+            "selectedSensitivityMatcher":"second"
+        }))
+        .unwrap();
+        let (mut handle, updates) = Handle::start_profiles(
+            razer_device::dpi_matcher::Product::new(190).unwrap(),
+            vec![],
+        );
+        handle
+            .send(Command::UpdateProfiles(payload.clone()))
+            .unwrap();
+        for _ in 0..2 {
+            let Update::ReadSource(reply) = updates.0.recv_blocking().unwrap() else {
+                panic!("local profile update must read its current saved source");
+            };
+            reply
+                .send(Ok(
+                    razer_model::mouse_matcher::source_record(&device).unwrap()
+                ))
+                .unwrap();
+        }
+        let (mutation, reply) = match updates.0.recv_blocking().unwrap() {
+            Update::Persist { mutation, reply } => (mutation, reply),
+            Update::Failure(error) => {
+                panic!("local profile update failed before durable persistence: {error}");
+            }
+            _ => panic!("local profile update must request durable persistence"),
+        };
+        assert!(mutation.is_profile_update());
+        mutation.apply(&mut device).unwrap();
+        assert_eq!(
+            device.source_device_settings.as_ref().unwrap()["sensitivityMatcher"],
+            payload.library().file_value()
+        );
+        assert_eq!(
+            device.source_device_settings.as_ref().unwrap()["version"],
+            8
+        );
+        assert_eq!(
+            device.profiles[0].source_settings.as_ref().unwrap()["profileExtension"],
+            true
+        );
+        reply
+            .send(Ok(
+                razer_model::mouse_matcher::source_record(&device).unwrap()
+            ))
+            .unwrap();
+        let Update::Response(Response::Profiles(observed)) = updates.0.recv_blocking().unwrap()
+        else {
+            panic!("durable receipt must publish the exact profile response");
+        };
+        assert_eq!(observed, payload);
+        handle.begin_exit();
+        let completion = handle.completion();
+        handle.finish().unwrap();
+        assert!(completion.is_finished());
+        assert!(completion.is_released());
+        assert!(completion.cleanup_error().is_none());
+    }
+
+    #[test]
+    fn dpi_matcher_profiles_worker_rejects_capture_commands_and_releases_on_cancel() {
+        let (handle, updates) = Handle::start_profiles(
+            razer_device::dpi_matcher::Product::new(190).unwrap(),
+            vec![],
+        );
+        handle.send(Command::Start).unwrap();
+        let Update::Failure(error) = updates.0.recv_blocking().unwrap() else {
+            panic!("profile owner must reject a command before any native action");
+        };
+        assert_eq!(error, "Matcher profile owner accepts only UpdateProfiles");
+        let completion = handle.completion();
+        handle.finish().unwrap();
+        assert!(completion.is_finished());
+        assert!(completion.is_released());
+        assert!(completion.cleanup_error().is_none());
+    }
+
     fn named_device(product_id: u32, container: &str, name: &str) -> ConnectedDevice {
         ConnectedDevice {
             product_id,
@@ -842,18 +1000,13 @@ mod tests {
                     || Ok("Host".into()),
                 )
                 .unwrap();
-            if pid == 226 {
-                assert_eq!(name, json!("Mouse"));
-                assert_eq!(missing, json!("Host"));
-            } else {
-                assert_eq!(name, json!({"en":"Mouse","zh-cn":"Mouse localized"}));
-                assert_eq!(missing, json!({"en":"Host","zh-cn":"Host"}));
-            }
+            assert_eq!(name, json!({"en":"Mouse","zh-cn":"Mouse localized"}));
+            assert_eq!(missing, json!({"en":"Host","zh-cn":"Host"}));
         }
     }
 
     #[test]
-    fn dpi_matcher_reference_pairing_uses_first_match_and_pid226_refresh_branch() {
+    fn dpi_matcher_reference_pairing_uses_first_match_and_current_refresh_branch() {
         for pid in [190, 192, 222, 226, 229, 239] {
             let product = razer_device::dpi_matcher::Product::new(pid).unwrap();
             for (master, keyboard) in [
@@ -879,17 +1032,12 @@ mod tests {
                     Ok("Host".into())
                 })
                 .unwrap();
-                let paired =
-                    matches!(master, 179 | 164) || keyboard || (pid == 226 && master == 241);
+                let paired = matches!(master, 179 | 164 | 241) || keyboard;
                 let expected = if paired { "First" } else { "Master" };
-                if pid == 226 {
-                    assert_eq!(name, json!(expected));
-                } else {
-                    assert_eq!(
-                        name,
-                        json!({"en":expected,"zh-cn":format!("{expected} localized")})
-                    );
-                }
+                assert_eq!(
+                    name,
+                    json!({"en":expected,"zh-cn":format!("{expected} localized")})
+                );
             }
         }
     }
@@ -906,11 +1054,7 @@ mod tests {
                 Ok("Host".into())
             })
             .unwrap();
-            if pid == 226 {
-                assert_eq!(name, json!("Host"));
-            } else {
-                assert_eq!(name, json!({"en":"Host","zh-cn":"Host"}));
-            }
+            assert_eq!(name, json!({"en":"Host","zh-cn":"Host"}));
             let invalid = PairingSnapshot::from_value(&json!([{"productId":70}])).unwrap();
             assert!(
                 reference_name(product, &connected, &invalid, "reference", || panic!(
@@ -967,8 +1111,11 @@ mod tests {
             .unwrap();
         send.send(Command::Start).unwrap();
         send.send(Command::Confirm).unwrap();
-        send.send(Command::UpdateProfiles(json!({"profiles":[]})))
-            .unwrap();
+        send.send(Command::UpdateProfiles(ProfileUpdate::new(
+            razer_device::dpi_matcher_storage::Library::new(vec![]),
+            None,
+        )))
+        .unwrap();
         assert!(matches!(queue.drain_next(), Some(Command::Select(guid)) if guid == "first"));
         assert!(
             matches!(queue.drain_next(), Some(Command::DeleteProfile(guid)) if guid == "second")

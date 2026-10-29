@@ -129,9 +129,9 @@ impl MouseDynamicRequested {
 pub enum MouseDynamicCompletion {
     Device(Report),
     Monitoring(bool),
-    /// A PID226 editor mount registered another source callback while the
-    /// native monitor was already owned by the connection. This is separate
-    /// from native START acknowledgement; it never claims that START ran.
+    /// A PID226 mount replaced the unique source callback and received the
+    /// repeated native START response. The source ignores its raw boolean;
+    /// this completion retires registration without reporting START success.
     ObserverAttached,
     Failed(String),
     Unsupported(String),
@@ -553,9 +553,9 @@ impl MouseProductWorkspace {
     }
     /// PID226's Advanced editor registers its callback on every enabled mount.
     /// Its parent does not send STOP when the editor is temporarily removed,
-    /// so a later mount must add an observer without replacing the native
-    /// monitor owner. The shell sends START through that retained worker after
-    /// registering the observer and preserves its actual acknowledgement.
+    /// so a later mount replaces the unique callback on the retained native
+    /// monitor. The shell sends START through that worker after registration
+    /// and preserves its actual acknowledgement.
     pub(super) fn register_dynamic_observer(&mut self, cx: &mut Context<Self>) {
         if self.spec.product_id != 226
             || !self.active

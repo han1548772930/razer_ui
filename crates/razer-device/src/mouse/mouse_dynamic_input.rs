@@ -1,4 +1,4 @@
-//! Current movement callback arithmetic and product-specific publication reset.
+//! Current movement callback arithmetic and publication reset.
 //! The page owns its separate 150 ms visible-speed expiry.
 use anyhow::{Context as _, ensure};
 use serde::Deserialize;
@@ -11,12 +11,6 @@ pub fn is_direct_product(product_id: u32, event_product_id: u32) -> anyhow::Resu
     Ok(event_product_id == capability.wired_pid()
         || capability.dongle_pid() == Some(event_product_id)
         || product_id == 226 && event_product_id == 228)
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum Movement {
-    Relative,
-    PreviousDeltaDifference,
 }
 
 #[derive(Deserialize)]
@@ -64,10 +58,7 @@ impl Tick {
 
 #[derive(Clone)]
 pub struct Speed {
-    movement: Movement,
     last_tick: Tick,
-    last_x: f64,
-    last_y: f64,
     speed: f64,
 }
 
@@ -78,14 +69,7 @@ impl Speed {
             "Dynamic movement product is unsupported"
         );
         Ok(Self {
-            movement: if product_id == 226 {
-                Movement::PreviousDeltaDifference
-            } else {
-                Movement::Relative
-            },
             last_tick: Tick::default(),
-            last_x: 0.,
-            last_y: 0.,
             speed: 0.,
         })
     }
@@ -130,31 +114,16 @@ impl Speed {
                 dx.is_finite() && dy.is_finite(),
                 "Dynamic movement contains nonfinite coordinates"
             );
-            match next.movement {
-                Movement::Relative => {
-                    if !next.last_tick.is_numeric_zero() && tick.is_after(&next.last_tick) {
-                        x += dx.abs();
-                        y += dy.abs();
-                        ticks += tick.number - next.last_tick.number;
-                    }
-                }
-                Movement::PreviousDeltaDifference => {
-                    if next.last_x != 0. && next.last_y != 0. && !next.last_tick.is_numeric_zero() {
-                        x += (dx - next.last_x).abs();
-                        y += (dy - next.last_y).abs();
-                        ticks += tick.number - next.last_tick.number;
-                    }
-                    next.last_x = dx;
-                    next.last_y = dy;
-                }
+            if !next.last_tick.is_numeric_zero() && tick.is_after(&next.last_tick) {
+                x += dx.abs();
+                y += dy.abs();
+                ticks += tick.number - next.last_tick.number;
             }
             next.last_tick = tick;
         }
-        if next.movement == Movement::PreviousDeltaDifference || ticks > 0. {
+        if ticks > 0. {
             next.speed = (x.powi(2) + y.powi(2)).sqrt() / (ticks / 1e4);
         }
-        // The source clears NaN and takes abs, retaining positive infinity
-        // from equal-tick PID226 movement. It is a speed value, not a failure.
         next.speed = if next.speed.is_nan() { 0. } else { next.speed.abs() };
         *self = next;
         Ok(())
@@ -163,11 +132,7 @@ impl Speed {
     pub fn publish(&mut self) -> f64 {
         let speed = self.speed;
         self.speed = 0.;
-        self.last_x = 0.;
-        self.last_y = 0.;
-        if self.movement == Movement::Relative {
-            self.last_tick = Tick::default();
-        }
+        self.last_tick = Tick::default();
         speed
     }
 }
@@ -214,10 +179,7 @@ mod tests {
                     false,
                 )
                 .unwrap();
-            assert_eq!(
-                speed.clone().publish(),
-                if product_id == 226 { 0. } else { 10. }
-            );
+            assert_eq!(speed.clone().publish(), 10.);
             assert!(
                 speed
                     .observe_filtered(r#"[{"data":"broken"}]"#, false)
@@ -233,7 +195,7 @@ mod tests {
                     r#"[{"timeTick":"30000","data":"{\"type\":\"mouseMove\",\"x\":9,\"y\":12}"}]"#,
                 )
                 .unwrap();
-            assert_eq!(speed.publish(), if product_id == 226 { 5. } else { 15. });
+            assert_eq!(speed.publish(), 15.);
         }
     }
 
@@ -242,8 +204,7 @@ mod tests {
     struct Case {
         name: &'static str,
         events: &'static str,
-        relative: f64,
-        previous_delta: f64,
+        speed: f64,
     }
 
     #[test]
@@ -252,68 +213,54 @@ mod tests {
             Case {
                 name: "unchanged relative deltas",
                 events: r#"[{"timeTick":"10000","data":"{\"type\":\"mouseMove\",\"x\":3,\"y\":4}"},{"timeTick":"20000","data":"{\"type\":\"mouseMove\",\"x\":3,\"y\":4}"}]"#,
-                relative: 5.,
-                previous_delta: 0.,
+                speed: 5.,
             },
             Case {
                 name: "equal ticks",
                 events: r#"[{"timeTick":"10000","data":"{\"type\":\"mouseMove\",\"x\":3,\"y\":4}"},{"timeTick":"10000","data":"{\"type\":\"mouseMove\",\"x\":6,\"y\":8}"}]"#,
-                relative: 0.,
-                previous_delta: f64::INFINITY,
+                speed: 0.,
             },
             Case {
                 name: "string digit growth",
                 events: r#"[{"timeTick":"9","data":"{\"type\":\"mouseMove\",\"x\":3,\"y\":4}"},{"timeTick":"10","data":"{\"type\":\"mouseMove\",\"x\":6,\"y\":8}"}]"#,
-                relative: 0.,
-                previous_delta: 50000.,
+                speed: 0.,
             },
             Case {
                 name: "string zero",
                 events: r#"[{"timeTick":"0","data":"{\"type\":\"mouseMove\",\"x\":10,\"y\":4}"},{"timeTick":"10000","data":"{\"type\":\"mouseMove\",\"x\":12,\"y\":6}"}]"#,
-                relative: 13.416407864998739,
-                previous_delta: 2.8284271247461903,
+                speed: 13.416407864998739,
             },
             Case {
                 name: "number zero",
                 events: r#"[{"timeTick":0,"data":"{\"type\":\"mouseMove\",\"x\":10,\"y\":4}"},{"timeTick":10000,"data":"{\"type\":\"mouseMove\",\"x\":12,\"y\":6}"}]"#,
-                relative: 0.,
-                previous_delta: 0.,
+                speed: 0.,
             },
             Case {
                 name: "number and string comparison",
                 events: r#"[{"timeTick":"9","data":"{\"type\":\"mouseMove\",\"x\":3,\"y\":4}"},{"timeTick":10,"data":"{\"type\":\"mouseMove\",\"x\":6,\"y\":8}"}]"#,
-                relative: 100000.,
-                previous_delta: 50000.,
+                speed: 100000.,
             },
             Case {
                 name: "lexical pass with negative duration",
                 events: r#"[{"timeTick":"10","data":"{\"type\":\"mouseMove\",\"x\":3,\"y\":4}"},{"timeTick":"9","data":"{\"type\":\"mouseMove\",\"x\":6,\"y\":8}"}]"#,
-                relative: 0.,
-                previous_delta: 50000.,
+                speed: 0.,
             },
             Case {
                 name: "horizontal motion",
                 events: r#"[{"timeTick":10000,"data":"{\"type\":\"mouseMove\",\"x\":10,\"y\":0}"},{"timeTick":20000,"data":"{\"type\":\"mouseMove\",\"x\":12,\"y\":0}"},{"timeTick":30000,"data":"{\"type\":\"mouseMove\",\"x\":15,\"y\":0}"}]"#,
-                relative: 13.5,
-                previous_delta: 0.,
+                speed: 13.5,
             },
             Case {
                 name: "changing relative deltas",
                 events: r#"[{"timeTick":10000,"data":"{\"type\":\"mouseMove\",\"x\":10,\"y\":4}"},{"timeTick":20000,"data":"{\"type\":\"mouseMove\",\"x\":12,\"y\":6}"},{"timeTick":30000,"data":"{\"type\":\"mouseMove\",\"x\":15,\"y\":9}"}]"#,
-                relative: 15.443445211480501,
-                previous_delta: 3.5355339059327378,
+                speed: 15.443445211480501,
             },
         ];
         for product_id in [190, 192, 196, 222, 226, 229, 239] {
             for case in &cases {
                 let mut speed = Speed::new(product_id).unwrap();
                 speed.observe(case.events).unwrap();
-                let expected = if product_id == 226 {
-                    case.previous_delta
-                } else {
-                    case.relative
-                };
-                assert_eq!(speed.publish(), expected, "{product_id}: {}", case.name);
+                assert_eq!(speed.publish(), case.speed, "{product_id}: {}", case.name);
             }
         }
         for product_id in [0, 70, 182, 228, u32::MAX] {
@@ -336,7 +283,7 @@ mod tests {
                 )
                 .unwrap();
             speed.observe("[]").unwrap();
-            assert_eq!(speed.publish(), if product_id == 226 { 0. } else { 10. });
+            assert_eq!(speed.publish(), 10.);
             speed
                 .observe(
                     r#"[{"timeTick":"30000","data":"{\"type\":\"mouseMove\",\"x\":9,\"y\":12}"}]"#,
@@ -344,15 +291,12 @@ mod tests {
                 .unwrap();
             assert_eq!(speed.publish(), 0.);
             speed.observe(r#"[{"timeTick":"40000","data":"{\"type\":\"mouseMove\",\"x\":3,\"y\":4}"},{"timeTick":"40000","data":"{\"type\":\"mouseMove\",\"x\":6,\"y\":8}"}]"#).unwrap();
-            assert_eq!(
-                speed.publish(),
-                if product_id == 226 { f64::INFINITY } else { 0. }
-            );
+            assert_eq!(speed.publish(), 0.);
         }
     }
 
     #[test]
-    fn invalid_callback_cannot_partially_replace_speed_tick_or_previous_axes() {
+    fn invalid_callback_cannot_partially_replace_speed_or_tick() {
         for product_id in [190, 192, 196, 222, 226, 229, 239] {
             let mut speed = Speed::new(product_id).unwrap();
             speed
@@ -372,7 +316,7 @@ mod tests {
                 assert!(speed.observe(invalid).is_err(), "{product_id}: {invalid}");
             }
             speed.observe(r#"[{"data":"{\"type\":\"mouseDown\"}"},{"timeTick":"20000","data":"{\"type\":\"mouseMove\",\"x\":6,\"y\":8}"}]"#).unwrap();
-            assert_eq!(speed.publish(), if product_id == 226 { 5. } else { 10. });
+            assert_eq!(speed.publish(), 10.);
         }
     }
     #[test]

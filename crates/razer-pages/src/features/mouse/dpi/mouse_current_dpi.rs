@@ -1,5 +1,6 @@
 use super::super::mouse_polling::MousePollingScope;
 use super::*;
+use anyhow::{Context as _, ensure};
 use gpui_kit::component::Sizable;
 use razer_device::mouse_current_dpi::{DpiChange, DpiPair, DpiReport};
 use razer_device::mouse_dpi_stages::{DpiStage, DpiStagesDraft};
@@ -17,14 +18,24 @@ pub struct MouseCurrentDpiRequested {
     scope: MousePollingScope,
     sequence: u64,
     profile: Option<Value>,
+    profile_save: Arc<AtomicBool>,
     change: Option<DpiChange>,
     read: bool,
     cleanup: bool,
+    drain_on_exit: bool,
     restoration_ticket: u64,
     connection_key: Option<String>,
     edit_revision: u64,
     selection: Option<Selection>,
     valid: Arc<AtomicBool>,
+}
+
+/// Profile-save identities present when a Matcher stage save entered the
+/// serialized writer. Later ordinary edits own different permits.
+pub struct MouseCurrentDpiProfileSaveBoundary {
+    scope: MousePollingScope,
+    connection_key: String,
+    permits: Vec<Arc<AtomicBool>>,
 }
 
 #[cfg(test)]
@@ -130,8 +141,14 @@ mod tests {
                         .expect("actual Source DPI owner emitted edit")
                         .clone();
                     let change = request.change().unwrap();
-                    assert_eq!(change.stages.as_ref().unwrap().stages[2].x, 2000);
-                    assert_eq!(change.stages.as_ref().unwrap().stages.len(), 5);
+                    assert_eq!(
+                        change.stages.as_ref().unwrap().stages()[2]
+                            .x()
+                            .unwrap()
+                            .value(),
+                        2000.
+                    );
+                    assert_eq!(change.stages.as_ref().unwrap().stages().len(), 5);
                     assert!(change.active.is_none());
                     assert_eq!(owner.draft.get("dpi").cloned(), previous_active);
                     assert_eq!(
@@ -162,9 +179,11 @@ mod tests {
             scope: MousePollingScope::new(EntityId::from(1), 2, 3),
             sequence: 1,
             profile: None,
+            profile_save: Arc::new(AtomicBool::new(true)),
             change: None,
             read: true,
             cleanup: false,
+            drain_on_exit: false,
             restoration_ticket: 0,
             connection_key: None,
             edit_revision: 0,
@@ -188,15 +207,48 @@ mod tests {
             scope: MousePollingScope::new(EntityId::from(1), 2, 3),
             sequence,
             profile: None,
+            profile_save: Arc::new(AtomicBool::new(true)),
             change: None,
             read: true,
             cleanup: false,
+            drain_on_exit: false,
             restoration_ticket: 0,
             connection_key: Some(connection.into()),
             edit_revision: 0,
             selection: None,
             valid: Arc::new(AtomicBool::new(true)),
         }
+    }
+
+    fn matcher_stage_request(sequence: u64, connection: &str) -> MouseCurrentDpiRequested {
+        let mut request = read(sequence, connection);
+        request.read = false;
+        request.drain_on_exit = true;
+        request.change = Some(super::DpiChange {
+            stages: Some(configured_stages().into()),
+            active: None,
+            profile_guid: None,
+            initialize: false,
+        });
+        request
+    }
+
+    fn ordinary_stage_request(sequence: u64, connection: &str) -> MouseCurrentDpiRequested {
+        let mut request = matcher_stage_request(sequence, connection);
+        request.drain_on_exit = false;
+        request.profile = Some(serde_json::json!({
+            "guid":"current",
+            "dpiStages":{"enable":true,"active":1,"stages":[{
+                "x":1200,"y":1200,"visible":true,"independent":false
+            }]}
+        }));
+        request.change.as_mut().unwrap().stages = Some(
+            razer_device::mouse_current_dpi::SourceStages::from_source_file(
+                &request.profile.as_ref().unwrap()["dpiStages"],
+            )
+            .unwrap(),
+        );
+        request
     }
 
     #[::core::prelude::v1::test]
@@ -216,7 +268,7 @@ mod tests {
         assert!(request.is_valid());
         assert!(request.profile().is_none());
         let change = request.change().unwrap();
-        assert_eq!(change.stages.as_ref(), Some(&stages));
+        assert_eq!(change.stages.as_ref(), Some(&(&stages).into()));
         assert!(change.active.is_none());
         assert!(!change.initialize);
         assert!(owner.owns_completion(&request));
@@ -280,7 +332,7 @@ mod tests {
         owner.temporary_restoration.require();
         request.restoration_ticket = owner.temporary_restoration.ticket();
         request.change = Some(super::DpiChange {
-            stages: Some(configured_stages()),
+            stages: Some(configured_stages().into()),
             active: None,
             profile_guid: None,
             initialize: false,
@@ -309,7 +361,7 @@ mod tests {
         let mut old = read(1, "receiver/profile");
         owner.install_connection(old.connection_key.clone(), Some(old.scope));
         old.change = Some(super::DpiChange {
-            stages: Some(configured_stages()),
+            stages: Some(configured_stages().into()),
             active: None,
             profile_guid: None,
             initialize: false,
@@ -431,6 +483,608 @@ mod tests {
                 .is_none()
         );
         assert!(owner.row_values[2].is_some());
+    }
+
+    #[::core::prelude::v1::test]
+    fn current_dpi_raw_stage_failure_keeps_number_identity_actual_zero_and_draft_guard() {
+        use razer_device::mouse_current_dpi::{SourceNumber, SourceStage, SourceStages};
+        use serde_json::json;
+
+        let raw = SourceNumber::new(f64::from_bits(0x7ff8_0000_0000_0042));
+        let stages = SourceStages::new(
+            true,
+            1,
+            vec![SourceStage::new(
+                Some(raw),
+                Some(raw),
+                Some(true),
+                Some(false),
+            )],
+        );
+        let mut request = read(1, "route/profile");
+        request.read = false;
+        request.profile = Some(json!({
+            "dpiStages":{"active":1,"stages":[{"x":null,"y":null}]}
+        }));
+        request.change = Some(super::DpiChange {
+            stages: Some(stages.clone()),
+            active: None,
+            profile_guid: None,
+            initialize: false,
+        });
+        request.selection = Some(super::Selection::capture_source(190, &stages).unwrap());
+        let expected_change = request.change.clone();
+        let expected_profile = request.profile.clone();
+
+        let mut owner = State::default();
+        owner.install_connection(request.connection_key.clone(), Some(request.scope));
+        assert!(owner.enqueue(request.clone()).is_some());
+        let report: super::DpiReport = serde_json::from_value(json!({
+            "requested":expected_change,
+            "stages":{"profile_id":1,"active_stage":1,"number_of_active_stages":1,
+                "records":[{"index":1,"x":0,"y":0,"z":0}],"response_bytes":10},
+            "active":null,"acknowledgements":[],"verified":false,
+            "read_errors":{"stages":null,"active":null},
+            "write_errors":{"stages":"strict getter differs","active":null}
+        }))
+        .unwrap();
+        assert!(!report.verified);
+        assert_eq!(report.requested.as_ref(), expected_change.as_ref());
+        assert_eq!(report.stages.as_ref().unwrap().records[0].x, 0);
+        assert!(owner.accept_report(&request, &report).is_some());
+        assert_eq!(owner.row_values[0], Some(super::DpiPair { x: 0, y: 0 }));
+        assert!(
+            owner
+                .read_error
+                .as_deref()
+                .is_some_and(|error| error.contains("strict getter differs"))
+        );
+        let pending = owner.pending.as_ref().unwrap();
+        let pending_stage = &pending
+            .change
+            .as_ref()
+            .unwrap()
+            .stages
+            .as_ref()
+            .unwrap()
+            .stages()[0];
+        assert_eq!(
+            pending_stage.x().unwrap().value().to_bits(),
+            raw.value().to_bits()
+        );
+        assert_eq!(
+            pending_stage.y().unwrap().value().to_bits(),
+            raw.value().to_bits()
+        );
+        assert_eq!(pending.change.as_ref(), expected_change.as_ref());
+        assert_eq!(pending.profile(), expected_profile.as_ref());
+        assert!(request.is_valid());
+        assert!(owner.owns_completion(&request));
+    }
+
+    #[::core::prelude::v1::test]
+    fn current_dpi_adjacent_edit_revision_keeps_new_draft_separate_from_old_actual_report() {
+        use serde_json::json;
+
+        let mut owner = State::default();
+        let mut first = read(1, "route/profile");
+        first.selection = Some(super::Selection::capture(190, &configured_stages()).unwrap());
+        owner.install_connection(first.connection_key.clone(), Some(first.scope));
+        assert!(owner.enqueue(first.clone()).is_some());
+        let report = |x, y| {
+            serde_json::from_value(json!({
+                "requested":null,"stages":null,"active":{"x":x,"y":y},
+                "acknowledgements":[],"verified":false,
+                "write_errors":{"stages":null,"active":"actual differs"}
+            }))
+            .unwrap()
+        };
+        assert!(owner.accept_report(&first, &report(2100, 2200)).is_some());
+        let actual = owner.row_values;
+
+        owner.record_edit();
+        let mut next = read(2, "route/profile");
+        next.read = false;
+        next.edit_revision = owner.edit_revision;
+        next.selection = first.selection.clone();
+        next.profile = Some(json!({"dpiStages":{"active":3,"stages":[
+            {"x":400,"y":400},{"x":800,"y":800},{"x":777,"y":778},
+            {"x":3200,"y":3200},{"x":6400,"y":6400}
+        ]}}));
+        next.change = Some(super::DpiChange {
+            stages: None,
+            active: Some(super::DpiPair { x: 777, y: 778 }),
+            profile_guid: None,
+            initialize: false,
+        });
+        assert_eq!(next.edit_revision, first.edit_revision + 1);
+        let draft = next.profile.clone();
+        let change = next.change.clone();
+        assert!(owner.enqueue(next.clone()).is_none());
+        assert!(owner.accept_report(&first, &report(2500, 2600)).is_none());
+        assert_eq!(
+            owner.observed.current,
+            Some(super::DpiPair { x: 2500, y: 2600 })
+        );
+        assert_eq!(owner.row_values, actual);
+        assert_eq!(owner.queued.as_ref().unwrap().profile, draft);
+        assert_eq!(owner.queued.as_ref().unwrap().change, change);
+        assert!(owner.owns_completion(&first));
+        assert!(next.is_valid());
+
+        assert!(owner.release(&first));
+        let current = owner.take_queued(Some(next.scope)).unwrap();
+        assert_eq!(current.edit_revision, next.edit_revision);
+        assert!(owner.accept_report(&current, &report(790, 791)).is_some());
+        assert_eq!(owner.row_values[2], Some(super::DpiPair { x: 790, y: 791 }));
+        assert_eq!(current.profile, draft);
+        assert_eq!(current.change, change);
+        assert!(
+            owner
+                .read_error
+                .as_deref()
+                .unwrap()
+                .contains("actual differs")
+        );
+    }
+
+    #[::core::prelude::v1::test]
+    fn current_dpi_normal_skippable_keeps_pending_replaces_queued_and_releases_canceled_guard() {
+        let mut owner = State::default();
+        let pending = read(1, "route/profile");
+        let first_queued = read(2, "route/profile");
+        let latest_queued = read(3, "route/profile");
+        assert!(owner.enqueue(pending.clone()).is_some());
+        assert!(owner.enqueue(first_queued.clone()).is_none());
+        assert!(owner.enqueue(latest_queued.clone()).is_none());
+        assert!(pending.is_valid());
+        assert!(latest_queued.is_valid());
+        assert!(owner.owns_completion(&pending));
+        assert!(!first_queued.is_valid());
+        assert!(!owner.owns_completion(&first_queued));
+        assert!(!owner.release(&first_queued));
+        assert!(
+            owner
+                .queued
+                .as_ref()
+                .is_some_and(|request| request.sequence == 3)
+        );
+        owner.cancel();
+        assert!(owner.pending.is_some());
+        assert!(!pending.is_valid());
+        assert!(!latest_queued.is_valid());
+        assert!(owner.queued.is_none());
+        assert!(owner.release(&pending));
+        assert!(owner.pending.is_none());
+        assert!(!owner.release(&pending));
+    }
+
+    #[::core::prelude::v1::test]
+    fn current_dpi_exit_drains_admitted_matcher_stages_without_clutch_cleanup() {
+        let mut owner = State::default();
+        let mut pending = read(1, "route/profile");
+        pending.read = false;
+        pending.drain_on_exit = true;
+        pending.change = Some(super::DpiChange {
+            stages: Some(configured_stages().into()),
+            active: None,
+            profile_guid: None,
+            initialize: false,
+        });
+        let mut queued = pending.clone();
+        queued.sequence = 2;
+        queued.valid = Arc::new(AtomicBool::new(true));
+        let expected_change = queued.change.clone();
+        owner.install_connection(pending.connection_key.clone(), Some(pending.scope));
+        assert!(!read(3, "route/profile").can_finish_during_exit());
+        assert!(owner.enqueue(pending.clone()).is_some());
+        assert!(owner.enqueue(queued.clone()).is_none());
+        assert!(
+            owner
+                .prepare_exit(Some(pending.scope), None, None)
+                .unwrap()
+                .is_none()
+        );
+        for request in [&pending, &queued] {
+            assert!(request.is_valid());
+            assert!(request.can_finish_during_exit());
+            assert!(!request.is_cleanup());
+            assert!(request.profile().is_none());
+        }
+        assert!(owner.owns_completion(&pending));
+        assert!(owner.take_queued(Some(pending.scope)).is_none());
+        assert!(owner.release(&pending));
+        let next = owner.take_queued(Some(queued.scope)).unwrap();
+        assert_eq!(next.sequence, queued.sequence);
+        assert!(Arc::ptr_eq(&next.guard(), &queued.guard()));
+        assert_eq!(next.change, expected_change);
+        assert!(next.is_valid());
+        assert!(next.can_finish_during_exit());
+        assert!(!next.is_cleanup());
+        assert!(!owner.release(&pending));
+        assert!(owner.owns_completion(&next));
+        assert!(owner.release(&next));
+        assert!(!queued.is_valid());
+        assert!(owner.pending.is_none());
+        assert!(owner.queued.is_none());
+    }
+
+    #[::core::prelude::v1::test]
+    fn current_dpi_exit_ordinary_then_matcher_keeps_newer_work_without_resaving_old_profile() {
+        let mut owner = State::default();
+        let ordinary = ordinary_stage_request(1, "route/profile");
+        let matcher = matcher_stage_request(2, "route/profile");
+        owner.install_connection(ordinary.connection_key.clone(), Some(ordinary.scope));
+        owner.sequence = 2;
+        assert!(owner.enqueue(ordinary.clone()).is_some());
+        assert!(owner.enqueue(matcher.clone()).is_none());
+        assert!(
+            owner
+                .prepare_exit(Some(ordinary.scope), None, None)
+                .unwrap()
+                .is_none()
+        );
+        assert!(!ordinary.is_valid());
+        assert!(matcher.is_valid());
+        assert!(owner.release(&ordinary));
+        let next = owner.take_queued(Some(matcher.scope)).unwrap();
+        assert!(Arc::ptr_eq(&next.guard(), &matcher.guard()));
+        assert!(next.profile().is_none());
+        assert_eq!(next.change, matcher.change);
+        assert!(owner.release(&next));
+        assert!(owner.take_queued(Some(matcher.scope)).is_none());
+    }
+
+    #[::core::prelude::v1::test]
+    fn current_dpi_exit_ordinary_then_matcher_restores_clutch_after_accepted_matcher() {
+        let mut owner = State::default();
+        let ordinary = ordinary_stage_request(1, "route/profile");
+        let matcher = matcher_stage_request(2, "route/profile");
+        owner.install_connection(ordinary.connection_key.clone(), Some(ordinary.scope));
+        owner.sequence = 2;
+        assert!(owner.enqueue(ordinary.clone()).is_some());
+        assert!(owner.enqueue(matcher.clone()).is_none());
+        assert!(
+            owner
+                .prepare_exit(Some(ordinary.scope), Some(configured_stages()), None)
+                .unwrap()
+                .is_none()
+        );
+        assert!(!ordinary.is_valid());
+        assert!(matcher.is_valid());
+        assert!(owner.release(&ordinary));
+        let admitted = owner.take_queued(Some(matcher.scope)).unwrap();
+        assert!(Arc::ptr_eq(&admitted.guard(), &matcher.guard()));
+        assert!(!admitted.is_cleanup());
+        assert!(admitted.profile().is_none());
+        assert!(owner.release(&admitted));
+        let restore = owner.take_queued(Some(matcher.scope)).unwrap();
+        assert!(restore.is_cleanup());
+        assert!(restore.profile().is_none());
+        assert_eq!(
+            restore.change().unwrap().stages.as_ref(),
+            Some(&configured_stages().into())
+        );
+        assert!(owner.release(&restore));
+        assert!(owner.take_queued(Some(matcher.scope)).is_none());
+    }
+
+    #[::core::prelude::v1::test]
+    fn current_dpi_exit_matcher_then_ordinary_retains_the_later_profile_and_clutch_restore() {
+        for restore in [None, Some(configured_stages())] {
+            let mut owner = State::default();
+            let matcher = matcher_stage_request(1, "route/profile");
+            let ordinary = ordinary_stage_request(2, "route/profile");
+            owner.install_connection(matcher.connection_key.clone(), Some(matcher.scope));
+            owner.sequence = 2;
+            assert!(owner.enqueue(matcher.clone()).is_some());
+            assert!(owner.enqueue(ordinary.clone()).is_none());
+            assert!(
+                owner
+                    .prepare_exit(Some(matcher.scope), restore.clone(), None)
+                    .unwrap()
+                    .is_none()
+            );
+            assert!(matcher.is_valid());
+            assert!(!ordinary.is_valid());
+            assert!(owner.owns_completion(&matcher));
+            assert!(owner.release(&matcher));
+            let finalizer = owner.take_queued(Some(ordinary.scope)).unwrap();
+            assert_eq!(finalizer.profile(), ordinary.profile());
+            assert_eq!(finalizer.is_cleanup(), restore.is_some());
+            assert_eq!(
+                finalizer.change().and_then(|change| change.stages.as_ref()),
+                restore.as_ref().map(|stages| stages.into()).as_ref()
+            );
+            assert!(owner.release(&finalizer));
+            assert!(owner.take_queued(Some(ordinary.scope)).is_none());
+        }
+    }
+
+    #[::core::prelude::v1::test]
+    fn current_dpi_exit_clutch_restore_waits_for_both_admitted_matcher_requests() {
+        let mut owner = State::default();
+        let first = matcher_stage_request(1, "route/profile");
+        let second = matcher_stage_request(2, "route/profile");
+        owner.install_connection(first.connection_key.clone(), Some(first.scope));
+        owner.sequence = 2;
+        assert!(owner.enqueue(first.clone()).is_some());
+        assert!(owner.enqueue(second.clone()).is_none());
+        assert!(
+            owner
+                .prepare_exit(Some(first.scope), Some(configured_stages()), None)
+                .unwrap()
+                .is_none()
+        );
+        assert!(first.is_valid());
+        assert!(second.is_valid());
+        assert!(owner.release(&first));
+        let admitted = owner.take_queued(Some(second.scope)).unwrap();
+        assert!(Arc::ptr_eq(&admitted.guard(), &second.guard()));
+        assert!(!admitted.is_cleanup());
+        assert!(owner.release(&admitted));
+        let restore = owner.take_queued(Some(second.scope)).unwrap();
+        assert!(restore.is_cleanup());
+        assert!(restore.profile().is_none());
+        assert!(owner.release(&restore));
+        assert!(owner.take_queued(Some(second.scope)).is_none());
+    }
+
+    #[::core::prelude::v1::test]
+    fn current_dpi_exit_late_matcher_supersedes_pending_old_profile_without_losing_cleanup() {
+        for restore in [None, Some(configured_stages())] {
+            let mut owner = State::default();
+            let ordinary = ordinary_stage_request(1, "route/profile");
+            owner.install_connection(ordinary.connection_key.clone(), Some(ordinary.scope));
+            owner.sequence = 1;
+            assert!(owner.enqueue(ordinary.clone()).is_some());
+            let boundary = owner.profile_save_boundary(ordinary.scope).unwrap();
+            assert!(
+                owner
+                    .prepare_exit(Some(ordinary.scope), restore.clone(), None)
+                    .unwrap()
+                    .is_none()
+            );
+            owner.matcher_stages_saved(&boundary);
+            let matcher = matcher_stage_request(3, "route/profile");
+            assert!(owner.enqueue(matcher.clone()).is_none());
+            assert!(owner.release(&ordinary));
+            let admitted = owner.take_queued(Some(matcher.scope)).unwrap();
+            assert!(Arc::ptr_eq(&admitted.guard(), &matcher.guard()));
+            assert!(admitted.profile().is_none());
+            assert!(owner.release(&admitted));
+            let cleanup = owner.take_queued(Some(matcher.scope));
+            if let Some(expected) = restore {
+                let cleanup = cleanup.expect("clutch restore follows accepted Matcher work");
+                assert!(cleanup.is_cleanup());
+                assert!(cleanup.profile().is_none());
+                assert_eq!(cleanup.change().unwrap().stages, Some(expected.into()));
+                assert!(owner.release(&cleanup));
+            } else {
+                assert!(cleanup.is_none());
+            }
+            assert!(owner.take_queued(Some(matcher.scope)).is_none());
+        }
+    }
+
+    #[::core::prelude::v1::test]
+    fn current_dpi_exit_cleanup_cancels_with_its_connection_or_owner() {
+        for replace_connection in [false, true] {
+            let mut owner = State::default();
+            let matcher = matcher_stage_request(1, "route/profile");
+            owner.install_connection(matcher.connection_key.clone(), Some(matcher.scope));
+            owner.sequence = 1;
+            assert!(owner.enqueue(matcher.clone()).is_some());
+            assert!(
+                owner
+                    .prepare_exit(Some(matcher.scope), Some(configured_stages()), None)
+                    .unwrap()
+                    .is_none()
+            );
+            let cleanup = owner.exit_request.as_ref().unwrap().clone();
+            assert!(cleanup.is_valid());
+            assert!(cleanup.is_cleanup());
+            if replace_connection {
+                assert!(
+                    owner.install_connection(
+                        Some("replacement/profile".into()),
+                        Some(matcher.scope)
+                    )
+                );
+                assert!(owner.exit_request.is_none());
+                assert!(!cleanup.is_valid());
+                assert!(!matcher.is_valid());
+            } else {
+                drop(owner);
+                assert!(!cleanup.is_valid());
+                assert!(!matcher.is_valid());
+            }
+        }
+    }
+
+    #[::core::prelude::v1::test]
+    fn current_dpi_saved_matcher_skips_promoted_exit_profile_before_late_device_admission() {
+        use std::collections::VecDeque;
+
+        for restore in [None, Some(configured_stages())] {
+            let mut owner = State::default();
+            let ordinary = ordinary_stage_request(1, "route/profile");
+            owner.install_connection(ordinary.connection_key.clone(), Some(ordinary.scope));
+            owner.sequence = 1;
+            assert!(owner.enqueue(ordinary.clone()).is_some());
+            let boundary = owner.profile_save_boundary(ordinary.scope).unwrap();
+            owner
+                .prepare_exit(Some(ordinary.scope), restore.clone(), None)
+                .unwrap();
+            assert!(owner.release(&ordinary));
+            let finalizer = owner.take_queued(Some(ordinary.scope)).unwrap();
+            let expected_restore = finalizer.change.clone();
+            let mut saves = VecDeque::from([finalizer.clone()]);
+            assert!(saves.front().unwrap().profile().is_some());
+
+            // The Matcher stage file commits while this finalizer is still in
+            // the serialized save queue; StageRequest has not been delivered.
+            owner.matcher_stages_saved(&boundary);
+            let captured = saves.pop_front().unwrap();
+            assert!(captured.profile().is_none());
+            assert!(captured.is_valid());
+            assert_eq!(captured.change, expected_restore);
+            assert_eq!(captured.is_cleanup(), restore.is_some());
+
+            let matcher = matcher_stage_request(3, "route/profile");
+            assert!(owner.enqueue(matcher.clone()).is_none());
+            assert!(owner.release(&captured));
+            let next = owner.take_queued(Some(matcher.scope)).unwrap();
+            assert!(Arc::ptr_eq(&next.guard(), &matcher.guard()));
+            assert_eq!(next.change, matcher.change);
+        }
+    }
+
+    #[::core::prelude::v1::test]
+    fn current_dpi_saved_matcher_prevents_old_pending_profile_from_reappearing_on_exit() {
+        for restore in [None, Some(configured_stages())] {
+            let mut owner = State::default();
+            let ordinary = ordinary_stage_request(1, "route/profile");
+            owner.install_connection(ordinary.connection_key.clone(), Some(ordinary.scope));
+            owner.sequence = 1;
+            assert!(owner.enqueue(ordinary.clone()).is_some());
+            let boundary = owner.profile_save_boundary(ordinary.scope).unwrap();
+            let requested = ordinary.change.clone();
+
+            // The ordinary device operation is already in flight. A Matcher
+            // file commit can precede both exit preparation and StageRequest.
+            owner.matcher_stages_saved(&boundary);
+            assert!(ordinary.profile().is_none());
+            assert!(ordinary.is_valid());
+            assert_eq!(ordinary.change, requested);
+            assert!(owner.owns_completion(&ordinary));
+            owner
+                .prepare_exit(Some(ordinary.scope), restore.clone(), None)
+                .unwrap();
+            assert!(owner.release(&ordinary));
+            let cleanup = owner.take_queued(Some(ordinary.scope));
+            if let Some(expected) = restore {
+                let cleanup = cleanup.unwrap();
+                assert!(cleanup.profile().is_none());
+                assert!(cleanup.is_cleanup());
+                assert_eq!(cleanup.change().unwrap().stages, Some(expected.into()));
+            } else {
+                assert!(cleanup.is_none());
+            }
+        }
+    }
+
+    #[::core::prelude::v1::test]
+    fn current_dpi_saved_matcher_keeps_newer_normal_skippable_profile_edits() {
+        for enqueue_during_save in [false, true] {
+            let mut owner = State::default();
+            let ordinary = ordinary_stage_request(1, "route/profile");
+            owner.install_connection(ordinary.connection_key.clone(), Some(ordinary.scope));
+            owner.sequence = 1;
+            assert!(owner.enqueue(ordinary.clone()).is_some());
+            let boundary = owner.profile_save_boundary(ordinary.scope).unwrap();
+            if !enqueue_during_save {
+                owner.matcher_stages_saved(&boundary);
+            }
+
+            let mut newer = ordinary_stage_request(2, "route/profile");
+            newer.profile.as_mut().unwrap()["dpiStages"]["stages"][0]["x"] =
+                serde_json::json!(2400);
+            assert!(owner.enqueue(newer.clone()).is_none());
+            if enqueue_during_save {
+                owner.matcher_stages_saved(&boundary);
+            }
+            assert!(ordinary.profile().is_none());
+            assert!(newer.profile().is_some());
+            assert!(newer.is_valid());
+            owner
+                .prepare_exit(Some(ordinary.scope), None, None)
+                .unwrap();
+            let matcher = matcher_stage_request(3, "route/profile");
+            assert!(owner.enqueue(matcher.clone()).is_none());
+            assert!(owner.release(&ordinary));
+            let admitted = owner.take_queued(Some(matcher.scope)).unwrap();
+            assert!(Arc::ptr_eq(&admitted.guard(), &matcher.guard()));
+            assert!(owner.release(&admitted));
+            let finalizer = owner.take_queued(Some(ordinary.scope)).unwrap();
+            assert_eq!(finalizer.profile(), newer.profile());
+            assert_eq!(
+                finalizer.profile().unwrap()["dpiStages"]["stages"][0]["x"],
+                2400
+            );
+        }
+    }
+
+    #[::core::prelude::v1::test]
+    fn current_dpi_saved_matcher_cannot_invalidate_another_scope_or_connection_profile() {
+        for scope in [
+            MousePollingScope::new(EntityId::from(2), 2, 3),
+            MousePollingScope::new(EntityId::from(1), 3, 3),
+            MousePollingScope::new(EntityId::from(1), 2, 4),
+        ] {
+            let mut owner = State::default();
+            let ordinary = ordinary_stage_request(1, "route/profile");
+            owner.install_connection(ordinary.connection_key.clone(), Some(ordinary.scope));
+            assert!(owner.enqueue(ordinary.clone()).is_some());
+            assert!(owner.profile_save_boundary(scope).is_none());
+            let boundary = owner.profile_save_boundary(ordinary.scope).unwrap();
+            let mut replacement = ordinary_stage_request(1, "route/profile");
+            replacement.scope = scope;
+            assert!(owner.install_connection(replacement.connection_key.clone(), Some(scope)));
+            assert!(owner.enqueue(replacement.clone()).is_none());
+            owner.matcher_stages_saved(&boundary);
+            assert!(ordinary.profile().is_some());
+            assert!(replacement.profile().is_some());
+            assert!(replacement.is_valid());
+        }
+        let mut owner = State::default();
+        let ordinary = ordinary_stage_request(1, "route/profile");
+        owner.install_connection(ordinary.connection_key.clone(), Some(ordinary.scope));
+        assert!(owner.enqueue(ordinary.clone()).is_some());
+        let boundary = owner.profile_save_boundary(ordinary.scope).unwrap();
+        let replacement = ordinary_stage_request(1, "replacement/profile");
+        assert!(
+            owner.install_connection(replacement.connection_key.clone(), Some(replacement.scope))
+        );
+        assert!(owner.enqueue(replacement.clone()).is_none());
+        owner.matcher_stages_saved(&boundary);
+        assert!(ordinary.profile().is_some());
+        assert!(replacement.profile().is_some());
+        assert!(replacement.is_valid());
+    }
+
+    #[::core::prelude::v1::test]
+    fn current_dpi_drain_marker_does_not_survive_connection_replacement() {
+        let mut owner = State::default();
+        let mut pending = read(1, "old-route/profile");
+        pending.read = false;
+        pending.drain_on_exit = true;
+        pending.change = Some(super::DpiChange {
+            stages: Some(configured_stages().into()),
+            active: None,
+            profile_guid: None,
+            initialize: false,
+        });
+        let mut queued = pending.clone();
+        queued.sequence = 2;
+        queued.valid = Arc::new(AtomicBool::new(true));
+        owner.install_connection(pending.connection_key.clone(), Some(pending.scope));
+        assert!(owner.enqueue(pending.clone()).is_some());
+        assert!(owner.enqueue(queued.clone()).is_none());
+
+        let successor = read(1, "new-route/profile");
+        assert!(owner.install_connection(successor.connection_key.clone(), Some(successor.scope)));
+        assert!(!pending.is_valid());
+        assert!(!queued.is_valid());
+        assert!(owner.owns_completion(&pending));
+        assert!(owner.queued.is_none());
+        assert!(owner.enqueue(successor.clone()).is_none());
+        assert!(owner.release(&pending));
+        let next = owner.take_queued(Some(successor.scope)).unwrap();
+        assert!(next.is_valid());
+        assert_eq!(next.connection_key, successor.connection_key);
+        assert!(!owner.release(&pending));
+        assert!(owner.owns_completion(&successor));
     }
 
     #[::core::prelude::v1::test]
@@ -558,7 +1212,9 @@ impl MouseCurrentDpiRequested {
         self.sequence
     }
     pub fn profile(&self) -> Option<&Value> {
-        self.profile.as_ref()
+        self.profile
+            .as_ref()
+            .filter(|_| self.profile_save.load(Ordering::Acquire))
     }
     pub fn change(&self) -> Option<&DpiChange> {
         self.change.as_ref()
@@ -568,6 +1224,9 @@ impl MouseCurrentDpiRequested {
     }
     pub fn is_cleanup(&self) -> bool {
         self.cleanup
+    }
+    pub fn can_finish_during_exit(&self) -> bool {
+        self.cleanup || self.drain_on_exit
     }
     pub fn is_valid(&self) -> bool {
         self.valid.load(Ordering::Acquire)
@@ -586,6 +1245,7 @@ pub(super) struct State {
     pending: Option<MouseCurrentDpiRequested>,
     queued: Option<MouseCurrentDpiRequested>,
     initialization_queued: Option<MouseCurrentDpiRequested>,
+    exit_request: Option<MouseCurrentDpiRequested>,
     observed: Observation,
     row_values: [Option<DpiPair>; 5],
     control_sync: BTreeMap<String, u16>,
@@ -645,7 +1305,7 @@ fn receiver_callback_change(
 ) -> Option<DpiChange> {
     let (stages, active) = match temporary {
         Some(dpi) => (None, Some(dpi)),
-        None => (Some(stages?), None),
+        None => (Some(stages?.into()), None),
     };
     Some(DpiChange {
         stages,
@@ -677,6 +1337,17 @@ impl State {
     }
 
     fn enqueue(&mut self, request: MouseCurrentDpiRequested) -> Option<MouseCurrentDpiRequested> {
+        // The durable Matcher save owns profile invalidation. Admission only
+        // drops its expired profile-only finalizer; later edits retain theirs.
+        if request.drain_on_exit
+            && self
+                .exit_request
+                .as_ref()
+                .is_some_and(|exit| !exit.cleanup && exit.profile().is_none())
+            && let Some(exit) = self.exit_request.take()
+        {
+            exit.cancel();
+        }
         if self.pending.is_some() {
             if let Some(previous) = self.queued.replace(request) {
                 self.finish_initialization(&previous, false);
@@ -686,6 +1357,45 @@ impl State {
         } else {
             self.pending = Some(request.clone());
             Some(request)
+        }
+    }
+
+    fn profile_save_boundary(
+        &self,
+        scope: MousePollingScope,
+    ) -> Option<MouseCurrentDpiProfileSaveBoundary> {
+        if self.connection_scope != Some(scope) {
+            return None;
+        }
+        let connection_key = self.connection_key.clone()?;
+        let permits = self
+            .pending
+            .iter()
+            .chain(self.queued.iter())
+            .chain(self.initialization_queued.iter())
+            .chain(self.exit_request.iter())
+            .filter(|request| {
+                request.scope == scope
+                    && request.connection_key.as_ref() == Some(&connection_key)
+                    && request.profile.is_some()
+            })
+            .map(|request| request.profile_save.clone())
+            .collect();
+        Some(MouseCurrentDpiProfileSaveBoundary {
+            scope,
+            connection_key,
+            permits,
+        })
+    }
+
+    fn matcher_stages_saved(&mut self, boundary: &MouseCurrentDpiProfileSaveBoundary) {
+        if self.connection_scope != Some(boundary.scope)
+            || self.connection_key.as_ref() != Some(&boundary.connection_key)
+        {
+            return;
+        }
+        for permit in &boundary.permits {
+            permit.store(false, Ordering::Release);
         }
     }
 
@@ -831,14 +1541,16 @@ impl State {
             scope,
             sequence: self.sequence,
             profile: None,
+            profile_save: Arc::new(AtomicBool::new(true)),
             change: Some(DpiChange {
-                stages: Some(stages),
+                stages: Some(stages.into()),
                 active: None,
                 profile_guid: Some(profile_guid.into()),
                 initialize: true,
             }),
             read: false,
             cleanup: false,
+            drain_on_exit: false,
             restoration_ticket: self.temporary_restoration.ticket(),
             connection_key: Some(key.clone()),
             edit_revision: self.edit_revision,
@@ -890,6 +1602,7 @@ impl State {
             scope,
             sequence: self.sequence,
             profile: None,
+            profile_save: Arc::new(AtomicBool::new(true)),
             change: Some(DpiChange {
                 stages: None,
                 active: None,
@@ -898,6 +1611,7 @@ impl State {
             }),
             read: true,
             cleanup: false,
+            drain_on_exit: false,
             restoration_ticket: self.temporary_restoration.ticket(),
             connection_key: self.connection_key.clone(),
             edit_revision: self.edit_revision,
@@ -947,6 +1661,16 @@ impl State {
             }
             next.cancel();
         }
+        if let Some(exit) = self.exit_request.take() {
+            if exit.is_valid()
+                && scope == Some(exit.scope)
+                && exit.connection_key == self.connection_key
+            {
+                self.pending = Some(exit.clone());
+                return Some(exit);
+            }
+            exit.cancel();
+        }
         None
     }
 
@@ -958,20 +1682,20 @@ impl State {
     ) -> Result<Option<MouseCurrentDpiRequested>, String> {
         let key = self.connection_key.clone();
         let connection_scope = self.connection_scope;
-        let profile = self
+        let previous = self
             .queued
             .iter()
             .chain(self.pending.iter())
             .find(|request| {
-                request.is_valid()
-                    && Some(request.scope) == scope
-                    && request.connection_key == key
-                    && request.profile.is_some()
-            })
-            .and_then(|request| request.profile.clone());
+                request.is_valid() && Some(request.scope) == scope && request.connection_key == key
+            });
+        let profile = previous.and_then(|request| request.profile().cloned());
+        let profile_save = previous
+            .map(|request| request.profile_save.clone())
+            .unwrap_or_else(|| Arc::new(AtomicBool::new(true)));
         // Invalidation requests cancellation but the old pending request remains
         // the serialization barrier until its worker has released the transport.
-        self.cancel();
+        self.invalidate(true);
         self.connection_key = key;
         self.connection_scope = connection_scope;
         let current_scope = scope.filter(|scope| Some(*scope) == connection_scope);
@@ -986,14 +1710,16 @@ impl State {
             return Ok(None);
         }
         self.sequence = self.sequence.wrapping_add(1);
-        Ok(self.enqueue(MouseCurrentDpiRequested {
+        self.exit_request = Some(MouseCurrentDpiRequested {
             scope,
             sequence: self.sequence,
             profile,
+            profile_save,
             cleanup: restore.is_some(),
+            drain_on_exit: false,
             restoration_ticket: self.temporary_restoration.ticket(),
             change: restore.map(|stages| DpiChange {
-                stages: Some(stages),
+                stages: Some(stages.into()),
                 active: None,
                 profile_guid: None,
                 initialize: false,
@@ -1003,7 +1729,8 @@ impl State {
             edit_revision: self.edit_revision,
             selection,
             valid: Arc::new(AtomicBool::new(true)),
-        }))
+        });
+        Ok(self.take_queued(Some(scope)))
     }
 
     fn take_ready_refresh(&mut self) -> bool {
@@ -1016,14 +1743,27 @@ impl State {
     }
 
     pub(super) fn cancel(&mut self) {
+        self.invalidate(false);
+    }
+
+    fn invalidate(&mut self, retain_accepted: bool) {
         if let Some(pending) = &self.pending {
-            pending.cancel();
+            if !retain_accepted || !pending.drain_on_exit {
+                pending.cancel();
+            }
         }
         if let Some(queued) = self.queued.take() {
-            queued.cancel();
+            if retain_accepted && queued.drain_on_exit {
+                self.queued = Some(queued);
+            } else {
+                queued.cancel();
+            }
         }
         if let Some(initialization) = self.initialization_queued.take() {
             initialization.cancel();
+        }
+        if let Some(exit) = self.exit_request.take() {
+            exit.cancel();
         }
         self.observed = Observation::default();
         self.row_values = [None; 5];
@@ -1043,6 +1783,67 @@ impl Drop for State {
 impl EventEmitter<MouseCurrentDpiRequested> for MouseProductWorkspace {}
 
 impl MouseProductWorkspace {
+    pub fn current_dpi_profile_save_boundary(
+        &self,
+        scope: MousePollingScope,
+        cx: &App,
+    ) -> Option<MouseCurrentDpiProfileSaveBoundary> {
+        (self.mouse_polling_scope(cx) == Some(scope))
+            .then(|| self.current_dpi.profile_save_boundary(scope))
+            .flatten()
+    }
+
+    pub fn current_dpi_matcher_stages_saved(
+        &mut self,
+        boundary: &MouseCurrentDpiProfileSaveBoundary,
+        cx: &mut Context<Self>,
+    ) {
+        if self.mouse_polling_scope(cx) == Some(boundary.scope) {
+            self.current_dpi.matcher_stages_saved(boundary);
+        }
+    }
+
+    /// Matcher uses the same device-task owner as ordinary DPI edits. Its
+    /// separate source task maker has already saved the profile before admission.
+    pub(super) fn enqueue_matcher_stages(
+        &mut self,
+        stages: razer_device::mouse_current_dpi::SourceStages,
+        cx: &mut Context<Self>,
+    ) -> anyhow::Result<()> {
+        let scope = self
+            .mouse_polling_scope(cx)
+            .context("Matcher DPI has no current page scope")?;
+        ensure!(
+            self.current_dpi.connection_key.is_some(),
+            "Matcher DPI has no current connection"
+        );
+        self.current_dpi.record_edit();
+        self.current_dpi.sequence = self.current_dpi.sequence.wrapping_add(1);
+        let selection = Selection::capture_source(self.spec.product_id, &stages);
+        let request = MouseCurrentDpiRequested {
+            scope,
+            sequence: self.current_dpi.sequence,
+            profile: None,
+            profile_save: Arc::new(AtomicBool::new(true)),
+            change: (!self.current_dpi.macro_recording).then_some(DpiChange {
+                stages: Some(stages),
+                active: None,
+                profile_guid: matches!(self.spec.product_id, 182 | 190)
+                    .then(|| self.draft["guid"].as_str().unwrap_or("").to_owned()),
+                initialize: false,
+            }),
+            read: false,
+            cleanup: false,
+            drain_on_exit: true,
+            restoration_ticket: self.current_dpi.temporary_restoration.ticket(),
+            connection_key: self.current_dpi.connection_key.clone(),
+            edit_revision: self.current_dpi.edit_revision,
+            selection,
+            valid: Arc::new(AtomicBool::new(true)),
+        };
+        self.enqueue_current_dpi(request, cx);
+        Ok(())
+    }
     pub fn current_dpi_profile_read_matches(
         &self,
         request: &MouseCurrentDpiRequested,
@@ -1170,11 +1971,13 @@ impl MouseProductWorkspace {
             scope,
             sequence: self.current_dpi.sequence,
             profile: persist.then(|| self.draft.clone()),
+            profile_save: Arc::new(AtomicBool::new(true)),
             change: (transmit && !self.current_dpi.macro_recording)
                 .then(|| receiver_callback_change(temporary, stages))
                 .flatten(),
             read: false,
             cleanup: false,
+            drain_on_exit: false,
             restoration_ticket: self.current_dpi.temporary_restoration.ticket(),
             connection_key: self.current_dpi.connection_key.clone(),
             edit_revision: self.current_dpi.edit_revision,
@@ -1285,7 +2088,7 @@ impl MouseProductWorkspace {
         let change =
             (!self.current_dpi.macro_recording && (stage_change || active_change)).then(|| {
                 DpiChange {
-                    stages: stage_change.then_some(draft),
+                    stages: stage_change.then(|| draft.into()),
                     active: active_change.then_some(selected).flatten(),
                     profile_guid: matches!(self.spec.product_id, 182 | 190).then(|| {
                         self.draft
@@ -1301,9 +2104,11 @@ impl MouseProductWorkspace {
             scope,
             sequence: self.current_dpi.sequence,
             profile: Some(self.draft.clone()),
+            profile_save: Arc::new(AtomicBool::new(true)),
             change,
             read: false,
             cleanup: false,
+            drain_on_exit: false,
             restoration_ticket: self.current_dpi.temporary_restoration.ticket(),
             connection_key: self.current_dpi.connection_key.clone(),
             edit_revision: self.current_dpi.edit_revision,
@@ -1334,9 +2139,11 @@ impl MouseProductWorkspace {
                 scope,
                 sequence: self.current_dpi.sequence,
                 profile: None,
+                profile_save: Arc::new(AtomicBool::new(true)),
                 change: None,
                 read: true,
                 cleanup: false,
+                drain_on_exit: false,
                 restoration_ticket: self.current_dpi.temporary_restoration.ticket(),
                 connection_key: self.current_dpi.connection_key.clone(),
                 edit_revision: self.current_dpi.edit_revision,
@@ -1709,5 +2516,6 @@ impl MouseProductWorkspace {
         self.current_dpi.pending.is_some()
             || self.current_dpi.queued.is_some()
             || self.current_dpi.initialization_queued.is_some()
+            || self.current_dpi.exit_request.is_some()
     }
 }

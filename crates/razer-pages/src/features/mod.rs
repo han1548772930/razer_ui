@@ -71,9 +71,9 @@ pub use source_controls::{
     ReceiverPairingIntent, ReceiverPairingObservation, ReceiverPeer, ReceiverProgress,
     RipsawMonitoringRequested,
 };
-pub use source_workspace::ReceiverProfileSelectionRequested;
 pub use source_workspace::ControllerInitializationRequested;
 pub use source_workspace::ControllerSocdRequested;
+pub use source_workspace::ReceiverProfileSelectionRequested;
 #[path = "gamepad/mod.rs"]
 pub mod gamepad_products;
 #[path = "keyboard/mod.rs"]

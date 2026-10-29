@@ -167,6 +167,10 @@ dataset、聚合 C／ASM 和文件摘要使用有界内存写入，不先保留�
 
 `fetch-frontend` 保存 HTML、manifest、全部已声明资源、静态 chunk／import／CSS 引用、HTTP 失败和版本稳定性检查；原始文件不执行。`analyze-frontend` 显式提交所有获取的 JS，保存完整模块、provenance、输出 maps、诊断及图校验结果，并提取可用的 `sourcesContent`，随后恢复尚未拆出的完整 webpack factory。
 
+部署更新时，`fetch-frontend --reuse-acquisition <acquisition.json>` 可重复指定已核验的稳定获取收据。只有完整 URL 相同且文件名含版本哈希的成功原件可复用；核对实际长度与 SHA 后直接引用原路径，不复制整个源码集，也不修改旧索引行。HTML 和无哈希清单仍重新获取，新部署使用独立 snapshot 输出目录；损坏、冲突及取消按实际失败记录，不能静默回退或覆盖已完成快照。
+
+`revalidate-current-deployment --acquisition <acquisition.json> --owner <原件路径>` 双取部署根节点、清单及显式 owner，保留字节变化和失败；变化原件通过内容寻址发布并追加正式输入索引。旧 owner 地址仍返回相同内容不能证明新部署仍引用它。`audit-family-function --family mouse --function mw --query mouse-matcher-deployment --acquisition <新获取收据>` 沿实际根引用核查完整 factory；可重复指定获取收据，以内容寻址收据保存新旧正文、AST 范围和依赖边。只有完整正文逐字节相同才记录 unchanged，改号、歧义和缺失保持未决；该静态比较不执行厂商脚本，也不代替语义审阅或设备验收。
+
 已有完整捕获用 `analyze-frontend --input DIR --recover-missing` 核验后补恢复；全量入口是 `analyze-frontend --all-acquired --recover-missing --workers 4`，并行数限 2–8；单来源入口也使用至少两个线程，拒绝 `--workers 1` 以免逆向批次悄悄退回串行。`frontend.py` 按 AST 定位被前导代码／逗号表达式包住的注册和 bootstrap，从已核验可读整包切出带完整参数绑定的 factory，按 UTF-16 坐标切片 source map 并回溯官方原件。合成包装无原始映射，原始局部名称不作推定。完整整包保留非 factory 代码，每份捕获保存实际恢复工具副本和所有新产物身份；缺少可读整包才静态格式化一次，不执行目标 JavaScript。
 
 批量结果为 `.analysis/results/frontend/module-recovery.json`，每个集合的 `analysis.json` 与 `modules/provenance.json` 保留原件区间、参数、恢复配方及诊断。复用必须核验实际原件和全部登记输出。恢复结构不抹去原分析器失败，也不等于逐功能语义已经闭合。`--refresh` 只重建派生模块、提取源码及旧恢复中间目录，不删除获取原件。

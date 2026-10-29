@@ -101,7 +101,7 @@ pub mod native {
             windows_sys::Win32::Foundation::SetLastError(0);
         }
         icon.set_tooltip(Some("Razer")).map_err(|error| {
-            log_registration_context(icon.window_handle());
+            log_registration_context(icon);
             anyhow::anyhow!("Windows notification-area registration failed: {error}")
         })?;
         Ok(())
@@ -116,7 +116,7 @@ pub mod native {
         let (size, bytes) = (icon.pixels(), icon.rgba());
         tray_icon::Icon::from_rgba(bytes.to_vec(), size, size).map(|icon| (icon, size))
     }
-    pub fn log_registration_context(tray: HWND) {
+    pub fn log_registration_context(icon: &tray_icon::TrayIcon) {
         use windows_sys::Win32::{
             Foundation::CloseHandle,
             Security::{
@@ -197,6 +197,8 @@ pub mod native {
             }
             Some((rid, app_container != 0, restricted))
         }
+        // The borrowed icon keeps its hidden window alive throughout these queries.
+        let tray = icon.window_handle();
         let class: Vec<u16> = "Shell_TrayWnd\0".encode_utf16().collect();
         unsafe {
             let shell = FindWindowW(class.as_ptr(), std::ptr::null());

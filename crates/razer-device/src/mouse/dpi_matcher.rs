@@ -9,6 +9,51 @@ use serde_json::json;
 
 pub const PRODUCT_ID: u32 = 190;
 
+// ECMAScript extrema propagate NaN and choose the specified sign for equal zeros.
+fn source_max(left: f64, right: f64) -> f64 {
+    if left.is_nan() || right.is_nan() {
+        return f64::NAN;
+    }
+    if left == right {
+        if left == 0. {
+            return if left.is_sign_positive() || right.is_sign_positive() {
+                0.
+            } else {
+                -0.
+            };
+        }
+        return left;
+    }
+    if left > right { left } else { right }
+}
+
+fn source_min(left: f64, right: f64) -> f64 {
+    if left.is_nan() || right.is_nan() {
+        return f64::NAN;
+    }
+    if left == right {
+        if left == 0. {
+            return if left.is_sign_negative() || right.is_sign_negative() {
+                -0.
+            } else {
+                0.
+            };
+        }
+        return left;
+    }
+    if left < right { left } else { right }
+}
+
+fn source_round(value: f64) -> f64 {
+    if value.is_nan() || value.is_infinite() || value == 0. {
+        return value;
+    }
+    // Math.round selects the integer toward +infinity at an exact half and
+    // preserves negative zero. Adding 0.5 first would round some inputs twice.
+    let lower = value.floor();
+    if value - lower < 0.5 { lower } else { value.ceil() }
+}
+
 /// Logical products with a mounted matcher and a reviewed sampling factory.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Product(u32);
@@ -26,10 +71,6 @@ impl Product {
         self.0
     }
 
-    fn uses_retained_container(self) -> bool {
-        self.0 != 226
-    }
-
     /// The initial main stream is selected from the logical product's reviewed
     /// wired/dongle identities. PID226 also receives the BLE 228 callback;
     /// paired input-monitoring records remain a separate fallback in the host.
@@ -43,7 +84,7 @@ impl Product {
     }
 
     pub fn is_dual_link_reference(self, product_id: u32) -> bool {
-        self.0 == 226 && product_id == 241
+        product_id == 241
     }
 }
 
@@ -189,10 +230,6 @@ impl InputBatch {
                 Tick::Number(number) => number,
                 Tick::Text(text) => text.parse::<f64>().context("invalid movement timeTick")?,
             };
-            ensure!(
-                time_tick.is_finite() && x.is_finite(),
-                "nonfinite source sample"
-            );
             movement.push(Movement { x, time_tick });
         }
         Ok(Self {
@@ -257,10 +294,6 @@ impl Session {
             matches!(self.state, State::Ready | State::Error),
             "matcher already active"
         );
-        ensure!(
-            current_dpi.is_finite() && current_dpi > 0.,
-            "invalid observed current DPI"
-        );
         self.reset();
         self.state = State::RequestingLock;
         self.current_dpi = current_dpi;
@@ -295,8 +328,8 @@ impl Session {
             self.new_dpi,
         )
     }
-    /// The caller supplies the current source product/dual-link predicate. Five
-    /// factories prefer a retained stream container; PID226 always uses R(pid).
+    /// The caller supplies the current source product/dual-link predicate.
+    /// Every current factory prefers an already retained stream container.
     pub fn ingest(
         &mut self,
         batch: InputBatch,
@@ -307,22 +340,13 @@ impl Session {
             self.state == State::Calibrating,
             "matcher is not calibrating"
         );
-        let main = if !self.product.uses_retained_container() {
-            initial_is_main
-        } else if !self.main_container.is_empty() {
+        let main = if !batch.container_id.is_empty() && !self.main_container.is_empty() {
             batch.container_id == self.main_container
-        } else if !self.source_container.is_empty() {
+        } else if !batch.container_id.is_empty() && !self.source_container.is_empty() {
             batch.container_id != self.source_container
         } else {
             initial_is_main
         };
-        ensure!(
-            batch
-                .movement
-                .iter()
-                .all(|m| m.x.is_finite() && m.time_tick.is_finite()),
-            "nonfinite source movement"
-        );
         if main {
             self.main_container = batch.container_id;
             self.main_last_received = Some(received_ms);
@@ -345,7 +369,8 @@ impl Session {
     fn advance(&mut self) -> anyhow::Result<bool> {
         let maximum = 5. * self.current_dpi;
         loop {
-            self.process = (self.traveled / maximum * 100.).round().min(99.);
+            let process = source_round(self.traveled / maximum * 100.);
+            self.process = source_min(process, 99.);
             if self.main.is_empty() || self.source.is_empty() || self.buffered.is_empty() {
                 return Ok(false);
             }
@@ -362,12 +387,11 @@ impl Session {
                 .buffered
                 .drain(..self.buffered.len().min(100))
                 .collect();
-            let start = self.main[0].time_tick.max(self.source[0].time_tick);
+            let start = source_max(self.main[0].time_tick, self.source[0].time_tick);
             self.traveled += entries
                 .iter()
-                .filter(|m| m.x > 0. && m.time_tick >= start)
-                .map(|m| m.x)
-                .sum::<f64>();
+                .filter(|m| !(m.x <= 0. || m.time_tick < start))
+                .fold(0., |distance, movement| distance + movement.x);
             if self.stop_tick == 0. && self.traveled > maximum {
                 self.stop_tick = entries.last().unwrap().time_tick;
             }
@@ -382,28 +406,20 @@ impl Session {
             self.state == State::Stopping,
             "matcher is not waiting for STOP"
         );
-        let start = self.main[0].time_tick.max(self.source[0].time_tick);
-        let end = self
-            .main
-            .last()
-            .unwrap()
-            .time_tick
-            .min(self.source.last().unwrap().time_tick);
+        let start = source_max(self.main[0].time_tick, self.source[0].time_tick);
+        let end = source_min(
+            self.main.last().unwrap().time_tick,
+            self.source.last().unwrap().time_tick,
+        );
         let distance = |events: &[Movement]| {
             events
                 .iter()
-                .filter(|m| m.time_tick >= start && m.time_tick <= end && m.x > 0.)
-                .map(|m| m.x)
-                .sum::<f64>()
+                .filter(|m| !(m.time_tick > end || m.time_tick < start || m.x <= 0.))
+                .fold(0., |distance, movement| distance + movement.x)
         };
         let main = distance(&self.main);
         let source = distance(&self.source);
-        ensure!(main > 0. && source > 0., "no overlapping positive movement");
-        self.new_dpi = (source / main * self.current_dpi).round();
-        ensure!(
-            self.new_dpi.is_finite() && self.new_dpi > 0.,
-            "invalid measured DPI"
-        );
+        self.new_dpi = source_round(source / main * self.current_dpi);
         self.state = State::Completed;
         Ok(())
     }

@@ -4,12 +4,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 import hashlib
 import json
-import os
 from pathlib import Path
 import re
 import struct
 import subprocess
-import tempfile
 
 import native_adjudication as evidence
 
@@ -302,18 +300,15 @@ def _assemble(a, sources, assembler):
             or compiler.stat().st_size != assembler.get("bytes")
             or hashlib.sha256(compiler.read_bytes()).hexdigest() != _ASSEMBLER_SHA256):
         raise ValueError("The exact reviewed ML64 assembler is not available")
-    temp_root = a.resolve("target/verification-temp", "target")
-    temp_root.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix="source-assemble-", dir=temp_root) as directory:
-        temporary = Path(directory)
+    from workspace import verification_environment
+    root = a.resolve("target/verification-temp", "target").parent.parent
+    with verification_environment("native-source-assembly", root=root) as (environment, directory):
+        temporary = root / directory
         for name, raw in sources.items():
             if name not in _SOURCE_FILES:
                 raise ValueError("Private assembly input is outside the owned include closure")
             (temporary / name).write_bytes(raw)
         output = temporary / "kernel.obj"
-        environment = os.environ.copy()
-        for variable in ("TEMP", "TMP", "TMPDIR"):
-            environment[variable] = str(temporary)
         command = [str(compiler), "/nologo", "/c", "/I" + str(temporary), "/Fo" + str(output),
                    str(temporary / "SconvKernelAvx512F.asm")]
         completed = subprocess.run(command, capture_output=True, timeout=45, cwd=temporary, env=environment)

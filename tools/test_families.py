@@ -15,6 +15,220 @@ import host
 from test_host import pe_fixture
 
 
+class MatcherDeploymentComparisonTests(unittest.TestCase):
+    def setUp(self):
+        self.audit = host.HostLocalAudit()
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        root_patch = patch.object(analysis, "ROOT", self.root)
+        root_patch.start()
+        self.addCleanup(root_patch.stop)
+
+    def original(self, name, raw):
+        path = self.root / f".analysis/inputs/frontend/{name}/raw/apps.razer.com/synapse/products/190/mw/main.js"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(raw)
+        return {"path": path.relative_to(self.root).as_posix(), "bytes": len(raw),
+                "sha256": hashlib.sha256(raw).hexdigest()}
+
+    def compare(self, old_raw, new_raw, *, old_module=7, owner_body=None):
+        old = self.original("old-current", old_raw)
+        new = self.original("new-snapshot", new_raw)
+        factory = next(module for module in families.keyboard_source_modules(old_raw.decode())
+                       if module["module_id"] == old_module)
+        start, end = factory["byte_start"], factory["byte_end"]
+        if owner_body is not None:
+            start = old_raw.index(owner_body, start, end)
+            end = start + len(owner_body)
+        body = old_raw[start:end]
+        request = {"product_id": 190, "layer": "mw", "roles": ["monitor_factory"],
+                   "baseline_references": ["baseline/owner"],
+                    "owner": {"original": old, "byte_start": start,
+                              "byte_end": end, "body_sha256": hashlib.sha256(body).hexdigest()}}
+        source = {"product_id": 190, "layer": "mw", "originals": [new],
+                  "source_references": {new["path"]: {"url": "https://apps.razer.com/synapse/products/190/mw/main.js",
+                    "references": [{"role": "html_script_include", "from": "https://apps.razer.com/index.html",
+                                    "literal": "main.js"}]}}}
+        return families.matcher_owner_comparisons([request], source, self.audit), old, new
+
+    def test_same_factory_bytes_at_new_utf8_offsets_are_the_only_unchanged_case(self):
+        result, old, new = self.compare(b"const modules={7:(e,t,n)=>{t.value=1}};",
+                                        'const unicode="设备";const modules={7:(e,t,n)=>{t.value=1}};'.encode())
+        row = result["owner_comparisons"][0]
+        self.assertEqual(row["comparison"], "exact_factory_bytes")
+        left, right = (result["complete_owners"][row[key]] for key in ("old_owner", "new_owner"))
+        self.assertNotEqual(left["byte_start"], right["byte_start"])
+        self.assertEqual(left["body_sha256"], right["body_sha256"])
+        for original, owner in ((old, left), (new, right)):
+            raw = (self.root / original["path"]).read_bytes()[owner["byte_start"]:owner["byte_end"]]
+            self.assertEqual(hashlib.sha256(raw).hexdigest(), owner["body_sha256"])
+        self.assertEqual(result["unresolved"], [])
+
+    def test_identical_module_number_and_renamed_variables_do_not_prove_semantics(self):
+        result, _, _ = self.compare(b"const modules={7:(e,t,n)=>{t.value=1}};",
+                                    b"const modules={7:(a,b,c)=>{b.value=1}};")
+        row = result["owner_comparisons"][0]
+        self.assertEqual(row["comparison"], "factory_changed")
+        self.assertTrue(result["unresolved"])
+        self.assertIn("first_different_relative_byte", row["difference"])
+
+    def test_exact_child_bytes_do_not_promote_a_changed_factory_to_unchanged(self):
+        child = b"()=>{return 3}"
+        result, _, _ = self.compare(b"const modules={7:(e,t,n)=>{t.run=()=>{return 3};t.flag=1}};",
+                                    b"const modules={7:(e,t,n)=>{t.flag=2;t.run=()=>{return 3}}};",
+                                    owner_body=child)
+        row = result["owner_comparisons"][0]
+        self.assertEqual(row["comparison"], "factory_changed")
+        self.assertTrue(result["unresolved"])
+        owner = result["complete_owners"][row["exact_role_bytes_in_changed_factory"]]
+        self.assertEqual(owner["syntax"], "arrow_function")
+        self.assertEqual(owner["body_sha256"], hashlib.sha256(child).hexdigest())
+
+    def test_cli_routes_explicit_repeatable_acquisitions_to_matcher_review(self):
+        import argparse
+        parser = argparse.ArgumentParser()
+        families.add_commands(parser.add_subparsers(dest="command"))
+        args = parser.parse_args(["audit-family-function", "--family", "mouse", "--function", "main",
+            "--query", "mouse-matcher-deployment", "--product", "190", "--acquisition", "first.json",
+            "--acquisition", "second.json"])
+        self.assertEqual(args.acquisition, ["first.json", "second.json"])
+        with patch.object(families, "audit_mouse_matcher_deployment", return_value="selected") as run:
+            self.assertEqual(families.audit_family_function(args), "selected")
+            run.assert_called_once_with(args)
+
+    def ui_name_fixture(self):
+        raw = (b'const modules={1867:(e,t,n)=>{n.d(t,{KX:()=>key,K2:()=>normalize,qv:()=>unique,$B:()=>valid});'
+               b'const key=e=>e?typeof e==="object"?e.en||Object.values(e)[0]||"":e:"",'
+               b'normalize=e=>e.map(e=>e),unique=(e,t)=>t,valid=(e,t)=>!e.some(e=>e.name===t)}};'
+               b'function require(id){return modules[id]}const helper=require(1867);'
+               b'function none(e){return e&&"object"===typeof e?e.en||"":e||""}'
+               b'function sort(e){e.sort((a,b)=>helper.KX(a.name)<helper.KX(b.name)?-1:0)}'
+               b'const reducer=(e,E)=>{switch(E.type){case SELECT:{const p=structuredClone(e.sensitivityMatcher.profiles);'
+               b'p.filter(e=>"None"!==none(e.name));sort(p);helper.K2(p);helper.qv(p,E.payload);'
+               b'channel.postMessage({type:"ON_UPDATE_SENSITIVITY_PROFILE"});return p}}};'
+               b'const SELECT="SET_SELECTED_SENSITIVITY_MATCHER_PROFILE";'
+               b'class Profiles{constructor(){this.changeProfile=e=>this.props.selectedSensitivityMatcher;'
+               b'this.setProfileName=e=>helper.$B(this.props.sensitivityMatcher.profiles,e);'
+               b'this.componentDidUpdate=e=>e}computeDataSet(){return this.props.sensitivityMatcher.profiles}'
+               b'componentDidMount(){}componentWillUnmount(){}}'
+               b'class Calibration{constructor(){this.openSensitivityCalibration=e=>e}}'
+               b'const stageReducer=function(e,E){return{stages:JSON.parse(JSON.stringify(E.payload.stages)),action:"ON_STAGES_CHANGE"}};')
+        original = self.original("ui-names", raw)
+        return raw, {"product_id": 190, "layer": "ui", "originals": [original]}
+
+    def test_ui_names_retains_complete_consumers_and_actual_helper_export_bindings(self):
+        raw, source = self.ui_name_fixture()
+        result = families.matcher_ui_name_consumers(source, self.audit)
+        self.assertEqual(set(result["imported_helpers"]), {"1867.KX", "1867.K2", "1867.qv", "1867.$B"})
+        self.assertEqual(set(result["local_helpers"]), {"sort", "none"})
+        self.assertIn("SELECT", result["reducer_event_keys"])
+        self.assertFalse(result["semantic_equivalence_claim"])
+        for role, identifier in result["owners"].items():
+            owner = self.audit.owners[identifier]
+            self.assertEqual(hashlib.sha256(raw[owner["byte_start"]:owner["byte_end"]]).hexdigest(), owner["body_sha256"], role)
+        for helper in result["imported_helpers"].values():
+            self.assertEqual(helper["namespace_binding"]["body"], "helper=require(1867)")
+            self.assertIn(helper["binding"]["owner_id"], self.audit.owners)
+
+    def test_ui_names_does_not_borrow_missing_or_ambiguous_mounted_owners(self):
+        raw, source = self.ui_name_fixture()
+        for changed in (raw.replace(b'this.openSensitivityCalibration=', b'this.other='),
+                        raw + b'class Another{constructor(){this.openSensitivityCalibration=e=>e}}'):
+            with self.subTest(changed=changed[-80:]):
+                self.audit = host.HostLocalAudit()
+                original = self.original("changed-ui-names", changed)
+                with self.assertRaisesRegex(ValueError, "missing or ambiguous"):
+                    families.matcher_ui_name_consumers({**source, "originals": [original]}, self.audit)
+
+    def test_ui_names_rejects_dynamic_helper_imports_and_wrong_product_scope(self):
+        raw, source = self.ui_name_fixture()
+        original = self.original("dynamic-ui-helper", raw.replace(b'helper=require(1867)', b'helper=runtime'))
+        with self.assertRaisesRegex(ValueError, "literal webpack request"):
+            families.matcher_ui_name_consumers({**source, "originals": [original]}, self.audit)
+        for change in ({"product_id": 226}, {"layer": "mw"}):
+            with self.subTest(change=change), self.assertRaisesRegex(ValueError, "PID190 UI source"):
+                families.matcher_ui_name_consumers({**source, **change}, self.audit)
+
+    def test_cli_routes_immutable_ui_name_review_without_changing_deployment_query(self):
+        import argparse
+        parser = argparse.ArgumentParser()
+        families.add_commands(parser.add_subparsers(dest="command"))
+        args = parser.parse_args(["audit-family-function", "--family", "mouse", "--function", "main",
+            "--query", "mouse-matcher-ui-names", "--product", "190", "--acquisition", "old.json",
+            "--acquisition", "new.json"])
+        with patch.object(families, "audit_mouse_matcher_ui_names", return_value="selected") as run:
+            self.assertEqual(families.audit_family_function(args), "selected")
+            run.assert_called_once_with(args)
+        args.product = [226]
+        with self.assertRaisesRegex(ValueError, "currently covers PID190"):
+            families.audit_mouse_matcher_ui_names(args)
+
+    def test_relocated_matcher_id_is_a_changed_candidate_and_retains_real_helper_reexports(self):
+        old = b'const modules={7:(e,t,n)=>{const maxTravelDistance=10;const CONFIRM=()=>1}};'
+        new = (b'const modules={8:(e,t,n)=>{const maxTravelDistance=10;const CONFIRM=()=>n(11).Sl("{}")},'
+               b'11:(e,t,n)=>{n.d(t,{Sl:()=>o.Sl});const o=n(12)},'
+               b'12:(e,t,n)=>{const parse=e=>JSON.parse(e);n.d(t,{Sl:()=>parse})}};')
+        result, _, _ = self.compare(old, new)
+        row = result["owner_comparisons"][0]
+        self.assertEqual(row["comparison"], "factory_changed")
+        self.assertEqual(row["candidate_locator"], "complete_factory_with_maxTravelDistance_and_CONFIRM")
+        self.assertEqual(result["complete_factories"][row["new_owner"]]["module_id"], 8)
+        modules = {owner["module_id"] for owner in result["complete_factories"].values()}
+        self.assertTrue({7, 8, 11, 12} <= modules)
+        self.assertEqual({edge["module_id"] for edge in result["new_direct_dependency_edges"]}, {11, 12})
+
+    def test_missing_and_ambiguous_modules_remain_unresolved(self):
+        old = b"const modules={7:(e,t,n)=>{t.value=1}};"
+        for new, status in ((b"const modules={8:(e,t,n)=>{t.value=1}};", "module_missing"),
+                            (b"const a={7:(e,t,n)=>{t.value=1}},b={7:(e,t,n)=>{t.value=2}};",
+                             "ambiguous_factory_candidates")):
+            with self.subTest(status=status):
+                result, _, _ = self.compare(old, new)
+                self.assertEqual(result["owner_comparisons"][0]["comparison"], status)
+                self.assertTrue(result["unresolved"])
+                self.audit = host.HostLocalAudit()
+
+    def test_truncated_owner_ranges_are_rejected_as_incomplete_ast(self):
+        original = self.original("old-current", b"const modules={7:(e,t,n)=>{t.value=1}};")
+        raw = self.audit.read(original)
+        module = families.keyboard_source_modules(raw.decode())[0]
+        start, end = module["byte_start"], module["byte_end"] - 1
+        request = {"product_id": 190, "layer": "mw", "roles": ["monitor"], "baseline_references": [],
+                   "owner": {"original": original, "byte_start": start, "byte_end": end,
+                             "body_sha256": hashlib.sha256(raw[start:end]).hexdigest()}}
+        with self.assertRaisesRegex(ValueError, "complete AST owner"):
+            families.matcher_owner_comparisons([request], {"product_id": 190, "layer": "mw", "originals": []}, self.audit)
+
+    def test_new_source_requires_both_index_identity_and_actual_root_reference(self):
+        directory = self.root / ".analysis/inputs/frontend/new-snapshot"
+        main = self.original("new-snapshot", b"const modules={7:(e,t,n)=>{t.value=1}};")
+        entry_url = "https://apps.razer.com/synapse/products/190/mw/index.html"
+        entry = directory / "entry.html"
+        entry.write_bytes(b'<html><script src="main.js"></script></html>')
+        root = {"path": entry.relative_to(self.root).as_posix(), "bytes": entry.stat().st_size,
+                "sha256": hashlib.sha256(entry.read_bytes()).hexdigest()}
+        acquired = {"entry_url": entry_url, "target_execution": False, "source_current_during_acquisition": True,
+                    "files": [{**root, "url": entry_url}, {**main, "url": entry_url.replace("index.html", "main.js")}],
+                    "stability": [{"url": entry_url, "before_sha256": root["sha256"],
+                                   "after_sha256": root["sha256"], "unchanged": True}]}
+        acquisition = directory / "acquisition.json"
+        acquisition.write_text(json.dumps(acquired), encoding="utf-8")
+        name = acquisition.relative_to(self.root).as_posix()
+        indexed = {row["path"]: row for row in (root, main)}
+        indexed[name] = {"path": name, "bytes": acquisition.stat().st_size,
+                         "sha256": hashlib.sha256(acquisition.read_bytes()).hexdigest()}
+        result = families.matcher_deployment_source(name, self.audit, indexed)
+        self.assertEqual(result["product_id"], 190)
+        self.assertEqual(result["layer"], "mw")
+        self.assertEqual(result["originals"], [main])
+        self.assertEqual(result["source_references"][main["path"]]["references"][0]["role"], "html_script_include")
+        self.assertFalse(result["dependency_closure_verified"])
+        indexed[name]["sha256"] = "incorrect identity"
+        with self.assertRaisesRegex(ValueError, "acquisition is not indexed"):
+            families.matcher_deployment_source(name, self.audit, indexed)
+
+
 class FrontendReferenceGapTests(unittest.TestCase):
     def test_bounded_observation_url_edges_keep_their_declared_missing_originals(self):
         url = "https://apps.razer.com/catalog.json"

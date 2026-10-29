@@ -21,6 +21,8 @@ import subprocess
 import sys
 import tempfile
 import tomllib
+import urllib.error
+import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 import asset_release as resource_sources
@@ -376,6 +378,7 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
     preference_page = owner.startswith(preference_pages) or owner == "crates/razer-pages/src/features/accessories/hue.rs"
     profile_codec = "crates/razer-device/src/profile_transfer.rs"
     matcher_shell = "crates/razer-shell/src/shell/mouse/mouse_matcher.rs"
+    matcher_page = "crates/razer-pages/src/features/mouse/dpi/mouse_matcher_owner.rs"
     matcher_worker = "crates/razer-service/src/mouse/dpi_matcher_worker.rs"
     profile_name_owner = "crates/razer-device/src/source_string.rs"
     profile_name_consumers = {
@@ -1115,7 +1118,7 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
                     function = predicate.child_by_field_name("function")
                     receiver = function.child_by_field_name("value")
                     arguments = predicate.child_by_field_name("arguments").named_children
-                    if ("".join(text(receiver).split()) != "self.mouse_matcher.sessions.get(&save.owner.identity)"
+                    if ("".join(text(receiver).split()) != "self.mouse_matcher.sessions.get(&save.owner.key)"
                             or len(arguments) != 1 or arguments[0].type != "closure_expression"):
                         continue
                     closure = arguments[0].child_by_field_name("body")
@@ -1137,26 +1140,41 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
                     "device.active_profile==self.profile_id",
                     "device.profiles.iter().any(|profile|profile.id==self.profile_id&&profile.guid==self.profile_guid)",
                     "workspace_state.retains_mouse_matcher_scope(&self.scope,cx)",
-                    "draining||self.scope.is_valid()&&workspace_state.mouse_matcher_scope(cx).as_ref()==Some(&self.scope)"}
-                routes = [call for parts, call in calls(node)
-                    if parts == ["super", "device_discovery", "retained_connection"]
-                    and ["".join(text(argument).split()) for argument in call.child_by_field_name("arguments").named_children]
-                        == ["std::slice::from_ref(&self.route)", "&shell.device_observations", "device"]]
-                if not required <= terms or not routes:
+                    "draining||workspace_state.accepts_mouse_matcher_scope(&self.scope,cx)"}
+                route = ("match&self.route{Some(route)=>super::device_discovery::retained_connection("
+                         "std::slice::from_ref(route),&shell.device_observations,device,),"
+                         "None=>self.scope.is_normalization(),}")
+                if not required <= terms or route not in terms:
                     fail(node, "matcher_drain_bypasses_profile_or_connection_owner", matcher_shell + "::Owner::current")
+            if owner == matcher_page and implementation == "MouseProductWorkspace" and name == "accepts_mouse_matcher_scope":
+                body = node.child_by_field_name("body")
+                terms = condition_atoms(body.named_children[-1]) if body.named_children else set()
+                required = {"scope.is_valid()", "self.retains_mouse_matcher_scope(scope,cx)",
+                    "scope.is_normalization()||self.mouse_matcher_scope(cx).as_ref()==Some(scope)"}
+                if not required <= terms:
+                    fail(node, "matcher_request_accepts_expired_or_unmounted_ui_scope", matcher_page + "::accepts_mouse_matcher_scope")
+            if owner == matcher_page and implementation == "MouseProductWorkspace" and name == "retains_mouse_matcher_scope":
+                body = node.child_by_field_name("body")
+                terms = condition_atoms(body.named_children[-1]) if body.named_children else set()
+                required = {"self.mouse_polling_scope(cx)==Some(scope.domain)",
+                    "self.matcher.as_ref().is_some_and(|matcher|matchscope.kind{"
+                    "ScopeKind::Ui=>scope.retained_by(matcher.entity_id(),self.matcher_epoch,&self.matcher_valid),"
+                    "ScopeKind::Normalization=>scope.retained_by(matcher.entity_id(),self.matcher_normalization.epoch,&self.matcher_normalization.valid),})"}
+                if not required <= terms:
+                    fail(node, "matcher_retention_loses_domain_or_owner_epoch", matcher_page + "::retains_mouse_matcher_scope")
             if owner == matcher_shell and name == "dispatch_mouse_matcher":
                 for call in walk(node):
                     if call.type != "call_expression" or call.child_by_field_name("function").type != "field_expression":
                         continue
                     function = call.child_by_field_name("function")
-                    if text(function.child_by_field_name("field")) != "retire_mouse_matcher":
+                    if (text(function.child_by_field_name("field")) != "retire_mouse_matcher"
+                            or text(function.child_by_field_name("value")) != "shell"):
                         continue
                     args = call.child_by_field_name("arguments").named_children
-                    if not args or "".join(text(args[0]).split()) != "&delivery_owner.identity":
-                        continue
-                    if not any(condition.endswith(".is_some_and(|session|session.owner.id==delivery_owner.id)")
-                            and ".sessions.get(&delivery_owner.identity)" in condition
-                            for condition in enclosing_conditions(call)):
+                    if (not args or "".join(text(args[0]).split()) != "&delivery_owner.key"
+                            or not any(condition.endswith(".is_some_and(|session|session.owner.id==delivery_owner.id)")
+                                and ".sessions.get(&delivery_owner.key)" in condition
+                                for condition in enclosing_conditions(call))):
                         fail(call, "matcher_retired_worker_removes_successor", matcher_shell + "::dispatch_mouse_matcher")
             if owner in {matcher_shell, receiver_save} and name in {
                     "rebase_mouse_matcher_save", "rebase_receiver_profile_save"}:
@@ -4951,6 +4969,423 @@ def official_resource_url(value):
                  or host == "razerzone.com" or host.endswith(".razerzone.com")))
 
 
+def _frontend_revalidation_fetch(url):
+    """Fetch one official deployment URL without writing a capture or cache."""
+    if not official_resource_url(url):
+        return {"url": url, "status": "rejected", "error": "non-official HTTPS URL"}
+    request = urllib.request.Request(
+        url,
+        headers={"User-Agent": "razer-ui-current-deployment-revalidation", "Accept-Encoding": "identity",
+                 "Cache-Control": "no-cache"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=40) as response:
+            raw = response.read()
+            final_url = response.geturl()
+            row = {
+                "url": url,
+                "status": "ok" if response.status == 200 else "http_error",
+                "http_status": response.status,
+                "final_url": final_url,
+                "bytes": len(raw),
+                "sha256": hashlib.sha256(raw).hexdigest(),
+                "acquired_at_utc": datetime.now(timezone.utc).isoformat(),
+                "headers": {key: response.headers[key] for key in (
+                    "Content-Type", "Content-Length", "ETag", "Last-Modified", "Date", "Age")
+                    if key in response.headers},
+            }
+            length = response.headers.get("Content-Length")
+            if length is not None and (not length.isdecimal() or int(length) != len(raw)):
+                row.update(status="failed", error="HTTP Content-Length differs from response bytes")
+            if not official_resource_url(final_url):
+                row.update(status="failed", error="redirected outside official HTTPS origin")
+            row["_raw"] = raw
+            return row
+    except urllib.error.HTTPError as error:
+        row = {
+            "url": url,
+            "status": "missing" if error.code == 404 else "http_error",
+            "http_status": error.code,
+            "final_url": error.geturl(),
+            "error": str(error),
+            "acquired_at_utc": datetime.now(timezone.utc).isoformat(),
+        }
+        error.close()
+        return row
+    except Exception as error:
+        return {"url": url, "status": "failed", "error": str(error),
+                "acquired_at_utc": datetime.now(timezone.utc).isoformat()}
+
+
+def _frontend_revalidation_originals(acquisition, deployment, owner_names):
+    """Return bounded deployment URLs and retained identities from one receipt."""
+    entry = acquisition.get("entry_url")
+    if not official_resource_url(entry):
+        raise ValueError("Frontend acquisition entry is outside the official HTTPS origin")
+    urls = {entry: {"required": True, "roles": ["html_entry"]}}
+    base = deployment.get("entry_response_url") or entry
+    for name in ("asset-manifest.json", "manifest.json", "webpackManifest.json"):
+        urls.setdefault(urllib.parse.urljoin(base, name), {"required": False, "roles": []})
+    for source in deployment.get("sources", []):
+        url = source.get("url")
+        if (source.get("deployment_role") in {"html_include", "inline_equivalent_original"}
+                and Path(urllib.parse.urlsplit(url or "").path).suffix.lower() in {".js", ".mjs"}):
+            item = urls.setdefault(url, {"required": True, "roles": []})
+            item["roles"].append(source.get("deployment_role"))
+    referenced = {source.get("original", {}).get("path"): source for source in deployment.get("sources", [])
+                  if source.get("identity_verified") and source.get("original")}
+    for name in owner_names:
+        if name in referenced:
+            source = referenced[name]
+            if Path(urllib.parse.urlsplit(source["url"]).path).suffix.lower() not in {".js", ".mjs"}:
+                raise ValueError("Explicit deployed owner is not JavaScript: " + name)
+            item = urls.setdefault(source["url"], {"required": True, "roles": []})
+            item["roles"].append("explicit_deployed_owner")
+    retained = {}
+    for row in acquisition.get("files", []):
+        url, path = row.get("url"), row.get("path")
+        if not url or not path:
+            continue
+        if url not in urls:
+            continue
+        original = safe(ROOT / path)
+        if (not original.is_relative_to((ROOT / ".analysis/inputs").resolve())
+                or relative(original) != path or original.stat().st_size != row.get("bytes")
+                or digest(original) != row.get("sha256")):
+            raise ValueError("Retained deployment original byte identity differs: " + path)
+        retained[url] = {key: row.get(key) for key in ("path", "bytes", "sha256", "final_url", "http_status")}
+        urls[url]["required"] = True
+    return urls, retained
+
+
+def _frontend_revalidation_publish(raw, *, receipt=False, input_receipt=False, created_paths=None):
+    """Publish immutable bytes without replacing a racing writer's identity."""
+    sha256 = hashlib.sha256(raw).hexdigest()
+    if receipt and input_receipt:
+        raise ValueError("A revalidation publication has one receipt owner")
+    directory = (".analysis/results/frontend-revalidation" if receipt else
+                 ".analysis/inputs/frontend-revalidation/receipts" if input_receipt else
+                 ".analysis/inputs/frontend-revalidation/blobs")
+    candidate = ROOT / directory / (sha256 + ".json" if receipt or input_receipt else sha256)
+    if candidate.is_symlink():
+        raise ValueError("Content-addressed revalidation output is a symbolic link")
+    destination = safe(candidate)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    if destination.exists():
+        if digest(destination) != sha256 or destination.read_bytes() != raw:
+            raise ValueError("Content-addressed revalidation output identity differs")
+        return {"path": relative(destination), "bytes": len(raw), "sha256": sha256}
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(dir=destination.parent, prefix=sha256 + ".", suffix=".tmp", delete=False) as stream:
+            temporary = Path(stream.name)
+            stream.write(raw)
+            stream.flush()
+            os.fsync(stream.fileno())
+        if digest(temporary) != sha256:
+            raise ValueError("Revalidation blob digest changed before publication")
+        try:
+            os.link(temporary, destination)
+        except FileExistsError:
+            if destination.is_symlink() or destination.read_bytes() != raw:
+                raise ValueError("Content-addressed revalidation publication raced different bytes")
+        return {"path": relative(destination), "bytes": len(raw), "sha256": sha256}
+    finally:
+        if temporary is not None:
+            try:
+                if (created_paths is not None and temporary.exists() and destination.exists()
+                        and os.path.samefile(temporary, destination)):
+                    stat = destination.stat()
+                    created_paths[relative(destination)] = {
+                        "identity": {"path": relative(destination), "bytes": len(raw), "sha256": sha256},
+                        "file_identity": (stat.st_dev, stat.st_ino),
+                    }
+            finally:
+                temporary.unlink(missing_ok=True)
+
+
+def _frontend_revalidation_cleanup_owned(created_paths):
+    """Release only this observer's unpublished files after an index failure."""
+    result = {"removed": [], "retained": [], "failures": [], "removed_logical_bytes": 0}
+    if not created_paths:
+        return result
+    try:
+        indexed = {row["path"]: row for row in json.loads((ROOT / ".analysis/inputs.json").read_bytes())["inputs"]}
+    except (OSError, ValueError, KeyError) as error:
+        result["failures"].append({"reason": "index_unavailable", "error": str(error)})
+        result["retained"] = [{"path": name, "reason": "index_unavailable"} for name in created_paths]
+        return result
+    for name, owned in created_paths.items():
+        identity = owned["identity"]
+        if name in indexed:
+            result["retained"].append({"path": name, "reason": "indexed"})
+            continue
+        candidate = ROOT / name
+        try:
+            if (not name.startswith((".analysis/inputs/frontend-revalidation/blobs/",
+                                     ".analysis/inputs/frontend-revalidation/receipts/"))
+                    or candidate.is_symlink() or relative(safe(candidate)) != name):
+                raise ValueError("Owned revalidation cleanup boundary differs")
+            if not candidate.exists():
+                continue
+            stat = candidate.stat()
+            if ((stat.st_dev, stat.st_ino) != owned["file_identity"] or stat.st_size != identity["bytes"]
+                    or digest(candidate) != identity["sha256"]):
+                raise ValueError("Owned revalidation cleanup file identity differs")
+            candidate.unlink()
+            if candidate.exists():
+                raise OSError("Owned revalidation cleanup did not remove the file")
+            result["removed"].append(identity)
+            result["removed_logical_bytes"] += identity["bytes"]
+        except (OSError, ValueError) as error:
+            result["failures"].append({"path": name, "error": str(error)})
+    return result
+
+
+def _frontend_revalidation_index(report, created_paths):
+    """Append new HTTP originals through the verified source publication API."""
+    import analysis
+    original_rows, urls = {}, {}
+    for observation in report["observations"]:
+        original = observation.get("observed_original")
+        if original:
+            original_rows[original["path"]] = original
+            urls.setdefault(original["path"], set()).add(observation["url"])
+    if not original_rows:
+        return {"status": "not_needed", "index_changed": False, "new_input_rows": 0}
+    index_path = safe(ROOT / ".analysis/inputs.json")
+    before_raw = index_path.read_bytes()
+    before = {row["path"]: row for row in json.loads(before_raw)["inputs"]}
+    before_identity = {"path": relative(index_path), "bytes": len(before_raw),
+                       "sha256": hashlib.sha256(before_raw).hexdigest()}
+    rows = []
+    for name, identity in sorted(original_rows.items()):
+        if name in before:
+            if any(before[name].get(key) != identity[key] for key in ("bytes", "sha256")):
+                raise ValueError("Indexed revalidation original identity differs: " + name)
+            continue
+        rows.append({**identity, "kind": "official_frontend_http_revalidation_observation", "urls": sorted(urls[name])})
+    if not rows:
+        return {"status": "already_indexed", "index_changed": False, "new_input_rows": 0,
+                "all_observed_originals_indexed": True}
+    publication = {
+        "schema_version": 1, "kind": "immutable_frontend_revalidation_source_publication",
+        "observation": report, "index_before": before_identity, "new_originals": rows,
+        "publication_policy": "append content-addressed inputs; preserve existing entries and acquisition receipts",
+        "source_semantics_complete": False, "target_execution": False, "runtime_acceptance": "unverified",
+    }
+    encoded = (json.dumps(publication, ensure_ascii=False, sort_keys=True, indent=2) + "\n").encode("utf-8")
+    receipt = _frontend_revalidation_publish(encoded, input_receipt=True, created_paths=created_paths)
+    rows.append({**receipt, "kind": "official_frontend_revalidation_publication_receipt"})
+    analysis.index_files(rows, publication={
+        "owner": "tools/workspace.py", "receipt": receipt["path"],
+        "reason": "Append immutable official HTTP observations without replacing retained acquisition evidence",
+        "verification": {"actual_original_bytes_verified": True, "originals": len(original_rows),
+                         "new_input_rows": len(rows), "strict_deployment_match": report["passed"],
+                         "target_execution": False},
+    })
+    after_raw = index_path.read_bytes()
+    after = {row["path"]: row for row in json.loads(after_raw)["inputs"]}
+    preserved = all(after.get(name) == row for name, row in before.items())
+    published = all(after.get(row["path"]) == row for row in rows)
+    if not preserved or not published:
+        raise ValueError("Revalidation index publication changed old entries or omitted new identities")
+    return {"status": "published", "index_changed": True, "index_before": before_identity,
+            "index_after": {"path": relative(index_path), "bytes": len(after_raw),
+                            "sha256": hashlib.sha256(after_raw).hexdigest()},
+            "publication_receipt": receipt, "new_input_rows": len(rows),
+            "previous_entries_unchanged": preserved, "all_observed_originals_indexed": published}
+
+
+def revalidate_current_frontends(acquisition_names, *, owner_names=(), workers=6):
+    import analysis
+    # The lease includes rollback, so one observer cannot delete a blob reserved
+    # by another revalidation between its byte publication and index append.
+    with analysis.index_lock(ROOT / ".analysis/frontend-revalidation.lock"):
+        return _revalidate_current_frontends(acquisition_names, owner_names=owner_names, workers=workers)
+
+
+def _revalidate_current_frontends(acquisition_names, *, owner_names, workers):
+    """Revalidate retained current deployments without mutating acquisition inputs."""
+    if not acquisition_names:
+        raise ValueError("At least one retained frontend acquisition is required")
+    if type(workers) is not int or not 1 <= workers <= 12:
+        raise ValueError("Revalidation workers must be between one and twelve")
+    import evidence
+    import frontend
+
+    jobs, sources, protected = [], [], {}
+
+    def protect(path, expected=None):
+        name = relative(path)
+        identity = {"path": name, "bytes": path.stat().st_size, "sha256": digest(path)} if path.is_file() else {
+            "path": name, "absent": True}
+        protected[name] = identity
+        if expected is not None and any(identity.get(key) != expected[key] for key in ("bytes", "sha256")):
+            raise ValueError("Protected frontend input changed during verification: " + name)
+        return identity
+
+    protect(safe(ROOT / ".analysis/inputs.json"))
+    requested_owners = {relative(safe(ROOT / name)) for name in owner_names}
+    found_owners = set()
+    for name in dict.fromkeys(acquisition_names):
+        acquisition_path = safe(ROOT / name)
+        if (acquisition_path.name != "acquisition.json"
+                or acquisition_path.parent.parent != (ROOT / ".analysis/inputs/frontend").resolve()
+                or relative(acquisition_path) != name):
+            raise ValueError("Revalidation requires a project-relative retained frontend acquisition")
+        raw = acquisition_path.read_bytes()
+        acquisition = json.loads(raw)
+        route = frontend.canonical_frontend_entry(acquisition.get("entry_url"))
+        if acquisition.get("target_execution") is not False:
+            raise ValueError("Frontend acquisition does not establish static-only evidence")
+        deployment = evidence.frontend_deployment_sources(acquisition)
+        if deployment.get("failures"):
+            raise ValueError(f"Current deployment {name} failed cached verification: "
+                             + json.dumps(deployment["failures"], sort_keys=True))
+        urls, retained = _frontend_revalidation_originals(acquisition, deployment, requested_owners)
+        source_name = acquisition_path.parent.name
+        sources.append({"name": source_name, "route": route,
+                        "acquisition": protect(acquisition_path, {
+                            "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()}),
+                        "baseline_recorded_at_utc": acquisition.get("recorded_at_utc")})
+        for url, metadata in urls.items():
+            original = retained.get(url)
+            if original:
+                protect(safe(ROOT / original["path"]), original)
+                if "explicit_deployed_owner" in metadata["roles"]:
+                    found_owners.add(original["path"])
+            jobs.append({"source_set": source_name, "url": url, **metadata, "retained": original})
+    if found_owners != requested_owners:
+        raise ValueError("Explicit owners lack verified current deployment references: "
+                         + json.dumps(sorted(requested_owners - found_owners)))
+
+    def fetch_round(round_number):
+        results = {}
+        pool = concurrent.futures.ThreadPoolExecutor(max_workers=workers)
+        try:
+            pending = {pool.submit(_frontend_revalidation_fetch, url): url for url in sorted({job["url"] for job in jobs})}
+            for future in concurrent.futures.as_completed(pending):
+                url = pending[future]
+                results[url] = {**future.result(), "round": round_number}
+        finally:
+            pool.shutdown(wait=True, cancel_futures=True)
+        return results
+
+    first, second, interrupted = {}, {}, None
+    try:
+        first = fetch_round(1)
+        second = fetch_round(2)
+    except BaseException as error:
+        interrupted = error
+    observations, failures, created_paths = [], [], {}
+    if interrupted is not None:
+        failures.append({"kind": "cancelled" if isinstance(interrupted, KeyboardInterrupt) else "fetch_failed",
+                         "error_type": type(interrupted).__name__})
+    for job in jobs:
+        left, right = first.get(job["url"], {}), second.get(job["url"], {})
+        source = {
+            "source_set": job["source_set"],
+            "url": job["url"],
+            "required": job["required"],
+            "roles": sorted(set(job["roles"])),
+            "retained_original": job["retained"],
+            "rounds": [{key: value for key, value in row.items() if key != "_raw"} for row in (left, right)],
+        }
+        stable = (left.get("status") == right.get("status") == "ok"
+                  and left.get("http_status") == right.get("http_status") == 200
+                  and left.get("final_url") == right.get("final_url")
+                  and left.get("bytes") == right.get("bytes")
+                  and left.get("sha256") == right.get("sha256"))
+        missing = (left.get("status") == right.get("status") == "missing"
+                   and left.get("final_url") == right.get("final_url")
+                   and official_resource_url(left.get("final_url")))
+        if missing and not job["required"]:
+            source["classification"] = "optional_missing"
+        elif stable:
+            raw = right.get("_raw", b"")
+            retained = job["retained"]
+            if (retained and retained.get("bytes") == right.get("bytes")
+                    and retained.get("sha256") == right.get("sha256")):
+                source["classification"] = (
+                    "unchanged_reused" if (retained.get("final_url") or job["url"]) == right.get("final_url")
+                    else "changed_deployment_route")
+                source["reused_path"] = retained.get("path")
+            else:
+                source["classification"] = "changed_or_new_deployment"
+                if interrupted is None:
+                    try:
+                        source["observed_original"] = _frontend_revalidation_publish(raw, created_paths=created_paths)
+                    except BaseException as error:
+                        interrupted = error
+                        source["classification"] = "publication_failed"
+                else:
+                    source["classification"] = "publication_not_completed"
+        elif missing:
+            source["classification"] = "required_missing" if job["required"] else "optional_missing"
+        else:
+            source["classification"] = "unstable_or_failed"
+        if source["classification"] not in {"unchanged_reused", "optional_missing"}:
+            failures.append({"source_set": job["source_set"], "url": job["url"],
+                             "classification": source["classification"]})
+        observations.append(source)
+
+    input_changes = []
+    for name, identity in protected.items():
+        path = safe(ROOT / name)
+        if identity.get("absent"):
+            changed = path.exists()
+        else:
+            changed = not path.is_file() or path.stat().st_size != identity["bytes"] or digest(path) != identity["sha256"]
+        if changed:
+            input_changes.append(name)
+    failures.extend({"kind": "protected_input_changed", "path": name} for name in input_changes)
+
+    report = {
+        "schema_version": 1,
+        "kind": "immutable_current_frontend_deployment_revalidation",
+        "created_at_utc": datetime.now(timezone.utc).isoformat(),
+        "source_sets": sources,
+        "observations": observations,
+        "protected_inputs": list(protected.values()),
+        "failures": failures,
+        "passed": not failures,
+        "target_execution": False,
+        "inputs_unchanged": not input_changes,
+        "protected_originals_unchanged": not any(name != ".analysis/inputs.json" for name in input_changes),
+        "source_semantics_complete": False,
+        "runtime_acceptance": "unverified",
+        "scope": "Two-round HTTP identity of retained deployment roots, direct JavaScript owners and explicit deployed owners; changed deployments are not promoted",
+        "cleanup": {"http_temporary_files": 0, "atomic_publication_temporaries": "removed in finally"},
+    }
+    try:
+        report["index_publication"] = _frontend_revalidation_index(report, created_paths)
+    except BaseException as error:
+        interrupted = interrupted or error
+        report["index_publication"] = {"status": "failed", "error_type": type(error).__name__, "error": str(error)}
+        report["failures"].append({"kind": "index_publication_failed", "error_type": type(error).__name__})
+    finally:
+        cleanup = _frontend_revalidation_cleanup_owned(created_paths)
+        report["cleanup"]["owned_publication_files"] = cleanup
+        report["failures"].extend({"kind": "publication_cleanup_failed", **failure} for failure in cleanup["failures"])
+    removed = {row["path"] for row in cleanup["removed"]}
+    for observation in observations:
+        if observation.get("observed_original", {}).get("path") in removed:
+            observation["retention"] = "removed_after_index_publication_failure"
+    index_identity = protected[".analysis/inputs.json"]
+    index_path = safe(ROOT / ".analysis/inputs.json")
+    report["index_changed"] = index_path.exists() if index_identity.get("absent") else (
+        not index_path.is_file() or digest(index_path) != index_identity["sha256"])
+    report["inputs_unchanged"] = report["inputs_unchanged"] and not report["index_changed"]
+    report["passed"] = not report["failures"]
+    encoded = (json.dumps(report, ensure_ascii=False, sort_keys=True, indent=2) + "\n").encode("utf-8")
+    report["receipt"] = _frontend_revalidation_publish(encoded, receipt=True)
+    if interrupted is not None:
+        print(json.dumps({"interrupted_revalidation_receipt": report["receipt"]}), flush=True)
+        raise interrupted
+    return report
+
+
 def keyboard_svg_import_module(producer_body, alias):
     """Resolve the factory's import without collecting nested lexical bindings."""
     import families
@@ -5862,12 +6297,14 @@ def _clean_formal_capture_history(document, owner, raw, candidates, *, bind_hist
 
 
 def _clean_json_dependencies(value, *, own_receipt=False, field=None, ended_batch=False, historical_job=False,
-                             formal_stdout_jobs=()):
+                             formal_stdout_jobs=(), verification_owners=()):
     """Keep dependency fields while excluding explicitly historical inventory facts."""
     if isinstance(value, dict):
         if value.get("mode") in {"scratch_cleanup_plan", "scratch_cleanup_apply"}:
             return
         for key, child in value.items():
+            if key == "directory" and id(child) in verification_owners:
+                continue
             if key == "scratch_cleanup" or own_receipt and key in {"database", "argv", "retained_private_database"}:
                 continue
             if historical_job and key in {"scratch", "argv", "command", "log"}:
@@ -5878,11 +6315,13 @@ def _clean_json_dependencies(value, *, own_receipt=False, field=None, ended_batc
                 continue
             yield from _clean_json_dependencies(child, own_receipt=own_receipt and key == "previous_attempts",
                                                 field=key, historical_job=ended_batch and key == "jobs",
-                                                formal_stdout_jobs=formal_stdout_jobs)
+                                                formal_stdout_jobs=formal_stdout_jobs,
+                                                verification_owners=verification_owners)
     elif isinstance(value, list):
         for child in value:
             yield from _clean_json_dependencies(child, field=field, own_receipt=own_receipt,
-                                                historical_job=historical_job, formal_stdout_jobs=formal_stdout_jobs)
+                                                historical_job=historical_job, formal_stdout_jobs=formal_stdout_jobs,
+                                                verification_owners=verification_owners)
     elif isinstance(value, str):
         yield value
 
@@ -5949,7 +6388,7 @@ def _clean_stream_json_dependencies(path):
                     stack.append({"object": kind == "{", "state": "key_or_end" if kind == "{" else "value_or_end",
                                   "ignored": ignored, "key": None})
                 elif kind == "string":
-                    if not ignored and re.search(r"\.work", token, re.IGNORECASE):
+                    if not ignored and re.search(r"\.work|target[/\\]verification-temp", token, re.IGNORECASE):
                         yield token
                 elif kind != "scalar":
                     raise ValueError("Malformed retained JSON value")
@@ -6045,14 +6484,29 @@ def _clean_references(candidates, *, exclude=(), bind_history=False):
             errors.append("Malformed retained JSON reference owner: " + filename)
             continue
         formal_history = _clean_formal_capture_history(document, path, raw, names, bind_history=bind_history)
+        verification_owners = set()
+        if filename == VERIFICATION_TEMP_LEDGER:
+            try:
+                if document != _verification_ledger(ROOT):
+                    raise ValueError("Verification ledger changed during reference scan")
+                for owner in document["records"]:
+                    if owner["directory"]["path"] not in names:
+                        continue
+                    if owner["registration"] == "explicit_legacy_recovery":
+                        _verification_recovery_source(owner["recovery"])
+                    verification_owners.add(id(owner["directory"]))
+            except (OSError, ValueError, KeyError, TypeError) as error:
+                errors.append("Invalid verification historical owner: " + str(error))
         for name in matched_names:
             row = names[name]
             ended_batch = (isinstance(document, dict)
                            and re.fullmatch(r"\.work/reverse-pending/[^/]+-capture-batch\.json", filename)
                            and _clean_capture_batch_ended(document, datetime.now(timezone.utc).timestamp()))
-            strings = (_clean_json_dependencies(document, own_receipt=filename in row["owner_receipts"],
+            strings = (_clean_json_dependencies(document, own_receipt=filename in row["owner_receipts"]
+                                                 and row.get("kind") != "owned_empty_verification_temp",
                                                  ended_batch=ended_batch, formal_stdout_jobs={
-                                                     job for job, target in formal_history.items() if target == name})
+                                                      job for job, target in formal_history.items() if target == name},
+                                                 verification_owners=verification_owners)
                        if document is not None else [raw.decode("utf-8")])
             if any(_clean_dependency_mentions(name, value) for value in strings):
                 references.setdefault(name, []).append(filename)
@@ -6068,7 +6522,12 @@ def _clean_process_guard(candidates):
     for row in candidates:
         name = row["path"].casefold()
         for process in processes:
-            if name in process["command_line"].replace("\\", "/").casefold():
+            command = process["command_line"].replace("\\", "/").casefold()
+            verification_active = (row.get("kind") == "owned_empty_verification_temp" and process["pid"] != os.getpid()
+                                   and (re.search(r"(?:^|[/\s\"])(?:cargo|rustc|ml64)(?:\.exe)?(?:[\s\"]|$)", command)
+                                        or "workspace.py" in command and "validate-rust" in command
+                                        or "test_evidence" in command or "native_source_correspondence" in command))
+            if name in command or verification_active:
                 references.setdefault(row["path"], []).append(process["pid"])
     return references, errors
 
@@ -6079,7 +6538,7 @@ def _clean_locks():
     import msvcrt
     streams = []
     try:
-        for name in (".analysis/reverse-pending.lock", ".work/resource-writer.lock"):
+        for name in (".analysis/reverse-pending.lock", ".work/resource-writer.lock", VERIFICATION_TEMP_LOCK):
             path = safe(ROOT / name)
             path.parent.mkdir(parents=True, exist_ok=True)
             stream = path.open("a+b")
@@ -6202,14 +6661,15 @@ def _clean_create_receipt(path, report):
         os.fsync(stream.fileno())
 
 
-def clean(stale=False, *, before=None, dry_run=False, plan=None, apply=None, plan_sha256=None):
+def clean(stale=False, *, before=None, dry_run=False, plan=None, apply=None, plan_sha256=None,
+          verification_recovery=None):
     """Plan conservative scratch cleanup; deletion requires an unchanged explicit plan."""
     if stale:
-        if dry_run or plan or apply or plan_sha256:
+        if dry_run or plan or apply or plan_sha256 or verification_recovery is not None:
             raise ValueError("--stale cannot be combined with planned cleanup")
         return _clean_stale(before)
     if apply:
-        if dry_run or plan or not re.fullmatch(r"[a-f0-9]{64}", plan_sha256 or ""):
+        if dry_run or plan or verification_recovery is not None or not re.fullmatch(r"[a-f0-9]{64}", plan_sha256 or ""):
             raise ValueError("Cleanup apply requires only --apply and --plan-sha256")
         source = _clean_receipt_path(apply)
         raw = source.read_bytes()
@@ -6222,15 +6682,24 @@ def clean(stale=False, *, before=None, dry_run=False, plan=None, apply=None, pla
         with _clean_locks():
             rows = report["candidates"]
             current, _ = _clean_candidates()
-            current_names = {row["path"] for row in current}
+            verification_rows, _ = _verification_candidates()
+            current.extend(verification_rows)
+            current_names = {row["path"]: row for row in current}
             for row in rows:
-                if row.get("kind") not in {"ended_supplement_private_copy", "old_asset_upload_clone"}:
+                if row.get("kind") not in {"ended_supplement_private_copy", "old_asset_upload_clone", "owned_empty_verification_temp"}:
                     raise ValueError("Cleanup plan contains an unowned target")
                 name = row["path"]
-                allowed = (re.fullmatch(r"\.work/native/[a-f0-9]{64}/supplements/[a-f0-9]{16}(?:-[a-f0-9]{16})?", name)
+                if row["kind"] == "owned_empty_verification_temp":
+                    allowed, tree = True, _verification_tree(name)
+                    owner = current_names.get(name, {})
+                    if any(row.get(key) != owner.get(key) for key in ("basis", "owner_receipts", "ownership")):
+                        raise ValueError("Verification cleanup plan omitted or changed ownership evidence")
+                else:
+                    allowed = (re.fullmatch(r"\.work/native/[a-f0-9]{64}/supplements/[a-f0-9]{16}(?:-[a-f0-9]{16})?", name)
                            if row["kind"] == "ended_supplement_private_copy" else re.fullmatch(
                                r"\.work/asset-releases/uploads/assets-[a-f0-9]{20}-[A-Za-z0-9_-]+", name))
-                if not allowed or _clean_tree(name) != row["tree"]:
+                    tree = _clean_tree(name)
+                if not allowed or tree != row["tree"]:
                     raise ValueError("Cleanup target changed or escaped its owned scope")
                 if name not in current_names:
                     raise ValueError("Cleanup target acquired a current analysis reservation or lost completion ownership")
@@ -6248,7 +6717,8 @@ def clean(stale=False, *, before=None, dry_run=False, plan=None, apply=None, pla
             _clean_create_receipt(receipt_path, receipt)
             for row in rows:
                 try:
-                    allocation = _clean_delete_group(row)
+                    allocation = (_verification_delete_empty(row) if row["kind"] == "owned_empty_verification_temp"
+                                  else _clean_delete_group(row))
                     receipt["removed"].append({"path": row["path"], "bytes": row["tree"]["bytes"],
                                                "files": len(row["tree"]["files"]), **(allocation or {})})
                 except (OSError, ValueError) as error:
@@ -6257,8 +6727,25 @@ def clean(stale=False, *, before=None, dry_run=False, plan=None, apply=None, pla
                         "partial_removed_files": partial, "partial_removed_bytes": sum(item["bytes"] for item in partial),
                         "partial_removed_allocated_bytes": sum(item.get("allocated_bytes", 0) for item in partial)})
                     write_json(receipt_path, receipt)
+                    try:
+                        _verification_finish_cleanup(receipt)
+                    except (OSError, ValueError) as finalize_error:
+                        receipt["failures"].append({"path": VERIFICATION_TEMP_LEDGER,
+                            "reason": "ownership finalization failed: " + str(finalize_error),
+                            "partial_removed_files": [], "partial_removed_bytes": 0,
+                            "partial_removed_allocated_bytes": 0})
+                        write_json(receipt_path, receipt)
                     raise
                 write_json(receipt_path, receipt)
+            try:
+                _verification_finish_cleanup(receipt)
+            except (OSError, ValueError) as finalize_error:
+                receipt["failures"].append({"path": VERIFICATION_TEMP_LEDGER,
+                    "reason": "ownership finalization failed: " + str(finalize_error),
+                    "partial_removed_files": [], "partial_removed_bytes": 0,
+                    "partial_removed_allocated_bytes": 0})
+                write_json(receipt_path, receipt)
+                raise
             receipt["status"] = "completed"
             write_json(receipt_path, receipt)
             print(json.dumps({"receipt": relative(receipt_path), "removed": len(receipt["removed"]),
@@ -6267,11 +6754,16 @@ def clean(stale=False, *, before=None, dry_run=False, plan=None, apply=None, pla
             return receipt
     if plan_sha256:
         raise ValueError("--plan-sha256 requires --apply")
+    if verification_recovery is not None:
+        _verification_register_recovery(verification_recovery)
     default_name = ".analysis/results/scratch-cleanup-" + datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ") + "-plan.json"
     destination = _clean_receipt_path(plan or default_name)
     if destination.exists():
         raise FileExistsError("Cleanup plan already exists; choose a new reserved receipt name")
     rows, retained = _clean_candidates(before)
+    verification_rows, verification_retained = _verification_candidates()
+    rows.extend(verification_rows)
+    retained.extend(verification_retained)
     references, errors = _clean_references(rows, bind_history=True)
     active, process_errors = _clean_process_guard(rows)
     eligible = []
@@ -6281,17 +6773,20 @@ def clean(stale=False, *, before=None, dry_run=False, plan=None, apply=None, pla
             retained.append({"path": name, "reason": "referenced_or_active", "references": references.get(name, []),
                              "pids": active.get(name, [])})
         elif not errors and not process_errors:
-            row["tree"] = _clean_tree(name)
+            row["tree"] = (_verification_tree(name) if row["kind"] == "owned_empty_verification_temp"
+                           else _clean_tree(name))
             eligible.append(row)
     report = {"schema_version": 1, "mode": "scratch_cleanup_plan", "workspace": str(ROOT.resolve()),
               "recorded_at_utc": datetime.now(timezone.utc).isoformat(), "target_execution": False,
-              "protected": [".analysis/inputs", ".analysis/results", ".work/native/*/batch",
+               "protected": [".analysis/inputs", ".analysis/results", "target/verification-temp",
+                             ".work/native/*/batch",
                             ".work/native/*/batch/invalid-database", ".work/reverse-pending"],
               "reference_scope": "all maintained text owners and JSON receipts, including frozen reviews; raw original bodies excluded",
               "historical_fields": ["scratch_cleanup", "ended supplement owner's database and argv",
                                     "exited capture-batch job scratch/argv/command/log",
                                     "verified exited native launch/completion stdout",
-                                    "source-bound frozen capture job structured stdout log inventory"],
+                                     "source-bound frozen capture job structured stdout log inventory",
+                                     "validated verification ledger directory ownership field"],
               "guard_failures": errors + process_errors, "candidates": eligible, "retained": retained,
               "candidate_bytes": sum(row["tree"]["bytes"] for row in eligible)}
     _clean_create_receipt(destination, report)
@@ -9303,22 +9798,332 @@ def prepare_app_picker(*, check=False):
                 "media_materialized": False, "check_only": check}
 
 
+VERIFICATION_TEMP_LEDGER = ".analysis/verification/temporary-directories.json"
+VERIFICATION_TEMP_LOCK = ".analysis/verification/temporary-directories.lock"
+
+
+def _verification_path(name, *, root=None, temporary=False):
+    root = ROOT if root is None else root
+    if (not isinstance(name, str) or "\\" in name or ":" in name or Path(name).is_absolute()
+            or ".." in Path(name).parts or Path(name).as_posix() != name):
+        raise ValueError("Invalid verification ownership path")
+    if temporary and not re.fullmatch(r"target/verification-temp/(?:v-|source-assemble-)[A-Za-z0-9_-]+", name):
+        raise ValueError("Outside verification temporary scope")
+    path = root / name
+    for item in [root, *(root / Path(*Path(name).parts[:n]) for n in range(1, len(Path(name).parts) + 1))]:
+        if (item.exists() or item.is_symlink()) and _scratch_link(item):
+            raise ValueError("Verification ownership path contains a link or reparse point")
+    if not path.resolve().is_relative_to(root.resolve()):
+        raise ValueError("Verification ownership path escaped workspace")
+    return path
+
+
+def _verification_identity(path, root):
+    stat = path.stat()
+    if not path.is_dir():
+        raise ValueError("Verification owner is not a directory")
+    return {"path": path.relative_to(root).as_posix(), "inode": stat.st_ino, "device": stat.st_dev,
+            "birthtime_ns": getattr(stat, "st_birthtime_ns", None)}
+
+
+def _verification_record_valid(row):
+    if not isinstance(row, dict) or row.get("mode") != "verification_temp_owner":
+        return False
+    identity = row.get("directory")
+    if (not isinstance(identity, dict) or set(identity) != {"path", "inode", "device", "birthtime_ns"}
+            or not isinstance(identity.get("path"), str)
+            or not re.fullmatch(r"target/verification-temp/(?:v-|source-assemble-)[A-Za-z0-9_-]+", identity["path"])
+            or any(type(identity.get(key)) is not int for key in ("inode", "device"))
+            or identity["inode"] <= 0 or identity["device"] < 0
+            or identity["birthtime_ns"] is not None and type(identity["birthtime_ns"]) is not int
+            or not isinstance(row.get("suite"), str) or not row["suite"]
+            or row.get("status") not in {"active", "released", "release_failed", "recovery_pending"}):
+        return False
+    try:
+        if datetime.fromisoformat(row["registered_at_utc"]).tzinfo is None:
+            return False
+    except (KeyError, TypeError, ValueError):
+        return False
+    if row.get("registration") == "live_owner":
+        creator = row.get("creator")
+        if not isinstance(creator, dict) or type(creator.get("pid")) is not int or creator["pid"] <= 0:
+            return False
+        try:
+            if datetime.fromisoformat(creator["started_at_utc"]).tzinfo is None:
+                return False
+        except (KeyError, TypeError, ValueError):
+            return False
+        creation = creator.get("process_creation")
+        return (creation is None or isinstance(creation, dict)
+                and type(creation.get("filetime_100ns")) is int and creation["filetime_100ns"] > 0
+                and type(creation.get("precision_100ns")) is int and creation["precision_100ns"] > 0
+                and creation.get("source") in {"GetProcessTimes", "Win32_Process.CreationDate"})
+    if row.get("registration") != "explicit_legacy_recovery" or row.get("creator") is not None:
+        return False
+    recovery = row.get("recovery")
+    return (isinstance(recovery, dict) and recovery.get("association") == "time_and_entry_association"
+            and recovery.get("creation_time_owner_record_available") is False
+            and isinstance(recovery.get("source"), dict)
+            and isinstance(recovery["source"].get("path"), str)
+            and recovery["source"]["path"].startswith(".analysis/results/")
+            and recovery["source"]["path"].endswith(".json")
+            and re.fullmatch(r"[a-f0-9]{64}", recovery["source"].get("sha256", "")) is not None
+            and isinstance(recovery.get("pointer"), str) and recovery["pointer"].startswith("/")
+            and type(recovery.get("session_id")) is int and recovery["session_id"] > 0
+            and isinstance(recovery.get("chunk_id"), str) and bool(recovery["chunk_id"]))
+
+
+def _verification_ledger(root):
+    path = _verification_path(VERIFICATION_TEMP_LEDGER, root=root)
+    if not path.exists():
+        return {"schema_version": 1, "mode": "verification_temporary_ownership", "records": []}
+    result = json.loads(path.read_bytes())
+    if (result.get("schema_version") != 1 or result.get("mode") != "verification_temporary_ownership"
+            or not isinstance(result.get("records"), list)
+            or not all(_verification_record_valid(row) for row in result["records"])
+            or len({json.dumps(row["directory"], sort_keys=True) for row in result["records"]}) != len(result["records"])):
+        raise ValueError("Invalid verification temporary ownership ledger")
+    return result
+
+
+def _verification_save(root, ledger):
+    import analysis
+    path = _verification_path(VERIFICATION_TEMP_LEDGER, root=root)
+    analysis.save(path, ledger)
+    with path.open("r+b") as stream:
+        os.fsync(stream.fileno())
+
+
 @contextmanager
-def verification_environment(name):
-    """Give each check owned temporary storage without changing product paths."""
-    directory = safe(ROOT / "target/verification-temp")
+def verification_environment(name, *, root=None):
+    """Durably register one live owner before its command can create test files."""
+    import analysis
+    from reverse_pending import process_creation_time
+    if not isinstance(name, str) or not name:
+        raise ValueError("Verification owner name must be a nonempty string")
+    root = ROOT if root is None else root.resolve()
+    lock = _verification_path(VERIFICATION_TEMP_LOCK, root=root)
+    directory = _verification_path("target/verification-temp", root=root)
     directory.mkdir(parents=True, exist_ok=True)
-    # Keep generated test state under build output, not analysis inputs or
-    # fixture/scratch paths. TemporaryDirectory owns only its unique child;
-    # parallel validation commands cannot remove each other's working files.
-    # AF_UNIX fixtures append their own unique socket filename. Keep the
-    # per-run directory independent of the suite name to stay within sun_path.
-    with tempfile.TemporaryDirectory(prefix="v-", dir=directory) as temporary:
-        path = safe(Path(temporary))
+    temporary, row, registered = None, None, False
+    outcome = "failed"
+    try:
+        with analysis.index_lock(lock):
+            ledger = _verification_ledger(root)
+            # A short unique child keeps AF_UNIX fixture paths within sun_path.
+            temporary = tempfile.TemporaryDirectory(prefix="v-", dir=directory)
+            path = _verification_path(Path(temporary.name).relative_to(root).as_posix(), root=root, temporary=True)
+            started = datetime.now(timezone.utc).isoformat()
+            row = {"mode": "verification_temp_owner", "directory": _verification_identity(path, root),
+                   "suite": name, "registration": "live_owner", "registered_at_utc": started,
+                   "creator": {"pid": os.getpid(), "process_creation": process_creation_time(os.getpid()),
+                               "started_at_utc": started}, "status": "active"}
+            ledger["records"].append(row)
+            _verification_save(root, ledger)
+            registered = True
         environment = os.environ.copy()
         for variable in ("TEMP", "TMP", "TMPDIR"):
             environment[variable] = str(path)
-        yield environment, relative(path)
+        try:
+            yield environment, row["directory"]["path"]
+            outcome = "succeeded"
+        except KeyboardInterrupt:
+            outcome = "cancelled"
+            raise
+    finally:
+        if temporary is not None:
+            released, error = False, None
+            try:
+                path = _verification_path(Path(temporary.name).relative_to(root).as_posix(), root=root, temporary=True)
+                if row is not None and _verification_identity(path, root) != row["directory"]:
+                    temporary._finalizer.detach()
+                    raise ValueError("Verification temporary identity changed before release")
+                temporary.cleanup()  # The live owner also releases nonempty test subtrees.
+                released = not path.exists()
+            except BaseException as failure:
+                temporary._finalizer.detach()
+                error = failure
+                raise
+            finally:
+                if registered:
+                    with analysis.index_lock(lock):
+                        ledger = _verification_ledger(root)
+                        owned = next(item for item in ledger["records"] if item["directory"] == row["directory"])
+                        owned.update(status="released" if released else "release_failed", outcome=outcome,
+                                     finished_at_utc=datetime.now(timezone.utc).isoformat())
+                        if error is not None:
+                            owned["release_error"] = str(error)
+                        _verification_save(root, ledger)
+
+
+def _verification_recovery_source(recovery):
+    source = recovery["source"]
+    name = source.get("path")
+    if not isinstance(name, str) or not name.startswith(".analysis/results/") or not name.endswith(".json"):
+        raise ValueError("Recovery requires an existing maintained interruption receipt")
+    path = _verification_path(name)
+    actual = _clean_file_identity(path)
+    if actual["sha256"] != source.get("sha256") or any(actual.get(key) != value for key, value in source.items()):
+        raise ValueError("Verification recovery source changed")
+    value = json.loads(path.read_bytes())
+    for part in recovery["pointer"].split("/")[1:]:
+        part = part.replace("~1", "/").replace("~0", "~")
+        value = value[int(part)] if isinstance(value, list) else value[part]
+    output_reference = value.get("raw_output_reference") if isinstance(value, dict) else None
+    if (not isinstance(value, dict) or value.get("suite_run_interrupted_after_failure") is not True
+            or not isinstance(output_reference, dict)
+            or output_reference.get("session_id") != recovery["session_id"]
+            or output_reference.get("chunk_id") != recovery["chunk_id"]
+            or not isinstance(value.get("argv"), list) or value["argv"][:2] not in (["cargo", "check"], ["cargo", "test"])):
+        raise ValueError("Recovery source does not record the specified interrupted verification")
+    return actual
+
+
+def _verification_register_recovery(proof):
+    import analysis
+    if not isinstance(proof, dict) or set(proof) != {"path", "identity", "source", "pointer", "session_id", "chunk_id",
+                                                    "association", "creation_time_owner_record_available"}:
+        raise ValueError("Invalid explicit verification recovery fields")
+    path = _verification_path(proof["path"], temporary=True)
+    identity = _verification_identity(path, ROOT)
+    if proof["identity"] != {key: value for key, value in identity.items() if key != "path"} or any(path.iterdir()):
+        raise ValueError("Explicit recovery identity changed or directory is nonempty")
+    recovery = {key: proof[key] for key in ("source", "pointer", "session_id", "chunk_id", "association",
+                                          "creation_time_owner_record_available")}
+    row = {"mode": "verification_temp_owner", "directory": identity, "suite": "interrupted_verification",
+           "registration": "explicit_legacy_recovery", "creator": None, "recovery": recovery,
+           "registered_at_utc": datetime.now(timezone.utc).isoformat(), "status": "recovery_pending"}
+    if not _verification_record_valid(row):
+        raise ValueError("Invalid explicit verification recovery provenance")
+    recovery["source"] = _verification_recovery_source(recovery)
+    with analysis.index_lock(_verification_path(VERIFICATION_TEMP_LOCK)):
+        ledger = _verification_ledger(ROOT)
+        previous = next((item for item in ledger["records"] if item["directory"] == identity), None)
+        if previous is not None:
+            if previous.get("registration") != row["registration"] or previous.get("recovery") != recovery:
+                raise ValueError("Verification directory already has a different owner")
+        else:
+            ledger["records"].append(row)
+            _verification_save(ROOT, ledger)
+
+
+def _verification_tree(name):
+    path = _verification_path(name, temporary=True)
+    if any(path.iterdir()):
+        raise ValueError("Recovered verification directory is nonempty")
+    return {"files": [], "directories": [name], "bytes": 0,
+            "directory_identity": _verification_identity(path, ROOT), "mtime_ns": path.stat().st_mtime_ns}
+
+
+def _verification_delete_empty(row):
+    """Remove only the unchanged empty directory, holding its Windows delete handle."""
+    import ctypes
+    from ctypes import wintypes
+    from analysis_storage import FileInfo, StandardInfo
+    if os.name != "nt":
+        raise ValueError("Exclusive verification recovery deletion requires Windows")
+    if _verification_tree(row["path"]) != row["tree"]:
+        raise ValueError("Verification directory changed before exclusive deletion")
+    path = _verification_path(row["path"], temporary=True)
+    api = ctypes.WinDLL("kernel32", use_last_error=True)
+    api.CreateFileW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, wintypes.LPVOID,
+                               wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
+    api.CreateFileW.restype = wintypes.HANDLE
+    api.GetFileInformationByHandle.argtypes = [wintypes.HANDLE, ctypes.POINTER(FileInfo)]
+    api.GetFileInformationByHandleEx.argtypes = [wintypes.HANDLE, ctypes.c_int, wintypes.LPVOID, wintypes.DWORD]
+    api.SetFileInformationByHandle.argtypes = [wintypes.HANDLE, ctypes.c_int, wintypes.LPVOID, wintypes.DWORD]
+    api.CloseHandle.argtypes = [wintypes.HANDLE]
+
+    class FileIdInfo(ctypes.Structure):
+        _fields_ = [("volume", ctypes.c_ulonglong), ("identity", ctypes.c_ubyte * 16)]
+
+    handles = []
+    try:
+        for parent in (ROOT / "target", path.parent):
+            handle = api.CreateFileW(str(parent), 0x80, 3, None, 3, 0x02200000, None)
+            if handle == ctypes.c_void_p(-1).value:
+                raise OSError(ctypes.get_last_error(), "verification_parent_guard_unavailable")
+            handles.append(handle)
+            if _scratch_link(parent):
+                raise ValueError("Verification parent became a reparse point")
+        handle = api.CreateFileW(str(path), 0x10081, 0, None, 3, 0x02200000, None)
+        if handle == ctypes.c_void_p(-1).value:
+            raise OSError(ctypes.get_last_error(), "exclusive_verification_directory_guard_unavailable")
+        handles.append(handle)
+        info, file_id, standard = FileInfo(), FileIdInfo(), StandardInfo()
+        if (not api.GetFileInformationByHandle(handle, ctypes.byref(info))
+                or not api.GetFileInformationByHandleEx(handle, 18, ctypes.byref(file_id), ctypes.sizeof(file_id))
+                or not api.GetFileInformationByHandleEx(handle, 1, ctypes.byref(standard), ctypes.sizeof(standard))):
+            raise ctypes.WinError(ctypes.get_last_error())
+        expected = row["tree"]["directory_identity"]
+        birth = ((info.creation.dwHighDateTime << 32 | info.creation.dwLowDateTime) - 116444736000000000) * 100
+        modified = ((info.write.dwHighDateTime << 32 | info.write.dwLowDateTime) - 116444736000000000) * 100
+        if (info.attributes & 0x400 or not info.attributes & 0x10 or not standard.directory
+                or int.from_bytes(bytes(file_id.identity), "little") != expected["inode"]
+                or file_id.volume != expected["device"] or birth != expected["birthtime_ns"]
+                or modified != row["tree"]["mtime_ns"] or standard.allocated < 0):
+            raise ValueError("Exclusive verification directory identity changed")
+        active, errors = _clean_process_guard([row])
+        if active or errors:
+            raise ValueError("Verification activity changed before deletion")
+        for basis in row["basis"]:
+            if _clean_file_identity(_verification_path(basis["path"])) != basis:
+                raise ValueError("Verification ownership evidence changed before deletion")
+        disposition = wintypes.DWORD(1)
+        # Windows rejects a nonempty directory; no child is ever traversed or deleted.
+        if not api.SetFileInformationByHandle(handle, 21, ctypes.byref(disposition), ctypes.sizeof(disposition)):
+            raise ctypes.WinError(ctypes.get_last_error())
+    finally:
+        for handle in reversed(handles):
+            api.CloseHandle(handle)
+    if path.exists():
+        raise ValueError("Verification directory still exists after deletion")
+    return {"allocated_before": standard.allocated, "allocated_after": 0, "bytes_reclaimed": standard.allocated}
+
+
+def _verification_candidates():
+    from reverse_pending import coordinator_instance_absence
+    rows, retained = [], []
+    ledger = _verification_ledger(ROOT)
+    owners = {row["directory"]["path"]: row for row in ledger["records"]}
+    directory = _verification_path("target/verification-temp")
+    for path in sorted(directory.iterdir()) if directory.is_dir() else []:
+        name = path.relative_to(ROOT).as_posix()
+        try:
+            _verification_path(name, temporary=True)
+            row = owners.get(name)
+            if row is None or not _verification_record_valid(row):
+                raise ValueError("unregistered_verification_directory")
+            if row["status"] == "released":
+                raise ValueError("released_owner_path_reappeared")
+            if _verification_identity(path, ROOT) != row["directory"]:
+                raise ValueError("verification_directory_identity_changed")
+            _verification_tree(name)
+            basis = [_clean_file_identity(_verification_path(VERIFICATION_TEMP_LEDGER))]
+            if row["registration"] == "live_owner":
+                if coordinator_instance_absence(row["creator"]).get("confirmed_absent") is not True:
+                    raise ValueError("verification_creator_still_active_or_unknown")
+            else:
+                basis.append(_verification_recovery_source(row["recovery"]))
+            rows.append({"path": name, "kind": "owned_empty_verification_temp", "basis": basis,
+                         "owner_receipts": [VERIFICATION_TEMP_LEDGER], "ownership": row})
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            retained.append({"path": name, "reason": str(error)})
+    return rows, retained
+
+
+def _verification_finish_cleanup(receipt):
+    removed = {item["path"] for item in receipt["removed"]}
+    owners = [row["ownership"] for row in receipt["scope"]
+              if row["kind"] == "owned_empty_verification_temp" and row["path"] in removed]
+    if owners:
+        ledger = _verification_ledger(ROOT)
+        for row in ledger["records"]:
+            if any(row == owner for owner in owners):
+                row.update(status="released", outcome="planned_empty_directory_recovery",
+                           finished_at_utc=datetime.now(timezone.utc).isoformat(),
+                           cleanup_plan=receipt["plan"], cleanup_plan_sha256=receipt["plan_sha256"])
+        _verification_save(ROOT, ledger)
 
 
 def prepare_keyboard_identity():
@@ -10734,7 +11539,7 @@ def rust_test_inventory(package, target=None):
                          else "tests/" + target + ".rs")
         if not entry.is_file() and not declarations:
             entry = crate / "tests" / target / "main.rs"
-    functions, sources, visiting, loaded = {}, {}, set(), set()
+    functions, sources, trees, loaded, unresolved_includes = {}, {}, {}, set(), []
 
     def text(node):
         return node.text.decode("utf-8") if node is not None else ""
@@ -10754,53 +11559,97 @@ def rust_test_inventory(package, target=None):
         for child in node.named_children:
             yield from walk(child)
 
-    def load(path, module):
-        path = path.resolve()
+    def source(path, ancestors):
+        path = product_input(path, ancestors[-1] if ancestors else path)
+        if path in ancestors:
+            raise ValueError("Recursive Rust test module or include: " + relative(path))
+        if not path.is_file():
+            raise ValueError("Rust test module or include is absent: " + relative(path))
+        if path not in trees:
+            raw = path.read_bytes()
+            sources[relative(path)] = hashlib.sha256(raw).hexdigest()
+            tree = parser.parse(raw)
+            if tree.root_node.has_error:
+                raise ValueError("Rust test module has unresolved syntax: " + relative(path))
+            trees[path] = tree
+        return path, trees[path]
+
+    def unresolved(invocation, path, module, reason):
+        unresolved_includes.append({"owner": relative(path), "line": invocation.start_point.row + 1,
+                                    "module": "::".join(module), "expression": text(invocation), "reason": reason})
+
+    def include_macro(node):
+        if node.type == "expression_statement" and len(node.named_children) == 1:
+            node = node.named_children[0]
+        if node.type == "macro_invocation" and text(node.child_by_field_name("macro")) in {
+                "include", "std::include", "core::include", "::std::include", "::core::include"}:
+            return node
+        return None
+
+    def scope_items(node, path, module, inline, ancestors):
+        for child in node.named_children:
+            invocation = include_macro(child)
+            if invocation is None:
+                yield child, path, inline, ancestors
+                continue
+            token_tree = next(part for part in invocation.named_children if part.type == "token_tree")
+            values = [part for part in token_tree.named_children if part.type not in {"line_comment", "block_comment"}]
+            if len(values) != 1 or values[0].type not in {"string_literal", "raw_string_literal"}:
+                unresolved(invocation, path, module, "nonliteral_include_path")
+                continue
+            if node.type not in {"source_file", "declaration_list"}:
+                unresolved(invocation, path, module, "expression_include_not_expanded")
+                continue
+            # Decode the AST-verified literal using the shared Rust escape rules.
+            _, literal = next(rust_embed_references("include!(" + text(values[0]) + ");"))
+            if PureWindowsPath(literal).anchor or Path(literal).is_absolute():
+                raise ValueError("Rust test include path must be project relative: " + relative(path))
+            included, tree = source(path.parent / literal, ancestors)
+            yield from scope_items(tree.root_node, included, module, (), (*ancestors, included))
+
+    def load(path, module, ancestors=()):
+        path, tree = source(path, ancestors)
         identity = (path, module)
-        if identity in visiting:
-            raise ValueError("Recursive Rust test module: " + relative(path))
         if identity in loaded:
             return
-        visiting.add(identity)
-        raw = path.read_bytes()
-        sources[relative(path)] = hashlib.sha256(raw).hexdigest()
-        tree = parser.parse(raw)
-        if tree.root_node.has_error:
-            raise ValueError("Rust test module has unresolved syntax: " + relative(path))
 
-        def visit(node, current, inline=(), inherited_imports=None):
+        def visit(node, current, path, inline=(), inherited_imports=None, ancestors=()):
+            entries = list(scope_items(node, path, current, inline, ancestors))
             imports = dict(inherited_imports or {})
-            imports.update(alias_target for child in node.named_children if child.type == "use_declaration"
+            imports.update(alias_target for child, _, _, _ in entries if child.type == "use_declaration"
                            for alias_target in rust_data.imported_paths(child))
-            for child in node.named_children:
+            for child, owner, child_inline, child_ancestors in entries:
                 if child.type == "mod_item":
                     name = text(child.child_by_field_name("name"))
                     body = child.child_by_field_name("body")
                     if body is not None:
-                        visit(body, (*current, name), (*inline, name), imports)
+                        visit(body, (*current, name), owner, (*child_inline, name), imports, child_ancestors)
                         continue
-                    base = path.parent
-                    if inline:
-                        if path.name not in {"lib.rs", "main.rs", "mod.rs"}:
-                            base /= path.stem
-                        base = base.joinpath(*inline)
+                    base = owner.parent
+                    if child_inline:
+                        if owner.name not in {"lib.rs", "main.rs", "mod.rs"}:
+                            base /= owner.stem
+                        base = base.joinpath(*child_inline)
                     literal = next((match[1] for attribute in attributes(child)
                                     if (match := re.fullmatch(r'#\[path="([^"\r\n]+)"\]', attribute))), None)
                     if literal is not None:
                         candidates = [base / literal]
                     else:
-                        if not inline and path.name not in {"lib.rs", "main.rs", "mod.rs"}:
-                            base /= path.stem
+                        if not child_inline and owner.name not in {"lib.rs", "main.rs", "mod.rs"}:
+                            base /= owner.stem
                         candidates = [base / (name + ".rs"), base / name / "mod.rs"]
                     found = [candidate for candidate in candidates if candidate.is_file()]
                     if len(found) != 1:
-                        raise ValueError("Rust test module is absent or ambiguous: " + relative(path) + "::" + name)
-                    load(found[0], (*current, name))
+                        raise ValueError("Rust test module is absent or ambiguous: " + relative(owner) + "::" + name)
+                    load(found[0], (*current, name), child_ancestors)
                 elif child.type == "function_item":
                     name = text(child.child_by_field_name("name"))
                     attrs = attributes(child)
                     calls, window_calls = [], []
                     for call in walk(child.child_by_field_name("body")):
+                        invocation = include_macro(call) if call.type == "macro_invocation" else None
+                        if invocation is not None:
+                            unresolved(invocation, owner, current, "expression_include_not_expanded")
                         if call.type != "call_expression":
                             continue
                         function = call.child_by_field_name("function")
@@ -10813,7 +11662,7 @@ def rust_test_inventory(package, target=None):
                         calls.append((method, tuple(target.split("::"))))
                     key = (*current, name)
                     functions.setdefault(key, []).append({
-                        "name": "::".join(key), "module": current, "owner": relative(path),
+                        "name": "::".join(key), "module": current, "owner": relative(owner),
                         "line": child.start_point.row + 1, "calls": calls, "imports": imports,
                         "test": any(attribute in {"#[test]", "#[::core::prelude::v1::test]", "#[core::prelude::v1::test]"}
                                     or attribute.startswith("#[gpui_kit::test") for attribute in attrs),
@@ -10821,10 +11670,9 @@ def rust_test_inventory(package, target=None):
                         "window_calls": window_calls,
                     })
                 elif child.type not in {"macro_definition", "macro_invocation"}:
-                    visit(child, current, inline, imports)
+                    visit(child, current, owner, child_inline, imports, child_ancestors)
 
-        visit(tree.root_node, module)
-        visiting.remove(identity)
+        visit(tree.root_node, module, path, ancestors=(*ancestors, path))
         loaded.add(identity)
 
     load(entry, ())
@@ -10842,14 +11690,16 @@ def rust_test_inventory(package, target=None):
     local_methods = {}
     for key, owners in functions.items():
         for owner in owners:
-            local_methods.setdefault((owner["owner"], key[-1]), set()).add(key)
+            for scope in (owner["owner"], owner["module"]):
+                local_methods.setdefault((scope, key[-1]), set()).add(key)
     for row in rows:
         row["dependencies"] = set()
         for method, called in row["calls"]:
             if not called or not called[0]:
                 continue
             if method:
-                row["dependencies"].update(local_methods.get((row["owner"], called[-1]), ()))
+                for scope in (row["owner"], row["module"]):
+                    row["dependencies"].update(local_methods.get((scope, called[-1]), ()))
                 continue
             if called[0] in row["imports"]:
                 called = (*row["imports"][called[0]], *called[1:])
@@ -10865,7 +11715,9 @@ def rust_test_inventory(package, target=None):
              | {"requires_window": tuple(row["name"].split("::")) in window_owners}
              for row in rows if row["test"]]
     return {"package": package, "target": target or "lib", "sources": sources, "tests": tests,
-            "limits": "Rust AST and local callable edges; no type resolution, cfg evaluation or macro expansion"}
+            "unresolved_includes": unresolved_includes,
+            "limits": "Rust AST, literal item include! expansion and local callable edges; no type resolution, "
+                      "cfg evaluation or other macro expansion; nonliteral and expression includes remain unexpanded"}
 
 
 def rust_test_scope(command, inventories):
@@ -10900,6 +11752,7 @@ def rust_test_scope(command, inventories):
                              ", ".join(package + "::" + row["name"] for row in windows))
         scopes.append({"package": package, "target": inventory["target"],
                        "selected_tests": [row["name"] for row in selected],
+                       "unresolved_includes": inventory["unresolved_includes"],
                        "source_count": len(inventory["sources"]), "limits": inventory["limits"]})
     if not any(scope["selected_tests"] for scope in scopes):
         raise ValueError("Rust verification selects no current tests")
@@ -10921,6 +11774,7 @@ def rust_validation_commands():
         ("mouse-matcher-revision", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "matcher_durable_version"]),
         ("mouse-matcher-exit-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "matcher_exit_"]),
         ("mouse-matcher-page", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "matcher_"]),
+        ("mouse-matcher-shell", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "mouse_matcher"]),
         ("profile-notification-lifecycle", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "profile_switch_notification::tests"]),
         ("computer-name-platform", ["cargo", "test", "--locked", "--offline", "-p", "razer-platform", "--lib", "computer_name_tests"]),
         ("controller-trigger-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "controller_trigger"]),
@@ -10999,6 +11853,7 @@ def rust_validation_commands():
         ("restart-notification-storage", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "restart_notification::tests"]),
         ("mouse-dpi-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "dpi_70::tests"]),
         ("current-dpi-shell", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "mouse_current_dpi"]),
+        ("current-dpi-owner", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "current_dpi::tests::current_dpi_"]),
         ("current-dpi-exit", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "current_dpi_exit_"]),
         ("current-dpi-temporary-restore", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "current_dpi_temporary_restore"]),
         ("current-dpi-protocol", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "mouse_current_dpi::tests"]),
@@ -11521,6 +12376,16 @@ def main():
     commands = parser.add_subparsers(dest="command", required=True)
     for name in ("inventory", "verify", "audit-inputs", "recover-inputs", "prepare-analysis", "prepare-static-python", "prepare-product-names", "prepare-keyboard-identity"):
         commands.add_parser(name)
+    revalidate_frontends = commands.add_parser(
+        "revalidate-current-deployment",
+        help="Read-only two-round HTTP revalidation of retained current frontend deployment owners",
+    )
+    revalidate_frontends.add_argument("--acquisition", action="append", required=True,
+                                      help="Project-relative retained frontend acquisition.json; repeat to select several")
+    revalidate_frontends.add_argument("--owner", action="append", default=[],
+                                      help="Additional project-relative JavaScript original with a verified deployment reference")
+    revalidate_frontends.add_argument("--workers", type=int, default=6,
+                                      help="Bounded concurrent HTTP requests per round (default: 6)")
     resource_verify = commands.add_parser("verify-resources", help="Decode embedded images or the complete typed keyboard artwork atlas without network access")
     resource_verify.add_argument("--scope", choices=("embedded", "keyboard-artwork"), default="embedded")
     resource_verify.add_argument("--product", type=int, action="append", help="Limit keyboard artwork to these typed products; repeat to select several")
@@ -11530,6 +12395,7 @@ def main():
     scratch_clean.add_argument("--plan", help="Project-relative .analysis/results JSON destination for the dry-run plan")
     scratch_clean.add_argument("--apply", help="Apply an unchanged retained cleanup plan after repeating dependency and activity checks")
     scratch_clean.add_argument("--plan-sha256", help="Actual SHA-256 of the reviewed cleanup plan; required with --apply")
+    scratch_clean.add_argument("--verification-recovery", help="Register explicit legacy empty-directory recovery JSON, or - for stdin; planning only")
     runtime_audit = commands.add_parser("audit-runtime-resources", help="Trace Rust/catalog resource references against the fixed installed directory")
     runtime_audit.add_argument("--repair", action="store_true", help="Verify current inline ARGB layers and attach missing aliases; do not restore source media")
     pack_audit = commands.add_parser("audit-asset-pack")
@@ -11605,7 +12471,10 @@ def main():
         rows = inventory()
         print(json.dumps({name: {"files": len(files), "bytes": sum(r["bytes"] for r in files)} for name, files in rows.items()}))
     elif args.command == "clean":
-        clean(stale=args.stale, dry_run=args.dry_run, plan=args.plan, apply=args.apply, plan_sha256=args.plan_sha256)
+        recovery = (json.loads(sys.stdin.read() if args.verification_recovery == "-" else args.verification_recovery)
+                    if args.verification_recovery is not None else None)
+        clean(stale=args.stale, dry_run=args.dry_run, plan=args.plan, apply=args.apply,
+              plan_sha256=args.plan_sha256, verification_recovery=recovery)
     elif args.command == "verify":
         verify()
     elif args.command == "audit-inputs":
@@ -11727,6 +12596,12 @@ def main():
         print(json.dumps(prepare_product_names(), ensure_ascii=False))
     elif args.command == "prepare-keyboard-identity":
         print(json.dumps(prepare_keyboard_identity(), ensure_ascii=False))
+    elif args.command == "revalidate-current-deployment":
+        report = revalidate_current_frontends(args.acquisition, owner_names=args.owner, workers=args.workers)
+        print(json.dumps({"receipt": report["receipt"], "passed": report["passed"],
+                          "source_sets": [source["name"] for source in report["source_sets"]],
+                          "failures": len(report["failures"])}, ensure_ascii=False), flush=True)
+        return 0 if report["passed"] else 1
     elif args.command == "prepare-dashboard-images":
         if type(args.workers) is not int or not 2 <= args.workers <= 12:
             raise ValueError("Dashboard resource workers must be between two and twelve")

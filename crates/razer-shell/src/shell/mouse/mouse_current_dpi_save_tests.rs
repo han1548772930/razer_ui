@@ -1,9 +1,23 @@
 use super::merge_current_dpi_profile;
 use serde_json::json;
 
+fn local_device(product_id: u32) -> razer_model::model::Device {
+    let mut device = razer_model::product_preview::registered_preview(product_id).unwrap();
+    device.active_profile = "test-profile".into();
+    device.profiles = vec![razer_model::model::Profile {
+        id: device.active_profile.clone(),
+        guid: device.active_profile.clone(),
+        name: "Test profile".into(),
+        settings: None,
+        source_settings: None,
+        dpi_stages: None,
+    }];
+    device
+}
+
 #[test]
 fn queued_current190_dpi_save_keeps_later_polling_and_advances_the_root_version() {
-    let mut device = razer_model::product_preview::registered_preview(190).unwrap();
+    let mut device = local_device(190);
     let profile_id = device.profiles[0].id.clone();
     device.profiles[0].source_settings = Some(json!({
         "pollingRate":8000,"inGamePollingRate":{"state":1,"wired":4000,"wireless":8000},
@@ -34,7 +48,7 @@ fn queued_current190_dpi_save_keeps_later_polling_and_advances_the_root_version(
 #[test]
 fn current182_and190_dpi_saves_use_the_source_first_and_wrapped_version() {
     for product_id in [182, 190] {
-        let mut device = razer_model::product_preview::registered_preview(product_id).unwrap();
+        let mut device = local_device(product_id);
         let profile_id = device.profiles[0].id.clone();
         let source =
             serde_json::to_value(razer_device::profile_transfer::default_profile_182()).unwrap();
@@ -56,7 +70,7 @@ fn current182_and190_dpi_saves_use_the_source_first_and_wrapped_version() {
 
 #[test]
 fn removed_profile_and_invalid_documents_leave_the_durable_device_untouched() {
-    let mut device = razer_model::product_preview::registered_preview(190).unwrap();
+    let mut device = local_device(190);
     let profile_id = device.profiles[0].id.clone();
     for (profile, root, source, id) in [
         (json!({}), json!({"version":3}), json!({}), "removed"),

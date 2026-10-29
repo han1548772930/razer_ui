@@ -36,12 +36,12 @@ pub use chroma_runtime::{
     ControllerChromaCommand, ControllerChromaObservation, ControllerChromaProfile,
     ControllerChromaRequested, ControllerSwitchOffLighting,
 };
+#[path = "gamepad_initialization.rs"]
+mod initialization;
 #[path = "gamepad_navigation.rs"]
 mod navigation;
 #[path = "gamepad_profile.rs"]
 mod profile;
-#[path = "gamepad_initialization.rs"]
-mod initialization;
 pub use initialization::{import_controller_profile, project_controller_socd};
 pub use lighting_runtime::ControllerLightingRequested;
 #[path = "gamepad_sleep_runtime.rs"]
@@ -208,7 +208,9 @@ pub struct GamepadProductWorkspace {
     sleep_runtime: sleep_runtime::SleepRuntime,
     controller_initialization_ready: bool,
     controller_initialization_lighting_observed: bool,
-    controller_socd_observation: razer_device::controller_initialization::Read<razer_device::controller_initialization::SocdObservation>,
+    controller_socd_observation: razer_device::controller_initialization::Read<
+        razer_device::controller_initialization::SocdObservation,
+    >,
     socd: SocdPresentation,
     lighting_runtime: lighting_runtime::LightingRuntime,
     lighting_ui: lighting::LightingUi,

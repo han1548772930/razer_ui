@@ -1,5 +1,7 @@
 //! Current PID190 dS/AS state and action projection; no service/device simulation.
 use razer_device::dpi_matcher::{Calibration, Phase};
+use razer_device::dpi_matcher_storage::{Library, MatcherProfile, ProfileName, ProfileUpdate};
+use razer_device::mouse_current_dpi::SourceStage;
 use serde_json::{Value, json};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -33,11 +35,14 @@ pub enum MatcherAction {
     /// AS assigns the entire observed profile.dpi to E[active-1]. The parent
     /// must call the current X-stage action producer, then SelectProfile.
     SetStageValueX {
-        stages: Vec<Value>,
+        stages: Vec<SourceStage>,
         active: usize,
     },
     SelectProfile(String),
     RenameProfile(String),
+    /// The observed library was normalized by the source reducer and must be
+    /// persisted once, independently of the device calibration request.
+    NormalizeProfiles,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -49,11 +54,11 @@ pub enum MatcherReducerError {
 pub enum MatcherObservation {
     Calibration(Calibration),
     Profiles {
-        profiles: Vec<Value>,
+        library: Library,
         selected: String,
     },
     Stages {
-        stages: Vec<Value>,
+        stages: Vec<SourceStage>,
         active: usize,
     },
     Devices(Vec<Value>),
@@ -65,7 +70,6 @@ pub struct ProfileItem {
     guid: String,
     name: String,
     disabled: bool,
-    dpi: Value,
 }
 impl ProfileItem {
     pub fn value_id(&self) -> &String {
@@ -85,9 +89,9 @@ impl ProfileItem {
 #[derive(Debug, Clone)]
 pub struct MatcherState {
     calibration: Calibration,
-    profiles: Vec<Value>,
+    library: Library,
     selected: String,
-    stages: Vec<Value>,
+    stages: Vec<SourceStage>,
     active: usize,
     devices: Vec<Value>,
     language: String,
@@ -105,9 +109,11 @@ impl Default for MatcherState {
             calibration: Calibration::default(),
             // Current rt is a local UI placeholder with a fresh v4 UUID and
             // null DPI. It is not an observed device or a calibrated profile.
-            profiles: vec![
-                json!({"guid":uuid::Uuid::new_v4().to_string(),"name":"None","dpi":null}),
-            ],
+            library: Library::new(vec![MatcherProfile::new(
+                uuid::Uuid::new_v4().to_string(),
+                ProfileName::Text("None".into()),
+                Some(SourceStage::null()),
+            )]),
             selected: String::new(),
             stages: vec![],
             active: 0,
@@ -141,6 +147,9 @@ impl MatcherState {
     }
     pub fn selected(&self) -> &str {
         &self.selected
+    }
+    pub fn library(&self) -> &Library {
+        &self.library
     }
     pub fn process(&self) -> f32 {
         self.calibration.process() as f32
@@ -183,47 +192,58 @@ impl MatcherState {
                 self.active = *active;
             }
             MatcherAction::SelectProfile(guid) => {
-                self.profiles.retain(|profile| profile["name"] != "None");
+                let profiles = self
+                    .library
+                    .profiles()
+                    .iter()
+                    .filter(|profile| !profile.name().is_english_none())
+                    .cloned()
+                    .collect();
+                self.library = self.library.with_profiles(profiles);
                 self.selected = guid.clone();
             }
             MatcherAction::RenameProfile(name) => {
-                let mut profiles = self.profiles.clone();
+                let mut profiles = self.library.profiles().to_vec();
                 for profile in &mut profiles {
-                    if profile["guid"] == self.selected {
-                        profile["name"] = json!(name);
+                    if profile.guid() == self.selected {
+                        profile.set_name(name.clone());
                     }
                 }
-                // It throws on a non-string name when sorting two or more
-                // rows. The reducer then returns no state or middleware post.
-                if profiles.len() > 1 && !profiles.iter().all(|profile| profile["name"].is_string())
-                {
-                    return Err(MatcherReducerError::NonStringProfileName);
-                }
                 if profiles.len() > 1 {
+                    if profiles
+                        .iter()
+                        .any(|profile| profile.name().english_or_first_property_or_empty().is_err())
+                    {
+                        return Err(MatcherReducerError::NonStringProfileName);
+                    }
                     profiles.sort_by_cached_key(|profile| {
-                        profile["name"]
-                            .as_str()
+                        profile
+                            .name()
+                            .english_or_first_property_or_empty()
                             .expect("profile names checked above")
                             .to_uppercase()
                             .encode_utf16()
                             .collect::<Vec<_>>()
                     });
                 }
-                self.profiles = profiles;
+                self.library = self.library.with_profiles(profiles);
             }
-            MatcherAction::Command(_) => {}
+            MatcherAction::NormalizeProfiles | MatcherAction::Command(_) => {}
         }
         Ok(())
     }
     pub fn profile_payload(&self) -> Value {
-        json!({"sensitivityMatcher":{"profiles":self.profiles},"selectedSensitivityMatcher":self.selected})
+        self.profile_update().file_payload()
+    }
+    pub fn profile_update(&self) -> ProfileUpdate {
+        ProfileUpdate::new(self.library.clone(), Some(self.selected.clone()))
     }
     pub fn observe(&mut self, observation: MatcherObservation) -> Vec<MatcherAction> {
         let changed = match &observation {
             MatcherObservation::Calibration(value) => value.phase() != self.calibration.phase(),
             _ => false,
         };
-        self.observe_unmounted(observation);
+        let mut actions = self.observe_unmounted(observation);
         if changed && self.phase() != Phase::Ready {
             self.popup = true;
             let first_error = self.phase() == Phase::Error && !self.first_load;
@@ -231,21 +251,30 @@ impl MatcherState {
             // comparison sees the previous firstLoad before it becomes 1.
             self.first_load = true;
             if first_error {
-                return self.close();
+                actions.extend(self.close());
             }
         }
-        vec![]
+        actions
     }
-    /// Redux can receive new props while dS/AS are absent. Retain those props
-    /// without running componentDidUpdate or emitting popup/reset reactions.
+    /// Redux receives library updates while dS/AS are absent. Its normalization
+    /// still requests persistence; component popup/reset reactions stay unmounted.
     pub fn observe_unmounted(&mut self, observation: MatcherObservation) -> Vec<MatcherAction> {
         match observation {
             MatcherObservation::Calibration(value) => {
                 self.calibration = value;
             }
-            MatcherObservation::Profiles { profiles, selected } => {
-                self.profiles = profiles;
+            MatcherObservation::Profiles { library, selected } => {
+                let normalized = library.with_deduplicated_names();
+                let changed = normalized
+                    .profiles()
+                    .iter()
+                    .zip(library.profiles())
+                    .any(|(normalized, original)| normalized.name() != original.name());
+                self.library = normalized;
                 self.selected = selected;
+                if changed {
+                    return vec![MatcherAction::NormalizeProfiles];
+                }
             }
             MatcherObservation::Stages { stages, active } => {
                 self.stages = stages;
@@ -300,14 +329,15 @@ impl MatcherState {
     }
     pub fn dataset(&self, none: &str) -> (Vec<ProfileItem>, usize) {
         let mut dataset: Vec<_> = self
-            .profiles
+            .library
+            .profiles()
             .iter()
             .map(|profile| {
-                let mut name = localized(&profile["name"], &self.language);
-                if let Some(device) = self
-                    .devices
-                    .iter()
-                    .find(|device| device.get("guid") == profile.get("guid"))
+                let mut name = profile.name().localized(&self.language);
+                if name.is_empty()
+                    && let Some(device) = self.devices.iter().find(|device| {
+                        device.get("guid").and_then(Value::as_str) == Some(profile.guid())
+                    })
                     && truthy(&device["productName"])
                 {
                     // AS reads productName[lang] || productName.en || name;
@@ -326,18 +356,18 @@ impl MatcherState {
                     }
                 }
                 ProfileItem {
-                    guid: profile["guid"].as_str().unwrap_or("").into(),
+                    guid: profile.guid().into(),
                     name,
-                    disabled: truthy(&profile["disabled"]),
-                    dpi: profile["dpi"].clone(),
+                    disabled: profile.is_disabled(),
                 }
             })
             .collect();
         if self.selected.is_empty()
             || !self
-                .profiles
+                .library
+                .profiles()
                 .iter()
-                .any(|profile| profile["guid"] == self.selected)
+                .any(|profile| profile.guid() == self.selected)
         {
             dataset.insert(
                 0,
@@ -345,7 +375,6 @@ impl MatcherState {
                     guid: "none".into(),
                     name: none.into(),
                     disabled: true,
-                    dpi: Value::Null,
                 },
             );
         }
@@ -359,7 +388,12 @@ impl MatcherState {
         if guid == "none" || guid == self.selected {
             return vec![];
         }
-        let Some(profile) = self.profiles.iter().find(|profile| profile["guid"] == guid) else {
+        let Some(profile) = self
+            .library
+            .profiles()
+            .iter()
+            .find(|profile| profile.guid() == guid)
+        else {
             return vec![];
         };
         // If the real stage observation has not arrived, preserve an explicit
@@ -368,7 +402,17 @@ impl MatcherState {
             return vec![];
         }
         let mut stages = self.stages.clone();
-        stages[self.active - 1] = profile["dpi"].clone();
+        let Some(dpi) = profile.dpi() else {
+            return vec![];
+        };
+        stages[self.active - 1] = dpi.clone();
+        let stages = stages
+            .iter()
+            .map(|row| {
+                SourceStage::from_source_file(&row.file_value())
+                    .expect("typed source stage JSON projection")
+            })
+            .collect();
         vec![
             MatcherAction::SetStageValueX {
                 stages,
@@ -395,7 +439,11 @@ impl MatcherState {
         let name = razer_device::source_string::trim(name);
         if name.is_empty()
             || matches!(name, "none" | "None")
-            || self.profiles.iter().any(|profile| profile["name"] == name)
+            || self
+                .library
+                .profiles()
+                .iter()
+                .any(|profile| profile.name().text() == Some(name))
         {
             return vec![];
         }
@@ -433,18 +481,6 @@ impl MatcherState {
             self.delete_all_open = false;
         }
     }
-}
-fn localized(value: &Value, language: &str) -> String {
-    if let Some(value) = value.as_str() {
-        return value.into();
-    }
-    value
-        .get(language)
-        .filter(|value| truthy(value))
-        .or_else(|| value.get("en"))
-        .and_then(Value::as_str)
-        .unwrap_or("")
-        .into()
 }
 fn truthy(value: &Value) -> bool {
     match value {
@@ -506,23 +542,23 @@ mod tests {
     fn matcher_dataset_select_and_rename_use_real_source_values() {
         let mut state = MatcherState::default();
         state.observe(MatcherObservation::Profiles {
-            profiles: vec![
+            library: library(vec![
                 json!({"guid":"p","name":{"en":"Mouse","zh-cn":"鼠标"},"dpi":{"x":900,"y":800}}),
-            ],
+            ]),
             selected: String::new(),
         });
         let (items, selected) = state.dataset("None");
         assert_eq!(selected, 0);
         assert!(items[0].disabled());
         state.observe(MatcherObservation::Stages {
-            stages: vec![json!({"x":400})],
+            stages: stages(vec![json!({"x":400})]),
             active: 1,
         });
         assert_eq!(
             state.choose("p"),
             vec![
                 MatcherAction::SetStageValueX {
-                    stages: vec![json!({"x":900,"y":800})],
+                    stages: stages(vec![json!({"x":900,"y":800})]),
                     active: 1
                 },
                 MatcherAction::SelectProfile("p".into())

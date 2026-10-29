@@ -12,9 +12,9 @@ use gpui_kit::{
     *,
 };
 use razer_device::dpi_matcher::Phase;
+use razer_device::{dpi_matcher_storage::Library, mouse_current_dpi::SourceStage};
 use razer_i18n::t;
 use razer_widgets::{scroll::SourceScrollable as _, surface};
-use serde_json::Value;
 use std::{cell::Cell, rc::Rc, time::Duration};
 #[path = "mouse_dpi_matcher_state.rs"]
 mod state;
@@ -35,7 +35,7 @@ impl SelectItem for ProfileItem {
 
 pub struct MouseDpiMatcher {
     state: MatcherState,
-    initial_profiles: Vec<Value>,
+    initial_library: Library,
     selector: Entity<SelectState<Vec<ProfileItem>>>,
     rename_input: Entity<InputState>,
     syncing: bool,
@@ -51,10 +51,7 @@ impl MouseDpiMatcher {
         let mut state = MatcherState::default();
         state.observe_unmounted(MatcherObservation::Language(razer_i18n::locale()));
         let (items, index) = state.dataset(&t("NONE"));
-        let initial_profiles = state.profile_payload()["sensitivityMatcher"]["profiles"]
-            .as_array()
-            .expect("initial source placeholder array")
-            .clone();
+        let initial_library = state.library().clone();
         let selector =
             cx.new(|cx| SelectState::new(items, Some(IndexPath::new(index)), window, cx));
         let rename_input = cx.new(|cx| {
@@ -90,7 +87,7 @@ impl MouseDpiMatcher {
             });
         Self {
             state,
-            initial_profiles,
+            initial_library,
             selector,
             rename_input,
             syncing: false,
@@ -138,19 +135,24 @@ impl MouseDpiMatcher {
     /// identity when no matcher library has been observed or edited yet.
     pub fn restore_profiles(
         &mut self,
-        profiles: Option<Vec<Value>>,
+        library: Option<Library>,
         selected: String,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let profiles = profiles.unwrap_or_else(|| self.initial_profiles.clone());
+        let library = library.unwrap_or_else(|| self.initial_library.clone());
         self.observe(
-            MatcherObservation::Profiles { profiles, selected },
+            MatcherObservation::Profiles { library, selected },
             window,
             cx,
         );
     }
-    pub fn observe_stages(&mut self, stages: Vec<Value>, active: usize, cx: &mut Context<Self>) {
+    pub fn observe_stages(
+        &mut self,
+        stages: Vec<SourceStage>,
+        active: usize,
+        cx: &mut Context<Self>,
+    ) {
         self.state
             .observe(MatcherObservation::Stages { stages, active });
         cx.notify();

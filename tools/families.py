@@ -1589,6 +1589,10 @@ def audit_family_function(args):
         return audit_receiver_local_runtime(args)
     if getattr(args, "query", None) == "mouse-dpi-matcher":
         return audit_mouse_dpi_matcher(args)
+    if getattr(args, "query", None) == "mouse-matcher-deployment":
+        return audit_mouse_matcher_deployment(args)
+    if getattr(args, "query", None) == "mouse-matcher-ui-names":
+        return audit_mouse_matcher_ui_names(args)
     if getattr(args, "query", None) == "mouse-input-monitoring":
         return audit_mouse_input_monitoring(args)
     if getattr(args, "query", None) == "mouse-dynamic-sensitivity":
@@ -5230,6 +5234,551 @@ def webpack_factory_snapshot(module):
             "statements_byte_end": base + body.end_byte - 1,
             "statements_sha256": hashlib.sha256(statements).hexdigest(),
             "statements": statements.decode("utf-8")}
+
+
+def matcher_review_owner_requests(document, audit_document, *, products):
+    """Resolve the existing Matcher review's complete original owners only."""
+    owner_path = "crates/razer-pages/src/features/mouse/dpi/mouse_matcher_owner.rs"
+    entries = document.get("owners", {}).get(owner_path, [])
+    reviews = [entry for entry in entries if entry.get("id") == "mouse-matcher-mounted-product-coverage"]
+    if len(reviews) != 1:
+        raise ValueError("Matcher baseline review is absent or ambiguous")
+    review = reviews[0]
+    baseline_owners = {}
+
+    def index_owners(value):
+        if isinstance(value, dict):
+            if all(key in value for key in ("original", "byte_start", "byte_end", "body_sha256")):
+                original = value["original"]
+                key = original["sha256"] + ":" + str(value["byte_start"]) + ":" + str(value["byte_end"])
+                baseline_owners[key] = value
+            for child in value.values():
+                if isinstance(child, (dict, list)):
+                    index_owners(child)
+        elif isinstance(value, list):
+            for child in value:
+                index_owners(child)
+
+    index_owners(audit_document)
+    requests = {}
+
+    def add(owner, role, pointer, product_id=None):
+        original = owner.get("original", {})
+        route = re.search(r"/products/(\d+)/(ui|mw)/", original.get("path", ""))
+        if route is None:
+            return
+        actual_product, layer = int(route[1]), route[2]
+        if product_id is not None and product_id != actual_product:
+            raise ValueError("Matcher baseline owner belongs to a different product")
+        if actual_product not in products:
+            return
+        key = (actual_product, layer, original["sha256"], owner["byte_start"], owner["byte_end"])
+        item = requests.setdefault(key, {"product_id": actual_product, "layer": layer,
+                                        "roles": [], "baseline_references": [], "owner": owner})
+        if role not in item["roles"]:
+            item["roles"].append(role)
+        if pointer not in item["baseline_references"]:
+            item["baseline_references"].append(pointer)
+
+    def pointer_owner(reference):
+        filename, separator, pointer = reference.partition("#")
+        if filename != ".analysis/results/frontend/mouse-mw-audit.json" or not separator or not pointer.startswith("/"):
+            return None
+        value = audit_document
+        for token in pointer.split("/")[1:]:
+            token = token.replace("~1", "/").replace("~0", "~")
+            value = value[int(token)] if isinstance(value, list) else value[token]
+        return value
+
+    def visit(value, pointer, product_id=None):
+        if isinstance(value, dict):
+            product_id = value.get("product_id", product_id)
+            if all(key in value for key in ("original", "byte_start", "byte_end", "body_sha256")):
+                add(value, value.get("role", pointer.rsplit("/", 1)[-1]), pointer, product_id)
+            elif isinstance(value.get("reference"), str):
+                owner = pointer_owner(value["reference"])
+                if isinstance(owner, dict) and all(key in owner for key in ("original", "byte_start", "byte_end", "body_sha256")):
+                    add(owner, value.get("role", pointer.rsplit("/", 1)[-1]), pointer, product_id)
+            for key, child in value.items():
+                if key == "owners" and isinstance(child, dict):
+                    for role, identifiers in child.items():
+                        if isinstance(identifiers, list):
+                            for owner_id in identifiers:
+                                if owner_id not in baseline_owners:
+                                    raise ValueError("Matcher session review owner is unavailable: " + str(owner_id))
+                                add(baseline_owners[owner_id], role, pointer + "/owners/" + role, product_id)
+                elif isinstance(child, (dict, list)):
+                    visit(child, pointer + "/" + key, product_id)
+        elif isinstance(value, list):
+            for index, child in enumerate(value):
+                visit(child, pointer + "/" + str(index), product_id)
+
+    for name in ("session_boundary_source_review", "progress_publication_source_review", "numeric_consumer_source_review"):
+        if name not in review:
+            raise ValueError("Matcher baseline review is missing " + name)
+        visit(review[name], "/owners/" + owner_path.replace("~", "~0").replace("/", "~1") + "/0/" + name)
+    return list(requests.values())
+
+
+def matcher_deployment_source(acquisition_name, audit, indexed):
+    """Verify one new acquisition and its actual root-declared source URLs."""
+    import evidence
+    import frontend
+    path = a.resolve(acquisition_name, ".analysis/inputs/frontend")
+    if path.name != "acquisition.json" or a.rel(path) != acquisition_name:
+        raise ValueError("Matcher deployment requires a retained acquisition.json")
+    raw = audit.artifact(path)
+    identity = audit.artifacts[acquisition_name]
+    if indexed.get(acquisition_name) is None or any(
+            indexed[acquisition_name].get(key) != identity[key] for key in ("bytes", "sha256")):
+        raise ValueError("Matcher deployment acquisition is not indexed at its actual byte identity")
+    acquired = json.loads(raw)
+    route = frontend.canonical_frontend_entry(acquired.get("entry_url"))
+    match = re.fullmatch(r"https://apps\.razer\.com/synapse/products/(\d+)/(ui|mw)/", route)
+    if (match is None or acquired.get("target_execution") is not False
+            or acquired.get("source_current_during_acquisition") is not True):
+        raise ValueError("Matcher deployment acquisition has no stable official product/layer identity")
+    deployment = evidence.frontend_deployment_sources(acquired)
+    if not deployment.get("entry_original"):
+        raise ValueError("Matcher deployment entry bytes are unavailable")
+    root_urls = {acquired["entry_url"], *(row["url"] for row in deployment["manifests"])}
+    if (any(row.get("kind") in {"deployment_entry_redirect_outside_origin", "deployment_original_invalid",
+                                "deployment_manifest_invalid", "deployment_stability_identity_mismatch",
+                                "duplicate_acquisition_url"} for row in deployment["failures"])):
+        raise ValueError("Matcher deployment root identity or URL references failed verification")
+    claims = {row.get("url"): row for row in acquired.get("stability", [])}
+    roots = [deployment["entry_original"], *(row["original"] for row in deployment["manifests"])]
+    for url in root_urls:
+        row = next((item for item in acquired["files"] if item.get("url") == url and item.get("path")), None)
+        claim = claims.get(url, {})
+        if row is None or any(claim.get(key) != row["sha256"] for key in ("before_sha256", "after_sha256")) or claim.get("unchanged") is not True:
+            raise ValueError("Matcher deployment root lacks exact two-round stability: " + url)
+    originals, references = {}, {}
+    for source in deployment["sources"]:
+        original = source.get("original")
+        if not original or not source.get("identity_verified"):
+            continue
+        url = source["url"]
+        if Path(urllib.parse.urlsplit(url).path).suffix.lower() not in {".js", ".mjs"}:
+            continue
+        if not source.get("references"):
+            raise ValueError("Matcher deployment script lacks a root-derived URL reference")
+        originals[original["path"]] = original
+        references[original["path"]] = {"url": url, "deployment_role": source["deployment_role"],
+                                         "references": source["references"]}
+    for original in [*roots, *originals.values()]:
+        indexed_original = indexed.get(original["path"], {})
+        if any(indexed_original.get(key) != original[key] for key in ("bytes", "sha256")):
+            raise ValueError("Matcher deployment source is not indexed at its actual byte identity: " + original["path"])
+        audit.read(original)
+    return {"product_id": int(match[1]), "layer": match[2], "acquisition": identity,
+            "roots": roots, "originals": list(originals.values()), "source_references": references,
+            "deployment_failures": deployment["failures"], "dependency_closure_verified": False,
+            "unresolved_acquisition": acquired.get("unresolved", []), "target_execution": False}
+
+
+def matcher_owner_comparisons(requests, source_set, audit):
+    """Compare exact complete factory bytes; matching IDs only locate candidates."""
+    import frontend
+    modules, complete_owners, factories, unresolved, retained_bodies = {}, {}, {}, [], {}
+
+    def source_modules(original):
+        path = original["path"]
+        if path not in modules:
+            modules[path] = keyboard_source_modules(audit.read(original).decode("utf-8"))
+        return modules[path]
+
+    def exact_node(original, start, end):
+        tree = audit.tree(original)
+        node = tree.root_node.descendant_for_byte_range(start, end - 1)
+        while node is not None and (node.start_byte != start or node.end_byte != end):
+            node = node.parent
+        if node is None:
+            raise ValueError("Matcher review range is not one complete AST owner")
+        return node
+
+    def retain(original, module):
+        key = original["sha256"] + ":" + str(module["byte_start"]) + ":" + str(module["byte_end"])
+        if key in factories:
+            return key, retained_bodies[key]
+        raw = audit.read(original)[module["byte_start"]:module["byte_end"]]
+        node = exact_node(original, module["byte_start"], module["byte_end"])
+        key = original["sha256"] + ":" + str(node.start_byte) + ":" + str(node.end_byte)
+        factories[key] = {"id": key, "original": original, "module_id": module["module_id"],
+                          "byte_start": node.start_byte, "byte_end": node.end_byte, "syntax": node.type,
+                          "body_sha256": hashlib.sha256(raw).hexdigest(),
+                          "syntax_sha256": frontend.syntax_identity(node),
+                          "body_storage": "complete verified original byte range; no copied bundle"}
+        retained_bodies[key] = raw
+        return key, raw
+
+    candidate_modules, dependency_edges = [], []
+    for original in source_set["originals"]:
+        for module in source_modules(original):
+            candidate_modules.append((original, module))
+
+    dependency_visits = set()
+
+    def dependencies(source, module, *, reexport_depth=0):
+        factory_key, _ = retain(source, module)
+        if factory_key in dependency_visits:
+            return
+        dependency_visits.add(factory_key)
+        node = exact_node(source, module["byte_start"], module["byte_end"])
+        factory = node.child_by_field_name("value") if node.type == "pair" else node
+        parameters = factory.child_by_field_name("parameters")
+        params = parameters.named_children if parameters is not None else []
+        if len(params) != 3 or params[2].type != "identifier":
+            return
+        require = params[2]
+        pending, imports, reexports = [factory], [], False
+        while pending:
+            current = pending.pop()
+            pending.extend(reversed(current.named_children))
+            if current.type == "arrow_function":
+                value = current.child_by_field_name("body")
+                if value is not None and value.type == "member_expression":
+                    reexports = True
+            if current.type != "call_expression":
+                continue
+            callee = current.child_by_field_name("function")
+            if callee is None or callee.type != "identifier" or callee.text != require.text:
+                continue
+            binding = audit.binding("matcher_deployment_require", source, require.text.decode(), callee.start_byte)
+            if binding.get("start_byte") != require.start_byte:
+                continue
+            args = current.child_by_field_name("arguments").named_children
+            if len(args) != 1 or args[0].type != "number":
+                unresolved.append({"factory": factory_key, "reason": "Dynamic require dependency remains unresolved"})
+                continue
+            imports.append((current, javascript_integer_literal(args[0].text.decode("ascii"))))
+        if reexport_depth and not reexports:
+            return
+        for call, module_id in imports:
+            found = [(original, candidate) for original, candidate in candidate_modules if candidate["module_id"] == module_id]
+            edge = {"from_factory": factory_key, "module_id": module_id,
+                    "call_byte_start": call.start_byte, "call_byte_end": call.end_byte,
+                    "call_sha256": hashlib.sha256(audit.read(source)[call.start_byte:call.end_byte]).hexdigest(),
+                    "lexical_require_parameter": {"start_byte": require.start_byte, "end_byte": require.end_byte},
+                    "candidate_factories": []}
+            for original, candidate in found:
+                key, _ = retain(original, candidate)
+                edge["candidate_factories"].append(key)
+                if reexport_depth < 2:
+                    dependencies(original, candidate, reexport_depth=reexport_depth + 1)
+            if len(found) != 1:
+                unresolved.append({"factory": factory_key, "module_id": module_id,
+                                   "reason": "Direct helper/enum factory is missing or ambiguous"})
+            dependency_edges.append(edge)
+    rows = []
+    for request in requests:
+        if (request["product_id"], request["layer"]) != (source_set["product_id"], source_set["layer"]):
+            continue
+        owner = request["owner"]
+        original = owner["original"]
+        raw = audit.read(original)
+        body = raw[owner["byte_start"]:owner["byte_end"]]
+        if hashlib.sha256(body).hexdigest() != owner["body_sha256"]:
+            raise ValueError("Matcher baseline owner differs from retained source bytes")
+        node = exact_node(original, owner["byte_start"], owner["byte_end"])
+        old_key = original["sha256"] + ":" + str(node.start_byte) + ":" + str(node.end_byte)
+        complete_owners[old_key] = {"id": old_key, "original": original, "syntax": node.type,
+                                    "byte_start": node.start_byte, "byte_end": node.end_byte,
+                                    "body_sha256": hashlib.sha256(body).hexdigest(),
+                                    "body_storage": "complete verified original byte range"}
+        containers = [module for module in source_modules(original)
+                      if module["byte_start"] <= node.start_byte and node.end_byte <= module["byte_end"]]
+        if not containers:
+            raise ValueError("Matcher baseline owner has no complete webpack/entry factory")
+        old_factory = min(containers, key=lambda item: item["byte_end"] - item["byte_start"])
+        old_factory_key, old_factory_body = retain(original, old_factory)
+        candidates = [(source, module) for source, module in candidate_modules
+                      if module["module_id"] == old_factory["module_id"]]
+        locator = "same_product_layer_module_id"
+        if "maxTravelDistance" in old_factory["body"] and "CONFIRM" in old_factory["body"]:
+            candidates = [(source, module) for source, module in candidate_modules
+                          if "maxTravelDistance" in module["body"] and "CONFIRM" in module["body"]]
+            locator = "complete_factory_with_maxTravelDistance_and_CONFIRM"
+        if isinstance(old_factory["module_id"], str) and old_factory["module_id"].startswith("concatenated-entry@"):
+            candidates = [(source, module) for source, module in candidate_modules
+                          if isinstance(module["module_id"], str) and module["module_id"].startswith("concatenated-entry@")
+                          and any(ref["role"] == "html_script_include"
+                                  for ref in source_set["source_references"][source["path"]]["references"])
+                           and Path(source["path"]).name.startswith("main.")
+                           and all(anchor in module["body"] for anchor in
+                                   ("IS_HYPER_POLLING_PAIRED", "calibrationState", "sensitivityMatcher"))]
+            candidates = [(source, module) for source, module in candidates if not any(
+                other_source["path"] == source["path"] and module["byte_start"] < other["byte_start"]
+                and other["byte_end"] < module["byte_end"] for other_source, other in candidates)]
+            locator = "deployed_main_innermost_factory_with_matcher_and_device_exports"
+        row = {"product_id": request["product_id"], "layer": request["layer"], "roles": request["roles"],
+               "baseline_references": request["baseline_references"], "old_owner": old_key,
+               "old_factory": old_factory_key, "candidate_factories": [], "candidate_locator": locator}
+        for source, module in candidates:
+            key, new_body = retain(source, module)
+            row["candidate_factories"].append({"owner": key, "reference_edge": source_set["source_references"][source["path"]]})
+            if locator == "complete_factory_with_maxTravelDistance_and_CONFIRM":
+                dependencies(source, module)
+        if len(candidates) != 1:
+            row["comparison"] = "module_missing" if not candidates else "ambiguous_factory_candidates"
+            unresolved.append({"old_owner": old_key, "roles": request["roles"], "reason": row["comparison"]})
+        else:
+            source, module = candidates[0]
+            new_key, new_body = retain(source, module)
+            if old_factory_body == new_body:
+                relative_start = node.start_byte - old_factory["byte_start"]
+                relative_end = node.end_byte - old_factory["byte_start"]
+                new_start, new_end = module["byte_start"] + relative_start, module["byte_start"] + relative_end
+                new_node = exact_node(source, new_start, new_end)
+                new_owner_key = source["sha256"] + ":" + str(new_start) + ":" + str(new_end)
+                complete_owners[new_owner_key] = {"id": new_owner_key, "original": source,
+                    "syntax": new_node.type, "byte_start": new_start, "byte_end": new_end,
+                    "body_sha256": hashlib.sha256(audit.read(source)[new_start:new_end]).hexdigest(),
+                    "body_storage": "complete verified original byte range"}
+                row.update(comparison="exact_factory_bytes", new_owner=new_owner_key)
+            else:
+                common = 0
+                for left, right in zip(old_factory_body, new_body):
+                    if left != right:
+                        break
+                    common += 1
+                row.update(comparison="factory_changed", new_owner=new_key,
+                           difference={"old_factory_bytes": len(old_factory_body), "new_factory_bytes": len(new_body),
+                                       "first_different_relative_byte": common,
+                                       "old_context_hex": old_factory_body[max(0, common - 24):common + 24].hex(),
+                                       "new_context_hex": new_body[max(0, common - 24):common + 24].hex()})
+                offset = new_body.find(body)
+                if offset >= 0 and new_body.find(body, offset + 1) < 0:
+                    start, end = module["byte_start"] + offset, module["byte_start"] + offset + len(body)
+                    try:
+                        retained_node = exact_node(source, start, end)
+                    except ValueError:
+                        retained_node = None
+                    if retained_node is not None:
+                        owner_key = source["sha256"] + ":" + str(start) + ":" + str(end)
+                        complete_owners[owner_key] = {"id": owner_key, "original": source, "syntax": retained_node.type,
+                            "byte_start": start, "byte_end": end, "body_sha256": hashlib.sha256(body).hexdigest(),
+                            "body_storage": "complete verified original byte range"}
+                        row["exact_role_bytes_in_changed_factory"] = owner_key
+                unresolved.append({"old_owner": old_key, "new_factory": new_key, "roles": request["roles"],
+                                   "reason": "Complete factory bytes changed; role-level semantic review is required"})
+        rows.append(row)
+    return {"owner_comparisons": rows, "complete_owners": complete_owners, "complete_factories": factories,
+            "new_direct_dependency_edges": dependency_edges,
+            "unresolved": unresolved}
+
+
+def matcher_ui_name_consumers(source_set, audit):
+    """Retain actual PID190 reducer, mounted consumers and helper exports."""
+    if (source_set["product_id"], source_set["layer"]) != (190, "ui"):
+        raise ValueError("Matcher UI name review currently requires the PID190 UI source set")
+
+    def walk(node):
+        yield node
+        for child in node.named_children:
+            yield from walk(child)
+
+    def ancestor(node, kinds):
+        while node is not None and node.type not in kinds:
+            node = node.parent
+        if node is None:
+            raise ValueError("Matcher UI complete AST boundary is unavailable")
+        return node
+
+    def retained(role, source, node):
+        return audit.retain_range(role, source, node.start_byte, node.end_byte, node.type)
+
+    def callable_reference(call):
+        callee = call.child_by_field_name("function")
+        while callee.type in {"parenthesized_expression", "sequence_expression"}:
+            callee = callee.named_children[-1]
+        return callee
+
+    def imported_export(source, member, role):
+        namespace, prop = member.child_by_field_name("object"), member.child_by_field_name("property")
+        if namespace.type != "identifier" or prop.type != "property_identifier":
+            raise ValueError("Matcher UI helper namespace requires explicit review")
+        binding = audit.binding(role + "_namespace", source, namespace.text.decode(), namespace.start_byte)
+        if binding["resolution"] != "declaration":
+            raise ValueError("Matcher UI helper import is not a unique lexical declaration")
+        owner = audit.owners[binding["owner_id"]]
+        declaration = audit.tree(source).root_node.descendant_for_byte_range(owner["byte_start"], owner["byte_end"] - 1)
+        declaration = ancestor(declaration, {"variable_declarator"})
+        value = declaration.child_by_field_name("value")
+        if value is None or value.type != "call_expression":
+            raise ValueError("Matcher UI helper import is not a literal webpack request")
+        arguments = value.child_by_field_name("arguments").named_children
+        require = value.child_by_field_name("function")
+        if require.type != "identifier" or len(arguments) != 1 or arguments[0].type != "number":
+            raise ValueError("Matcher UI helper import has dynamic arguments")
+        require_binding = audit.binding(role + "_require", source, require.text.decode(), require.start_byte)
+        if require_binding["resolution"] != "declaration":
+            raise ValueError("Matcher UI webpack request has no unique lexical owner")
+        result = audit.webpack_export(role, source_set["originals"], int(arguments[0].text), prop.text.decode())
+        result.update(namespace_binding=binding, require_binding=require_binding,
+                      actual_reference=retained(role + "_reference", source, member))
+        return result
+
+    profiles, reducers, calibrations, stage_reducers = {}, {}, {}, {}
+    for source in source_set["originals"]:
+        raw = audit.read(source)
+        anchors = ((b"this.changeProfile=", profiles, {"class", "class_declaration"}),
+                   (b"structuredClone(e.sensitivityMatcher.profiles)", reducers, {"arrow_function", "function_expression"}),
+                   (b"this.openSensitivityCalibration=", calibrations, {"class", "class_declaration"}),
+                   (b"stages:JSON.parse(JSON.stringify(", stage_reducers, {"function_expression", "arrow_function"}))
+        for needle, target, kinds in anchors:
+            for match in re.finditer(re.escape(needle), raw):
+                node = ancestor(audit.tree(source).root_node.descendant_for_byte_range(match.start(), match.end() - 1), kinds)
+                if target is profiles and b"selectedSensitivityMatcher" not in node.text:
+                    continue
+                if target is stage_reducers and b"ON_STAGES_CHANGE" not in node.text:
+                    continue
+                target[(source["path"], node.start_byte, node.end_byte)] = (source, node)
+    if any(len(found) != 1 for found in (profiles, reducers, calibrations, stage_reducers)):
+        raise ValueError("Matcher UI mounted/reducer source owner is missing or ambiguous")
+    profile_source, profile = next(iter(profiles.values()))
+    reducer_source, reducer = next(iter(reducers.values()))
+    owners = {"profile_component": retained("profile_component", profile_source, profile),
+              "profile_reducer": retained("profile_reducer", reducer_source, reducer)}
+    for role, found in (("calibration_component", calibrations), ("stage_action_parent_reducer", stage_reducers)):
+        source, node = next(iter(found.values()))
+        owners[role] = retained(role, source, node)
+    for name in ("computeDataSet", "setProfileName", "changeProfile", "componentDidUpdate",
+                 "componentDidMount", "componentWillUnmount"):
+        _, owners[name] = audit.callable_member("profile_" + name, profile_source, profile, name)
+    helpers, local_helpers, event_keys = {}, {}, {}
+    candidates = [(reducer_source, node) for node in walk(reducer) if node.type == "call_expression"]
+    candidates += [(profile_source, node) for node in walk(profile) if node.type == "call_expression"
+                   and b"this.props.sensitivityMatcher.profiles" in node.child_by_field_name("arguments").text]
+    for source, call in candidates:
+        callee = callable_reference(call)
+        if callee.type == "member_expression" and callee.child_by_field_name("object").type == "identifier":
+            if callee.child_by_field_name("property").text not in {b"qv", b"K2", b"$B"}:
+                continue
+            result = imported_export(source, callee, "name_helper")
+            helpers[str(result["module_id"]) + "." + result["export"]] = result
+        elif callee.type == "identifier":
+            binding = audit.binding("reducer_local_callable", source, callee.text.decode(), callee.start_byte)
+            if binding["resolution"] == "declaration" and binding.get("body", "").startswith("function "):
+                body = binding["body"]
+                if ".sort(" in body or '"object"===typeof' in body:
+                    local_helpers[callee.text.decode()] = binding
+                    declaration = ancestor(audit.tree(source).root_node.descendant_for_byte_range(
+                        binding["start_byte"], binding["end_byte"] - 1), {"function_declaration"})
+                    for child in walk(declaration):
+                        if child.type == "call_expression":
+                            member = callable_reference(child)
+                            if member.type == "member_expression" and member.child_by_field_name("property").text == b"KX":
+                                result = imported_export(source, member, "sort_name_key")
+                                helpers[str(result["module_id"]) + "." + result["export"]] = result
+    for node in walk(reducer):
+        if node.type == "switch_case":
+            value = node.child_by_field_name("value")
+            if value is not None and value.type == "identifier":
+                binding = audit.binding("profile_reducer_event", reducer_source, value.text.decode(), value.start_byte)
+                if binding["resolution"] == "declaration":
+                    event_keys[value.text.decode()] = binding
+    return {"source_set": source_set, "owners": owners, "imported_helpers": helpers,
+            "local_helpers": local_helpers, "reducer_event_keys": event_keys,
+            "semantic_equivalence_claim": False, "semantics_require_complete_owner_review": True}
+
+
+def audit_mouse_matcher_ui_names(args):
+    """Capture old/new current UI name consumers in an immutable review receipt."""
+    import host
+    import workspace
+    if args.family != "mouse" or args.function != "main" or not getattr(args, "acquisition", None):
+        raise ValueError("mouse-matcher-ui-names requires explicit PID190 UI acquisitions")
+    if args.product and set(args.product) != {190}:
+        raise ValueError("Matcher UI name review currently covers PID190")
+    audit = host.HostLocalAudit()
+    index = json.loads(audit.artifact(a.ROOT / ".analysis/inputs.json"))
+    indexed = {row["path"]: row for row in index["inputs"]}
+    if len(indexed) != len(index["inputs"]):
+        raise ValueError("Matcher UI name review index repeats an input path")
+    sources = [matcher_deployment_source(name, audit, indexed) for name in dict.fromkeys(args.acquisition)]
+    products = [matcher_ui_name_consumers(source, audit) for source in sources]
+    if audit.final_snapshot():
+        raise ValueError("Matcher UI source/index changed during name review")
+    report = {"schema_version": 1, "kind": "mouse_matcher_ui_name_consumers", "tool": identity(Path(__file__)),
+              "parsers": audit.parser_versions, "source_sets": products, "complete_owners": audit.owners,
+              "verified_artifacts": list(audit.artifacts.values()), "target_execution": False,
+              "source_semantics_complete": False, "runtime_acceptance": "unverified", "scratch_resources_created": []}
+    encoded = (json.dumps(report, ensure_ascii=False, sort_keys=True, indent=2) + "\n").encode("utf-8")
+    receipt = workspace._frontend_revalidation_publish(encoded, receipt=True)
+    print(json.dumps({"receipt": receipt, "source_sets": len(products), "complete_owners": len(audit.owners),
+                      "target_execution": False}), flush=True)
+    return report
+
+
+def audit_mouse_matcher_deployment(args):
+    """Publish a new immutable comparison; never replace canonical captures."""
+    import host
+    import workspace
+    if args.family != "mouse" or args.function not in {"mw", "main"} or not getattr(args, "acquisition", None):
+        raise ValueError("mouse-matcher-deployment requires explicit retained mouse acquisitions")
+    audit = host.HostLocalAudit()
+    index = json.loads(audit.artifact(a.ROOT / ".analysis/inputs.json"))
+    indexed = {row["path"]: row for row in index["inputs"]}
+    if len(indexed) != len(index["inputs"]):
+        raise ValueError("Matcher deployment input index repeats a path")
+    sources = [matcher_deployment_source(name, audit, indexed) for name in dict.fromkeys(args.acquisition)]
+    identities = [(source["product_id"], source["layer"]) for source in sources]
+    if len(identities) != len(set(identities)):
+        raise ValueError("Matcher comparison repeats a product/layer deployment")
+    products = set(args.product or [source["product_id"] for source in sources])
+    if any(source["product_id"] not in products for source in sources) or not products <= {190, 192, 222, 226, 229, 239}:
+        raise ValueError("Matcher comparison product scope differs from its acquisitions")
+    gaps = json.loads(audit.artifact(a.ROOT / ".analysis/results/gaps.json"))
+    baseline = json.loads(audit.artifact(a.ROOT / ".analysis/results/frontend/mouse-mw-audit.json"))
+    requests = matcher_review_owner_requests(gaps, baseline, products=products)
+    ui_originals = {request["owner"]["original"]["path"]: request["owner"]["original"]
+                    for request in requests if request["layer"] == "ui" and request["product_id"] == 190}
+    for original in ui_originals.values():
+        for role, anchor, kinds in (
+                ("select_profile_stage_then_library", "this.changeProfile=e=>{if(e.guid===this.props.selectedSensitivityMatcher)", {"assignment_expression"}),
+                ("select_whole_stage_json_clone", "stages:JSON.parse(JSON.stringify(", {"function_expression", "arrow_function"}),
+                ("select_library_live_structured_clone", "structuredClone(e.sensitivityMatcher.profiles)", {"arrow_function"}),
+                ("post_process_failure_consumers", "errorActions.push(e.actionsFromUI", {"function_declaration"})):
+            owners = audit.retain(role, original, anchor, kinds, unique=role != "post_process_failure_consumers")
+            for key in owners:
+                requests.append({"product_id": 190, "layer": "ui", "roles": [role],
+                                 "baseline_references": ["verified_complete_AST_anchor:" + anchor],
+                                 "owner": audit.owners[key]})
+    report = {"schema_version": 1, "kind": "mouse_matcher_deployment_owner_comparison",
+              "tool": identity(Path(__file__)), "parsers": audit.parser_versions, "source_sets": sources,
+              "baseline_inputs": list(audit.artifacts.values()), "owner_comparisons": [],
+              "new_direct_dependency_edges": [],
+              "complete_owners": {}, "complete_factories": {}, "unresolved": [],
+              "target_execution": False, "source_semantics_complete": False, "runtime_acceptance": "unverified",
+              "comparison_policy": "Product/layer/module identifies candidates only; unchanged requires complete exact factory bytes; identifier renaming and syntax normalization are not equivalence proofs",
+              "scratch_resources_created": []}
+    for source in sources:
+        comparisons = matcher_owner_comparisons(requests, source, audit)
+        for name in ("owner_comparisons", "unresolved", "new_direct_dependency_edges"):
+            report[name].extend(comparisons[name])
+        for name in ("complete_owners", "complete_factories"):
+            report[name].update(comparisons[name])
+    if not report["owner_comparisons"]:
+        raise ValueError("Matcher comparison selected no reviewed complete owners")
+    index_before = audit.artifacts.pop(".analysis/inputs.json")
+    after_raw = (a.ROOT / ".analysis/inputs.json").read_bytes()
+    after_document = json.loads(after_raw)
+    after_index = {row["path"]: row for row in after_document["inputs"]}
+    if len(after_index) != len(after_document["inputs"]) or any(after_index.get(name) != row for name, row in indexed.items()):
+        raise ValueError("Matcher comparison input index replaced an existing identity during review")
+    report["index_observation"] = {"before": index_before,
+        "after": {"path": ".analysis/inputs.json", "bytes": len(after_raw), "sha256": hashlib.sha256(after_raw).hexdigest()},
+        "existing_rows_unchanged": True, "appended_rows_during_review": len(after_index) - len(indexed)}
+    if audit.final_snapshot():
+        raise ValueError("Matcher deployment evidence changed during comparison")
+    report["verified_artifacts"] = list(audit.artifacts.values())
+    report["summary"] = dict(Counter(row["comparison"] for row in report["owner_comparisons"]))
+    encoded = (json.dumps(report, ensure_ascii=False, sort_keys=True, indent=2) + "\n").encode("utf-8")
+    receipt = workspace._frontend_revalidation_publish(encoded, receipt=True)
+    print(json.dumps({"receipt": receipt, "summary": report["summary"],
+                      "unresolved": len(report["unresolved"]), "target_execution": False}), flush=True)
+    return report
 
 
 def audit_keyboard_artwork(args):
@@ -29521,9 +30070,10 @@ def add_commands(parsers):
     audit.add_argument("--family", required=True, choices=list(FAMILY_CANDIDATES))
     audit.add_argument("--function", required=True)
     audit.add_argument("--product", type=int, action="append")
+    audit.add_argument("--acquisition", action="append", help="Explicit indexed acquisition for matcher deployment comparison; repeat for each product/layer")
     audit.add_argument("--workers", type=int, choices=range(2, 17), default=4,
                        help="bounded worker threads for independent product audits")
-    audit.add_argument("--query", choices=["mouse-dpi", "mouse-dpi-profile", "mouse-local-profile-schema", "mouse-dpi-matcher", "mouse-input-monitoring", "mouse-dynamic-sensitivity", "mouse-rotation", "mouse-customize", "mouse-page-layout", "mouse-power", "mouse-scroll", "mouse-dpi-backend", "mouse-tracking", "mouse-calibration", "global-shortcuts", "shared-preferences", "profile-import-processors", "mouse-runtime-artwork", "mouse-receiver-polling", "mouse-receiver-indicator", "mouse-receiver-legacy", "mouse-receiver-mapping", "mouse-dpi-profile-events", "keyboard-analog-keys", "keyboard-gamepad-tester", "keyboard-driver-request-lifecycle", "driver-install-selection", "keyboard-local-controls", "keyboard-local-profile-adoption", "keyboard-wireless-power", "keyboard-brightness", "keyboard-artwork", "keyboard-metadata", "keyboard-page-layout", "keyboard-actuation-selection", "receiver-page-layout", "receiver-local-runtime", "shared-page-layout", "gamepad-artwork", "gamepad-triggers", "gamepad-input", "gamepad-thumbsticks", "gamepad-lighting", "gamepad-lighting-selection", "mapping-engine", "audio-firmware-selector", "audio-help-reset", "audio-local-profiles", "hue-profile-actions", "accessory-text-inputs", "audio-preset-inputs", "chroma-text-inputs", "audio-seiren-eq", "audio-leviathan", "audio-demo", "audio-surround", "camera-local-pages", "camera-source-review", "camera-legacy-selection", "camera-legacy-native-properties", "camera-properties-lifecycle", "hanbo-local-runtime"], help="Append a semantic query to an existing complete capture audit")
+    audit.add_argument("--query", choices=["mouse-dpi", "mouse-dpi-profile", "mouse-local-profile-schema", "mouse-dpi-matcher", "mouse-matcher-deployment", "mouse-matcher-ui-names", "mouse-input-monitoring", "mouse-dynamic-sensitivity", "mouse-rotation", "mouse-customize", "mouse-page-layout", "mouse-power", "mouse-scroll", "mouse-dpi-backend", "mouse-tracking", "mouse-calibration", "global-shortcuts", "shared-preferences", "profile-import-processors", "mouse-runtime-artwork", "mouse-receiver-polling", "mouse-receiver-indicator", "mouse-receiver-legacy", "mouse-receiver-mapping", "mouse-dpi-profile-events", "keyboard-analog-keys", "keyboard-gamepad-tester", "keyboard-driver-request-lifecycle", "driver-install-selection", "keyboard-local-controls", "keyboard-local-profile-adoption", "keyboard-wireless-power", "keyboard-brightness", "keyboard-artwork", "keyboard-metadata", "keyboard-page-layout", "keyboard-actuation-selection", "receiver-page-layout", "receiver-local-runtime", "shared-page-layout", "gamepad-artwork", "gamepad-triggers", "gamepad-input", "gamepad-thumbsticks", "gamepad-lighting", "gamepad-lighting-selection", "mapping-engine", "audio-firmware-selector", "audio-help-reset", "audio-local-profiles", "hue-profile-actions", "accessory-text-inputs", "audio-preset-inputs", "chroma-text-inputs", "audio-seiren-eq", "audio-leviathan", "audio-demo", "audio-surround", "camera-local-pages", "camera-source-review", "camera-legacy-selection", "camera-legacy-native-properties", "camera-properties-lifecycle", "hanbo-local-runtime"], help="Append a semantic query to an existing complete capture audit")
     audit.add_argument("--prepare", action="store_true", help="Prepare verified current artwork resources through the shared workflow")
     audit.add_argument("--receipt-only", action="store_true", help="Refresh supported mouse or mapping-engine evidence without rewriting runtime descriptors")
     audit.add_argument("--native-driver-lifecycle", choices=["capture", "check", "negative"],

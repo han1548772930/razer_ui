@@ -9,6 +9,7 @@ import zipfile
 import copy
 from contextlib import closing, nullcontext
 import json
+import os
 from pathlib import Path
 import sqlite3
 import tempfile
@@ -19,6 +20,352 @@ import resource_database
 import families
 import typed_tables
 import catalog_data
+
+
+class CurrentFrontendRevalidationTests(unittest.TestCase):
+    def setUp(self):
+        import analysis
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        self.patches = (mock.patch.object(workspace, "ROOT", self.root),
+                        mock.patch.object(analysis, "ROOT", self.root))
+        for patch in self.patches:
+            patch.start()
+            self.addCleanup(patch.stop)
+        self.index = self.root / ".analysis/inputs.json"
+        self.index.parent.mkdir(parents=True)
+        self.index.write_bytes(b'{"schema_version":1,"inputs":[],"source_publications":[]}\n')
+        self.responses = {}
+        self.protected = {}
+
+    def fixture(self, name="fixture-current", route="https://apps.razer.com/synapse/products/190/ui/"):
+        directory = self.root / ".analysis/inputs/frontend" / name
+        directory.mkdir(parents=True)
+        bodies = {
+            "index.html": b'<html><script src="main.js"></script><link rel="manifest" href="manifest.json"></html>',
+            "asset-manifest.json": json.dumps({"files": {"main.js": "main.js", "owner.js": "owner.js"},
+                                                "entrypoints": ["main.js"]}).encode(),
+            "manifest.json": b'{"name":"current"}',
+            "main.js": b"const main=1;",
+            "owner.js": b"const owner=1;",
+        }
+        files = []
+        for filename, body in bodies.items():
+            path = directory / "raw" / filename
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(body)
+            url = route + filename
+            identity = {"url": url, "final_url": url, "http_status": 200,
+                        "content_type": "text/html" if filename.endswith(".html") else "application/javascript",
+                        "path": path.relative_to(self.root).as_posix(), "bytes": len(body),
+                        "sha256": hashlib.sha256(body).hexdigest()}
+            files.append(identity)
+            self.responses[url] = body
+            self.protected[path] = body
+        acquisition = directory / "acquisition.json"
+        acquisition.write_text(json.dumps({
+            "entry_url": route + "index.html", "files": files, "edges": [], "target_execution": False,
+            "source_current_during_acquisition": True, "recorded_at_utc": "2026-10-29T00:00:00+00:00",
+            "stability": [{"url": row["url"], "before_sha256": row["sha256"],
+                           "after_sha256": row["sha256"], "unchanged": True}
+                          for row in files if row["url"].endswith((".html", ".json"))],
+        }), encoding="utf-8")
+        self.protected[acquisition] = acquisition.read_bytes()
+        self.protected[self.index] = self.index.read_bytes()
+        return acquisition.relative_to(self.root).as_posix(), files[-1]["path"]
+
+    def fetch(self, url):
+        if url not in self.responses:
+            return {"url": url, "final_url": url, "status": "missing", "http_status": 404}
+        body = self.responses[url]
+        return {"url": url, "final_url": url, "status": "ok", "http_status": 200,
+                "bytes": len(body), "sha256": hashlib.sha256(body).hexdigest(), "_raw": body}
+
+    def verify_receipt(self, report):
+        identity = report["receipt"]
+        receipt = self.root / identity["path"]
+        self.assertEqual(workspace.digest(receipt), identity["sha256"])
+        self.assertEqual(receipt.stem, identity["sha256"])
+        self.assertEqual(receipt.stat().st_size, identity["bytes"])
+        saved = json.loads(receipt.read_bytes())
+        self.assertNotIn("receipt", saved)
+        self.assertFalse(saved["target_execution"])
+        self.assertFalse(saved["source_semantics_complete"])
+        self.assertEqual(saved["runtime_acceptance"], "unverified")
+        self.assertFalse(list(self.root.rglob("*.tmp")))
+        return saved
+
+    def test_two_rounds_reuse_existing_originals_without_mutating_acquisition_or_index(self):
+        acquisition, owner = self.fixture()
+        with mock.patch.object(workspace, "_frontend_revalidation_fetch", side_effect=self.fetch) as fetch:
+            report = workspace.revalidate_current_frontends([acquisition], owner_names=[owner], workers=2)
+        self.assertTrue(report["passed"])
+        self.assertTrue(report["inputs_unchanged"])
+        observations = report["observations"]
+        self.assertEqual(len(observations), 6)
+        self.assertEqual(fetch.call_count, 12)
+        self.assertTrue(all([row["round"] for row in item["rounds"]] == [1, 2] for item in observations))
+        self.assertEqual([item["classification"] for item in observations].count("optional_missing"), 1)
+        self.assertEqual([item["classification"] for item in observations].count("unchanged_reused"), 5)
+        self.assertFalse((self.root / ".analysis/inputs/frontend-revalidation").exists())
+        for path, body in self.protected.items():
+            self.assertEqual(path.read_bytes(), body)
+        self.verify_receipt(report)
+
+    def test_shared_urls_are_fetched_once_per_round_for_multiple_receipts(self):
+        first, _ = self.fixture("first-current")
+        second, _ = self.fixture("second-current")
+        with mock.patch.object(workspace, "_frontend_revalidation_fetch", side_effect=self.fetch) as fetch:
+            report = workspace.revalidate_current_frontends([first, second], workers=2)
+        self.assertTrue(report["passed"])
+        self.assertEqual(len(report["source_sets"]), 2)
+        self.assertEqual(len(report["observations"]), 10)
+        self.assertEqual(fetch.call_count, 10)
+        self.verify_receipt(report)
+
+    def test_changed_root_is_retained_separately_and_never_promotes_a_new_deployment(self):
+        acquisition, _ = self.fixture()
+        existing = {"path": "unchanged-owner", "kind": "preserve-existing-metadata", "bytes": 1,
+                    "sha256": "existing-identity", "extension": {"retained": True}}
+        self.index.write_text(json.dumps({"inputs": [existing], "source_publications": []}), encoding="utf-8")
+        url = next(url for url in self.responses if url.endswith("index.html"))
+        body = b'<html><script src="replacement.js"></script></html>'
+        self.responses[url] = body
+        with mock.patch.object(workspace, "_frontend_revalidation_fetch", side_effect=self.fetch):
+            report = workspace.revalidate_current_frontends([acquisition], workers=1)
+        self.assertFalse(report["passed"])
+        changed = next(row for row in report["observations"] if row["url"] == url)
+        self.assertEqual(changed["classification"], "changed_or_new_deployment")
+        observed = changed["observed_original"]
+        self.assertEqual((self.root / observed["path"]).read_bytes(), body)
+        for path, original in self.protected.items():
+            if path != self.index:
+                self.assertEqual(path.read_bytes(), original)
+        self.assertFalse(report["inputs_unchanged"])
+        self.assertTrue(report["protected_originals_unchanged"])
+        self.assertTrue(report["index_changed"])
+        publication = report["index_publication"]
+        self.assertEqual(publication["status"], "published")
+        self.assertEqual(publication["new_input_rows"], 2)
+        self.assertTrue(publication["previous_entries_unchanged"])
+        indexed = {row["path"] for row in json.loads(self.index.read_bytes())["inputs"]}
+        self.assertIn(observed["path"], indexed)
+        self.assertIn(publication["publication_receipt"]["path"], indexed)
+        self.assertIn(existing, json.loads(self.index.read_bytes())["inputs"])
+        self.verify_receipt(report)
+
+    def test_index_failure_and_cancellation_remove_only_owned_unindexed_originals(self):
+        import analysis
+        acquisition, _ = self.fixture()
+        url = next(url for url in self.responses if url.endswith("index.html"))
+        self.responses[url] = b'<html><script src="replacement.js"></script></html>'
+        for failure in (OSError("index publication failed"), KeyboardInterrupt()):
+            with self.subTest(failure=type(failure).__name__), \
+                    mock.patch.object(workspace, "_frontend_revalidation_fetch", side_effect=self.fetch), \
+                    mock.patch.object(analysis, "index_files", side_effect=failure), \
+                    mock.patch("builtins.print"), self.assertRaises(type(failure)):
+                workspace.revalidate_current_frontends([acquisition], workers=1)
+            files = [path for path in (self.root / ".analysis/inputs/frontend-revalidation").rglob("*") if path.is_file()]
+            self.assertEqual(files, [])
+            for path, body in self.protected.items():
+                self.assertEqual(path.read_bytes(), body)
+            receipts = sorted((self.root / ".analysis/results/frontend-revalidation").glob("*.json"),
+                              key=lambda path: path.stat().st_mtime_ns)
+            report = json.loads(receipts[-1].read_bytes())
+            self.assertFalse(report["passed"])
+            self.assertEqual(report["index_publication"]["status"], "failed")
+            self.assertFalse(report["index_changed"])
+            cleanup = report["cleanup"]["owned_publication_files"]
+            self.assertEqual(len(cleanup["removed"]), 2)
+            self.assertEqual(cleanup["failures"], [])
+            changed = next(row for row in report["observations"] if row["url"] == url)
+            self.assertEqual(changed["retention"], "removed_after_index_publication_failure")
+            self.assertFalse(list(self.root.rglob("*.tmp")))
+
+    def test_cancellation_after_atomic_index_commit_preserves_all_indexed_originals(self):
+        import analysis
+        acquisition, _ = self.fixture()
+        url = next(url for url in self.responses if url.endswith("index.html"))
+        self.responses[url] = b'<html><script src="replacement.js"></script></html>'
+        publish = analysis.index_files
+
+        def commit_then_cancel(rows, **kwargs):
+            publish(rows, **kwargs)
+            raise KeyboardInterrupt()
+
+        with mock.patch.object(workspace, "_frontend_revalidation_fetch", side_effect=self.fetch), \
+                mock.patch.object(analysis, "index_files", side_effect=commit_then_cancel), \
+                mock.patch("builtins.print"), self.assertRaises(KeyboardInterrupt):
+            workspace.revalidate_current_frontends([acquisition], workers=1)
+        receipts = list((self.root / ".analysis/results/frontend-revalidation").glob("*.json"))
+        self.assertEqual(len(receipts), 1)
+        report = json.loads(receipts[0].read_bytes())
+        self.assertFalse(report["passed"])
+        self.assertTrue(report["index_changed"])
+        indexed = {row["path"]: row for row in json.loads(self.index.read_bytes())["inputs"]}
+        self.assertEqual(len(indexed), 2)
+        for name, identity in indexed.items():
+            self.assertEqual(workspace.digest(self.root / name), identity["sha256"])
+        cleanup = report["cleanup"]["owned_publication_files"]
+        self.assertEqual(cleanup["removed"], [])
+        self.assertEqual(len(cleanup["retained"]), 2)
+        self.assertTrue(all(row["reason"] == "indexed" for row in cleanup["retained"]))
+        self.assertFalse(list(self.root.rglob("*.tmp")))
+
+    def test_rollback_preserves_preexisting_files_and_rejects_changed_owned_identity(self):
+        body = b"preexisting content-addressed observation"
+        workspace._frontend_revalidation_publish(body)
+        created = {}
+        identity = workspace._frontend_revalidation_publish(body, created_paths=created)
+        self.assertEqual(created, {})
+        self.assertEqual(workspace._frontend_revalidation_cleanup_owned(created)["removed"], [])
+        self.assertEqual((self.root / identity["path"]).read_bytes(), body)
+        own = workspace._frontend_revalidation_publish(b"owned original", created_paths=created)
+        (self.root / own["path"]).write_bytes(b"concurrently changed original")
+        cleanup = workspace._frontend_revalidation_cleanup_owned(created)
+        self.assertEqual(cleanup["removed"], [])
+        self.assertEqual(len(cleanup["failures"]), 1)
+        self.assertIn("identity differs", cleanup["failures"][0]["error"])
+        self.assertEqual((self.root / own["path"]).read_bytes(), b"concurrently changed original")
+
+    def test_required_missing_and_unstable_bytes_remain_failed(self):
+        acquisition, _ = self.fixture()
+        main_url = next(url for url in self.responses if url.endswith("main.js"))
+        manifest_url = next(url for url in self.responses if url.endswith("manifest.json") and "asset-" not in url)
+        self.responses.pop(manifest_url)
+        calls = {}
+
+        def fetch(url):
+            calls[url] = calls.get(url, 0) + 1
+            if url == main_url and calls[url] == 2:
+                body = b"const main=2;"
+                return {**self.fetch(url), "_raw": body, "bytes": len(body),
+                        "sha256": hashlib.sha256(body).hexdigest()}
+            return self.fetch(url)
+
+        with mock.patch.object(workspace, "_frontend_revalidation_fetch", side_effect=fetch):
+            report = workspace.revalidate_current_frontends([acquisition], workers=1)
+        self.assertFalse(report["passed"])
+        classes = {row["url"]: row["classification"] for row in report["observations"]}
+        self.assertEqual(classes[manifest_url], "required_missing")
+        self.assertEqual(classes[main_url], "unstable_or_failed")
+        self.verify_receipt(report)
+
+    def test_same_bytes_at_a_changed_redirect_reuse_storage_but_fail_route_identity(self):
+        acquisition, _ = self.fixture()
+        main_url = next(url for url in self.responses if url.endswith("main.js"))
+
+        def fetch(url):
+            row = self.fetch(url)
+            if url == main_url:
+                row["final_url"] = "https://apps.razer.com/other/main.js"
+            return row
+
+        with mock.patch.object(workspace, "_frontend_revalidation_fetch", side_effect=fetch):
+            report = workspace.revalidate_current_frontends([acquisition], workers=1)
+        changed = next(row for row in report["observations"] if row["url"] == main_url)
+        self.assertFalse(report["passed"])
+        self.assertEqual(changed["classification"], "changed_deployment_route")
+        self.assertIn("reused_path", changed)
+        self.assertNotIn("observed_original", changed)
+        self.verify_receipt(report)
+
+    def test_input_mutation_during_http_is_recorded_without_repairing_originals(self):
+        acquisition, _ = self.fixture()
+        original_index = self.index.read_bytes()
+
+        def fetch(url):
+            self.index.write_bytes(b"concurrent input change")
+            return self.fetch(url)
+
+        with mock.patch.object(workspace, "_frontend_revalidation_fetch", side_effect=fetch):
+            report = workspace.revalidate_current_frontends([acquisition], workers=1)
+        self.assertFalse(report["passed"])
+        self.assertFalse(report["inputs_unchanged"])
+        self.assertNotEqual(self.index.read_bytes(), original_index)
+        self.assertTrue(any(row.get("kind") == "protected_input_changed" for row in report["failures"]))
+        self.verify_receipt(report)
+
+    def test_invalid_owner_or_retained_bytes_fail_before_any_network_request(self):
+        acquisition, owner = self.fixture()
+        with mock.patch.object(workspace, "_frontend_revalidation_fetch") as fetch:
+            with self.assertRaisesRegex(ValueError, "lack verified current deployment references"):
+                workspace.revalidate_current_frontends([acquisition], owner_names=[acquisition])
+            (self.root / owner).write_bytes(b"changed")
+            with self.assertRaisesRegex(ValueError, "failed cached verification"):
+                workspace.revalidate_current_frontends([acquisition], owner_names=[owner])
+        fetch.assert_not_called()
+
+    def test_cancelled_http_writes_failed_receipt_and_leaves_no_temporary_files(self):
+        acquisition, _ = self.fixture()
+        with mock.patch.object(workspace, "_frontend_revalidation_fetch", side_effect=KeyboardInterrupt), \
+                mock.patch("builtins.print"), self.assertRaises(KeyboardInterrupt):
+            workspace.revalidate_current_frontends([acquisition], workers=1)
+        receipts = list((self.root / ".analysis/results/frontend-revalidation").glob("*.json"))
+        self.assertEqual(len(receipts), 1)
+        report = json.loads(receipts[0].read_bytes())
+        self.assertFalse(report["passed"])
+        self.assertEqual(report["failures"][0]["kind"], "cancelled")
+        self.assertFalse(list(self.root.rglob("*.tmp")))
+
+    def test_immutable_publication_retains_existing_file_and_cleans_failure_and_cancel(self):
+        raw = b"content addressed current observation"
+        first = workspace._frontend_revalidation_publish(raw)
+        path = self.root / first["path"]
+        modified = path.stat().st_mtime_ns
+        self.assertEqual(workspace._frontend_revalidation_publish(raw), first)
+        self.assertEqual(path.stat().st_mtime_ns, modified)
+        for error in (OSError("publication denied"), KeyboardInterrupt()):
+            with self.subTest(error=type(error).__name__), \
+                    mock.patch.object(workspace.os, "link", side_effect=error), self.assertRaises(type(error)):
+                workspace._frontend_revalidation_publish(b"different unpublished observation")
+            self.assertFalse(list(self.root.rglob("*.tmp")))
+        path.write_bytes(b"different bytes at the same address")
+        with self.assertRaisesRegex(ValueError, "identity differs"):
+            workspace._frontend_revalidation_publish(raw)
+        self.assertEqual(path.read_bytes(), b"different bytes at the same address")
+
+    def test_immutable_publication_never_replaces_a_racing_writer(self):
+        def race(temporary, destination):
+            destination.write_bytes(b"racing observation")
+            raise FileExistsError("another publisher created the address")
+
+        with mock.patch.object(workspace.os, "link", side_effect=race), \
+                self.assertRaisesRegex(ValueError, "raced different bytes"):
+            workspace._frontend_revalidation_publish(b"candidate observation")
+        outputs = list((self.root / ".analysis/inputs/frontend-revalidation/blobs").iterdir())
+        self.assertEqual(len(outputs), 1)
+        self.assertEqual(outputs[0].read_bytes(), b"racing observation")
+        self.assertFalse(list(self.root.rglob("*.tmp")))
+
+    def test_http_fetch_checks_official_redirects_lengths_and_releases_error_responses(self):
+        url = "https://apps.razer.com/synapse/products/190/ui/index.html"
+        response = mock.MagicMock()
+        response.__enter__.return_value = response
+        response.status = 200
+        response.read.return_value = b"raw"
+        response.geturl.return_value = url
+        response.headers = {"Content-Length": "3", "Content-Type": "text/html", "Secret": "not retained"}
+        with mock.patch.object(workspace.urllib.request, "urlopen", return_value=response) as fetch:
+            row = workspace._frontend_revalidation_fetch(url)
+            self.assertEqual(row["status"], "ok")
+            self.assertEqual(row["_raw"], b"raw")
+            self.assertNotIn("Secret", row["headers"])
+            response.headers["Content-Length"] = "4"
+            self.assertEqual(workspace._frontend_revalidation_fetch(url)["status"], "failed")
+            response.headers["Content-Length"] = "3"
+            response.geturl.return_value = "https://example.com/index.html"
+            self.assertEqual(workspace._frontend_revalidation_fetch(url)["status"], "failed")
+            fetch.reset_mock()
+            self.assertEqual(workspace._frontend_revalidation_fetch("https://example.com/index.html")["status"], "rejected")
+            fetch.assert_not_called()
+        body = io.BytesIO(b"not found")
+        error = workspace.urllib.error.HTTPError(url, 404, "not found", {}, body)
+        with mock.patch.object(workspace.urllib.request, "urlopen", side_effect=error):
+            row = workspace._frontend_revalidation_fetch(url)
+        self.assertEqual(row["status"], "missing")
+        self.assertTrue(body.closed)
 
 
 class LocalizationCatalogTests(unittest.TestCase):
@@ -1066,7 +1413,7 @@ class ArchitectureBoundaryTests(unittest.TestCase):
     def test_matcher_save_requires_complete_workspace_scope_session_and_connection(self):
         owner = 'crates/razer-shell/src/shell/mouse/mouse_matcher.rs'
         source = ('fn mouse_matcher_save_current(&self, save: &LocalSave, cx: &App) -> bool { '
-                  'self.mouse_matcher.sessions.get(&save.owner.identity).is_some_and(|session| { '
+                  'self.mouse_matcher.sessions.get(&save.owner.key).is_some_and(|session| { '
                   'session.owner.id == save.owner.id && session.owner.scope == save.owner.scope '
                   '&& session.owner.workspace.upgrade().as_ref() == Some(&save.workspace) '
                   '&& save.owner.current(self, session.closing, cx) }) }')
@@ -1085,13 +1432,14 @@ class ArchitectureBoundaryTests(unittest.TestCase):
 
     def test_retiring_matcher_delivery_cannot_remove_the_replacement_session(self):
         owner = 'crates/razer-shell/src/shell/mouse/mouse_matcher.rs'
-        source = ('fn dispatch_mouse_matcher() { if shell.mouse_matcher.sessions.get(&delivery_owner.identity) '
+        source = ('fn dispatch_mouse_matcher() { if shell.mouse_matcher.sessions.get(&delivery_owner.key) '
                   '.is_some_and(|session| session.owner.id == delivery_owner.id) { '
-                  'shell.retire_mouse_matcher(&delivery_owner.identity, cx); } }')
+                  'shell.retire_mouse_matcher(&delivery_owner.key, cx); } }')
         self.assertFalse(self.inspect(source, owner))
         for changed in (source.replace('session.owner.id == delivery_owner.id', 'true'),
-                        source.replace('.get(&delivery_owner.identity)', '.get(&other_identity)'),
-                        'fn dispatch_mouse_matcher() { shell.retire_mouse_matcher(&delivery_owner.identity, cx); }'):
+                        source.replace('.get(&delivery_owner.key)', '.get(&other_key)'),
+                        source.replace('&delivery_owner.key, cx', '&delivery_owner.identity, cx'),
+                        'fn dispatch_mouse_matcher() { shell.retire_mouse_matcher(&delivery_owner.key, cx); }'):
             self.assertEqual(self.inspect(changed, owner)[0]['kind'], 'matcher_retired_worker_removes_successor')
         self.assertFalse(self.inspect('fn unrelated() { shell.retire_mouse_matcher(&retained_identity, cx); }', owner))
 
@@ -1105,8 +1453,10 @@ class ArchitectureBoundaryTests(unittest.TestCase):
             'device.active_profile == self.profile_id',
             'device.profiles.iter().any(|profile| profile.id == self.profile_id && profile.guid == self.profile_guid)',
             'workspace_state.retains_mouse_matcher_scope(&self.scope, cx)',
-            '(draining || self.scope.is_valid() && workspace_state.mouse_matcher_scope(cx).as_ref() == Some(&self.scope))',
-            'super::device_discovery::retained_connection(std::slice::from_ref(&self.route), &shell.device_observations, device)',
+            '(draining || workspace_state.accepts_mouse_matcher_scope(&self.scope, cx))',
+            'match &self.route { Some(route) => super::device_discovery::retained_connection('
+            'std::slice::from_ref(route), &shell.device_observations, device,), '
+            'None => self.scope.is_normalization(), }',
         ]
         source = 'impl Owner { fn current() -> bool { ' + ' && '.join(conditions) + ' } }'
         self.assertFalse(self.inspect(source, owner))
@@ -1114,10 +1464,54 @@ class ArchitectureBoundaryTests(unittest.TestCase):
             with self.subTest(condition=condition):
                 self.assertEqual(self.inspect(source.replace(condition, 'true'), owner)[0]['kind'],
                                  'matcher_drain_bypasses_profile_or_connection_owner')
-        self.assertEqual(self.inspect(source.replace('self.route', 'other_route'), owner)[0]['kind'],
-                         'matcher_drain_bypasses_profile_or_connection_owner')
+        for changed in (source.replace('self.route', 'other_route'),
+                        source.replace('None => self.scope.is_normalization()', 'None => true'),
+                        source.replace('std::slice::from_ref(route)', 'std::slice::from_ref(other_route)'),
+                        source.replace('&shell.device_observations', '&other_observations')):
+            self.assertEqual(self.inspect(changed, owner)[0]['kind'],
+                             'matcher_drain_bypasses_profile_or_connection_owner')
         self.assertFalse(self.inspect(source.replace('impl Owner', 'impl Unrelated'), owner))
         self.assertFalse(self.inspect(source, 'crates/razer-shell/src/shell/unrelated.rs'))
+
+    def test_matcher_normalization_cannot_open_an_expired_or_unmounted_ui_scope(self):
+        owner = 'crates/razer-pages/src/features/mouse/dpi/mouse_matcher_owner.rs'
+        conditions = [
+            'scope.is_valid()',
+            'self.retains_mouse_matcher_scope(scope, cx)',
+            '(scope.is_normalization() || self.mouse_matcher_scope(cx).as_ref() == Some(scope))',
+        ]
+        source = 'impl MouseProductWorkspace { fn accepts_mouse_matcher_scope() -> bool { ' + ' && '.join(conditions) + ' } }'
+        self.assertFalse(self.inspect(source, owner))
+        for condition in conditions:
+            with self.subTest(condition=condition):
+                self.assertEqual(self.inspect(source.replace(condition, 'true'), owner)[0]['kind'],
+                                 'matcher_request_accepts_expired_or_unmounted_ui_scope')
+        self.assertEqual(self.inspect(source.replace('&&', '||', 1), owner)[0]['kind'],
+                         'matcher_request_accepts_expired_or_unmounted_ui_scope')
+        self.assertFalse(self.inspect(source.replace('impl MouseProductWorkspace', 'impl Unrelated'), owner))
+        self.assertFalse(self.inspect(source, 'crates/razer-pages/src/features/mouse/unrelated.rs'))
+
+    def test_matcher_retention_keeps_both_domains_and_their_exact_epoch_guards(self):
+        owner = 'crates/razer-pages/src/features/mouse/dpi/mouse_matcher_owner.rs'
+        conditions = [
+            'self.mouse_polling_scope(cx) == Some(scope.domain)',
+            'self.matcher.as_ref().is_some_and(|matcher| match scope.kind { '
+            'ScopeKind::Ui => scope.retained_by(matcher.entity_id(), self.matcher_epoch, &self.matcher_valid), '
+            'ScopeKind::Normalization => scope.retained_by(matcher.entity_id(), self.matcher_normalization.epoch, &self.matcher_normalization.valid), })',
+        ]
+        source = 'impl MouseProductWorkspace { fn retains_mouse_matcher_scope() -> bool { ' + ' && '.join(conditions) + ' } }'
+        self.assertFalse(self.inspect(source, owner))
+        for condition in conditions:
+            with self.subTest(condition=condition):
+                self.assertEqual(self.inspect(source.replace(condition, 'true'), owner)[0]['kind'],
+                                 'matcher_retention_loses_domain_or_owner_epoch')
+        for original, changed in [('self.matcher_epoch', '0'), ('&self.matcher_valid', '&other_guard'),
+                                  ('self.matcher_normalization.epoch', 'self.matcher_epoch'),
+                                  ('&self.matcher_normalization.valid', '&self.matcher_valid')]:
+            with self.subTest(original=original):
+                self.assertEqual(self.inspect(source.replace(original, changed), owner)[0]['kind'],
+                                 'matcher_retention_loses_domain_or_owner_epoch')
+        self.assertFalse(self.inspect(source.replace('impl MouseProductWorkspace', 'impl Unrelated'), owner))
 
     def test_receiver_and_matcher_rebase_validate_owner_before_applying_the_mutation(self):
         rows = [('crates/razer-shell/src/shell/mouse/mouse_matcher.rs',
@@ -2995,6 +3389,7 @@ class ConnectedDeviceVerificationTests(unittest.TestCase):
         expected = {
             'macro-recorder-platform': ('razer-platform', 'macro_recorder'),
             'current-dpi-observations': ('razer-pages', 'current_dpi_observation_'),
+            'current-dpi-owner': ('razer-pages', 'current_dpi::tests::current_dpi_'),
             'current-dpi-initialization': ('razer-pages', 'current_dpi::initialization_tests'),
             'dpi-row-hover-state': ('razer-pages', 'dpi_row_hover_'),
             'current-power-state': ('razer-pages', 'current_power::tests'),
@@ -3148,6 +3543,149 @@ mod nested {
         scope = self.scope('--lib', 'nested::renamed::pure')
         self.assertEqual(scope['targets'][0]['selected_tests'], ['nested::renamed::pure'])
 
+    def test_literal_item_includes_keep_module_names_source_identity_and_nested_paths(self):
+        self.crate('''
+mod tests {
+    include!("pieces/first.rs");
+    #[test] fn local() {}
+}
+''', {'src/pieces/first.rs': '''
+#[test] fn included() {}
+include!(r#"second.data"#);
+''', 'src/pieces/second.data': '''
+#[test] fn nested() {}
+#[test] #[ignore] fn ignored_window() { cx.open_window(); }
+'''})
+        scope = self.scope('--lib')
+        self.assertEqual(scope['targets'][0]['selected_tests'], [
+            'tests::included', 'tests::nested', 'tests::local'])
+        inventory = workspace.rust_test_inventory('fixture')
+        included = next(row for row in inventory['tests'] if row['name'] == 'tests::nested')
+        self.assertEqual(included['owner'], 'crates/fixture/src/pieces/second.data')
+        self.assertEqual(included['line'], 2)
+        path = self.root / included['owner']
+        self.assertEqual(inventory['sources'][included['owner']], hashlib.sha256(path.read_bytes()).hexdigest())
+        self.assertEqual(scope['targets'][0]['source_count'], 3)
+
+    def test_item_includes_share_imports_in_both_directions_before_window_checks(self):
+        self.crate('''
+mod support { pub fn open(cx: &mut TestAppContext) { cx.open_window(); } }
+mod tests {
+    use crate::support::open as outer;
+    #[test] fn parent_window(cx: &mut TestAppContext) { included(cx); }
+    include!("cases.rs");
+}
+''', {'src/cases.rs': '''
+use crate::support::open as included;
+#[test] fn included_window(cx: &mut TestAppContext) { outer(cx); }
+'''})
+        for name in ('tests::parent_window', 'tests::included_window'):
+            with self.subTest(name=name), self.assertRaisesRegex(ValueError, name):
+                self.scope('--lib', name)
+
+    def test_item_includes_preserve_local_methods_and_literal_module_owners(self):
+        self.crate('''
+mod tests {
+    struct Owner;
+    impl Owner { fn present(&self, cx: &mut TestAppContext) { cx.add_window(); } }
+    include!("pieces/cases.rs");
+}
+''', {'src/pieces/cases.rs': '''
+#[path = "helper.rs"] mod helper;
+#[test] fn included_method(cx: &mut TestAppContext) { Owner.present(cx); }
+#[test] fn included_helper(cx: &mut TestAppContext) { helper::present(cx); }
+''', 'src/pieces/helper.rs': 'pub fn present(cx: &mut TestAppContext) { cx.open_window(); }'})
+        for name in ('tests::included_method', 'tests::included_helper'):
+            with self.subTest(name=name), self.assertRaisesRegex(ValueError, name):
+                self.scope('--lib', name)
+
+    def test_same_literal_include_can_belong_to_distinct_modules_without_becoming_a_module(self):
+        self.crate('mod first { include!("cases.rs"); } mod second { include!("cases.rs"); }',
+                   {'src/cases.rs': '#[test] fn pure() {}'})
+        scope = self.scope('--lib')
+        self.assertEqual(scope['targets'][0]['selected_tests'], ['first::pure', 'second::pure'])
+        self.assertEqual(scope['targets'][0]['source_count'], 2)
+
+    def test_literal_item_include_uses_shared_rust_escape_and_parent_relative_path_rules(self):
+        self.crate(r'include!("../testdata/\x63ases.rs",);',
+                   {'testdata/cases.rs': '#[test] fn pure() {}'})
+        scope = self.scope('--lib')
+        self.assertEqual(scope['targets'][0]['selected_tests'], ['pure'])
+        self.assertEqual(scope['targets'][0]['source_count'], 2)
+
+    def test_item_include_cycles_fail_even_when_each_expansion_changes_the_module(self):
+        self.crate('include!("cases.rs");', {'src/cases.rs': 'include!("lib.rs");'})
+        path = self.root / 'crates/fixture/src/cases.rs'
+        for source in ('include!("lib.rs");', 'mod deeper { include!("cases.rs"); }',
+                       '#[path = "lib.rs"] mod repeated;'):
+            path.write_text(source, encoding='utf-8')
+            with self.subTest(source=source), self.assertRaisesRegex(ValueError, 'Recursive Rust test'):
+                self.scope('--lib')
+
+    def test_item_include_paths_are_checked_before_reading_outside_product_inputs(self):
+        self.crate('#[test] fn pure() {}')
+        owner = self.root / 'crates/fixture/src/lib.rs'
+        for literal in ('../../../../outside.rs', '../../../.analysis/private.rs',
+                        str(self.root / 'crates/fixture/src/lib.rs')):
+            owner.write_text('include!(' + json.dumps(literal) + ');', encoding='utf-8')
+            with self.subTest(literal=literal), self.assertRaises(ValueError):
+                self.scope('--lib')
+
+    def test_missing_or_invalid_item_includes_cannot_silently_drop_tests(self):
+        self.crate('include!("cases.rs");')
+        with self.assertRaisesRegex(ValueError, 'absent'):
+            self.scope('--lib')
+        path = self.root / 'crates/fixture/src/cases.rs'
+        path.write_text('#[test] fn broken(', encoding='utf-8')
+        with self.assertRaisesRegex(ValueError, 'unresolved syntax'):
+            self.scope('--lib')
+
+    def test_item_include_checks_resolved_path_before_reading_a_link_target(self):
+        self.crate('include!("cases.rs");', {'src/cases.rs': '#[test] fn pure() {}'})
+        original_resolve = Path.resolve
+        included = self.root / 'crates/fixture/src/cases.rs'
+
+        def resolve(path, *args, **kwargs):
+            return self.root.parent / 'outside.rs' if path == included else original_resolve(path, *args, **kwargs)
+
+        with mock.patch.object(Path, 'resolve', resolve), self.assertRaisesRegex(ValueError, 'Outside project'):
+            self.scope('--lib')
+
+    def test_dynamic_item_includes_are_reported_without_expanding_or_guessing_paths(self):
+        self.crate('''
+include!(concat!(env!("OUT_DIR"), "/generated.rs"));
+#[test] fn pure() { let text = include_str!("missing.txt"); }
+macro_rules! unused { () => { include!("missing.rs"); }; }
+''')
+        scope = self.scope('--lib')
+        self.assertEqual(scope['targets'][0]['selected_tests'], ['pure'])
+        unresolved = scope['targets'][0]['unresolved_includes']
+        self.assertEqual(len(unresolved), 1)
+        self.assertEqual(unresolved[0]['owner'], 'crates/fixture/src/lib.rs')
+        self.assertEqual(unresolved[0]['line'], 2)
+        self.assertEqual(unresolved[0]['reason'], 'nonliteral_include_path')
+        self.assertIn('concat!', unresolved[0]['expression'])
+        self.assertIn('literal item include!', scope['targets'][0]['limits'])
+
+    def test_expression_includes_are_reported_without_treating_data_as_test_items(self):
+        self.crate('''
+const DATA: &[u8] = include!("data.rs");
+#[test] fn pure() { let value = include!("expression.rs"); }
+''', {'src/data.rs': '&[1, 2]', 'src/expression.rs': '42'})
+        scope = self.scope('--lib')
+        self.assertEqual(scope['targets'][0]['selected_tests'], ['pure'])
+        self.assertEqual([row['reason'] for row in scope['targets'][0]['unresolved_includes']],
+                         ['expression_include_not_expanded', 'expression_include_not_expanded'])
+
+    def test_included_window_preflight_rejects_before_any_compile_or_test_command_executes(self):
+        self.crate('include!("cases.rs");', {'src/cases.rs': '#[test] fn window() { cx.open_window(); }'},
+                   package='razer-model')
+        with mock.patch.object(workspace, 'rust_inputs', return_value=[]), \
+                mock.patch.object(workspace.subprocess, 'run') as runner:
+            with self.assertRaisesRegex(ValueError, 'prohibited window'):
+                workspace.validate_rust(selected_suites=['workspace', 'model'])
+        runner.assert_not_called()
+
     def test_indirect_local_method_window_dependency_is_rejected(self):
         self.crate('''
 struct Owner;
@@ -3156,6 +3694,17 @@ fn helper(cx: &mut TestAppContext) { Owner.present(cx); }
 #[gpui_kit::test] fn uses_helper(cx: &mut TestAppContext) { helper(cx); }
 ''')
         with self.assertRaisesRegex(ValueError, 'uses_helper'):
+            self.scope('--lib')
+
+    def test_method_lookup_keeps_existing_same_file_edges_across_inline_modules(self):
+        self.crate('''
+struct Owner;
+impl Owner { fn present(&self, cx: &mut TestAppContext) { cx.add_window(); } }
+mod tests {
+    #[gpui_kit::test] fn uses_parent_method(cx: &mut TestAppContext) { super::Owner.present(cx); }
+}
+''')
+        with self.assertRaisesRegex(ValueError, 'uses_parent_method'):
             self.scope('--lib')
 
     def test_entity_only_gpui_tests_and_window_words_in_text_are_allowed(self):
@@ -4402,6 +4951,315 @@ fn verify() { let _ = "synapse/check.svg"; }
             path.write_text('mod a { const NAMES: &str = "one"; } mod b { const NAMES: &str = "two"; }', encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "found 2"):
                 workspace.rust_named_item_strings(workspace.relative(path), "NAMES")
+
+
+class VerificationTemporaryOwnershipTests(unittest.TestCase):
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.root = Path(directory.name).resolve()
+        patcher = mock.patch.object(workspace, "ROOT", self.root)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        patcher = mock.patch.object(workspace, "_scratch_processes", return_value=([], []))
+        self.processes = patcher.start()
+        self.addCleanup(patcher.stop)
+        self.name = "target/verification-temp/v-explicit-fixture"
+        self.target = self.root / self.name
+        self.target.mkdir(parents=True)
+        self.source = self.root / ".analysis/results/interruption.json"
+        self.source.parent.mkdir(parents=True)
+        self.source.write_text(json.dumps({"event": {
+            "suite_run_interrupted_after_failure": True, "argv": ["cargo", "check", "--locked"],
+            "raw_output_reference": {"session_id": 313, "chunk_id": "interrupted-fixture"}}}), encoding="utf-8")
+
+    def ledger(self):
+        return json.loads((self.root / workspace.VERIFICATION_TEMP_LEDGER).read_bytes())
+
+    def proof(self):
+        stat = self.target.stat()
+        return {"path": self.name,
+                "identity": {"inode": stat.st_ino, "device": stat.st_dev,
+                             "birthtime_ns": getattr(stat, "st_birthtime_ns", None)},
+                "source": {"path": self.source.relative_to(self.root).as_posix(), "sha256": workspace.digest(self.source)},
+                "pointer": "/event", "session_id": 313, "chunk_id": "interrupted-fixture",
+                "association": "time_and_entry_association", "creation_time_owner_record_available": False}
+
+    def plan(self, *, register=True):
+        with mock.patch("builtins.print"):
+            report = workspace.clean(verification_recovery=self.proof() if register else None)
+        self.plan_path = max((self.root / ".analysis/results").glob("scratch-cleanup-*-plan.json"),
+                             key=lambda path: path.stat().st_mtime_ns)
+        return report
+
+    def apply(self):
+        with mock.patch("builtins.print"):
+            return workspace.clean(apply=self.plan_path.relative_to(self.root).as_posix(),
+                                   plan_sha256=workspace.digest(self.plan_path))
+
+    def test_live_owner_registers_before_use_and_releases_nonempty_subtrees(self):
+        with workspace.verification_environment("pure-test") as (environment, name):
+            row = self.ledger()["records"][0]
+            self.assertEqual(row["directory"]["path"], name)
+            self.assertEqual(row["status"], "active")
+            self.assertEqual(row["creator"]["pid"], os.getpid())
+            temporary = self.root / name
+            self.assertEqual(environment["TEMP"], str(temporary))
+            nested = temporary / "nested/fixture"
+            nested.parent.mkdir()
+            nested.write_bytes(b"test state")
+        self.assertFalse(temporary.exists())
+        row = self.ledger()["records"][0]
+        self.assertEqual((row["status"], row["outcome"]), ("released", "succeeded"))
+        self.assertTrue(self.target.exists())
+
+    def test_failure_and_keyboard_interrupt_keep_outcome_and_release_files(self):
+        for failure, outcome in ((ValueError("failed test"), "failed"), (KeyboardInterrupt(), "cancelled")):
+            with self.subTest(outcome=outcome):
+                with self.assertRaises(type(failure)):
+                    with workspace.verification_environment(outcome) as (_, name):
+                        (self.root / name / "fixture").write_bytes(b"must release")
+                        raise failure
+                self.assertFalse((self.root / name).exists())
+                row = self.ledger()["records"][-1]
+                self.assertEqual((row["status"], row["outcome"]), ("released", outcome))
+
+    def test_registration_failure_also_releases_the_created_directory(self):
+        with mock.patch.object(workspace, "_verification_save", side_effect=OSError("ledger full")):
+            with self.assertRaisesRegex(OSError, "ledger full"):
+                with workspace.verification_environment("not-started"):
+                    self.fail("Command ran before durable registration")
+        self.assertEqual(list(self.target.parent.iterdir()), [self.target])
+
+    def test_live_owner_refuses_to_recursively_delete_a_replacement(self):
+        with self.assertRaisesRegex(ValueError, "identity changed"):
+            with workspace.verification_environment("replacement") as (_, name):
+                path = self.root / name
+                path.rename(path.with_name(path.name + "-original"))
+                path.mkdir()
+                (path / "new-owner").write_bytes(b"preserve")
+        self.assertEqual((path / "new-owner").read_bytes(), b"preserve")
+        self.assertEqual(self.ledger()["records"][0]["status"], "release_failed")
+
+    def test_unregistered_empty_directories_are_retained(self):
+        report = self.plan(register=False)
+        self.assertEqual(report["candidates"], [])
+        self.assertEqual(report["retained"], [{"path": self.name, "reason": "unregistered_verification_directory"}])
+
+    @unittest.skipUnless(os.name == "nt", "Exclusive Windows recovery deletion")
+    def test_explicit_legacy_recovery_plan_apply_deletes_only_the_verified_empty_directory(self):
+        unknown = self.target.parent / "v-other-owner"
+        unknown.mkdir()
+        report = self.plan()
+        self.assertEqual(report["guard_failures"], [])
+        self.assertEqual([(row["path"], row["tree"]["bytes"]) for row in report["candidates"]], [(self.name, 0)])
+        self.assertTrue(self.target.exists())
+        owner = self.ledger()["records"][0]
+        self.assertEqual(owner["registration"], "explicit_legacy_recovery")
+        self.assertIsNone(owner["creator"])
+        receipt = self.apply()
+        self.assertEqual(receipt["status"], "completed")
+        self.assertEqual(receipt["removed"][0]["bytes"], 0)
+        self.assertEqual(receipt["removed"][0]["files"], 0)
+        self.assertEqual(receipt["removed"][0]["allocated_after"], 0)
+        self.assertFalse(self.target.exists())
+        self.assertTrue(unknown.exists())
+        self.assertEqual(receipt["failures"], [])
+        self.assertEqual(self.ledger()["records"][0]["status"], "released")
+
+    def test_explicit_recovery_refuses_unsupported_fields_and_unverified_provenance(self):
+        for update in ({"session_id": 314}, {"creation_time_owner_record_available": True},
+                       {"association": "assumed_by_name"}, {"extra": True}, {"pointer": "/missing"},
+                       {"source": {"path": ".analysis/results/interruption.json", "sha256": "0" * 64}}):
+            with self.subTest(update=update):
+                proof = self.proof()
+                proof.update(update)
+                with self.assertRaises((ValueError, KeyError)):
+                    workspace._verification_register_recovery(proof)
+        self.assertFalse((self.root / workspace.VERIFICATION_TEMP_LEDGER).exists())
+
+    def test_recovery_requires_the_exact_identity_and_an_empty_directory(self):
+        proof = self.proof()
+        proof["identity"]["inode"] += 1
+        with self.assertRaisesRegex(ValueError, "identity changed"):
+            workspace._verification_register_recovery(proof)
+        (self.target / "pending-file").write_bytes(b"retain")
+        with self.assertRaisesRegex(ValueError, "nonempty"):
+            workspace._verification_register_recovery(self.proof())
+
+    def test_lexical_escape_and_reparse_paths_are_rejected(self):
+        for name in ("target/verification-temp/../v-fixture", "target/verification-temp/v-fixture/child",
+                     "target/verification-temp", ".work/v-fixture", "target\\verification-temp\\v-fixture"):
+            with self.subTest(name=name), self.assertRaises(ValueError):
+                workspace._verification_path(name, temporary=True)
+        with mock.patch.object(workspace, "_scratch_link", side_effect=lambda path: path == self.target.parent):
+            with self.assertRaisesRegex(ValueError, "reparse"):
+                workspace._verification_register_recovery(self.proof())
+
+    def test_malformed_ledger_records_fail_closed(self):
+        ledger = self.root / workspace.VERIFICATION_TEMP_LEDGER
+        ledger.parent.mkdir(parents=True)
+        ledger.write_text(json.dumps({"schema_version": 1, "mode": "verification_temporary_ownership",
+                                      "records": [{"directory": {"path": self.name}}]}), encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "ownership ledger"):
+            workspace._verification_ledger(self.root)
+        ledger.unlink()
+        workspace.clean(verification_recovery=self.proof())
+
+    def test_active_or_unknown_creator_retains_live_owner_but_pid_reuse_is_distinguished(self):
+        with workspace.verification_environment("crash-fixture") as (_, name):
+            ledger = self.ledger()
+            ledger["records"][0]["creator"] = {"pid": 777, "started_at_utc": "2000-01-01T00:00:00+00:00",
+                "process_creation": {"filetime_100ns": 100, "precision_100ns": 1, "source": "GetProcessTimes"}}
+            workspace._verification_save(self.root, ledger)
+            for alive, observed, expected in ((True, {"filetime_100ns": 100}, False),
+                                               (None, None, False), (True, {"filetime_100ns": 200}, True)):
+                with self.subTest(alive=alive, observed=observed), \
+                        mock.patch("reverse_pending.process_alive", return_value=alive), \
+                        mock.patch("reverse_pending.process_creation_time", return_value=observed):
+                    rows, retained = workspace._verification_candidates()
+                    self.assertEqual(any(row["path"] == name for row in rows), expected)
+                    if not expected:
+                        self.assertIn("creator_still_active_or_unknown", next(row["reason"] for row in retained if row["path"] == name))
+
+    def test_validation_children_or_unknown_process_inventory_block_cleanup(self):
+        for processes, errors in (([{"pid": 778, "command_line": '"C:/Rust/bin/cargo.exe" test --locked'}], []),
+                                  ([{"pid": 779, "command_line": 'python tools/workspace.py validate-rust --suite pure'}], []),
+                                  ([], ["process metadata unavailable"])):
+            with self.subTest(processes=processes, errors=errors):
+                self.processes.return_value = (processes, errors)
+                report = self.plan()
+                self.assertEqual(report["candidates"], [])
+                self.assertTrue(report["guard_failures"] or any(row["reason"] == "referenced_or_active" for row in report["retained"]))
+
+    def test_historical_owner_field_is_ignored_but_sibling_dependency_is_retained(self):
+        self.assertEqual(len(self.plan()["candidates"]), 1)
+        ledger = self.ledger()
+        ledger["records"][0]["source_database"] = {"path": self.name}
+        workspace._verification_save(self.root, ledger)
+        report = self.plan(register=False)
+        self.assertEqual(report["candidates"], [])
+        self.assertIn(workspace.VERIFICATION_TEMP_LEDGER, report["retained"][0]["references"])
+
+    def test_new_reference_or_reservation_after_plan_prevents_apply(self):
+        self.plan()
+        reservation = self.root / ".work/reservation.json"
+        reservation.parent.mkdir()
+        reservation.write_text(json.dumps({"source_database": self.name}), encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "dependency or activity"):
+            self.apply()
+        self.assertTrue(self.target.exists())
+
+    def test_nonempty_or_replaced_directory_after_plan_prevents_apply(self):
+        self.plan()
+        child = self.target / "new-owner-file"
+        child.write_bytes(b"preserve")
+        with self.assertRaisesRegex(ValueError, "nonempty"):
+            self.apply()
+        self.assertEqual(child.read_bytes(), b"preserve")
+        self.target.rename(self.target.with_name("v-original"))
+        self.target.mkdir()
+        with self.assertRaisesRegex(ValueError, "changed"):
+            self.apply()
+        self.assertTrue(self.target.exists())
+
+    def test_ledger_and_recovery_source_bytes_are_bound_to_the_reviewed_plan(self):
+        for changed in (workspace.VERIFICATION_TEMP_LEDGER, self.source.relative_to(self.root).as_posix()):
+            with self.subTest(changed=changed):
+                self.plan()
+                path = self.root / changed
+                original = path.read_bytes()
+                path.write_bytes(original + b"\n")
+                with self.assertRaisesRegex(ValueError, "changed|ownership"):
+                    self.apply()
+                self.assertTrue(self.target.exists())
+                path.write_bytes(original)
+
+    def test_reviewed_plan_hash_is_required_and_actual_plan_mutations_are_rejected(self):
+        self.plan()
+        expected = workspace.digest(self.plan_path)
+        self.plan_path.write_bytes(self.plan_path.read_bytes() + b"\n")
+        with self.assertRaisesRegex(ValueError, "plan bytes changed"):
+            workspace.clean(apply=self.plan_path.relative_to(self.root).as_posix(), plan_sha256=expected)
+        self.assertTrue(self.target.exists())
+
+    def test_rehashed_plan_cannot_omit_required_ownership_evidence(self):
+        for key in ("basis", "owner_receipts", "ownership"):
+            with self.subTest(key=key):
+                self.plan()
+                report = json.loads(self.plan_path.read_bytes())
+                report["candidates"][0].pop(key)
+                self.plan_path.write_text(json.dumps(report), encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, "ownership evidence"):
+                    self.apply()
+                self.assertTrue(self.target.exists())
+
+    @unittest.skipUnless(os.name == "nt", "Exclusive Windows directory handle")
+    def test_occupied_directory_failure_is_receipted_without_deleting(self):
+        import ctypes
+        from ctypes import wintypes
+        self.plan()
+        api = ctypes.WinDLL("kernel32", use_last_error=True)
+        api.CreateFileW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, wintypes.LPVOID,
+                                   wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
+        api.CreateFileW.restype = wintypes.HANDLE
+        api.CloseHandle.argtypes = [wintypes.HANDLE]
+        delete = workspace._verification_delete_empty
+
+        def occupied(row):
+            handle = api.CreateFileW(str(self.target), 0x81, 0, None, 3, 0x02000000, None)
+            self.assertNotEqual(handle, ctypes.c_void_p(-1).value)
+            try:
+                return delete(row)
+            finally:
+                api.CloseHandle(handle)
+
+        with mock.patch.object(workspace, "_verification_delete_empty", side_effect=occupied):
+            with self.assertRaises((OSError, ValueError)):
+                self.apply()
+        receipt = json.loads(self.plan_path.with_name(self.plan_path.stem + "-applied.json").read_bytes())
+        self.assertEqual(receipt["removed"], [])
+        self.assertEqual(len(receipt["failures"]), 1)
+        self.assertTrue(self.target.exists())
+
+    def test_streamed_large_receipts_preserve_verification_dependencies(self):
+        owner = self.root / ".analysis/results/large-owner.json"
+        owner.write_text(json.dumps({"scratch_cleanup": {"path": self.name}, "source_database": self.name}), encoding="utf-8")
+        self.assertEqual(list(workspace._clean_stream_json_dependencies(owner)), [self.name])
+
+    @unittest.skipUnless(os.name == "nt", "Windows rejects deletion of a concurrently populated directory")
+    def test_concurrent_new_file_is_preserved_and_deletion_failure_is_receipted(self):
+        self.plan()
+        delete = workspace._verification_delete_empty
+        child = self.target / "concurrent-owner"
+
+        def introduced_after_snapshot(row):
+            def guard(_):
+                child.write_bytes(b"preserve concurrent writer")
+                return {}, []
+            with mock.patch.object(workspace, "_clean_process_guard", side_effect=guard):
+                return delete(row)
+
+        with mock.patch.object(workspace, "_verification_delete_empty", side_effect=introduced_after_snapshot):
+            with self.assertRaises((OSError, ValueError)):
+                self.apply()
+        self.assertEqual(child.read_bytes(), b"preserve concurrent writer")
+        receipt = json.loads(self.plan_path.with_name(self.plan_path.stem + "-applied.json").read_bytes())
+        self.assertEqual(receipt["removed"], [])
+        self.assertEqual(len(receipt["failures"]), 1)
+
+    def test_digest_hashes_through_a_read_only_stream(self):
+        class ReadOnlyPath:
+            def __init__(self):
+                self.mode = None
+
+            def open(self, mode):
+                self.mode = mode
+                return io.BytesIO(b"immutable bytes")
+
+        path = ReadOnlyPath()
+        self.assertEqual(workspace.digest(path), hashlib.sha256(b"immutable bytes").hexdigest())
+        self.assertEqual(path.mode, "rb")
 
 
 class PlannedScratchCleanupTests(unittest.TestCase):

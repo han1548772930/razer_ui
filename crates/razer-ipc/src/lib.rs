@@ -20,8 +20,8 @@ pub use worker_shutdown::ShutdownConfirmation;
 pub const FRAME_PREFIX: &str = "RAZER_UI_SERVICE ";
 pub const MAX_FRAME_BYTES: usize = 4 * 1024 * 1024;
 pub mod analog_observation;
-pub mod controller_sleep;
 pub mod controller_initialization;
+pub mod controller_sleep;
 pub mod controller_socd;
 pub mod device_tasks;
 pub mod gamepad_observation;
@@ -1310,7 +1310,8 @@ impl ServiceClient {
                 | ServiceRequest::PrepareOtfmRecorder
                 | ServiceRequest::StartOtfmRecording
         );
-        let controller_initialization = matches!(&request, ServiceRequest::ControllerInitialization { .. });
+        let controller_initialization =
+            matches!(&request, ServiceRequest::ControllerInitialization { .. });
         let controller_triggers = matches!(
             &request,
             ServiceRequest::ControllerTriggers { .. }

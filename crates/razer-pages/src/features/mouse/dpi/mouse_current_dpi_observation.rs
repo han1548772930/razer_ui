@@ -1,4 +1,6 @@
-use razer_device::mouse_current_dpi::{DpiPair, DpiReport, pack_for};
+use razer_device::mouse_current_dpi::{
+    DpiPair, DpiReport, SourceStages, pack_editor_for, pack_for,
+};
 use razer_device::mouse_dpi_stages::{DpiStagesDraft, DpiStagesReading};
 
 /// Local stage identities come from the selected source profile. A getter's
@@ -10,13 +12,35 @@ pub(super) struct Selection {
 }
 
 impl Selection {
+    pub(super) fn capture_source(product_id: u32, draft: &SourceStages) -> Option<Self> {
+        let selected = draft.active_stage().checked_sub(1)?;
+        draft.stages().get(selected)?;
+        let packed = pack_for(product_id, draft).ok()?;
+        let visible: Vec<_> = draft
+            .stages()
+            .iter()
+            .enumerate()
+            .filter_map(|(ix, row)| (row.is_visible() == Some(true)).then_some(ix))
+            .collect();
+        let wire_rows = if packed.records.len() == visible.len() {
+            visible
+        } else if packed.records.len() == 1 && draft.stages()[selected].is_visible() == Some(true) {
+            vec![selected]
+        } else {
+            Vec::new()
+        };
+        Some(Self {
+            selected,
+            wire_rows,
+        })
+    }
     pub(super) fn capture(product_id: u32, draft: &DpiStagesDraft) -> Option<Self> {
         if draft.stages.len() != 5 {
             return None;
         }
         let selected = draft.active_stage.checked_sub(1)?;
         draft.stages.get(selected)?;
-        let packed = pack_for(product_id, draft).ok();
+        let packed = pack_editor_for(product_id, draft).ok();
         let visible: Vec<_> = draft
             .stages
             .iter()

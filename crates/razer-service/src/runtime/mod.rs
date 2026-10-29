@@ -5,12 +5,12 @@ use std::io::Write;
 mod camera_controller;
 #[path = "controller_calibration.rs"]
 mod controller_calibration;
+#[path = "controller_initialization.rs"]
+mod controller_initialization;
 #[path = "controller_lighting.rs"]
 mod controller_lighting;
 #[path = "controller_sleep.rs"]
 mod controller_sleep;
-#[path = "controller_initialization.rs"]
-mod controller_initialization;
 mod controller_socd;
 #[path = "controller_triggers.rs"]
 mod controller_triggers;

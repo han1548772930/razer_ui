@@ -136,7 +136,7 @@ fn ownership(device: &Device) -> Result<Ownership> {
             entry.explicitly_edited || entry.imported.is_some() || entry.initialized.is_some(),
             "DPI profile has no recorded source or explicit edit"
         );
-        razer_device::mouse_current_dpi::pack_for(device.product_id, &entry.stages)?;
+        razer_device::mouse_current_dpi::pack_editor_for(device.product_id, &entry.stages)?;
         if let Some(imported) = &entry.imported {
             ensure!(
                 imported.product_id == device.product_id
@@ -381,7 +381,7 @@ pub fn mark_edited(
             .clone(),
     )?;
     let stages = stages.draft()?;
-    razer_device::mouse_current_dpi::pack_for(device.product_id, &stages)?;
+    razer_device::mouse_current_dpi::pack_editor_for(device.product_id, &stages)?;
     let mut state = ownership(device)?;
     let imported = state
         .profiles

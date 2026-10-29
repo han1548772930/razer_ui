@@ -2,6 +2,8 @@
 
 这三项功能解决不同问题。动态灵敏度按输入速度改变输出倍率；旋转补偿改变传感器坐标方向；灵敏度匹配采集两只鼠标的移动量，计算一个 DPI 并保存为可选记录。它们不是操作系统指针速度的三种名称。
 
+本文分别记录已保留快照和重新获取的新部署证据。六款 Matcher 产品的新 UI／MW 共 12 份快照已获取并索引；旧地址仍返回相同字节只证明旧原件仍可访问。新部署的完整 factory 比较收据位于 `.analysis/results/frontend-revalidation/946491207f8634af6a341b0b6630b1b91bd0c06a2ba9c93ad45bce6b6794ae88.json`，219 个比较所有者中 151 个正文变化、40 个完全相同、28 个旧模块不存在。正文变化与旧模块缺失均不代表语义已闭合；缺失 source map 和动态依赖继续保留未决状态。下文的旧文件名与区间只证明对应保留快照，新部署结论须使用明确的新原件引用。
+
 ## 产品和版本分支
 
 当前动态灵敏度与旋转的专项静态审计覆盖 PID190、192、196、222、226、229、239。固件条件由 Advanced 面板读取 `currentFWVersion` 后计算；面板存在、控件可编辑和底层命令完成是不同条件。
@@ -32,7 +34,7 @@ PID226 的 `loadDynamicSensitivitySettings`／`loadRotationSettings` 另把该�
 
 页面开关对应 `state`，0 为关闭，1 为开启；模式 0、1、2、3 分别是 `CLASSIC`、`NATURAL`、`JUMP`、`CUSTOM`。前三种使用原件中的固定控制点；Custom 另存 `points`、`templateId` 和用于设备传输的 `customSensorAccelerations`，不能只保存绘图点而省略采样曲线。
 
-图横轴的词条为 `DYNAMIC_SENSITIVITY_INPUT_SPEED`，纵轴为 `DYNAMIC_SENSITIVITY_RATIO`。纵轴表示倍率。横轴实时值由输入监控回调按产品分支计算：六款累计相对 X/Y 的绝对值，226 累计当前与上次相对 X/Y 之差的绝对值，再将累计向量长度除以 `timeTick` 差值／10000；具体门禁与类型边界见下文。该计算式本身不证明它是米／秒或厘米／秒，正文不为原件没有标出的物理单位作换算。
+图横轴的词条为 `DYNAMIC_SENSITIVITY_INPUT_SPEED`，纵轴为 `DYNAMIC_SENSITIVITY_RATIO`。纵轴表示倍率。横轴实时值由输入监控回调累计相对 X/Y 的绝对值，再将累计向量长度除以 `timeTick` 差值／10000；新部署 PID226 也使用这一表达式，具体门禁与类型边界见下文。该计算式本身不证明它是米／秒或厘米／秒，正文不为原件没有标出的物理单位作换算。
 
 Custom 拖动的真实约束是：首点 X 固定为 0，后续点至少相隔 2；倍率下限 0.1，上限为当前纵轴网格末值。横轴缩放间隔在 5～40 之间、每次 5，显示七个间隔；纵轴缩放间隔在 0.25～1 之间、每次 0.25，显示六个间隔。缩放改变可见坐标范围，不是另一个设备速度设置。鼠标按下选点、文档级 mousemove 更新点、mouseup 提交；相关监听在 effect 清理中移除。Ctrl＋滚轮同步调整两个缩放轴。
 
@@ -48,7 +50,7 @@ Custom 拖动的真实约束是：首点 X 固定为 0，后续点至少相隔 2
 
 ### 动态灵敏度命令帧、响应和中止边界
 
-`queries.dynamic_sensitivity` 对七份当前 MW 原件的完整 protocol factory、方法体和 writer 做了逐字节复核。190、192、196、222、229、239 使用各自 `6120.*.js`，226 使用独立的 `7846.8d3e3465fc6ae4ee8a38.js`；这组通用 proximity-sensor wrapper 的命令三元组相同，226 的差异在输入监控和 BLE 设备路由。这个结论只覆盖动态灵敏度 writer 调用的 wrapper，不替代下方旋转补偿另有的 BLE 命令分支。实际 `sendCommand` 的参数和成功解码如下：
+`queries.dynamic_sensitivity` 对七份保留 MW 原件的完整 protocol factory、方法体和 writer 做了逐字节复核。190、192、196、222、229、239 使用各自 `6120.*.js`，226 使用独立的 `7846.8d3e3465fc6ae4ee8a38.js`；这组通用 proximity-sensor wrapper 的命令三元组相同，226 的差异在输入监控和 BLE 设备路由。这个结论只覆盖该批动态灵敏度 writer 调用的 wrapper，不替代新部署协议闭包或下方旋转补偿另有的 BLE 命令分支。实际 `sendCommand` 的参数和成功解码如下：
 
 | 操作 | 命令三元组 | 请求数据 | 原件解码 |
 | --- | --- | --- | --- |
@@ -66,7 +68,7 @@ Custom 拖动的真实约束是：首点 X 固定为 0，后续点至少相隔 2
 
 迁移时必须分别对照：九种命令的输入字节、无效参数异常、短／长曲线包、setter ACK 与独立 GET、AbortSignal 发生在首包和中途的结果、队列跳过、失败后的释放，以及 226 的 BLE 输入监控分支。当前仍只有静态源码和模拟边界分析，未执行官方 DLL、厂商 JS 或真实设备，实际应答、写回恢复和释放均保持未验证。
 
-实时速度监控是另一条链。190／192／196／222／229／239 的 `DYNAMIC_SENSITIVITY_UI_COMMAND START` 先 off 再 on 同名 input listener，226 仅 on；之后均等待启动监控。STOP 先移除 listener，再等待停止监控并重置采样状态。速度向 UI 的发布限频为约 60 Hz，发布后也执行该重置；226 的重置清除 lastX／lastY，却没有重置 lastTimeTick。图中的活动面积在 150 ms 无更新后复位。图表 effect 会在开关变化时发 START／STOP；本次复核的 effect 没有额外的卸载 STOP 返回函数，不能据此宣称它具有该清理动作。
+实时速度监控是另一条链。`DYNAMIC_SENSITIVITY_UI_COMMAND START` 先 off 再 on 同名 input listener，之后等待启动监控；新部署 PID226 同样先移除已有 listener。STOP 先移除 listener，再等待停止监控并重置采样状态。速度向 UI 的发布限频为约 60 Hz，发布后也重置 lastTimeTick。图中的活动面积在 150 ms 无更新后复位。图表 effect 会在开关变化时发 START／STOP；本次复核的 effect 没有额外的卸载 STOP 返回函数，不能据此宣称它具有该清理动作。
 
 ## 旋转补偿
 
@@ -78,16 +80,16 @@ Protocol25 GET/SET 命令分别为 `[3,11,148]`／`[3,11,20]`；PID226 BLE 分�
 
 ## 灵敏度匹配
 
-当前实际挂载匹配器的产品已分别追到 UI、MW 命令入口、完整采样模块、输入事件适配、锁、保存、DPI 任务和协议方法。190／192／222／226 的卡片位于性能页右栏，229／239 位于左栏；226 的 BLE 条件只控制轮询率控件，未移除匹配器。六款均由导航第 2 项引用性能页，再挂载 connect 包装的 Matcher class；包装从 sensitivityMatcherReducer 传入 calibrationState，页面的 renderView 实际选择并呈现导航组件。PID196 留有相关 reducer，仍不能据此判定页面挂载。
+保留快照实际挂载匹配器的产品已分别追到 UI、MW 命令入口、完整采样模块、输入事件适配、锁、保存、DPI 任务和协议方法。190／192／222／226 的卡片位于性能页右栏，229／239 位于左栏；226 的 BLE 条件只控制轮询率控件，未移除匹配器。六款均由导航第 2 项引用性能页，再挂载 connect 包装的 Matcher class；包装从 sensitivityMatcherReducer 传入 calibrationState，页面的 renderView 实际选择并呈现导航组件。新部署 UI factory 的变化仍按独立收据核对，不能由保留快照推定布局不变。PID196 留有相关 reducer，仍不能据此判定页面挂载。
 
 | PID | 输入归属与匹配记录 | DPI 与传输分支 |
 | --- | --- | --- |
 | 190 | module 32807；初次按产品／接收器识别，随后优先按 containerId 区分两条输入流；名称保存为 `en`／`zh-cn` 对象 | wired 190／dongle 191；MW `claimInterface=0`；有双连接配置 |
-| 192 | 完整采样 factory、输入管理器、状态机、命令入口、记录保存和 DPI runner 与 190 字节一致；产品身份仍取自己的 DeviceInfo | wired 192／dongle 193；`claimInterface=0`；有双连接配置 |
-| 222 | 上述完整采样及相应消费者与 190 字节一致；不能因此改用 190 的 PID 或能力值 | wired 222／dongle 223；`claimInterface=0`；有双连接配置 |
-| 226 | 独立 module 14786；按产品身份判断输入归属，不使用 190 的 containerId 优先分支；双连接参考设备额外识别 241；新记录名为字符串 | wired 226／dongle 227／BLE 228；`claimInterface=3`；有双连接配置，BLE 实例为 `rzDevice30` |
-| 229 | module 32807 的绑定名称不同；逐项核对后的采样、计算、状态转换和保存顺序与 190 相同，名称为双语对象 | wired 229／dongle 230；`claimInterface=3`；挂载配置为 `isDualLinkDevice=false`，并设置 `setDeviceMode.ignoreCheckMode=true` |
-| 239 | 完整采样及上述消费者与 190 字节一致；UI 仍有自己的组件和资源分支 | wired 239／dongle 240；`claimInterface=3`；双连接及模式配置同 229 |
+| 192 | 新部署完整采样 factory 与 190 字节一致；保存与 runner 按各自实际绑定核对，产品身份仍取自己的 DeviceInfo | wired 192／dongle 193；`claimInterface=0`；有双连接配置 |
+| 222 | 新部署完整采样 factory 与 190 字节一致；不能因此改用 190 的 PID 或能力值 | wired 222／dongle 223；`claimInterface=0`；有双连接配置 |
+| 226 | 新部署 module 14786；优先按已保留的 containerId 判断输入归属；确认时识别 241，名称为双语对象并按英文去重 | wired 226／dongle 227／BLE 228；`claimInterface=3`；有双连接配置，BLE 实例为 `rzDevice30` |
+| 229 | 新部署 `6259` 中的 module 14786；沿新清单及实际引用核对采样、双语命名和保存顺序 | wired 229／dongle 230；`claimInterface=3`；保留快照挂载配置为 `isDualLinkDevice=false`，并设置 `setDeviceMode.ignoreCheckMode=true` |
+| 239 | 新部署完整采样 factory 与 190 字节一致；UI 仍有自己的组件和资源分支 | wired 239／dongle 240；`claimInterface=3`；保留快照的双连接及模式配置同 229 |
 
 上述接口号是 MW 当前 `DeviceInfo` 的值；不能用 UI 中同名对象或另一产品的接口号代替物理路由。各产品启动均显式启用 `supportDpiMatcher` 和 `inputMonitoring`。190／192／222／229／239 的本批 `DeviceInfo` 没有声明 BLE PID，不能因通用工厂支持 BLE 就给它们增加 BLE 分支。
 
@@ -99,7 +101,7 @@ START 的源码顺序是：从本地所选配置的 `dpiStages.stages[active-1].
 
 输入来自主机推送的 `inputMonitoringEvent`，每批先解析 `jsonEvent`，再解析逐项 `data`，只将 `type=mouseMove` 的记录纳入移动量。六款 Matcher 的采样 callback 均明确创建 `{timeTick:+e.timeTick}`，随后才把同一个事件对象 push 到主流／参考流和主流 buffer；原生十进制字符串在这个边界转为 Number。这与下文保留字符串的动态速度 callback 不同。这里没有名为 POLL 的厂商匹配命令。约 60 Hz 的节流只发送 GET_STATE，令状态机将已有进度投影到 UI；Rust 的内部 POLL／队列接收是自己的传输组织，不能作为厂商输入采集已验证的证据。
 
-190／192／222／229／239 在有 containerId 时优先认当前主鼠标；只知道参考 containerId 时按“非参考”判断主鼠标。尚无这些身份时匹配 DeviceInfo 的 productId／dongleId／bleId；另允许当前双连接记录中、containerId 相符的 `master.dongleId`，后者还要求已启用 inputMonitoring。226 仅执行这一产品／双连接判断，不检查传入 containerId；两个同 PID 实例的区分不能擅自按 190 补上。
+六款新部署在事件有 containerId 时优先认当前主鼠标；只知道参考 containerId 时按“非参考”判断主鼠标。尚无这些身份时匹配 DeviceInfo 的 productId／dongleId／bleId；另允许当前双连接记录中、containerId 相符的 `master.dongleId`，后者还要求已启用 inputMonitoring。PID226 的新完整 factory 同样保留容器判断，因此两个同 PID 实例按此次实际容器区分。
 
 进度按主鼠标累计正向 X 距离除以目标距离计算，完成前最多 99%。每轮从主事件 buffer 取最多 100 项，仅累计不早于两条输入流首项 tick 的较大值且 `x>0` 的项；主距离严格超过目标时记录该批最后时间为 stoptime。后续达到目标、且 `stoptime <= source.events[last].timeTick` 时，先清两个定时器、移除 listener、等待 STOP，再计算结果。这些 stoptime、buffer tick 和比较均为 Number。结果在 `[Math.max(firstMain,firstSource), Math.min(lastMain,lastSource)]` 内分别累计 `x>0`，取 `Math.round(sourceDistance/mainDistance×currentDpi)`。数组通过 forEach／push／splice 保留到达顺序，完整 factory 没有排序；first／last 是首末到达项，不能改写为整条流的最小／最大时间。计算不累计 Y、不取负 X 绝对值，也没有 DPI step 对齐、上下限裁剪或零分母检查；这些不能被模拟器悄悄补齐后宣称完全等价。
 
@@ -107,7 +109,7 @@ START 的源码顺序是：从本地所选配置的 `dpiStages.stages[active-1].
 
 ### 确认、记录与设备写入
 
-CONFIRM 先按参考 containerId 查 `connectedDevices`。参考为 179／164 或键盘时，再从 `duallink-devices` 的 master.productId 找实际鼠标；226 在这一步还识别 241。190／192／222／229／239 将参考英文名、中文名或电脑名组织成双语对象，226 直接用参考英文名或电脑名字符串。共同命名 helper 比较的是 `existing.name === candidate`；对象名称不是按语言字段深比较，不能宣称具有与字符串相同的去重语义。
+CONFIRM 先按参考 containerId 查 `connectedDevices`。六款新部署对参考 179／164／241 或键盘，再从 `duallink-devices` 的 master.productId 找实际鼠标，并将参考英文名、中文名或电脑名组织成双语对象。现有记录先投影为字符串名或对象的 `en`，再用共同命名 helper 的严格字符串比较选出英文名称；英文结果相对原名增加的后缀同步附到中文名。helper 检查原名及编号 1～99，最后返回编号 100，`Keymap` 从编号 1 开始；达到上限仍可能返回重名。
 
 随后创建 GUID 与 `dpi={x:newDpi,y:newDpi,independent:false,visible:true}`，只在 active 对应档位存在时替换它，先向 UI 发布 stages，再依次 enqueue `ON_STAGES_CHANGE`、追加匹配记录、enqueue `ON_DPI_CALIBRATION_CONFIRMED`，最后清空采样状态。根 `sensitivityMatcher.profiles` 保存记录集合；当前选中配置的 `selectedSensitivityMatcher` 保存引用，不能将两者都放进当前 DPI 观测。
 
@@ -115,7 +117,11 @@ CONFIRM 先按参考 containerId 查 `connectedDevices`。参考为 179／164 �
 
 DELETE_PROFILE 从根记录过滤 GUID。仅当删的是当前选中记录且仍有剩余项时，将第一条剩余项的 DPI 写入当前档位并 enqueue stages 变更；之后无论删的是哪一条，记录保存 payload 都取第一条剩余项 GUID，空集合则为 undefined。DELETE_ALL_PROFILES 保存空记录和空字符串选择，不发送新的 DPI 档位；它没有恢复旧 DPI 的动作。RESET 只把状态机送回 idle 并重置采样，不删除记录、不执行恢复 DPI。选择已有记录则由 UI 先提交当前档位替换，再单独发 `ON_UPDATE_SENSITIVITY_PROFILE`；重命名经 trim、32 字符输入限制、重名及保留名校验后也走这条记录保存事件，不触发采样。
 
-各产品当前挂载的 `taskRunnerSetDPI` 为 `setDpiStages`，未找到切到 `setDpiLevel` 的实际 useFeature 覆盖。转换器先按 enable／visible 形成 `[index,x,y,0]` 表，active 从可见项中重算。设备 runner 执行 `setDPIStages(1,active,count,table)` → 检查取消 → `getDPIStages(1)`，逐行比较设备 index 与本地 index+1，以及 X／Y／末字段。190／192／222／229／239 的循环以零 index 哨兵结束；226 另有 `offset<array.length` 限制。原件当前表比较没有额外核对 GET 的 active/count，也没有对读回长度作完整双向相等检查；不能把“当前函数 completed”扩大为完整表头和长度均一致。通用 setDpiLevel 分支只有 setter 结果，确认范围不同。
+当前 PID190 的名称规则由 [完整前端所有者复核收据](../../../.analysis/results/frontend-revalidation/90f66d0877fae6a6de8dbfc67303581d0a80ef6c84e45021e3ebd407dd0d02be.json) 关联。SELECT 以 `D_` 的英文投影排除 `None`；重命名排序以 `KX` 的 `en || Object.values(name)[0] || ""` 为键，数字属性名按 JavaScript 属性顺序先行，其他属性保留插入顺序。重命名的重复校验仍比较原始 `profile.name === input`，不能套用英文投影。记录标签优先使用记录自己的本地化名称，仅在它为空时才按 GUID 查找设备的 `productName`。
+
+收到记录后，reducer 的 `K2` 按原始顺序只给后续重复名称增加编号，保留第一条名称对象及扩展字段；普通字符串 `None` 和空名称跳过，对象中的 `en: "None"` 仍参与去重。名称变化会独立发送一次 `ON_UPDATE_SENSITIVITY_PROFILE`，即使性能页尚未挂载也必须持久化。它不代表 DPI 已写入或设备已经确认；页面、配置档或连接代次变化仍须阻止过期结果进入新所有者。
+
+各产品保留快照挂载的 `taskRunnerSetDPI` 为 `setDpiStages`，未找到切到 `setDpiLevel` 的实际 useFeature 覆盖；新部署的完整 feature 覆盖继续独立核对。新转换器按 enable／visible 形成 `[index,x,y,0]` 表，空或缺失行不参与可见项，active 从可见项中重算。设备 runner 执行 `setDPIStages(1,active,count,table)` → 检查取消 → `getDPIStages(1)`，逐行比较设备 index 与本地 index+1，以及 X／Y／末字段。六款新部署均在零 index 哨兵或 `offset>=array.length` 时结束比较。该比较没有额外核对 GET 的 active/count，也没有对读回长度作完整双向相等检查；不能把函数 completed 扩大为完整表头和长度均一致。通用 setDpiLevel 分支只有 setter 结果，确认范围不同。
 
 USB／普通接收器路径的 DPI 表 GET／SET 为 `[80,4,134]`／`[80,4,6]`，payload 是 class、active、count，再逐项 index 和大端 X／Y／末字段，实际 SET 长度 `3+7×count`。226 BLE 的命令为 `[0,11,132]`／`[255,11,4]`，class 交给 sendCommand 的独立参数；payload 从 active、count 开始，逐项数值为小端，GET 的 classId 为 undefined。BLE writer 传入的长度仍为 `3+7×count`，而末个写入字段结束于 `2+7×count`；该额外字节也是原件行为，不能按 USB 结构重放。
 
@@ -163,8 +169,8 @@ Raw Input 设备身份有两层缓存。`0xd046c` 用 hDevice 查询设备路径
 | 原生字符串 `"9" → "10"`、`"10" → "9"`、`"0"` 与乱序到达 | Matcher 先 unary+ 再保留到达顺序；动态速度保留字符串。分别比较类型、门禁、首末项和区间，不能统一数值排序 |
 | 主距离恰好等于／严格超过目标，参考流仍落后 | 分别记录 stoptime、进度和完成时刻；不得把“进度到 99%”当成采样结束 |
 | 空移动数组批次、仅单边事件、500 ms 中断 | 比较 timer 建立／续期、错误事件、listener 与 STOP 顺序，区分空批次和没有回调 |
-| 两只同 PID、containerId 缺失、接收器、双连接参考与 241 | 分别验证 226 的身份分支及其他五款的 containerId 优先规则，不能统一使用 PID190 规则 |
-| 双语对象名、226 字符串名、重名与电脑名 | 比较原始名称类型、严格相等去重、GUID 引用和 UI 消费；电脑名取自已核实的主机接口 |
+| 两只同 PID、containerId 缺失、接收器、双连接参考与 241 | 六款均核对已保留容器优先、空容器时的产品／配对分支及首条参考记录，保留各自产品身份 |
+| 双语对象名、已有字符串名、重名与电脑名 | 六款 CONFIRM 均生成双语对象，按已有名称的英文投影去重并同步中文后缀；另核 GUID 引用和 UI 消费 |
 | 确认、删除选中项／非选中项／最后一项、清空、RESET | 分别核对两次保存、版本推进、selection、stages 通知和真实 DPI 写入；清空／RESET 不虚构恢复 DPI |
 | USB／226 BLE、SET 成功但 GET 不符、读回短表、取消发生于 SET 后 | 比较实际字节序、长度、逐行比较范围、应答／GET 和终止顺序；普通表和 OBM 槽位分别断言 |
 | 启动／停止返回 false、锁失败、timeout、CANCEL、窗口关闭和卸载 | 保留原版缺少 STOP／timer 清理的分支与 Rust 自身清理结果；不得把两者的 idle 状态作为清理一致的证据 |
@@ -173,7 +179,7 @@ Raw Input 设备身份有两层缓存。`0xd046c` 用 hDevice 查询设备路径
 | Raw Input 路径长度边界、ASCII 大小写、属性读取失败后持续移动 | 区分 hDevice 与 service 路径两层缓存；核 4096 长度上限、失败后的丢弃／重试及重连边界，不能以 Rust 重新查询成功冒充原版已重查 |
 | HID 初次 ACCESS_DENIED、其他 open 错误、属性失败、部分描述字符串失败 | 分别保留两次 open 参数、仅 open 失败可走的路径 ID 分支及原生 7 字段；实际 host 仅投影 4 个身份字段，描述字符串缺失不能直接判为下游缺项 |
 
-官方没有对 DPI 比值计算额外做正有限数校验；Rust `dpi_matcher::Session` 有相应校验。零主距离、非有限结果与越界 DPI 必须记录两边各自的输出和拒绝边界，不能靠预先过滤输入消除这一差异。
+官方没有对 DPI 比值计算额外做正有限数校验；Rust `dpi_matcher::Session` 保留原始 Number 计算。零主距离、非有限结果与越界 DPI 分别经过内部观察、文件投影及设备字节边界，不能靠预先过滤输入消除这些分支。
 
 ## 省电任务缓存与整批源码复核
 
@@ -193,47 +199,59 @@ host 消费者是 `.analysis/inputs/host-current/asar/b2ce8c54dc5c/electron/modu
 | 旋转 | Pages `mouse_rotation_state.rs` → Shell `mouse_rotation.rs`／`mouse_rotation_save.rs` → direct sensor、PID226 BLE 或 `mapping_runtime/backend/rotation.rs` | 有真实 HID／GATT 应答与旧固件映射路径；映射路径继续到 Rust driver owner 和 `mapping_native_session.rs` 的 `CreateFileA`／`DeviceIoControl`，该链没有把官方业务 DLL 作为后端 |
 | 灵敏度匹配 | Pages `dpi/mouse_matcher_owner.rs` → Shell `mouse_matcher.rs` → Service `dpi_matcher_worker.rs`／`dpi_matcher_input.rs` → DPI 传输与本地存储 | 核心、存储和 Service worker 选择六个审计逻辑产品；生产页面保留 PID190 挂载边界，其余五款弹层、菜单和资源生命周期仍待接线。当前路由须通过对应 DPI capability，226 BLE 228 传输未接通 |
 
-匹配器的产品限制分别由 Pages `prepare_matcher` 和 Service worker 的路由／选项构造持有。Rust `Product` 明确选择 190、192、222、226、229、239 六个逻辑产品；`Options::confirmation_name` 保留 226 的字符串名称与 241 双连接参考分支，其余五款保留 `{en, zh-cn}` 对象。生产页面仍只挂载 PID190 的 dS／AS：226 没有 popup 的 `componentDidMount` overflow 写入，239 的菜单样式也有独立来源，不能用共享采样器证明这些 UI 等价。实际路由须通过对应的当前 DPI capability，226 的 BLE 228 DPI 传输仍未接通。
+匹配器的产品限制分别由 Pages `prepare_matcher` 和 Service worker 的路由／选项构造持有。Rust `Product` 明确选择 190、192、222、226、229、239 六个逻辑产品；`Options::confirmation_name` 按新部署统一生成 `{en, zh-cn}`，六款都识别 241 双连接参考。生产页面仍只挂载 PID190 的 dS／AS：226 的 popup 生命周期和239 的菜单样式必须按其新 UI 原件继续核对，不能用共享采样器证明这些 UI 等价。实际路由须通过对应的当前 DPI capability，226 的 BLE 228 DPI 传输仍未接通。
 
-Matcher 核心 `Session` 以经过校验的逻辑产品选择输入分流：190／192／222／229／239 优先使用已保留的主／参考容器，226 每批使用产品／双连接判断；重置和超时保留该产品策略。物理接收器、BLE PID 或未审计产品不能作为逻辑产品选择器。worker、配置档变更和保存投影保留完整产品、设备、配置档及连接身份；跨产品或旧所有者结果不能修改当前草稿。六款核心覆盖与纯测试不等于六款运行时功能已完成。
+Matcher 核心 `Session` 接收经过校验的逻辑产品，六款按新部署共同优先使用已保留的主／参考容器；重置和超时保留所属产品身份。物理接收器、BLE PID 或未审计产品不能作为逻辑产品选择器。worker、配置档变更和保存投影保留完整产品、设备、配置档及连接身份；跨产品或旧所有者结果不能修改当前草稿。六款核心覆盖与纯测试不等于六款运行时功能已完成。
 
-确认名称的来源选择与命名分开核对：先按参考容器查找设备，179／164、键盘及仅限 226 的 241 分支按首个配对记录解析，再读取实际主机名。未找到对应在线条目时使用此次主机名观察，配对格式错误则返回失败。`dpi_matcher_storage::confirm` 调用 `source_string::unique_profile_name` 执行当前 AM／W$ 的严格字符串比较：先检查原名和编号 1～99，最后返回编号 100；`Keymap` 从编号 1 开始，对象名称保持原值。序列号初始化、接收器初始化／恢复和鼠标垫校准共用该所有者。定向测试同时核对去重、大小写、编号空缺、最终编号仍重复，以及设备提交或持久化失败时不发布成功、不清空已测结果；这些是纯／模拟验证。
+确认名称的来源选择与命名分开核对：先按参考容器查找设备，179／164／241 和键盘分支按首个配对记录解析，再读取实际主机名。未找到对应在线条目时使用此次主机名观察，配对格式错误则返回失败。`dpi_matcher_storage::confirm` 先按新源码投影英文名称，再调用 `source_string::unique_profile_name` 执行 AM／W$ 的严格字符串比较，并保留中文对应后缀与其他名称扩展字段。序列号初始化、接收器初始化／恢复和鼠标垫校准共用字符串候选算法，各自调用方保留自己的输入投影。定向测试核对去重、大小写、编号空缺、最终编号仍重复，以及 CONFIRM 先清空采样再独立保存两项任务的失败语义；保存失败不伪造持久化或设备成功，也不回滚已经保存的另一项任务。这些是纯／模拟验证。
 
 达到采样完成条件时，核心进入内部 `Stopping`，清除两条输入超时，保留原采样并停止接受后续输入；页面仍得到 calibrating，结果不可确认。Service 必须先收到实际 STOP 成功应答，再执行区间计算、进入 Completed 并释放采集锁。STOP 失败保留监控及锁的清理义务，不计算或发布新结果；后续取消按真实清理结果重置，不能把旧采样升级成完成。六款共 54 个完整采样／状态机所有者及 620 份中间件原件已重核，引用留在统一 gaps 的 `session_boundary_source_review`。纯／模拟测试逐款核对 STOP 前结果不可用、成功后的 400 DPI 独立样本、失败后不可确认、取消释放、过期输入拒绝，以及 226 策略在重置／超时后的保留。
 
 六款的 `k/w` 在每次消费最多 100 条记录后继续调度；下次执行先计算并发布进度，再检查缓冲是否为空。Rust 核心按这个顺序迭代，最后不足 100 条的批次也进入进度计算，无需等下一次设备回调。独立样本核对 800 DPI 下移动 2000 得到 50%、205 条各移动 10 得到 51%，并保留超过阈值时的 99% 上限；缓冲为空时仍为 calibrating，不能提前计算或确认结果。服务测试另核对 GET_STATE 得到相同进度及取消后的实际 STOP／释放链。完整来源引用和首次失败断言保存在统一 gaps 的 `progress_publication_source_review`。
 
-当前核心的区间计算仍对零正向距离、非有限结果和非正结果施加额外拒绝，未与原件 U 的无门禁数值语义完全一致；必须继续核对非有限数的类型化传递及 UI／确认消费者，不能以 STOP 顺序及确认测试宣称全部数值分支等价。其余五款页面、226 BLE 传输、完整生产接线及实际 DLL／设备与窗口验收继续分别保留未完成或未验证状态。
+校准观察现由核心 `Calibration`／`Phase` → Service `Response` → worker → Shell → Pages 直接传递类型化快照，不再借助 JSON 对象传递阶段与数值。初始 reducer 的 `currentDpi` 缺省由 `None` 保留，不冒充设备已读取的零值；页面数字复用 ECMAScript 文本规则，按 React 数字子项显示 `400`，不会显示 `400.0`。核心计算保留原件的负数、零、非有限值和反向样本语义；`SourceNumber` 在内部 IPC 中保留原始位值，文件投影才按 `JSON.stringify` 将非有限值变为 `null`。设备边界将有限值按当前协议截断为字节，并以原始 Number 与实际读回严格比较，NaN 不会伪装成确认成功。其余五款页面挂载、PID226 的完整 BLE 业务分支以及官方 DLL／设备与窗口验收继续分别保留未完成或未验证状态。
 
-190 的 `updateUI` 调用 `postBCMsg`，其完整 46446 factory 直接通过 BroadcastChannel 发送原始 `msgData`，没有 JSON.stringify；完成浮层又直接将 `newDpi/currentDpi` 用作子项。非有限结果不能未经消费者核对就转换成 JSON null。该边界的原件、AST 范围和正文 SHA 保存在统一 gaps 的 `numeric_consumer_source_review`；其余产品及确认、设备编码与存储链仍须继续核对。
+六款 START 的 `currentDpi` 是按序列号选定的本地活动配置档基线，此处没有硬件 DPI GET，不能将该值标成硬件实测。`dpiStages` 缺省或为 `null` 时才使用 `100`；活动档位缺失或为 `null` 报错，活动行的 X 缺失、为 `null`、零、NaN 或负零按原式使用 `100`，负数和 Infinity 保留。缓存、活动配置档读取失败以及畸形档位引发的错误不属于通用回退。可选 `storageOverrides` 与独立的启动／恢复设备读取链分别保留。
+
+190／192／222／226／229／239 的 `updateUI → postBCMsg` 已逐款核对：BroadcastChannel 直接发送原始 `msgData`，没有 `JSON.stringify`；190 已挂载的完成浮层直接将 `newDpi/currentDpi` 用作子项。六款的确认、档位打包和存储消费者也已静态核对：`structuredClone` 与任务数组保留原始 Number，USB setter 以位运算拆分高低字节，GET decoder 重组整数；非有限数在 `JSON.stringify` 的存储边界转换为 null，不能提前把中间件观察转换成 JSON null。
+
+六款保留快照的静态默认 feature 均为 `taskRunnerSetDPI:{setDpiStages:{}}`，没有 `setDpiLevel`；新部署 runner 中的两个 feature 分支分别保留。提前拒绝零值或越界值、先裁成 `u16` 再比较，都会改变原版路径；六款新 runner 共同保留返回数组长度边界和原始 Number 的严格比较。对应原件、完整 AST 范围与正文 SHA 由统一 gaps 的 `numeric_consumer_source_review` 连接。新部署根节点引用另一组文件，PID229 的新 MW 清单不再提供原 `6120.js` 键，已沿实际依赖追到 `6259` 中的 runner。完整源码依赖闭包仍未通过。其余五款 UI 挂载、226 BLE 和全部实际 DLL／设备／窗口验收分别保持未完成或未验证。
+
+常规 `Math.round` 结果在 Rust 中以 `f64` 持有，文件投影复用 ECMAScript 数字文本规则。Matcher 的 `SourceStages` 直接进入共享 DPI 命令和 `pack_for`；普通 u16 编辑器单独通过 `pack_editor_for` 校验范围。六款模拟确认测试核对测量值、其他档位、实际发送字节、ACK、GET 及严格比较失败，但不构成真实设备验收。原版档位任务先保存本地配置与版本，再派发设备任务；Rust 按同一顺序先发布并保存 typed stage，再把设备任务排入共享 DPI owner。设备任务的排队接收、实际 ACK、GET 读回和本地 Profiles 保存分别记录，不能把其中一项扩大为另一项。
+
+worker 提交档位后，设备 owner 必须取得 ACK、实际档位读回，并由现有 `same_stages` 核对请求表与设备结果；失败或不匹配只更新设备观察错误，不把排队接收当作设备成功。按官方 task-maker 时序，设备任务失败仍允许随后独立保存 Matcher Profiles；库保存失败也不撤回已保存的档位草稿或已排队任务。报告的聚合 `verified` 必须与任务错误一致，失败报告中的实际读值继续进入页面观察链。纯报告验证不等于 DLL／设备对照。
+
+Matcher 页面以完整 `Library` 为唯一记录集合所有者；观察、选择、重命名和排序保留库、profile 与 DPI 的扩展字段，文件中的缺失 DPI 与明确 `null` 分开保留。退出停止接收新操作后，已接纳的 Matcher 档位任务仍由共享 DPI owner 排空，实际失败会中止退出；连接替换则取消旧 owner。此排空任务与临时 DPI clutch 恢复分别建模，不能把排队、退出或恢复动作当成设备确认。
+
+退出档位保存还拥有独立的保存许可。Shell 接纳 Matcher 档位保存时，由当前 DPI owner 捕获同配置与连接下已有的许可；真实文件提交成功后、回复 Matcher 和启动下一项文件保存之前，撤销这些旧许可。已提升为 pending 的退出请求和更晚生成的退出请求共享原许可，因此不会在 Matcher 新保存之后补写旧 DPI；保存期间产生的较新普通编辑拥有新许可，继续保留。失效请求在统一保存队列中跳过实际文件写入，其设备任务与 clutch 清理仍按原请求处理。28 项 owner 纯测试涵盖已提升退出请求、保存成功早于退出、保存期间较新编辑及 scope／连接替换；实际磁盘时序和设备结果仍须独立验收。
 
 动态与匹配器的输入监控共用 `mouse_input_monitoring::Session` 的 START／POLL／STOP 收据。Windows 消费者为 `runtime/windows/mouse/input_monitoring.rs`，继续到 `razer-platform` 的独立 RawInput 线程；设备身份通过当前 HID／SetupAPI 结果核对。部分 START 后丢失应答仍保留需要 STOP 的所有权；停止采集、停止服务和等待线程退出分别处理，不能用页面 guard 失效代替实际清理。
 
-实时速度必须保留产品分支。190／192／196／222／229／239 累计当前 Raw Input 的 `abs(x)`／`abs(y)`，门禁原式为 `lastTimeTick !== 0 && timeTick > lastTimeTick`；226 则要求上次 X、Y、tick 都严格不等于数值 0，累计 `abs(x-lastX)`／`abs(y-lastY)`，没有新 tick 比较门禁。两者均以 `sqrt(sumX²+sumY²)/(sumTicks/10000)` 计算，但 226 每次都计算，并只把 NaN 转为 0，Infinity 不会被这个判断清除。这里的 X／Y 本身已经是原生相对移动量，不能把 226 的再次作差解释为另一种绝对坐标输入。
+实时速度累计当前 Raw Input 的 `abs(x)`／`abs(y)`，门禁原式为 `lastTimeTick !== 0 && timeTick > lastTimeTick`，仅在累计时间大于零时更新 `sqrt(sumX²+sumY²)/(sumTicks/10000)`，随后将 NaN 归零并取绝对值。新部署 PID226 的完整 factory 已核实采用这一表达式；其原件为 `mouse-mw-226-snapshot-738e48c31af52973b33c/raw/apps.razer.com/synapse/products/226/mw/7846.5b6bebefa66e90949db1.js`，模块 14786 的 UTF-8 区间为 `[1175982,1185073)`。不再持有上次 X／Y，也不对原生相对位移再次作差。
 
-tick 类型同样属于协议语义：原生批次把 `timeTick` 序列化为十进制字符串。190／192／196／222／229／239 的 factory 绑定 `3569.Sl`，226 绑定 `53981.uK`；七份 helper 均是没有 reviver 的 `JSON.parse(e)`。动态 callback 直接保存 `l=e.timeTick`，首次保存后，两侧为字符串的 `>` 执行字典序比较，减法才转数值；`"9" → "10"` 不能按数值递增推定会通过门禁，`"0" !== 0` 也为 true。Matcher 的另一 callback 则在入 buffer 前使用 `+e.timeTick`，其后比较为数值，不能套用动态速度的字典序结论。Rust `mouse_dynamic::input::Speed` 分别保留已校验数值和原始字符串类型：两个字符串按字典序比较，混合 Number／String 按数值比较，严格零值门禁只匹配 Number。运行时的 `Row.time_tick: String` 生产者同样保持原生类型，测试另覆盖合成 Number 输入。
+tick 类型同样属于协议语义：原生批次把 `timeTick` 序列化为十进制字符串。保留快照的六款 helper 绑定为 `3569.Sl`；新部署 PID226 的 `53981.uK` 也已核实是没有 reviver 的 `JSON.parse(e)`。动态 callback 直接保存 `l=e.timeTick`，首次保存后，两侧为字符串的 `>` 执行字典序比较，减法才转数值；`"9" → "10"` 不能按数值递增推定会通过门禁，`"0" !== 0` 也为 true。Matcher 的另一 callback 则在入 buffer 前使用 `+e.timeTick`，其后比较为数值，不能套用动态速度的字典序结论。Rust `mouse_dynamic::input::Speed` 分别保留已校验数值和原始字符串类型：两个字符串按字典序比较，混合 Number／String 按数值比较，严格零值门禁只匹配 Number。运行时的 `Row.time_tick: String` 生产者同样保持原生类型，测试另覆盖合成 Number 输入。
 
-`Speed::new(product_id)` 明确选择这七款产品的算法，拒绝未审计的产品；Service 的 `SpeedHistory::new` 和 `capture_with` 使用当前路由的逻辑产品 ID，不能按接收器或 BLE 物理 ID 选择算法。从空状态开始，同批包含 `(tick="10000",x=3,y=4)` 和 `(tick="20000",x=3,y=4)` 时，独立期望为上述六款 5、226 为 0；第二条改为相同 tick、`x=6,y=8` 时，226 的表达式产生正无穷。同批改为 `(tick="9",x=3,y=4)` 和 `(tick="10",x=6,y=8)` 时，六款为 0、226 为 50000。Rust 按原式计算平方和／开方／除法、仅将 NaN 归零后取绝对值；页面接收正无穷并由现有图表端点裁剪，不能将其丢为读取失败。发布时六款清除 tick，226 清除上次 X／Y 而保留 tick；新连接建立独立的速度所有者。整份无效回调不会部分替换有效基线。收据继续用 `positive_infinity` 字符串表示非有限结果，不写非标准 JSON Infinity token。
+`Speed::new(product_id)` 校验这七款逻辑产品，拒绝未审计的产品；Service 的 `SpeedHistory::new` 和 `capture_with` 使用当前路由的逻辑产品 ID，不能按接收器或 BLE 物理 ID 选择算法。从空状态开始，同批包含 `(tick="10000",x=3,y=4)` 和 `(tick="20000",x=3,y=4)` 时，七款独立期望均为 5；第二条改为相同 tick、`x=6,y=8` 时，均保持 0。同批改为 `(tick="9",x=3,y=4)` 和 `(tick="10",x=6,y=8)` 时，均为 0。发布后清除速度与 tick；新连接建立独立的速度所有者。整份无效回调不会部分替换有效基线。原式计算可能产生的非有限结果仍沿类型化观察保留，文件收据不写非标准 JSON Infinity token。
 
 发布节流具有独立的回调边界。完整 factory 中的 `N` 以 `1000/60` 毫秒调用 throttle；六款的模块 96458 和 226 的模块 78901 均默认 `leading=true`、`trailing=true`，并向 debounce 传入等于 wait 的 `maxWait`。其依赖分别为 50763／85762，时间来自 72275／49241 的 `Date.now()`。七款的 wrapper、debounce、时间／全局来源、类型转换及实际发布、状态、重置和 START／STOP 绑定共 77 个完整 AST 引用已核实，复用同一批 720 份已索引原件，记录在统一 gaps 的 `timer_source_review`。
 
 Service 的 `SpeedPublication` 分别持有最后调用时间、实际发布时间、定时器期限及待发布标记。回调解析成功后才读取整数毫秒墙上时间；定时器期限使用单调时间，两者由 `ClockSample` 独立传入。首发与 maxWait 到期调用均重设定时器；定时器末发清除该定时器，单次首发不会产生重复末发。例如 0 ms 首发、16 ms 回调、17 ms 末发、18 ms 回调时，下一次定时器应从 18 ms 开始等待，到 35 ms 才能在整数毫秒下发布，不能仅按上次发布加间隔而在 34 ms 发布。墙上时间回拨仍触发源码规定的首发／末发判断；定时器已触发但墙上时间尚未满足 wait 时，按剩余 wait／maxWait 的较小值重排。同一次 IPC poll 的回调仍按顺序计算并分别进入节流，发布时执行产品重置。后台轮询延迟、计时器精度和原版的实际运行关系仍未作对照。
 
-`N` 的生命周期长于一次采集：七款均在模块 factory 构造一次，动态 callback 调用 `N()`，START／STOP 没有调用它的 `cancel` 或 `flush`。STOP 先移除 listener、等待原生停止，再清状态；226 的清理不替换 `lastTimeTick`。Rust 的 `SpeedHistory` 由 Shell 按页面实体、连接代次、物理路由和连接 revision 保留，独占 `SpeedPublication`；采集请求通过有界消息及逐回调应答提交数据，解析失败返回请求并进入清理。PID226 的历史输入另持有观察者计数：重复挂载只追加一个回调消费者，STOP 只移除一个消费者，剩余消费者仍可接收真实 STOP 的最终批次；观察者注册不冒充原生 START 应答。后台异步定时器在原生 STOP／shutdown 等待中仍可末发，闲置时不占用工作线程。只有真实 STOP 成功后才重置运动状态；START 未尝试或 STOP 失败均不能伪造重置。STOP 后的定时器和节流历史继续保留，下一次 START 复用同一连接的所有者；连接替换和最终退出关闭入口并等待速度任务及原生采集清理。
+发布节流的生命周期长于一次采集：factory 构造一次，START／STOP 不调用其 `cancel` 或 `flush`。STOP 先移除 listener、等待原生停止，再清运动状态；新部署 PID226 同样清除 `lastTimeTick`。Rust 的 `SpeedHistory` 由 Shell 按页面实体、连接代次、物理路由和连接 revision 保留，独占 `SpeedPublication`；采集请求通过有界消息及逐回调应答提交数据，解析失败返回请求并进入清理。回调注册只有一个所有者，重复 START 先移除旧 listener 再注册，STOP 一次移除后不再消费后续批次；注册不冒充原生 START 应答。后台异步定时器在原生 STOP／shutdown 等待中仍可发布之前已接纳的数据，闲置时不占用工作线程。只有真实 STOP 成功后才重置运动状态；START 未尝试或 STOP 失败均不能伪造重置。STOP 后的定时器和节流历史继续保留，下一次 START 复用同一连接的所有者；连接替换和最终退出关闭入口并等待速度任务及原生采集清理。
 
 页面 `Lifecycle` 将读写的配置档 scope 与采集／速度的 `MouseDynamicConnection` 分开。配置档切换撤销旧读写并保留当前采集请求；STOP 应答与配置档替换均不立即清可见速度。页面保留原 150 ms 过期任务，令牌核对连接和发布代次，旧任务不能清除新速度；连接失效清状态并拒绝旧回调。无窗口纯测试覆盖这些状态转移，实际计时及窗口呈现仍未验证。
 
 父页面和配置消费者复核重用了七份 UI 获取收据及 544 份原件，39 个完整所有者引用中 34 个复用正式捕获，新增的 5 个留在统一 gaps 的 `stop_start_source_review`。190／192／196／222／229／239 的导航父 class 在 selectedTab 离开 Advanced 时发送 STOP；226 的父 class 和 Advanced wrapper 没有这条调用。Rust 页面现在按同一产品分支在页面切换后发出 STOP，226 保留已运行的连接监控并在禁用、连接失效或最终生命周期时停止；Help 是独立的源工作区页面，鼠标实体同步为 `HELP` 后，STOP 完成不会按旧 `ADVANCED` 状态重启。返回 Advanced 时不会因暂时未观测的读取重复 START。七份父 class 均没有 componentWillUnmount，不能将六款导航 STOP 推广为通用卸载契约。当前速度所有者迁移不代表整个页面完成。
 
-226 的重复 START 还涉及监听器与原生结果两个独立状态。其 manager 继承实际模块 76512 的 EventEmitter：`on` 追加相同 callback，`emit` 按注册顺序遍历快照，`off` 仅移除最后一个匹配项。动态 START 先注册 `F` 再等待原生结果；原生 `0xcb100` 在已经启动时返回 false 与 `already started`，没有重启或重置原采集。主机和 manager 返回该结果对象，动态命令没有检查结果，也没有撤销这次注册。连续两次启用挂载且中间没有 STOP 时，因此会保留两个 `F`；其后的一个 STOP 只移除一个，再等待原生停止并清运动状态。完整 EventEmitter factory、10 个既有 JS 所有者及 7 个原生完整函数已逐字节复核，证据保留在统一 gaps 的 `pid226_start_listener_review`。Rust 在 Advanced 重新挂载时先追加观察者，再通过有界控制队列向原采集 worker 的同一 client／session 发送真实 START；Windows 所有者返回类型化的 false／`already started`，不重启采集或清空待交付事件。Shell 保留等待应答的任务，按采集 ID、连接和请求身份拒绝过期结果，收到应答后只退休这次注册请求，不发布另一次监控成功。初始 START 未确认或 STOP 已开始时不能重复启动；收尾先关闭入口、处理已接纳的 START，再执行 STOP／shutdown／terminate。官方实际 DLL 的否定应答、注册错误和 runner 时序仍须独立对照。
+226 的重复 START 涉及监听器与原生结果两个独立状态。新 factory 的 START 明确执行 `off(j) → on(j) → await start()`，因此保持唯一回调。已核实的原生 `0xcb100` 在已经启动时返回 false 与 `already started`，没有重启或重置原采集；这一原生证据不代替新部署整条 DLL 版本闭包的核对。Rust 在 Advanced 重新挂载时替换该回调注册，再通过有界控制队列向原采集 worker 的同一 client／session 发送真实 START；Windows 所有者返回类型化的否定应答，不重启采集或清空待交付事件。Shell 保留等待应答的任务，按采集 ID、连接和请求身份拒绝过期结果，收到应答后只退休这次注册请求，不发布另一次监控成功。初始 START 未确认或 STOP 已开始时不能重复启动；收尾先关闭入口、处理已接纳的 START，再执行 STOP／shutdown／terminate。官方实际 DLL 的否定应答、注册错误和 runner 时序仍须独立对照。
 
 动态 callback 调用归属函数时只传 `productId`。直接身份来自各自 `DeviceInfo` 的产品／接收器 ID，只有 226 另有 BLE 228；不能从物理路由、peer 或通用身份别名扩大范围。七款的 `inputMonitoring` 注册和 getter 均追到各自同一 injector 实例，注册值为真值对象；间接身份通过 `qY`／`IN` 读取当前 `duallink-devices`，寻找 `master.dongleId` 等于事件产品且 `deviceContainerId` 严格等于当前页面路由容器的首条记录。事件自身的容器和 vendor 没有参与这个 callback 的过滤；Matcher 的另一 callback 对容器有不同调用方式，不能混用。该批已逐款重读 720 份已索引 MW 原件，并保留 119 个完整 AST 区间的来源引用，见统一 gaps 的现有动态监控条目。
 
 Service 对直接产品短路处理；间接产品在持有监控生命周期的后台 worker 中读取本地配对文件，读取或解析失败沿现有失败／STOP／shutdown／terminate 链收束。配对匹配规则归 `receiver_pairing` 所有，`PairingSnapshot` 同时供 Matcher 接收 Shell 实际发布的有序数组及旧对象边界，保留首条匹配顺序、未观测产品和缺失 master 的错误，避免重新解读为已连接。匹配记录仍不能绕过对应逻辑产品的实际 DPI 路由校验。
 
-过滤掉移动量不等于丢弃整个 callback：官方仍解析每条 `data` 并执行末尾归一化和 `N()`。226 因空累计量得到 NaN 后归零；其他六款在没有正累计时长时保留待发布速度。Rust 的 `observe_filtered` 和 `SpeedPublication` 保留这一差异；模拟测试核对被过滤回调的首发及 16／17 毫秒末发。采集取消与回调消费者分开判断：STOP 已移除全部观察者时，poll 返回的批次不再产生速度；226 仍有注册时继续消费同一连接的 poll 和最终 STOP 批次，之后才复位运动状态。连接失效会关闭历史入口，旧连接结果不能进入新页面。跨 STOP／START 的速度历史由上述长期所有者保留；实际原生计时仍保持未验证。
+过滤掉移动量不等于丢弃整个 callback：官方仍解析每条 `data` 并执行末尾归一化和节流发布。没有正累计时长时保留待发布速度，新部署 PID226 同样遵循此条件。Rust 的 `observe_filtered` 和 `SpeedPublication` 保留这些分支；模拟测试核对被过滤回调的首发及 16／17 毫秒末发。采集取消与回调消费者分开判断：STOP 移除唯一注册后，poll 和最终 STOP 批次不再产生新速度，先前已接纳的定时发布仍按原生命周期完成；真实 STOP 应答成功后才复位运动状态。连接失效会关闭历史入口，旧连接结果不能进入新页面。跨 STOP／START 的速度历史由上述长期所有者保留；实际原生计时仍保持未验证。
 
-对应的 Device 纯测试以九组独立字面量覆盖全部七款，包括字符串位数变化、字符串零与数值零、混合类型、相同 tick、负时间差、零轴与变化的相对量；另外覆盖跨回调、发布重置、无移动事件及无效输入的原子拒绝。Service 的 32 项纯／模拟测试覆盖七款的三组原生字符串结果、首次／末次发布、16／17 与 34／35 毫秒逻辑边界、时钟回拨、定时器重排、maxWait 后不重复末发、解析失败不进入节流、无效回调／未支持产品、取消及 STOP／shutdown／terminate 清理，并用事件屏障和逻辑时间核对 STOP 等待中末发、应答后重置、失败保留、快速重启、解析失败返回及最终释放；页面无窗口测试另核配置档与连接身份、可见速度及旧过期令牌，正无穷接收和图表投影边界仍保留。Shell 保存测试显式构造本地配置档，预览设备的空列表不能当作已读取的档案。命令与当前结果由[统一 Rust 验证收据](../../../.analysis/validation.json)记录。原 `shared_input_monitoring.rust_static_review` 的旧 Rust 字节快照是当时的静态比较，未改写成当前通过；这些纯／模拟结果不代表官方实际 DLL、原生回调时序或窗口验收。
+对应的 Device 纯测试以九组独立字面量覆盖全部七款，包括字符串位数变化、字符串零与数值零、混合类型、相同 tick、负时间差、零轴与变化的相对量；另外覆盖跨回调、发布重置、无移动事件及无效输入的原子拒绝。Service 纯／模拟测试覆盖七款的三组原生字符串结果、首次／末次发布、16／17 与 34／35 毫秒逻辑边界、时钟回拨、定时器重排、maxWait 后不重复末发、解析失败不进入节流、无效回调／未支持产品、取消及 STOP／shutdown／terminate 清理，并用事件屏障和逻辑时间核对 STOP 等待中末发、应答后重置、失败保留、快速重启、解析失败返回及最终释放；页面无窗口测试另核配置档与连接身份、可见速度及旧过期令牌，正无穷接收和图表投影边界仍保留。Shell 保存测试显式构造本地配置档，预览设备的空列表不能当作已读取的档案。命令与当前结果由[统一 Rust 验证收据](../../../.analysis/validation.json)记录。原 `shared_input_monitoring.rust_static_review` 的旧 Rust 字节快照是当时的静态比较，未改写成当前通过；这些纯／模拟结果不代表官方实际 DLL、原生回调时序或窗口验收。
 
 当前 Rust 的 STOP 使用 `StopReceipt` 交付最后回调，按已有 `pending`、线程停止时返回的 Raw Input、各设备剩余缓存的顺序排空。每页最多 128 个事件、编码后的事件数组最多 3 MiB；成功停止原生采集后仍保留原 owner，续页不再次停止或等待线程，最后一页才释放该 owner。`Session::stop_with` 核对身份、状态、容量与续页进展，消费者失败后仍排空剩余页并保留错误；原生停止失败则保留清理义务。Service shutdown 同样排空全部续页，最后的身份、采集或 flush 失败不能冒充清理成功。
 

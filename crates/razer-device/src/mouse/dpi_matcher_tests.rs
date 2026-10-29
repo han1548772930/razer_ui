@@ -24,9 +24,236 @@ fn dpi_matcher_nested_callback_requires_movement_fields_and_ignores_other_input(
     for text in [
         r#"[{"data":"{\"type\":\"mouseMove\"}","timeTick":1}]"#,
         r#"[{"data":"{\"type\":\"mouseMove\",\"x\":2}"}]"#,
-        r#"[{"data":"{\"type\":\"mouseMove\",\"x\":2}","timeTick":"NaN"}]"#,
+        r#"[{"data":"{\"type\":\"mouseMove\",\"x\":2}","timeTick":"not-a-number"}]"#,
     ] {
         assert!(InputBatch::from_event(190, "main", text).is_err());
+    }
+}
+
+#[test]
+fn dpi_matcher_callback_keeps_nonfinite_numeric_ticks_as_source_numbers() {
+    for (text, expected) in [
+        (
+            r#"[{"data":"{\"type\":\"mouseMove\",\"x\":2}","timeTick":"NaN"}]"#,
+            f64::NAN,
+        ),
+        (
+            r#"[{"data":"{\"type\":\"mouseMove\",\"x\":2}","timeTick":"Infinity"}]"#,
+            f64::INFINITY,
+        ),
+        (
+            r#"[{"data":"{\"type\":\"mouseMove\",\"x\":2}","timeTick":"-Infinity"}]"#,
+            f64::NEG_INFINITY,
+        ),
+    ] {
+        let input = InputBatch::from_event(190, "main", text).unwrap();
+        assert_eq!(input.movement.len(), 1);
+        assert_eq!(input.movement[0].x, 2.);
+        assert_source_number(input.movement[0].time_tick, expected);
+    }
+}
+
+#[test]
+fn dpi_matcher_begin_preserves_source_baselines_without_extra_numeric_guards() {
+    for current_dpi in [
+        0.,
+        -0.,
+        -800.,
+        f64::NAN,
+        f64::INFINITY,
+        f64::NEG_INFINITY,
+        f64::MAX,
+    ] {
+        let mut session = Session::default();
+        assert!(
+            session.begin(current_dpi).is_ok(),
+            "baseline {current_dpi:?} was rejected"
+        );
+        assert_source_number(session.response().current_dpi().unwrap(), current_dpi);
+        assert_eq!(session.state, State::RequestingLock);
+        assert!(session.complete_after_stop().is_err());
+        session.acquired_lock().unwrap();
+        assert!(session.begin(800.).is_err());
+    }
+}
+
+#[test]
+fn dpi_matcher_ingest_preserves_nonfinite_source_samples_and_math_min_nan() {
+    for product_id in [190, 192, 222, 226, 229, 239] {
+        let mut session = Session::new(Product::new(product_id).unwrap());
+        session.begin(800.).unwrap();
+        session.acquired_lock().unwrap();
+        session
+            .ingest(batch("source", 123, &[(1., 1.)]), false, 0)
+            .unwrap();
+        session
+            .ingest(batch("main", product_id, &[(1., f64::NAN)]), true, 1)
+            .unwrap();
+        assert!(session.response().process().is_nan());
+        assert_eq!(session.state, State::Calibrating);
+        assert!(session.new_dpi().is_none());
+        assert!(session.complete_after_stop().is_err());
+    }
+}
+
+fn assert_source_number(actual: f64, expected: f64) {
+    if expected.is_nan() {
+        assert!(actual.is_nan(), "expected NaN, observed {actual:?}");
+    } else {
+        assert_eq!(
+            actual.to_bits(),
+            expected.to_bits(),
+            "{actual:?} != {expected:?}"
+        );
+    }
+}
+
+fn stopped_numeric_result(
+    product_id: u32,
+    current_dpi: f64,
+    main: &[(f64, f64)],
+    source: &[(f64, f64)],
+    final_main: (f64, f64),
+) -> f64 {
+    let mut session = Session::new(Product::new(product_id).unwrap());
+    session.begin(current_dpi).unwrap();
+    session.acquired_lock().unwrap();
+    assert!(
+        !session
+            .ingest(batch("source", 123, source), false, 0)
+            .unwrap()
+    );
+    let stopping = session
+        .ingest(batch("main", product_id, main), true, 1)
+        .unwrap();
+    if !stopping {
+        assert!(
+            session
+                .ingest(batch("main", product_id, &[final_main]), true, 2)
+                .unwrap()
+        );
+    }
+    assert_eq!(session.state, State::Stopping);
+    assert_eq!(session.response().phase(), Phase::Calibrating);
+    assert!(session.new_dpi().is_none());
+    assert!(!session.check_timeout(10_000));
+    session.complete_after_stop().unwrap();
+    assert_eq!(session.state, State::Completed);
+    assert_eq!(session.response().phase(), Phase::Completed);
+    let result = session.new_dpi().unwrap();
+    assert_source_number(session.response().new_dpi(), result);
+    assert!(session.complete_after_stop().is_err());
+    result
+}
+
+#[test]
+fn dpi_matcher_complete_after_stop_keeps_zero_nan_infinity_and_overflow_results() {
+    for product_id in [190, 192, 222, 226, 229, 239] {
+        for (source, last_main, expected) in [
+            (&[(20., 0.), (30., 0.)][..], (40., -100.), 0.),
+            (&[(20., 1000.), (30., 1250.)][..], (10., -100.), f64::NAN),
+        ] {
+            let result = stopped_numeric_result(
+                product_id,
+                800.,
+                &[(10., 1000.), (20., 2000.), (30., 2500.)],
+                source,
+                last_main,
+            );
+            assert_source_number(result, expected);
+        }
+        for (main, source) in [
+            (
+                &[(10., 0.), (20., 4500.), (30., 0.)][..],
+                &[(10., 1000.), (30., 0.)][..],
+            ),
+            (
+                &[(10., 1e-308), (20., 4500.), (30., 0.)][..],
+                &[(10., 1e308), (30., 0.)][..],
+            ),
+        ] {
+            let result = stopped_numeric_result(product_id, 800., main, source, (10., 0.));
+            assert_source_number(result, f64::INFINITY);
+        }
+        let result = stopped_numeric_result(
+            product_id,
+            f64::MAX,
+            &[(1., 5e307), (2., 1.5e308)],
+            &[(1., 1e308)],
+            (3., 0.),
+        );
+        assert_source_number(result, f64::INFINITY);
+        let result = stopped_numeric_result(
+            product_id,
+            800.,
+            &[(10., 1e308), (20., 1e308), (30., 0.)],
+            &[(10., 1e308), (20., 1e308), (30., 0.)],
+            (40., 0.),
+        );
+        assert_source_number(result, f64::NAN);
+    }
+}
+
+#[test]
+fn dpi_matcher_math_round_keeps_negative_results_ties_and_signed_zero_after_stop() {
+    for product_id in [190, 192, 222, 226, 229, 239] {
+        for (baseline, main, source, expected) in [
+            (0., 1., 1., 0.),
+            (-0., 1., 1., -0.),
+            (-800., 2., 1., -400.),
+            (-1., 2., 1., -0.),
+            (-3., 2., 1., -1.),
+            (-5., 2., 1., -2.),
+            (f64::NEG_INFINITY, 2., 1., f64::NEG_INFINITY),
+        ] {
+            let result = stopped_numeric_result(
+                product_id,
+                baseline,
+                &[(1., main)],
+                &[(1., source)],
+                (2., 0.),
+            );
+            assert_source_number(result, expected);
+        }
+    }
+}
+
+#[test]
+fn dpi_matcher_nonfinite_event_bounds_keep_the_source_inverse_comparisons() {
+    for product_id in [190, 192, 222, 226, 229, 239] {
+        let result = stopped_numeric_result(
+            product_id,
+            800.,
+            &[(f64::NAN, 1000.), (0., 1000.), (1., 4500.)],
+            &[(1., 3250.)],
+            (2., 0.),
+        );
+        assert_source_number(result, 400.);
+        let result = stopped_numeric_result(
+            product_id,
+            800.,
+            &[(10., 2000.), (20., 2500.)],
+            &[(10., 1000.), (50., 1250.), (20., 0.)],
+            (f64::NAN, 0.),
+        );
+        assert_source_number(result, 400.);
+    }
+}
+
+#[test]
+fn dpi_matcher_math_round_retains_near_half_and_large_finite_values() {
+    for (input, expected) in [
+        (0.49999999999999994, 0.),
+        (0.5, 1.),
+        (-0.5, -0.),
+        (-1.5, -1.),
+        (4503599627370495., 4503599627370495.),
+        (f64::MAX, f64::MAX),
+        (f64::INFINITY, f64::INFINITY),
+        (f64::NEG_INFINITY, f64::NEG_INFINITY),
+        (f64::NAN, f64::NAN),
+    ] {
+        assert_source_number(source_round(input), expected);
     }
 }
 
@@ -220,7 +447,7 @@ fn dpi_matcher_all_mounted_products_wait_for_stop_before_publishing_the_result()
 }
 
 #[test]
-fn dpi_matcher_pid226_keeps_product_partition_through_reset_and_timeout() {
+fn dpi_matcher_retains_container_partition_through_reset_and_timeout() {
     for product_id in [190, 192, 222, 226, 229, 239] {
         let mut session = Session::new(Product::new(product_id).unwrap());
         for cycle in 0..3 {
@@ -232,10 +459,8 @@ fn dpi_matcher_pid226_keeps_product_partition_through_reset_and_timeout() {
             session
                 .ingest(batch("reference", product_id, &[(2., 1.)]), true, 1)
                 .unwrap();
-            // R(pid,container) keeps this callback in the known reference
-            // stream; PID226 R(pid) moves it to main even with that container.
-            let expected = if product_id == 226 { 123 } else { product_id };
-            assert_eq!(session.source_product_id, Some(expected));
+            // Every current R(pid,container) keeps the known reference stream.
+            assert_eq!(session.source_product_id, Some(product_id));
             if cycle == 0 {
                 session.reset();
             } else {
@@ -278,6 +503,6 @@ fn dpi_matcher_initial_main_identities_follow_each_logical_factory() {
         for foreign in [70, 164, 241] {
             assert!(!product.accepts_initial_main_product(foreign));
         }
-        assert_eq!(product.is_dual_link_reference(241), product_id == 226);
+        assert!(product.is_dual_link_reference(241));
     }
 }

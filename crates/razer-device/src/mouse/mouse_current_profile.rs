@@ -154,7 +154,7 @@ impl Profile {
         );
         ensure!(!self.guid.is_empty(), "host mouse profile GUID is empty");
         let stages = self.stages()?;
-        crate::mouse_current_dpi::pack_for(product_id, &stages)?;
+        crate::mouse_current_dpi::pack_editor_for(product_id, &stages)?;
         let cap = crate::mouse_current_dpi::capability(product_id)
             .context("host mouse profile has no current DPI capability")?;
         ensure!(

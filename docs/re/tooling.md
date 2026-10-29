@@ -52,6 +52,8 @@ IDA 路径：`E:/IDA`（9.1）、`D:/ida/IDA Pro 8.3`（8.3）。GPUI 技能读�
 python tools/workspace.py validate-rust --suite current-dpi-protocol --suite current-polling-protocol --suite current-power-protocol
 ```
 
+普通 Rust 验证先以 AST 解析模块和字面量 item `include!`，保留实际源码、模块名、导入及局部窗口调用依赖，再筛选测试；被包含文件中的窗口用例同样在执行 Cargo 前拒绝。范围收据记录 `selected_tests`、来源数量和 `unresolved_includes`。动态路径、表达式 include、其他宏展开、类型解析和 cfg 求值仍受限，不将未解析项称为完整验证；实际执行数量与静态枚举分别核对。Matcher 的 8 项漏选测试已接回，当前页面套件实际执行与枚举均为 18 项。
+
 官方 DLL 对照维护器使用 Windows x64 Python 标准库 `ctypes`、`unittest` 和项目内 PE 检查模块；不执行 JavaScript／N-API 初始化。其纯测试使用 `python -m unittest discover -s tools -p test_native_runtime.py`，不加载真实官方 DLL 或打开设备。实际功能对照使用 `compare-local-service-version`、`compare-local-app-files`、`compare-local-lighting`、`validate-connected-devices` 与 `compare-connected-hid` 的已核实分支；新增功能须补齐对应入口和收据，不能由现有 HID 重放替代业务比较。
 
 `compare-local-lighting` 核对当前官方声明、原件 SHA／PE／ABI、110 个完整函数与 14 个 vtable 原字节后，以隔离进程执行公开 JSON 接口的固定软件场景。系统依赖限定并核实 System32，目标模块与 callback 保留到进程退出；停止和销毁失败、超时、取消及真实进程等待均保留。当前已实际比较 Static 与静止 Wheel 的九像素输出，独立 Rust 前后快照一致且与原版逐值相同；Fade、动态效果、其他参数、物理设备和应用窗口不在该结果范围。唯一[灯光对照收据](../../.analysis/results/lighting-runtime-comparison.json)保留每次尝试、完整输入身份、原始调用与结果、差异及清理，不丢弃失败记录。
@@ -523,4 +525,6 @@ Supplement 接收先验证整份计划、会话、完整输出、原件字节、
 
 [共享算术逐例结果压缩](../../.analysis/results/storage-compaction-power5-family-plan-apply.json)另保持 99,839,842 逻辑字节及 SHA 不变，实际释放 22,204,258 字节，失败为零。该结果服务于十五输入的 7,110 个精确解释用例，仍由[当前语义审阅](../../.analysis/results/reverse-pending/review-sources/5365af43eadad4bdfd75f6be500772264d77e32025bdd28e688a46ee95175c6a.json)正式引用，保留原因明确；没有把有效证据当作临时文件删除。
 
-本轮[实际删除收据](../../.analysis/results/scratch-cleanup-plan-applied.json)确认 475 份已结束 supplement 私有副本和 9 份旧资源克隆全部移除，共 484 组目录、77,069 个文件、29,478,199,202 逻辑字节，失败为零；删除后逐项目录不存在，1,425 份正式完成收据 SHA 及输入索引保持一致，223 份源数据库仍在。[大型文件压缩](../../.analysis/results/storage-compaction-apply.json)与[中型文件压缩](../../.analysis/results/storage-compaction-medium-apply.json)分别处理 152／574 个文件，实际减少磁盘占用 40,930,720,539／11,801,813,522 字节，全部内容 SHA 保持不变。后续计划跳过已压缩文件；`test_analysis_storage.py` 的 16 项测试通过，包含真实 NTFS 压缩、计划与文件变化、占用、链接、收据防覆盖和提前持久化日志。1 MiB 阈值的[小型文件计划](../../.analysis/results/storage-compaction-small.json)仅完成校验，尚未执行，节省量不计入本轮结果。其他仍有依赖或尚缺释放依据的工作副本保持保留。
+既有[实际删除收据](../../.analysis/results/scratch-cleanup-plan-applied.json)确认 475 份已结束 supplement 私有副本和 9 份旧资源克隆全部移除，共 484 组目录、77,069 个文件、29,478,199,202 逻辑字节，失败为零；删除后逐项目录不存在，1,425 份正式完成收据 SHA 及输入索引保持一致，223 份源数据库仍在。[大型文件压缩](../../.analysis/results/storage-compaction-apply.json)与[中型文件压缩](../../.analysis/results/storage-compaction-medium-apply.json)分别处理 152／574 个文件，实际减少磁盘占用 40,930,720,539／11,801,813,522 字节，全部内容 SHA 保持不变。后续计划跳过已压缩文件；`test_analysis_storage.py` 的 16 项测试通过，包含真实 NTFS 压缩、计划与文件变化、占用、链接、收据防覆盖和提前持久化日志。1 MiB 阈值的[小型文件计划](../../.analysis/results/storage-compaction-small.json)仅完成校验，尚未执行，节省量不计入已执行结果。其他仍有依赖或尚缺释放依据的工作副本保持保留。
+
+[当前 Matcher 修复清理收据](../../.analysis/results/scratch-cleanup-20261028T235903174505Z-plan-applied.json)已核对新计划 SHA 并实际 apply，状态完成、失败为零；本次可删候选、实际删除和释放空间均为 0。188 个分析目录继续保留：136 个未完成、失败或未审，24 个身份未知或含链接，2 个缺少完成依据，26 个仍有正式引用或活动任务。验证临时目录已全部释放，未新建分析数据库、克隆或逐问题脚本；此前已删除或压缩的空间不重复计入本次结果。

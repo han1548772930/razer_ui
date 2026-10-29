@@ -8,7 +8,7 @@ use crate::{
 };
 use anyhow::{Context as _, ensure};
 use serde::{Deserialize, Serialize};
-use std::{sync::OnceLock, time::Duration};
+use std::{collections::BTreeMap, sync::OnceLock, time::Duration};
 
 pub const PRODUCT_ID: u32 = 190;
 #[cfg(test)]
@@ -112,9 +112,385 @@ pub struct DpiPair {
     pub y: u16,
 }
 
+/// A source Number keeps its identity across internal IPC. Device confirmation
+/// uses strict numeric comparison instead, so NaN never confirms a getter.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SourceNumber(u64);
+
+impl SourceNumber {
+    pub fn new(value: f64) -> Self {
+        Self(value.to_bits())
+    }
+
+    pub fn value(self) -> f64 {
+        f64::from_bits(self.0)
+    }
+
+    pub fn strict_equals_u16(self, observed: u16) -> bool {
+        self.value() == f64::from(observed)
+    }
+
+    /// JSON.stringify projects non-finite Numbers to null and writes finite
+    /// integer Numbers without changing the in-memory command value.
+    pub fn file_value(self) -> serde_json::Value {
+        let value = self.value();
+        if value.is_finite() {
+            serde_json::from_str(&crate::source_string::number_text(value))
+                .expect("finite source Number JSON")
+        } else {
+            serde_json::Value::Null
+        }
+    }
+
+    fn word(self) -> u16 {
+        let value = self.value();
+        if value.is_finite() {
+            (value.trunc().rem_euclid(4_294_967_296.0) as u32) as u16
+        } else {
+            0
+        }
+    }
+}
+
+impl From<u16> for SourceNumber {
+    fn from(value: u16) -> Self {
+        Self::new(f64::from(value))
+    }
+}
+
+impl Serialize for SourceNumber {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        if self.value().is_finite() {
+            serializer.serialize_f64(self.value())
+        } else {
+            #[derive(Serialize)]
+            struct NonFinite {
+                nonfinite_bits: String,
+            }
+            NonFinite {
+                nonfinite_bits: format!("{:016x}", self.0),
+            }
+            .serialize(serializer)
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for SourceNumber {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct NonFinite {
+            nonfinite_bits: String,
+        }
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum Wire {
+            Finite(f64),
+            NonFinite(NonFinite),
+        }
+        use serde::de::Error as _;
+        match Wire::deserialize(deserializer)? {
+            Wire::Finite(value) if value.is_finite() => Ok(Self::new(value)),
+            Wire::Finite(_) => Err(D::Error::custom("non-finite Number requires an IPC tag")),
+            Wire::NonFinite(value) => {
+                if value.nonfinite_bits.len() != 16 {
+                    return Err(D::Error::custom("invalid source Number bits"));
+                }
+                let bits =
+                    u64::from_str_radix(&value.nonfinite_bits, 16).map_err(D::Error::custom)?;
+                let value = Self(bits);
+                if value.value().is_finite() {
+                    return Err(D::Error::custom("source Number tag must be non-finite"));
+                }
+                Ok(value)
+            }
+        }
+    }
+}
+
+/// Missing/null axes remain unobserved source fields, including after SELECT's
+/// JSON clone. They encode as zero but cannot strictly equal an integer getter.
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(transparent)]
+pub struct SourceStage(Option<SourceStageFields>);
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum SourceField<T> {
+    Missing,
+    Null,
+    Value(T),
+}
+
+impl<T> Default for SourceField<T> {
+    fn default() -> Self {
+        Self::Missing
+    }
+}
+
+impl<T> SourceField<T> {
+    fn into_option(self) -> Option<T> {
+        match self {
+            Self::Value(value) => Some(value),
+            Self::Missing | Self::Null => None,
+        }
+    }
+    fn is_missing(&self) -> bool {
+        matches!(self, Self::Missing)
+    }
+}
+
+impl<T: Serialize> Serialize for SourceField<T> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self {
+            Self::Value(value) => value.serialize(serializer),
+            Self::Missing | Self::Null => serializer.serialize_none(),
+        }
+    }
+}
+
+impl<'de, T: Deserialize<'de>> Deserialize<'de> for SourceField<T> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        Option::<T>::deserialize(deserializer).map(|value| value.map_or(Self::Null, Self::Value))
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+struct SourceStageFields {
+    #[serde(default, skip_serializing_if = "SourceField::is_missing")]
+    x: SourceField<SourceNumber>,
+    #[serde(default, skip_serializing_if = "SourceField::is_missing")]
+    y: SourceField<SourceNumber>,
+    #[serde(default, skip_serializing_if = "SourceField::is_missing")]
+    visible: SourceField<bool>,
+    #[serde(default, skip_serializing_if = "SourceField::is_missing")]
+    independent: SourceField<bool>,
+    #[serde(flatten)]
+    extensions: BTreeMap<String, serde_json::Value>,
+}
+
+impl SourceStage {
+    pub fn null() -> Self {
+        Self(None)
+    }
+
+    pub fn is_null(&self) -> bool {
+        self.0.is_none()
+    }
+
+    pub fn new(
+        x: Option<SourceNumber>,
+        y: Option<SourceNumber>,
+        visible: Option<bool>,
+        independent: Option<bool>,
+    ) -> Self {
+        Self(Some(SourceStageFields {
+            x: x.map_or(SourceField::Missing, SourceField::Value),
+            y: y.map_or(SourceField::Missing, SourceField::Value),
+            visible: visible.map_or(SourceField::Missing, SourceField::Value),
+            independent: independent.map_or(SourceField::Missing, SourceField::Value),
+            extensions: BTreeMap::new(),
+        }))
+    }
+
+    pub fn x(&self) -> Option<SourceNumber> {
+        self.0.as_ref().and_then(|row| row.x.into_option())
+    }
+    pub fn y(&self) -> Option<SourceNumber> {
+        self.0.as_ref().and_then(|row| row.y.into_option())
+    }
+    pub fn strict_x_equals(&self, other: &Self) -> anyhow::Result<bool> {
+        let left = self
+            .0
+            .as_ref()
+            .context("Source DPI X comparison row is null")?;
+        let right = other
+            .0
+            .as_ref()
+            .context("Source DPI X comparison row is null")?;
+        Ok(match (left.x, right.x) {
+            (SourceField::Missing, SourceField::Missing)
+            | (SourceField::Null, SourceField::Null) => true,
+            (SourceField::Value(left), SourceField::Value(right)) => left.value() == right.value(),
+            _ => false,
+        })
+    }
+    pub fn is_visible(&self) -> Option<bool> {
+        self.0.as_ref().and_then(|row| row.visible.into_option())
+    }
+    pub fn is_independent(&self) -> Option<bool> {
+        self.0
+            .as_ref()
+            .and_then(|row| row.independent.into_option())
+    }
+
+    pub fn from_source_file(value: &serde_json::Value) -> anyhow::Result<Self> {
+        if let Some(object) = value.as_object() {
+            for name in ["x", "y"] {
+                ensure!(
+                    object
+                        .get(name)
+                        .is_none_or(|value| value.is_number() || value.is_null()),
+                    "Source DPI file axis is not a Number or null"
+                );
+            }
+        }
+        Ok(serde_json::from_value(value.clone())?)
+    }
+
+    pub fn file_value(&self) -> serde_json::Value {
+        let Some(row) = &self.0 else {
+            return serde_json::Value::Null;
+        };
+        let mut fields: serde_json::Map<_, _> = row.extensions.clone().into_iter().collect();
+        for (key, value) in [("x", row.x), ("y", row.y)] {
+            match value {
+                SourceField::Missing => {}
+                SourceField::Null => {
+                    fields.insert(key.into(), serde_json::Value::Null);
+                }
+                SourceField::Value(value) => {
+                    fields.insert(key.into(), value.file_value());
+                }
+            }
+        }
+        for (key, value) in [("visible", row.visible), ("independent", row.independent)] {
+            match value {
+                SourceField::Missing => {}
+                SourceField::Null => {
+                    fields.insert(key.into(), serde_json::Value::Null);
+                }
+                SourceField::Value(value) => {
+                    fields.insert(key.into(), value.into());
+                }
+            }
+        }
+        fields.into()
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+pub struct SourceStages {
+    #[serde(alias = "enable")]
+    enabled: bool,
+    #[serde(alias = "active")]
+    active_stage: usize,
+    stages: Vec<SourceStage>,
+    #[serde(flatten)]
+    extensions: BTreeMap<String, serde_json::Value>,
+}
+
+impl SourceStages {
+    pub fn new(enabled: bool, active_stage: usize, stages: Vec<SourceStage>) -> Self {
+        Self {
+            enabled,
+            active_stage,
+            stages,
+            extensions: BTreeMap::new(),
+        }
+    }
+    pub fn enabled(&self) -> bool {
+        self.enabled
+    }
+    pub fn active_stage(&self) -> usize {
+        self.active_stage
+    }
+    pub fn stages(&self) -> &[SourceStage] {
+        &self.stages
+    }
+    pub(crate) fn with_visible_count(mut self) -> Self {
+        self.extensions.insert(
+            "count".into(),
+            self.stages
+                .iter()
+                .filter(|row| row.is_visible() == Some(true))
+                .count()
+                .into(),
+        );
+        self
+    }
+    pub fn with_replaced_stage(&self, index: usize, stage: SourceStage) -> anyhow::Result<Self> {
+        let mut next = self.clone();
+        *next
+            .stages
+            .get_mut(index)
+            .context("Source DPI row is absent")? = stage;
+        Ok(next)
+    }
+    pub fn from_source_file(value: &serde_json::Value) -> anyhow::Result<Self> {
+        #[derive(Deserialize)]
+        struct FileStages {
+            enable: bool,
+            active: usize,
+            stages: Vec<serde_json::Value>,
+            #[serde(flatten)]
+            extensions: BTreeMap<String, serde_json::Value>,
+        }
+        let file: FileStages = serde_json::from_value(value.clone())?;
+        Ok(Self {
+            enabled: file.enable,
+            active_stage: file.active,
+            stages: file
+                .stages
+                .iter()
+                .map(SourceStage::from_source_file)
+                .collect::<anyhow::Result<_>>()?,
+            extensions: file.extensions,
+        })
+    }
+    pub fn source_file_value(&self) -> serde_json::Value {
+        let mut fields: serde_json::Map<_, _> = self.extensions.clone().into_iter().collect();
+        fields.insert("enable".into(), self.enabled.into());
+        fields.insert("active".into(), self.active_stage.into());
+        fields.insert(
+            "stages".into(),
+            self.stages.iter().map(SourceStage::file_value).collect(),
+        );
+        fields.into()
+    }
+}
+
+impl From<&DpiStagesDraft> for SourceStages {
+    fn from(draft: &DpiStagesDraft) -> Self {
+        Self::new(
+            draft.enabled,
+            draft.active_stage,
+            draft
+                .stages
+                .iter()
+                .map(|row| {
+                    SourceStage::new(
+                        Some(row.x.into()),
+                        Some(row.y.into()),
+                        Some(row.visible),
+                        Some(row.independent),
+                    )
+                })
+                .collect(),
+        )
+    }
+}
+
+impl From<DpiStagesDraft> for SourceStages {
+    fn from(draft: DpiStagesDraft) -> Self {
+        Self::from(&draft)
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct DpiChange {
-    pub stages: Option<DpiStagesDraft>,
+    pub stages: Option<SourceStages>,
     pub active: Option<DpiPair>,
     /// Active local profile identity used by 30525.Ye to select actual OBM slots.
     #[serde(default)]
@@ -139,7 +515,29 @@ impl DpiChange {
 pub struct PackedStages {
     pub active_stage: u8,
     pub number_of_active_stages: u8,
-    pub records: Vec<PackedDpiStage>,
+    pub records: Vec<PackedSourceStage>,
+    #[serde(default)]
+    product_id: u32,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct PackedSourceStage {
+    pub index: u8,
+    pub x: Option<SourceNumber>,
+    pub y: Option<SourceNumber>,
+    pub z: SourceNumber,
+}
+
+impl PackedSourceStage {
+    pub fn new(
+        index: u8,
+        x: Option<SourceNumber>,
+        y: Option<SourceNumber>,
+        z: SourceNumber,
+    ) -> Self {
+        Self { index, x, y, z }
+    }
 }
 
 fn validate_pair(cap: &Capability, value: DpiPair) -> anyhow::Result<()> {
@@ -157,35 +555,76 @@ fn validate_pair(cap: &Capability, value: DpiPair) -> anyhow::Result<()> {
 /// He preserves findIndex=-1 -> activeStage=0 for the hidden-row unlink branch.
 /// Disabled staging still declares one record, whose missing JS values become
 /// zero bytes. Keep this source edge case observable instead of selecting a row.
-pub fn pack(draft: &DpiStagesDraft) -> anyhow::Result<PackedStages> {
+pub fn pack(draft: &SourceStages) -> anyhow::Result<PackedStages> {
     pack_for(PRODUCT_ID, draft)
 }
 
-pub fn pack_for(product_id: u32, draft: &DpiStagesDraft) -> anyhow::Result<PackedStages> {
+pub fn pack_editor_for(product_id: u32, draft: &DpiStagesDraft) -> anyhow::Result<PackedStages> {
     let cap = required(product_id)?;
     ensure!(
         draft.stages.len() == 5,
         "Current source retains exactly five local DPI stages"
     );
-    let selected = draft
-        .active_stage
-        .checked_sub(1)
-        .filter(|index| *index < draft.stages.len())
-        .context("DPI selection is outside the local profile")?;
+    ensure!(
+        (1..=draft.stages.len()).contains(&draft.active_stage),
+        "DPI selection is outside the local profile"
+    );
     for row in &draft.stages {
         validate_pair(cap, DpiPair { x: row.x, y: row.y })?;
     }
+    pack_for(product_id, &draft.into())
+}
+
+pub fn pack_for(product_id: u32, draft: &SourceStages) -> anyhow::Result<PackedStages> {
+    let cap = required(product_id)?;
+    let source_stages = matches!(product_id, 190 | 192 | 222 | 226 | 229 | 239);
+    if !source_stages {
+        ensure!(
+            draft.stages.len() == 5 && (1..=5).contains(&draft.active_stage),
+            "Current source retains exactly five selected local DPI stages"
+        );
+        for row in &draft.stages {
+            validate_pair(
+                cap,
+                DpiPair {
+                    x: editor_axis(row.x())?,
+                    y: editor_axis(row.y())?,
+                },
+            )?;
+        }
+    }
+    let selected = draft.active_stage.checked_sub(1);
+    ensure!(
+        source_stages
+            || cap.cycle_sensitivity
+            || draft.enabled
+            || selected.is_some_and(|index| index < draft.stages.len()),
+        "DPI selection is outside the source stage list"
+    );
+    ensure!(
+        source_stages
+            || draft.stages.iter().enumerate().all(|(index, row)| {
+                !(cap.cycle_sensitivity || draft.enabled || Some(index) == selected)
+                    || row.0.is_some()
+            }),
+        "Source DPI task cannot read visibility from a null row"
+    );
     let rows: Vec<_> = draft
         .stages
         .iter()
         .enumerate()
         .filter(|(index, row)| {
-            row.visible && (cap.cycle_sensitivity || draft.enabled || *index == selected)
+            row.is_visible() == Some(true)
+                && (cap.cycle_sensitivity || draft.enabled || Some(*index) == selected)
         })
         .collect();
+    ensure!(
+        rows.len() <= 11,
+        "DPI stages exceed the protocol record capacity"
+    );
     let active_stage = rows
         .iter()
-        .position(|(index, _)| *index == selected)
+        .position(|(index, _)| Some(*index) == selected)
         .map_or(0, |index| index as u8 + 1);
     let number_of_active_stages = if cap.cycle_sensitivity || draft.enabled {
         rows.len() as u8
@@ -195,17 +634,18 @@ pub fn pack_for(product_id: u32, draft: &DpiStagesDraft) -> anyhow::Result<Packe
     let records = rows
         .into_iter()
         .enumerate()
-        .map(|(index, (_, row))| PackedDpiStage {
+        .map(|(index, (_, row))| PackedSourceStage {
             index: index as u8,
-            x: row.x,
-            y: row.y,
-            z: 0,
+            x: row.x(),
+            y: row.y(),
+            z: 0u16.into(),
         })
         .collect();
     Ok(PackedStages {
         active_stage,
         number_of_active_stages,
         records,
+        product_id,
     })
 }
 
@@ -411,21 +851,94 @@ fn stage_payload(packed: &PackedStages, profile: u8) -> Vec<u8> {
     for (index, row) in packed.records.iter().enumerate() {
         let start = 3 + index * 7;
         bytes[start] = row.index;
-        bytes[start + 1..start + 3].copy_from_slice(&row.x.to_be_bytes());
-        bytes[start + 3..start + 5].copy_from_slice(&row.y.to_be_bytes());
-        bytes[start + 5..start + 7].copy_from_slice(&row.z.to_be_bytes());
+        bytes[start + 1..start + 3]
+            .copy_from_slice(&row.x.map_or(0, SourceNumber::word).to_be_bytes());
+        bytes[start + 3..start + 5]
+            .copy_from_slice(&row.y.map_or(0, SourceNumber::word).to_be_bytes());
+        bytes[start + 5..start + 7].copy_from_slice(&row.z.word().to_be_bytes());
     }
     bytes
 }
 
 pub fn same_stages(sent: &PackedStages, got: &DpiStagesReading) -> bool {
-    got.profile_id == 1
-        && crate::mouse_dpi_stages::matches_packed_stage_records(
-            sent.active_stage,
-            usize::from(sent.number_of_active_stages),
-            &sent.records,
-            got,
-        )
+    if got.profile_id != 1 {
+        return false;
+    }
+    if matches!(sent.product_id, 190 | 192 | 222 | 226 | 229 | 239) {
+        // The current task compares returned flat records until index zero or
+        // the array boundary. It does not consume the GET's active/count header.
+        for (index, observed) in got.records.iter().enumerate() {
+            if observed.index == 0 {
+                return true;
+            }
+            if !sent
+                .records
+                .get(index)
+                .is_some_and(|expected| same_record(expected, observed))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+    same_profile_records(sent, got)
+}
+
+fn same_record(sent: &PackedSourceStage, got: &PackedDpiStage) -> bool {
+    got.index == sent.index + 1
+        && sent.x.is_some_and(|value| value.strict_equals_u16(got.x))
+        && sent.y.is_some_and(|value| value.strict_equals_u16(got.y))
+        && sent.z.strict_equals_u16(got.z)
+}
+
+fn same_profile_records(sent: &PackedStages, got: &DpiStagesReading) -> bool {
+    let records: Vec<_> = got
+        .records
+        .iter()
+        .take_while(|row| row.index != 0)
+        .collect();
+    got.active_stage == sent.active_stage
+        && got.number_of_active_stages == sent.number_of_active_stages
+        && records.len() == sent.records.len()
+        && sent
+            .records
+            .iter()
+            .zip(records)
+            .all(|(sent, got)| same_record(sent, got))
+}
+
+fn editor_draft_for(product_id: u32, source: &SourceStages) -> anyhow::Result<DpiStagesDraft> {
+    let draft = DpiStagesDraft {
+        enabled: source.enabled,
+        active_stage: source.active_stage,
+        stages: source
+            .stages
+            .iter()
+            .map(|row| {
+                Ok(crate::mouse_dpi_stages::DpiStage {
+                    x: editor_axis(row.x())?,
+                    y: editor_axis(row.y())?,
+                    visible: row
+                        .is_visible()
+                        .context("Source DPI visibility is absent")?,
+                    independent: row
+                        .is_independent()
+                        .context("Source DPI axis mode is absent")?,
+                })
+            })
+            .collect::<anyhow::Result<_>>()?,
+    };
+    pack_editor_for(product_id, &draft)?;
+    Ok(draft)
+}
+
+fn editor_axis(value: Option<SourceNumber>) -> anyhow::Result<u16> {
+    let value = value.context("Source DPI axis is absent")?.value();
+    ensure!(
+        value >= 0. && value <= f64::from(u16::MAX) && value.fract() == 0.,
+        "Source DPI axis is not an unsigned integer"
+    );
+    Ok(value as u16)
 }
 
 fn synchronize_ordinary_profile_slots(
@@ -448,14 +961,7 @@ fn synchronize_ordinary_profile_slots(
                 slot,
             )
         },
-        |before| {
-            crate::mouse_dpi_stages::matches_packed_stage_records(
-                table.active_stage,
-                usize::from(table.number_of_active_stages),
-                &table.records,
-                before,
-            )
-        },
+        |before| same_profile_records(table, before),
         |next, slot| {
             let payload = stage_payload(table, slot);
             let ack = exchange(
@@ -680,8 +1186,8 @@ fn execute_with_capability(
                         .and_then(|index| packed.records.get(usize::from(index)))
                         .context("Source selected DPI stage has no numeric X/Y values")?;
                     let mut payload = vec![1];
-                    payload.extend_from_slice(&stage.x.to_be_bytes());
-                    payload.extend_from_slice(&stage.y.to_be_bytes());
+                    payload.extend_from_slice(&stage.x.map_or(0, SourceNumber::word).to_be_bytes());
+                    payload.extend_from_slice(&stage.y.map_or(0, SourceNumber::word).to_be_bytes());
                     payload.extend_from_slice(&[0, 0]);
                     let ack = exchange(device, cap, [7, 4, 5], &payload, next()?, &validate)?;
                     if ack.data.len() >= 7 {
@@ -749,7 +1255,7 @@ fn execute_with_capability(
                         &stages_cap,
                         guid,
                         &report.profile_slots,
-                        draft,
+                        &editor_draft_for(product_id, draft)?,
                         &mut next,
                         &validate,
                     )?

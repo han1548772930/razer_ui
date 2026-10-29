@@ -186,14 +186,15 @@ fn draft() -> DpiStagesDraft {
     }
 }
 fn getter(draft: &DpiStagesDraft) -> Vec<u8> {
-    let table = pack(draft).unwrap();
+    let table = pack_editor_for(PRODUCT_ID, draft).unwrap();
     let mut bytes = vec![1, table.active_stage, table.number_of_active_stages];
     for row in table.records {
         bytes.push(row.index + 1);
-        bytes.extend_from_slice(&row.x.to_be_bytes());
-        bytes.extend_from_slice(&row.y.to_be_bytes());
+        bytes.extend_from_slice(&row.x.unwrap().word().to_be_bytes());
+        bytes.extend_from_slice(&row.y.unwrap().word().to_be_bytes());
         bytes.extend_from_slice(&[0, 0]);
     }
+    bytes.extend_from_slice(&[0; 7]);
     bytes
 }
 fn active(x: u16, y: u16) -> Vec<u8> {
@@ -202,6 +203,287 @@ fn active(x: u16, y: u16) -> Vec<u8> {
     value.extend_from_slice(&y.to_be_bytes());
     value.extend_from_slice(&[0, 0]);
     value
+}
+
+#[test]
+fn source_numbers_keep_ipc_identity_and_project_only_at_the_file_boundary() {
+    for value in [
+        0.,
+        -0.,
+        -1.75,
+        65_536.,
+        4_294_967_297.,
+        f64::MAX,
+        f64::INFINITY,
+        f64::NEG_INFINITY,
+        f64::from_bits(0x7ff8_0000_0000_0042),
+    ] {
+        let source = SourceNumber::new(value);
+        let wire = serde_json::to_vec(&source).unwrap();
+        let restored: SourceNumber = serde_json::from_slice(&wire).unwrap();
+        assert_eq!(restored, source);
+        assert_eq!(restored.value().to_bits(), value.to_bits());
+        assert_eq!(source.file_value().is_null(), !value.is_finite());
+    }
+    assert_ne!(SourceNumber::new(0.), SourceNumber::new(-0.));
+    assert!(SourceNumber::new(-0.).strict_equals_u16(0));
+    assert!(!SourceNumber::new(f64::NAN).strict_equals_u16(0));
+    assert_eq!(SourceNumber::new(-0.).file_value(), serde_json::json!(0));
+    assert_eq!(SourceNumber::new(400.).file_value(), serde_json::json!(400));
+    for invalid in [
+        serde_json::json!(null),
+        serde_json::json!({"nonfinite_bits":"3ff0000000000000"}),
+        serde_json::json!({"nonfinite_bits":"7ff0000000000000","extra":1}),
+        serde_json::json!({"nonfinite_bits":"7ff"}),
+    ] {
+        assert!(serde_json::from_value::<SourceNumber>(invalid).is_err());
+    }
+}
+
+#[test]
+fn source_stage_file_projection_retains_explicit_null_axes_and_unknown_fields() {
+    let source = serde_json::json!({
+        "enable":true,"active":1,"vendor_flags":[7,9],
+        "stages":[{"x":null,"y":400,"visible":true,"vendor_axis":8},null,{}]
+    });
+    let stages = SourceStages::from_source_file(&source).unwrap();
+    assert_eq!(stages.source_file_value(), source);
+    assert!(stages.stages()[0].x().is_none());
+    let changed = stages
+        .with_replaced_stage(
+            0,
+            SourceStage::new(
+                Some(SourceNumber::new(f64::INFINITY)),
+                None,
+                Some(true),
+                Some(false),
+            ),
+        )
+        .unwrap();
+    assert_eq!(
+        changed.source_file_value()["stages"][0]["x"],
+        serde_json::Value::Null
+    );
+    assert_eq!(
+        changed.source_file_value()["vendor_flags"],
+        serde_json::json!([7, 9])
+    );
+    assert!(
+        stages
+            .with_replaced_stage(3, stages.stages()[0].clone())
+            .is_err()
+    );
+}
+
+#[test]
+fn source_stage_bytes_use_bitwise_wrapping_without_changing_strict_getter_expectations() {
+    let stages = SourceStages::new(
+        true,
+        1,
+        [
+            (-0., -1.),
+            (65_536., 65_537.),
+            (4_294_967_297., -65_537.),
+            (f64::NAN, f64::INFINITY),
+            (f64::NEG_INFINITY, 300.9),
+        ]
+        .into_iter()
+        .map(|(x, y)| {
+            SourceStage::new(
+                Some(SourceNumber::new(x)),
+                Some(SourceNumber::new(y)),
+                Some(true),
+                Some(false),
+            )
+        })
+        .collect(),
+    );
+    let packed = pack_for(190, &stages).unwrap();
+    assert_eq!(
+        stage_payload(&packed, 1),
+        [
+            1, 1, 5, 0, 0, 0, 255, 255, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2, 0, 1, 255, 255, 0, 0, 3, 0,
+            0, 0, 0, 0, 0, 4, 0, 0, 1, 44, 0, 0,
+        ]
+    );
+    assert!(packed.records[3].x.unwrap().value().is_nan());
+    let getter = stage_reading(
+        &Acknowledgement {
+            command: [80, 4, 134],
+            transaction: 1,
+            response_bytes: 45,
+            data: vec![
+                1, 1, 5, 1, 0, 0, 255, 255, 0, 0, 2, 0, 0, 0, 1, 0, 0, 3, 0, 1, 255, 255, 0, 0, 4,
+                0, 0, 0, 0, 0, 0, 5, 0, 0, 1, 44, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            ],
+        },
+        1,
+    )
+    .unwrap();
+    assert!(!same_stages(&packed, &getter));
+}
+
+#[test]
+fn six_source_stage_tasks_keep_raw_requests_and_actual_readback_after_numeric_coercion() {
+    for product_id in [190, 192, 222, 226, 229, 239] {
+        let mut cap = required(product_id).unwrap().clone();
+        cap.transport = cap.transport.for_physical_product(cap.wired_pid).unwrap();
+        cap.transport.sleep_between_out_ms = 0;
+        cap.transport.sleep_between_out_in_ms = 0;
+        cap.transport.sleep_between_in_ms = 0;
+        for (raw, integer, matches) in [
+            (-0., 0_u16, true),
+            (0., 0, true),
+            (f64::NAN, 0, false),
+            (f64::INFINITY, 0, false),
+            (f64::NEG_INFINITY, 0, false),
+            (-1., 65535, false),
+            (65_536., 0, false),
+            (65_537., 1, false),
+            (4_294_967_297., 1, false),
+            (300.9, 300, false),
+        ] {
+            let change = DpiChange {
+                stages: Some(SourceStages::new(
+                    true,
+                    1,
+                    vec![SourceStage::new(
+                        Some(SourceNumber::new(raw)),
+                        Some(SourceNumber::new(raw)),
+                        Some(true),
+                        Some(false),
+                    )],
+                )),
+                active: None,
+                profile_guid: None,
+                initialize: false,
+            };
+            let device = Mock::new(vec![
+                reply(vec![]),
+                reply(source_stage_data(1, 1, 1, &[(integer, integer)])),
+            ]);
+            let report =
+                execute_with_capability(&cap, &device, Some(&change), next(), || Ok(())).unwrap();
+            assert_eq!(report.requested.as_ref(), Some(&change));
+            assert_eq!(report.verified, matches, "PID{product_id} raw {raw}");
+            assert_eq!(report.write_errors.stages().is_none(), matches);
+            let observed = report.stages.as_ref().unwrap();
+            assert_eq!(
+                (observed.records[0].x, observed.records[0].y),
+                (integer, integer)
+            );
+            assert_eq!(report.acknowledgements.len(), 1);
+            let reports = device.sent();
+            assert_eq!(reports.len(), 2);
+            assert_eq!(&reports[0][6..13], &[10, 4, 6, 1, 1, 1, 0]);
+            let [hi, lo] = integer.to_be_bytes();
+            assert_eq!(&reports[0][13..19], &[hi, lo, hi, lo, 0, 0]);
+            assert_eq!(&reports[1][6..10], &[80, 4, 134, 1]);
+        }
+    }
+}
+
+#[test]
+fn six_source_runners_compare_raw_record_prefixes_with_the_current_length_boundary() {
+    let stages = SourceStages::new(
+        true,
+        1,
+        vec![
+            SourceStage::new(
+                Some(400u16.into()),
+                Some(500u16.into()),
+                Some(true),
+                Some(false),
+            ),
+            SourceStage::new(
+                Some(800u16.into()),
+                Some(900u16.into()),
+                Some(true),
+                Some(false),
+            ),
+        ],
+    );
+    for product in [190, 192, 222, 226, 229, 239] {
+        let packed = pack_for(product, &stages).unwrap();
+        let mut data = vec![1, 9, 7, 1, 1, 144, 1, 244, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        let ack = |data: Vec<u8>| Acknowledgement {
+            command: [80, 4, 134],
+            transaction: 1,
+            response_bytes: data.len(),
+            data,
+        };
+        let prefix = stage_reading(&ack(data.clone()), 1).unwrap();
+        assert!(same_stages(&packed, &prefix), "source prefix PID{product}");
+        data.truncate(10);
+        assert!(same_stages(&packed, &stage_reading(&ack(data), 1).unwrap()));
+        assert!(same_stages(
+            &packed,
+            &stage_reading(&ack(vec![1, 1, 2]), 1).unwrap()
+        ));
+        let mut mismatch = prefix;
+        mismatch.records[0].x = 401;
+        assert!(!same_stages(&packed, &mismatch));
+        let zero = SourceStages::new(
+            true,
+            1,
+            vec![SourceStage::new(
+                Some(SourceNumber::new(-0.)),
+                Some(0u16.into()),
+                Some(true),
+                None,
+            )],
+        );
+        let observed = stage_reading(
+            &ack(vec![1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
+            1,
+        )
+        .unwrap();
+        assert!(same_stages(&pack_for(product, &zero).unwrap(), &observed));
+        let missing = SourceStages::new(
+            true,
+            1,
+            vec![SourceStage::new(None, None, Some(true), None)],
+        );
+        assert!(!same_stages(
+            &pack_for(product, &missing).unwrap(),
+            &observed
+        ));
+    }
+}
+
+#[test]
+fn source_visibility_filters_missing_fields_and_null_rows_for_all_six_products() {
+    let null_row = SourceStages::from_source_file(&serde_json::json!({
+        "enable":true,"active":1,"stages":[null,{}]
+    }))
+    .unwrap();
+    for product in [190, 192, 222, 226, 229, 239] {
+        let packed = pack_for(product, &null_row).unwrap();
+        assert!(packed.records.is_empty());
+        assert_eq!(packed.active_stage, 0);
+        assert_eq!(packed.number_of_active_stages, 0);
+        let absent_selection = pack_for(product, &SourceStages::new(false, 20, vec![])).unwrap();
+        assert!(absent_selection.records.is_empty());
+        assert_eq!(absent_selection.active_stage, 0);
+        assert_eq!(absent_selection.number_of_active_stages, 1);
+    }
+    let absent_visibility = SourceStages::new(
+        true,
+        1,
+        vec![SourceStage::new(
+            Some(400u16.into()),
+            Some(400u16.into()),
+            None,
+            None,
+        )],
+    );
+    for product in [190, 192, 222, 226, 229, 239] {
+        let packed = pack_for(product, &absent_visibility).unwrap();
+        assert_eq!(
+            (packed.active_stage, packed.number_of_active_stages),
+            (0, 0)
+        );
+    }
 }
 
 const OBM_GUID: &str = "12345678-9abc-def0-1234-56789abcdef0";
@@ -226,6 +508,7 @@ fn source_stage_data(profile: u8, active: u8, declared: u8, xy: &[(u16, u16)]) -
         bytes.extend_from_slice(&y.to_be_bytes());
         bytes.extend_from_slice(&[0, 0]);
     }
+    bytes.extend_from_slice(&[0; 7]);
     bytes
 }
 
@@ -273,7 +556,7 @@ fn obm_inventory_replies(slots: &[(u8, bool)]) -> Vec<Reply> {
 
 fn obm_change() -> DpiChange {
     DpiChange {
-        stages: Some(draft()),
+        stages: Some(draft().into()),
         active: None,
         profile_guid: Some(OBM_GUID.into()),
         initialize: false,
@@ -441,7 +724,7 @@ fn ordinary_obm_current190_preserves_hidden_selection_and_disabled_declared_coun
         let mut draft = draft();
         draft.enabled = enabled;
         draft.stages[2].visible = false;
-        let table = pack_for(190, &draft).unwrap();
+        let table = pack_editor_for(190, &draft).unwrap();
         let device = Mock::new(vec![reply(source_default_stage_data(2, 3)), reply(vec![])]);
         let result = synchronize_ordinary_profile_slots(
             &device,
@@ -481,7 +764,7 @@ fn ordinary_obm_current190_disabled_stage_matches_the_selected_visible_row_only(
         &obm_capability(),
         OBM_GUID,
         &slots,
-        &pack_for(190, &draft).unwrap(),
+        &pack_editor_for(190, &draft).unwrap(),
         &mut next(),
         &|| Ok(()),
     )
@@ -501,7 +784,7 @@ fn stage_table_uses_profile_one_and_source_transactions_checksum_and_big_endian_
     let change = DpiChange {
         profile_guid: None,
         initialize: false,
-        stages: Some(table),
+        stages: Some(table.into()),
         active: None,
     };
     let observed = execute(&device, Some(&change), next(), || Ok(())).unwrap();
@@ -614,11 +897,11 @@ fn failed_getters_report_each_failure_without_any_cached_or_default_value() {
 fn hidden_row_unlink_retains_source_active_zero_in_both_staging_modes() {
     let mut table = draft();
     table.stages[2].visible = false;
-    let packed = pack(&table).unwrap();
+    let packed = pack_editor_for(PRODUCT_ID, &table).unwrap();
     assert_eq!(packed.active_stage, 0);
     assert_eq!(packed.records.len(), 4);
     table.enabled = false;
-    let packed = pack(&table).unwrap();
+    let packed = pack_editor_for(PRODUCT_ID, &table).unwrap();
     assert_eq!(
         (packed.active_stage, packed.number_of_active_stages),
         (0, 1)
@@ -641,7 +924,7 @@ fn setter_ack_without_matching_readback_never_confirms_the_local_profile() {
         Some(&DpiChange {
             profile_guid: None,
             initialize: false,
-            stages: Some(wanted),
+            stages: Some(wanted.into()),
             active: None,
         }),
         next(),
@@ -668,7 +951,7 @@ fn rejected_stage_task_does_not_discard_the_separately_requested_active_task() {
     let change = DpiChange {
         profile_guid: None,
         initialize: false,
-        stages: Some(draft()),
+        stages: Some(draft().into()),
         active: Some(DpiPair { x: 1600, y: 1600 }),
     };
     let device = Mock::new(vec![
@@ -732,7 +1015,7 @@ fn cancellation_stops_readback_and_all_later_requested_device_tasks() {
     let change = DpiChange {
         profile_guid: None,
         initialize: false,
-        stages: Some(draft()),
+        stages: Some(draft().into()),
         active: Some(DpiPair { x: 1600, y: 1600 }),
     };
     assert!(
@@ -756,7 +1039,7 @@ fn offline_dongle_and_out_of_range_transaction_do_not_report_success() {
         Some(&DpiChange {
             profile_guid: None,
             initialize: false,
-            stages: Some(draft()),
+            stages: Some(draft().into()),
             active: None,
         }),
         || Ok(31),
@@ -773,8 +1056,8 @@ fn pro_click_basic_mode_keeps_the_visible_cycle_table_and_its_selected_stage() {
     let mut table = draft();
     table.enabled = false;
     table.stages[1].visible = false;
-    let ordinary = pack_for(190, &table).unwrap();
-    let cycle = pack_for(199, &table).unwrap();
+    let ordinary = pack_editor_for(190, &table).unwrap();
+    let cycle = pack_editor_for(199, &table).unwrap();
     assert_eq!(
         (ordinary.active_stage, ordinary.number_of_active_stages),
         (1, 1)
@@ -794,7 +1077,7 @@ fn pro_click_basic_mode_keeps_the_visible_cycle_table_and_its_selected_stage() {
         Some(&DpiChange {
             profile_guid: None,
             initialize: false,
-            stages: Some(table),
+            stages: Some(table.into()),
             active: None,
         }),
         next(),
@@ -812,9 +1095,9 @@ fn current_product_limits_interfaces_and_receiver_factories_are_kept_separate() 
     let mut table = draft();
     table.stages[2].x = 50000;
     table.stages[2].y = 49999;
-    assert!(pack_for(239, &table).is_ok());
-    assert!(pack_for(190, &table).is_err());
-    assert!(pack_for(199, &table).is_err());
+    assert!(pack_editor_for(239, &table).is_ok());
+    assert!(pack_editor_for(190, &table).is_err());
+    assert!(pack_editor_for(199, &table).is_err());
     let carbon = capability(239).unwrap();
     assert_eq!(carbon.transport().claim_interface_for(239).unwrap(), 3);
     assert_eq!(carbon.transport().claim_interface_for(240).unwrap(), 3);
@@ -835,7 +1118,7 @@ fn level_only_stage_task_sets_profile_one_without_inventing_a_stage_table_getter
     let change = DpiChange {
         profile_guid: None,
         initialize: false,
-        stages: Some(draft()),
+        stages: Some(draft().into()),
         active: Some(DpiPair { x: 1600, y: 1600 }),
     };
     let report = execute_for(92, &device, Some(&change), next(), || Ok(())).unwrap();
@@ -867,7 +1150,7 @@ fn naga_legacy_inherits_dpi_packets_and_basilisk_keeps_interface_three_wired_onl
             Some(&DpiChange {
                 profile_guid: None,
                 initialize: false,
-                stages: Some(table),
+                stages: Some(table.into()),
                 active: None,
             }),
             next(),

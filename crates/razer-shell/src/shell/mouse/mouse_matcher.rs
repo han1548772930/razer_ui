@@ -5,18 +5,22 @@ use anyhow::{Context as _, ensure};
 use razer_pages::features::{
     mouse_dpi_matcher::{MatcherAction, MatcherCommand, MatcherObservation},
     mouse_polling::MousePollingScope,
-    mouse_products::{MouseMatcherRequest, MouseMatcherScope},
+    mouse_products::{MouseCurrentDpiProfileSaveBoundary, MouseMatcherRequest, MouseMatcherScope},
 };
 use razer_service::dpi_matcher::worker::{
     Command, Completion, ConnectedDevice, Handle, Options, Update,
 };
-use serde_json::Value;
 use std::sync::mpsc::Sender;
 
 #[derive(Default)]
 pub(super) struct State {
-    sessions: BTreeMap<String, Session>,
+    sessions: BTreeMap<SessionKey, Session>,
     cleanup: Vec<Cleanup>,
+}
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+struct SessionKey {
+    identity: String,
+    normalization: bool,
 }
 struct Cleanup {
     id: uuid::Uuid,
@@ -42,12 +46,40 @@ struct Owner {
     id: uuid::Uuid,
     workspace: WeakEntity<ProductWorkspace>,
     identity: String,
+    key: SessionKey,
     scope: MouseMatcherScope,
     domain_scope: MousePollingScope,
     connection_revision: u64,
     profile_id: String,
     profile_guid: String,
-    route: razer_discovery::discovery::ObservedDevice,
+    route: Option<razer_discovery::discovery::ObservedDevice>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::SessionKey;
+    use std::collections::BTreeMap;
+
+    #[test]
+    fn matcher_session_keys_keep_ui_and_normalization_scopes_separate() {
+        let ui = SessionKey {
+            identity: "mouse-190".into(),
+            normalization: false,
+        };
+        let normalization = SessionKey {
+            identity: "mouse-190".into(),
+            normalization: true,
+        };
+
+        assert_ne!(ui, normalization);
+
+        let mut sessions = BTreeMap::new();
+        sessions.insert(ui.clone(), "ui");
+        sessions.insert(normalization.clone(), "normalization");
+        assert_eq!(sessions.get(&ui), Some(&"ui"));
+        assert_eq!(sessions.get(&normalization), Some(&"normalization"));
+        assert_eq!(sessions.len(), 2);
+    }
 }
 
 impl Owner {
@@ -67,21 +99,23 @@ impl Owner {
                 .iter()
                 .any(|profile| profile.id == self.profile_id && profile.guid == self.profile_guid)
             && workspace_state.retains_mouse_matcher_scope(&self.scope, cx)
-            && (draining
-                || self.scope.is_valid()
-                    && workspace_state.mouse_matcher_scope(cx).as_ref() == Some(&self.scope))
-            && super::device_discovery::retained_connection(
-                std::slice::from_ref(&self.route),
-                &shell.device_observations,
-                device,
-            )
+            && (draining || workspace_state.accepts_mouse_matcher_scope(&self.scope, cx))
+            && match &self.route {
+                Some(route) => super::device_discovery::retained_connection(
+                    std::slice::from_ref(route),
+                    &shell.device_observations,
+                    device,
+                ),
+                None => self.scope.is_normalization(),
+            }
     }
 }
 pub(super) struct LocalSave {
     workspace: Entity<ProductWorkspace>,
     owner: Owner,
     mutation: razer_model::mouse_matcher::Mutation,
-    reply: Option<Sender<Result<(), String>>>,
+    dpi_profiles: Option<MouseCurrentDpiProfileSaveBoundary>,
+    reply: Option<Sender<Result<razer_model::mouse_matcher::SourceRecord, String>>>,
 }
 impl LocalSave {
     pub(super) fn owner(&self) -> (&str, WeakEntity<ProductWorkspace>) {
@@ -126,13 +160,13 @@ impl AppShell {
         });
     }
 
-    fn retire_mouse_matcher(&mut self, identity: &str, cx: &mut Context<Self>) {
+    fn retire_mouse_matcher(&mut self, key: &SessionKey, cx: &mut Context<Self>) {
         self.mouse_matcher.cleanup.retain(|cleanup| {
             !cleanup.reported
                 || !cleanup.completion.is_released()
                 || cleanup.completion.cleanup_error().is_some()
         });
-        if let Some(mut session) = self.mouse_matcher.sessions.remove(identity) {
+        if let Some(mut session) = self.mouse_matcher.sessions.remove(key) {
             if let Some(handle) = session.handle.take() {
                 handle.cancel();
                 let completion = handle.completion();
@@ -164,7 +198,7 @@ impl AppShell {
                 });
                 self.mouse_matcher.cleanup.push(Cleanup {
                     id,
-                    identity: identity.into(),
+                    identity: key.identity.clone(),
                     completion,
                     reported: false,
                     task,
@@ -207,8 +241,11 @@ impl AppShell {
     ) {
         if self.close_requested
             || !self.devices.contains(&workspace)
-            || !request.scope().is_valid()
-            || workspace.read(cx).mouse_matcher_scope(cx).as_ref() != Some(request.scope())
+            || !workspace
+                .read(cx)
+                .accepts_mouse_matcher_scope(request.scope(), cx)
+            || request.scope().is_normalization()
+                != matches!(request.action(), MatcherAction::NormalizeProfiles)
         {
             return;
         }
@@ -218,14 +255,15 @@ impl AppShell {
             return;
         }
         let identity = workspace.read(cx).identity(cx);
+        let key = SessionKey {
+            identity: identity.clone(),
+            normalization: request.scope().is_normalization(),
+        };
         let revision = workspace.read(cx).connection_revision();
-        let retained = !matches!(
-            request.action(),
-            MatcherAction::Command(MatcherCommand::Start)
-        ) && self
+        let retained = self
             .mouse_matcher
             .sessions
-            .get(&identity)
+            .get(&key)
             .is_some_and(|session| {
                 !session.closing
                     && session.owner.workspace.upgrade().as_ref() == Some(&workspace)
@@ -233,7 +271,7 @@ impl AppShell {
                     && session.owner.connection_revision == revision
             });
         if !retained {
-            self.retire_mouse_matcher(&identity, cx);
+            self.retire_mouse_matcher(&key, cx);
             let routes = self
                 .device_observations
                 .iter()
@@ -243,30 +281,38 @@ impl AppShell {
                 })
                 .cloned()
                 .collect::<Vec<_>>();
-            let [route] = routes.as_slice() else {
-                if matches!(
-                    request.action(),
-                    MatcherAction::Command(MatcherCommand::GetState)
-                ) {
-                    let state = razer_service::dpi_matcher::Controller::default().response();
-                    workspace.update(cx, |workspace, cx| {
-                        workspace.observe_mouse_matcher(
-                            request.scope(),
-                            MatcherObservation::Calibration(state),
-                            window,
-                            cx,
-                        )
-                    });
-                } else {
-                    workspace.update(cx, |workspace, cx| {
-                        workspace.reject_mouse_matcher(
-                            request.scope(),
-                            "DPI Matcher requires one current mouse input/DPI route".into(),
-                            cx,
-                        )
-                    });
+            let route = if key.normalization {
+                None
+            } else {
+                match routes.as_slice() {
+                    [route] => Some(route.clone()),
+                    _ => {
+                        if matches!(
+                            request.action(),
+                            MatcherAction::Command(MatcherCommand::GetState)
+                        ) {
+                            let state =
+                                razer_service::dpi_matcher::Controller::default().response();
+                            workspace.update(cx, |workspace, cx| {
+                                workspace.observe_mouse_matcher(
+                                    request.scope(),
+                                    MatcherObservation::Calibration(state),
+                                    window,
+                                    cx,
+                                )
+                            });
+                        } else {
+                            workspace.update(cx, |workspace, cx| {
+                                workspace.reject_mouse_matcher(
+                                    request.scope(),
+                                    "DPI Matcher requires one current mouse input/DPI route".into(),
+                                    cx,
+                                )
+                            });
+                        }
+                        return;
+                    }
                 }
-                return;
             };
             let connected = self
                 .devices
@@ -279,17 +325,26 @@ impl AppShell {
                         .then(|| ConnectedDevice::from_device(device))
                 })
                 .collect();
-            let options = match Options::new(
-                route.clone(),
-                connected,
-                self.local_pairing_records.as_ref(),
-            ) {
-                Ok(options) => options,
-                Err(error) => {
-                    workspace.update(cx, |workspace, cx| {
-                        workspace.reject_mouse_matcher(request.scope(), format!("{error:#}"), cx)
-                    });
-                    return;
+            let options = if key.normalization {
+                None
+            } else {
+                let result = Options::new(
+                    route.clone().expect("capture requires a unique route"),
+                    connected,
+                    self.local_pairing_records.as_ref(),
+                );
+                match result {
+                    Ok(options) => Some(options),
+                    Err(error) => {
+                        workspace.update(cx, |workspace, cx| {
+                            workspace.reject_mouse_matcher(
+                                request.scope(),
+                                format!("{error:#}"),
+                                cx,
+                            )
+                        });
+                        return;
+                    }
                 }
             };
             let predecessors = self
@@ -314,6 +369,7 @@ impl AppShell {
                 id: uuid::Uuid::new_v4(),
                 workspace: workspace.downgrade(),
                 identity: identity.clone(),
+                key: key.clone(),
                 scope: request.scope().clone(),
                 domain_scope,
                 connection_revision: revision,
@@ -321,7 +377,14 @@ impl AppShell {
                 profile_guid: profile.guid.clone(),
                 route: route.clone(),
             };
-            let (handle, updates) = Handle::start(options, predecessors);
+            let (handle, updates) = match options {
+                Some(options) => Handle::start(options, predecessors),
+                None => {
+                    let product = razer_device::dpi_matcher::Product::new(device.product_id)
+                        .expect("Matcher page belongs to an audited product");
+                    Handle::start_profiles(product, predecessors)
+                }
+            };
             let delivery_owner = owner.clone();
             let window = window.window_handle();
             let delivery = cx.spawn(async move |shell, cx| {
@@ -333,7 +396,7 @@ impl AppShell {
                         let current = shell
                             .mouse_matcher
                             .sessions
-                            .get(&delivery_owner.identity)
+                            .get(&delivery_owner.key)
                             .is_some_and(|session| {
                                 session.owner.id == delivery_owner.id
                                     && (!shell.close_requested || session.closing)
@@ -361,15 +424,15 @@ impl AppShell {
                     if shell
                         .mouse_matcher
                         .sessions
-                        .get(&delivery_owner.identity)
+                        .get(&delivery_owner.key)
                         .is_some_and(|session| session.owner.id == delivery_owner.id)
                     {
-                        shell.retire_mouse_matcher(&delivery_owner.identity, cx);
+                        shell.retire_mouse_matcher(&delivery_owner.key, cx);
                     }
                 });
             });
             self.mouse_matcher.sessions.insert(
-                identity.clone(),
+                key.clone(),
                 Session {
                     owner,
                     closing: false,
@@ -380,7 +443,7 @@ impl AppShell {
         }
         let command = match request.action() {
             MatcherAction::SelectProfile(guid) => Command::Select(guid.clone()),
-            MatcherAction::RenameProfile(_) => {
+            MatcherAction::RenameProfile(_) | MatcherAction::NormalizeProfiles => {
                 Command::UpdateProfiles(request.profile_payload().clone())
             }
             MatcherAction::Command(command) => match command {
@@ -394,7 +457,7 @@ impl AppShell {
             },
             MatcherAction::SetStageValueX { .. } => unreachable!("handled local stage projection"),
         };
-        if let Some(session) = self.mouse_matcher.sessions.get(&identity) {
+        if let Some(session) = self.mouse_matcher.sessions.get(&key) {
             if let Some(handle) = &session.handle {
                 if let Err(error) = handle.send(command) {
                     workspace.update(cx, |workspace, cx| {
@@ -415,7 +478,7 @@ impl AppShell {
         let current = self
             .mouse_matcher
             .sessions
-            .get(&owner.identity)
+            .get(&owner.key)
             .is_some_and(|session| {
                 session.owner.id == owner.id && owner.current(self, session.closing, cx)
             });
@@ -426,6 +489,9 @@ impl AppShell {
                 }
                 Update::Persist { reply, .. } => {
                     let _ = reply.send(Err("Matcher save owner changed".into()));
+                }
+                Update::StageRequest { reply, .. } => {
+                    let _ = reply.send(Err("Matcher stage owner changed".into()));
                 }
                 _ => {}
             }
@@ -444,10 +510,18 @@ impl AppShell {
                     let _ = reply.send(Err(error.clone()));
                     return;
                 }
+                let dpi_profiles = (!mutation.is_profile_update())
+                    .then(|| {
+                        workspace
+                            .read(cx)
+                            .current_dpi_profile_save_boundary(owner.domain_scope, cx)
+                    })
+                    .flatten();
                 let save = LocalSave {
                     workspace,
                     owner: owner.clone(),
                     mutation,
+                    dpi_profiles,
                     reply: Some(reply),
                 };
                 let file = self.workspace_file(
@@ -466,29 +540,21 @@ impl AppShell {
                 self.start_pending_save(cx);
             }
             Update::StageDraft(stages) => {
-                #[derive(serde::Deserialize)]
-                struct StageDraft {
-                    stages: Vec<Value>,
-                    active: usize,
-                }
-                match serde_json::from_value::<StageDraft>(stages) {
-                    Ok(draft) => self.publish_mouse_matcher_observation(
-                        owner,
-                        MatcherObservation::Stages {
-                            stages: draft.stages,
-                            active: draft.active,
-                        },
-                        window,
-                        cx,
-                    ),
-                    Err(error) => workspace.update(cx, |workspace, cx| {
-                        workspace.reject_mouse_matcher(
-                            scope,
-                            format!("Matcher stage response: {error}"),
-                            cx,
-                        )
-                    }),
-                }
+                self.publish_mouse_matcher_observation(
+                    owner,
+                    MatcherObservation::Stages {
+                        stages: stages.stages().to_vec(),
+                        active: stages.active_stage(),
+                    },
+                    window,
+                    cx,
+                );
+            }
+            Update::StageRequest { stages, reply } => {
+                let result = workspace.update(cx, |workspace, cx| {
+                    workspace.submit_mouse_matcher_stages(scope, stages, cx)
+                });
+                let _ = reply.send(result.map_err(|error| format!("{error:#}")));
             }
             Update::Response(response) => {
                 let observation = match response {
@@ -497,7 +563,7 @@ impl AppShell {
                     }
                     razer_service::dpi_matcher::Response::Profiles(value) => {
                         MatcherObservation::Profiles {
-                            profiles: value.profiles().to_vec(),
+                            library: value.library().clone(),
                             selected: value.selected().unwrap_or("").to_owned(),
                         }
                     }
@@ -571,7 +637,7 @@ impl AppShell {
         cx: &mut Context<Self>,
     ) {
         let mut current = succeeded && self.mouse_matcher_save_current(&save, cx);
-        if current {
+        if current && save.mutation.is_profile_update() {
             if let Err(error) = save.workspace.update(cx, |workspace, cx| {
                 workspace.accept_mouse_matcher_saved_profiles(&save.owner.scope, cx)
             }) {
@@ -579,9 +645,17 @@ impl AppShell {
                 current = false;
             }
         }
+        if current && let Some(boundary) = &save.dpi_profiles {
+            save.workspace.update(cx, |workspace, cx| {
+                workspace.current_dpi_matcher_stages_saved(boundary, cx)
+            });
+        }
         if let Some(reply) = save.reply.take() {
             let _ = reply.send(if current {
-                Ok(())
+                razer_model::mouse_matcher::source_record(
+                    &save.workspace.read(cx).saved_snapshot(cx),
+                )
+                .map_err(|error| format!("{error:#}"))
             } else {
                 Err("Matcher save failed or its profile owner changed".into())
             });
@@ -595,7 +669,7 @@ impl AppShell {
     fn mouse_matcher_save_current(&self, save: &LocalSave, cx: &App) -> bool {
         self.mouse_matcher
             .sessions
-            .get(&save.owner.identity)
+            .get(&save.owner.key)
             .is_some_and(|session| {
                 session.owner.id == save.owner.id
                     && session.owner.scope == save.owner.scope
