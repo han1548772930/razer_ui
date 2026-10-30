@@ -459,6 +459,25 @@ mod tests {
     }
 
     #[test]
+    fn mixer_meter_sample_keeps_completed_feature_only_in_failed_typed_diagnostics() {
+        let bytes = br#"{"id":25,"data":null,"error":"release failed","fatal":false,"diagnostics":{"domain":"mixer_lighting_sample","progress":{"progress":{"sources":[0,4,5,0],"peaks":[23,56,99,23],"raw_peak":[0.237,null,null,null,0.569,0.991,null],"device_container_id":"actual-container","feature_written":true},"transfer":{"channel":"feature","report":[7,0,31,0,0,0,4,15,19,23,56,99,23,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"sends_attempted":1,"sends_completed":1,"input":null}}}}"#;
+        let response = failed_wire(bytes);
+        let Some(FailureDiagnostics::MixerLightingSample(failure)) = response.diagnostics else {
+            panic!("Mixer meter sample lost its observed peaks and Feature progress")
+        };
+        assert_eq!(failure.progress.peaks, [23, 56, 99, 23]);
+        assert!(failure.progress.feature_written);
+        assert_eq!(failure.transfer.report.len(), 64);
+        assert_eq!(failure.transfer.sends_completed, 1);
+        assert!(failure.transfer.input.is_none());
+        let error = anyhow::anyhow!("release failed").context(failure);
+        assert!(matches!(
+            FailureDiagnostics::from_error(&error),
+            Some(FailureDiagnostics::MixerLightingSample(_))
+        ));
+    }
+
+    #[test]
     fn complete_domain_progress_takes_precedence_over_an_inner_scalar_receipt() {
         let acknowledged = razer_device::mouse_dpi_stages::DpiStagesAcknowledgement {
             response_bytes: 2,

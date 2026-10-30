@@ -29,7 +29,10 @@ impl FeatureTransport for Transport {
             Step::Send(expected) => assert_eq!(report, expected),
             Step::SendError(expected) => {
                 assert_eq!(report, expected);
-                anyhow::bail!("simulated OUT failure")
+                return Err(crate::backend::native_io_failure(
+                    crate::backend::NativeIoOutcome::Rejected,
+                    anyhow::anyhow!("simulated OUT failure"),
+                ));
             }
             _ => panic!("OUT where IN expected"),
         };

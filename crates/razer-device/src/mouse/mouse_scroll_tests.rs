@@ -1040,7 +1040,8 @@ fn cancellation_after_a_completed_ack_stops_before_the_next_profile_and_keeps_th
         )
         .unwrap_err();
     assert_eq!(failure.phase, ScrollFailurePhase::Write);
-    assert_eq!(failure.failed_step, None);
+    assert_eq!(failure.failed_step, Some(0));
+    assert!(crate::backend::exchange_release_completed(&failure.error));
     assert_eq!(failure.progress.steps.len(), 1);
     assert!(failure.progress.steps[0].acknowledgment_received);
     assert_eq!(failure.progress.steps[0].observed, None);
@@ -1079,8 +1080,22 @@ fn cancellation_immediately_after_io_reports_uncertain_hardware_state() {
         assert_eq!(failure.phase, ScrollFailurePhase::Write);
         assert!(failure.device_state_may_have_changed());
         assert_eq!(failure.progress.steps.len(), 1);
-        assert!(!failure.progress.steps[0].acknowledgment_received);
-        assert_eq!(failure.progress.steps[0].observed, None);
+        assert_eq!(failure.failed_step, Some(0));
+        let step = &failure.progress.steps[0];
+        assert_eq!(step.profile_id, 1);
+        assert_eq!(step.requested, ScrollValue::VirtualAcceleration(true));
+        assert_eq!(step.acknowledgment_received, after_read);
+        assert_eq!(
+            step.acknowledged,
+            after_read.then_some(ScrollValue::VirtualAcceleration(true))
+        );
+        assert_eq!(step.observed, None);
+        assert!(!failure.progress.verified());
+        assert!(format!("{failure:#}").contains("Session invalidated during I/O"));
+        assert_eq!(
+            (device.sent.get(), device.reads.get()),
+            (1, usize::from(after_read))
+        );
         device.finish();
     }
 }

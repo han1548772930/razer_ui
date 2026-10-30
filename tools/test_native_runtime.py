@@ -914,12 +914,6 @@ class LightingComparisonTests(unittest.TestCase):
                 struct.pack_into("<Q", raw, table + slot, 0x180000000 + target)
             digest = hashlib.sha256(raw).hexdigest()
             (root / "source.dll").write_bytes(raw)
-            (root / "source.js").write_bytes(b"verified frontend ABI")
-            frontend_sha = hashlib.sha256(b"verified frontend ABI").hexdigest()
-            frontend = root / ".analysis/inputs/frontend/synapse-lighting-engine-current/acquisition.json"
-            frontend.parent.mkdir(parents=True)
-            frontend.write_text(json.dumps({"files": [{"path": "source.js", "http_status": 200,
-                "sha256": frontend_sha, "bytes": len(b"verified frontend ABI")}]}), encoding="utf-8")
             directory = root / f".analysis/results/native/{digest}"
             (directory / "functions").mkdir(parents=True)
             function = {"rva": "0x10", "pseudocode": {"lines": [{"text": "complete"}]},
@@ -942,8 +936,7 @@ class LightingComparisonTests(unittest.TestCase):
                   "exports": [{"names": [name], "rva": value[0]} for name, value in native._LIGHTING_EXPORTS.items()]}
             with patch.object(native, "_LIGHTING_INPUT", "source.dll"), \
                     patch.object(native, "_LIGHTING_SHA256", digest), \
-                    patch.object(native, "_LIGHTING_JS", "source.js"), \
-                    patch.object(native, "_LIGHTING_JS_SHA256", frontend_sha), \
+                    patch.object(native, "_lighting_frontend_evidence", return_value={"path": "verified-current.js"}), \
                     patch.object(native, "_lighting_release_evidence", return_value={"current_release": {"version": "verified"}}), \
                     patch.object(native, "_LIGHTING_FUNCTIONS", ("10",)), \
                     patch.object(native, "inspect_pe", return_value=pe):
@@ -964,6 +957,59 @@ class LightingComparisonTests(unittest.TestCase):
                 pe["version_resources"][0]["tree"]["file_version"] = "older"
                 with self.assertRaisesRegex(ValueError, "version, architecture or dependency"):
                     native.verify_lighting_source(root)
+
+    def test_frontend_abi_uses_the_current_selection_and_rejects_changed_signatures(self):
+        import analysis
+
+        selected = {"acquisition": {"path": "current/acquisition.json"},
+                    "current_source_selection": {"candidate_decisions": [
+                        {"name": "previous", "status": "superseded_stable_acquisition"},
+                        {"name": "current", "status": "selected_latest_stable_acquisition"}]}}
+        original = {"path": ".analysis/inputs/frontend/current/main.js", "bytes": 19, "sha256": "a" * 64}
+        evidence = {"main": original, "api_versions": {
+            "4.0.2.0": {"GetDLLVersion": ["pointer", []], "FreeMalloc": ["void", ["pointer"]],
+                        "RzLightingApi": ["pointer", ["string"]], "SetNodeFFIEvent": ["bool", ["pointer"]]},
+            "4.0.3.0": {"PollEvents": ["pointer", []], "UsePollingMode": ["void", ["bool"]]},
+            "4.0.6.0": {"RzLightingApiNoReturn": ["void", ["string"]]},
+            "4.0.8.0": {"GetFeatureSet": ["pointer", []]},
+            "4.0.9.0": {"SetOperatingMode": ["void", ["int"]]}}}
+
+        class Audit:
+            artifacts = {"current": original}
+            changed = []
+
+            def current_source_set(self, name):
+                if name != "synapse-lighting-engine-current":
+                    raise AssertionError("comparison selected another deployment")
+                return selected, [original]
+
+            def final_snapshot(self):
+                return self.changed
+
+        audit = Audit()
+        with patch.object(native, "HostLocalAudit", return_value=audit), \
+                patch("host.lighting_frontend_abi", return_value=evidence) as project:
+            result = native._lighting_frontend_evidence(analysis.ROOT)
+            project.assert_called_once_with(audit, selected, [original])
+            self.assertEqual(result["path"], original["path"])
+            self.assertEqual(result["current_source_selection"], selected["current_source_selection"])
+            self.assertFalse(result["target_execution"])
+            for methods in [{"RzLightingApi": ["void", ["string"]]},
+                            {"RzLightingApi": ["pointer", ["pointer"]]}]:
+                changed = copy.deepcopy(evidence)
+                changed["api_versions"]["4.0.2.0"].update(methods)
+                project.return_value = changed
+                with self.assertRaisesRegex(ValueError, "ABI differs"):
+                    native._lighting_frontend_evidence(analysis.ROOT)
+            changed = copy.deepcopy(evidence)
+            changed["api_versions"]["4.0.10.0"] = {"GetDLLVersion": ["pointer", []]}
+            project.return_value = changed
+            with self.assertRaisesRegex(ValueError, "repeats an export"):
+                native._lighting_frontend_evidence(analysis.ROOT)
+            project.return_value = evidence
+            audit.changed = [original["path"]]
+            with self.assertRaisesRegex(ValueError, "changed during comparison preflight"):
+                native._lighting_frontend_evidence(analysis.ROOT)
 
     class Export:
         def __init__(self, call):

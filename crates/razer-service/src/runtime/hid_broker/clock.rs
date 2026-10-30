@@ -1,4 +1,5 @@
 //! The current host's collection-wide command timestamp and OUT polling rule.
+use razer_device::backend::NativeIoOutcome;
 use std::time::Duration;
 
 const OUT_POLL_INTERVAL: Duration = Duration::from_millis(2);
@@ -32,6 +33,17 @@ pub(super) struct SourceClock {
 }
 
 impl SourceClock {
+    pub(super) fn native_outcome(
+        &mut self,
+        now: Duration,
+        returned: NativeReturn,
+        outcome: Option<NativeIoOutcome>,
+    ) {
+        if matches!(outcome, Some(NativeIoOutcome::Returned { .. })) {
+            self.native_return(now, returned);
+        }
+    }
+
     /// UsbRzDeviceAction's mutex OUT loop polls in complete 2 ms steps. The
     /// caller supplies its source-selected interval, including an explicit zero;
     /// plain OUT does not call this method. OUT-IN and IN waits remain separate.

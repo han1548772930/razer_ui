@@ -1,7 +1,7 @@
 //! Primary Linker lighting from the current dock manifests and lighting engine.
 //! Native frame submission and Feature acknowledgements are separate receipts.
 use crate::{
-    backend::FeatureTransport,
+    backend::{FeatureBatch, FeatureBatchFailure, FeatureTransport},
     lighting_driver::{FrameWriter, NewChroma, Registration, RgbFrame},
     lighting_engine::{EngineFrame, LedConfiguration, LedMapping},
     receiver_capabilities::ReceiverCapability,
@@ -443,28 +443,27 @@ impl LightingHid {
                 && frame.frame.len() == 24,
             "Dock native frame identity or geometry differs"
         );
-        struct Writer<'a, V> {
-            transport: &'a dyn FeatureTransport,
-            validate: &'a V,
-            submitted: &'a std::cell::Cell<u32>,
+        struct BatchWriter {
+            batch: FeatureBatch,
         }
-        impl<V: Fn() -> anyhow::Result<()>> FrameWriter for Writer<'_, V> {
+        impl FrameWriter for BatchWriter {
             fn write_report(&mut self, report: &[u8; 91]) -> anyhow::Result<()> {
-                (self.validate)()?;
-                self.transport.send_feature_at_collection_max(report)?;
-                self.submitted.set(self.submitted.get() + 1);
-                (self.validate)()
+                self.batch.push_report(report)
             }
-            fn wait_between_rows(&mut self, _: u8) -> anyhow::Result<()> {
-                anyhow::bail!("Dock manifest contains one physical LED row")
+            fn wait_between_rows(&mut self, milliseconds: u8) -> anyhow::Result<()> {
+                self.batch.push_sleep(milliseconds);
+                Ok(())
             }
         }
-        let submitted = std::cell::Cell::new(0);
+        let mut batch_receipt = None;
         crate::feature_exchange::with_validated_exchange(
             transport,
             crate::backend::ExchangeOptions::batch(),
             validate,
             |transport, _| {
+                let mut writer = BatchWriter {
+                    batch: FeatureBatch::new(),
+                };
                 self.frames
                     .write_frame(
                         Registration {
@@ -481,19 +480,30 @@ impl LightingHid {
                             profile_id: 0,
                             rgb: &frame.frame,
                         },
-                        &mut Writer {
-                            transport,
-                            validate,
-                            submitted: &submitted,
-                        },
+                        &mut writer,
                     )
-                    .context("Dock native lighting frame was not submitted")
+                    .context("Dock native lighting frame could not be encoded")?;
+                let receipt = transport
+                    .send_feature_batch(&writer.batch)
+                    .context("Dock native lighting frame was not submitted")?;
+                let reports_submitted = receipt.progress().reports_submitted();
+                let complete = receipt.raw_return() != 0 && reports_submitted == 1;
+                batch_receipt = Some(receipt);
+                ensure!(
+                    complete,
+                    "Dock native lighting batch did not submit its frame report"
+                );
+                Ok(())
             },
         )
         .map_err(|error| {
-            error.context(crate::ReceiverFrameSubmissionFailure {
-                reports_submitted: submitted.get(),
-            })
+            let error = match batch_receipt {
+                Some(receipt) => receipt.into_failure(error),
+                None => error,
+            };
+            let reports_submitted = FeatureBatchFailure::from_error(&error)
+                .map_or(0, |failure| failure.progress.reports_submitted() as u32);
+            error.context(crate::ReceiverFrameSubmissionFailure { reports_submitted })
         })
     }
 }

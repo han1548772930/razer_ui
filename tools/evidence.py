@@ -1215,4 +1215,5 @@ def audit_ui_tree():
 def add_commands(parsers):
     parsers.add_parser("connect-analysis", help="Join original bytes, complete captures, semantic audits, Rust and verification")
     parsers.add_parser("audit-ui-tree", help="Capture complete JSX owners, properties, handlers and branch contexts from current originals")
-    parsers.add_parser("verify-analysis-tools", help="Pure provenance, byte-range and static UI-tree regression tests")
+    verification = parsers.add_parser("verify-analysis-tools", help="Pure provenance, byte-range and static UI-tree regression tests")
+    verification.add_argument("--test", action="append", help="Select a maintained test module, class or method; repeat to verify affected scopes")

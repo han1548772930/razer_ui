@@ -63,6 +63,10 @@ impl Drop for TriggerRuntime {
     }
 }
 impl TriggerRuntime {
+    pub(super) fn guard(&self) -> Arc<AtomicBool> {
+        Arc::clone(&self.guard)
+    }
+
     pub(super) fn invalidate(&mut self) {
         self.guard.store(false, Ordering::Release);
         self.guard = Arc::new(AtomicBool::new(true));
@@ -100,6 +104,10 @@ impl TriggerRuntime {
             && self.active == Some(request.sequence)
     }
 }
+
+#[cfg(test)]
+#[path = "gamepad_deadzone_tests.rs"]
+mod deadzone_tests;
 
 fn profile_slot(draft: &Value) -> anyhow::Result<u8> {
     // Current obmUtilitiesController.Fk: first obmSlotId, fallback0; a controller

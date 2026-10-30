@@ -7760,7 +7760,7 @@ def verification_input_snapshot():
     return rows
 
 
-def run_verified_suite(suite, inputs, *, runner=None):
+def run_verified_suite(suite, inputs, *, runner=None, selected_tests=None):
     result, interrupted = None, None
     try:
         result = (runner or unittest.TextTestRunner(verbosity=2)).run(suite)
@@ -7780,21 +7780,35 @@ def run_verified_suite(suite, inputs, *, runner=None):
                   "failures": len(result.failures) if result is not None else 0,
                   "errors": len(result.errors) if result is not None else 0,
                   "skipped": len(result.skipped) if result is not None else 0,
+                  "failure_details": [{"test": test.id(), "traceback": detail} for test, detail in result.failures] if result is not None else [],
+                  "error_details": [{"test": test.id(), "traceback": detail} for test, detail in result.errors] if result is not None else [],
+                  "test_selection": selected_tests,
                   "passed": passed, "inputs": inputs, "final_inputs": final_inputs,
                   "input_changes": changed, "snapshot_stable": complete and not changed,
                   "interrupted": interrupted, "target_execution": False, "real_device_operations": False}
-        analysis.save(analysis.ROOT / ".analysis/results/tool-verification.json", report)
+        import workspace
+        destination = analysis.ROOT / ".analysis/results/tool-verification.json"
+        with analysis.index_lock(destination.with_suffix(".lock")):
+            if destination.exists():
+                previous = destination.read_bytes()
+                if not isinstance(json.loads(previous), dict):
+                    raise ValueError("Previous tool verification receipt is not an object")
+                report["previous_receipt"] = workspace._publish_immutable_evidence(
+                    previous, directory=".analysis/verification", suffix=".json")
+            analysis.save(destination, report)
     return 0 if passed else 1
 
 
 class ToolVerificationSnapshotTests(unittest.TestCase):
     def verify(self, action=None, *, empty=False):
+        import workspace
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             source = root / "tools/owned.py"
             source.parent.mkdir()
             source.write_bytes(b"original source bytes")
             with patch.object(analysis, "ROOT", root), \
+                 patch.object(workspace, "ROOT", root), \
                  patch.object(sys.modules[__name__], "VERIFICATION_INPUT_NAMES", ("tools/owned.py",)):
                 inputs = verification_input_snapshot()
                 suite = unittest.TestSuite([] if empty else [unittest.FunctionTestCase(lambda: action(source) if action else None)])
@@ -7849,11 +7863,13 @@ class ToolVerificationSnapshotTests(unittest.TestCase):
                 self.assertEqual(report["executed_tests"], 1 if action is fail else 0)
 
     def test_interruption_replaces_previous_success_and_propagates(self):
+        import workspace
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             source = root / "owned.py"
             source.write_bytes(b"stable")
             with patch.object(analysis, "ROOT", root), \
+                 patch.object(workspace, "ROOT", root), \
                  patch.object(sys.modules[__name__], "VERIFICATION_INPUT_NAMES", ("owned.py",)):
                 path = root / ".analysis/results/tool-verification.json"
                 analysis.save(path, {"passed": True})
@@ -7866,16 +7882,64 @@ class ToolVerificationSnapshotTests(unittest.TestCase):
             self.assertEqual(report["interrupted"]["type"], "KeyboardInterrupt")
             self.assertEqual(report["tests_run"], 0)
 
+    def test_selected_retry_retains_exact_failed_receipt_and_traceback(self):
+        import workspace
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            source = root / "owned.py"
+            source.write_bytes(b"stable")
+            destination = root / ".analysis/results/tool-verification.json"
+            with patch.object(analysis, "ROOT", root), patch.object(workspace, "ROOT", root), \
+                 patch.object(sys.modules[__name__], "VERIFICATION_INPUT_NAMES", ("owned.py",)):
+                def fail():
+                    raise AssertionError("retained independent failure")
+                runner = unittest.TextTestRunner(stream=io.StringIO())
+                self.assertEqual(run_verified_suite(unittest.TestSuite([unittest.FunctionTestCase(fail)]),
+                    verification_input_snapshot(), runner=runner, selected_tests=["test_evidence.synthetic"]), 1)
+                failed_bytes = destination.read_bytes()
+                failed = json.loads(failed_bytes)
+                self.assertIn("retained independent failure", failed["failure_details"][0]["traceback"])
+                self.assertEqual(failed["test_selection"], ["test_evidence.synthetic"])
+                self.assertEqual(run_verified_suite(unittest.TestSuite([unittest.FunctionTestCase(lambda: None)]),
+                    verification_input_snapshot(), runner=runner, selected_tests=["test_evidence.retry"]), 0)
+                passed = json.loads(destination.read_bytes())
+                retained = root / passed["previous_receipt"]["path"]
+                self.assertEqual(retained.read_bytes(), failed_bytes)
+                self.assertEqual(passed["previous_receipt"]["sha256"], hashlib.sha256(failed_bytes).hexdigest())
+                self.assertFalse(json.loads(retained.read_bytes())["passed"])
+                self.assertEqual(passed["test_selection"], ["test_evidence.retry"])
 
-def run():
-    inputs = verification_input_snapshot()
-    suite = unittest.defaultTestLoader.loadTestsFromModule(__import__(__name__))
-    for module in ("test_rust_data", "test_typed_tables", "test_windows_installer", "test_workspace",
+    def test_selected_suite_rejects_unknown_duplicate_or_empty_scopes_before_loading(self):
+        with patch.object(unittest.defaultTestLoader, "loadTestsFromName") as loader:
+            for names in [[], ["os"], ["test_evidence.__invalid__()"], ["test_host", "test_host"]]:
+                with self.subTest(names=names), self.assertRaises(ValueError):
+                    run(names)
+            loader.assert_not_called()
+
+    def test_cli_preserves_all_explicit_selected_scopes(self):
+        parser = argparse.ArgumentParser()
+        evidence.add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["verify-analysis-tools", "--test", "test_host", "--test", "test_evidence.ToolVerificationSnapshotTests"])
+        self.assertEqual(args.test, ["test_host", "test_evidence.ToolVerificationSnapshotTests"])
+
+
+VERIFICATION_TEST_MODULES = ("test_evidence", "test_rust_data", "test_typed_tables", "test_windows_installer", "test_workspace",
                    "test_resource_scope", "test_asset_release", "test_host", "test_native_runtime", "test_families",
                    "test_reverse_pending", "test_ida_capture_values", "test_analysis_storage",
                     "test_native_adjudication", "test_native_callsites", "test_ida_capture",
                     "test_native_attempt_history", "test_native_boundaries", "test_native_embedded",
                     "test_native_ia64_contracts", "test_native_import_forwarders",
-                    "test_native_source_correspondence", "test_native_static_reviews", "test_frontend"):
-        suite.addTests(unittest.defaultTestLoader.loadTestsFromName(module))
-    return run_verified_suite(suite, inputs)
+                    "test_native_source_correspondence", "test_native_static_reviews", "test_frontend")
+
+
+def run(selected_tests=None):
+    if selected_tests is not None and (not isinstance(selected_tests, (tuple, list)) or not selected_tests
+            or any(not isinstance(name, str) or name.split(".")[0] not in VERIFICATION_TEST_MODULES
+                   or not all(part.isidentifier() for part in name.split(".")) for name in selected_tests)
+            or len(set(selected_tests)) != len(selected_tests)):
+        raise ValueError("Select distinct maintained tool test modules, classes or methods")
+    inputs = verification_input_snapshot()
+    suite = unittest.TestSuite()
+    for name in selected_tests or VERIFICATION_TEST_MODULES:
+        suite.addTests(unittest.defaultTestLoader.loadTestsFromName(name))
+    return run_verified_suite(suite, inputs, selected_tests=list(selected_tests) if selected_tests is not None else None)

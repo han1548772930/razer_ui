@@ -70,7 +70,9 @@ fn both_current_products_set_minutes_as_seconds_then_read_independently() {
         let mut delays = vec![];
         let probe = crate::feature_exchange::tests::ExchangeProbe::new(&io);
         let result = SleepProtocol::new(&probe, capability(pid).unwrap(), |wait| {
-            delays.push(wait);
+            if !wait.is_zero() {
+                delays.push(wait);
+            }
             Ok(())
         })
         .execute(&set(5, true))
@@ -100,12 +102,7 @@ fn both_current_products_set_minutes_as_seconds_then_read_independently() {
         }
         assert_eq!(
             delays,
-            [
-                Duration::ZERO,
-                Duration::from_millis(delay),
-                Duration::ZERO,
-                Duration::from_millis(delay)
-            ]
+            [Duration::from_millis(delay), Duration::from_millis(delay)]
         );
     }
 }
@@ -202,21 +199,30 @@ fn cancel_before_set_and_after_set_preserves_transfer_facts_without_rollback() {
 }
 
 #[test]
-fn cancellation_during_get_has_no_extra_post_get_abort_checkpoint() {
+fn abort_during_get_release_has_no_extra_post_get_runner_checkpoint() {
     let io = Transport::new([reply(4, 0, 3, 2, &[]), reply(4, 1, 0x83, 2, &[0x2c, 0x01])]);
     let abort = Cell::new(false);
-    let waits = Cell::new(0);
-    let result = SleepProtocol::new(&io, capability(2636).unwrap(), |_| {
-        waits.set(waits.get() + 1);
-        if waits.get() == 4 {
-            abort.set(true)
+    let finished = Cell::new(0);
+    let on_finish = || {
+        finished.set(finished.get() + 1);
+        if finished.get() == 2 {
+            abort.set(true);
         }
-        Ok(())
-    })
-    .execute_with_cancel(&set(5, true), || abort.get())
-    .unwrap();
+    };
+    let probe = crate::feature_exchange::tests::ExchangeProbe::with_on_finish(&io, &on_finish);
+    let result = SleepProtocol::new(&probe, capability(2636).unwrap(), |_| Ok(()))
+        .execute_with_cancel(&set(5, true), || abort.get())
+        .unwrap();
     assert!(abort.get());
+    assert_eq!(finished.get(), 2);
+    assert_eq!(result.write, SleepWriteStatus::Acknowledged);
     assert_eq!(result.completion, SleepCompletion::Confirmed);
+    assert_eq!(
+        result.observation(),
+        Some(SleepObservation { seconds: 300 })
+    );
+    assert_eq!(io.sent.borrow().len(), 2);
+    assert!(io.replies.borrow().is_empty());
 }
 
 #[test]

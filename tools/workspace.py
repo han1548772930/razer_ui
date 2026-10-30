@@ -377,6 +377,8 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
     ipc_broker_client = "crates/razer-ipc/src/hid_broker/client.rs"
     broker_service = "crates/razer-service/src/runtime/mod.rs"
     broker_server = "crates/razer-service/src/runtime/hid_broker/server.rs"
+    hid_clock = "crates/razer-service/src/runtime/hid_broker/clock.rs"
+    hid_collection = "crates/razer-service/src/runtime/hid_broker/collection.rs"
     legacy_ipc_functions = {"stop_simulated", "finish_simulated_process", "reap_child", "join_pipe", "forward_requests"}
     keyboard_lifecycle = "crates/razer-shell/src/shell/keyboard/keyboard_lifecycle.rs"
     retired_shortcuts = "crates/razer-storage/src/workspace/retired_shortcuts.rs"
@@ -802,6 +804,180 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
         return (node is not None and node.type == "field_expression"
                 and self_field(node.child_by_field_name("value"), "legacy_mapping")
                 and text(node.child_by_field_name("field")) == field)
+    def unwrapped_expression(node):
+        while node is not None:
+            children = [child for child in node.named_children if child.type not in {"line_comment", "block_comment", "mutable_specifier"}]
+            if node.type == "block" and children:
+                node = children[-1]
+            elif node.type in {"parenthesized_expression", "reference_expression", "expression_statement", "return_expression"} and len(children) == 1:
+                node = children[0]
+            else:
+                break
+        return node
+    def visible_binding(value, name):
+        function = next((parent for parent in ancestors(value) if parent.type == "function_item"), None)
+        if function is None:
+            return None
+        scopes = {parent.id for parent in ancestors(value)}
+        candidates = [child for child in walk(function) if child.type == "let_declaration"
+            and child.end_byte <= value.start_byte and child.parent.id in scopes
+            and text(child.child_by_field_name("pattern")) == name]
+        return max(candidates, key=lambda child: child.start_byte, default=None)
+    def unchanged_binding(value, declaration):
+        if declaration is None or any(child.type == "mutable_specifier" for child in declaration.children):
+            return False
+        function = next(parent for parent in ancestors(value) if parent.type == "function_item")
+        return not any(child.type == "assignment_expression" and text(child.child_by_field_name("left")) == text(value)
+            and declaration.end_byte <= child.start_byte < value.start_byte for child in walk(function))
+    def source_clock_value(value, seen=frozenset()):
+        value = unwrapped_expression(value)
+        if value is None or value.id in seen:
+            return False
+        seen = seen | {value.id}
+        if value.type == "unary_expression" and text(value).lstrip().startswith("*"):
+            return source_clock_value(value.named_children[-1], seen)
+        if value.type == "self":
+            implementation = next((parent for parent in ancestors(value) if parent.type == "impl_item"), None)
+            return implementation is not None and resolved_call(text(implementation.child_by_field_name("type")).split("::"))[-1] == "SourceClock"
+        if value.type == "field_expression" and text(value.child_by_field_name("value")) == "self":
+            implementation = next((parent for parent in ancestors(value) if parent.type == "impl_item"), None)
+            owner_type = text(implementation.child_by_field_name("type")) if implementation is not None else ""
+            return any(text(item.child_by_field_name("name")) == owner_type
+                and any(text(field.child_by_field_name("name")) == text(value.child_by_field_name("field"))
+                    and any(resolved_call(text(child).split("::"))[-1] == "SourceClock"
+                        for child in walk(field.child_by_field_name("type")) if child.type in {"type_identifier", "scoped_type_identifier"})
+                    for field in item.child_by_field_name("body").named_children if field.type == "field_declaration")
+                for item in declarations if item.type == "struct_item")
+        if value.type == "identifier":
+            function = next((parent for parent in ancestors(value) if parent.type == "function_item"), None)
+            if function is None:
+                return False
+            binding = visible_binding(value, text(value))
+            if binding is not None:
+                declared = binding.child_by_field_name("type")
+                if declared is not None and any(resolved_call(text(child).split("::"))[-1] == "SourceClock"
+                        for child in walk(declared) if child.type in {"type_identifier", "scoped_type_identifier"}):
+                    return True
+                initializer = unwrapped_expression(binding.child_by_field_name("value"))
+                if initializer is not None and initializer.type == "call_expression":
+                    target = resolved_call(text(initializer.child_by_field_name("function")).split("::"))
+                    if target[-2:] == ("SourceClock", "default"):
+                        return True
+                return source_clock_value(initializer, seen)
+            return any(text(parameter.child_by_field_name("pattern")) == text(value)
+                and any(resolved_call(text(child).split("::"))[-1] == "SourceClock"
+                        for child in walk(parameter.child_by_field_name("type"))
+                        if child.type in {"type_identifier", "scoped_type_identifier"})
+                for parameter in function.child_by_field_name("parameters").named_children
+                if parameter.type == "parameter")
+        return False
+    def native_clock_call(call, method):
+        function = call.child_by_field_name("function")
+        arguments = call.child_by_field_name("arguments").named_children
+        if function.type == "field_expression":
+            return (arguments if text(function.child_by_field_name("field")) == method
+                    and source_clock_value(function.child_by_field_name("value")) else None)
+        target = resolved_call(text(function).split("::"))
+        return arguments[1:] if target[-2:] == ("SourceClock", method) else None
+    def classification_match(node, result_name, batch):
+        if node is not None and node.type == "block" and any(child.type == "let_declaration"
+                and text(child.child_by_field_name("pattern")) == result_name for child in node.named_children):
+            return False
+        node = unwrapped_expression(node)
+        if node is None or node.type != "match_expression" \
+                or text(unwrapped_expression(node.child_by_field_name("value"))) != result_name:
+            return False
+        arms = [arm for arm in node.child_by_field_name("body").named_children if arm.type == "match_arm"]
+        if len(arms) != 2:
+            return False
+        matched = set()
+        for arm in arms:
+            pattern = arm.child_by_field_name("pattern")
+            patterns = [child for child in walk(pattern) if child.type == "tuple_struct_pattern"]
+            if len(patterns) != 1 or pattern.child_by_field_name("condition") is not None \
+                    or any(child.type == "or_pattern" for child in walk(pattern)):
+                return False
+            pattern = patterns[0]
+            target = resolved_call(text(pattern.child_by_field_name("type")).split("::"))
+            name = text(pattern.named_children[-1])
+            if target not in {("Ok",), ("Err",)} or pattern.named_children[-1].type != "identifier" or target in matched:
+                return False
+            matched.add(target)
+            if any(child.type == "let_declaration" and text(child.child_by_field_name("pattern")) == name
+                    for child in walk(arm.child_by_field_name("value"))):
+                return False
+            value = unwrapped_expression(arm.child_by_field_name("value"))
+            if value.type != "call_expression":
+                return False
+            function = resolved_call(text(value.child_by_field_name("function")).split("::"))
+            arguments = value.child_by_field_name("arguments").named_children
+            if target == ("Err",):
+                if function not in {("native_io_outcome",), ("razer_device", "backend", "native_io_outcome")} \
+                        or len(arguments) != 1 or text(unwrapped_expression(arguments[0])) != name:
+                    return False
+                continue
+            if function != ("Some",) or len(arguments) != 1 or arguments[0].type != "struct_expression" \
+                    or resolved_call(text(arguments[0].child_by_field_name("name")).split("::"))[-2:] != ("NativeIoOutcome", "Returned"):
+                return False
+            fields = [child for child in arguments[0].child_by_field_name("body").named_children
+                if child.type not in {"line_comment", "block_comment"}]
+            expected = (name + ".byte_count", name + ".byte_count()") if batch else ("*" + name,)
+            if len(fields) != 1 or fields[0].type != "field_initializer" \
+                    or text(fields[0].child_by_field_name("field")) != "byte_count" \
+                    or not any(expression_shape(fields[0].child_by_field_name("value")) == parsed_expression_shape(value)
+                               for value in expected):
+                return False
+        return matched == {("Ok",), ("Err",)}
+    def native_result_binding(value, kind):
+        value = unwrapped_expression(value)
+        if value is None or value.type != "identifier":
+            return False
+        declaration = visible_binding(value, text(value))
+        if not unchanged_binding(value, declaration):
+            return False
+        function = next(parent for parent in ancestors(value) if parent.type == "function_item")
+        methods = {"Send": {"send_feature_counted", "send_feature_at_collection_max_counted"},
+                   "Get": {"get_feature", "get_feature_at_collection_max"}, "Batch": {"send_feature_batch"}}[kind]
+        def dispatched(expression):
+            expression = unwrapped_expression(expression)
+            if expression is None:
+                return False
+            if expression.type == "if_expression":
+                return dispatched(expression.child_by_field_name("consequence")) and dispatched(expression.child_by_field_name("alternative"))
+            if expression.type == "else_clause":
+                return dispatched(expression.named_children[-1])
+            if expression.type != "call_expression":
+                return False
+            target = expression.child_by_field_name("function")
+            if target.type != "field_expression" or text(target.child_by_field_name("field")) not in methods:
+                return False
+            receiver = unwrapped_expression(target.child_by_field_name("value"))
+            return any(text(parameter.child_by_field_name("pattern")) == text(receiver)
+                and any(resolved_call(text(child).split("::"))[-1] == "FeatureTransport"
+                        for child in walk(parameter.child_by_field_name("type")) if child.type in {"type_identifier", "scoped_type_identifier"})
+                for parameter in function.child_by_field_name("parameters").named_children if parameter.type == "parameter")
+        return dispatched(declaration.child_by_field_name("value"))
+    def native_clock_outcome(value, kind, seen=frozenset()):
+        value = unwrapped_expression(value)
+        if value is None or value.id in seen:
+            return False
+        seen = seen | {value.id}
+        if value.type == "identifier":
+            binding = visible_binding(value, text(value))
+            return unchanged_binding(value, binding) and native_clock_outcome(binding.child_by_field_name("value"), kind, seen)
+        if value.type == "match_expression":
+            result = unwrapped_expression(value.child_by_field_name("value"))
+            return native_result_binding(result, kind) and classification_match(value, text(result), kind == "Batch")
+        if value.type != "call_expression" or kind == "Batch" \
+                or resolved_call(text(value.child_by_field_name("function")).split("::")) not in {
+                    ("native_result_outcome",), ("self", "native_result_outcome")}:
+            return False
+        arguments = value.child_by_field_name("arguments").named_children
+        helpers = [child for child in declarations if child.type == "function_item"
+            and text(child.child_by_field_name("name")) == "native_result_outcome"]
+        return len(arguments) == 1 and native_result_binding(arguments[0], kind) and len(helpers) == 1 \
+            and classification_match(helpers[0].child_by_field_name("body"),
+                text(helpers[0].child_by_field_name("parameters").named_children[0].child_by_field_name("pattern")), False)
     changed = True
     while changed:
         changed = False
@@ -861,6 +1037,35 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
                     break
         if in_test(node) and not legacy_ipc_function(node):
             continue
+        if owner != hid_clock and node.type == "call_expression":
+            if native_clock_call(node, "native_return") is not None:
+                fail(node, "hid_native_clock_bypasses_outcome_owner", hid_clock + "::SourceClock::native_outcome")
+            clock_arguments = native_clock_call(node, "native_outcome")
+            if clock_arguments is not None:
+                function = next((parent for parent in ancestors(node) if parent.type == "function_item"), None)
+                implementation = next((parent for parent in ancestors(node) if parent.type == "impl_item"), None)
+                dispatch = (owner == hid_collection and function is not None and implementation is not None
+                    and text(function.child_by_field_name("name")) == "execute"
+                    and text(implementation.child_by_field_name("type")) == "Packet")
+                if not dispatch:
+                    fail(node, "hid_native_clock_updates_outside_packet_dispatch", hid_collection + "::Packet::execute")
+                else:
+                    kind = resolved_call(text(clock_arguments[1]).split("::")) if len(clock_arguments) == 3 else ()
+                    if kind[-2:] not in {("NativeReturn", "Send"), ("NativeReturn", "Get"), ("NativeReturn", "Batch")} \
+                            or not native_clock_outcome(clock_arguments[2], kind[-1]):
+                        fail(node, "hid_native_clock_uses_non_native_result", hid_collection + "::native_result_outcome")
+        if owner != hid_clock and node.type == "scoped_identifier" \
+                and resolved_call(text(node).split("::"))[-2:] in {("SourceClock", "native_return"), ("SourceClock", "native_outcome")} \
+                and not (node.parent.type == "call_expression" and node.parent.child_by_field_name("function") == node):
+            direct_return = resolved_call(text(node).split("::"))[-1] == "native_return"
+            fail(node, "hid_native_clock_bypasses_outcome_owner" if direct_return else "hid_native_clock_uses_non_native_result",
+                 hid_clock + "::SourceClock::native_outcome" if direct_return else hid_collection + "::Packet::execute")
+        if owner == hid_collection and node.type == "function_item" \
+                and text(node.child_by_field_name("name")) == "native_result_outcome":
+            parameters = node.child_by_field_name("parameters").named_children
+            if len(parameters) != 1 or not classification_match(node.child_by_field_name("body"),
+                    text(parameters[0].child_by_field_name("pattern")), False):
+                fail(node, "hid_native_result_classifier_discards_outcome", hid_collection + "::native_result_outcome")
         if node.type == "function_item" and owner.startswith("crates/") \
                 and text(node.child_by_field_name("name")) in configuration_path_accessors \
                 and owner != configuration_paths_owner:
@@ -2321,12 +2526,89 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
                     and self_field(child.child_by_field_name("left"), "shutdown_confirmation")
                     and any(resolved_call(parts) == ("Some",) for parts, _ in calls(child.child_by_field_name("right")))]
                 successful = [arm for arm in walk(node) if arm.type == "match_arm" and tuple_pattern(arm.child_by_field_name("pattern"), "Ok")]
+                body = node.child_by_field_name("body")
+                declarations = [child for child in body.named_children if child.type == "let_declaration"]
+                cancellation_names = {text(child.child_by_field_name("pattern")) for child in declarations
+                    if child.child_by_field_name("value") is not None
+                    and expression_shape(child.child_by_field_name("value")) == parsed_expression_shape("self.cancel_request()")}
+                def preserves_close_failure(match):
+                    arms = [arm for arm in match.child_by_field_name("body").named_children if arm.type == "match_arm"]
+                    errors = [arm for arm in arms if tuple_pattern(arm.child_by_field_name("pattern"), "Err")]
+                    return bool(errors) and all(any(expression_shape(arm.child_by_field_name("value")) == parsed_expression_shape(
+                        "Err(with_cleanup_error(" + text(pattern.named_children[-1]) + "," + cancellation + "))")
+                        for cancellation in cancellation_names for pattern in walk(arm.child_by_field_name("pattern"))
+                        if pattern.type == "tuple_struct_pattern" and text(pattern.child_by_field_name("type")) == "Err"
+                        and pattern.named_children[-1].type == "identifier") for arm in errors)
+                def confirms_close_success(match):
+                    return any(any(expression_shape(call.child_by_field_name("arguments").named_children[0])
+                            == parsed_expression_shape("&" + text(pattern.named_children[-1]))
+                            for call in receipts if arm.start_byte < call.start_byte < call.end_byte < arm.end_byte
+                            and call.child_by_field_name("arguments").named_children)
+                        for arm in match.child_by_field_name("body").named_children if arm.type == "match_arm"
+                        for pattern in walk(arm.child_by_field_name("pattern")) if pattern.type == "tuple_struct_pattern"
+                        and text(pattern.child_by_field_name("type")) == "Ok" and pattern.named_children[-1].type == "identifier")
+                broker_bindings = []
+                for declaration in declarations:
+                    value = declaration.child_by_field_name("value")
+                    if (value is not None and value.type == "try_expression"
+                            and declaration.child_by_field_name("pattern").type == "identifier"):
+                        value = value.named_children[0]
+                        if (value.type == "call_expression" and value.child_by_field_name("function").type == "field_expression"
+                                and text(value.child_by_field_name("function").child_by_field_name("field")) == "context"):
+                            value = value.child_by_field_name("function").child_by_field_name("value")
+                        if method_on_field(value, "as_mut", "broker"):
+                            broker_bindings.append(declaration)
+                terminal_releases = set()
+                for branch in walk(node):
+                    if branch.type != "if_expression" or straight_statement(branch, body) is None:
+                        continue
+                    condition = branch.child_by_field_name("condition")
+                    if condition.type != "let_condition":
+                        continue
+                    pattern = condition.child_by_field_name("pattern")
+                    if (pattern.type != "tuple_struct_pattern" or text(pattern.child_by_field_name("type")) != "Some"
+                            or pattern.named_children[-1].type != "identifier"):
+                        continue
+                    receipt_name = text(pattern.named_children[-1])
+                    for broker in broker_bindings:
+                        broker_name = text(broker.child_by_field_name("pattern"))
+                        if expression_shape(condition.child_by_field_name("value")) != parsed_expression_shape(broker_name + ".close_receipt().cloned()"):
+                            continue
+                        close_bindings = [child for child in declarations if broker.end_byte < child.start_byte < branch.start_byte
+                            and child.child_by_field_name("value") is not None
+                            and expression_shape(child.child_by_field_name("value")) == parsed_expression_shape(broker_name + ".close_session()")]
+                        matches = [child for child in walk(node) if child.type == "match_expression" and branch.end_byte < child.start_byte
+                            and straight_statement(child, body) is not None
+                            and any(text(child.child_by_field_name("value")) == text(close.child_by_field_name("pattern")) for close in close_bindings)]
+                        cached = [child for child in walk(branch.child_by_field_name("consequence")) if child.type == "assignment_expression"
+                            and self_field(child.child_by_field_name("left"), "broker_close_receipt")
+                            and expression_shape(child.child_by_field_name("right")) == parsed_expression_shape("Some(" + receipt_name + ")")
+                            and straight_statement(child, branch.child_by_field_name("consequence")) is not None]
+                        if (matches and all(preserves_close_failure(match) and confirms_close_success(match) for match in matches)
+                                and len([child for child in branch.child_by_field_name("consequence").named_children
+                                    if child.type not in {"line_comment", "block_comment"}]) == 2):
+                            terminal_releases.update(release.id for release in releases
+                                if straight_statement(release, branch.child_by_field_name("consequence")) is not None
+                                and any(cache.end_byte < release.start_byte for cache in cached))
+                cached_failure_preserved = any(child.type == "match_expression" and preserves_close_failure(child)
+                    and any(expression_shape(child.child_by_field_name("value")) == parsed_expression_shape(receipt_name + ".validate()")
+                        for branch in ancestors(child) if branch.type == "if_expression"
+                        and straight_statement(branch, body) is not None
+                        and all(branch.end_byte < broker.start_byte for broker in broker_bindings)
+                        for condition in [branch.child_by_field_name("condition")] if condition.type == "let_condition"
+                        and expression_shape(condition.child_by_field_name("value")) == parsed_expression_shape("&self.broker_close_receipt")
+                        for pattern in [condition.child_by_field_name("pattern")]
+                        if pattern.type == "tuple_struct_pattern" and text(pattern.child_by_field_name("type")) == "Some"
+                        for receipt_name in [text(pattern.named_children[-1])]
+                        if any(parent.type == "return_expression" and straight_statement(parent, branch.child_by_field_name("consequence")) is not None
+                            for parent in ancestors(child))) for child in walk(node))
                 if (not closed or not receipts or not closes or not releases or not confirmations
                         or not {"cancel_request"} <= methods or {"kill", "terminate", "assign"} & methods
                         or any(close.end_byte > operation.start_byte for close in closed for operation in closes)
-                        or any(not any(arm.start_byte <= release.start_byte < release.end_byte <= arm.end_byte
+                        or any(release.id not in terminal_releases and not any(arm.start_byte <= release.start_byte < release.end_byte <= arm.end_byte
                                and any(arm.start_byte <= receipt.start_byte and receipt.end_byte < release.start_byte for receipt in receipts)
                                for arm in successful) for release in releases)
+                        or (terminal_releases and not cached_failure_preserved)
                         or any(not any(receipt.end_byte < confirmation.start_byte for receipt in receipts) for confirmation in confirmations)):
                     fail(node, "ipc_stop_releases_session_without_confirmed_cleanup", ipc_client + "::ServiceClient::close_broker_session")
             if implementation_type == "ServiceClient" and name == "stop_simulated":
@@ -6637,9 +6919,13 @@ def _clean_upload_evidence(target):
     bound(tool)
     receipt_path = ROOT / ".analysis/results/asset-release-update.json"
     receipt = json.loads(bound(receipt_path))
+    release = receipt.get("verification_checkout_release", {}) if isinstance(receipt, dict) else {}
+    released = release.get("checkout", {}).get("path") == name
+    if released:
+        asset_release.verify_checkout_release(receipt, lock, target)
     if (not isinstance(receipt, dict) or receipt.get("schema_version") != 1
             or receipt.get("target_execution") is not False or receipt.get("repository") != repository
-            or receipt.get("tool") != {"path": relative(tool), "sha256": digest(tool)}):
+            or not released and receipt.get("tool") != {"path": relative(tool), "sha256": digest(tool)}):
         raise ValueError("Upload completion receipt does not belong to the current release owner")
     if receipt.get("verification_checkout") == name:
         raise ValueError("Upload clone remains the current verification checkout")
@@ -6647,6 +6933,9 @@ def _clean_upload_evidence(target):
     if manifest != asset_release.encoded(asset_release.published_manifest(lock)):
         raise ValueError("Upload manifest differs from the retained resource lock")
     manifest_sha = hashlib.sha256(manifest).hexdigest()
+    if released:
+        for key in ("lock", "mappings", "source_index", "source_manifest"):
+            bound(ROOT / release[key]["path"])
     rows = asset_release.rows_for(lock) + lock["git_files"]
     expected = {row["path"]: row for row in rows}
     expected_names = set(expected) | asset_release.META_FILES
@@ -7046,7 +7335,7 @@ def _clean_formal_capture_history(document, owner, raw, candidates, *, bind_hist
 
 
 def _clean_json_dependencies(value, *, own_receipt=False, field=None, ended_batch=False, historical_job=False,
-                             formal_stdout_jobs=(), verification_owners=()):
+                             formal_stdout_jobs=(), verification_owners=(), released_checkouts=()):
     """Keep dependency fields while excluding explicitly historical inventory facts."""
     if isinstance(value, dict):
         if value.get("mode") in {"scratch_cleanup_plan", "scratch_cleanup_apply"}:
@@ -7055,6 +7344,12 @@ def _clean_json_dependencies(value, *, own_receipt=False, field=None, ended_batc
             if key == "directory" and id(child) in verification_owners:
                 continue
             if key == "scratch_cleanup" or own_receipt and key in {"database", "argv", "retained_private_database"}:
+                continue
+            if (key == "verification_checkout_release" and own_receipt and isinstance(child, dict)
+                    and child.get("checkout", {}).get("path") in released_checkouts):
+                continue
+            if (key == "verification_checkout_release_history" and own_receipt and isinstance(child, list)
+                    and all(isinstance(item, dict) and item.get("checkout", {}).get("path") in released_checkouts for item in child)):
                 continue
             if historical_job and key in {"scratch", "argv", "command", "log"}:
                 continue
@@ -7065,12 +7360,12 @@ def _clean_json_dependencies(value, *, own_receipt=False, field=None, ended_batc
             yield from _clean_json_dependencies(child, own_receipt=own_receipt and key == "previous_attempts",
                                                 field=key, historical_job=ended_batch and key == "jobs",
                                                 formal_stdout_jobs=formal_stdout_jobs,
-                                                verification_owners=verification_owners)
+                                                verification_owners=verification_owners, released_checkouts=released_checkouts)
     elif isinstance(value, list):
         for child in value:
             yield from _clean_json_dependencies(child, field=field, own_receipt=own_receipt,
                                                 historical_job=historical_job, formal_stdout_jobs=formal_stdout_jobs,
-                                                verification_owners=verification_owners)
+                                                verification_owners=verification_owners, released_checkouts=released_checkouts)
     elif isinstance(value, str):
         yield value
 
@@ -7255,7 +7550,8 @@ def _clean_references(candidates, *, exclude=(), bind_history=False):
                                                  and row.get("kind") != "owned_empty_verification_temp",
                                                  ended_batch=ended_batch, formal_stdout_jobs={
                                                       job for job, target in formal_history.items() if target == name},
-                                                 verification_owners=verification_owners)
+                                                 verification_owners=verification_owners,
+                                                 released_checkouts={name} if row.get("kind") == "old_asset_upload_clone" else ())
                        if document is not None else [raw.decode("utf-8")])
             if any(_clean_dependency_mentions(name, value) for value in strings):
                 references.setdefault(name, []).append(filename)
@@ -12615,6 +12911,8 @@ def rust_validation_commands():
         ("marci-protocol", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "marci_"]),
         ("marci-service", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "marci_lighting"]),
         ("controller-lighting-service", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "controller_lighting::"]),
+        ("controller-calibration-service", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "runtime::controller_calibration::native_io_tests"]),
+        ("windows-hid-transport", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "runtime::native::hid_transport::native_io_tests"]),
         ("chroma-connect", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "chroma_connect::tests"]),
         ("receiver-lighting-attribute-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "receiver_lighting_attribute_receipt_wire_requires_the_exact_worker_identity"]),
         ("receiver-brightness-ui", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "receiver_brightness_ui::tests"]),
@@ -13335,7 +13633,7 @@ def main():
         families.audit_keyboard_linked_profiles(args)
     elif args.command == "verify-analysis-tools":
         import test_evidence
-        return test_evidence.run()
+        return test_evidence.run(args.test)
     elif args.command == "audit-runtime-resources":
         if args.repair:
             print(json.dumps({"current_source_alias_repair": repair_current_resource_aliases()}), flush=True)

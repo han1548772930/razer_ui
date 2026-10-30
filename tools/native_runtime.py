@@ -23,7 +23,7 @@ import threading
 # Python's isolated worker excludes the script directory from its import path.
 if str(Path(__file__).resolve().parent) not in sys.path:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-from host import host_release_metadata, inspect_pe, verified_host_release_receipt
+from host import HostLocalAudit, host_release_metadata, inspect_pe, verified_host_release_receipt
 
 
 SOURCE_SHA256 = "f611827603911d7807c8499dd231bdf77898fbe2ec3ce40215dccfbb7185cc1f"
@@ -71,8 +71,6 @@ _APPS_FUNCTIONS = (
 
 _LIGHTING_SHA256 = "cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa"
 _LIGHTING_INPUT = f".analysis/inputs/host-current/blobs/{_LIGHTING_SHA256}/RzLightingEngineApi_v4.0.55.0.dll"
-_LIGHTING_JS = ".analysis/inputs/frontend/synapse-lighting-engine-current/raw/apps.razer.com/synapse/lighting-engine/static/js/main.a383ea9e.js"
-_LIGHTING_JS_SHA256 = "c82c7074e5da8abcffbff95f23a6b962c1e14b04586715b9d4b7a6f11fe9e6d2"
 _LIGHTING_EXPORTS = {
     "SetOperatingMode": ("0x32d00", "void(int32)"),
     "PollEvents": ("0x32d90", "malloc char*(void)"),
@@ -81,6 +79,15 @@ _LIGHTING_EXPORTS = {
     "GetDLLVersion": ("0x33cf0", "malloc char*(void)"),
     "FreeMalloc": ("0x340c0", "void(void*)"),
     "SetNodeFFIEvent": ("0x340d0", "bool(void (*)(const char*))"),
+}
+_LIGHTING_FRONTEND_SIGNATURES = {
+    "SetOperatingMode": ["void", ["int"]],
+    "PollEvents": ["pointer", []],
+    "RzLightingApi": ["pointer", ["string"]],
+    "RzLightingApiNoReturn": ["void", ["string"]],
+    "GetDLLVersion": ["pointer", []],
+    "FreeMalloc": ["void", ["pointer"]],
+    "SetNodeFFIEvent": ["bool", ["pointer"]],
 }
 _LIGHTING_FUNCTIONS = (
     "32d00", "32d90", "33490", "33b60", "33cf0", "340c0", "340d0",
@@ -147,6 +154,33 @@ def _lighting_release_evidence(root, raw):
                 "source_current_during_acquisition": release["source_current_during_acquisition"],
                 "deployment_metadata_stable": metadata["metadata"]["deployment_metadata_stable"],
                 "currentness": "Retained two-sample deployment audit and acquisition-end revalidation; no HTTP performed by this comparison"}}
+
+
+def _lighting_frontend_evidence(root):
+    """Bind the comparison ABI to the selected current official frontend."""
+    import analysis
+    from host import lighting_frontend_abi
+    if Path(root).resolve(strict=True) != analysis.ROOT.resolve(strict=True):
+        raise ValueError("Lighting frontend evidence requires the same workspace root")
+    audit = HostLocalAudit()
+    selected, originals = audit.current_source_set("synapse-lighting-engine-current")
+    evidence = lighting_frontend_abi(audit, selected, originals)
+    declared = {}
+    for methods in evidence["api_versions"].values():
+        for name, signature in methods.items():
+            if name in declared:
+                raise ValueError("Lighting frontend ABI repeats an export: " + name)
+            declared[name] = signature
+    if (set(_LIGHTING_FRONTEND_SIGNATURES) != set(_LIGHTING_EXPORTS)
+            or any(declared.get(name) != signature
+                   for name, signature in _LIGHTING_FRONTEND_SIGNATURES.items())):
+        raise ValueError("Current lighting frontend ABI differs from the audited native signatures")
+    if audit.final_snapshot():
+        raise ValueError("Lighting frontend evidence changed during comparison preflight")
+    return {**evidence["main"], "acquisition": selected["acquisition"],
+            "current_source_selection": selected["current_source_selection"],
+            "abi": evidence, "inputs": list(audit.artifacts.values()),
+            "inputs_unchanged": True, "target_execution": False}
 
 
 def verify_lighting_source(root):
@@ -216,20 +250,12 @@ def verify_lighting_source(root):
             raise ValueError("Lighting software virtual call target differs")
         virtual_calls.append({"table_rva": hex(table), "slot": slot, "target_rva": hex(target),
                               "raw_hex": encoded.hex(), "sha256": hashlib.sha256(encoded).hexdigest()})
-    js_raw = (root / _LIGHTING_JS).read_bytes()
-    js_receipt_path = ".analysis/inputs/frontend/synapse-lighting-engine-current/acquisition.json"
-    js_rows = [r for r in json.loads((root / js_receipt_path).read_bytes())["files"]
-               if r.get("path") == _LIGHTING_JS]
-    if (len(js_rows) != 1 or js_rows[0]["http_status"] != 200
-            or len(js_raw) != js_rows[0]["bytes"]
-            or hashlib.sha256(js_raw).hexdigest() != js_rows[0]["sha256"]
-            or hashlib.sha256(js_raw).hexdigest() != _LIGHTING_JS_SHA256):
-        raise ValueError("Lighting frontend ABI source identity differs")
+    frontend_evidence = _lighting_frontend_evidence(root)
     return {"input": _LIGHTING_INPUT, "sha256": _LIGHTING_SHA256, "bytes": len(raw),
             **release_evidence,
             "capture": {"path": capture_path, "sha256": hashlib.sha256(capture_raw).hexdigest(),
                         "ida_version": capture["ida_version"], "hexrays_version": capture["hexrays_version"]},
-            "frontend": {"path": _LIGHTING_JS, "sha256": hashlib.sha256(js_raw).hexdigest()},
+            "frontend": frontend_evidence,
             "architecture": pe["architecture"], "version_resources": versions,
             "imports": [entry["library"] for entry in pe["imports"]],
             "dynamic_system_imports": ["mfplat.dll"], "functions": functions,

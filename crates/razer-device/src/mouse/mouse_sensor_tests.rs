@@ -704,13 +704,14 @@ fn finish_failure_keeps_the_current_ack_and_stops_the_remaining_sensor_commands(
     assert_eq!(failure.report.acknowledgements.len(), 1);
     assert_eq!(failure.report.acknowledgements[0].data, [7, 8]);
     validate_setter_report(&change, &failure.report, true).unwrap();
-    assert!(failure.error.to_string().contains("release failed"));
+    assert!(format!("{:#}", failure.error).contains("release failed"));
+    assert!(crate::backend::exchange_finalization_failed(&failure.error));
     assert_eq!((device.sent.get(), device.received.get()), (1, 1));
     device.done();
 }
 
 #[test]
-fn cancellation_after_ack_or_during_reply_does_not_start_mode_or_getter() {
+fn cancellation_after_reply_or_release_keeps_the_ack_without_starting_mode_or_getter() {
     for cancel_in_reply in [false, true] {
         let device = Device::new([
             outgoing([2, 11, 16], &[1, 1], 1),
@@ -719,10 +720,11 @@ fn cancellation_after_ack_or_during_reply_does_not_start_mode_or_getter() {
         let canceled = Cell::new(false);
         let after_ack = || canceled.set(true);
         let leased = ExchangeProbe::with_on_finish(&device, &after_ack);
+        let change = dynamic(true, AccelerationMode::Natural, vec![]);
         let failure = apply(
             &leased,
             &cap(),
-            &dynamic(true, AccelerationMode::Natural, vec![]),
+            &change,
             transactions(),
             || {
                 ensure!(
@@ -734,11 +736,22 @@ fn cancellation_after_ack_or_during_reply_does_not_start_mode_or_getter() {
             |_| Ok(()),
         )
         .unwrap_err();
+        assert_eq!(failure.phase, SensorFailurePhase::Write);
+        assert_eq!(failure.report.attempted_writes, 1);
+        assert_eq!(failure.report.acknowledgements.len(), 1);
         assert_eq!(
-            failure.report.acknowledgements.len(),
-            usize::from(!cancel_in_reply)
+            failure.report.acknowledgements[0],
+            SensorAcknowledgement {
+                command: [2, 11, 16],
+                payload: vec![1, 1],
+                data: vec![],
+            }
         );
+        validate_setter_report(&change, &failure.report, true).unwrap();
+        assert!(validate_setter_report(&change, &failure.report, false).is_err());
+        assert!(format!("{:#}", failure.error).contains("canceled"));
         assert!(failure.device_state_may_have_changed());
+        assert_eq!((device.sent.get(), device.received.get()), (1, 1));
         device.done();
     }
 }

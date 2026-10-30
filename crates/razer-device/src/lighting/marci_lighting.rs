@@ -1,6 +1,9 @@
 //! Current 3942 Marci Output frames and its separate Protocol25 control channel.
 use crate::{
-    backend::{FeatureTransport, HidNode},
+    backend::{
+        FeatureTransport, HidNode, NativeIoOutcome, exchange_finalization_failed,
+        native_io_failure, native_io_outcome,
+    },
     lighting_driver::{HardwareEffect, HardwareQuickEffect},
     lighting_engine::EngineFrame,
     receiver_lighting::QuickEffect,
@@ -112,18 +115,49 @@ pub struct OutputReceipt {
     pub complete: bool,
 }
 
-#[derive(Debug)]
-pub struct OutputReleaseFailure {
-    pub receipt: OutputReceipt,
+impl OutputReceipt {
+    fn from_native_count(transferred_bytes: usize) -> Self {
+        Self {
+            submitted_bytes: OUTPUT_BYTES,
+            transferred_bytes,
+            complete: transferred_bytes == OUTPUT_BYTES,
+        }
+    }
 }
 
-impl std::fmt::Display for OutputReleaseFailure {
+/// A terminal Output count remains diagnostic when ownership or release fails.
+/// It does not acknowledge a device setting or authorize publishing success.
+#[derive(Clone, Debug)]
+pub struct CompletedOutputTransfer {
+    receipt: OutputReceipt,
+}
+
+impl CompletedOutputTransfer {
+    pub fn from_error(error: &anyhow::Error) -> Option<&Self> {
+        error.downcast_ref()
+    }
+
+    pub fn receipt(&self) -> &OutputReceipt {
+        &self.receipt
+    }
+}
+
+impl std::fmt::Display for CompletedOutputTransfer {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             formatter,
-            "Marci Output transferred {} of {} bytes; HID exchange release failed",
+            "Marci Output returned {} of {} bytes; transfer retained as diagnostics",
             self.receipt.transferred_bytes, self.receipt.submitted_bytes
         )
+    }
+}
+
+#[derive(Debug)]
+pub struct OutputReleaseFailure;
+
+impl std::fmt::Display for OutputReleaseFailure {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("Marci Output HID exchange release failed")
     }
 }
 
@@ -145,26 +179,47 @@ pub fn submit_javascript_frame(
         "Marci Output descriptor does not expose 781 bytes"
     );
     let lease = transport.begin_exchange(crate::backend::ExchangeOptions::plain())?;
-    let result = (|| {
-        let transport = lease.transport();
-        let count = transport.write_output_counted(&frame.javascript_report())?;
+    let returned = lease
+        .transport()
+        .write_output_counted(&frame.javascript_report());
+    let native_count = match &returned {
+        Ok(count) => Some(*count),
+        Err(error) => match native_io_outcome(error) {
+            Some(NativeIoOutcome::Returned { byte_count }) => Some(byte_count),
+            _ => None,
+        },
+    };
+    let receipt = native_count
+        .filter(|count| *count <= OUTPUT_BYTES)
+        .map(OutputReceipt::from_native_count);
+    let result = returned.and_then(|count| {
         ensure!(
             count <= OUTPUT_BYTES,
             "Marci Output returned an excessive byte count"
         );
-        Ok(OutputReceipt {
-            submitted_bytes: OUTPUT_BYTES,
-            transferred_bytes: count,
-            complete: count == OUTPUT_BYTES,
-        })
-    })();
-    match result {
-        Ok(receipt) => match lease.finish() {
-            Ok(()) => Ok(receipt),
-            Err(error) => Err(error.context(OutputReleaseFailure { receipt })),
-        },
-        Err(error) => crate::backend::finish_exchange(lease, Err(error)),
-    }
+        Ok(OutputReceipt::from_native_count(count))
+    });
+    crate::backend::finish_exchange(lease, result).map_err(|error| {
+        let error = match native_count {
+            Some(byte_count)
+                if native_io_outcome(&error) != Some(NativeIoOutcome::Returned { byte_count }) =>
+            {
+                native_io_failure(NativeIoOutcome::Returned { byte_count }, error)
+            }
+            _ => error,
+        };
+        let error = if exchange_finalization_failed(&error)
+            && !crate::backend::exchange_release_completed(&error)
+        {
+            error.context(OutputReleaseFailure)
+        } else {
+            error
+        };
+        match receipt {
+            Some(receipt) => error.context(CompletedOutputTransfer { receipt }),
+            None => error,
+        }
+    })
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]

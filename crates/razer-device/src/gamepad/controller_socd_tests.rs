@@ -65,7 +65,9 @@ fn controller_socd_set_encodes_each_option_and_does_not_read_back_or_compare_ack
             let mut waits = Vec::new();
             let probe = crate::feature_exchange::tests::ExchangeProbe::new(&io);
             let result = SocdProtocol::new(&probe, |wait| {
-                waits.push(wait);
+                if !wait.is_zero() {
+                    waits.push(wait);
+                }
                 Ok(())
             })
             .execute(2676, SocdOperation { slot: 7, mode }, || false)
@@ -88,15 +90,23 @@ fn controller_socd_set_encodes_each_option_and_does_not_read_back_or_compare_ack
             );
             assert_eq!(&sent[0][6..11], &[2, 12, 27, 7, option]);
             assert_eq!(sent[0][89], sent[0][3..89].iter().fold(0, |a, b| a ^ b));
-            assert_eq!(waits, [Duration::ZERO, Duration::from_millis(30)]);
+            assert_eq!(waits, [Duration::from_millis(30)]);
         }
     }
 }
 #[test]
 fn controller_socd_rejected_or_truncated_response_never_acknowledges() {
-    for bytes in [reply(5, 0, 27, &[]), vec![0; 90]] {
-        let io = Transport::new([bytes]);
-        let result = SocdProtocol::new(&io, |_| Ok(()))
+    use crate::feature_exchange::tests::LeaseEvent;
+
+    for (bytes, attempts, reason) in [
+        (reply(5, 0, 27, &[]), 1, "status 5"),
+        (vec![0; 90], 20, "Stale controller response"),
+        (vec![0; 8], 20, "Truncated controller response header"),
+        (vec![], 20, "Truncated controller response header"),
+    ] {
+        let io = Transport::new(std::iter::repeat_n(bytes, attempts));
+        let probe = crate::feature_exchange::tests::ExchangeProbe::new(&io);
+        let result = SocdProtocol::new(&probe, |_| Ok(()))
             .execute(
                 2676,
                 SocdOperation {
@@ -108,7 +118,27 @@ fn controller_socd_rejected_or_truncated_response_never_acknowledges() {
             .unwrap();
         assert!(matches!(result.write, SocdWriteStatus::Failed { .. }));
         assert!(!result.acknowledged());
-        assert_eq!(io.sent.borrow().len(), 1);
+        let SocdWriteStatus::Failed { error } = &result.write else {
+            panic!("A rejected or incomplete reply cannot acknowledge the SET")
+        };
+        assert!(error.contains(reason), "{error}");
+        let sent = io.sent.borrow();
+        assert_eq!(sent.len(), attempts);
+        assert!(sent.windows(2).all(|pair| pair[0] == pair[1]));
+        assert!(io.replies.borrow().is_empty());
+        let mut expected = vec![LeaseEvent::Begin(
+            crate::backend::ExchangeTiming::MutexOut {
+                interval: Duration::from_millis(30),
+            },
+        )];
+        for attempt in 0..attempts {
+            expected.extend([LeaseEvent::Send, LeaseEvent::Get]);
+            if attempt + 1 < attempts {
+                expected.push(LeaseEvent::RetryRelease);
+            }
+        }
+        expected.push(LeaseEvent::Finish);
+        assert_eq!(probe.events(), expected);
     }
 }
 #[test]

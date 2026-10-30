@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import concurrent.futures
 from contextlib import contextmanager
+from datetime import datetime, timezone
+import base64
 import hashlib
 import json
 import os
@@ -25,6 +27,7 @@ ROOT = Path(__file__).resolve().parent.parent
 LOCK = "tools/asset-release.json"
 MAPPINGS = "tools/resource-mappings.json"
 OUTPUT = ".work/asset-releases"
+UPDATE_REPORT = ".analysis/results/asset-release-update.json"
 
 
 def _checked_upload_tree(path, identity=None):
@@ -65,9 +68,11 @@ def _owned_upload_clone(tag):
         yield upload
     finally:
         checked = _checked_upload_tree(upload, identity)
-        report_path = ROOT / ".analysis/results/asset-release-update.json"
+        report_path = ROOT / UPDATE_REPORT
         report = json.loads(report_path.read_bytes()) if report_path.is_file() else {}
-        if report.get("verification_checkout") != upload.relative_to(ROOT).as_posix():
+        name = upload.relative_to(ROOT).as_posix()
+        released = report.get("verification_checkout_release", {}).get("checkout", {}).get("path") == name
+        if report.get("verification_checkout") != name and not released:
             def remove_readonly(operation, path, error):
                 child = Path(path)
                 if (not isinstance(error, PermissionError) or not child.is_file()
@@ -640,10 +645,37 @@ def verify(directory=None, check_local=False):
 
 def git(*args, cwd=None):
     env = dict(os.environ, GIT_LFS_SKIP_SMUDGE="1", GIT_TERMINAL_PROMPT="0", GCM_INTERACTIVE="never")
+    token = env.get("HF_TOKEN")
+    encoded_token = None
+    if token:
+        if not re.fullmatch(r"hf_[A-Za-z0-9]+", token):
+            raise ValueError("HF_TOKEN is not a valid single-line access token")
+        encoded_token = base64.b64encode(("hf_user:" + token).encode("ascii")).decode("ascii")
+        # Process-only configuration reaches Git LFS without persisting the
+        # credential in the checkout, command line, or credential manager.
+        count = int(env.get("GIT_CONFIG_COUNT", "0"))
+        if count < 0:
+            raise ValueError("Git configuration count cannot be negative")
+        for key, value in (
+            ("http.https://huggingface.co/.extraHeader", ""),
+            ("http.https://huggingface.co/.extraHeader", "Authorization: Basic " + encoded_token),
+            ("credential.https://huggingface.co.helper", ""),
+        ):
+            env[f"GIT_CONFIG_KEY_{count}"] = key
+            env[f"GIT_CONFIG_VALUE_{count}"] = value
+            count += 1
+        env["GIT_CONFIG_COUNT"] = str(count)
+        for key in list(env):
+            if key.startswith("GIT_TRACE") or key == "GIT_CURL_VERBOSE":
+                env.pop(key)
     result = subprocess.run(["git", *args], cwd=cwd or ROOT, env=env, capture_output=True,
                             text=True, encoding="utf-8", errors="replace")
     if result.returncode:
-        message = re.sub(r"hf_[A-Za-z0-9]+", "[redacted]", result.stderr.strip() or result.stdout.strip())
+        message = result.stderr.strip() or result.stdout.strip()
+        for secret in (token, encoded_token):
+            if secret:
+                message = message.replace(secret, "[redacted]")
+        message = re.sub(r"hf_[A-Za-z0-9]+", "[redacted]", message)
         raise ValueError("Git resource operation failed: " + message[-5000:])
     return result.stdout
 
@@ -929,6 +961,9 @@ def publish_additions(manifest_name, *, dry_run=False, prune_maintenance_tables=
         if report_path.is_file():
             previous = json.loads(report_path.read_bytes())
             if previous.get("repository") == report["repository"]:
+                for field in ("publication_attempts", "read_only_remote_preflight"):
+                    if field in previous:
+                        report[field] = previous[field]
                 cleanup = previous.get("preceding_maintenance_cleanup")
                 if previous.get("status") == "published_and_verified" and previous.get("removed_obsolete_maintenance_files"):
                     cleanup = {"base_revision": previous["base_revision"], "revision": previous["revision"],
@@ -1059,6 +1094,7 @@ def publish_additions(manifest_name, *, dry_run=False, prune_maintenance_tables=
             report.update(status="published_and_verified", revision=revision, remote_publication=True, verification=verification)
             analysis.save(report_path, report)
             index_addition_sources(manifest_name, reason="Publish verified targeted resource delivery inputs after remote byte verification")
+            _release_verification_checkout(verification)
             return {"report": report_path.relative_to(ROOT).as_posix(), "files": len(additions),
                     "revision": revision, "status": report["status"], "source_files_verified": verification["source_files_verified"]}
 
@@ -1099,6 +1135,161 @@ def index_addition_sources(manifest_name, *, reason):
             "revision": original["storage"]["revision"], "files": len(additions),
             "network_requests": False, "remote_publication_repeated": False}})
     return additions
+
+
+def _checkout_release_state(report, lock, upload):
+    """Bind a completed publication to its retained clone and indexed sources."""
+    import workspace
+
+    revision, repository = lock["storage"].get("revision"), lock["storage"]["repository"]
+    completion = report.get("verification", {})
+    if (report.get("schema_version") != 1 or report.get("target_execution") is not False
+            or report.get("status") != "published_and_verified" or report.get("remote_publication") is not True
+            or report.get("repository") != repository or report.get("revision") != revision
+            or report.get("tag") != lock["tag"] or not re.fullmatch(r"[a-f0-9]{40}", revision or "")
+            or completion.get("passed") is not True or completion.get("repository") != repository
+            or completion.get("revision") != revision
+            or completion.get("source_files_verified") != len(rows_for(lock))
+            or completion.get("retained_files_present") != len(lock["git_files"])
+            or completion.get("remote_manifest_present") is not True):
+        raise ValueError("Verification checkout requires the complete pinned publication receipt")
+    recorded = datetime.fromisoformat(report["recorded_at_utc"])
+    if recorded.tzinfo is None or recorded > datetime.now(timezone.utc):
+        raise ValueError("Verification checkout publication has no valid completion time")
+    publication_tool = report.get("tool", {})
+    if (publication_tool.get("path") != "tools/asset_release.py"
+            or not re.fullmatch(r"[a-f0-9]{64}", publication_tool.get("sha256", ""))):
+        raise ValueError("Verification checkout publication has no retained tool identity")
+    upload = _checked_upload_tree(upload)
+    name = upload.relative_to(ROOT).as_posix()
+    current = upload.stat()
+    manifest = upload / "release-index.json"
+    if manifest.read_bytes() != encoded(published_manifest(lock)):
+        raise ValueError("Verification checkout manifest differs from the pinned resource release")
+    if workspace._clean_upload_git(upload, "rev-parse", "--verify", "HEAD").decode("ascii").strip() != revision:
+        raise ValueError("Verification checkout HEAD differs from the pinned publication")
+    index_path = ROOT / ".analysis/inputs.json"
+    index_raw = index_path.read_bytes()
+    indexed = {row["path"]: row for row in json.loads(index_raw)["inputs"]}
+    additions = report.get("additions")
+    if not isinstance(additions, list) or not additions:
+        raise ValueError("Verification checkout has no published addition identities")
+    expected_manifest = {"schema_version": 1, "files": [
+        {"path": item["asset"]["path"], **{key: item[key] for key in ("source", "acquisition", "alias", "table")}}
+        for item in additions]}
+    manifests = []
+    for row in indexed.values():
+        if row.get("kind") == "resource_publication_manifest":
+            path = analysis.resolve(row["path"], ".analysis/inputs")
+            if json.loads(path.read_bytes()) == expected_manifest:
+                manifests.append(row)
+    if len(manifests) != 1:
+        raise ValueError("Verification checkout requires its unique indexed publication manifest")
+    original, planned, _, planned_additions, _ = release_additions(manifests[0]["path"])
+    if original["tag"] != planned["tag"] or planned_additions != additions:
+        raise ValueError("Verification checkout additions or aliases are not fully published")
+    source_rows = [manifests[0], *(item[key] for item in additions for key in ("source", "acquisition"))]
+    for row in source_rows:
+        if any(indexed.get(row["path"], {}).get(key) != row[key] for key in ("path", "bytes", "sha256")):
+            raise ValueError("Verification checkout source identity is absent from the formal index")
+    analysis.verify_source_rows(source_rows)
+    def identity(path):
+        return {"path": path.relative_to(ROOT).as_posix(), "bytes": path.stat().st_size, "sha256": digest(path)}
+    return {"checkout": {"path": name, "device": current.st_dev, "file_id": current.st_ino},
+            "repository": repository, "revision": revision, "manifest": identity(manifest),
+            "lock": identity(ROOT / LOCK), "mappings": identity(ROOT / MAPPINGS),
+            "source_index": {"path": ".analysis/inputs.json", "bytes": len(index_raw),
+                             "sha256": hashlib.sha256(index_raw).hexdigest()},
+            "source_manifest": identity(ROOT / manifests[0]["path"]),
+            "publication_sha256": content_hash({key: value for key, value in report.items()
+                if key not in {"verification_checkout", "verification_checkout_release", "verification_checkout_release_history"}}),
+            "publication_tool": publication_tool}
+
+
+def _verify_checkout_release_proof(release, report, state, *, current_owner):
+    tool = release.get("tool", {})
+    if (release.get("schema_version") != 1 or release.get("target_execution") is not False
+            or release.get("deleted") is not False
+            or set(tool) != {"path", "sha256"} or tool.get("path") != "tools/asset_release.py"
+            or not re.fullmatch(r"[a-f0-9]{64}", tool.get("sha256", ""))
+            or current_owner and tool["sha256"] != digest(ROOT / "tools/asset_release.py")):
+        raise ValueError("Verification checkout release does not match the current verification owner")
+    recorded = datetime.fromisoformat(release["recorded_at_utc"])
+    if recorded.tzinfo is None or recorded > datetime.now(timezone.utc):
+        raise ValueError("Verification checkout release has no valid completion time")
+    if set(release) != {"schema_version", "recorded_at_utc", "tool", "verification", "target_execution", "deleted", *state}:
+        raise ValueError("Verification checkout release has unrecognized dependency fields")
+    if any(release.get(key) != value for key, value in state.items()):
+        raise ValueError("Verification checkout release evidence changed")
+    if release.get("verification") != report["verification"]:
+        raise ValueError("Verification checkout release lost its remote verification result")
+    return release
+
+
+def verify_checkout_release(report, lock, upload):
+    """Recheck a current release proof and its retained history without deleting."""
+    release = report.get("verification_checkout_release")
+    if not isinstance(release, dict) or report.get("verification_checkout") is not None:
+        raise ValueError("Verification checkout has no completed release proof")
+    state = _checkout_release_state(report, lock, upload)
+    history = report.get("verification_checkout_release_history", [])
+    if not isinstance(history, list):
+        raise ValueError("Verification checkout release history is not a retained proof list")
+    for previous in history:
+        if not isinstance(previous, dict):
+            raise ValueError("Verification checkout release history has an invalid proof")
+        _verify_checkout_release_proof(previous, report, state, current_owner=False)
+    return _verify_checkout_release_proof(release, report, state, current_owner=True)
+
+
+def _release_verification_checkout(verification):
+    """Release a verified borrow while leaving deletion to the cleanup plan."""
+    report_path = ROOT / UPDATE_REPORT
+    raw = report_path.read_bytes()
+    report = json.loads(raw)
+    lock = load_lock()
+    existing = report.get("verification_checkout_release")
+    name = report.get("verification_checkout") or (existing or {}).get("checkout", {}).get("path")
+    if not isinstance(name, str) or (ROOT / name).relative_to(ROOT).as_posix() != name:
+        raise ValueError("Verification checkout requires its canonical retained path")
+    upload = ROOT / name
+    with analysis.index_lock():
+        state = _checkout_release_state(report, lock, upload)
+        if verification != report["verification"]:
+            raise ValueError("Verification checkout remote result differs from the completed publication")
+        if existing is not None:
+            _verify_checkout_release_proof(existing, report, state, current_owner=False)
+            history = report.get("verification_checkout_release_history", [])
+            if not isinstance(history, list):
+                raise ValueError("Verification checkout release history is not a retained proof list")
+            for previous in history:
+                _verify_checkout_release_proof(previous, report, state, current_owner=False)
+            if existing["tool"]["sha256"] == digest(ROOT / "tools/asset_release.py"):
+                return verify_checkout_release(report, lock, upload)
+            report["verification_checkout_release_history"] = [*history, existing]
+        release = {"schema_version": 1, "recorded_at_utc": analysis.stamp(),
+                   "tool": {"path": "tools/asset_release.py", "sha256": digest(ROOT / "tools/asset_release.py")},
+                   **state, "verification": verification, "target_execution": False, "deleted": False}
+        if report_path.read_bytes() != raw:
+            raise ValueError("Verification checkout completion receipt changed during release")
+        report.pop("verification_checkout", None)
+        report["verification_checkout_release"] = release
+        verify_checkout_release(report, lock, upload)
+        analysis.save(report_path, report)
+    return release
+
+
+def release_verification_checkout(*, evidence_roots=()):
+    with analysis.index_lock(ROOT / ".work/resource-writer.lock"):
+        lock = load_lock()
+        report = json.loads((ROOT / UPDATE_REPORT).read_bytes())
+        release = report.get("verification_checkout_release", {})
+        name = report.get("verification_checkout") or release.get("checkout", {}).get("path")
+        if not isinstance(name, str):
+            raise ValueError("No retained verification checkout is available for release")
+        upload = _checked_upload_tree(ROOT / name)
+        verification = verify_remote(lock, evidence_roots=(*evidence_roots, upload))
+        return _release_verification_checkout(verification)
 
 
 def publish():
@@ -1156,6 +1347,8 @@ def add_commands(commands):
     p.add_argument("--from-dir", help="Offline raw snapshot directory")
     p.add_argument("--check-local", action="store_true")
     p.add_argument("--remote", action="store_true", help="Verify pinned remote LFS identities and manifest")
+    p.add_argument("--release-verification-checkout", action="store_true",
+                   help="With --remote, release the completed checkout borrow without deleting its files")
     p = commands.add_parser("fetch-asset-release", help="Restore raw resources from pinned HF Git LFS or offline files")
     p.add_argument("--product", type=int, action="append", help="PID plus shared/dependency sources; omit for all")
     p.add_argument("--from-dir", help="Prepared raw snapshot directory; no network")
@@ -1173,6 +1366,10 @@ def run(args):
         return prepare(args.repository)
     if args.command == "verify-asset-release":
         roots = (Path(args.from_dir).resolve(),) if args.from_dir else ()
+        if getattr(args, "release_verification_checkout", False):
+            if not args.remote:
+                raise ValueError("Verification checkout release requires --remote")
+            return release_verification_checkout(evidence_roots=roots)
         return verify_remote(evidence_roots=roots) if args.remote else verify(args.from_dir, args.check_local)
     if args.command == "fetch-asset-release":
         return restore(args.product, args.from_dir, args.replace_existing)

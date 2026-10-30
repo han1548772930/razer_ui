@@ -1,5 +1,5 @@
 use super::*;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::VecDeque;
 
 struct Transport {
@@ -116,7 +116,9 @@ fn digital_write_sets_mode_before_value_and_skips_inactive_side() {
         ],
     };
     let result = TriggerProtocol::new(&probe, capability(4133).unwrap(), |delay| {
-        delays.push(delay);
+        if !delay.is_zero() {
+            delays.push(delay);
+        }
         Ok(())
     })
     .execute(&operation)
@@ -140,12 +142,7 @@ fn digital_write_sets_mode_before_value_and_skips_inactive_side() {
     );
     assert_eq!(
         delays,
-        [
-            Duration::ZERO,
-            Duration::from_millis(10),
-            Duration::ZERO,
-            Duration::from_millis(10)
-        ]
+        [Duration::from_millis(10), Duration::from_millis(10)]
     );
 }
 #[test]
@@ -373,19 +370,41 @@ fn circularity_writes_both_sides_without_getter_and_cancellation_stops_second_si
             .into(),
         ),
     };
-    let mut waits = 0;
-    let result = TriggerProtocol::new(&io, capability(2636).unwrap(), |_| {
-        waits += 1;
-        ensure!(waits <= 2, "Canceled between controller sides");
+    let canceled = Cell::new(false);
+    let on_finish = || canceled.set(true);
+    let probe = crate::feature_exchange::tests::ExchangeProbe::with_on_finish(&io, &on_finish);
+    let result = TriggerProtocol::new(&probe, capability(2636).unwrap(), |_| {
+        ensure!(!canceled.get(), "Canceled between controller sides");
         Ok(())
     })
     .execute(&TriggerOperation::Circularity {
         profile_slot: 4,
         circular: false,
     });
-    assert!(result.is_err());
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("Canceled between controller sides")
+    );
     assert_eq!(io.sends.borrow().len(), 1);
     assert_eq!(&io.sends.borrow()[0][6..12], &[3, 12, 18, 4, 1, 0]);
+    assert_eq!(io.replies.borrow().len(), 1);
+    use crate::feature_exchange::tests::LeaseEvent;
+    let timing = crate::backend::ExchangeTiming::MutexOut {
+        interval: Duration::from_millis(10),
+    };
+    assert_eq!(
+        probe.events(),
+        [
+            LeaseEvent::Begin(timing),
+            LeaseEvent::Send,
+            LeaseEvent::Get,
+            LeaseEvent::Finish,
+            LeaseEvent::Begin(timing),
+            LeaseEvent::Finish,
+        ]
+    );
 }
 
 #[test]

@@ -1,8 +1,9 @@
 //! Feature/Output/control-Input/interrupt backend. No vendor binary or direct Win32 FFI.
 use anyhow::{Context as _, ensure};
-use hidapi::{DeviceInfo, HidApi, HidDevice};
+use hidapi::{DeviceInfo, HidApi, HidDevice, HidError};
 use razer_device::backend::{
-    FeatureTransport, HidBackend, HidNode, InterruptTransport, ReportLengths,
+    FeatureTransport, HidBackend, HidNode, InterruptTransport, NativeIoOutcome, ReportLengths,
+    native_io_failure, native_io_outcome, require_complete_send,
 };
 use serde_json::{Value, json};
 use std::ffi::CString;
@@ -127,24 +128,88 @@ struct NativeTransport {
     _lock: File,
 }
 
-// HIDP_CAPS uses the collection maximum report length; Linux/macOS can also
-// return the selected ID's exact length. Both must come from the descriptor.
-fn valid_io_length(lengths: &std::collections::BTreeMap<u8, usize>, id: u8, size: usize) -> bool {
-    lengths
-        .get(&id)
-        .is_some_and(|observed| size == *observed || lengths.values().max().copied() == Some(size))
+fn io_failure(outcome: NativeIoOutcome, error: anyhow::Error) -> anyhow::Error {
+    if native_io_outcome(&error).is_some() {
+        error
+    } else {
+        native_io_failure(outcome, error)
+    }
+}
+
+fn before_native<T>(check: impl FnOnce() -> anyhow::Result<T>) -> anyhow::Result<T> {
+    check().map_err(|error| io_failure(NativeIoOutcome::NotCalled, error))
+}
+
+fn native_result<T>(result: anyhow::Result<T>) -> anyhow::Result<T> {
+    result.map_err(|error| {
+        let outcome = match error.downcast_ref::<HidError>() {
+            Some(HidError::IncompleteSendError { sent, .. }) => {
+                NativeIoOutcome::Returned { byte_count: *sent }
+            }
+            Some(HidError::InvalidZeroSizeData) => NativeIoOutcome::NotCalled,
+            _ => NativeIoOutcome::Rejected,
+        };
+        io_failure(outcome, error)
+    })
+}
+
+fn after_native<T>(
+    byte_count: usize,
+    check: impl FnOnce() -> anyhow::Result<T>,
+) -> anyhow::Result<T> {
+    check().map_err(|error| io_failure(NativeIoOutcome::Returned { byte_count }, error))
+}
+
+fn send_exact_feature(
+    lengths: &ReportLengths,
+    report: &[u8],
+    send: impl FnOnce(&[u8]) -> anyhow::Result<()>,
+) -> anyhow::Result<usize> {
+    before_native(|| {
+        ensure!(!report.is_empty(), "Feature 查询报文为空");
+        ensure!(
+            lengths.feature.get(&report[0]) == Some(&report.len()),
+            "Feature 报文与实际 descriptor 的 Report ID/长度不一致"
+        );
+        Ok(())
+    })?;
+    native_result(send(report))?;
+    // Locked hidapi 2.6.7 only returns unit success after its native result
+    // equals the caller length; this count is not a device acknowledgement.
+    Ok(report.len())
 }
 
 fn send_collection_feature(
     lengths: &ReportLengths,
     report: &[u8],
     send: impl FnOnce(&[u8]) -> anyhow::Result<()>,
+) -> anyhow::Result<usize> {
+    before_native(|| {
+        ensure!(
+            !report.is_empty() && lengths.feature.values().max().copied() == Some(report.len()),
+            "Collection Feature send differs from its observed maximum length"
+        );
+        Ok(())
+    })?;
+    native_result(send(report))?;
+    Ok(report.len())
+}
+
+fn write_complete_output(
+    lengths: &ReportLengths,
+    report: &[u8],
+    write: impl FnOnce(&[u8]) -> anyhow::Result<usize>,
 ) -> anyhow::Result<()> {
-    ensure!(
-        !report.is_empty() && lengths.feature.values().max().copied() == Some(report.len()),
-        "Collection Feature send differs from its observed maximum length"
-    );
-    send(report)
+    before_native(|| {
+        ensure!(!report.is_empty(), "Output Report 为空");
+        ensure!(
+            lengths.accepts_output_report(report),
+            "Output Report 与实际 descriptor 的 ID/长度不一致"
+        );
+        Ok(())
+    })?;
+    let sent = native_result(write(report))?;
+    require_complete_send(sent, report.len()).context("HID Output Report 未完整发送")
 }
 
 fn write_counted_output(
@@ -152,14 +217,16 @@ fn write_counted_output(
     report: &[u8],
     write: impl FnOnce(&[u8]) -> anyhow::Result<usize>,
 ) -> anyhow::Result<usize> {
-    ensure!(!report.is_empty(), "Output Report is empty");
-    let minimum = lengths
-        .output
-        .values()
-        .max()
-        .copied()
-        .filter(|length| *length > 0)
-        .context("Collection has no observed Output Report")?;
+    let minimum = before_native(|| {
+        ensure!(!report.is_empty(), "Output Report is empty");
+        lengths
+            .output
+            .values()
+            .max()
+            .copied()
+            .filter(|length| *length > 0)
+            .context("Collection has no observed Output Report")
+    })?;
     // Current HID.node hid_write pads to OutputReportByteLength and leaves a
     // larger caller buffer intact. Its return count is a separate observation.
     let padded;
@@ -173,12 +240,34 @@ fn write_counted_output(
     } else {
         report
     };
-    let count = write(bytes)?;
-    ensure!(
-        count <= bytes.len(),
-        "Output count exceeds the submitted buffer"
-    );
-    Ok(count)
+    let count = native_result(write(bytes))?;
+    after_native(count, || {
+        ensure!(
+            count <= bytes.len(),
+            "Output count exceeds the submitted buffer"
+        );
+        Ok(count)
+    })
+}
+
+fn read_exact_feature(
+    lengths: &ReportLengths,
+    report: &mut [u8],
+    read: impl FnOnce(&mut [u8]) -> anyhow::Result<usize>,
+) -> anyhow::Result<usize> {
+    before_native(|| {
+        ensure!(!report.is_empty(), "Feature 响应缓冲区为空");
+        ensure!(
+            lengths.feature.get(&report[0]) == Some(&report.len()),
+            "Feature 响应与实际 descriptor 的 Report ID/长度不一致"
+        );
+        Ok(())
+    })?;
+    let count = native_result(read(report))?;
+    after_native(count, || {
+        ensure!(count <= report.len(), "HID 返回字节数超过缓冲区长度");
+        Ok(count)
+    })
 }
 
 fn read_collection_feature(
@@ -187,11 +276,14 @@ fn read_collection_feature(
     windows: bool,
     read: impl FnOnce(&mut [u8]) -> anyhow::Result<usize>,
 ) -> anyhow::Result<usize> {
-    ensure!(
-        !report.is_empty() && lengths.feature.values().max().copied() == Some(report.len()),
-        "Collection Feature buffer differs from its observed maximum length"
-    );
-    let count = read(report)?;
+    before_native(|| {
+        ensure!(
+            !report.is_empty() && lengths.feature.values().max().copied() == Some(report.len()),
+            "Collection Feature buffer differs from its observed maximum length"
+        );
+        Ok(())
+    })?;
+    let count = native_result(read(report))?;
     source_control_report_count(report, count, windows)
 }
 
@@ -201,11 +293,14 @@ fn read_input_report(
     windows: bool,
     read: impl FnOnce(&mut [u8]) -> anyhow::Result<usize>,
 ) -> anyhow::Result<usize> {
-    ensure!(
-        !report.is_empty() && valid_io_length(&lengths.input, report[0], report.len()),
-        "Input report differs from its observed ID and length"
-    );
-    let count = read(report)?;
+    before_native(|| {
+        ensure!(
+            !report.is_empty() && lengths.accepts_input_report_length(report[0], report.len()),
+            "Input report differs from its observed ID and length"
+        );
+        Ok(())
+    })?;
+    let count = native_result(read(report))?;
     source_control_report_count(report, count, windows)
 }
 
@@ -217,18 +312,20 @@ fn source_control_report_count(
     // Locked hidapi 2.6.7 Windows C uses the same IOCTL/OVERLAPPED sequence as
     // current HID.node, but adds the prefix only when returned data[0] is zero.
     // HID.node's Feature 0x17ac0 and Input 0x17c50 return BytesReturned+1.
-    let count = if windows && report[0] != 0 {
-        count
-            .checked_add(1)
-            .context("Source control report count overflow")?
-    } else {
-        count
-    };
-    ensure!(
-        count <= report.len(),
-        "Source control report count exceeds its buffer"
-    );
-    Ok(count)
+    after_native(count, || {
+        let count = if windows && report[0] != 0 {
+            count
+                .checked_add(1)
+                .context("Source control report count overflow")?
+        } else {
+            count
+        };
+        ensure!(
+            count <= report.len(),
+            "Source control report count exceeds its buffer"
+        );
+        Ok(count)
+    })
 }
 
 impl FeatureTransport for NativeTransport {
@@ -237,31 +334,31 @@ impl FeatureTransport for NativeTransport {
     }
 
     fn send_feature(&self, report: &[u8]) -> anyhow::Result<()> {
-        ensure!(!report.is_empty(), "Feature 查询报文为空");
-        ensure!(
-            self.lengths.feature.get(&report[0]) == Some(&report.len()),
-            "Feature 报文与实际 descriptor 的 Report ID/长度不一致"
-        );
-        self.device
-            .send_feature_report(report)
-            .context("HID Feature 查询发送失败")
+        self.send_feature_counted(report).map(|_| ())
+    }
+
+    fn send_feature_counted(&self, report: &[u8]) -> anyhow::Result<usize> {
+        send_exact_feature(&self.lengths, report, |buffer| {
+            self.device
+                .send_feature_report(buffer)
+                .context("HID Feature 查询发送失败")
+        })
     }
 
     fn get_feature(&self, report: &mut [u8]) -> anyhow::Result<usize> {
-        ensure!(!report.is_empty(), "Feature 响应缓冲区为空");
-        ensure!(
-            self.lengths.feature.get(&report[0]) == Some(&report.len()),
-            "Feature 响应与实际 descriptor 的 Report ID/长度不一致"
-        );
-        let count = self
-            .device
-            .get_feature_report(report)
-            .context("HID Feature 响应读取失败")?;
-        ensure!(count <= report.len(), "HID 返回字节数超过缓冲区长度");
-        Ok(count)
+        read_exact_feature(&self.lengths, report, |buffer| {
+            self.device
+                .get_feature_report(buffer)
+                .context("HID Feature 响应读取失败")
+        })
     }
 
     fn send_feature_at_collection_max(&self, report: &[u8]) -> anyhow::Result<()> {
+        self.send_feature_at_collection_max_counted(report)
+            .map(|_| ())
+    }
+
+    fn send_feature_at_collection_max_counted(&self, report: &[u8]) -> anyhow::Result<usize> {
         send_collection_feature(&self.lengths, report, |buffer| {
             self.device
                 .send_feature_report(buffer)
@@ -278,17 +375,11 @@ impl FeatureTransport for NativeTransport {
     }
 
     fn write_output(&self, report: &[u8]) -> anyhow::Result<()> {
-        ensure!(!report.is_empty(), "Output Report 为空");
-        ensure!(
-            valid_io_length(&self.lengths.output, report[0], report.len()),
-            "Output Report 与实际 descriptor 的 ID/长度不一致"
-        );
-        let sent = self
-            .device
-            .write(report)
-            .context("HID Output Report 发送失败")?;
-        ensure!(sent == report.len(), "HID Output Report 未完整发送");
-        Ok(())
+        write_complete_output(&self.lengths, report, |buffer| {
+            self.device
+                .write(buffer)
+                .context("HID Output Report 发送失败")
+        })
     }
 
     fn write_output_counted(&self, report: &[u8]) -> anyhow::Result<usize> {
@@ -312,41 +403,11 @@ impl FeatureTransport for NativeTransport {
     }
 
     fn read_interrupt(&self, report: &mut [u8], timeout_ms: u32) -> anyhow::Result<usize> {
-        let timeout = i32::try_from(timeout_ms).context("Interrupt 等待时间超出有限超时范围")?;
-        let maximum = self
-            .lengths
-            .input
-            .values()
-            .max()
-            .copied()
-            .context("此 collection 未声明 Input Report")?;
-        // Our descriptor lengths include the API ID slot even for ID zero.
-        // hid_read_timeout omits that slot for unnumbered interrupt reports.
-        let unnumbered = self.lengths.input.contains_key(&0);
-        ensure!(
-            !unnumbered || self.lengths.input.len() == 1,
-            "此 collection 混合无编号与编号 Input Report，无法确定事件格式"
-        );
-        let raw_maximum = maximum - usize::from(unnumbered);
-        ensure!(
-            raw_maximum > 0 && report.len() >= raw_maximum,
-            "Interrupt 缓冲区小于 descriptor 声明的最大报告"
-        );
-        let count = self
-            .device
-            .read_timeout(report, timeout)
-            .context("HID Interrupt Input Report 读取失败")?;
-        ensure!(count <= report.len(), "Interrupt 实际字节数超出缓冲区");
-        if count == 0 {
-            return Ok(0);
-        }
-        let id = if unnumbered { 0 } else { report[0] };
-        let api_count = count + usize::from(unnumbered);
-        ensure!(
-            valid_io_length(&self.lengths.input, id, api_count),
-            "Interrupt Report 的实际 ID/长度与 descriptor 不一致"
-        );
-        Ok(count)
+        read_interrupt_report(&self.lengths, report, timeout_ms, |buffer, timeout| {
+            self.device
+                .read_timeout(buffer, timeout)
+                .context("HID Interrupt Input Report 读取失败")
+        })
     }
 
     fn metadata(&self) -> Value {
@@ -366,39 +427,46 @@ fn read_interrupt_report(
     timeout_ms: u32,
     read: impl FnOnce(&mut [u8], i32) -> anyhow::Result<usize>,
 ) -> anyhow::Result<usize> {
-    let timeout = i32::try_from(timeout_ms).context("Interrupt 等待时间超出有限超时范围")?;
-    let maximum = lengths
-        .input
-        .values()
-        .max()
-        .copied()
-        .context("此 collection 未声明 Input Report")?;
-    // Descriptor lengths include the API ID slot for ID zero; hidapi's
-    // interrupt read returns only the real bytes of an unnumbered report.
-    let unnumbered = lengths.input.contains_key(&0);
-    ensure!(
-        !unnumbered || lengths.input.len() == 1,
-        "此 collection 混合无编号与编号 Input Report，无法确定事件格式"
-    );
-    let raw_maximum = maximum
-        .checked_sub(usize::from(unnumbered))
-        .context("Interrupt descriptor 报告长度无效")?;
-    ensure!(
-        raw_maximum > 0 && report.len() >= raw_maximum,
-        "Interrupt 缓冲区小于 descriptor 声明的最大报告"
-    );
-    let count = read(report, timeout)?;
-    ensure!(count <= report.len(), "Interrupt 实际字节数超出缓冲区");
-    if count == 0 {
-        return Ok(0);
-    }
-    let id = if unnumbered { 0 } else { report[0] };
-    let api_count = count + usize::from(unnumbered);
-    ensure!(
-        valid_io_length(&lengths.input, id, api_count),
-        "Interrupt Report 的实际 ID/长度与 descriptor 不一致"
-    );
-    Ok(count)
+    let (timeout, unnumbered) = before_native(|| {
+        let timeout = i32::try_from(timeout_ms).context("Interrupt 等待时间超出有限超时范围")?;
+        let maximum = lengths
+            .input
+            .values()
+            .max()
+            .copied()
+            .context("此 collection 未声明 Input Report")?;
+        // Descriptor lengths include the API ID slot for ID zero; hidapi's
+        // interrupt read returns only the real bytes of an unnumbered report.
+        let unnumbered = lengths.input.contains_key(&0);
+        ensure!(
+            !unnumbered || lengths.input.len() == 1,
+            "此 collection 混合无编号与编号 Input Report，无法确定事件格式"
+        );
+        let raw_maximum = maximum
+            .checked_sub(usize::from(unnumbered))
+            .context("Interrupt descriptor 报告长度无效")?;
+        ensure!(
+            raw_maximum > 0 && report.len() >= raw_maximum,
+            "Interrupt 缓冲区小于 descriptor 声明的最大报告"
+        );
+        Ok((timeout, unnumbered))
+    })?;
+    let count = native_result(read(report, timeout))?;
+    after_native(count, || {
+        ensure!(count <= report.len(), "Interrupt 实际字节数超出缓冲区");
+        if count == 0 {
+            return Ok(0);
+        }
+        let id = if unnumbered { 0 } else { report[0] };
+        let api_count = count
+            .checked_add(usize::from(unnumbered))
+            .context("Interrupt API 报告长度溢出")?;
+        ensure!(
+            lengths.accepts_input_report_length(id, api_count),
+            "Interrupt Report 的实际 ID/长度与 descriptor 不一致"
+        );
+        Ok(count)
+    })
 }
 
 impl InterruptTransport for NativeInterrupt {
@@ -417,6 +485,262 @@ impl InterruptTransport for NativeInterrupt {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn assert_outcome(error: &anyhow::Error, expected: NativeIoOutcome, cause: &str) {
+        assert_eq!(native_io_outcome(error), Some(expected));
+        assert!(format!("{error:#}").contains(cause));
+    }
+
+    #[test]
+    fn feature_send_count_distinguishes_native_return_rejection_and_preflight() {
+        let lengths = ReportLengths {
+            feature: [(7, 64)].into(),
+            ..Default::default()
+        };
+        let mut report = [0; 64];
+        report[0] = 7;
+        assert_eq!(
+            send_exact_feature(&lengths, &report, |sent| {
+                assert_eq!(sent, report);
+                Ok(())
+            })
+            .unwrap(),
+            64
+        );
+        for collection in [false, true] {
+            let send = |buffer: &[u8]| {
+                assert_eq!(buffer, report);
+                Err(
+                    anyhow::Error::new(HidError::IncompleteSendError { sent: 23, all: 64 })
+                        .context("hidapi returned a short Feature send"),
+                )
+            };
+            let error = if collection {
+                send_collection_feature(&lengths, &report, send)
+            } else {
+                send_exact_feature(&lengths, &report, send)
+            }
+            .unwrap_err();
+            assert_outcome(
+                &error,
+                NativeIoOutcome::Returned { byte_count: 23 },
+                "hidapi returned a short Feature send",
+            );
+            assert!(matches!(
+                error.downcast_ref::<HidError>(),
+                Some(HidError::IncompleteSendError { sent: 23, all: 64 })
+            ));
+        }
+        let error = send_exact_feature(&lengths, &report, |_| {
+            Err(anyhow::Error::new(HidError::HidApiError {
+                message: "native Feature rejected".to_owned(),
+            }))
+        })
+        .unwrap_err();
+        assert_outcome(&error, NativeIoOutcome::Rejected, "native Feature rejected");
+
+        let error = send_exact_feature(&lengths, &report[..63], |_| {
+            panic!("invalid Feature length must not reach native I/O")
+        })
+        .unwrap_err();
+        assert_outcome(&error, NativeIoOutcome::NotCalled, "Report ID/长度不一致");
+        let error = send_exact_feature(&lengths, &report, |_| {
+            Err(anyhow::Error::new(HidError::InvalidZeroSizeData))
+        })
+        .unwrap_err();
+        assert_eq!(native_io_outcome(&error), Some(NativeIoOutcome::NotCalled));
+    }
+
+    #[test]
+    fn native_boundary_preserves_an_existing_more_precise_outcome() {
+        for outcome in [
+            NativeIoOutcome::NotCalled,
+            NativeIoOutcome::Returned { byte_count: 9 },
+            NativeIoOutcome::Rejected,
+        ] {
+            let cause = native_io_failure(outcome, anyhow::anyhow!("precise native outcome"));
+            let error = native_result::<usize>(Err(cause.context("native wrapper"))).unwrap_err();
+            assert_outcome(&error, outcome, "precise native outcome");
+        }
+    }
+
+    #[test]
+    fn output_validation_retains_the_native_count_without_claiming_completion() {
+        let lengths = ReportLengths {
+            output: [(7, 64)].into(),
+            ..Default::default()
+        };
+        let mut report = [0; 64];
+        report[0] = 7;
+        for byte_count in [0, 23, 65] {
+            let error = write_complete_output(&lengths, &report, |sent| {
+                assert_eq!(sent, report);
+                Ok(byte_count)
+            })
+            .unwrap_err();
+            assert_outcome(
+                &error,
+                NativeIoOutcome::Returned { byte_count },
+                "未完整发送",
+            );
+        }
+        let error = write_counted_output(&lengths, &report, |_| Ok(65)).unwrap_err();
+        assert_outcome(
+            &error,
+            NativeIoOutcome::Returned { byte_count: 65 },
+            "exceeds the submitted buffer",
+        );
+        let error = write_complete_output(&lengths, &report, |_| {
+            anyhow::bail!("native Output rejected")
+        })
+        .unwrap_err();
+        assert_outcome(&error, NativeIoOutcome::Rejected, "native Output rejected");
+        let error = write_complete_output(&lengths, &report[..63], |_| {
+            panic!("invalid Output length must not reach native I/O")
+        })
+        .unwrap_err();
+        assert_outcome(&error, NativeIoOutcome::NotCalled, "ID/长度不一致");
+    }
+
+    #[test]
+    fn ordinary_output_keeps_observed_extents_and_rejects_other_frames_before_native_io() {
+        let lengths = ReportLengths {
+            output: [(7, 3), (9, 5)].into(),
+            ..Default::default()
+        };
+        for report in [
+            vec![7, 0xa1, 0xb2],
+            vec![7, 0xa1, 0xb2, 0, 0],
+            vec![9, 1, 2, 3, 4],
+        ] {
+            write_complete_output(&lengths, &report, |sent| {
+                assert_eq!(sent, report);
+                Ok(sent.len())
+            })
+            .unwrap();
+        }
+        for report in [
+            vec![],
+            vec![8, 0, 0],
+            vec![8, 0, 0, 0, 0],
+            vec![7, 0],
+            vec![7, 0, 0, 0],
+            vec![7; 6],
+            vec![9, 0, 0],
+        ] {
+            let error = write_complete_output(&lengths, &report, |_| {
+                panic!("unobserved Output ID or extent must not reach native I/O")
+            })
+            .unwrap_err();
+            assert_eq!(native_io_outcome(&error), Some(NativeIoOutcome::NotCalled));
+        }
+    }
+
+    #[test]
+    fn feature_read_bounds_error_keeps_native_count_and_mutated_buffer() {
+        let lengths = ReportLengths {
+            feature: [(7, 64)].into(),
+            ..Default::default()
+        };
+        let mut report = [0; 64];
+        report[0] = 7;
+        let error = read_exact_feature(&lengths, &mut report, |buffer| {
+            buffer[1] = 0x6a;
+            Ok(65)
+        })
+        .unwrap_err();
+        assert_outcome(
+            &error,
+            NativeIoOutcome::Returned { byte_count: 65 },
+            "超过缓冲区长度",
+        );
+        assert_eq!(report[1], 0x6a);
+        let error = read_exact_feature(&lengths, &mut report, |_| {
+            anyhow::bail!("native Feature read rejected")
+        })
+        .unwrap_err();
+        assert_outcome(
+            &error,
+            NativeIoOutcome::Rejected,
+            "native Feature read rejected",
+        );
+        let error = read_exact_feature(&lengths, &mut report[..63], |_| {
+            panic!("invalid Feature buffer must not reach native I/O")
+        })
+        .unwrap_err();
+        assert_outcome(&error, NativeIoOutcome::NotCalled, "Report ID/长度不一致");
+    }
+
+    #[test]
+    fn control_read_validation_retains_count_before_windows_prefix_adjustment() {
+        let lengths = ReportLengths {
+            feature: [(7, 64)].into(),
+            input: [(18, 64)].into(),
+            ..Default::default()
+        };
+        for byte_count in [64, usize::MAX] {
+            let mut report = [18; 64];
+            let error = read_collection_feature(&lengths, &mut report, true, |buffer| {
+                buffer[1] = 0x7b;
+                Ok(byte_count)
+            })
+            .unwrap_err();
+            assert_eq!(
+                native_io_outcome(&error),
+                Some(NativeIoOutcome::Returned { byte_count })
+            );
+            assert_eq!(report[1], 0x7b);
+            let error =
+                read_input_report(&lengths, &mut report, true, |_| Ok(byte_count)).unwrap_err();
+            assert_eq!(
+                native_io_outcome(&error),
+                Some(NativeIoOutcome::Returned { byte_count })
+            );
+        }
+        let mut report = [18; 64];
+        let error = read_collection_feature(&lengths, &mut report[..63], true, |_| {
+            panic!("invalid collection buffer must not reach native I/O")
+        })
+        .unwrap_err();
+        assert_outcome(
+            &error,
+            NativeIoOutcome::NotCalled,
+            "observed maximum length",
+        );
+    }
+
+    #[test]
+    fn interrupt_validation_retains_actual_count_and_preflight_does_not_read() {
+        let lengths = lengths(&[(5, 3)]);
+        for (bytes, byte_count) in [(vec![7, 14, 2], 3), (vec![5, 14], 2), (vec![5], 101)] {
+            let mut report = [0; 100];
+            let error = read_interrupt_report(&lengths, &mut report, 0, |buffer, _| {
+                buffer[..bytes.len()].copy_from_slice(&bytes);
+                Ok(byte_count)
+            })
+            .unwrap_err();
+            assert_eq!(
+                native_io_outcome(&error),
+                Some(NativeIoOutcome::Returned { byte_count })
+            );
+            assert_eq!(&report[..bytes.len()], bytes.as_slice());
+        }
+        let mut report = [0; 100];
+        let error = read_interrupt_report(&lengths, &mut report, 0, |_, _| {
+            anyhow::bail!("native interrupt rejected")
+        })
+        .unwrap_err();
+        assert_outcome(
+            &error,
+            NativeIoOutcome::Rejected,
+            "native interrupt rejected",
+        );
+        let error = read_interrupt_report(&lengths, &mut report, u32::MAX, |_, _| {
+            panic!("invalid timeout must not reach native I/O")
+        })
+        .unwrap_err();
+        assert_outcome(&error, NativeIoOutcome::NotCalled, "有限超时范围");
+    }
 
     #[test]
     fn counted_output_preserves_elsa_bytes_and_native_length_disagreement() {

@@ -730,7 +730,8 @@ fn cancellation_after_target_ack_preserves_selection_without_analog_write() {
                 validate,
             )
             .unwrap_err();
-            assert_eq!(error.phase, KeyboardAnalogReadFailurePhase::Read);
+            assert_eq!(error.phase, KeyboardAnalogReadFailurePhase::TargetKeymap);
+            assert!(crate::backend::exchange_release_completed(&error.error));
             assert!(error.device_state_may_have_changed());
             assert_eq!(error.target_keymap.acknowledgement.unwrap().data, [2]);
         } else {
@@ -743,7 +744,8 @@ fn cancellation_after_target_ack_preserves_selection_without_analog_write() {
                 validate,
             )
             .unwrap_err();
-            assert_eq!(error.phase, KeyboardAnalogFailurePhase::Write);
+            assert_eq!(error.phase, KeyboardAnalogFailurePhase::TargetKeymap);
+            assert!(crate::backend::exchange_release_completed(&error.error));
             assert!(error.device_state_may_have_changed());
             assert_eq!(error.report.attempted_writes, 0);
             assert_eq!(

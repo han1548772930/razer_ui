@@ -75,6 +75,21 @@ pub struct CompletedFeatureExchange {
 }
 
 impl CompletedFeatureExchange {
+    /// The caller must first validate its protocol ACK against actual read
+    /// bytes. Retention only attaches diagnostics and never publishes success.
+    pub(crate) fn retain(
+        error: anyhow::Error,
+        command: [u8; 3],
+        transaction: u8,
+        data: Vec<u8>,
+    ) -> anyhow::Error {
+        error.context(Self {
+            command,
+            transaction,
+            data,
+        })
+    }
+
     pub fn from_error(error: &anyhow::Error) -> Option<&Self> {
         error.downcast_ref()
     }
@@ -157,13 +172,72 @@ fn finish_feature_reply(
     match result {
         Ok(data) => match finish_if_current(lease, Ok(()), current) {
             Ok(()) => Ok(data),
-            Err(error) => Err(error.context(CompletedFeatureExchange {
+            Err(error) => Err(CompletedFeatureExchange::retain(
+                error,
                 command,
                 transaction,
                 data,
-            })),
+            )),
         },
         Err(error) => finish_if_current(lease, Err(error), current),
+    }
+}
+
+enum DecodedFeatureReply {
+    Acknowledged(Vec<u8>),
+    Busy,
+    Retry(anyhow::Error),
+}
+
+fn decode_feature_reply(
+    incoming: &[u8],
+    command: [u8; 3],
+    transaction: u8,
+) -> anyhow::Result<DecodedFeatureReply> {
+    ensure!(incoming.len() == 91, "Feature response is truncated");
+    // The source discards the returned prefix without matching the selector.
+    let packet = &incoming[1..];
+    if packet[1] != transaction || packet[6..8] != command[1..] {
+        return Ok(DecodedFeatureReply::Retry(anyhow::anyhow!(
+            "Feature response transaction or command does not match"
+        )));
+    }
+    match packet[0] {
+        1 => return Ok(DecodedFeatureReply::Busy),
+        2 => {}
+        0 | 3 | 4 => {
+            return Ok(DecodedFeatureReply::Retry(anyhow::anyhow!(
+                "Feature response status {}",
+                packet[0]
+            )));
+        }
+        state => anyhow::bail!("Feature command is unsupported or returned status {state}"),
+    }
+    let length = usize::from(packet[5]);
+    ensure!(
+        length <= 80,
+        "Feature response data exceeds the packet buffer"
+    );
+    Ok(DecodedFeatureReply::Acknowledged(
+        packet[8..8 + length].to_vec(),
+    ))
+}
+
+fn retain_failed_feature_reply(
+    error: anyhow::Error,
+    command: [u8; 3],
+    transaction: u8,
+) -> anyhow::Error {
+    let data =
+        crate::backend::native_read_bytes(&error).and_then(|bytes| {
+            match decode_feature_reply(bytes, command, transaction) {
+                Ok(DecodedFeatureReply::Acknowledged(data)) => Some(data),
+                _ => None,
+            }
+        });
+    match data {
+        Some(data) => CompletedFeatureExchange::retain(error, command, transaction, data),
+        None => error,
     }
 }
 
@@ -212,8 +286,9 @@ pub(crate) fn exchange_with_report_data_size(
     )
 }
 
-/// Observe an actual call to the transport, after layout/transaction checks and
-/// the cancellation guard. A rejected request must not be reported as a write.
+/// Reconcile actual sends from the retained native owner's terminal facts,
+/// before publishing acknowledgements or returning control to recovery.
+/// Neither preflight rejection nor an unmarked failure proves a write attempt.
 pub(crate) fn exchange_with_report_data_size_observing_send(
     device: &dyn FeatureTransport,
     cap: &DeviceReadCapability,
@@ -287,15 +362,27 @@ fn exchange_inner(
         transaction,
         validate,
         |device, lease| {
-            let mut last_error = "No Feature response received".to_owned();
+            let mut last_error = anyhow::anyhow!("No Feature response received");
             for out_attempt in 0..cap.max_retry_out {
                 validate()?;
-                observe_send();
-                let sent = device.send_feature_at_collection_max(&outgoing);
-                validate()?;
-                if let Err(error) = sent {
-                    last_error = format!("{error:#}");
-                    continue;
+                let sent = device.send_feature_at_collection_max_counted(&outgoing);
+                if crate::backend::native_io_attempted(&sent) {
+                    observe_send();
+                }
+                if let Err(validation) = validate() {
+                    return Err(crate::backend::complete_native_io(sent, validation));
+                }
+                match sent
+                    .and_then(|count| crate::backend::require_complete_send(count, outgoing.len()))
+                {
+                    Ok(()) => {}
+                    Err(error) => {
+                        if crate::backend::exchange_finalization_failed(&error) {
+                            return Err(error);
+                        }
+                        last_error = error;
+                        continue;
+                    }
                 }
                 std::thread::sleep(Duration::from_millis(cap.sleep_between_out_in_ms));
                 for attempt in 0..cap.max_retry_in {
@@ -306,49 +393,47 @@ fn exchange_inner(
                     let mut incoming = [0u8; 91];
                     incoming[0] = get_report_id;
                     let received = device.get_feature_at_collection_max(&mut incoming);
-                    validate()?;
+                    if let Err(validation) = validate() {
+                        return Err(retain_failed_feature_reply(
+                            crate::backend::complete_native_read(received, &incoming, validation),
+                            command,
+                            transaction,
+                        ));
+                    }
                     let count = match received {
                         Ok(count) => count,
                         Err(error) => {
-                            last_error = format!("{error:#}");
+                            if crate::backend::exchange_finalization_failed(&error)
+                                || crate::backend::native_read_bytes(&error).is_some()
+                            {
+                                return Err(retain_failed_feature_reply(
+                                    error,
+                                    command,
+                                    transaction,
+                                ));
+                            }
+                            last_error = error;
                             break;
                         }
                     };
                     ensure!(count == incoming.len(), "Feature response is truncated");
-                    // The original host slices off the returned prefix without checking
-                    // it against the request's interface/report selector.
-                    let packet = &incoming[1..];
-                    if packet[1] != transaction || packet[6..8] != command[1..] {
-                        last_error =
-                            "Feature response transaction or command does not match".into();
-                        break;
-                    }
-                    match packet[0] {
-                        1 => {
-                            last_error = "Device is busy".into();
+                    match decode_feature_reply(&incoming, command, transaction)? {
+                        DecodedFeatureReply::Busy => {
+                            last_error = anyhow::anyhow!("Device is busy");
                             continue;
                         }
-                        2 => {}
-                        0 | 3 | 4 => {
-                            last_error = format!("Feature response status {}", packet[0]);
+                        DecodedFeatureReply::Retry(error) => {
+                            last_error = error;
                             break;
                         }
-                        state => anyhow::bail!(
-                            "Feature command is unsupported or returned status {state}"
-                        ),
+                        DecodedFeatureReply::Acknowledged(data) => return Ok(data),
                     }
-                    let length = usize::from(packet[5]);
-                    ensure!(
-                        length <= 80,
-                        "Feature response data exceeds the packet buffer"
-                    );
-                    return Ok(packet[8..8 + length].to_vec());
                 }
                 if out_attempt + 1 < cap.max_retry_out {
                     lease.retry_release()?;
                 }
             }
-            Err(anyhow::anyhow!(last_error)).context("Source Feature command retries exhausted")
+            Err(last_error).context("Source Feature command retries exhausted")
         },
     )
 }

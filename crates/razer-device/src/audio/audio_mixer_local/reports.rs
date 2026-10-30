@@ -19,6 +19,24 @@ pub struct TransferProgress {
     pub input: Option<Vec<u8>>,
 }
 
+impl TransferProgress {
+    /// Reconcile the retained transport result before rejecting stale owners.
+    /// Complete sends remain diagnostics when a later identity check fails.
+    pub(super) fn observe_send(&mut self, result: &anyhow::Result<usize>) {
+        use crate::backend::{NativeIoOutcome, native_io_attempted, native_io_outcome};
+
+        self.sends_attempted += u32::from(native_io_attempted(result));
+        let returned = match result {
+            Ok(count) => Some(*count),
+            Err(error) => match native_io_outcome(error) {
+                Some(NativeIoOutcome::Returned { byte_count }) => Some(byte_count),
+                _ => None,
+            },
+        };
+        self.sends_completed += u32::from(returned == Some(self.report.len()));
+    }
+}
+
 #[derive(Debug)]
 pub struct TransferFailure {
     pub progress: TransferProgress,
@@ -61,21 +79,23 @@ fn exchange(
                     thread::sleep(Duration::from_millis(10));
                     validate()?;
                 }
-                progress.sends_attempted += 1;
                 let sent = match channel {
-                    ReportChannel::Feature => device.send_feature_at_collection_max(report),
-                    ReportChannel::Output => device.write_output(report),
+                    ReportChannel::Feature => device.send_feature_at_collection_max_counted(report),
+                    ReportChannel::Output => device.write_output(report).map(|()| report.len()),
                 };
-                progress.sends_completed += u32::from(sent.is_ok());
-                if let Err(error) = sent {
+                progress.observe_send(&sent);
+                if let Err(validation) = validate() {
+                    return Err(crate::backend::complete_native_io(sent, validation));
+                }
+                if let Err(error) = sent
+                    .and_then(|count| crate::backend::require_complete_send(count, report.len()))
+                {
                     if crate::backend::exchange_finalization_failed(&error) {
                         return Err(error);
                     }
-                    validate()?;
                     last_error = Some(error);
                     continue;
                 }
-                validate()?;
                 let Some(selector) = reply else {
                     return Ok(None);
                 };
@@ -93,12 +113,23 @@ fn exchange(
                     ReportChannel::Feature => device.get_feature_at_collection_max(&mut bytes),
                     ReportChannel::Output => device.get_input(&mut bytes),
                 };
+                let received = match validate() {
+                    Ok(()) => received,
+                    Err(validation) => Err(crate::backend::complete_native_read(
+                        received, &bytes, validation,
+                    )),
+                };
                 if let Err(error) = &received {
+                    if let Some(actual) = crate::backend::native_read_bytes(error) {
+                        if !actual.is_empty() && actual.len() <= bytes.len() {
+                            progress.input = Some(actual.to_vec());
+                        }
+                        return received.map(|_| None);
+                    }
                     if crate::backend::exchange_finalization_failed(error) {
                         return received.map(|_| None);
                     }
                 }
-                validate()?;
                 match received {
                     Ok(count) if count > 0 && count <= bytes.len() => {
                         progress.input = Some(bytes[..count].to_vec());

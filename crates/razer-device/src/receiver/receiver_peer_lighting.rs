@@ -2,7 +2,7 @@
 //! fallback frames are ordinary base25 rows; Krakoff targets only its dock.
 use super::{PeerDeviceFactory, PeerExitEffect, PeerSupport};
 use crate::{
-    backend::FeatureTransport,
+    backend::{FeatureBatch, FeatureBatchFailure, FeatureTransport},
     lighting_driver::HardwareEffect,
     lighting_engine::EngineFrame,
     receiver_feature_channel::{Channel, WriteProgress, exchange_channel},
@@ -250,12 +250,13 @@ impl PeerHid {
                 && columns <= 25,
             "Peer native frame identity or geometry differs"
         );
-        let mut submitted = 0;
+        let mut batch_receipt = None;
         crate::feature_exchange::with_validated_exchange(
             device,
             crate::backend::ExchangeOptions::batch(),
             validate,
             |device, _| {
+                let mut batch = FeatureBatch::new();
                 for row in 0..rows {
                     let mut payload = vec![0, frame.region_id, row, 0, columns - 1];
                     let start = usize::from(row) * usize::from(columns) * 3;
@@ -270,18 +271,30 @@ impl PeerHid {
                     report[6..9].copy_from_slice(&[payload.len() as u8, 15, 3]);
                     report[9..9 + payload.len()].copy_from_slice(&payload);
                     report[89] = report[3..89].iter().fold(0, |sum, byte| sum ^ byte);
-                    validate()?;
-                    device.send_feature_at_collection_max(&report)?;
-                    submitted += 1;
-                    validate()?;
+                    batch.push_report(&report)?;
+                    if row + 1 < rows {
+                        batch.push_sleep(1);
+                    }
                 }
-                Ok(submitted)
+                let receipt = device.send_feature_batch(&batch)?;
+                let submitted = receipt.progress().reports_submitted();
+                let complete = receipt.raw_return() != 0 && submitted == usize::from(rows);
+                batch_receipt = Some(receipt);
+                ensure!(
+                    complete,
+                    "Peer native lighting batch did not submit every row"
+                );
+                Ok(submitted as u32)
             },
         )
         .map_err(|error| {
-            error.context(crate::ReceiverFrameSubmissionFailure {
-                reports_submitted: submitted,
-            })
+            let error = match batch_receipt {
+                Some(receipt) => receipt.into_failure(error),
+                None => error,
+            };
+            let reports_submitted = FeatureBatchFailure::from_error(&error)
+                .map_or(0, |failure| failure.progress.reports_submitted() as u32);
+            error.context(crate::ReceiverFrameSubmissionFailure { reports_submitted })
         })
     }
 }

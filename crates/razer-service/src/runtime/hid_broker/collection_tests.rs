@@ -1,4 +1,9 @@
 use super::*;
+use razer_device::backend::{
+    FeatureBatchFailure, FeatureBatchOperation, FeatureBatchProgress, FeatureBatchReportReturn,
+    exchange_release_completed, execute_feature_batch, native_io_attempted, native_read_bytes,
+    observe_feature_batch,
+};
 use serde_json::json;
 use std::{
     rc::Rc,
@@ -20,7 +25,32 @@ enum Observed {
     Send(Vec<u8>),
     Get,
     Output(Vec<u8>),
+    CountedOutput(Vec<u8>),
+    Batch(Vec<FeatureBatchOperation>),
+    BatchSleep(u8),
 }
+
+#[derive(Debug)]
+struct ScriptedNativeFailure;
+
+impl std::fmt::Display for ScriptedNativeFailure {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("scripted typed native terminal failure")
+    }
+}
+
+impl std::error::Error for ScriptedNativeFailure {}
+
+#[derive(Debug)]
+struct CallerIdentityLost;
+
+impl std::fmt::Display for CallerIdentityLost {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("caller identity changed while the native result was pending")
+    }
+}
+
+impl std::error::Error for CallerIdentityLost {}
 
 #[derive(Default)]
 struct Gate {
@@ -69,11 +99,15 @@ impl Drop for CancelOnDrop {
 
 struct MockState {
     node: HidNode,
+    lengths: ReportLengths,
     opened: AtomicUsize,
     closed: AtomicUsize,
     observed: Mutex<Vec<Observed>>,
     opening: Mutex<Option<Arc<Gate>>>,
     sending: Mutex<Option<Arc<Gate>>>,
+    reading: Mutex<Option<Arc<Gate>>>,
+    interrupt_reading: Mutex<Option<Arc<Gate>>>,
+    batching: Mutex<Option<Arc<Gate>>>,
     resolving: Mutex<Option<Arc<Gate>>>,
     gates: Mutex<Vec<Arc<Gate>>>,
 }
@@ -82,6 +116,10 @@ struct Fixture(Arc<MockState>);
 
 impl Fixture {
     fn new(product_id: u16) -> Self {
+        Self::with_lengths(product_id, lengths())
+    }
+
+    fn with_lengths(product_id: u16, lengths: ReportLengths) -> Self {
         let node = HidNode {
             path: format!("mock-collection-{}", Uuid::new_v4()).into_bytes(),
             vendor_id: 5426,
@@ -96,11 +134,15 @@ impl Fixture {
         };
         let state = Arc::new(MockState {
             node,
+            lengths,
             opened: AtomicUsize::new(0),
             closed: AtomicUsize::new(0),
             observed: Mutex::new(Vec::new()),
             opening: Mutex::new(None),
             sending: Mutex::new(None),
+            reading: Mutex::new(None),
+            interrupt_reading: Mutex::new(None),
+            batching: Mutex::new(None),
             resolving: Mutex::new(None),
             gates: Mutex::new(Vec::new()),
         });
@@ -194,7 +236,7 @@ impl HidBackend for MockBackend {
             gate.enter();
         }
         Ok(Box::new(MockInterrupt {
-            _state: state,
+            state,
             thread: thread::current().id(),
             _local: self.0.clone(),
         }))
@@ -213,6 +255,18 @@ struct MockFeature {
     state: Arc<MockState>,
     thread: thread::ThreadId,
     _local: Rc<()>,
+}
+
+impl MockFeature {
+    fn write_native_output(&self, observed: Observed) -> anyhow::Result<usize> {
+        assert_eq!(self.thread, thread::current().id());
+        self.state.observed.lock().unwrap().push(observed);
+        let gate = self.state.sending.lock().unwrap().take();
+        if let Some(gate) = gate {
+            gate.enter();
+        }
+        Ok(2)
+    }
 }
 
 impl FeatureTransport for MockFeature {
@@ -235,28 +289,86 @@ impl FeatureTransport for MockFeature {
             report.first() != Some(&0xee),
             "scripted native Feature failure"
         );
+        if report.first() == Some(&0xef) {
+            return Err(ScriptedNativeFailure.into());
+        }
+        if report.first() == Some(&0xfd) {
+            return Err(native_io_failure(
+                NativeIoOutcome::Returned { byte_count: 2 },
+                anyhow::anyhow!("scripted adapter rejects a normal native return"),
+            ));
+        }
         Ok(())
     }
 
-    fn get_feature(&self, report: &mut [u8]) -> anyhow::Result<usize> {
-        assert_eq!(self.thread, thread::current().id());
-        self.state.observed.lock().unwrap().push(Observed::Get);
-        report[..3].copy_from_slice(&[0x7f, 0x12, 0x34]);
-        Ok(3)
+    fn send_feature_counted(&self, report: &[u8]) -> anyhow::Result<usize> {
+        self.send_feature(report)?;
+        Ok(if report.first() == Some(&0xfc) {
+            2
+        } else {
+            report.len()
+        })
     }
 
-    fn write_output_counted(&self, report: &[u8]) -> anyhow::Result<usize> {
+    fn send_feature_at_collection_max_counted(&self, report: &[u8]) -> anyhow::Result<usize> {
+        self.send_feature_counted(report)
+    }
+
+    fn send_feature_batch(&self, batch: &FeatureBatch) -> anyhow::Result<FeatureBatchReceipt> {
         assert_eq!(self.thread, thread::current().id());
         self.state
             .observed
             .lock()
             .unwrap()
-            .push(Observed::Output(report.to_vec()));
-        Ok(2)
+            .push(Observed::Batch(batch.operations().to_vec()));
+        let result = execute_feature_batch(
+            batch,
+            |report| self.send_feature_at_collection_max_counted(report),
+            |milliseconds| {
+                self.state
+                    .observed
+                    .lock()
+                    .unwrap()
+                    .push(Observed::BatchSleep(milliseconds));
+                Ok(())
+            },
+        );
+        let gate = self.state.batching.lock().unwrap().take();
+        if let Some(gate) = gate {
+            gate.enter();
+        }
+        result
+    }
+
+    fn get_feature(&self, report: &mut [u8]) -> anyhow::Result<usize> {
+        assert_eq!(self.thread, thread::current().id());
+        self.state.observed.lock().unwrap().push(Observed::Get);
+        let gate = self.state.reading.lock().unwrap().take();
+        if let Some(gate) = gate {
+            gate.enter();
+        }
+        match report.first() {
+            Some(0xef) => return Err(ScriptedNativeFailure.into()),
+            Some(0xfb) => return Ok(report.len() + 1),
+            _ => {}
+        }
+        report[..3].copy_from_slice(&[0x7f, 0x12, 0x34]);
+        Ok(3)
+    }
+
+    fn write_output(&self, report: &[u8]) -> anyhow::Result<()> {
+        require_complete_send(
+            self.write_native_output(Observed::Output(report.to_vec()))?,
+            report.len(),
+        )
+    }
+
+    fn write_output_counted(&self, report: &[u8]) -> anyhow::Result<usize> {
+        self.write_native_output(Observed::CountedOutput(report.to_vec()))
     }
 
     fn report_lengths(&self) -> anyhow::Result<ReportLengths> {
-        Ok(lengths())
+        Ok(self.state.lengths.clone())
     }
 
     fn metadata(&self) -> Value {
@@ -272,7 +384,7 @@ impl Drop for MockFeature {
 }
 
 struct MockInterrupt {
-    _state: Arc<MockState>,
+    state: Arc<MockState>,
     thread: thread::ThreadId,
     _local: Rc<()>,
 }
@@ -280,12 +392,21 @@ struct MockInterrupt {
 impl InterruptTransport for MockInterrupt {
     fn read(&self, report: &mut [u8], _: u32) -> anyhow::Result<usize> {
         assert_eq!(self.thread, thread::current().id());
+        let gate = self.state.interrupt_reading.lock().unwrap().take();
+        if let Some(gate) = gate {
+            gate.enter();
+        }
+        match report.first() {
+            Some(0xef) => return Err(ScriptedNativeFailure.into()),
+            Some(0xfb) => return Ok(report.len() + 1),
+            _ => {}
+        }
         report[..2].copy_from_slice(&[0x81, 0x53]);
         Ok(2)
     }
 
     fn report_lengths(&self) -> ReportLengths {
-        lengths()
+        self.state.lengths.clone()
     }
 }
 
@@ -381,43 +502,121 @@ fn reap(pool: &Pool) {
 }
 
 #[test]
-fn batch_out_interval_is_checked_once_before_its_first_feature_send() {
-    let mut progress = LeaseProgress::default();
+fn only_the_whole_batch_dispatch_uses_its_fixed_two_millisecond_out_interval() {
+    let mut batch = FeatureBatch::new();
+    batch.push_report(&[0x10, 1, 2, 3]).unwrap();
+    batch.push_sleep(1);
+    batch.push_report(&[0x20, 4, 5, 6]).unwrap();
+    let packet = Packet::Batch(batch);
     let mut clock = SourceClock::default();
     clock.native_return(Duration::from_millis(10), NativeReturn::Get);
-    let interval = progress.out_interval(ExchangeTiming::Batch).unwrap();
+    let interval = packet.out_interval(ExchangeTiming::Batch).unwrap();
+    assert_eq!(interval, Duration::from_millis(2));
     assert_eq!(
         clock.out_wait(Duration::from_millis(11), interval),
         Some(Duration::from_millis(2))
     );
-    progress.dispatched(ExchangeTiming::Batch, true);
-    progress.returned(ExchangeTiming::Batch, true);
-    assert_eq!(progress.out_interval(ExchangeTiming::Batch), None);
+    assert_eq!(clock.out_wait(Duration::from_millis(12), interval), None);
+    let ordinary_send = Packet::Send {
+        bytes: vec![0x10, 1, 2, 3],
+        collection_max: true,
+    };
+    assert_eq!(ordinary_send.out_interval(ExchangeTiming::Batch), None);
+    assert_eq!(ordinary_send.out_interval(ExchangeTiming::Plain), None);
     assert_eq!(
-        progress.out_interval(ExchangeTiming::MutexOut {
+        ordinary_send.out_interval(ExchangeTiming::MutexOut {
             interval: Duration::from_millis(8)
         }),
         Some(Duration::from_millis(8))
     );
-    progress.finish_batch(&mut clock, Duration::from_millis(20), ExchangeTiming::Batch);
+}
+
+#[test]
+fn only_a_normal_whole_batch_return_refreshes_the_clock_including_zero() {
+    let fixture = Fixture::new(190);
+    let mut backend = raw_factory().unwrap();
+    let native = backend.open(&fixture.0.node).unwrap();
+    let mut empty = FeatureBatch::new();
+    let mut sleep_only = FeatureBatch::new();
+    sleep_only.push_sleep(0);
+    let mut partial_failure = FeatureBatch::new();
+    partial_failure.push_report(&[0x10, 1, 2, 3]).unwrap();
+    partial_failure.push_report(&[0xef, 4, 5, 6]).unwrap();
+    for batch in [&empty, &sleep_only] {
+        let mut clock = SourceClock::default();
+        let reply = Packet::Batch(batch.clone())
+            .execute(native.as_ref(), &mut clock, Instant::now())
+            .unwrap();
+        let PacketReply::Batch(receipt) = reply else {
+            panic!("batch lost its typed receipt");
+        };
+        assert_eq!(receipt.raw_return(), 0);
+        assert_eq!(receipt.byte_count(), 0);
+        assert_eq!(
+            clock.out_wait(Duration::ZERO, Duration::MAX),
+            Some(Duration::from_millis(2))
+        );
+    }
+    let mut clock = SourceClock::default();
+    let error = Packet::Batch(partial_failure)
+        .execute(native.as_ref(), &mut clock, Instant::now())
+        .err()
+        .expect("second report must reject the batch");
+    assert_eq!(native_io_outcome(&error), Some(NativeIoOutcome::Rejected));
+    assert!(error.downcast_ref::<ScriptedNativeFailure>().is_some());
+    assert_eq!(clock.out_wait(Duration::ZERO, Duration::MAX), None);
+    empty.push_report(&[0x10, 1, 2, 3]).unwrap();
+    Packet::Batch(empty)
+        .execute(native.as_ref(), &mut clock, Instant::now())
+        .unwrap();
     assert_eq!(
-        clock.out_wait(Duration::from_millis(21), Duration::from_millis(2)),
+        clock.out_wait(Duration::ZERO, Duration::MAX),
         Some(Duration::from_millis(2))
     );
 }
 
 #[test]
-fn a_batch_native_error_does_not_publish_a_normal_batch_return() {
-    let mut progress = LeaseProgress::default();
+fn an_empty_batch_lease_finish_does_not_dispatch_or_refresh_the_clock() {
+    let pool = pool();
+    let fixture = Fixture::new(190);
+    let entry = pool.entry(&fixture.0.node).unwrap();
+    entry
+        .wait_ready_validated(&AtomicBool::new(false), &no_validation)
+        .unwrap();
+    let mut backend = raw_factory().unwrap();
+    let native = backend.open(&fixture.0.node).unwrap();
+    let control = Arc::new(LeaseControl {
+        signature: Signature {
+            owner: Uuid::new_v4(),
+            request: Uuid::new_v4(),
+            epoch: entry.epoch,
+        },
+        canceled: Arc::new(AtomicBool::new(false)),
+        options: ExchangeOptions::batch(),
+        forced: AtomicBool::new(false),
+    });
+    let (sender, inbox) = mpsc::sync_channel(PACKET_CAPACITY);
+    let (response, receipt) = mpsc::sync_channel(1);
+    sender
+        .send(ActorRequest {
+            signature: control.signature,
+            operation: ActorOperation::Finish,
+            response,
+        })
+        .unwrap();
+    let (granted, _admission) = mpsc::sync_channel(1);
+    let pending = PendingLease {
+        control,
+        inbox,
+        granted,
+    };
     let mut clock = SourceClock::default();
-    clock.native_return(Duration::from_millis(10), NativeReturn::Get);
-    progress.dispatched(ExchangeTiming::Batch, true);
-    progress.returned(ExchangeTiming::Batch, false);
-    progress.finish_batch(&mut clock, Duration::from_millis(20), ExchangeTiming::Batch);
-    assert_eq!(
-        clock.out_wait(Duration::from_millis(21), Duration::from_millis(2)),
-        None
-    );
+    entry.run_lease(native.as_ref(), &mut clock, Instant::now(), &pending);
+    expect_unit(receipt.recv().unwrap().unwrap()).unwrap();
+    assert_eq!(clock.out_wait(Duration::ZERO, Duration::MAX), None);
+    assert!(fixture.observed().is_empty());
+    drop(native);
+    stop(&pool);
 }
 
 #[test]
@@ -606,6 +805,715 @@ fn separate_proxies_share_one_native_handle_and_preserve_counts_bytes_and_errors
 }
 
 #[test]
+fn ordinary_output_preserves_descriptor_admission_and_the_native_write_contract() {
+    for leased in [false, true] {
+        let pool = pool();
+        let fixture = Fixture::with_lengths(
+            190,
+            ReportLengths {
+                output: BTreeMap::from([(0, 2), (3, 4)]),
+                ..lengths()
+            },
+        );
+        let device = open(&pool, &fixture.0.node);
+        let mut lease = leased.then(|| device.begin_exchange(ExchangeOptions::plain()).unwrap());
+        let transport = lease
+            .as_ref()
+            .map_or(device.as_ref(), |lease| lease.transport());
+        for report in [
+            vec![],
+            vec![4, 1, 2, 3],
+            vec![0],
+            vec![0, 1, 2],
+            vec![0, 1, 2, 3, 4],
+            vec![3, 1],
+        ] {
+            let error = transport.write_output(&report).unwrap_err();
+            assert_eq!(native_io_outcome(&error), Some(NativeIoOutcome::NotCalled));
+        }
+        assert!(fixture.observed().is_empty());
+        transport.write_output(&[0, 1]).unwrap();
+        for report in [[0, 1, 2, 3], [3, 1, 2, 3]] {
+            let error = transport.write_output(&report).unwrap_err();
+            assert_eq!(
+                native_io_outcome(&error),
+                Some(NativeIoOutcome::Returned { byte_count: 2 })
+            );
+        }
+        assert_eq!(
+            fixture.observed(),
+            [
+                Observed::Output(vec![0, 1]),
+                Observed::Output(vec![0, 1, 2, 3]),
+                Observed::Output(vec![3, 1, 2, 3]),
+            ]
+        );
+        if let Some(lease) = lease.take() {
+            lease.finish().unwrap();
+        }
+        drop(lease);
+        drop(device);
+        stop(&pool);
+    }
+}
+
+#[test]
+fn counted_output_preserves_short_long_and_unobserved_id_buffers_for_its_native_owner() {
+    for leased in [false, true] {
+        let pool = pool();
+        let fixture = Fixture::new(190);
+        let device = open(&pool, &fixture.0.node);
+        let mut lease = leased.then(|| device.begin_exchange(ExchangeOptions::plain()).unwrap());
+        let transport = lease
+            .as_ref()
+            .map_or(device.as_ref(), |lease| lease.transport());
+        for report in [vec![9], vec![0, 1, 2], vec![9, 1, 2, 3, 4]] {
+            assert_eq!(transport.write_output_counted(&report).unwrap(), 2);
+        }
+        assert_eq!(
+            fixture.observed(),
+            [
+                Observed::CountedOutput(vec![9]),
+                Observed::CountedOutput(vec![0, 1, 2]),
+                Observed::CountedOutput(vec![9, 1, 2, 3, 4]),
+            ]
+        );
+        if let Some(lease) = lease.take() {
+            lease.finish().unwrap();
+        }
+        drop(lease);
+        drop(device);
+        stop(&pool);
+    }
+}
+
+#[test]
+fn ordinary_output_preserves_the_count_when_its_owner_retires_during_native_io() {
+    for report in [vec![0, 2], vec![3, 2, 3, 4]] {
+        let pool = pool();
+        let fixture = Fixture::with_lengths(
+            190,
+            ReportLengths {
+                output: BTreeMap::from([(0, 2), (3, 4)]),
+                ..lengths()
+            },
+        );
+        let gate = fixture.gate(&fixture.0.sending);
+        let canceled = Arc::new(AtomicBool::new(false));
+        thread::scope(|scope| {
+            let _release = ReleaseGate(gate.clone());
+            let _cancel = CancelOnDrop(canceled.clone());
+            let pool_ref = &pool;
+            let node = fixture.0.node.clone();
+            let signal = canceled.clone();
+            let bytes = report.clone();
+            let (sent, received) = mpsc::sync_channel(1);
+            let worker = scope.spawn(move || {
+                let transport = open(pool_ref, &node);
+                let validate = Rc::new(move || {
+                    ensure!(!signal.load(Ordering::Acquire), "output owner retired");
+                    Ok(())
+                });
+                let lease = transport
+                    .begin_exchange_validated(ExchangeOptions::plain(), validate)
+                    .unwrap();
+                let result = lease.transport().write_output(&bytes);
+                let finish = lease.finish();
+                sent.send((result, finish)).unwrap();
+            });
+            gate.wait_entered();
+            canceled.store(true, Ordering::Release);
+            assert!(matches!(
+                received.try_recv(),
+                Err(mpsc::TryRecvError::Empty)
+            ));
+            gate.release();
+            let (result, finish) = received.recv_timeout(Duration::from_secs(3)).unwrap();
+            let error = result.unwrap_err();
+            assert_eq!(
+                native_io_outcome(&error),
+                Some(NativeIoOutcome::Returned { byte_count: 2 })
+            );
+            assert!(native_io_attempted(&Err(error.context("diagnostic owner"))));
+            assert!(!exchange_release_completed(&finish.unwrap_err()));
+            worker.join().unwrap();
+        });
+        let recovery = open(&pool, &fixture.0.node);
+        recovery.send_feature(&[0x30]).unwrap();
+        assert_eq!(
+            fixture.observed(),
+            [Observed::Output(report), Observed::Send(vec![0x30])]
+        );
+        assert_eq!(fixture.0.opened.load(Ordering::Acquire), 1);
+        stop(&pool);
+    }
+}
+
+#[test]
+fn packet_actor_preserves_typed_terminal_errors_and_normal_return_facts() {
+    let pool = pool();
+    let fixture = Fixture::new(190);
+    let device = open(&pool, &fixture.0.node);
+    let terminal = device.send_feature(&[0xef]).unwrap_err();
+    assert!(terminal.downcast_ref::<ScriptedNativeFailure>().is_some());
+    assert_eq!(
+        terminal.root_cause().to_string(),
+        "scripted typed native terminal failure"
+    );
+    let returned = device.send_feature_counted(&[0xfd]).unwrap_err();
+    assert_eq!(
+        native_io_outcome(&returned),
+        Some(NativeIoOutcome::Returned { byte_count: 2 })
+    );
+    assert_eq!(
+        returned.root_cause().to_string(),
+        "scripted adapter rejects a normal native return"
+    );
+    drop(device);
+    stop(&pool);
+}
+
+#[test]
+fn counted_feature_return_survives_the_actor_while_legacy_send_stays_strict() {
+    let pool = pool();
+    let fixture = Fixture::new(190);
+    let device = open(&pool, &fixture.0.node);
+    assert_eq!(device.send_feature_counted(&[0xfc, 1, 2, 3]).unwrap(), 2);
+    assert_eq!(
+        device
+            .send_feature_at_collection_max_counted(&[0xfc, 1, 2, 3])
+            .unwrap(),
+        2
+    );
+    for error in [
+        device.send_feature(&[0xfc, 1, 2, 3]).unwrap_err(),
+        device
+            .send_feature_at_collection_max(&[0xfc, 1, 2, 3])
+            .unwrap_err(),
+    ] {
+        assert_eq!(
+            native_io_outcome(&error),
+            Some(NativeIoOutcome::Returned { byte_count: 2 })
+        );
+    }
+    assert_eq!(fixture.observed().len(), 4);
+    drop(device);
+    stop(&pool);
+}
+
+#[test]
+fn one_batch_packet_preserves_the_whole_receipt_and_native_operation_order() {
+    let pool = pool();
+    let fixture = Fixture::new(190);
+    let device = open(&pool, &fixture.0.node);
+    let mut batch = FeatureBatch::new();
+    batch.push_report(&[0x10, 1, 2, 3]).unwrap();
+    batch.push_sleep(0);
+    batch.push_report(&[0x20, 4, 5, 6]).unwrap();
+    let lease = device.begin_exchange(ExchangeOptions::batch()).unwrap();
+    let receipt = lease.transport().send_feature_batch(&batch).unwrap();
+    assert_eq!(receipt.byte_count(), 8);
+    assert_eq!(receipt.raw_return(), 8);
+    assert_eq!(
+        receipt.progress(),
+        &FeatureBatchProgress {
+            report_attempts: vec![
+                razer_device::backend::FeatureBatchReportAttempt {
+                    operation_index: 0,
+                    outcome: Some(NativeIoOutcome::Returned { byte_count: 4 }),
+                },
+                razer_device::backend::FeatureBatchReportAttempt {
+                    operation_index: 2,
+                    outcome: Some(NativeIoOutcome::Returned { byte_count: 4 }),
+                },
+            ],
+            report_returns: vec![
+                FeatureBatchReportReturn {
+                    operation_index: 0,
+                    requested_bytes: 4,
+                    returned_bytes: 4,
+                },
+                FeatureBatchReportReturn {
+                    operation_index: 2,
+                    requested_bytes: 4,
+                    returned_bytes: 4,
+                },
+            ],
+            completed_operations: 3,
+        }
+    );
+    lease.finish().unwrap();
+    assert_eq!(
+        fixture.observed(),
+        [
+            Observed::Batch(batch.operations().to_vec()),
+            Observed::Send(vec![0x10, 1, 2, 3]),
+            Observed::BatchSleep(0),
+            Observed::Send(vec![0x20, 4, 5, 6]),
+        ]
+    );
+    stop(&pool);
+    assert_eq!(fixture.0.opened.load(Ordering::Acquire), 1);
+    assert_eq!(fixture.0.closed.load(Ordering::Acquire), 1);
+}
+
+#[test]
+fn zero_batch_returns_and_partial_failures_remain_distinct_through_the_actor() {
+    let pool = pool();
+    let fixture = Fixture::new(190);
+    let device = open(&pool, &fixture.0.node);
+    let empty = FeatureBatch::new();
+    let mut sleep_only = FeatureBatch::new();
+    sleep_only.push_sleep(0);
+    for batch in [&empty, &sleep_only] {
+        let receipt = device.send_feature_batch(batch).unwrap();
+        assert_eq!(receipt.byte_count(), 0);
+        assert_eq!(receipt.raw_return(), 0);
+        assert!(receipt.progress().report_returns.is_empty());
+        assert_eq!(
+            receipt.progress().completed_operations,
+            batch.operations().len()
+        );
+    }
+    for second in [0xef, 0xfd] {
+        let mut batch = FeatureBatch::new();
+        batch.push_report(&[0x10, 1, 2, 3]).unwrap();
+        batch.push_report(&[second, 4, 5, 6]).unwrap();
+        batch.push_report(&[0x30, 7, 8, 9]).unwrap();
+        let error = device.send_feature_batch(&batch).unwrap_err();
+        assert_eq!(native_io_outcome(&error), Some(NativeIoOutcome::Rejected));
+        let failure = FeatureBatchFailure::from_error(&error).unwrap();
+        let mut returns = vec![FeatureBatchReportReturn {
+            operation_index: 0,
+            requested_bytes: 4,
+            returned_bytes: 4,
+        }];
+        if second == 0xef {
+            assert!(error.downcast_ref::<ScriptedNativeFailure>().is_some());
+        } else {
+            returns.push(FeatureBatchReportReturn {
+                operation_index: 1,
+                requested_bytes: 4,
+                returned_bytes: 2,
+            });
+        }
+        assert_eq!(failure.progress.report_returns, returns);
+        assert_eq!(failure.progress.completed_operations, 1);
+        assert_eq!(failure.raw_return, None);
+    }
+    assert!(
+        !fixture
+            .observed()
+            .contains(&Observed::Send(vec![0x30, 7, 8, 9]))
+    );
+    stop(&pool);
+}
+
+#[test]
+fn cancellation_waits_for_the_whole_batch_and_preserves_its_terminal_progress() {
+    for second in [None, Some(0x20), Some(0xef), Some(0xfd)] {
+        let pool = pool();
+        let fixture = Fixture::new(190);
+        let gate = fixture.gate(&fixture.0.batching);
+        let canceled = Arc::new(AtomicBool::new(false));
+        thread::scope(|scope| {
+            let _cancel = CancelOnDrop(canceled.clone());
+            let _release = ReleaseGate(gate.clone());
+            let pool_ref = &pool;
+            let node = fixture.0.node.clone();
+            let signal = canceled.clone();
+            let (sent, received) = mpsc::sync_channel(1);
+            let worker = scope.spawn(move || {
+                let mut backend = pool_ref.backend_for(Uuid::new_v4(), signal).unwrap();
+                let device = backend.open(&node).unwrap();
+                let mut batch = FeatureBatch::new();
+                if let Some(second) = second {
+                    batch.push_report(&[0x10, 1, 2, 3]).unwrap();
+                    batch.push_report(&[second, 4, 5, 6]).unwrap();
+                }
+                sent.send(device.send_feature_batch(&batch).unwrap_err())
+                    .unwrap();
+            });
+            gate.wait_entered();
+            canceled.store(true, Ordering::Release);
+            assert!(matches!(
+                received.try_recv(),
+                Err(mpsc::TryRecvError::Empty)
+            ));
+            gate.release();
+            let error = received.recv_timeout(Duration::from_secs(3)).unwrap();
+            let failure = FeatureBatchFailure::from_error(&error).unwrap();
+            match second {
+                None => {
+                    assert_eq!(
+                        native_io_outcome(&error),
+                        Some(NativeIoOutcome::Returned { byte_count: 0 })
+                    );
+                    assert_eq!(failure.progress, FeatureBatchProgress::default());
+                    assert_eq!(failure.raw_return, Some(0));
+                }
+                Some(0x20) => {
+                    assert_eq!(
+                        native_io_outcome(&error),
+                        Some(NativeIoOutcome::Returned { byte_count: 8 })
+                    );
+                    assert_eq!(failure.progress.completed_operations, 2);
+                    assert_eq!(failure.progress.report_returns.len(), 2);
+                    assert_eq!(failure.raw_return, Some(8));
+                }
+                Some(second) => {
+                    assert_eq!(native_io_outcome(&error), Some(NativeIoOutcome::Rejected));
+                    assert_eq!(failure.progress.completed_operations, 1);
+                    assert_eq!(failure.raw_return, None);
+                    if second == 0xef {
+                        assert!(error.downcast_ref::<ScriptedNativeFailure>().is_some());
+                        assert_eq!(failure.progress.report_returns.len(), 1);
+                    } else {
+                        assert_eq!(failure.progress.report_returns.len(), 2);
+                        assert_eq!(failure.progress.report_returns[1].returned_bytes, 2);
+                    }
+                }
+            }
+            assert!(format!("{error:#}").contains("cancel"));
+            worker.join().unwrap();
+        });
+        stop(&pool);
+        assert_eq!(fixture.0.closed.load(Ordering::Acquire), 1);
+    }
+}
+
+#[test]
+fn read_actor_errors_preserve_typed_causes_and_actual_oversized_counts() {
+    let pool = pool();
+    let fixture = Fixture::new(190);
+    let device = open(&pool, &fixture.0.node);
+    let mut backend = pool
+        .backend_for(Uuid::new_v4(), Arc::new(AtomicBool::new(false)))
+        .unwrap();
+    let interrupt = backend.open_interrupt(&fixture.0.node).unwrap();
+    for interrupt_read in [false, true] {
+        for (first_byte, oversized) in [(0xef, false), (0xfb, true)] {
+            let mut report = [first_byte; 4];
+            let error = if interrupt_read {
+                interrupt.read(&mut report, 1)
+            } else {
+                device.get_feature(&mut report)
+            }
+            .unwrap_err();
+            if oversized {
+                assert_eq!(
+                    native_io_outcome(&error),
+                    Some(NativeIoOutcome::Returned { byte_count: 5 })
+                );
+            } else {
+                assert!(error.downcast_ref::<ScriptedNativeFailure>().is_some());
+                assert_eq!(native_io_outcome(&error), None);
+            }
+            assert!(native_read_bytes(&error).is_none());
+            assert_eq!(report, [first_byte; 4]);
+        }
+    }
+    stop(&pool);
+}
+
+#[test]
+fn cancellation_keeps_feature_terminal_counts_and_errors_without_publishing_the_read() {
+    for (reading, first_byte, returned) in [
+        (false, 0x10, Some(4)),
+        (false, 0xef, None),
+        (false, 0xfd, Some(2)),
+        (true, 0x33, Some(3)),
+        (true, 0xef, None),
+        (true, 0xfb, Some(5)),
+    ] {
+        let pool = pool();
+        let fixture = Fixture::new(190);
+        let gate = fixture.gate(if reading {
+            &fixture.0.reading
+        } else {
+            &fixture.0.sending
+        });
+        let canceled = Arc::new(AtomicBool::new(false));
+        thread::scope(|scope| {
+            let _cancel = CancelOnDrop(canceled.clone());
+            let _release = ReleaseGate(gate.clone());
+            let pool_ref = &pool;
+            let node = fixture.0.node.clone();
+            let signal = canceled.clone();
+            let (sent, received) = mpsc::sync_channel(1);
+            let worker = scope.spawn(move || {
+                let mut backend = pool_ref.backend_for(Uuid::new_v4(), signal).unwrap();
+                let device = backend.open(&node).unwrap();
+                let mut report = [first_byte; 4];
+                let result = if reading {
+                    device.get_feature(&mut report)
+                } else {
+                    device.send_feature_counted(&report)
+                };
+                sent.send((result.unwrap_err(), report)).unwrap();
+            });
+            gate.wait_entered();
+            canceled.store(true, Ordering::Release);
+            assert!(matches!(
+                received.try_recv(),
+                Err(mpsc::TryRecvError::Empty)
+            ));
+            gate.release();
+            let (error, report) = received.recv_timeout(Duration::from_secs(3)).unwrap();
+            assert_eq!(
+                native_io_outcome(&error),
+                returned.map(|byte_count| NativeIoOutcome::Returned { byte_count })
+            );
+            if first_byte == 0xef {
+                assert!(error.downcast_ref::<ScriptedNativeFailure>().is_some());
+            }
+            assert_eq!(
+                native_read_bytes(&error),
+                if reading && first_byte == 0x33 {
+                    Some([0x7f, 0x12, 0x34].as_slice())
+                } else {
+                    None
+                }
+            );
+            assert!(format!("{error:#}").contains("cancel"));
+            assert_eq!(report, [first_byte; 4]);
+            worker.join().unwrap();
+        });
+        assert_eq!(fixture.observed().len(), 1);
+        stop(&pool);
+        assert_eq!(fixture.0.closed.load(Ordering::Acquire), 1);
+    }
+}
+
+#[test]
+fn caller_validation_rejects_terminal_feature_results_on_its_owning_thread() {
+    for (reading, first_byte, returned) in [
+        (false, 0x10, Some(4)),
+        (false, 0xef, None),
+        (false, 0xfd, Some(2)),
+        (true, 0x33, Some(3)),
+        (true, 0xef, None),
+        (true, 0xfb, Some(5)),
+    ] {
+        let pool = pool();
+        let fixture = Fixture::new(190);
+        let gate = fixture.gate(if reading {
+            &fixture.0.reading
+        } else {
+            &fixture.0.sending
+        });
+        let stale = Arc::new(AtomicBool::new(false));
+        let canceled = Arc::new(AtomicBool::new(false));
+        thread::scope(|scope| {
+            let _cancel = CancelOnDrop(canceled.clone());
+            let _release = ReleaseGate(gate.clone());
+            let pool_ref = &pool;
+            let node = fixture.0.node.clone();
+            let signal = canceled.clone();
+            let identity = stale.clone();
+            let (sent, received) = mpsc::sync_channel(1);
+            let worker = scope.spawn(move || {
+                let mut backend = pool_ref.backend_for(Uuid::new_v4(), signal).unwrap();
+                let device = backend.open(&node).unwrap();
+                let owner = thread::current().id();
+                let validate = Rc::new(move || {
+                    assert_eq!(thread::current().id(), owner);
+                    if identity.load(Ordering::Acquire) {
+                        Err(CallerIdentityLost.into())
+                    } else {
+                        Ok(())
+                    }
+                });
+                let lease = device
+                    .begin_exchange_validated(ExchangeOptions::plain(), validate)
+                    .unwrap();
+                let mut report = [first_byte; 4];
+                let result = if reading {
+                    lease.transport().get_feature(&mut report)
+                } else {
+                    lease.transport().send_feature_counted(&report)
+                };
+                let error = result.unwrap_err();
+                let release = lease.finish().unwrap_err();
+                assert!(release.downcast_ref::<CallerIdentityLost>().is_some());
+                sent.send((error, report)).unwrap();
+            });
+            gate.wait_entered();
+            stale.store(true, Ordering::Release);
+            assert!(matches!(
+                received.try_recv(),
+                Err(mpsc::TryRecvError::Empty)
+            ));
+            gate.release();
+            let (error, report) = received.recv_timeout(Duration::from_secs(3)).unwrap();
+            assert_eq!(
+                native_io_outcome(&error),
+                returned.map(|byte_count| NativeIoOutcome::Returned { byte_count })
+            );
+            if first_byte == 0xef {
+                assert!(error.downcast_ref::<ScriptedNativeFailure>().is_some());
+            } else if matches!(first_byte, 0x10 | 0x33) {
+                assert!(error.downcast_ref::<CallerIdentityLost>().is_some());
+            }
+            assert_eq!(
+                native_read_bytes(&error),
+                if reading && first_byte == 0x33 {
+                    Some([0x7f, 0x12, 0x34].as_slice())
+                } else {
+                    None
+                }
+            );
+            assert!(format!("{error:#}").contains("caller identity changed"));
+            assert_eq!(report, [first_byte; 4]);
+            worker.join().unwrap();
+        });
+        assert_eq!(fixture.observed().len(), 1);
+        stop(&pool);
+        assert_eq!(fixture.0.closed.load(Ordering::Acquire), 1);
+    }
+}
+
+#[test]
+fn caller_validation_waits_for_the_batch_terminal_receipt_before_rejecting_publication() {
+    for second in [None, Some(0x20), Some(0xef), Some(0xfd)] {
+        let pool = pool();
+        let fixture = Fixture::new(190);
+        let gate = fixture.gate(&fixture.0.batching);
+        let stale = Arc::new(AtomicBool::new(false));
+        let canceled = Arc::new(AtomicBool::new(false));
+        thread::scope(|scope| {
+            let _cancel = CancelOnDrop(canceled.clone());
+            let _release = ReleaseGate(gate.clone());
+            let pool_ref = &pool;
+            let node = fixture.0.node.clone();
+            let signal = canceled.clone();
+            let identity = stale.clone();
+            let (sent, received) = mpsc::sync_channel(1);
+            let worker = scope.spawn(move || {
+                let mut backend = pool_ref.backend_for(Uuid::new_v4(), signal).unwrap();
+                let device = backend.open(&node).unwrap();
+                let owner = thread::current().id();
+                let validate = Rc::new(move || {
+                    assert_eq!(thread::current().id(), owner);
+                    if identity.load(Ordering::Acquire) {
+                        Err(CallerIdentityLost.into())
+                    } else {
+                        Ok(())
+                    }
+                });
+                let lease = device
+                    .begin_exchange_validated(ExchangeOptions::batch(), validate)
+                    .unwrap();
+                let mut batch = FeatureBatch::new();
+                if let Some(second) = second {
+                    batch.push_report(&[0x10, 1, 2, 3]).unwrap();
+                    batch.push_report(&[second, 4, 5, 6]).unwrap();
+                }
+                let error = lease.transport().send_feature_batch(&batch).unwrap_err();
+                let release = lease.finish().unwrap_err();
+                assert!(release.downcast_ref::<CallerIdentityLost>().is_some());
+                sent.send(error).unwrap();
+            });
+            gate.wait_entered();
+            stale.store(true, Ordering::Release);
+            assert!(matches!(
+                received.try_recv(),
+                Err(mpsc::TryRecvError::Empty)
+            ));
+            gate.release();
+            let error = received.recv_timeout(Duration::from_secs(3)).unwrap();
+            let failure = FeatureBatchFailure::from_error(&error).unwrap();
+            match second {
+                None | Some(0x20) => {
+                    let reports = if second.is_some() { 2 } else { 0 };
+                    let bytes = reports * 4;
+                    assert_eq!(
+                        native_io_outcome(&error),
+                        Some(NativeIoOutcome::Returned { byte_count: bytes })
+                    );
+                    assert_eq!(failure.progress.completed_operations, reports);
+                    assert_eq!(failure.progress.reports_submitted(), reports);
+                    assert_eq!(failure.raw_return, Some(bytes as i32));
+                    assert!(error.downcast_ref::<CallerIdentityLost>().is_some());
+                }
+                Some(second) => {
+                    assert_eq!(native_io_outcome(&error), Some(NativeIoOutcome::Rejected));
+                    assert_eq!(failure.progress.completed_operations, 1);
+                    assert_eq!(failure.raw_return, None);
+                    if second == 0xef {
+                        assert!(error.downcast_ref::<ScriptedNativeFailure>().is_some());
+                        assert_eq!(failure.progress.report_returns.len(), 1);
+                    } else {
+                        assert_eq!(failure.progress.report_returns.len(), 2);
+                        assert_eq!(failure.progress.report_returns[1].returned_bytes, 2);
+                    }
+                }
+            }
+            assert!(format!("{error:#}").contains("caller identity changed"));
+            worker.join().unwrap();
+        });
+        assert_eq!(
+            fixture.observed().len(),
+            if second.is_some() { 3 } else { 1 }
+        );
+        stop(&pool);
+        assert_eq!(fixture.0.closed.load(Ordering::Acquire), 1);
+    }
+}
+
+#[test]
+fn cancellation_keeps_interrupt_terminal_counts_and_errors_without_publishing_the_read() {
+    for (first_byte, returned) in [(0x33, Some(2)), (0xef, None), (0xfb, Some(5))] {
+        let pool = pool();
+        let fixture = Fixture::new(190);
+        let gate = fixture.gate(&fixture.0.interrupt_reading);
+        let canceled = Arc::new(AtomicBool::new(false));
+        thread::scope(|scope| {
+            let _cancel = CancelOnDrop(canceled.clone());
+            let _release = ReleaseGate(gate.clone());
+            let pool_ref = &pool;
+            let node = fixture.0.node.clone();
+            let signal = canceled.clone();
+            let (sent, received) = mpsc::sync_channel(1);
+            let worker = scope.spawn(move || {
+                let mut backend = pool_ref.backend_for(Uuid::new_v4(), signal).unwrap();
+                let interrupt = backend.open_interrupt(&node).unwrap();
+                let mut report = [first_byte; 4];
+                let error = interrupt.read(&mut report, 1).unwrap_err();
+                sent.send((error, report)).unwrap();
+            });
+            gate.wait_entered();
+            canceled.store(true, Ordering::Release);
+            assert!(matches!(
+                received.try_recv(),
+                Err(mpsc::TryRecvError::Empty)
+            ));
+            gate.release();
+            let (error, report) = received.recv_timeout(Duration::from_secs(3)).unwrap();
+            assert_eq!(
+                native_io_outcome(&error),
+                returned.map(|byte_count| NativeIoOutcome::Returned { byte_count })
+            );
+            if first_byte == 0xef {
+                assert!(error.downcast_ref::<ScriptedNativeFailure>().is_some());
+            }
+            assert_eq!(
+                native_read_bytes(&error),
+                if first_byte == 0x33 {
+                    Some([0x81, 0x53].as_slice())
+                } else {
+                    None
+                }
+            );
+            assert!(format!("{error:#}").contains("cancel"));
+            assert_eq!(report, [first_byte; 4]);
+            worker.join().unwrap();
+        });
+        stop(&pool);
+    }
+}
+
+#[test]
 fn an_exchange_keeps_get_with_its_out_until_explicit_finish() {
     let pool = pool();
     let fixture = Fixture::new(190);
@@ -735,6 +1643,127 @@ fn queued_cancellation_never_issues_native_io() {
     });
     assert!(fixture.observed().is_empty());
     lease.finish().unwrap();
+    stop(&pool);
+}
+
+#[test]
+fn packets_canceled_before_actor_dispatch_are_not_native_attempts() {
+    for batched in [false, true] {
+        let pool = pool();
+        let fixture = Fixture::new(190);
+        let entry = pool.entry(&fixture.0.node).unwrap();
+        entry
+            .wait_ready_validated(&AtomicBool::new(false), &no_validation)
+            .unwrap();
+        let canceled = Arc::new(AtomicBool::new(false));
+        let _cancel = CancelOnDrop(canceled.clone());
+        let lease = entry
+            .acquire(
+                Uuid::new_v4(),
+                canceled.clone(),
+                ExchangeOptions::batch(),
+                &no_validation,
+            )
+            .unwrap();
+        let mut batch = FeatureBatch::new();
+        batch.push_report(&[0x10, 1, 2, 3]).unwrap();
+        let (response, receipt) = mpsc::sync_channel(1);
+        // Hold admission closed until cancellation is visible. The request is
+        // already in the actor queue, but cannot reach the native boundary.
+        let admission = entry.state.lock().unwrap();
+        lease
+            .sender
+            .send(ActorRequest {
+                signature: lease.control.signature,
+                operation: ActorOperation::Packet(if batched {
+                    Packet::Batch(batch.clone())
+                } else {
+                    Packet::Send {
+                        bytes: vec![0x10, 1, 2, 3],
+                        collection_max: false,
+                    }
+                }),
+                response,
+            })
+            .unwrap();
+        canceled.store(true, Ordering::Release);
+        drop(admission);
+        let error = receipt
+            .recv_timeout(Duration::from_secs(3))
+            .unwrap()
+            .err()
+            .expect("canceled packet must not publish success");
+        assert_eq!(native_io_outcome(&error), Some(NativeIoOutcome::NotCalled));
+        if batched {
+            let mut attempted = Vec::new();
+            observe_feature_batch(&batch, &Err(error), |report| {
+                attempted.push(report.to_vec())
+            });
+            assert!(attempted.is_empty());
+        } else {
+            assert!(!native_io_attempted(&Err(error)));
+        }
+        assert!(fixture.observed().is_empty());
+        drop(lease);
+        stop(&pool);
+    }
+}
+
+#[test]
+fn preadmission_cancellation_and_caller_validation_keep_not_called_and_typed_causes() {
+    let pool = pool();
+    let fixture = Fixture::new(190);
+    let device = open(&pool, &fixture.0.node);
+    let rejected = Rc::new(std::cell::Cell::new(false));
+    let validation_state = rejected.clone();
+    let validation = Rc::new(move || {
+        if validation_state.get() {
+            Err(ScriptedNativeFailure.into())
+        } else {
+            Ok(())
+        }
+    });
+    let lease = device
+        .begin_exchange_validated(ExchangeOptions::batch(), validation)
+        .unwrap();
+    rejected.set(true);
+    let error = lease.transport().send_feature_counted(&[0x10]).unwrap_err();
+    assert_eq!(native_io_outcome(&error), Some(NativeIoOutcome::NotCalled));
+    assert!(error.downcast_ref::<ScriptedNativeFailure>().is_some());
+    assert!(!native_io_attempted(&Err(error)));
+    let mut batch = FeatureBatch::new();
+    batch.push_report(&[0x10]).unwrap();
+    let result = lease.transport().send_feature_batch(&batch);
+    let error = result.as_ref().unwrap_err();
+    assert_eq!(native_io_outcome(error), Some(NativeIoOutcome::NotCalled));
+    assert!(error.downcast_ref::<ScriptedNativeFailure>().is_some());
+    observe_feature_batch(&batch, &result, |_| {
+        panic!("failed preflight is not a write attempt")
+    });
+    drop(lease);
+
+    let entry = pool.entry(&fixture.0.node).unwrap();
+    let canceled = Arc::new(AtomicBool::new(false));
+    let lease = entry
+        .acquire(
+            Uuid::new_v4(),
+            canceled.clone(),
+            ExchangeOptions::plain(),
+            &no_validation,
+        )
+        .unwrap();
+    canceled.store(true, Ordering::Release);
+    let error = lease
+        .call(ActorOperation::Packet(Packet::Send {
+            bytes: vec![0x10],
+            collection_max: false,
+        }))
+        .err()
+        .expect("canceled lease must not admit native work");
+    assert_eq!(native_io_outcome(&error), Some(NativeIoOutcome::NotCalled));
+    assert!(!native_io_attempted(&Err(error)));
+    assert!(fixture.observed().is_empty());
+    drop(lease);
     stop(&pool);
 }
 
@@ -913,6 +1942,51 @@ fn caller_validation_cancels_a_retry_requeued_behind_another_holder() {
 }
 
 #[test]
+fn queued_release_classifies_this_cycle_before_consuming_reused_guard_errors() {
+    for retry in [false, true] {
+        for after_release in [false, true] {
+            let pool = pool();
+            let fixture = Fixture::new(190);
+            let device = open(&pool, &fixture.0.node);
+            let calls = Arc::new(AtomicUsize::new(0));
+            let signal = calls.clone();
+            let validate = Rc::new(move || {
+                let current = signal.load(Ordering::Acquire);
+                if current != 0 {
+                    signal.fetch_add(1, Ordering::AcqRel);
+                    if current >= if after_release { 2 } else { 1 } {
+                        return validate_exchange_release(Ok(()), Err(CallerIdentityLost.into()));
+                    }
+                }
+                Ok(())
+            });
+            let lease = device
+                .begin_exchange_validated(ExchangeOptions::plain(), validate)
+                .unwrap();
+            calls.store(1, Ordering::Release);
+            let error = if retry {
+                let error = lease.retry_release().unwrap_err();
+                drop(lease);
+                error
+            } else {
+                lease.finish().unwrap_err()
+            };
+            assert!(error.downcast_ref::<CallerIdentityLost>().is_some());
+            assert_eq!(exchange_release_completed(&error), after_release);
+            assert!(fixture.observed().is_empty());
+            let recovery = open(&pool, &fixture.0.node);
+            recovery
+                .begin_exchange(ExchangeOptions::plain())
+                .unwrap()
+                .finish()
+                .unwrap();
+            drop((recovery, device));
+            stop(&pool);
+        }
+    }
+}
+
+#[test]
 fn caller_validation_preserves_native_return_and_canceled_finish_forces_cleanup() {
     let pool = pool();
     let fixture = Fixture::new(190);
@@ -946,7 +2020,7 @@ fn caller_validation_preserves_native_return_and_canceled_finish_forces_cleanup(
             let packet_result = lease.transport().send_feature(&[0x10]);
             let finish = lease.finish();
             sent.send((
-                packet_result.map_err(|error| format!("{error:#}")),
+                packet_result,
                 finish.err().map(|error| format!("{error:#}")),
             ))
             .unwrap();
@@ -964,7 +2038,14 @@ fn caller_validation_preserves_native_return_and_canceled_finish_forces_cleanup(
         let (packet_result, finish_error) = received
             .recv_timeout(Duration::from_secs(3))
             .expect("caller did not consume the terminal native result");
-        assert!(packet_result.is_ok(), "{packet_result:?}");
+        let packet_error = packet_result.unwrap_err();
+        assert_eq!(
+            native_io_outcome(&packet_error),
+            Some(NativeIoOutcome::Returned { byte_count: 1 })
+        );
+        assert!(
+            format!("{packet_error:#}").contains("domain operation canceled after native dispatch")
+        );
         assert!(
             finish_error
                 .unwrap()
@@ -983,6 +2064,33 @@ fn caller_validation_preserves_native_return_and_canceled_finish_forces_cleanup(
     );
     assert_eq!(fixture.0.opened.load(Ordering::Acquire), 1);
     stop(&pool);
+}
+
+#[test]
+fn rejected_packet_publication_retains_the_actors_actual_read_bytes() {
+    use razer_device::backend::native_read_bytes;
+    for count in [0, 2, 4, 5] {
+        let error = combine_packet(
+            Ok(PacketReply::Bytes {
+                bytes: vec![11, 22, 33, 44],
+                count,
+            }),
+            Err(std::io::Error::new(std::io::ErrorKind::Interrupted, "old actor epoch").into()),
+        )
+        .err()
+        .unwrap();
+        assert_eq!(
+            native_io_outcome(&error),
+            Some(NativeIoOutcome::Returned { byte_count: count })
+        );
+        assert_eq!(native_read_bytes(&error), [11, 22, 33, 44].get(..count));
+        assert!(error.downcast_ref::<std::io::Error>().is_some());
+        let nested = combine_packet(Err(error), Err(anyhow::anyhow!("caller canceled")))
+            .err()
+            .unwrap();
+        assert_eq!(native_read_bytes(&nested), [11, 22, 33, 44].get(..count));
+        assert!(format!("{nested:#}").contains("caller canceled"));
+    }
 }
 
 #[test]
@@ -1103,7 +2211,11 @@ fn blocked_native_io_retains_its_epoch_until_terminal_join_and_reopen_rejects_ol
         let done = completed.clone();
         let io = scope.spawn(move || {
             let handle = open(pool_ref, &node);
-            assert!(handle.send_feature(&[0x10]).is_err());
+            let error = handle.send_feature(&[0x10]).unwrap_err();
+            assert_eq!(
+                native_io_outcome(&error),
+                Some(NativeIoOutcome::Returned { byte_count: 1 })
+            );
             done.store(true, Ordering::Release);
         });
         gate.wait_entered();
@@ -1249,7 +2361,9 @@ fn stale_and_foreign_packet_signatures_are_rejected_without_native_io() {
                 response,
             })
             .unwrap();
-        assert!(received.recv().unwrap().is_err());
+        let error = received.recv().unwrap().err().unwrap();
+        assert_eq!(native_io_outcome(&error), Some(NativeIoOutcome::NotCalled));
+        assert!(!native_io_attempted(&Err(error)));
     }
     assert!(fixture.observed().is_empty());
     lease.finish().unwrap();

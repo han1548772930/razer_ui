@@ -2891,6 +2891,61 @@ class ArchitectureBoundaryTests(unittest.TestCase):
             self.assertIn('ipc_stop_releases_session_without_confirmed_cleanup',
                           [row['kind'] for row in self.inspect(changed, owner)])
 
+    def test_ipc_broker_terminal_receipt_preserves_failed_restoration_without_retaining_released_resources(self):
+        owner = 'crates/razer-ipc/src/lib.rs'
+        source = ('impl ServiceClient { fn close_broker_session() { self.stopped = true; '
+                  'let cancellation = self.cancel_request(); '
+                  'if let Some(receipt) = &self.broker_close_receipt { return match receipt.validate() { '
+                  'Ok(()) => cancellation, Err(error) => Err(with_cleanup_error(error,cancellation)) }; } '
+                  'let broker = self.broker.as_mut().context("session missing")?; '
+                  'let close = broker.close_session(); '
+                  'if let Some(receipt) = broker.close_receipt().cloned() { '
+                  'self.broker_close_receipt = Some(receipt); self.broker.take(); } '
+                  'match close { Ok(receipt) => { '
+                  'let confirmation = worker_shutdown::confirm_session_close(&receipt,id)?; '
+                  'self.shutdown_confirmation = Some(confirmation); cancellation }, '
+                  'Err(error) => Err(with_cleanup_error(error,cancellation)) } } }')
+        for valid in (source, source.replace('broker =', 'session =').replace('broker.close_', 'session.close_'),
+                      source.replace('receipt', 'terminal_receipt').replace('broker_close_terminal_receipt', 'broker_close_receipt').replace(
+                          'close_terminal_receipt()', 'close_receipt()')):
+            with self.subTest(valid=valid):
+                self.assertFalse(self.inspect(valid, owner))
+        changes = {
+            'no_stop': source.replace('self.stopped = true;', ''),
+            'no_cancel': source.replace('self.cancel_request()', 'Ok(())'),
+            'foreign_broker': source.replace('self.broker.as_mut()', 'self.other_broker.as_mut()'),
+            'no_real_close': source.replace('broker.close_session()', 'Ok(receipt)'),
+            'release_before_close': source.replace('self.broker.take();', '').replace('let close =', 'self.broker.take(); let close ='),
+            'pending_receipt': source.replace('broker.close_receipt()', 'broker.pending_receipt()'),
+            'foreign_receipt': source.replace('broker.close_receipt()', 'other.close_receipt()'),
+            'fabricated_receipt': source.replace('broker.close_receipt().cloned()', 'Some(fake_receipt)'),
+            'no_receipt_cache': source.replace('self.broker_close_receipt = Some(receipt);', ''),
+            'foreign_receipt_cache': source.replace('self.broker_close_receipt = Some(receipt);', 'self.broker_close_receipt = Some(fake_receipt);'),
+            'late_receipt_cache': source.replace('self.broker_close_receipt = Some(receipt); self.broker.take();',
+                                                'self.broker.take(); self.broker_close_receipt = Some(receipt);'),
+            'discarded_receipt_cache': source.replace('self.broker_close_receipt = Some(receipt);',
+                                                     'self.broker_close_receipt = Some(receipt); self.broker_close_receipt = None;'),
+            'unguarded_release': source.replace('self.broker.take();', '').replace('match close {', 'self.broker.take(); match close {'),
+            'no_release': source.replace('self.broker.take();', ''),
+            'no_confirmation': source.replace('worker_shutdown::confirm_session_close(&receipt,id)?', 'fake_confirmation'),
+            'ignored_confirmation_error': source.replace('worker_shutdown::confirm_session_close(&receipt,id)?',
+                                                        'worker_shutdown::confirm_session_close(&receipt,id)'),
+            'foreign_confirmation': source.replace('worker_shutdown::confirm_session_close(&receipt,id)?',
+                                                  'worker_shutdown::confirm_session_close(&fake_receipt,id)?'),
+            'no_published_confirmation': source.replace('self.shutdown_confirmation = Some(confirmation);', ''),
+            'swallowed_close_failure': source.replace('Err(error) => Err(with_cleanup_error(error,cancellation))', 'Err(error) => Ok(())'),
+            'swallowed_terminal_failure': source.rsplit('Err(error) => Err(with_cleanup_error(error,cancellation))', 1)[0]
+                + 'Err(error) => Ok(())' + source.rsplit('Err(error) => Err(with_cleanup_error(error,cancellation))', 1)[1],
+            'swallowed_cached_failure': source.replace('Err(error) => Err(with_cleanup_error(error,cancellation))', 'Err(error) => Ok(())', 1),
+            'ignored_cached_validation': source.replace('return match receipt.validate()', 'match receipt.validate()'),
+            'no_cached_validation': source.replace('receipt.validate()', 'Ok(())'),
+        }
+        for change, invalid in changes.items():
+            with self.subTest(change=change):
+                self.assertIn('ipc_stop_releases_session_without_confirmed_cleanup',
+                              [row['kind'] for row in self.inspect(invalid, owner)])
+        self.assertFalse(self.inspect((workspace.ROOT / owner).read_text(encoding='utf-8'), owner))
+
     def test_broker_root_lifetime_is_independent_of_sessions_and_legacy_forwarding(self):
         client = 'crates/razer-ipc/src/hid_broker/client.rs'
         bootstrap = 'crates/razer-ipc/src/hid_broker/bootstrap.rs'
@@ -2938,6 +2993,135 @@ class ArchitectureBoundaryTests(unittest.TestCase):
                       [row['kind'] for row in self.inspect('fn prepare_listener_shutdown() { Ok(()) }', owner)])
         self.assertFalse(workspace.inspect_architecture_source((workspace.ROOT / owner).read_bytes(),
                          owner=owner, rust_parser=self.rust_parser))
+
+    def native_clock_source(self, kind):
+        prefix = ('use razer_device::backend::{FeatureTransport, NativeIoOutcome, native_io_outcome}; '
+                  'use super::clock::{SourceClock, NativeReturn}; ')
+        classifier = ('fn native_result_outcome(result: &Result<usize, Error>) -> Option<NativeIoOutcome> { '
+                      'match result { Ok(byte_count) => Some(NativeIoOutcome::Returned { byte_count: *byte_count }), '
+                      'Err(error) => native_io_outcome(error) } } ')
+        method = {'Send': 'send_feature_counted', 'Get': 'get_feature', 'Batch': 'send_feature_batch'}[kind]
+        outcome = ('let observed = match &result { '
+                   'Ok(receipt) => Some(NativeIoOutcome::Returned { byte_count: receipt.byte_count }), '
+                   'Err(error) => native_io_outcome(error) }; ') if kind == 'Batch' else ''
+        argument = 'observed' if kind == 'Batch' else 'native_result_outcome(&result)'
+        return (prefix + classifier + 'impl Packet { fn execute(native: &dyn FeatureTransport, clock: &mut SourceClock) { '
+                f'let result = native.{method}(&bytes); ' + outcome
+                + f'clock.native_outcome(now, NativeReturn::{kind}, {argument}); result }} }}')
+
+    def test_native_clock_direct_returns_belong_only_to_the_clock_owner(self):
+        clock_owner = 'crates/razer-service/src/runtime/hid_broker/clock.rs'
+        collection = 'crates/razer-service/src/runtime/hid_broker/collection.rs'
+        sources = (
+            'fn finish(clock: &mut SourceClock) { clock.native_return(now, NativeReturn::Batch); }',
+            'fn finish(clock: &mut SourceClock) { (&mut clock).native_return(now, NativeReturn::Batch); }',
+            'fn finish(clock: &mut SourceClock) { (*clock).native_return(now, NativeReturn::Batch); }',
+            'fn finish(clock: &mut SourceClock) { SourceClock::native_return(clock, now, NativeReturn::Batch); }',
+            'use super::clock::SourceClock as Clock; fn finish(clock: &mut Clock) { '
+            'Clock::native_return(clock, now, NativeReturn::Batch); }',
+            'fn finish(clock: &mut SourceClock) { let update = SourceClock::native_return; update(clock, now, kind); }',
+            'fn finish() { let mut clock = SourceClock::default(); clock.native_return(now, NativeReturn::Batch); }',
+            'fn finish(clock: &mut SourceClock) { let retained = &mut clock; retained.native_return(now, kind); }',
+            'struct Holder { clock: SourceClock } impl Holder { fn finish(&mut self) { self.clock.native_return(now, kind); } }',
+            'impl SourceClock { fn finish(&mut self) { self.native_return(now, kind); } }',
+        )
+        for owner in (collection, 'crates/razer-service/src/runtime/windows/hid/hid_transport.rs'):
+            for source in sources:
+                with self.subTest(owner=owner, source=source):
+                    rows = self.inspect(source, owner)
+                    self.assertIn('hid_native_clock_bypasses_outcome_owner', [row['kind'] for row in rows])
+                    self.assertTrue(all(row['expected_owner'] == clock_owner + '::SourceClock::native_outcome' for row in rows))
+                    self.assertFalse(self.inspect(source, clock_owner))
+                    self.assertFalse(self.inspect('#[cfg(test)] mod tests { ' + source + ' }', owner))
+                    self.assertFalse(self.inspect(source, owner.replace('.rs', '_tests.rs')))
+        self.assertFalse(self.inspect('fn unrelated(clock: &Other) { clock.native_return(now, kind); }', collection))
+        self.assertFalse(self.inspect('fn diagnostic() { log("clock.native_return(now, kind)"); }', collection))
+
+    def test_native_clock_classifies_actual_counted_dispatch_instead_of_result_success(self):
+        owner = 'crates/razer-service/src/runtime/hid_broker/collection.rs'
+        for kind in ('Send', 'Get'):
+            source = self.native_clock_source(kind)
+            self.assertFalse(self.inspect(source, owner))
+            method = 'send_feature_counted' if kind == 'Send' else 'get_feature'
+            alternate = 'send_feature_at_collection_max_counted' if kind == 'Send' else 'get_feature_at_collection_max'
+            switched = source.replace(f'native.{method}(&bytes)',
+                f'if collection_max {{ native.{alternate}(&bytes) }} else {{ native.{method}(&bytes) }}')
+            self.assertFalse(self.inspect(switched, owner))
+            self.assertFalse(self.inspect(source.replace('clock.native_outcome(now,', 'SourceClock::native_outcome(clock, now,'), owner))
+            self.assertFalse(self.inspect(source.replace('clock.native_outcome(now,',
+                'let observed = native_result_outcome(&result); clock.native_outcome(now,')
+                .replace(f'NativeReturn::{kind}, native_result_outcome(&result)', f'NativeReturn::{kind}, observed'), owner))
+            alias_prefix = ('use razer_device::backend::{FeatureTransport as DeviceIo, NativeIoOutcome as Outcome, native_io_outcome as observe_error}; '
+                            'use super::clock::{SourceClock as Clock, NativeReturn as ReturnKind}; '
+                            'use self::native_result_outcome as classify; ')
+            body = 'fn native_result_outcome' + source.split('fn native_result_outcome', 1)[1]
+            body = body.replace('FeatureTransport', 'DeviceIo').replace('NativeIoOutcome', 'Outcome') \
+                .replace('native_io_outcome', 'observe_error').replace('SourceClock', 'Clock').replace('NativeReturn', 'ReturnKind') \
+                .replace('native_result_outcome(&result)', 'classify(&result)')
+            self.assertFalse(self.inspect(alias_prefix + body, owner))
+            invalid = {
+                'is_ok': source.replace('native_result_outcome(&result)',
+                    'if result.is_ok() { Some(NativeIoOutcome::Returned { byte_count: 91 }) } else { None }'),
+                'is_err': source.replace('native_result_outcome(&result)',
+                    'if !result.is_err() { Some(NativeIoOutcome::Returned { byte_count: 91 }) } else { None }'),
+                'invented_result': source.replace(f'native.{method}(&bytes)', 'Ok(91)'),
+                'discarded_count': source.replace(f'native.{method}(&bytes)', f'native.{method}(&bytes).map(|_| 91)'),
+                'wrong_operation': source.replace(f'NativeReturn::{kind}', 'NativeReturn::Batch'),
+                'constant_success': source.replace('byte_count: *byte_count', 'byte_count: 91'),
+                'guarded_success': source.replace('Ok(byte_count) =>', 'Ok(byte_count) if admitted =>'),
+                'shadowed_success': source.replace('Ok(byte_count) => Some(NativeIoOutcome::Returned { byte_count: *byte_count })',
+                    'Ok(byte_count) => { let byte_count = &91; Some(NativeIoOutcome::Returned { byte_count: *byte_count }) }'),
+                'shadowed_result': source.replace('match result {', 'let result = &Ok(91); match result {'),
+                'lost_rejection': source.replace('Err(error) => native_io_outcome(error)', 'Err(error) => None'),
+                'faked_error_return': source.replace('Err(error) => native_io_outcome(error)',
+                    'Err(error) => Some(NativeIoOutcome::Returned { byte_count: 0 })'),
+                'mutable_result': source.replace('let result =', 'let mut result ='),
+                'mutated_observation': source.replace(f'clock.native_outcome(now, NativeReturn::{kind}, native_result_outcome(&result));',
+                    f'let mut observed = native_result_outcome(&result); observed = Some(NativeIoOutcome::Returned {{ byte_count: 91 }}); '
+                    f'clock.native_outcome(now, NativeReturn::{kind}, observed);'),
+            }
+            if kind == 'Send':
+                invalid['uncounted_send'] = source.replace('send_feature_counted', 'send_feature')
+            for change, changed in invalid.items():
+                with self.subTest(kind=kind, change=change):
+                    self.assertIn('hid_native_clock_uses_non_native_result', [row['kind'] for row in self.inspect(changed, owner)])
+                    self.assertFalse(self.inspect('#[cfg(test)] mod tests { ' + changed + ' }', owner))
+        self.assertFalse(self.inspect('fn diagnostic(result: Result<usize, Error>) { log(result.is_ok()); }', owner))
+
+    def test_native_batch_clock_uses_whole_receipt_and_never_lease_finish(self):
+        owner = 'crates/razer-service/src/runtime/hid_broker/collection.rs'
+        source = self.native_clock_source('Batch')
+        self.assertFalse(self.inspect(source, owner))
+        self.assertFalse(self.inspect(source.replace('receipt.byte_count', 'receipt.byte_count()'), owner))
+        for change, changed in {
+            'constant_receipt_count': source.replace('byte_count: receipt.byte_count', 'byte_count: 91'),
+            'report_count_instead_of_batch': source.replace('byte_count: receipt.byte_count', 'byte_count: receipt.progress.reports_submitted()'),
+            'other_receipt_getter': source.replace('receipt.byte_count', 'other.byte_count()'),
+            'getter_with_arguments': source.replace('receipt.byte_count', 'receipt.byte_count(91)'),
+            'raw_return_instead_of_count': source.replace('receipt.byte_count', 'receipt.raw_return()'),
+            'progress_getter_instead_of_count': source.replace('receipt.byte_count', 'receipt.progress().reports_submitted()'),
+            'transformed_receipt_count': source.replace('receipt.byte_count', 'receipt.byte_count() + 1'),
+            'lost_batch_error': source.replace('Err(error) => native_io_outcome(error) };', 'Err(error) => None };'),
+            'per_report_send': source.replace('native.send_feature_batch(&bytes)', 'native.send_feature_counted(&bytes)'),
+            'invented_batch': source.replace('native.send_feature_batch(&bytes)', 'Ok(receipt)'),
+            'wrong_clock_event': source.replace('NativeReturn::Batch', 'NativeReturn::Send'),
+        }.items():
+            with self.subTest(change=change):
+                self.assertIn('hid_native_clock_uses_non_native_result', [row['kind'] for row in self.inspect(changed, owner)])
+        for name in ('finish', 'finish_batch', 'release'):
+            changed = ('impl Lease { fn ' + name + '(clock: &mut SourceClock) { '
+                       'clock.native_outcome(now, NativeReturn::Batch, Some(NativeIoOutcome::Returned { byte_count: 0 })); } }')
+            self.assertIn('hid_native_clock_updates_outside_packet_dispatch', [row['kind'] for row in self.inspect(changed, owner)])
+            self.assertFalse(self.inspect(changed.replace('clock.native_outcome(now, NativeReturn::Batch, Some(NativeIoOutcome::Returned { byte_count: 0 }))',
+                                                        'clock.release(now, ReleaseReason::BatchFinally)'), owner))
+        actor = ('fn execute(clock: &mut SourceClock) { match operation { ActorOperation::Finish => '
+                 'clock.native_outcome(now, NativeReturn::Batch, observed), _ => {} } }')
+        self.assertIn('hid_native_clock_updates_outside_packet_dispatch', [row['kind'] for row in self.inspect(actor, owner)])
+        reference = 'fn dispatch() { let update = SourceClock::native_outcome; update(clock, now, kind, observed); }'
+        self.assertIn('hid_native_clock_uses_non_native_result', [row['kind'] for row in self.inspect(reference, owner)])
+        for path in (owner, 'crates/razer-service/src/runtime/hid_broker/clock.rs'):
+            self.assertFalse(workspace.inspect_architecture_source((workspace.ROOT / path).read_bytes(),
+                             owner=path, rust_parser=self.rust_parser), path)
 
     def test_auxiliary_save_storage_failure_reopens_exit_admission(self):
         owner = 'crates/razer-shell/src/shell.rs'
@@ -4485,6 +4669,8 @@ class RustValidationBoundaryTests(unittest.TestCase):
             'receiver-lighting-owner': ('razer-shell', 'receiver_lighting_'),
             'lighting-engine-session': ('razer-service', 'lighting_engine_session::tests'),
             'controller-lighting-service': ('razer-service', 'controller_lighting::'),
+            'controller-calibration-service': ('razer-service', 'runtime::controller_calibration::native_io_tests'),
+            'windows-hid-transport': ('razer-service', 'runtime::native::hid_transport::native_io_tests'),
             'chroma-connect': ('razer-service', 'chroma_connect::tests'),
             'receiver-lighting-attribute-ipc': ('razer-ipc', 'receiver_lighting_attribute_receipt_wire_requires_the_exact_worker_identity'),
             'receiver-brightness-ui': ('razer-pages', 'receiver_brightness_ui::tests'),

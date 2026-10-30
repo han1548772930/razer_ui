@@ -141,13 +141,22 @@ pub(crate) fn exchange_channel(
             let mut last = String::from("No receiver brightness response");
             for out_attempt in 0..cap.max_retry_out {
                 validate()?;
-                progress.attempted = true;
-                let sent = device.send_feature_at_collection_max(&outgoing);
-                if sent.is_ok() {
-                    progress.sent = true;
+                let sent = device.send_feature_at_collection_max_counted(&outgoing);
+                progress.attempted |= crate::backend::native_io_attempted(&sent);
+                progress.sent |= match &sent {
+                    Ok(count) => *count == outgoing.len(),
+                    Err(error) => matches!(
+                        crate::backend::native_io_outcome(error),
+                        Some(crate::backend::NativeIoOutcome::Returned { byte_count })
+                            if byte_count == outgoing.len()
+                    ),
+                };
+                if let Err(validation) = validate() {
+                    return Err(crate::backend::complete_native_io(sent, validation));
                 }
-                validate()?;
-                if let Err(error) = sent {
+                if let Err(error) = sent
+                    .and_then(|count| crate::backend::require_complete_send(count, outgoing.len()))
+                {
                     return Err(error).context("Receiver brightness send transport failed; source exits its send loop on an exception");
                 }
                 std::thread::sleep(Duration::from_millis(cap.sleep_between_out_in_ms));
@@ -162,9 +171,12 @@ pub(crate) fn exchange_channel(
                     let mut incoming = [0u8; 91];
                     incoming[0] = cap.get_report_id;
                     let reply = device.get_feature_at_collection_max(&mut incoming);
-                    validate()?;
+                    if let Err(validation) = validate() {
+                        return Err(crate::backend::complete_native_io(reply, validation));
+                    }
                     let count = match reply {
                 Ok(count) => count,
+                Err(error) if crate::backend::exchange_finalization_failed(&error) => return Err(error),
                 Err(error) if resend_out_command => {
                     last = format!("Receiver brightness getter transport failed: {error:#}");
                     break;

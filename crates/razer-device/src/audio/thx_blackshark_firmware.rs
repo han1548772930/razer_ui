@@ -10,7 +10,10 @@
 //! checksum, and this module does not invent one. Source batches do not stop or
 //! roll back after failure; acknowledged partial writes are retained explicitly.
 
-use crate::backend::{FeatureTransport, HidNode};
+use crate::backend::{
+    FeatureTransport, HidNode, NativeIoOutcome, native_io_attempted, native_io_outcome,
+    native_read_bytes, require_complete_send,
+};
 use anyhow::{Context as _, Result, ensure};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -402,6 +405,8 @@ pub struct BlackSharkFirmwareFailure {
 pub struct BlackSharkFirmwareAttempt {
     pub output: Vec<u8>,
     pub output_attempted: bool,
+    #[serde(default)]
+    pub output_returned_bytes: Option<usize>,
     pub output_completed: bool,
     /// Retain every actual returned packet, including malformed packets.
     pub inputs: Vec<Vec<u8>>,
@@ -486,10 +491,23 @@ impl BlackSharkFirmwareCommandProgress {
             .find_map(|attempt| attempt.reply.as_ref())
     }
     fn fail(&mut self, kind: BlackSharkFirmwareFailureKind, error: impl std::fmt::Display) {
+        self.completed = false;
         self.failure = Some(BlackSharkFirmwareFailure {
             kind,
-            message: error.to_string(),
+            message: format!("{error:#}"),
         });
+    }
+
+    fn fail_io(&mut self, error: anyhow::Error, current: Result<()>) {
+        match current {
+            Ok(()) => self.fail(BlackSharkFirmwareFailureKind::Transport, error),
+            Err(validation) => self.fail(
+                BlackSharkFirmwareFailureKind::Validation,
+                error.context(format!(
+                    "BlackShark I/O owner validation also failed: {validation:#}"
+                )),
+            ),
+        }
     }
 }
 
@@ -603,26 +621,45 @@ impl BlackSharkFirmwareSession {
         };
         let mut progress = (|| {
             let transport = lease.transport();
-            for _ in 0..BLACKSHARK_OUTPUT_ATTEMPTS {
+            for output_ordinal in 0..BLACKSHARK_OUTPUT_ATTEMPTS {
                 if let Err(error) = check() {
                     progress.fail(Validation, error);
                     return progress;
                 }
                 let mut attempt = BlackSharkFirmwareAttempt {
                     output: report.to_vec(),
-                    output_attempted: true,
                     ..Default::default()
                 };
-                let result = transport.write_output(&report);
-                attempt.output_completed = result.is_ok();
+                let result = transport.write_output_counted(&report);
+                attempt.output_attempted = native_io_attempted(&result);
+                attempt.output_returned_bytes = match &result {
+                    Ok(count) => Some(*count),
+                    Err(error) => match native_io_outcome(error) {
+                        Some(NativeIoOutcome::Returned { byte_count }) => Some(byte_count),
+                        _ => None,
+                    },
+                };
+                attempt.output_completed = attempt.output_returned_bytes == Some(report.len());
                 progress.attempts.push(attempt);
-                if let Err(error) = result {
-                    progress.fail(Transport, error);
-                    return progress;
-                }
+                let count = match result {
+                    Ok(count) => count,
+                    Err(error) => {
+                        progress.fail_io(error, check());
+                        return progress;
+                    }
+                };
                 if let Err(error) = check() {
                     progress.fail(Validation, error);
                     return progress;
+                }
+                if let Err(error) = require_complete_send(count, report.len()) {
+                    // AudioBillieT1Wired._sendCommandOut retries normal counts
+                    // unequal to the report length; native errors remain terminal.
+                    if output_ordinal + 1 == BLACKSHARK_OUTPUT_ATTEMPTS {
+                        progress.fail(Transport, error);
+                        return progress;
+                    }
+                    continue;
                 }
                 if let Err(error) = wait(delay) {
                     progress.fail(Scheduling, error);
@@ -646,23 +683,44 @@ impl BlackSharkFirmwareSession {
                         }
                     }
                     let mut input = [0u8; BLACKSHARK_REPORT_BYTES];
-                    let count =
-                        match transport.read_interrupt(&mut input, BLACKSHARK_INPUT_TIMEOUT_MS) {
-                            Ok(count) if count <= input.len() => count,
-                            Ok(count) => {
-                                progress.fail(
-                                    Transport,
-                                    format!(
-                                        "BlackShark backend returned impossible byte count {count}"
-                                    ),
-                                );
-                                return progress;
+                    let count = match transport
+                        .read_interrupt(&mut input, BLACKSHARK_INPUT_TIMEOUT_MS)
+                    {
+                        Ok(count) if count <= input.len() => count,
+                        Ok(count) => {
+                            progress.fail(
+                                Transport,
+                                format!(
+                                    "BlackShark backend returned impossible byte count {count}"
+                                ),
+                            );
+                            return progress;
+                        }
+                        Err(error) => {
+                            if let Some(NativeIoOutcome::Returned { byte_count }) =
+                                native_io_outcome(&error)
+                            {
+                                if let Some(bytes) = native_read_bytes(&error).filter(|bytes| {
+                                    bytes.len() == byte_count
+                                        && byte_count <= BLACKSHARK_REPORT_BYTES
+                                }) {
+                                    let attempt =
+                                        progress.attempts.last_mut().expect("attempt was pushed");
+                                    attempt.inputs.push(bytes.to_vec());
+                                    if byte_count == BLACKSHARK_REPORT_BYTES {
+                                        match decode_blackshark_general_reply(bytes, expected) {
+                                            Ok(reply) => attempt.reply = Some(reply),
+                                            Err(error) => {
+                                                attempt.rejected_inputs.push(format!("{error:#}"))
+                                            }
+                                        }
+                                    }
+                                }
                             }
-                            Err(error) => {
-                                progress.fail(Transport, error);
-                                return progress;
-                            }
-                        };
+                            progress.fail_io(error, check());
+                            return progress;
+                        }
+                    };
                     let attempt = progress.attempts.last_mut().expect("attempt was pushed");
                     attempt.inputs.push(input[..count].to_vec());
                     let decoded = decode_blackshark_general_reply(&input[..count], expected);
@@ -721,7 +779,7 @@ impl BlackSharkFirmwareSession {
                     .message
                     .push_str(&format!("; HID exchange release also failed: {error:#}"));
             } else {
-                progress.fail(Transport, error);
+                progress.fail_io(error, check());
             }
         }
         progress

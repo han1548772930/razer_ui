@@ -35,7 +35,10 @@ impl FeatureTransport for Transport {
             }
             Step::SendError(expected) => {
                 assert_eq!(report, expected);
-                anyhow::bail!("synthetic send failure")
+                Err(crate::backend::native_io_failure(
+                    crate::backend::NativeIoOutcome::Rejected,
+                    anyhow::anyhow!("synthetic send failure"),
+                ))
             }
             _ => panic!("expected IN, received OUT"),
         }
@@ -1296,7 +1299,7 @@ fn macro_upload_failure_identifies_the_acknowledged_allocation_and_keeps_its_pro
 }
 
 #[test]
-fn macro_data_cancellation_during_get_never_becomes_an_ack_or_sends_the_next_block() {
+fn macro_data_cancellation_after_get_keeps_the_ack_without_sending_the_next_block() {
     let data = vec![0x32; 73];
     let mut payload = vec![0, 7, 0, 0, 0, 0, 72];
     payload.extend_from_slice(&data[..72]);
@@ -1327,9 +1330,23 @@ fn macro_data_cancellation_during_get_never_becomes_an_ack_or_sends_the_next_blo
         .unwrap_err();
     assert_eq!(error.root_cause().to_string(), "canceled during native GET");
     assert_eq!(report.steps.len(), 1);
-    assert!(report.steps[0].attempted);
-    assert!(!report.steps[0].acknowledgment_received);
-    assert!(report.steps[0].acknowledgment_data.is_empty());
+    let step = &report.steps[0];
+    assert!(step.attempted && step.acknowledgment_received);
+    assert_eq!(step.command, SET_MEMORY);
+    assert_eq!(step.report_data_size, 79);
+    assert_eq!(step.payload, payload);
+    assert_eq!(step.acknowledgment_data, [0xa1, 0xb2]);
+    assert!(
+        step.error
+            .as_deref()
+            .unwrap()
+            .contains("canceled during native GET")
+    );
     assert!(!report.verified());
+    assert!(report.storage_after.is_none());
+    assert!(report.inventory_after.is_none());
+    assert!(report.data_size_readback.is_none());
+    assert!(report.data_readback.is_none());
+    assert!(report.data_readback_blocks.is_empty());
     device.finish();
 }

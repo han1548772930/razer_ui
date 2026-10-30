@@ -36,7 +36,7 @@ THX V4 的 `0x23200/0x245cd` 算术链已沿完整调用者 `0x63f1a0` 核清七
 
 ## 全产品统一逆向执行方案
 
-执行范围由当前官方产品目录、部署入口、MW、主机本地模块及其原生依赖共同确定。711 个前端源集和 881 个已索引原生模块是现有证据规模，不是产品数量，也不是语义完成数量。统一清单按实际产品 ID、功能、版本／固件条件、传输和平台分支记录；键盘、鼠标、音频、灯光、手柄、配件、系统、主机本地功能及本机安装生命周期同时纳入，不以单个型号代表整个产品族。
+执行范围由当前官方产品目录、部署入口、MW、主机本地模块及其原生依赖共同确定。前端源集按[输入索引](../../.analysis/inputs.json)及获取收据确认，基础原生索引和历史提取队列各保留自身快照；它们不代表产品数量或语义完成数量。统一清单按实际产品 ID、功能、版本／固件条件、传输和平台分支记录；键盘、鼠标、音频、灯光、手柄、配件、系统、主机本地功能及本机安装生命周期同时纳入，不以单个型号代表整个产品族。
 
 当前 `family_candidate_scope` 的定位集合为 mouse 76、keyboard 73、audio 77、gamepad 9、system 41、accessories 56，去重并集 332；类型化目录注册项为 331，均有唯一 ID，全部包含在定位集合内。唯一额外候选是 mouse 162；[完整身份审阅](../products/mouse/products/162.md)核实其仍可取得的旧部署路径在 UI／MW 两层均声明 DeviceInfo 163，当前实际分类与路由没有 162 注册或别名。该路径继续作为独立部署分支保留证据，不新增一个已注册硬件产品，也不以其能力覆盖 163 的当前部署。定位集合合并当前目录、受维护端点和已保留入口，不能直接把 332 当作均已确认有效的产品数。
 
@@ -361,7 +361,7 @@ capture 完整只表示静态函数和原始字节收据可复核；伪代码失
 | `installed-synapse-dashboard` | `synapse-dashboard-current` | [Dashboard](../products/host/dashboard.md)已核卡片、分组、双连接、窗口路由及 retry→后台 resuscitate。旧缓存额外原件覆盖另在替代收据核验；旧部署完整恢复量不等于当前 manifest 可达量，安装／握手／设备恢复不共用成功状态。 |
 | `synapse-chroma-studio-entry-2252a16187ab-current` | `synapse-chroma-studio-build-2609080829-current` | [Studio](../products/host/chroma-studio.md)已有画布／草稿／历史、媒体、Save／Discard、区域选择、Preview／Advanced／LE 及释放专项。旧部署正文及函数范围须先与所选构建逐项对齐，不能仅凭当前依赖闭包就将旧语义自动继承给全部新代码。 |
 | `installed-product-679-mw` | `keyboard-mw-679-current` | [679 板载与本机 Profiles](../products/keyboard/profiles.md)及 `keyboard-mw-audit.json` 的 `keyboard-local-profile-adoption` 已核完整读取、宏、槽身份、合并／冲突／差异写入与菜单动作。`keyboard-679-onboard-reconcile-and-menu-consumers` 记录的是 Rust 消费者与语义差异，不能误当该官方主链未逆向。 |
-| `lighting-protocol-selection-current` | 同名观察源集，provider 为 `synapse-lighting-engine-current` | [协议选择与真实 writer](../products/shared/dynamic-lighting.md#从协议选择到真实-writer-的-js-消费者)及完整原生专题已核协议类、帧构造、应答分类和退出恢复。单一选择器或 provider 捕获不证明全部 manifest、设备／固件组合、Rust writer 及实际设备结果均完成。 |
+| `lighting-protocol-selection-current` | 原观察源集保持不变；当前消费者另选 `synapse-lighting-engine-snapshot-1d1be731` | [协议选择与真实 writer](../products/shared/dynamic-lighting.md#从协议选择到真实-writer-的-js-消费者)区分历史观察与当前完整 AST 的协议类、帧构造、应答分类和退出恢复。单一选择器或 provider 捕获不证明全部 manifest、设备／固件组合、Rust writer 及实际设备结果均完成。 |
 
 表中链接是现有证据的语义入口，当前任务收据和具体专题仍各自保留原范围。源码获取、静态语义、Rust 独立实现、UI／后台接线与纯／模拟测试／实际对照不能通过修改这个队列表互相提升。
 
@@ -379,17 +379,23 @@ capture 完整只表示静态函数和原始字节收据可复核；伪代码失
 
 [原生补查清理收据](../../.analysis/results/scratch-cleanup-native-bulk-closure-verified-plan-applied.json)记录实际删除 17 个临时目录、51 个文件，释放 2,767,838,051 字节；[静态复核后清理收据](../../.analysis/results/scratch-cleanup-unresolved61-post-audit-plan-applied.json)另记录实际删除 117 个目录、351 个文件，释放 7,376,279,993 字节，两批失败均为零。计划 SHA、执行范围和已删除路径均已重新核对，合计实际释放 10,144,118,044 字节。119 份原生补查保留依据在删除后重新核验，包含 16 份源数据库及 16 份原始输入。未完成、未审或仍有实际引用的内容继续保留；清理后的全部 61 项已用 16 个进程重新计算并通过，嵌套证据引用的逻辑字节和 SHA 也独立重验通过。
 
-统一 `verify-analysis-tools` 入口已覆盖归属审计、架构契约、来源汇编、历史尝试、导入转发、前端闭包、严格状态投影、历史来源关系、平台契约及产品消费者；当前[验证收据](../../.analysis/results/tool-verification.json)记录 1,505 项实际执行并通过，失败、错误和跳过均为零，54 份工具与测试输入的执行前后快照及当前字节全部匹配。输入变化、消失、空套件、全部跳过及中断均不能发布通过。736／737 的完整配置消费者已单独核实 edition 129 到 0 的显式选择及缓存顺序；6 个候选路径的 404 原始观察继续保留，不冒充取得了 edition 129 内容、查询了设备或验证了动态缓存与完整产品语义。
+统一 `verify-analysis-tools` 入口覆盖归属审计、架构契约、来源汇编、历史尝试、导入转发、前端闭包、严格状态投影、历史来源关系、平台契约及产品消费者；实际执行数量、失败和工具输入稳定性以 [当前验证收据](../../.analysis/results/tool-verification.json) 为准，旧批次的通过数量不自动扩展到新工具。输入变化、消失、空套件、全部跳过及中断均不能发布通过。736／737 的完整配置消费者已单独核实 edition 129 到 0 的显式选择及缓存顺序；6 个候选路径的 404 原始观察继续保留，不冒充取得了 edition 129 内容、查询了设备或验证了动态缓存与完整产品语义。
 
-目录、协议选择、736／737、162 身份和 IoT 重连五份来源收据的增补历史已接回统一索引；713 份已索引前端获取收据的实际字节全部匹配。复用 provider 的依赖逐份核对原件、完整捕获与真实引用边；IoT 新增的四份单次 HTTP 获取明确不具备两轮稳定性证明。DeviceInfo 的 69 份来源中，67 份保持当前身份，2 份通过严格增补链核对不可变旧来源，原分析正文与 235 份 manifest 范围不变。正式灯光查询的 722 个完整所有者和窗口查询的 197 个完整所有者均无查询失败、输入变化或目标执行；[统一宿主收据](../../.analysis/results/host-current/local-audit.json)同时保留两次发布失败的完整前序引用。
+目录、协议选择、736／737、162 身份和 IoT 重连五份来源收据的增补历史已接回统一索引，原分析正文与 235 份 manifest 范围不变。复用 provider 的依赖逐份核对原件、完整捕获与真实引用边；IoT 四份单次 HTTP 获取明确不具备两轮稳定性证明。DeviceInfo 的 69 份来源中，67 份保留原身份，2 份通过严格增补链核对不可变旧来源。[统一宿主收据](../../.analysis/results/host-current/local-audit.json) 保留前序发布失败，当前来源选择、完整所有者、输入变化和失败另按本次正文核对，不能把旧 722 个灯光 owner 的通过状态当作新部署验证。
+
+灯光与 4115 MW 的当前路由共用稳定来源选择器，分别选择 [LE snapshot](../../.analysis/inputs/frontend/synapse-lighting-engine-snapshot-1d1be731/acquisition.json) 和 [4115 MW 闭包](../../.analysis/inputs/frontend/gamepad-mw-4115-snapshot-81ed5dc91a596f97101f-closure/acquisition.json)。旧 acquisition 标为 superseded 并保留原件；最新候选坏字节、同时间冲突和未核路由直接失败，不回退旧源码。新 [双轮部署复核](../../.analysis/results/frontend-revalidation/96d5e70f5112db87818c4bf0b227ff87b641f9dc3da5c0f9a045777e399fc23f.json) 的 19 项原件均 unchanged_reused、2 项 optional_missing、零失败；旧部署变化的失败收据仍保留。LE 的 158 个 map 404 与 MW 闭包的 98 个 map 404、可选 manifest／favicon 404 均未删，二者 `declared_references_fetched` 仍为 false，完整捕获不可用单列，不能以稳定入口替代完整源码闭包。
+
+当前完整 AST 重新定位 LE 的 14 个恢复类定义、18 个构造函数、29 个 DeviceInfo 链 owner，以及实际初始化 ABI 表和 Qq／Sl 两条配置调用。receiver 的 Krakoff 5423 已随官方聚合容器从旧 8086 移到新 9873，按实际 factory 定位；4115 的 palette task／保存／刷新和九产品选择中的 SagePC 链直接读取新 MW 原件，旧完整捕获仍只证明原部署。通用 batch 的行间等待与 SagePC 每段普通 OUT 后等待保持分支区别。主机同名源码和原生件先沿当前官方 acquisition／包／容器闭包筛选，再核唯一性和真实字节；安装快照或旧包不能因名字相同被选入，当前损坏也不得回退。
 
 当前[统一 Rust 验证收据](../../.analysis/validation.json)按所选套件记录实际命令、测试数量、完整日志与源码输入快照。输入监控、动态灵敏度、Matcher 和存储分别核对，工作区全目标编译与纯／模拟测试的结果分别记录；未选套件、忽略项和其余专题的历史测试不自动提升为当前输入下已执行。
+
+本批[统一验证收据](../../.analysis/validation.json)在同一稳定输入快照中选择 `workspace`、`hid-broker`、`marci-service`、`source-feature-transport`、`device`，工作区 all-targets 检查与四个受影响纯／模拟套件均实际执行并通过。测试数量及忽略项按各条 `commands` 记录，`all_configured_suites=false` 保留未选套件的边界；此前批次只沿 `previous_receipt` 保存，不累计为本批全套。
 
 七款鼠标 Advanced 根已按四种当前挂载树接入，保留动态 Fragment 的固件提示同级顺序、直接 body 子项、产品各自的左栏和空右栏。复核沿完整根解析实际 body／column 包装器与 CSS，逐字节核对 523 份 UI 原件；统一 gaps 的 `mounted_layout_source_review` 保存来源及完整所有者。三项纯结构测试覆盖这七款与未知／物理产品拒绝分支；当前验证另含动态、旋转和输入监控的所选回归。该结果没有提升窗口几何、像素、焦点或官方实际 DLL／设备验收状态，细节见[高级灵敏度](../products/mouse/advanced-sensitivity.md)。
 
 六款 Matcher 的 620 份当前中间件原件和 54 个完整采样／状态机引用已核验。Rust 核心按逻辑产品保留五款容器优先与 226 产品分流的差异，并将计算／完成移到实际 STOP 成功应答之后；失败时结果仍不可确认，监控和锁继续清理。worker 与配置档保存分别保留六款产品身份，确认名称保留 226 的字符串／241 分支及其余五款的语言对象。字符串名称按当前 AM／W$ 的严格比较及 100 次尝试处理，并与初始化、恢复和校准消费者共用所有者；纯／模拟用例包含写入、持久化失败及产品隔离。生产页面保留 PID190 边界，其余五款 UI、226 BLE 传输及非有限／非正数值的额外拒绝差异继续追踪；没有执行官方 DLL、设备操作或应用窗口。
 
-Matcher 的校准快照通过类型化状态贯通核心、worker、Shell 与页面，保留初始缺省值和原版数字文本；常规 400 DPI 确认已进入生产档位解析器。worker 不再仅凭 ACK 发布成功，必须确认实际档位读回及任务错误，五项纯报告测试覆盖失败和有效部分结果。六款 START 的 currentDpi 是配置档基线，和硬件实测分开；异常数值、完整初始化、原版保存／设备派发顺序及失败读值到页面的完整观察仍须继续迁移。当前 18 个所选套件通过全工作区 all-targets 编译与 502 项纯／模拟测试，2 项维护读取明确忽略；完整日志及 1,821 份稳定输入见统一验证收据。四个相关 crate 的 Clippy 通过，警告与失败前序保留；没有提升实际 DLL／设备或窗口验收状态。
+Matcher 的校准快照通过类型化状态贯通核心、worker、Shell 与页面，保留初始缺省值和原版数字文本；常规 400 DPI 确认已进入生产档位解析器。worker 不再仅凭 ACK 发布成功，必须确认实际档位读回及任务错误，五项纯报告测试覆盖失败和有效部分结果。六款 START 的 currentDpi 是配置档基线，和硬件实测分开；异常数值、完整初始化、原版保存／设备派发顺序及失败读值到页面的完整观察仍须继续迁移。本批 Rust 范围、逐命令结果、忽略项和输入身份以[统一验证收据](../../.analysis/validation.json)的 `suite_selection`、`commands`、`inputs` 及 `inputs_unchanged` 为准；`all_configured_suites=false` 时只证明所选套件。工作区 all-targets 检查、Clippy 和其余测试分别依据所属输入快照的实际命令，历史通过、警告和失败沿 `previous_receipt` 保留，不能跨快照累计为本批全套；实际 DLL／设备和窗口验收状态保持独立。
 
 七款动态速度保留逻辑产品、原始 tick 类型、首次／末次发布、产品重置和被过滤回调的归一化；事件过滤依据逐款 DeviceInfo 和当前配对主设备，不增加事件容器或 vendor 门禁。共享配对查询接收 Shell 的有序数组并保留缺字段错误；STOP 移除全部观察者后不再消费 poll，226 的剩余观察者仍消费当前连接的回调，连接失效则关闭历史入口。实际 STOP／shutdown／terminate 清理仍执行。七款 throttle 的 77 个完整源码区间补充证明了独立的调用／发布时间、定时器及 Date.now 来源；Service 修复 34／35 ms 末发差异和时钟回拨漏发，覆盖定时器重排、maxWait 及解析失败边界。STOP／START 速度历史已迁至连接长期所有者，原生 STOP 等待期间仍可末发；页面无窗口生命周期所有者保留配置档切换和 STOP 后的可见速度，并拒绝旧连接和旧过期任务。
 

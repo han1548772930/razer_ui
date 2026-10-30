@@ -40,6 +40,8 @@ start 先查询 restingTriggerValue；有效时使用实读值，缺失或越界
 
 ## 2636：设备硬件效果
 
+当前 [Feature 传输所有者](../../../crates/razer-device/src/gamepad/controller_feature.rs)由九产品按各自实例参数共用：OUT 正常返回严格等于 91 才进入 IN，其余正常计数保持同一报文、最多尝试 20 次；普通计数重试不释放并重新准入。IN 的 busy 只重读，状态 0／3／4、请求身份不符或 busy 耗尽才释放后重发；状态 5 和未知状态立即失败。成功应答按实际返回范围截取 payload，再由具体业务核验字段，不能把完整 91 字节当作所有应答的共同前提。取消、失去连接所有权、原生调用终态与释放失败仍保留实际 ACK 诊断并阻止后续 I/O；[独立模拟用例](../../../crates/razer-device/src/gamepad/controller_feature_tests.rs)与真实设备对照分别验收。
+
 2636 通过 `supportsLighting:true` 挂载 Lighting，硬件效果所有者为其 MW main 模块 70784 bytes `[1331417,1334682)`。效果导入先真实 GET；遇到 effectId 13 再取扩展静态值，实读 index>8 才进入 custom 模式。preset、custom 与配置草稿中的效果选择是分开的来源。brightness 的队列入口是模块 30525 内 `ot [1755579,1758379)`，真实设备 runner 为模块 85191 内 `He [1952298,1954981)`；其实际 GET 与源码 floor/ceil 百分比换算参与是否写入的判断。模块 97901 `[1334683,1336614)` 实际负责 polling rate，不能作为亮度队列证据。
 
 设备适配器来源是 `.analysis/inputs/frontend/gamepad-mw-2636-current/raw/apps.razer.com/synapse/products/2636/mw/rzDevice25Sage.b9b57f19edfe6aa9f049.js`，模块 50207 bytes `[549,4807)`。**2676 虽包含共享 70784，却挂载 SagePC 并明确 `supportsLighting:false`**；SagePC 78786 继承 98773，而非声明扩展静态 methods 的兄弟 Sage 50207。不能给 2676 添加 2636 Lighting 页，也不能猜测兄弟类的命令来解释共享通知中残留的调用。
@@ -48,13 +50,15 @@ start 先查询 restingTriggerValue；有效时使用实读值，缺失或越界
 
 4115 在当前 bootstrap 中选择 `lightingType:"chroma"`，UI descriptor 带 `isWaveWithSpeed:true`、`WAVE_DIRECTION:"LeftRight"` 和普通 profile menu。该路线是持续的本机效果计算与帧输出，区别于 2636 的设备 preset getter/setter。
 
-完整 chain 在 `.analysis/results/frontend/gamepad-main-audit.json` 的 `gamepad_lighting.palette_profile_chain`、`lighting_engine`、`native_engine`。4115 MW 原件为 `.analysis/inputs/frontend/gamepad-mw-4115-current/raw/apps.razer.com/synapse/products/4115/mw/main.8c755a3c43990d2c3900.js`；产品定义 69427 bytes `[1497444,1499733)`，共享硬件效果 helper 70784 `[1505544,1508787)`，其存在不改变 Chroma 挂载选择。UI 原件 `.analysis/inputs/frontend/gamepad-4115-current/raw/apps.razer.com/synapse/products/4115/ui/static/js/main.1a52fc92.js` 的实际 palette editor/profile save/refresh 消费者由上述 audit 完整保存。
+完整 chain 在 `.analysis/results/frontend/gamepad-main-audit.json` 的 `gamepad_lighting.palette_profile_chain`、`lighting_engine`、`native_engine`。4115 MW 由统一选择器选取 [最新稳定闭包](../../../.analysis/inputs/frontend/gamepad-mw-4115-snapshot-81ed5dc91a596f97101f-closure/acquisition.json)，它直接引用首轮 snapshot 的 `main.81ed5dc91a596f97101f.js` 与 95 份已有原件，首轮收据仍是实际依赖。产品定义 69427、共享硬件效果 helper 70784、SagePC 78786 和父类 98773／87969 从选中原件的完整 AST 定位；旧 `main.8c755a3c43990d2c3900.js` 的字节位置只属于保留的旧部署，不能用于当前判断。UI 原件 `.analysis/inputs/frontend/gamepad-4115-current/raw/apps.razer.com/synapse/products/4115/ui/static/js/main.1a52fc92.js` 的实际 palette editor/profile save/refresh 消费者由上述 audit 完整保存。
 
-软件引擎以 25 fps 生成帧，将 8×10 周边映射到 1×32 灯，按源码 BGR 转换和无颜色 sentinel 处理；Wave speed 保留小数。设备帧分为 25+7 两段 OUT；该发送路径没有 IN/device ACK，不能编造每帧读回成功。色板编辑、保存 custom colors、刷新 profile 色板和重建 effect handle 是独立动作；profile 内持久化的是颜色与效果参数，不是可跨进程复用的引擎句柄。
+软件引擎以 25 fps 生成帧，将 8×10 周边映射到 1×32 灯，按源码 BGR 转换和无颜色 sentinel 处理；Wave speed 保留小数。灯光引擎当前 `5451.5593c8f6.chunk.js` 的 SagePC `setChromaFrame` 分为 25+7 两段普通 OUT，经 6411.Cx → 4001.sendCommand；每段分别持有源码命令锁及 HID 周期，OUT 的 5 ms 间隔由主机 collection 时钟处理，数值来自灯光引擎按当前 manifest 重建的独立 SagePC 实例，不在每次发送前固定追加等待。正常返回与 91 不同的计数最多尝试 20 次，保持同一报文和 transaction；单段失败保留诊断后继续下一段。只有该段 `sendCommand` 正常完成并释放后才等待 1 ms，最后一段成功后同样等待。未进入的分段不预先消耗 transaction。进入自定义模式与退出恢复沿同一实例使用 5 ms；manifest 声明的 IN 重试 30 次经基类限制后实际为 10 次。普通设备中间件实例的 10 ms 配置另属独立构造链。它不接收通用灯光引擎的 batch 参数，不能套用批容器仅在相邻行之间等待的规则。该发送路径没有 IN/device ACK，不能编造每帧读回成功；取消、旧连接或释放终态错误停止后续 I/O，已经实际提交的报告仍进入独立失败诊断。色板编辑、保存 custom colors、刷新 profile 色板和重建 effect handle 是独立动作；profile 内持久化的是颜色与效果参数，不是可跨进程复用的引擎句柄。
+
+中间件的基类 `sendCommand` 具有第六个可选 pacing 参数和短计数错误细节；灯光引擎的帧 helper 只传五个参数，沿自己的实例完成 SEND、reportLength 检查、重试和 finally 释放。调色板的 task、保存、effect rebase 与 profile refresh 分别从同一当前 MW 原件读取，不能用旧捕获替代。九产品选择查询对 4115 直接解析当前完整原件 AST，保留 `complete_capture_unavailable`；其他八款仍各自复用经核验的捕获，不据此声称其部署已在本批重新获取。
 
 生命周期持有 device/engine/effect handle 与输入 bridge。暂停只是停效果/帧发布，不等于销毁 device；恢复重新激活当前 owner；退出执行源码的 spectrum 恢复，再移除效果、释放设备/引擎与通知/COM 资源。旧 generation 帧不得投给新连接。native `RzLightingEngineApi_v4.0.55.0.dll` 在此是分析对象：完整动作分发 RVA 0x1fd90、create device 0x20300、destroy device 0x20c50、add effect 0x21ac0、输入事件 0x27d60、terminate 0x2a5c0 的伪代码与交叉引用由 `native_engine` 记录；不得把它的生产调用描述成独立 Rust 实现。
 
-来源与验证边界：[2636 UI/MW 收据](../../../.analysis/inputs/frontend/gamepad-mw-2636-current/acquisition.json)、[2676 MW 收据](../../../.analysis/inputs/frontend/gamepad-mw-2676-current/acquisition.json)、[2684 MW 收据](../../../.analysis/inputs/frontend/gamepad-mw-2684-current/acquisition.json)、[4115 UI 收据](../../../.analysis/inputs/frontend/gamepad-4115-current/acquisition.json)、[4115 MW 收据](../../../.analysis/inputs/frontend/gamepad-mw-4115-current/acquisition.json)。静态源码、Rust 纯测试与实际功能对照分别记录；应用、厂商 JS、真实校准和灯光写入均未在此执行。
+来源与验证边界：[2636 UI/MW 收据](../../../.analysis/inputs/frontend/gamepad-mw-2636-current/acquisition.json)、[2676 MW 收据](../../../.analysis/inputs/frontend/gamepad-mw-2676-current/acquisition.json)、[2684 MW 收据](../../../.analysis/inputs/frontend/gamepad-mw-2684-current/acquisition.json)、[4115 UI 收据](../../../.analysis/inputs/frontend/gamepad-4115-current/acquisition.json)、[4115 MW 当前闭包](../../../.analysis/inputs/frontend/gamepad-mw-4115-snapshot-81ed5dc91a596f97101f-closure/acquisition.json)、[旧 MW 收据](../../../.analysis/inputs/frontend/gamepad-mw-4115-current/acquisition.json)。当前闭包仍有 98 个 source map 404、可选 asset-manifest 404 和 HTML 引用 favicon 404；声明依赖已请求不代表源码全部取得，`declared_references_fetched` 仍为 false。静态源码、Rust 纯测试与实际功能对照分别记录；应用、厂商 JS、真实校准和灯光写入均未在此执行。
 
 ## 实际挂载页面与 Rust 调用方
 
@@ -103,7 +107,11 @@ Shell worker 持有独立的业务结果与清理收据。Cancel 与 Shutdown �
 
 [lighting runtime](../../../crates/razer-pages/src/features/gamepad/gamepad_lighting_runtime.rs) 维护串行请求、profile 快照、revision 和取消 guard；请求经外层具名事件到 [Shell lighting](../../../crates/razer-shell/src/shell/gamepad/controller_lighting.rs)，写入前排本机保存，再交 [retained owner](../../../crates/razer-shell/src/shell/gamepad/controller_lighting_owner.rs) 与实际服务/设备协议，返回时核实身份、应答和观察结果。2636 的协议实现区分 Read、ReadBrightness、Initialize、Set 与 brightness 的先读后按需写；其存在不能使 2676 获得 Lighting 能力。
 
-当前 `request_controller_lighting` 从已恢复设置排 Initialize，再排 brightness；它没有在该入口排效果 Read。Initialize 还包含官方 `50077 [1329404,1331416)` 的 PC-mode 选项查询/最多三次尝试及既有 profile 效果任务。因此“协议有 getter”“初始化已应答”与“页面确实导入设备效果”须分别核对，继续追官方首次 document 导入 guard、feature init 与结果消费者，不能自行把缓存或默认效果称为实读。
+2636 的首次文档导入先由 `11365` 读取真实槽位与各 profile 字段；亮度和效果分别通过 `ProfileValue::Brightness/Lighting` 进入 [导入消费者](../../../crates/razer-pages/src/features/gamepad/gamepad_initialization.rs)。界面初始 profile 没有 `controllerLightingEffects`，实际效果读数到达时，消费者使用 `69427.getDefaultProfile` 定义的有类型初态承接读数，随后立即应用真实效果、速率与色板。失败或未观测的字段不会创建该 feature 记录；已有记录的格式错误和未知效果继续报错。该初态只用于源码规定的读取消费，不据缺少本地字段触发设备写入。
+
+导入保存后，`request_controller_lighting` 才从已导入设置排 Initialize，再排 brightness；该入口不重复排效果 Read。Initialize 包含官方 `50077 [1329404,1331416)` 的 PC-mode 查询、最多三次尝试及现有 profile 效果任务。普通失败继续遵循该 best-effort 链；实际交换释放失败则保留应答诊断并终止，不再重试或发送后续效果。亮度区域查询也区分普通查询失败与释放终态，不能用后者进入另一区域的 GET/SET。
+
+当前 [分支审计](../../../.analysis/results/frontend/gamepad-main-audit.json) 中，`11365.Rt` 的导入 guard 属于 MW 实例；普通断开不会清零，用户设备 Reset 才调用 `ho`。新 MW 实例的组合初始化会导入一次，普通无线重连已有 serialNumber 时走 `84910.Pe`，不重做 `hn/Dn`。2636 该分支没有注册 generic lighting features，因此不能据重连自行增加整份导入、效果 GET 或旧配置 SET；当前连接未观测仍须与本地草稿分开。首次导入实读、初始化应答、重连状态和实际设备验收分别判断。
 
 4115 色板与 Chroma 配置经 [controller_chroma](../../../crates/razer-shell/src/shell/gamepad/controller_chroma.rs) 独立保存、刷新和观察；服务 [lighting_engine](../../../crates/razer-service/src/runtime/lighting_engine.rs) 当前调用共享 Rust renderer，HID 帧提交位于 [controller_software_lighting](../../../crates/razer-device/src/gamepad/controller_software_lighting.rs)。两段 OUT 的提交结果与效果/亮度应答不同，没有每帧 IN/ACK；退出恢复 spectrum、停止帧、释放效果/设备/引擎及输入订阅分别确认。页面切换不应被误读为整个持续效果 owner 已销毁。
 

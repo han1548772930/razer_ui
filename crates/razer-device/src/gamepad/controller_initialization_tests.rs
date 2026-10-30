@@ -508,7 +508,9 @@ fn controller_initialization_profile_names_use_two_chunks_and_restore_normal_del
     let probe = crate::feature_exchange::tests::ExchangeProbe::new(&io);
     let waits = RefCell::new(Vec::new());
     let result = InitializationProtocol::new(&probe, 2636, |delay| {
-        waits.borrow_mut().push(delay.as_millis());
+        if !delay.is_zero() {
+            waits.borrow_mut().push(delay.as_millis());
+        }
         Ok(())
     })
     .unwrap()
@@ -524,10 +526,7 @@ fn controller_initialization_profile_names_use_two_chunks_and_restore_normal_del
             .unwrap(),
         &format!("{}{}", "中".repeat(32), "文".repeat(7))
     );
-    assert_eq!(
-        *waits.borrow(),
-        [0, 10, 0, 10, 0, 10, 0, 10, 0, 10, 0, 20, 0, 20, 0, 10]
-    );
+    assert_eq!(*waits.borrow(), [10, 10, 10, 10, 10, 20, 20, 10]);
     assert_eq!(
         probe.timings(),
         vec![

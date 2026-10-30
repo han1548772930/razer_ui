@@ -43,7 +43,12 @@ impl FeatureTransport for Transport {
             "Nominal command, packet size, metadata, padding or CRC differs"
         );
         self.sends.set(self.sends.get() + 1);
-        ensure!(success, "Synthetic OUT failure");
+        if !success {
+            return Err(crate::backend::native_io_failure(
+                crate::backend::NativeIoOutcome::Rejected,
+                anyhow::anyhow!("Synthetic OUT failure"),
+            ));
+        }
         Ok(())
     }
     fn get_feature(&self, report: &mut [u8]) -> Result<usize> {
@@ -1002,7 +1007,7 @@ fn cancellation_after_create_ack_stops_before_first_block() {
 }
 
 #[test]
-fn canceled_reply_does_not_turn_into_a_setter_ack() {
+fn canceled_reply_keeps_the_empty_ack_without_completing_the_identity_write() {
     let mut steps = Vec::new();
     let mut tx = 0;
     inventory(&mut steps, 5, 1, &[1], &mut tx);
@@ -1019,8 +1024,18 @@ fn canceled_reply_does_not_turn_into_a_setter_ack() {
         .unwrap_err();
     assert_eq!(error.phase, OnboardFailurePhase::Write);
     assert_eq!(error.progress.steps.len(), 1);
-    assert!(!error.progress.steps[0].acknowledgment_received);
+    let step = &error.progress.steps[0];
+    assert!(step.attempted && step.acknowledgment_received);
+    assert_eq!(step.command, [1, 5, 2]);
+    assert_eq!(step.payload, [3]);
+    assert_eq!(step.acknowledgment_data.as_slice(), &[] as &[u8]);
     assert!(error.device_state_may_have_changed());
+    assert!(!error.progress.verified());
+    assert!(error.progress.inventory_after.is_none());
+    assert!(error.progress.identity_readback_blocks.is_empty());
+    assert!(error.progress.identity_readback.is_none());
+    assert!(error.progress.storage_refresh.is_none());
+    assert!(format!("{error:#}").contains("Canceled after reply"));
     assert_eq!((t.sends.get(), t.reads.get()), (4, 4));
     t.finish();
 }

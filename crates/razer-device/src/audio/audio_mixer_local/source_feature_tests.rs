@@ -9,14 +9,24 @@ enum Step {
     Send(Vec<u8>),
     SendError(Vec<u8>),
     SendTerminalError(Vec<u8>),
+    SendOutcome(Vec<u8>, Option<crate::backend::NativeIoOutcome>),
     Get { selector: u8, bytes: Vec<u8> },
     GetError { selector: u8 },
     GetTerminalError { selector: u8 },
     Output(Vec<u8>),
     OutputError(Vec<u8>),
     OutputTerminalError(Vec<u8>),
+    OutputOutcome(Vec<u8>, Option<crate::backend::NativeIoOutcome>),
     Input { selector: u8, bytes: Vec<u8> },
     InputError { selector: u8 },
+}
+
+fn send_failure(outcome: Option<crate::backend::NativeIoOutcome>, message: &str) -> anyhow::Error {
+    let error = anyhow::anyhow!(message.to_owned());
+    match outcome {
+        Some(outcome) => crate::backend::native_io_failure(outcome, error),
+        None => error,
+    }
 }
 
 struct Transport {
@@ -58,13 +68,23 @@ impl FeatureTransport for Transport {
             }
             Some(Step::SendError(expected)) => {
                 assert_eq!(report, expected);
-                anyhow::bail!("Simulated Feature OUT failure")
+                Err(send_failure(
+                    Some(crate::backend::NativeIoOutcome::Rejected),
+                    "Simulated Feature OUT failure",
+                ))
             }
             Some(Step::SendTerminalError(expected)) => {
                 assert_eq!(report, expected);
-                Err(crate::backend::finalization_failure(anyhow::anyhow!(
-                    "simulated inner release failed"
-                )))
+                Err(crate::backend::native_io_failure(
+                    crate::backend::NativeIoOutcome::Rejected,
+                    crate::backend::finalization_failure(anyhow::anyhow!(
+                        "simulated inner release failed"
+                    )),
+                ))
+            }
+            Some(Step::SendOutcome(expected, outcome)) => {
+                assert_eq!(report, expected);
+                Err(send_failure(outcome, "simulated Feature boundary failure"))
             }
             _ => panic!("Unexpected source SET"),
         }
@@ -107,13 +127,23 @@ impl FeatureTransport for Transport {
             }
             Some(Step::OutputError(expected)) => {
                 assert_eq!(report, expected);
-                anyhow::bail!("Simulated Output failure")
+                Err(send_failure(
+                    Some(crate::backend::NativeIoOutcome::Rejected),
+                    "Simulated Output failure",
+                ))
             }
             Some(Step::OutputTerminalError(expected)) => {
                 assert_eq!(report, expected);
-                Err(crate::backend::finalization_failure(anyhow::anyhow!(
-                    "simulated inner release failed"
-                )))
+                Err(crate::backend::native_io_failure(
+                    crate::backend::NativeIoOutcome::Rejected,
+                    crate::backend::finalization_failure(anyhow::anyhow!(
+                        "simulated inner release failed"
+                    )),
+                ))
+            }
+            Some(Step::OutputOutcome(expected, outcome)) => {
+                assert_eq!(report, expected);
+                Err(send_failure(outcome, "simulated Output boundary failure"))
             }
             _ => panic!("Unexpected source Output"),
         }
@@ -169,6 +199,61 @@ fn execute_command(io: &Transport, command: Command) -> anyhow::Result<Receipt> 
     execute(io, &command, &|| Ok(()), &|_| {
         panic!("Feature source task must not issue an unrelated control output")
     })
+}
+
+#[test]
+fn source_transfer_uses_terminal_send_facts_before_rejecting_a_canceled_owner() {
+    use crate::backend::{NativeIoOutcome, native_io_outcome};
+
+    for feature in [true, false] {
+        let report = if feature {
+            packet(&[7, 0, 0, 0, 0, 0, 0, 2, 12, 0, 112, 0, 20, 5, 0])
+        } else {
+            output_packet(&[3, 24, 0, 192, 16, 16, 16])
+        };
+        for (outcome, attempted, completed) in [
+            (None, 0, 0),
+            (Some(NativeIoOutcome::NotCalled), 0, 0),
+            (Some(NativeIoOutcome::Rejected), 1, 0),
+            (Some(NativeIoOutcome::Returned { byte_count: 0 }), 1, 0),
+            (
+                Some(NativeIoOutcome::Returned {
+                    byte_count: report.len(),
+                }),
+                1,
+                1,
+            ),
+        ] {
+            let io = Transport::new([if feature {
+                Step::SendOutcome(report.clone(), outcome)
+            } else {
+                Step::OutputOutcome(report.clone(), outcome)
+            }]);
+            let validate = || {
+                ensure!(
+                    io.sends.get() == 0,
+                    "owner canceled after the adapter returned"
+                );
+                Ok(())
+            };
+            let error = if feature {
+                reports::feature(&io, report.as_slice().try_into().unwrap(), None, &validate)
+            } else {
+                reports::output(&io, &report, None, &validate)
+            }
+            .unwrap_err();
+            let progress = &error.downcast_ref::<TransferFailure>().unwrap().progress;
+            assert_eq!(
+                (progress.sends_attempted, progress.sends_completed),
+                (attempted, completed)
+            );
+            assert!(progress.input.is_none());
+            assert_eq!(native_io_outcome(&error), outcome);
+            assert!(format!("{error:#}").contains("owner canceled after the adapter returned"));
+            assert_eq!(io.sends.get(), 1);
+            io.finish();
+        }
+    }
 }
 
 #[test]
@@ -310,7 +395,7 @@ fn completed_source_send_survives_release_failure_without_a_fabricated_reply() {
 }
 
 #[test]
-fn completed_source_command_remains_diagnostic_when_final_owner_check_fails() {
+fn completed_source_send_and_release_remain_diagnostic_when_final_owner_check_fails() {
     let io = Transport::new([Step::Output(output_packet(&[3, 24, 0, 192, 16, 69, 69]))]);
     let stale = Cell::new(false);
     let replace = || stale.set(true);
@@ -325,10 +410,11 @@ fn completed_source_command_remains_diagnostic_when_final_owner_check_fails() {
         &|_| panic!("unexpected control"),
     )
     .unwrap_err();
-    let completed = &error.downcast_ref::<CommandFailure>().unwrap().completed;
-    assert!(completed.transport_completed);
-    assert!(completed.response.is_null());
-    assert!(completed.profile_updates.is_empty());
+    let progress = &error.downcast_ref::<TransferFailure>().unwrap().progress;
+    assert_eq!((progress.sends_attempted, progress.sends_completed), (1, 1));
+    assert!(progress.input.is_none());
+    assert!(crate::backend::exchange_release_completed(&error));
+    assert!(error.downcast_ref::<CommandFailure>().is_none());
     assert_eq!(
         error.root_cause().to_string(),
         "source command owner replaced after release"
@@ -338,7 +424,7 @@ fn completed_source_command_remains_diagnostic_when_final_owner_check_fails() {
 }
 
 #[test]
-fn bounded_source_input_survives_release_failure_but_during_get_cancel_keeps_only_send() {
+fn bounded_source_input_survives_release_failure_and_cancellation_as_diagnostics() {
     let input = vec![0x7f, 12, 34];
     for during_get in [false, true] {
         let io = Transport::new([
@@ -359,10 +445,7 @@ fn bounded_source_input_survives_release_failure_but_during_get_cancel_keeps_onl
         let error = reports::output(&probe, &[10, 5], Some(18), &validate).unwrap_err();
         let progress = &error.downcast_ref::<TransferFailure>().unwrap().progress;
         assert_eq!((progress.sends_attempted, progress.sends_completed), (1, 1));
-        assert_eq!(
-            progress.input.as_deref(),
-            (!during_get).then_some(input.as_slice())
-        );
+        assert_eq!(progress.input.as_deref(), Some(input.as_slice()));
         assert_eq!(
             error.root_cause().to_string(),
             if during_get {

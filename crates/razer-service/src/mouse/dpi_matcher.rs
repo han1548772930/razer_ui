@@ -47,6 +47,7 @@ pub enum Response {
 pub struct Controller {
     session: Session,
     monitoring: bool,
+    listening: bool,
     locked: bool,
 }
 impl Controller {
@@ -54,6 +55,7 @@ impl Controller {
         Self {
             session: Session::new(product),
             monitoring: false,
+            listening: false,
             locked: false,
         }
     }
@@ -77,6 +79,7 @@ impl Controller {
                     return Err(error);
                 }
                 self.monitoring = true;
+                self.listening = true;
                 if let Err(error) = backend.acquire_matcher_locks() {
                     self.session.reset();
                     self.cleanup(backend)?;
@@ -86,7 +89,26 @@ impl Controller {
                 self.session.acquired_lock()?;
                 Ok(vec![Response::Calibration(self.response())])
             }
-            "CANCEL" | "RESET" => {
+            "CANCEL" => {
+                // Source removes L before awaiting STOP. A failed STOP neither
+                // sends CANCEL to the state machine nor runs its movement reset.
+                self.listening = false;
+                if self.monitoring {
+                    backend.stop_input_monitoring()?;
+                    self.monitoring = false;
+                }
+                if self.session.state.accepts_cancel() && self.locked {
+                    backend.release_matcher_locks()?;
+                    self.locked = false;
+                }
+                Ok(self
+                    .session
+                    .cancel_after_stop()
+                    .into_iter()
+                    .map(Response::Calibration)
+                    .collect())
+            }
+            "RESET" => {
                 self.cleanup(backend)?;
                 self.session.reset();
                 Ok(vec![Response::Calibration(self.response())])
@@ -170,8 +192,10 @@ impl Controller {
         backend: &mut impl Backend,
     ) -> anyhow::Result<Calibration> {
         ensure!(self.monitoring, "input monitor is unavailable");
+        ensure!(self.listening, "Matcher input listener is detached");
         match self.session.ingest(batch, initial_is_main, received_ms) {
             Ok(true) => {
+                self.listening = false;
                 backend.stop_input_monitoring()?;
                 self.monitoring = false;
                 let completion = self.session.complete_after_stop();
@@ -202,6 +226,7 @@ impl Controller {
     /// Called on owner/device/workspace destruction. Keep flags on failure so a
     /// subsequent cleanup can retry; no successful cancellation is fabricated.
     pub fn cleanup(&mut self, backend: &mut impl Backend) -> anyhow::Result<()> {
+        self.listening = false;
         let stop = if self.monitoring {
             backend.stop_input_monitoring()
         } else {

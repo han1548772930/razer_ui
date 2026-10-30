@@ -1,5 +1,8 @@
 use super::*;
-use crate::backend::ReportLengths;
+use crate::backend::{
+    ExchangeLease, ExchangeOptions, NativeIoOutcome, ReportLengths, exchange_finalization_failed,
+    native_io_failure, native_io_outcome,
+};
 use std::cell::{Cell, RefCell};
 use std::collections::VecDeque;
 
@@ -155,6 +158,15 @@ fn marci_output_reports_actual_count_without_a_device_ack() {
             complete: false
         }
     );
+    hid.count.set(0);
+    assert_eq!(
+        submit_javascript_frame(&hid, &f).unwrap(),
+        OutputReceipt {
+            submitted_bytes: 781,
+            transferred_bytes: 0,
+            complete: false
+        }
+    );
     hid.count.set(782);
     assert!(submit_javascript_frame(&hid, &f).is_err());
     hid.count.set(781);
@@ -169,6 +181,245 @@ fn marci_output_reports_actual_count_without_a_device_ack() {
     hid.node = node(false);
     hid.failed.set(true);
     assert!(submit_javascript_frame(&hid, &f).is_err());
+}
+
+#[derive(Clone, Copy)]
+enum OutputResult {
+    Returned(usize),
+    Failed(Option<NativeIoOutcome>),
+}
+
+#[derive(Debug)]
+struct OutputFailureCause;
+
+impl std::fmt::Display for OutputFailureCause {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("scripted Output failure")
+    }
+}
+
+impl std::error::Error for OutputFailureCause {}
+
+#[derive(Debug)]
+struct OutputReleaseCause;
+
+impl std::fmt::Display for OutputReleaseCause {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("scripted Output release failure")
+    }
+}
+
+impl std::error::Error for OutputReleaseCause {}
+
+struct ScriptedOutput {
+    node: HidNode,
+    result: OutputResult,
+    release_fails: bool,
+    retired_after_release: bool,
+    calls: RefCell<Vec<&'static str>>,
+}
+
+impl ScriptedOutput {
+    fn new(result: OutputResult, release_fails: bool) -> Self {
+        Self {
+            node: node(false),
+            result,
+            release_fails,
+            retired_after_release: false,
+            calls: RefCell::new(Vec::new()),
+        }
+    }
+}
+
+struct OutputLease<'a>(&'a ScriptedOutput);
+
+impl ExchangeLease for OutputLease<'_> {
+    fn transport(&self) -> &dyn FeatureTransport {
+        self.0
+    }
+
+    fn retry_release(&self) -> anyhow::Result<()> {
+        panic!("a Marci Output frame has no in-exchange retry")
+    }
+
+    fn finish(self: Box<Self>) -> anyhow::Result<()> {
+        self.0.calls.borrow_mut().push("finish");
+        if self.0.release_fails {
+            Err(OutputReleaseCause.into())
+        } else if self.0.retired_after_release {
+            crate::backend::validate_exchange_release(Ok(()), Err(OutputReleaseCause.into()))
+        } else {
+            Ok(())
+        }
+    }
+}
+
+impl Drop for OutputLease<'_> {
+    fn drop(&mut self) {
+        self.0.calls.borrow_mut().push("drop");
+    }
+}
+
+impl FeatureTransport for ScriptedOutput {
+    fn begin_exchange(&self, _: ExchangeOptions) -> anyhow::Result<Box<dyn ExchangeLease + '_>> {
+        self.calls.borrow_mut().push("begin");
+        Ok(Box::new(OutputLease(self)))
+    }
+
+    fn hid_node(&self) -> Option<&HidNode> {
+        Some(&self.node)
+    }
+
+    fn send_feature(&self, _: &[u8]) -> anyhow::Result<()> {
+        panic!("a Marci Output frame must not send a Feature report")
+    }
+
+    fn get_feature(&self, _: &mut [u8]) -> anyhow::Result<usize> {
+        panic!("a Marci Output frame has no Feature acknowledgement")
+    }
+
+    fn write_output_counted(&self, report: &[u8]) -> anyhow::Result<usize> {
+        assert_eq!(report.len(), 781);
+        self.calls.borrow_mut().push("write");
+        match self.result {
+            OutputResult::Returned(count) => Ok(count),
+            OutputResult::Failed(outcome) => {
+                let error = OutputFailureCause.into();
+                Err(match outcome {
+                    Some(outcome) => native_io_failure(outcome, error),
+                    None => error,
+                })
+            }
+        }
+    }
+
+    fn report_lengths(&self) -> anyhow::Result<ReportLengths> {
+        Ok(ReportLengths {
+            output: [(23, 781)].into(),
+            ..Default::default()
+        })
+    }
+
+    fn metadata(&self) -> serde_json::Value {
+        serde_json::Value::Null
+    }
+}
+
+#[test]
+fn marci_output_failed_publication_keeps_explicit_counts_and_independent_release_failure() {
+    for byte_count in [0, 780, 781] {
+        for release_fails in [false, true] {
+            let outcome = NativeIoOutcome::Returned { byte_count };
+            let io = ScriptedOutput::new(OutputResult::Failed(Some(outcome)), release_fails);
+            let error = submit_javascript_frame(&io, &Frame::connection_probe()).unwrap_err();
+            assert!(error.is::<OutputFailureCause>());
+            assert_eq!(native_io_outcome(&error), Some(outcome));
+            assert_eq!(
+                CompletedOutputTransfer::from_error(&error)
+                    .unwrap()
+                    .receipt(),
+                &OutputReceipt {
+                    submitted_bytes: 781,
+                    transferred_bytes: byte_count,
+                    complete: byte_count == 781,
+                }
+            );
+            assert_eq!(error.is::<OutputReleaseFailure>(), release_fails);
+            assert_eq!(exchange_finalization_failed(&error), release_fails);
+            if release_fails {
+                assert!(format!("{error:#}").contains("scripted Output release failure"));
+            }
+            assert_eq!(*io.calls.borrow(), ["begin", "write", "finish", "drop"]);
+        }
+    }
+}
+
+#[test]
+fn marci_completed_release_is_distinct_from_a_native_release_failure() {
+    let mut transport = ScriptedOutput::new(OutputResult::Returned(781), false);
+    transport.retired_after_release = true;
+    let value = Frame::from_engine(&frame(1, 42), 1).unwrap();
+    let error = submit_javascript_frame(&transport, &value).unwrap_err();
+    assert!(crate::backend::exchange_release_completed(&error));
+    assert!(!error.is::<OutputReleaseFailure>());
+    assert_eq!(
+        CompletedOutputTransfer::from_error(&error)
+            .unwrap()
+            .receipt()
+            .transferred_bytes,
+        781
+    );
+    assert!(error.is::<OutputReleaseCause>());
+    assert_eq!(
+        *transport.calls.borrow(),
+        ["begin", "write", "finish", "drop"]
+    );
+}
+
+#[test]
+fn marci_output_unobserved_and_rejected_results_never_invent_a_completed_receipt() {
+    for outcome in [
+        None,
+        Some(NativeIoOutcome::NotCalled),
+        Some(NativeIoOutcome::Rejected),
+    ] {
+        for release_fails in [false, true] {
+            let io = ScriptedOutput::new(OutputResult::Failed(outcome), release_fails);
+            let error = submit_javascript_frame(&io, &Frame::connection_probe()).unwrap_err();
+            assert!(error.is::<OutputFailureCause>());
+            assert_eq!(native_io_outcome(&error), outcome);
+            assert!(CompletedOutputTransfer::from_error(&error).is_none());
+            assert_eq!(error.is::<OutputReleaseFailure>(), release_fails);
+            assert_eq!(exchange_finalization_failed(&error), release_fails);
+            if release_fails {
+                assert!(format!("{error:#}").contains("scripted Output release failure"));
+            }
+            assert_eq!(*io.calls.borrow(), ["begin", "write", "finish", "drop"]);
+        }
+    }
+}
+
+#[test]
+fn marci_output_native_returns_survive_release_failure_without_becoming_success() {
+    for byte_count in [0, 780, 781] {
+        let io = ScriptedOutput::new(OutputResult::Returned(byte_count), true);
+        let error = submit_javascript_frame(&io, &Frame::connection_probe()).unwrap_err();
+        assert!(error.is::<OutputReleaseCause>());
+        assert!(error.is::<OutputReleaseFailure>());
+        assert!(exchange_finalization_failed(&error));
+        assert_eq!(
+            native_io_outcome(&error),
+            Some(NativeIoOutcome::Returned { byte_count })
+        );
+        assert_eq!(
+            CompletedOutputTransfer::from_error(&error)
+                .unwrap()
+                .receipt(),
+            &OutputReceipt {
+                submitted_bytes: 781,
+                transferred_bytes: byte_count,
+                complete: byte_count == 781,
+            }
+        );
+        assert_eq!(*io.calls.borrow(), ["begin", "write", "finish", "drop"]);
+    }
+}
+
+#[test]
+fn marci_output_excessive_counts_remain_raw_diagnostics_without_a_valid_receipt() {
+    for release_fails in [false, true] {
+        let io = ScriptedOutput::new(OutputResult::Returned(782), release_fails);
+        let error = submit_javascript_frame(&io, &Frame::connection_probe()).unwrap_err();
+        assert_eq!(
+            native_io_outcome(&error),
+            Some(NativeIoOutcome::Returned { byte_count: 782 })
+        );
+        assert!(CompletedOutputTransfer::from_error(&error).is_none());
+        assert_eq!(error.is::<OutputReleaseFailure>(), release_fails);
+        assert_eq!(exchange_finalization_failed(&error), release_fails);
+        assert!(format!("{error:#}").contains("Marci Output returned an excessive byte count"));
+        assert_eq!(*io.calls.borrow(), ["begin", "write", "finish", "drop"]);
+    }
 }
 
 #[test]

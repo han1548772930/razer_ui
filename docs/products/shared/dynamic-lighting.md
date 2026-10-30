@@ -67,15 +67,17 @@ LampArray `JsonApi` 通过本机命名管道 `\\pipe\\rzwdl_%s` 进入 RPC；服
 
 ## 原件定位
 
-本页逐字节复核 [完整捕获](../../../.analysis/results/host-current/local-audit.json) `dynamic_lighting.complete_source_owners` 的完整所有者与对应原件；当前查询范围和数量见文末。
+本页逐字节复核 [统一查询](../../../.analysis/results/host-current/local-audit.json) `dynamic_lighting.complete_source_owners` 的完整所有者与对应原件；当前查询范围和数量见文末。Lighting Engine 由共用选择器按正式获取收据选择 [最新稳定 snapshot](../../../.analysis/inputs/frontend/synapse-lighting-engine-snapshot-1d1be731/acquisition.json)，当前主脚本为 `main.1d1be731.js`。旧 `synapse-lighting-engine-current` 收据及专题观察保持原字节与失败，记录为已被新部署替代；本页其他未更新的旧字节坐标只定位那些历史专题，不是当前 snapshot 的位置。
+
+选择器核实实际原件长度、SHA、部署路由和稳定性，最新候选原件损坏时直接失败，不回退旧版本。当前 318 个 asset-manifest 映射均已请求，168 项成功、158 个 source map 404，`declared_references_fetched=false`；没有完整的新捕获，`complete_capture_unavailable` 单独保留。完整 AST 定位覆盖 14 个默认恢复类定义、18 个构造函数及 29 个 DeviceInfo 链所有者；目录和 DeviceInfo 专题的旧 owner 留在 `historical_owner_ids`，当前消费者和当前类另有独立 owner，不能因旧专题验证通过便将其全部结论升级为当前完成。
 
 | 所有者 | 原件与 UTF-8 字节区间 |
 | --- | --- |
 | 设置控件 | `synapse-settings-current/.../720.1e5d1c8f.chunk.js` `[84051,86061)` |
-| 存储事件串行化 | `synapse-lighting-engine-current/.../main.a383ea9e.js` `[908613,909593)` |
-| 设备控制权切换 | 同原件 `[909593,911799)` |
-| LampArray 原生初始化、查询与清理 | 同原件 `[278509,287000)` |
-| 原生灯光驱动包装 | 同原件 `[405624,425118)` |
+| 存储事件串行化 | 当前 `main.1d1be731.js` 的 `onStorageChange_dynamicLighting [903008,903456)` |
+| 设备控制权切换 | 同原件 `updateRazerWDLDevices [903456,905662)` |
+| LampArray 原生初始化、查询与清理 | 同原件 `RzWDL [277592,285959)` |
+| 原生灯光驱动包装 | 同原件 module 2578 完整类 `[401050,419502)` |
 
 下面继续解析全部 11 个已注册灯光协议的实际 translator、writer 与释放，以及 JSON 动作、设备打开与元数据、COM 调用、事件和结果消费者。它们是当前入口的具体静态结果，不代表整个产品集合、原生模块或运行时验证已完成。
 
@@ -119,19 +121,23 @@ metadata 的实际布局为：`+0 category:u8`、`+1 reportID:u8`、`+4 deviceHa
 
 ### 从协议选择到真实 writer 的 JS 消费者
 
-当前引擎 `createLightingDeviceEx` `[410545,411775)`、`addDevice` `[461405,463857)` 和 `addMultiLinkSeqDevice` `[463858,465176)` 从实际 rzDevice 取得协议名、category、设备 handle、writer 名、identifier、base class、batch、reportId 与 WDL 标志；normal 分支另附 remap，multi 分支另附 link_seq_id。WDL 标志为 `info.isWDLSupported && !info.lampArrayDeviceId`，不能仅按 PID 或“支持 Windows”推断 skip。
+当前引擎 module 2578 的 `createLightingDeviceEx` 与 module 2808 的 `addDevice [454975,457409)`、`addMultiLinkSeqDevice [457410,458695)` 从实际 rzDevice 取得协议名、category、设备 handle、writer 名、identifier、base class、batch、reportId 与 WDL 标志；normal 分支另附 remap，multi 分支另附 link_seq_id。WDL 标志为 `info.isWDLSupported && !info.lampArrayDeviceId`，不能仅按 PID 或“支持 Windows”推断 skip。成员从各自完整 factory AST 定位，不能因主脚本中有多个同名 addDevice 就任选一个。
 
 | 当前协议构造 | 实际 writer／接口选择 |
 | --- | --- |
-| 通用 rzDevice25，main `[511629,516074)` | `hid.sendFeatureReportInBatch`、batch=true、reportLength=91；reportID 来自 extraParam，缺省 0 |
-| Chroma65，`334.68120187.chunk.js` `[644,1250)` | 独立名称与基类名，继承通用 batch writer |
-| Matrix，`3061.825e8b6b.chunk.js` `[715,5064)`；Skip，`269.63b2c328.chunk.js` `[644,1268)` | 分别明确 skipSetCustomEffect=false／true，继承通用 writer |
-| Glitter，`8648.80c7d0df.chunk.js` `[715,2649)`；Wireless，`1452.f8a38141.chunk.js` `[661,5365)` | 专用 interface 1，reportMaxDataSize 分别 320／380；writer 沿 rzDevice25。无线 chunk 内 `[6110,8044)` 还有普通 Glitter 构造，不能只依文件名选择 |
-| MatrixBatchSender，`8086.08213062.chunk.js` `[297563,298327)` | 灯帧 identifier 为 interface 3，继承 Matrix／25；实际 loader 是该 chunk 的 module 7752 |
-| Marci，`330.d43d2948.chunk.js` `[878,5093)` | `hid.writeAsync`、batch=false；灯帧 interface2／usagePage65300／usage1、长781。普通命令则 reportID16／长91／usagePage12／usage1，不能混同 |
-| Camy，`2237.e8b29886.chunk.js` `[746,5727)` | reportID7／长65，继承 25 的 batch writer |
-| IoT，`1794.13beaac0.chunk.js` `[690,3254)` | 通常 `IoT.SetChromaFrameV2`；isJadeT1 改为 SetChromaFrame 并登记 whiteLED12，identifier 含 host，支持状态来自异步查询 |
-| LampArray，main `[1118109,1126709)` | `LampArray.effect_set_colors_for_indices`、batch=false；identifier 包含 deviceID／indices／container／interface／PID |
+| 通用 rzDevice25，main module 4001 构造 `[504411,508457)` | `hid.sendFeatureReportInBatch`、batch=true、reportLength=91；reportID 来自 extraParam，缺省 0 |
+| Chroma65，module 334，独立与聚合 chunk 中共四份定义 | 独立名称与基类名，继承通用 batch writer |
+| Matrix，module 3061；Skip，module 269 | 分别明确 skipSetCustomEffect=false／true，继承通用 writer |
+| Glitter，module 8648；Wireless，module 1452 | 专用 interface 1，reportMaxDataSize 分别 320／380；writer 沿 rzDevice25。无线 chunk 另含普通 Glitter 构造，按 factory 与自身 constructor 身份区分 |
+| MatrixBatchSender，`9873.fd5aab55.chunk.js` 的 module 7752 | 灯帧 identifier 为 interface 3，继承 Matrix／25；旧 8086 容器不能作为当前定位 |
+| Marci，module 330，独立及 9873 聚合 chunk 各一份 | `hid.writeAsync`、batch=false；灯帧 interface2／usagePage65300／usage1、长781。普通命令则 reportID16／长91／usagePage12／usage1，不能混同 |
+| Camy，module 2237，独立及 9873 聚合 chunk 各一份 | reportID7／长65，继承 25 的 batch writer |
+| IoT，module 1794 | 通常 `IoT.SetChromaFrameV2`；isJadeT1 改为 SetChromaFrame 并登记 whiteLED12，identifier 含 host，支持状态来自异步查询 |
+| LampArray，main module 6825 构造 `[1111732,1120133)` | `LampArray.effect_set_colors_for_indices`、batch=false；identifier 包含 deviceID／indices／container／interface／PID |
+
+通用 `rzDevice25` 的当前 `setChromaFrameLightingEngine [541171,542428)` 仍构造魔数 `37 13 fe ca` 的批容器，以 F0/F1/F2 操作码表达发送和等待，相邻行之间插入 1 ms，末行不加等待，最后只 flush 一次。Linker／DualLinkMouse 的独立 factory 及新 9873 容器中的 Krakoff 5423 分别保留实际类；Krakoff 没有覆写帧方法，继续继承基类行为。SagePC 的独立 `setChromaFrame` 则逐段普通发送并在每段后等待，不能将这两条 pacing 规则合并。
+
+原生 ABI 来源为当前 module 2198 的完整 `init`，`lighting_frontend_abi` 逐字段读取版本表并核对实际 Qq／Sl 调用及 module 4407 的词法 import。IPC 分支 await Qq，另一路同步 Sl；二者第三参数必须绑定同一份 literal 表，不能从临近的同名变量推断签名。4.0.2.0 包含 GetDLLVersion／FreeMalloc／RzLightingApi／SetNodeFFIEvent，4.0.3.0 增加 PollEvents／UsePollingMode，4.0.6.0 增加 RzLightingApiNoReturn，4.0.8.0 为 GetFeatureSet，4.0.9.0 为 SetOperatingMode；完整返回类型与参数留在统一审计。该静态声明核对不表示 DLL 功能已实际执行。
 
 `0x7ec90` 的 FFI writer 将 `function_name`、逐字节 buffer 和 `device_handle` 序列化为 UTF-8 JSON，调用 **void callback** 后固定返回 true。宿主 `ffiLightingDriver.js` 的完整 initDll `[262,1108)` 声明 SetWriteFFICallback／callback 均为 void(pointer)，查 deviceMap 后调用 onWriteCallback，既不 await 也不回传异步值。`electron/main.js` 的 `to.onWriteCallback` `[54855,55533)` 再将 batch 转 ArrayBuffer，其他 HID 转 Uint8Array，IoT／LampArray 转 Array，调用对应 handleAction，同样不 return／await Promise。因此即使 translator 消费了 writer 的 true，也没有取得最终 I/O／设备结果。
 
@@ -183,7 +189,7 @@ LightingDriver 导出 `Shutdown 0x2550` 仅清全局 callback 指针，再跳 `T
 
 退出链先置 exiting、关闭 SDK 状态、停止宿主帧、terminate 引擎，随后 await 外部停止 helper、清引擎全局，再进行 direct／registered 恢复并清设备表、发布退出标志。Marci 不在十项 host-default 注册名单内，实际进入 direct restore，写 normal mode 0 及适用的退出效果；当前 manifest 的 syncExit=true、useUser=false、effect4／direction=`"up"` 是退出目标，不能解释为原值快照。停止宿主帧只是 gate，LightingDriver Shutdown 只停止其 timer；两者都没有建立跨引擎、回调、HID worker 与在途写入的完成屏障。
 
-外部停止 helper 的 JS owner 已确定：[当前 lighting JS](../../../.analysis/inputs/frontend/synapse-lighting-engine-current/raw/apps.razer.com/synapse/lighting-engine/static/js/main.a383ea9e.js)的 `6191.$g → 2449.simpleLaunchRazerAppNoWait` 固定拼接 `5596.kM` 提供的 Interhaptics／Synesthesia 安装目录与 `SynesthesiaStop.exe`，参数为空；没有使用相邻工具函数的 installedResources 路径解析，也没有检查或返回宿主结果。原件 SHA-256 为 `c82c7074e5da8abcffbff95f23a6b962c1e14b04586715b9d4b7a6f11fe9e6d2`，[获取收据](../../../.analysis/inputs/frontend/synapse-lighting-engine-current/acquisition.json)实际 SHA-256 为 `d453c6631d8f1e14368d8f26b91832ca2a1bb9829e9acccd779253b1e53eb407`。宿主回调声明为 `(void,[bool,string,int])`，实际 JS 只消费前两个参数；失败对象不会阻止后续恢复，bridge Promise 拒绝则可中止恢复，回调始终不到达可使等待一直 pending。helper 原件及其内部退出仍缺证据，不能将函数名中的 NoWait 或一次回调当作子进程退出／恢复屏障。
+外部停止 helper 的 JS owner 已确定：[当前 lighting JS](../../../.analysis/inputs/frontend/synapse-lighting-engine-snapshot-1d1be731/raw/apps.razer.com/synapse/lighting-engine/static/js/main.1d1be731.js)的 `6191.$g → 2449.simpleLaunchRazerAppNoWait` 固定拼接 `5596.kM` 提供的 Interhaptics／Synesthesia 安装目录与 `SynesthesiaStop.exe`，参数为空；没有使用相邻工具函数的 installedResources 路径解析，也没有检查或返回宿主结果。该完整导出函数与保留旧部署的正文逐字节相同，当前来源身份由 [snapshot 收据](../../../.analysis/inputs/frontend/synapse-lighting-engine-snapshot-1d1be731/acquisition.json) 管理。宿主回调声明为 `(void,[bool,string,int])`，实际 JS 只消费前两个参数；失败对象不会阻止后续恢复，bridge Promise 拒绝则可中止恢复，回调始终不到达可使等待一直 pending。helper 原件及其内部退出仍缺证据，不能将函数名中的 NoWait 或一次回调当作子进程退出／恢复屏障。
 
 另沿当前宿主 4.0.827 包核对实际 unversioned `simple_service.dll` 1.2.2.10；[官方获取收据](../../../.analysis/inputs/host-current/acquisition.json)实际 SHA-256 为 `149596e4bcc7c06b2f953fa7e177dcc7919e07e8783e9fa255fdab89ad53f7b1`，静态提取原件与 installed alias 均为 `f8e3886c1d83e37accebd40d4b72d5f26c1d3b5d09a6b72707a27f089c196f2b`。[完整捕获](../../../.analysis/results/native/f8e3886c1d83e37accebd40d4b72d5f26c1d3b5d09a6b72707a27f089c196f2b/capture.json)实际 SHA-256 为 `0acfaec64d8ace705ffe4f6b258cdce4772a13faf8c955374ef8c6ab9f3e71dd`，其中 53 个续追函数、53 chunks、22,266 原始字节及 5,115 条指令均重新与 PE 比较。该续追独立于冻结的帧附片，不改写其未验证范围。[NoWait 导出](../../../.analysis/results/native/f8e3886c1d83e37accebd40d4b72d5f26c1d3b5d09a6b72707a27f089c196f2b/functions/14d30.json)把等待参数置 0，经实际 vtable `0x1f2040+0x80 → 0x3f90 → 0x4170 → 0x23a26 → 0x23c10 → 0x1d9f0` 排到 [IO 工作函数 `0x2af90`](../../../.analysis/results/native/f8e3886c1d83e37accebd40d4b72d5f26c1d3b5d09a6b72707a27f089c196f2b/functions/2af90.json)。它先检查实际路径及签名，文件不存在返回 `Error : Razer App does not exist.`；[提升判定 `0x4dfa8`](../../../.analysis/results/native/f8e3886c1d83e37accebd40d4b72d5f26c1d3b5d09a6b72707a27f089c196f2b/functions/4dfa8.json)静态读取 EXE manifest 的 requestedExecutionLevel，发现 requireAdministrator／highestAvailable 才尝试 COM NoWait，未要求提升或 COM 失败再走本地创建分支。此链不下载或部署 helper。[完成回调](../../../.analysis/results/native/f8e3886c1d83e37accebd40d4b72d5f26c1d3b5d09a6b72707a27f089c196f2b/functions/14b10.json)仅向 FFI 传 `(bool,reason)`，exitCode 只用于日志，并受全局初始化 bit0 gate 控制。声明的第三参数不是已经观测到的进程退出码，gate 关闭时也不能推定回调必达。
 
@@ -568,7 +574,7 @@ getter先请求表，失败／空值再读Cache API `DeviceDataJson`，有内容
 
 ### 页面和引擎怎样消费这些结果
 
-当前灯光引擎 `main.a383ea9e.js` 的完整 `rzDeviceLampArray` 类 `[1118089,1128397)` 已加入查询。其 `connectDevice` 先等待 `device_open`，仅成功时调用 `getVKAndVSCMap`，再解析设备信息、标记 opened；map 调用的返回值没有成为另一道 open 成功门禁。map 成功时构造 `Map(key,scan_code)`，不消费 `key_name`。WASD、方向键、功能键、数字区和 logo 的灯珠分组来自枚举结果 `lamp.keys/purposes`，这段完整 owner 没有调用 `device_indices_for_key`。
+当前灯光引擎 `main.1d1be731.js` 的完整 `rzDeviceLampArray` 类 `[1111712,1121800)` 已加入查询。其 `connectDevice` 先等待 `device_open`，仅成功时调用 `getVKAndVSCMap`，再解析设备信息、标记 opened；map 调用的返回值没有成为另一道 open 成功门禁。map 成功时构造 `Map(key,scan_code)`，不消费 `key_name`。WASD、方向键、功能键、数字区和 logo 的灯珠分组来自枚举结果 `lamp.keys/purposes`，这段完整 owner 没有调用 `device_indices_for_key`。
 
 `getBrightness` 仅在 `succeeded===true` 时将 `nLevel` 转为 `jsonData.brightness`。`setBrightness` 成功后返回的是请求中的 brightness，不能称为读回值；失败保留默认结果。连续帧经 `JsonApiNoReturn` 提交 `effect_set_colors_for_indices`，当前宿主 `LampArrayAction.setChromaFrame` 也走此动作。选定完整引擎 main 与宿主 LampArrayAction 内没有单色动作的字面调用方，不能为它虚构页面入口；本次已闭合的是该 native 动作本身，动态构造动作及其余部署仍要独立核对。
 
@@ -590,7 +596,7 @@ deviceSettings: [{deviceId: string,
 
 值读取器 `0x117c30` 将 `REG_SZ` 当 ANSI 字符串，`REG_DWORD` 转为十进制字符串；其他类型输出字面值 `(Unsupported type)`。name／data 使用固定 256 字节缓冲区，`RegEnumValueA` 任意非零结果都会结束当前循环，包括错误。该外部 JSON 没有逐项读取状态，因此缺项、读取错误和真实不存在不能只凭空列表区分。
 
-当前完整 `RzWDL` 类 `[278509,287000)` 与 `LampArrayEventHandler` 类 `[1138049,1147614)` 的消费者都要求 `AmbientLightingEnabled.data` **严格等于字符串 `"1"`**；Brightness 以十进制 `parseInt` 解析，`<=10` 时生成低亮度警告。它们用设备 ID 的 substring 筛选设备，以 `JSON.stringify` 严格比较全局／设备 provider 数组的内容和顺序，并只检查第一项是否包含 `RazerDynamicLighting`。不能将 provider 集合排序后再称比较等价。所需值的 `.find(...).data` 缺失会抛到 owner 的 catch，不会得到一个已确认默认值。
+当前完整 `RzWDL` 类 `[277592,285959)` 与 `LampArrayEventHandler` 类 `[1133027,1142531)` 的消费者都要求 `AmbientLightingEnabled.data` **严格等于字符串 `"1"`**；Brightness 以十进制 `parseInt` 解析，`<=10` 时生成低亮度警告。它们用设备 ID 的 substring 筛选设备，以 `JSON.stringify` 严格比较全局／设备 provider 数组的内容和顺序，并只检查第一项是否包含 `RazerDynamicLighting`。不能将 provider 集合排序后再称比较等价。所需值的 `.find(...).data` 缺失会抛到 owner 的 catch，不会得到一个已确认默认值。
 
 两处事件消费者也有区别：低层 availability 更新会修改保留设备、发布 update，并触发保留的 200ms debounce；高层 handler 为该事件临时创建一个 300ms debounce 后调用，分析结果经 `L.m_` 发布。高层没有把这个临时 debounce 保存成统一可取消任务；不能将低层 `unregisterEvent` 对其自有 debounce 的取消扩大到高层所有待执行分析。
 
@@ -665,7 +671,7 @@ API Startup `0x88410` 把两种 consumer 绑定到 `0x10023/0x10a0a → 0x874c0/
 
 | 完整 owner | Added／Removed 的行为 |
 | --- | --- |
-| `RzWDL` `[278509,287000)` | PID=0 且有 container 时按大小写无关的 container 查本机 USB；无匹配时将 VID/PID 设为 `61439/61439` 的兼容身份，不能称硬件实测。新 ID 建 adapter 并发 new；已存在 ID 发 update，但**不把新 event 替换进保留记录**。Removed 仅找到保留 ID 时移除并发 disconnect |
+| 当前 `RzWDL` `[277592,285959)` | PID=0 且有 container 时按大小写无关的 container 查本机 USB；无匹配时将 VID/PID 设为 `61439/61439` 的兼容身份，不能称硬件实测。新 ID 建 adapter 并发 new；已存在 ID 发 update，但**不把新 event 替换进保留记录**。Removed 仅找到保留 ID 时移除并发 disconnect |
 | `LampArrayEventHandler` `[1138049,1147614)` | 按 device ID 的 mutex 串行处理；useWDL=false 时跳过 Razer vendor 设备。新增先移除同 container 的普通 Chroma 项，再建立 LampArray adapter、prepareDevice、发布集合并保存 WindowStorage。移除先删除同 container 的 LampArray Chroma 项，再按参数清保留集合／灯信息，删除文件 cache 并保存 WindowStorage；找不到 adapter 则提前返回。finally 释放 mutex，catch 只记日志 |
 
 这两段完整 owner 没有连接代次校验，response/emitter 的异步 handler 也没有统一等待全部 Promise 的完成屏障。测试应覆盖重复 Added 重置 native open、旧 JS 记录不替换、Removed 先于排队 Added 被消费、同 ID 重新加入、USB 兼容身份、useWDL=false、prepare／移除／存储失败、Stop 后迟到回调，以及注销后已排队工作的清理。独立 Rust 要有自身的连接归属与完成结果，但不能把源码没有的确认或自动回滚写成官方行为。
@@ -772,7 +778,7 @@ parent 检查 `0xf4730` 以 PROCESS_QUERY_LIMITED_INFORMATION（`0x1000`）打�
 
 ## 验证范围
 
-统一查询入口为`python -X utf8 tools/workspace.py audit-host-local --query dynamic-lighting`，覆盖完整source owner、所用CSS／SVG、10份语言模块、14份恢复实体、目录／七产品重连／原生函数／数据区和稀疏包。[查询结果](../../../.analysis/results/host-current/local-audit.json)已按最新输入索引严格重跑：动态照明保留722个完整source owner，宏查询保留3778个；两者均failures=[]、snapshot_stable=true、changed=[]。当前manifest范围为229份主输入、2份同字节观察及4份引擎备用件，共235份物理输入／215个唯一PID-edition、68个manifest获取目录；值源结果另含引擎收据，共69份。原144个DeviceInfo语义owner未改，两份副本和四份新分支的完整字节／字段及当前235份范围均通过维护工具原有精确检验函数，未放宽集合、SHA或投影比较。manifest文件名／内部PID的真实差异独立保留。SKU专项另核40个AST所有者和11个原生函数，协议选择专项另核134个完整AST owner及27份原件；专项与统一查询有重叠，均独立记录，不能相加作为总覆盖。`python -X utf8 -m unittest discover -s tools -p test_host.py` 的39项维护工具测试通过；IoT帧长度／独立XOR及parser静态向量仍按静态期望记录，不是实际DLL输出。以上不将未决原生间接目标、所有产品协议或实际DLL对照升级为已闭合。
+统一查询入口为 `python -B tools/workspace.py audit-host-local --query dynamic-lighting`，覆盖完整 source owner、所用 CSS／SVG、10 份语言模块、当前协议与恢复类、目录／七产品重连／原生函数／数据区和稀疏包。[查询结果](../../../.analysis/results/host-current/local-audit.json) 的实际来源以 `source_sets/current_source_selection` 为准，稳定性以 `snapshot_stable/changed_during_query` 为准；前序 722 个 owner 与旧工具测试数量不自动证明当前 snapshot。DeviceInfo 专题仍保留其 144 个历史语义 owner、235 份物理 manifest、215 个唯一 PID-edition 和真实文件名／内部 PID 差异，当前 AST 的类和消费者独立关联，旧专题完整覆盖与本批重定位分别验收。SKU 专项的 40 个 AST owner／11 个原生函数及协议选择专项的 134 个 AST owner／27 份原件保留各自原来源，不能与统一查询相加作为总覆盖。IoT 帧长度／独立 XOR 及 parser 向量是静态期望，不是实际 DLL 输出。普通工具测试不执行官方 DLL，未决间接目标、全产品协议及实际设备验收继续分别记录。
 
 收据分别保留完整汇编与伪代码状态。WDL当前选定函数有五处原始Hex-Rays失败：`0x1544c0/0x154500`是上述Added／Removed delegate；`0x156f30/0x157530`各将RDX指向的16字节闭包描述复制到栈、将RCX解引用为Impl，再经`0x4467/0x31c5`尾跳`0x156a90/0x156f60`；`0x158c60`将RDX／R8／R9三个16字节描述复制到栈，再经`0x1f50`尾跳`0x1585d0`。后三者均按完整汇编核实，返回寄存器沿原调用直接传回，没有额外确认。五处仍列入decompiler_failures，不能写成伪代码已恢复。HID的`0x30888`基础及早期566补捕获失败保持原样；当前查询另引用独立c98d成功补捕获和上述编码语义结果，不能据此改写旧失败。各捕获结果与产品语义完成度分别记录。
 

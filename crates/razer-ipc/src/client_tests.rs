@@ -644,7 +644,9 @@ fn legacy_vendor_log_does_not_hide_valid_fragmented_response() {
     let error = client
         .request(ServiceRequest::KeyboardLayoutRead)
         .unwrap_err();
-    assert!(error.to_string().contains("输出已关闭"));
+    let text = format!("{error:#}");
+    assert!(text.contains("输出已关闭"));
+    assert!(text.contains("stdout:\n\u{fffd}\u{fffd}\r\n"));
     assert!(client.is_stopped());
 }
 
@@ -685,13 +687,52 @@ fn contradictory_or_missing_response_outcomes_close_the_connection() {
 }
 
 #[test]
-fn fatal_response_can_preserve_a_final_source_observation() {
-    let value = serde_json::json!({"samples": [], "diagnostics": ["owner retired"]});
-    let (mut client, pending) = simulated_client(reply(1, Some(value.clone()), None, true));
-    assert_eq!(
-        client.request(ServiceRequest::KeyboardLayoutRead).unwrap(),
-        value
-    );
+fn fatal_response_retains_failure_diagnostics_and_rejects_success_data() {
+    let (mut client, pending) = simulated_client(reply(
+        1,
+        Some(serde_json::json!({"samples": []})),
+        None,
+        true,
+    ));
+    let error = client
+        .request(ServiceRequest::KeyboardLayoutRead)
+        .unwrap_err();
+    assert!(format!("{error:#}").contains("Fatal service response has no error"));
+    assert_closed(&mut client, &pending);
+
+    let snapshot = razer_device::audio_mixer_hardware::Snapshot {
+        keys: [true, false, true, false, true, false],
+        channel_mutes: [false, true, false, true],
+        mic_muted: true,
+        mic_long_press: false,
+        sliders: [17, 29, 43, 61],
+        phantom_power: true,
+        mic_plugged: false,
+        line_in_plugged: true,
+    };
+    let response = ResponseEnvelope {
+        id: 1,
+        data: None,
+        error: Some("owner retired after source observation".to_owned()),
+        fatal: true,
+        diagnostics: Some(FailureDiagnostics::MixerHardware(snapshot.clone())),
+    };
+    response.validate_outcome().unwrap();
+    let mut bytes = FRAME_PREFIX.as_bytes().to_vec();
+    bytes.extend(serde_json::to_vec(&response).unwrap());
+    bytes.push(b'\n');
+    let (mut client, pending) = simulated_client(bytes);
+    let error = client
+        .request(ServiceRequest::KeyboardLayoutRead)
+        .unwrap_err();
+    let failure = error
+        .downcast_ref::<ServiceFailure>()
+        .expect("fatal response discarded its typed diagnostics");
+    assert_eq!(failure.message, "owner retired after source observation");
+    let FailureDiagnostics::MixerHardware(retained) = &failure.diagnostics else {
+        panic!("fatal response changed its diagnostic domain")
+    };
+    assert_eq!(retained, &snapshot);
     assert_closed(&mut client, &pending);
 }
 

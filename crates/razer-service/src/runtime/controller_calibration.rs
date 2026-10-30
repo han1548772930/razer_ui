@@ -2,7 +2,9 @@
 //! writes and readback. No vendor DLL, synthetic movement or completion timer.
 use anyhow::{Context as _, ensure};
 use razer_device::{
-    backend::{FeatureTransport, HidNode},
+    backend::{
+        FeatureTransport, HidNode, checked_native_io, checked_native_read, require_complete_send,
+    },
     controller_calibration::{
         HoldChange, TriggerCalibrationSession, TriggerCalibrationTransport, TriggerPart,
         TriggerStep,
@@ -215,6 +217,14 @@ struct CheckedTransport<'a> {
     validate: &'a dyn Fn() -> anyhow::Result<()>,
     write_attempted: &'a AtomicBool,
 }
+
+fn record_trigger_write_attempt(attempted: &AtomicBool, report: &[u8]) {
+    if report.get(7..9) == Some(&[12, 25]) {
+        // A terminal native attempt is distinct from acknowledgement and readback.
+        attempted.store(true, Ordering::Release);
+    }
+}
+
 impl FeatureTransport for CheckedTransport<'_> {
     fn begin_exchange(
         &self,
@@ -228,11 +238,7 @@ impl FeatureTransport for CheckedTransport<'_> {
             self.validate,
             self.validate,
             None,
-            move |report| {
-                if report.get(7..9) == Some(&[12, 25]) {
-                    attempted.store(true, Ordering::Release);
-                }
-            },
+            move |report| record_trigger_write_attempt(attempted, report),
         ))
     }
     fn begin_exchange_validated<'a>(
@@ -251,44 +257,77 @@ impl FeatureTransport for CheckedTransport<'_> {
             self.validate,
             self.validate,
             None,
-            move |report| {
-                if report.get(7..9) == Some(&[12, 25]) {
-                    attempted.store(true, Ordering::Release);
-                }
-            },
+            move |report| record_trigger_write_attempt(attempted, report),
         ))
     }
     fn hid_node(&self) -> Option<&HidNode> {
         self.inner.hid_node()
     }
+    fn send_feature_batch(
+        &self,
+        batch: &razer_device::backend::FeatureBatch,
+    ) -> anyhow::Result<razer_device::backend::FeatureBatchReceipt> {
+        razer_device::backend::checked_feature_batch(
+            self.validate,
+            || {
+                let result = self.inner.send_feature_batch(batch);
+                razer_device::backend::observe_feature_batch(batch, &result, |bytes| {
+                    record_trigger_write_attempt(self.write_attempted, bytes);
+                });
+                result
+            },
+            self.validate,
+        )
+    }
     fn send_feature(&self, report: &[u8]) -> anyhow::Result<()> {
-        (self.validate)()?;
-        if report.get(7..9) == Some(&[12, 25]) {
-            // Attempt is distinct from firmware acknowledgement and readback.
-            self.write_attempted.store(true, Ordering::Release);
-        }
-        self.inner.send_feature(report)?;
-        (self.validate)()
+        let count = self.send_feature_counted(report)?;
+        require_complete_send(count, report.len())
+    }
+    fn send_feature_counted(&self, report: &[u8]) -> anyhow::Result<usize> {
+        checked_native_io(
+            self.validate,
+            || {
+                let result = self.inner.send_feature_counted(report);
+                if razer_device::backend::native_io_attempted(&result) {
+                    record_trigger_write_attempt(self.write_attempted, report);
+                }
+                result
+            },
+            self.validate,
+        )
     }
     fn get_feature(&self, report: &mut [u8]) -> anyhow::Result<usize> {
-        (self.validate)()?;
-        let count = self.inner.get_feature(report)?;
-        (self.validate)()?;
-        Ok(count)
+        checked_native_read(
+            self.validate,
+            report,
+            |report| self.inner.get_feature(report),
+            self.validate,
+        )
     }
     fn get_feature_at_collection_max(&self, report: &mut [u8]) -> anyhow::Result<usize> {
-        (self.validate)()?;
-        let count = self.inner.get_feature_at_collection_max(report)?;
-        (self.validate)()?;
-        Ok(count)
+        checked_native_read(
+            self.validate,
+            report,
+            |report| self.inner.get_feature_at_collection_max(report),
+            self.validate,
+        )
     }
     fn send_feature_at_collection_max(&self, report: &[u8]) -> anyhow::Result<()> {
-        (self.validate)()?;
-        if report.get(7..9) == Some(&[12, 25]) {
-            self.write_attempted.store(true, Ordering::Release);
-        }
-        self.inner.send_feature_at_collection_max(report)?;
-        (self.validate)()
+        let count = self.send_feature_at_collection_max_counted(report)?;
+        require_complete_send(count, report.len())
+    }
+    fn send_feature_at_collection_max_counted(&self, report: &[u8]) -> anyhow::Result<usize> {
+        checked_native_io(
+            self.validate,
+            || {
+                let result = self.inner.send_feature_at_collection_max_counted(report);
+                if razer_device::backend::native_io_attempted(&result) {
+                    record_trigger_write_attempt(self.write_attempted, report);
+                }
+                result
+            },
+            self.validate,
+        )
     }
     fn metadata(&self) -> Value {
         self.inner.metadata()
@@ -435,4 +474,398 @@ fn execute(
         "transport_metadata":device.metadata(),
         "persistence":"device_calibration_write_with_exact_readback"}),
     )
+}
+
+#[cfg(test)]
+mod native_io_tests {
+    use super::*;
+    use razer_device::backend::{NativeIoOutcome, native_io_outcome};
+    use std::cell::{Cell, RefCell};
+
+    struct Native {
+        calls: Cell<usize>,
+    }
+
+    impl FeatureTransport for Native {
+        fn send_feature(&self, _: &[u8]) -> anyhow::Result<()> {
+            panic!("calibration must retain the counted native route")
+        }
+        fn send_feature_counted(&self, _: &[u8]) -> anyhow::Result<usize> {
+            self.calls.set(self.calls.get() + 1);
+            Ok(23)
+        }
+        fn send_feature_at_collection_max_counted(&self, _: &[u8]) -> anyhow::Result<usize> {
+            self.calls.set(self.calls.get() + 1);
+            Ok(29)
+        }
+        fn get_feature(&self, report: &mut [u8]) -> anyhow::Result<usize> {
+            self.calls.set(self.calls.get() + 1);
+            report[1] = 0x71;
+            Ok(17)
+        }
+        fn get_feature_at_collection_max(&self, report: &mut [u8]) -> anyhow::Result<usize> {
+            self.calls.set(self.calls.get() + 1);
+            report[1] = 0x73;
+            Ok(19)
+        }
+        fn metadata(&self) -> Value {
+            Value::Null
+        }
+    }
+
+    #[test]
+    fn calibration_attempt_starts_after_admission_and_survives_failed_delivery() {
+        for collection in [false, true] {
+            for blocked in [false, true] {
+                let native = Native {
+                    calls: Cell::new(0),
+                };
+                let checks = Cell::new(0);
+                let validate = || {
+                    let previous = checks.replace(checks.get() + 1);
+                    ensure!(!blocked && previous == 0, "calibration owner expired");
+                    Ok(())
+                };
+                let attempted = AtomicBool::new(false);
+                let checked = CheckedTransport {
+                    inner: &native,
+                    validate: &validate,
+                    write_attempted: &attempted,
+                };
+                let mut report = [0; 91];
+                report[7..9].copy_from_slice(&[12, 25]);
+                let error = if collection {
+                    checked.send_feature_at_collection_max_counted(&report)
+                } else {
+                    checked.send_feature_counted(&report)
+                }
+                .unwrap_err();
+                let expected = if blocked {
+                    NativeIoOutcome::NotCalled
+                } else {
+                    NativeIoOutcome::Returned {
+                        byte_count: if collection { 29 } else { 23 },
+                    }
+                };
+                assert_eq!(native_io_outcome(&error), Some(expected));
+                assert!(format!("{error:#}").contains("calibration owner expired"));
+                assert_eq!(attempted.load(Ordering::Acquire), !blocked);
+                assert_eq!(native.calls.get(), usize::from(!blocked));
+            }
+        }
+    }
+
+    #[test]
+    fn calibration_short_send_and_late_reads_never_publish_success() {
+        let native = Native {
+            calls: Cell::new(0),
+        };
+        let attempted = AtomicBool::new(false);
+        let checked = CheckedTransport {
+            inner: &native,
+            validate: &|| Ok(()),
+            write_attempted: &attempted,
+        };
+        let mut report = [0; 91];
+        report[7..9].copy_from_slice(&[12, 25]);
+        let error = checked.send_feature(&report).unwrap_err();
+        assert_eq!(
+            native_io_outcome(&error),
+            Some(NativeIoOutcome::Returned { byte_count: 23 })
+        );
+        assert!(attempted.load(Ordering::Acquire));
+        for collection in [false, true] {
+            let checks = Cell::new(0);
+            let validate = || {
+                let previous = checks.replace(checks.get() + 1);
+                ensure!(previous == 0, "calibration read owner expired");
+                Ok(())
+            };
+            let attempted = AtomicBool::new(false);
+            let checked = CheckedTransport {
+                inner: &native,
+                validate: &validate,
+                write_attempted: &attempted,
+            };
+            let error = if collection {
+                checked.get_feature_at_collection_max(&mut report)
+            } else {
+                checked.get_feature(&mut report)
+            }
+            .unwrap_err();
+            assert_eq!(
+                native_io_outcome(&error),
+                Some(NativeIoOutcome::Returned {
+                    byte_count: if collection { 19 } else { 17 },
+                })
+            );
+            assert_eq!(report[1], if collection { 0x73 } else { 0x71 });
+            assert!(!attempted.load(Ordering::Acquire));
+        }
+    }
+
+    #[test]
+    fn calibration_batch_does_not_mark_an_unreached_trigger_write_as_attempted() {
+        struct BatchNative;
+        impl FeatureTransport for BatchNative {
+            fn send_feature(&self, _: &[u8]) -> anyhow::Result<()> {
+                unreachable!()
+            }
+            fn send_feature_at_collection_max_counted(
+                &self,
+                report: &[u8],
+            ) -> anyhow::Result<usize> {
+                match report[0] {
+                    0 => Ok(0),
+                    1 => Err(razer_device::backend::native_io_failure(
+                        NativeIoOutcome::NotCalled,
+                        anyhow::anyhow!("preflight failed"),
+                    )),
+                    2 => Err(razer_device::backend::native_io_failure(
+                        NativeIoOutcome::Rejected,
+                        anyhow::anyhow!("native rejected"),
+                    )),
+                    _ => Ok(report.len()),
+                }
+            }
+            fn get_feature(&self, _: &mut [u8]) -> anyhow::Result<usize> {
+                unreachable!()
+            }
+            fn metadata(&self) -> Value {
+                Value::Null
+            }
+        }
+        let native = BatchNative;
+        for first in [0, 1, 2, 3] {
+            let mut first_report = [0; 91];
+            first_report[0] = first;
+            let mut trigger_report = [0; 91];
+            trigger_report[0] = 2;
+            trigger_report[7..9].copy_from_slice(&[12, 25]);
+            let mut batch = razer_device::backend::FeatureBatch::new();
+            batch.push_report(&first_report).unwrap();
+            batch.push_report(&trigger_report).unwrap();
+            let attempted = AtomicBool::new(false);
+            let checked = CheckedTransport {
+                inner: &native,
+                validate: &|| Ok(()),
+                write_attempted: &attempted,
+            };
+            let result = checked.send_feature_batch(&batch);
+            assert_eq!(result.is_ok(), first == 0);
+            assert_eq!(attempted.load(Ordering::Acquire), first == 3);
+        }
+    }
+
+    #[test]
+    fn calibration_terminal_send_facts_survive_cancellation_and_stale_owner_cleanup() {
+        struct TerminalNative<'a> {
+            result: RefCell<Option<anyhow::Result<usize>>>,
+            current: &'a Cell<bool>,
+            attempted: &'a AtomicBool,
+            entries: Cell<usize>,
+        }
+        impl TerminalNative<'_> {
+            fn send(&self) -> anyhow::Result<usize> {
+                assert!(!self.attempted.load(Ordering::Acquire));
+                self.entries.set(self.entries.get() + 1);
+                self.current.set(false);
+                self.result.borrow_mut().take().unwrap()
+            }
+        }
+        impl FeatureTransport for TerminalNative<'_> {
+            fn send_feature(&self, _: &[u8]) -> anyhow::Result<()> {
+                panic!("calibration must preserve the counted native result")
+            }
+            fn send_feature_counted(&self, _: &[u8]) -> anyhow::Result<usize> {
+                self.send()
+            }
+            fn send_feature_at_collection_max_counted(&self, _: &[u8]) -> anyhow::Result<usize> {
+                self.send()
+            }
+            fn get_feature(&self, _: &mut [u8]) -> anyhow::Result<usize> {
+                panic!("owner loss must stop the command before acknowledgement")
+            }
+            fn metadata(&self) -> Value {
+                Value::Null
+            }
+        }
+        for owner_error in ["calibration canceled", "calibration connection is stale"] {
+            for leased in [false, true] {
+                for collection in [false, true] {
+                    for outcome in [
+                        None,
+                        Some(NativeIoOutcome::NotCalled),
+                        Some(NativeIoOutcome::Rejected),
+                        Some(NativeIoOutcome::Returned { byte_count: 0 }),
+                        Some(NativeIoOutcome::Returned { byte_count: 91 }),
+                    ] {
+                        let current = Cell::new(true);
+                        let attempted = AtomicBool::new(false);
+                        let result = match outcome {
+                            Some(NativeIoOutcome::Returned { byte_count: 91 }) => Ok(91),
+                            _ => {
+                                let error: anyhow::Error =
+                                    std::io::Error::other("calibration native failure").into();
+                                Err(match outcome {
+                                    Some(outcome) => {
+                                        razer_device::backend::native_io_failure(outcome, error)
+                                    }
+                                    None => error,
+                                })
+                            }
+                        };
+                        let native = TerminalNative {
+                            result: RefCell::new(Some(result)),
+                            current: &current,
+                            attempted: &attempted,
+                            entries: Cell::new(0),
+                        };
+                        let validate = || {
+                            ensure!(current.get(), "{owner_error}");
+                            Ok(())
+                        };
+                        let checked = CheckedTransport {
+                            inner: &native,
+                            validate: &validate,
+                            write_attempted: &attempted,
+                        };
+                        let mut report = [0; 91];
+                        report[7..9].copy_from_slice(&[12, 25]);
+                        let send = |transport: &dyn FeatureTransport| {
+                            if collection {
+                                transport.send_feature_at_collection_max_counted(&report)
+                            } else {
+                                transport.send_feature_counted(&report)
+                            }
+                        };
+                        let result = if leased {
+                            let lease = checked
+                                .begin_exchange(razer_device::backend::ExchangeOptions::plain())
+                                .unwrap();
+                            let result = send(lease.transport());
+                            assert!(lease.finish().is_err());
+                            result
+                        } else {
+                            send(&checked)
+                        };
+                        let error = result.unwrap_err();
+                        assert_eq!(native_io_outcome(&error), outcome);
+                        assert!(format!("{error:#}").contains(owner_error));
+                        assert_eq!(
+                            error.downcast_ref::<std::io::Error>().is_some(),
+                            outcome != Some(NativeIoOutcome::Returned { byte_count: 91 })
+                        );
+                        assert_eq!(native.entries.get(), 1);
+                        assert_eq!(
+                            attempted.load(Ordering::Acquire),
+                            matches!(
+                                outcome,
+                                Some(NativeIoOutcome::Returned { .. } | NativeIoOutcome::Rejected)
+                            )
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn calibration_canceled_batch_drains_before_reconciling_trigger_write_for_cleanup() {
+        struct BatchNative<'a> {
+            current: &'a Cell<bool>,
+            attempted: &'a AtomicBool,
+            events: RefCell<Vec<&'static str>>,
+        }
+        impl FeatureTransport for BatchNative<'_> {
+            fn send_feature(&self, _: &[u8]) -> anyhow::Result<()> {
+                panic!("the whole native batch must use counted reports")
+            }
+            fn send_feature_at_collection_max_counted(
+                &self,
+                report: &[u8],
+            ) -> anyhow::Result<usize> {
+                assert!(!self.attempted.load(Ordering::Acquire));
+                self.events.borrow_mut().push(match report[8] {
+                    152 => "raw input sent",
+                    25 => "trigger write sent",
+                    _ => panic!("unexpected calibration report"),
+                });
+                self.current.set(false);
+                Ok(report.len())
+            }
+            fn send_feature_batch(
+                &self,
+                batch: &razer_device::backend::FeatureBatch,
+            ) -> anyhow::Result<razer_device::backend::FeatureBatchReceipt> {
+                razer_device::backend::execute_feature_batch(
+                    batch,
+                    |report| self.send_feature_at_collection_max_counted(report),
+                    |milliseconds| {
+                        assert_eq!(milliseconds, 0);
+                        self.events.borrow_mut().push("row wait");
+                        Ok(())
+                    },
+                )
+            }
+            fn get_feature(&self, _: &mut [u8]) -> anyhow::Result<usize> {
+                panic!("a canceled frame cannot invent calibration readback")
+            }
+            fn metadata(&self) -> Value {
+                Value::Null
+            }
+        }
+        for leased in [false, true] {
+            let current = Cell::new(true);
+            let attempted = AtomicBool::new(false);
+            let native = BatchNative {
+                current: &current,
+                attempted: &attempted,
+                events: RefCell::new(Vec::new()),
+            };
+            let validate = || {
+                ensure!(current.get(), "calibration canceled during native batch");
+                Ok(())
+            };
+            let checked = CheckedTransport {
+                inner: &native,
+                validate: &validate,
+                write_attempted: &attempted,
+            };
+            let mut query = [0; 91];
+            query[6..9].copy_from_slice(&[80, 12, 152]);
+            let mut write = [0; 91];
+            write[6..9].copy_from_slice(&[51, 12, 25]);
+            let mut batch = razer_device::backend::FeatureBatch::new();
+            batch.push_report(&query).unwrap();
+            batch.push_sleep(0);
+            batch.push_report(&write).unwrap();
+            let result = if leased {
+                let lease = checked
+                    .begin_exchange(razer_device::backend::ExchangeOptions::batch())
+                    .unwrap();
+                let result = lease.transport().send_feature_batch(&batch);
+                assert!(lease.finish().is_err());
+                result
+            } else {
+                checked.send_feature_batch(&batch)
+            };
+            let error = result.unwrap_err();
+            assert_eq!(
+                native_io_outcome(&error),
+                Some(NativeIoOutcome::Returned { byte_count: 182 })
+            );
+            let failure = razer_device::backend::FeatureBatchFailure::from_error(&error).unwrap();
+            assert_eq!(failure.raw_return, Some(182));
+            assert_eq!(failure.progress.reports_submitted(), 2);
+            assert_eq!(failure.progress.completed_operations, 3);
+            assert_eq!(failure.progress.report_attempts.len(), 2);
+            assert_eq!(
+                *native.events.borrow(),
+                ["raw input sent", "row wait", "trigger write sent"]
+            );
+            assert!(attempted.load(Ordering::Acquire));
+            assert!(format!("{error:#}").contains("calibration canceled during native batch"));
+        }
+    }
 }

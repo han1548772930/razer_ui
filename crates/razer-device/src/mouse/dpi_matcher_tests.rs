@@ -24,9 +24,147 @@ fn dpi_matcher_nested_callback_requires_movement_fields_and_ignores_other_input(
     for text in [
         r#"[{"data":"{\"type\":\"mouseMove\"}","timeTick":1}]"#,
         r#"[{"data":"{\"type\":\"mouseMove\",\"x\":2}"}]"#,
-        r#"[{"data":"{\"type\":\"mouseMove\",\"x\":2}","timeTick":"not-a-number"}]"#,
+        r#"[{"data":"{\"type\":\"mouseMove\",\"x\":2}","timeTick":true}]"#,
+        r#"[{"data":"{\"type\":\"mouseMove\",\"x\":2}","timeTick":null}]"#,
+        r#"[{"data":"{\"type\":\"mouseMove\",\"x\":2}","timeTick":[]}]"#,
     ] {
         assert!(InputBatch::from_event(190, "main", text).is_err());
+    }
+}
+
+#[test]
+fn dpi_matcher_callback_string_ticks_follow_source_unary_plus() {
+    for (text, expected) in [
+        ("", 0.),
+        (" \t\r\n\u{feff}\u{3000}", 0.),
+        ("\u{feff} +1.5e1 \u{2029}", 15.),
+        ("-0", -0.),
+        ("0x14", 20.),
+        ("0B10100", 20.),
+        ("0o24", 20.),
+        ("Infinity", f64::INFINITY),
+        ("+Infinity", f64::INFINITY),
+        ("-Infinity", f64::NEG_INFINITY),
+        ("1e400", f64::INFINITY),
+        ("-1e-4000", -0.),
+        ("not-a-number", f64::NAN),
+        ("inf", f64::NAN),
+        ("infinity", f64::NAN),
+        ("-0x14", f64::NAN),
+        ("1_000", f64::NAN),
+        ("\u{0085}1", f64::NAN),
+    ] {
+        let event = json!([{
+            "timeTick":text,
+            "data":r#"{"type":"mouseMove","x":2}"#,
+        }]);
+        let input = InputBatch::from_event(190, "main", &event.to_string())
+            .unwrap_or_else(|error| panic!("{text:?}: {error:#}"));
+        assert_eq!(input.movement.len(), 1);
+        assert_source_number(input.movement[0].time_tick, expected);
+    }
+}
+
+fn string_batch(container: &str, product_id: u32, rows: &[(&str, f64)]) -> InputBatch {
+    let events: Vec<_> = rows
+        .iter()
+        .map(|(tick, x)| {
+            json!({
+                "timeTick":tick,
+                "data":json!({"type":"mouseMove","x":x}).to_string(),
+            })
+        })
+        .collect();
+    InputBatch::from_event(product_id, container, &json!(events).to_string()).unwrap()
+}
+
+#[test]
+fn dpi_matcher_string_tick_conversion_reaches_the_six_source_results_after_stop() {
+    for product_id in [190, 192, 222, 226, 229, 239] {
+        for (main, source, final_main) in [
+            (
+                &[("1e1", 1000.), ("0x14", 2000.), ("0o36", 2500.)][..],
+                &[("0b10100", 1000.), ("30", 1250.)][..],
+                ("4e1", -100.),
+            ),
+            (
+                &[("", 4500.)][..],
+                &[(" \u{feff}\u{3000}", 2250.)][..],
+                ("1", 0.),
+            ),
+            (&[("-0", 4500.)][..], &[("0", 2250.)][..], ("1", 0.)),
+            (
+                &[("not-a-number", 1000.), ("0", 1000.), ("1", 4500.)][..],
+                &[("1", 3250.)][..],
+                ("2", 0.),
+            ),
+            (
+                &[("Infinity", 4500.)][..],
+                &[("+Infinity", 2250.)][..],
+                ("1e400", 0.),
+            ),
+            (
+                &[("-Infinity", 4500.)][..],
+                &[("-1e400", 2250.)][..],
+                ("-Infinity", 0.),
+            ),
+        ] {
+            let mut session = Session::new(Product::new(product_id).unwrap());
+            session.begin(800.).unwrap();
+            session.acquired_lock().unwrap();
+            assert!(
+                !session
+                    .ingest(string_batch("source", 123, source), false, 0)
+                    .unwrap()
+            );
+            assert!(
+                !session
+                    .ingest(string_batch("main", product_id, main), true, 1)
+                    .unwrap()
+            );
+            assert_eq!(session.response().process(), 99.);
+            assert!(
+                session
+                    .ingest(string_batch("main", product_id, &[final_main]), true, 2)
+                    .unwrap()
+            );
+            assert_eq!(session.state, State::Stopping);
+            assert!(session.new_dpi().is_none());
+            session.complete_after_stop().unwrap();
+            assert_eq!(session.new_dpi(), Some(400.), "{product_id}: {main:?}");
+        }
+    }
+}
+
+#[test]
+fn dpi_matcher_nan_reference_tick_does_not_fabricate_stop_or_completion() {
+    for product_id in [190, 192, 222, 226, 229, 239] {
+        let mut session = Session::new(Product::new(product_id).unwrap());
+        session.begin(800.).unwrap();
+        session.acquired_lock().unwrap();
+        session
+            .ingest(string_batch("source", 123, &[("invalid", 2250.)]), false, 0)
+            .unwrap();
+        for (received, tick, x) in [(1, "1", 4500.), (2, "2", 0.)] {
+            assert!(
+                !session
+                    .ingest(
+                        string_batch("main", product_id, &[(tick, x)]),
+                        true,
+                        received
+                    )
+                    .unwrap()
+            );
+        }
+        assert_eq!(session.response().process(), 99.);
+        assert_eq!(session.state, State::Calibrating);
+        assert!(session.new_dpi().is_none());
+        assert!(session.complete_after_stop().is_err());
+        assert!(session.check_timeout(502));
+        assert_eq!(session.state, State::Error);
+        assert!(session.new_dpi().is_none());
+        session.reset();
+        assert_eq!(session.product.product_id(), product_id);
     }
 }
 
@@ -367,6 +505,101 @@ fn dpi_matcher_distance_uses_positive_overlapping_ticks_and_retains_container_cl
     assert_eq!(session.source_container(), "source");
     assert_eq!(session.source_product_id, Some(123));
     assert_eq!(session.response().phase(), Phase::Completed);
+}
+
+#[test]
+fn dpi_matcher_cancel_publishes_source_idle_before_clearing_movement() {
+    for product_id in [190, 192, 222, 226, 229, 239] {
+        let mut session = Session::new(Product::new(product_id).unwrap());
+        session.begin(800.).unwrap();
+        session.acquired_lock().unwrap();
+        session
+            .ingest(batch("reference", 123, &[(1., 100.)]), false, 0)
+            .unwrap();
+        session
+            .ingest(batch("main", product_id, &[(1., 2000.)]), true, 1)
+            .unwrap();
+        assert_eq!(
+            session.response(),
+            Calibration::new(Phase::Calibrating, 50., 800., 0.)
+        );
+        assert_eq!(
+            session.cancel_after_stop(),
+            Some(Calibration::new(Phase::Ready, 50., 800., 0.)),
+            "product {product_id}",
+        );
+        assert_eq!(
+            session.response(),
+            Calibration::new(Phase::Ready, 0., 0., 0.)
+        );
+        assert!(session.source_container().is_empty());
+        assert_eq!(session.source_product_id, None);
+        assert!(session.new_dpi().is_none());
+        assert!(!session.check_timeout(10_000));
+        assert!(session.cancel_after_stop().is_none());
+        session.begin(1600.).unwrap();
+        session.acquired_lock().unwrap();
+        session
+            .ingest(
+                batch("fresh-main", product_id, &[(5., 4000.)]),
+                true,
+                20_000,
+            )
+            .unwrap();
+        assert_eq!(session.response().process(), 0.);
+        assert!(session.source_container().is_empty());
+    }
+}
+
+#[test]
+fn dpi_matcher_cancel_event_is_ignored_outside_the_source_calibrating_state() {
+    for product_id in [190, 192, 222, 226, 229, 239] {
+        let mut session = Session::new(Product::new(product_id).unwrap());
+        assert!(session.cancel_after_stop().is_none());
+        assert_eq!(session.state, State::Ready);
+        session.begin(100.).unwrap();
+        assert!(session.cancel_after_stop().is_none());
+        assert_eq!(session.state, State::RequestingLock);
+        session.acquired_lock().unwrap();
+        assert_eq!(
+            session.response(),
+            Calibration::new(Phase::Calibrating, 0., 0., 0.)
+        );
+        session.reset();
+        session.begin(100.).unwrap();
+        session.acquired_lock().unwrap();
+        session
+            .ingest(batch("reference", 123, &[(1., 100.)]), false, 0)
+            .unwrap();
+        session
+            .ingest(batch("main", product_id, &[(1., 1.)]), true, 1)
+            .unwrap();
+        assert!(session.check_timeout(501));
+        assert!(session.cancel_after_stop().is_none());
+        assert_eq!(session.state, State::Error);
+        session.begin(100.).unwrap();
+        session.acquired_lock().unwrap();
+        session
+            .ingest(batch("reference", 123, &[(1., 1000.)]), false, 1000)
+            .unwrap();
+        session
+            .ingest(batch("main", product_id, &[(1., 600.)]), true, 1001)
+            .unwrap();
+        assert!(
+            session
+                .ingest(batch("main", product_id, &[(2., 0.)]), true, 1002)
+                .unwrap()
+        );
+        session.complete_after_stop().unwrap();
+        assert_eq!(session.state, State::Completed);
+        assert!(session.cancel_after_stop().is_none());
+        assert_eq!(session.state, State::Completed);
+        assert_eq!(
+            session.response(),
+            Calibration::new(Phase::Completed, 0., 0., 0.)
+        );
+        assert_eq!(session.new_dpi(), Some(0.));
+    }
 }
 
 #[test]

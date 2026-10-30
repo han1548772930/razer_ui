@@ -15,6 +15,130 @@ import host
 from test_host import pe_fixture
 
 
+class CurrentLightingFamilySourceTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        for name in ("gamepad-mw-4115-current", "synapse-lighting-engine-current"):
+            if not (analysis.ROOT / ".analysis/inputs/frontend" / name / "acquisition.json").is_file():
+                raise unittest.SkipTest("Retained lighting frontend inputs are unavailable")
+
+    def test_palette_middleware_uses_current_selector_and_current_owner_bytes(self):
+        result = families.gamepad_lighting_palette_sources()
+        selected = next(row for row in result["source_sets"] if "current_source_selection" in row)
+        self.assertEqual(selected["current_source_selection"]["canonical_entry_url"],
+                         "https://apps.razer.com/synapse/products/4115/mw/")
+        self.assertEqual(selected["acquisition"], selected["current_source_selection"]["acquisition"])
+        acquired = json.loads((analysis.ROOT / selected["acquisition"]["path"]).read_bytes())
+        current = {row["path"]: row for row in acquired["files"] if row.get("path")}
+        owners = {row["id"]: row for row in result["complete_owners"]}
+        for role in ("palette_task", "effect_task_preserves_palette", "profile_palette_refresh", "palette_command_dispatch"):
+            for owner_id in result["roles"][role]:
+                original = owners[owner_id]["original"]
+                self.assertEqual({key: current[original["path"]][key] for key in ("path", "bytes", "sha256")}, original)
+
+    def test_current_4115_selection_uses_its_own_ast_and_keeps_missing_capture(self):
+        result = families.gamepad_lighting_selection_sources()
+        selected = next(row for row in result["products"] if row["product_id"] == 4115)
+        self.assertEqual(selected["current_source_selection"]["canonical_entry_url"],
+                         "https://apps.razer.com/synapse/products/4115/mw/")
+        self.assertTrue(selected["source_branch_selection_complete"])
+        self.assertTrue(selected["capture_sources"])
+        self.assertTrue(all(row["extraction"] == "complete_original_ast_factory" for row in selected["capture_sources"]))
+        self.assertIn("capture_failures", selected)
+        self.assertFalse(result["whole_page_complete"])
+        self.assertEqual(result["official_dll_comparison"], "not_executed")
+
+
+class LightingEngineInstanceSourceTests(unittest.TestCase):
+    @staticmethod
+    def fixture():
+        prefix = ".analysis/inputs/frontend/engine/raw/apps.razer.com/synapse/lighting-engine/static/js/"
+        originals = [{"path": prefix + name, "bytes": 100000, "sha256": str(index) * 64}
+                     for index, name in enumerate(("main.current.js", "7665.1042e1fc.chunk.js", "5451.5593c8f6.chunk.js"), 1)]
+        modules, classes = [], []
+        for mid, role in families.GAMEPAD_LIGHTING_ENGINE_INSTANCE_MODULES.items():
+            original = originals[1 if mid == 4921 else 2 if mid == 5451 else 0]
+            modules.append({"module_id": mid, "roles": [role], "original": copy.deepcopy(original),
+                            "byte_start": 10, "byte_end": 1000})
+            if mid in (9396, 4001, 4921, 5451):
+                classes.append({"module_id": mid, "original": copy.deepcopy(original),
+                                "byte_start": 20, "byte_end": 999, "methods": ["constructor"]})
+        manifests = []
+        for edition in (0, 128, 129, 130, 131, 132, 133):
+            name = f"DeviceManifest_4115_{edition}.json"
+            manifests.append({"original": {"path": ".analysis/inputs/frontend/middleware/" + name,
+                "url": "https://apps.razer.com/synapse/products/4115/mw/lighting-manifests/" + name,
+                "bytes": 2000, "sha256": "a" * 64}, "complete_manifest": {"productId": 4115, "vendorId": 5426,
+                    "rzDeviceConfig": {"claimInterface": 2, "maxRetryIn": 30, "maxRetryOut": 20,
+                        "rzDeviceName": "rzDevice25SagePC", "sleepTimeBetweenIn": 5,
+                        "sleepTimeBetweenOut": 5, "sleepTimeBetweenOutIn": 5}}})
+        return {"complete_original_inputs": originals, "complete_modules": modules, "adapter_classes": classes}, manifests
+
+    def test_complete_instance_requires_every_protocol_owner_and_keeps_manifest_references_only(self):
+        self.assertEqual(set(families.GAMEPAD_LIGHTING_ENGINE_INSTANCE_MODULES),
+                         {1653, 4001, 4611, 4921, 5451, 5954, 6411, 8199, 9396})
+        self.assertEqual(families.GAMEPAD_LIGHTING_ENGINE_INSTANCE_SCRIPTS,
+                         {4921: "7665.1042e1fc.chunk.js", 5451: "5451.5593c8f6.chunk.js"})
+        engine, manifests = self.fixture()
+        references = families.validate_gamepad_lighting_instance_sources(engine, manifests)
+        self.assertEqual(references, [{key: row["original"][key] for key in ("path", "bytes", "sha256")}
+                                      for row in manifests])
+        self.assertTrue(all(set(row) == {"path", "bytes", "sha256"} for row in references))
+
+    def test_missing_ambiguous_or_wrong_original_factories_and_incomplete_classes_are_rejected(self):
+        for mode in ("missing_factory", "duplicate_factory", "wrong_role", "wrong_original", "wrong_script",
+                     "missing_class", "duplicate_class", "class_original", "class_range", "class_constructor"):
+            engine, manifests = self.fixture()
+            module = next(row for row in engine["complete_modules"] if row["module_id"] == 5451)
+            adapter = next(row for row in engine["adapter_classes"] if row["module_id"] == 5451)
+            if mode == "missing_factory":
+                engine["complete_modules"].remove(module)
+            elif mode == "duplicate_factory":
+                engine["complete_modules"].append(copy.deepcopy(module))
+            elif mode == "wrong_role":
+                module["roles"] = ["other_adapter"]
+            elif mode == "wrong_original":
+                module["original"]["sha256"] = "f" * 64
+            elif mode == "wrong_script":
+                for original in (engine["complete_original_inputs"][-1], module["original"], adapter["original"]):
+                    original["path"] = original["path"].replace("5451.5593c8f6", "9158.unselected")
+            elif mode == "missing_class":
+                engine["adapter_classes"].remove(adapter)
+            elif mode == "duplicate_class":
+                engine["adapter_classes"].append(copy.deepcopy(adapter))
+            elif mode == "class_original":
+                adapter["original"]["sha256"] = "f" * 64
+            elif mode == "class_range":
+                adapter["byte_end"] = module["byte_end"] + 1
+            else:
+                adapter["methods"] = []
+            with self.subTest(mode=mode), self.assertRaises(ValueError):
+                families.validate_gamepad_lighting_instance_sources(engine, manifests)
+
+    def test_each_edition_and_its_actual_middleware_configuration_are_required(self):
+        for mode in ("missing", "duplicate", "other_product_url", "other_edition", "product", "vendor", "timing", "retry"):
+            engine, manifests = self.fixture()
+            selected = manifests[-1]
+            if mode == "missing":
+                manifests.pop()
+            elif mode == "duplicate":
+                manifests.append(copy.deepcopy(selected))
+            elif mode == "other_product_url":
+                selected["original"]["url"] = selected["original"]["url"].replace("/4115/", "/2636/")
+            elif mode == "other_edition":
+                selected["original"]["url"] = selected["original"]["url"].replace("_133.json", "_134.json")
+            elif mode == "product":
+                selected["complete_manifest"]["productId"] = 2636
+            elif mode == "vendor":
+                selected["complete_manifest"]["vendorId"] = 0
+            elif mode == "timing":
+                selected["complete_manifest"]["rzDeviceConfig"]["sleepTimeBetweenOut"] = 10
+            else:
+                selected["complete_manifest"]["rzDeviceConfig"]["maxRetryIn"] = 10
+            with self.subTest(mode=mode), self.assertRaises(ValueError):
+                families.validate_gamepad_lighting_instance_sources(engine, manifests)
+
+
 class MatcherDeploymentComparisonTests(unittest.TestCase):
     def setUp(self):
         self.audit = host.HostLocalAudit()
@@ -32,7 +156,7 @@ class MatcherDeploymentComparisonTests(unittest.TestCase):
         return {"path": path.relative_to(self.root).as_posix(), "bytes": len(raw),
                 "sha256": hashlib.sha256(raw).hexdigest()}
 
-    def compare(self, old_raw, new_raw, *, old_module=7, owner_body=None):
+    def compare(self, old_raw, new_raw, *, old_module=7, owner_body=None, roles=None):
         old = self.original("old-current", old_raw)
         new = self.original("new-snapshot", new_raw)
         factory = next(module for module in families.keyboard_source_modules(old_raw.decode())
@@ -42,7 +166,7 @@ class MatcherDeploymentComparisonTests(unittest.TestCase):
             start = old_raw.index(owner_body, start, end)
             end = start + len(owner_body)
         body = old_raw[start:end]
-        request = {"product_id": 190, "layer": "mw", "roles": ["monitor_factory"],
+        request = {"product_id": 190, "layer": "mw", "roles": roles or ["monitor_factory"],
                    "baseline_references": ["baseline/owner"],
                     "owner": {"original": old, "byte_start": start,
                               "byte_end": end, "body_sha256": hashlib.sha256(body).hexdigest()}}
@@ -84,6 +208,68 @@ class MatcherDeploymentComparisonTests(unittest.TestCase):
         owner = result["complete_owners"][row["exact_role_bytes_in_changed_factory"]]
         self.assertEqual(owner["syntax"], "arrow_function")
         self.assertEqual(owner["body_sha256"], hashlib.sha256(child).hexdigest())
+
+    @staticmethod
+    def state_machine_factory(module_id=7):
+        return str(module_id).encode() + (
+            b':(e,t,n)=>{const matcher=e=>({initial:"idle",on:{'
+            b'ON_DPI_CALIBRATION_GET_CURRENT_STATE:{actions:()=>{}},'
+            b'ON_DPI_CALIBRATION_RESET:{target:"dpiMatcher.idle"},'
+            b'ON_UPDATE_SENSITIVITY_PROFILE:{actions:[]}},states:{'
+            b'idle:{entry:()=>release()},requestingLock:{invoke:{id:"getDpiMatcherLocks",src:()=>locks()}},'
+            b'calibrating:{on:{ON_DPI_CALIBRATION_CANCEL:{target:"idle"}}},'
+            b'confirming:{entry:()=>release()},error:{entry:()=>release()}}})}')
+
+    def test_relocated_state_machine_keeps_a_changed_factory_and_actual_ast_candidate(self):
+        result, _, new = self.compare(b"const modules={" + self.state_machine_factory() + b"};",
+            b"const modules={" + self.state_machine_factory(8) + b"};", roles=["matcher_state_machine"])
+        row = result["owner_comparisons"][0]
+        self.assertEqual(row["candidate_locator"], "complete_factory_with_matcher_state_machine_AST")
+        self.assertEqual(row["comparison"], "factory_changed")
+        self.assertTrue(result["unresolved"])
+        owner = result["complete_factories"][row["new_owner"]]
+        self.assertEqual(owner["original"], new)
+        self.assertEqual(owner["module_id"], 8)
+        self.assertIn("exact_role_bytes_in_changed_factory", row)
+
+    def test_state_machine_locator_ignores_same_id_decoys_strings_and_split_nested_fields(self):
+        decoy = (b'7:(e,t,n)=>{const text="ON_DPI_CALIBRATION_CANCEL getDpiMatcherLocks";'
+                 b'const partial=e=>({initial:"idle",nested:{on:{ON_DPI_CALIBRATION_RESET:{}},'
+                 b'states:{idle:{},requestingLock:{},calibrating:{},confirming:{},error:{}}}})}')
+        result, _, _ = self.compare(b"const modules={" + self.state_machine_factory() + b"};",
+            b"const modules={" + decoy + b"," + self.state_machine_factory(8) + b"};",
+            roles=["matcher_state_machine"])
+        row = result["owner_comparisons"][0]
+        self.assertEqual(result["complete_factories"][row["new_owner"]]["module_id"], 8)
+        self.assertEqual(row["comparison"], "factory_changed")
+
+    def test_state_machine_locator_keeps_multiple_complete_owners_ambiguous(self):
+        for current in (self.state_machine_factory(7) + b"," + self.state_machine_factory(8),
+                        self.state_machine_factory(8) + b"," + self.state_machine_factory(9)):
+            result, _, _ = self.compare(b"const modules={" + self.state_machine_factory() + b"};",
+                b"const modules={" + current + b"};", roles=["matcher_state_machine"])
+            row = result["owner_comparisons"][0]
+            self.assertEqual(row["comparison"], "ambiguous_factory_candidates")
+            self.assertEqual(len(row["candidate_factories"]), 2)
+            self.assertNotIn("new_owner", row)
+
+    def test_state_machine_locator_rejects_partial_changed_guards_spreads_and_duplicate_fields(self):
+        old = b"const modules={" + self.state_machine_factory() + b"};"
+        for changed in (
+            self.state_machine_factory(8).replace(b'getDpiMatcherLocks', b'getOtherLocks'),
+            self.state_machine_factory(8).replace(b'ON_DPI_CALIBRATION_CANCEL:{target:"idle"}',
+                                                 b'ON_DPI_CALIBRATION_CANCEL:{target:"error"}'),
+            self.state_machine_factory(8).replace(b'initial:"idle",', b'initial:"idle",...dynamic,'),
+            self.state_machine_factory(8).replace(b'initial:"idle",', b'initial:"idle",initial:"error",'),
+            self.state_machine_factory(8).replace(b'ON_UPDATE_SENSITIVITY_PROFILE:{actions:[]}', b'OTHER:{actions:[]}'),
+        ):
+            result, _, _ = self.compare(old, b"const modules={" + changed + b"};", roles=["matcher_state_machine"])
+            row = result["owner_comparisons"][0]
+            self.assertEqual(row["comparison"], "module_missing")
+            self.assertFalse(row["candidate_factories"])
+        with self.assertRaisesRegex(ValueError, "baseline state machine"):
+            self.compare(old.replace(b'getDpiMatcherLocks', b'getOtherLocks'), old,
+                         roles=["matcher_state_machine"])
 
     def test_cli_routes_explicit_repeatable_acquisitions_to_matcher_review(self):
         import argparse
@@ -1213,6 +1399,253 @@ class MouseReceiverPowerBatchTests(unittest.TestCase):
             families.collect_mouse_receiver_power_task_batch([99])
 
 
+class MatcherNumericReviewTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        if not (analysis.ROOT / families.MATCHER_NUMERIC_REVALIDATION["path"]).is_file():
+            raise unittest.SkipTest("Retained Matcher deployment comparison is unavailable")
+        cls.review = families.collect_mouse_matcher_numeric_review()
+
+    def test_complete_numeric_review_reuses_seven_factory_references_without_copied_js(self):
+        snapshot = families.verify_mouse_matcher_numeric_review(copy.deepcopy(self.review))
+        self.assertEqual(len(self.review["products"]), 7)
+        self.assertEqual(len(snapshot["indexed_originals"]), 14)
+        self.assertTrue(all("body" not in row.get("factory", {}) for row in self.review["products"]))
+        self.assertNotIn("complete_owners", self.review)
+        self.assertTrue(all("matcher_unary_tick" in row["consumers"] for row in self.review["products"][:6]))
+        self.assertNotIn("matcher_unary_tick", self.review["products"][-1]["consumers"])
+        self.assertFalse(self.review["source_semantics_complete"])
+
+    def test_numeric_review_rejects_false_scope_semantics_and_completion_claims(self):
+        mutations = [
+            lambda r: r.update(target_execution=True),
+            lambda r: r.update(whole_page_complete=True),
+            lambda r: r.update(source_semantics_complete=True),
+            lambda r: r.update(actual_dll_comparison="verified"),
+            lambda r: r.update(runtime_acceptance="verified"),
+            lambda r: r.update(rust_validation="passed"),
+            lambda r: r["source_review"].update(sha256="0" * 64),
+            lambda r: r["products"].pop(),
+            lambda r: r["products"].append(copy.deepcopy(r["products"][0])),
+            lambda r: r["semantics"].update(finite_nonnegative_tick_guard=True),
+            lambda r: r["semantics"].update(matcher_tick="rust_float_parse"),
+            lambda r: r["semantics"].update(dynamic_tick_comparison="always_number"),
+            lambda r: r["semantics"]["baseline"].update(device_GET=True),
+            lambda r: r["remaining_local_chains"].clear(),
+            lambda r: r["rust_inputs"].pop(),
+            lambda r: r.update(complete_owners={}),
+        ]
+        for index, mutate in enumerate(mutations):
+            review = copy.deepcopy(self.review)
+            mutate(review)
+            with self.subTest(case=index), self.assertRaises(ValueError):
+                families.verify_mouse_matcher_numeric_review(review)
+
+    def test_numeric_review_rejects_stale_product_owner_hash_range_and_consumer_references(self):
+        mutations = [
+            lambda r: r["products"][0]["factory_reference"].update(owner=r["products"][1]["factory_reference"]["owner"]),
+            lambda r: r["products"][0].update(matcher=False),
+            lambda r: r["products"][0]["acquisition"].update(sha256="0" * 64),
+            lambda r: r["products"][0]["consumers"]["matcher_unary_tick"].update(byte_start=0),
+            lambda r: r["products"][0]["consumers"]["dynamic_comparison"].update(syntax="unary_expression"),
+            lambda r: r["products"][-1]["factory"].update(byte_end=1146580),
+            lambda r: r["products"][-1]["factory"].update(body_sha256="0" * 64),
+            lambda r: r["products"][-1]["factory"].update(syntax_sha256="0" * 64),
+            lambda r: r["products"][-1]["factory"].update(body="copied source"),
+            lambda r: r["products"][-1]["factory"]["original"].update(bytes=1),
+        ]
+        for index, mutate in enumerate(mutations):
+            review = copy.deepcopy(self.review)
+            mutate(review)
+            with self.subTest(case=index), self.assertRaises(ValueError):
+                families.verify_mouse_matcher_numeric_review(review)
+
+    def test_numeric_ast_requires_a_complete_factory_and_the_actual_consumer_structure(self):
+        import frontend
+        for raw in (b"({7:()=>{const tick=+e.timeTick;}})", b"({7:()=>{const tick=+e.timeTick;}}) broken("):
+            with self.subTest(raw=raw), tempfile.TemporaryDirectory() as directory, \
+                    patch.object(analysis, "ROOT", Path(directory)):
+                root = Path(directory)
+                path = root / ".analysis/inputs/frontend/fixture/original.js"
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(raw)
+                audit = host.HostLocalAudit()
+                original = families.identity(path)
+                tree = audit.parser.parse(raw)
+                node = tree.root_node.descendant_for_byte_range(raw.index(b"7:"), raw.index(b"}}") + 1)
+                owner = {"original": original, "byte_start": node.start_byte, "byte_end": node.end_byte,
+                    "syntax": node.type, "module_id": 7, "body_sha256": hashlib.sha256(node.text).hexdigest(),
+                    "syntax_sha256": frontend.syntax_identity(node)}
+                with self.assertRaises(ValueError):
+                    families.matcher_numeric_ast(audit, owner, matcher=True)
+
+    @staticmethod
+    def freeze(root, review):
+        import os
+        raw = (json.dumps(review, ensure_ascii=False, indent=2) + "\n").replace("\n", os.linesep).encode()
+        digest = hashlib.sha256(raw).hexdigest()
+        path = root / ".analysis/results/reverse-pending/review-sources" / (digest + ".json")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(raw)
+        return families.identity(path)
+
+    def publication_fixture(self, root):
+        original = root / ".analysis/inputs/frontend/official.js"
+        original.parent.mkdir(parents=True, exist_ok=True)
+        original.write_bytes(b"official source fixture")
+        source = families.identity(original)
+        analysis.save(root / ".analysis/inputs.json", {"inputs": [source]})
+        snapshot = {"artifacts": [source], "indexed_originals": [source]}
+        review = copy.deepcopy(self.review)
+        reference = self.freeze(root, review)
+        canonical = root / ".analysis/results/frontend/mouse-mw-audit.json"
+        document = {"queries": {"dpi_matcher": {"old": "retained"}, "dynamic_sensitivity": {"other": [196]}},
+            "complete_owners": {"existing": "retained"}, "sibling": {"value": 17}}
+        analysis.save(canonical, document)
+        return review, reference, canonical, document, snapshot
+
+    @staticmethod
+    def publication_args(reference=None, previous=None):
+        from types import SimpleNamespace
+        return SimpleNamespace(family="mouse", function="mw", query="mouse-dpi-matcher", product=None,
+            prepare=False, receipt_only=False, matcher_numeric_boundary="capture",
+            semantic_review=reference["path"] if reference else None,
+            semantic_review_sha256=reference["sha256"] if reference else None, semantic_previous_review=previous)
+
+    def test_numeric_publication_is_idempotent_and_keeps_sibling_and_historical_reviews(self):
+        import contextlib
+        import io
+        with tempfile.TemporaryDirectory() as directory, patch.object(analysis, "ROOT", Path(directory)):
+            root = Path(directory)
+            review, reference, canonical, original, snapshot = self.publication_fixture(root)
+            with patch.object(families, "verify_mouse_matcher_numeric_review", return_value=snapshot), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                families.publish_frontend_semantic_review(self.publication_args(reference))
+                published = json.loads(canonical.read_bytes())
+                expected = copy.deepcopy(original)
+                for name in ("dpi_matcher", "dynamic_sensitivity"):
+                    expected["queries"][name]["numeric_boundary_review"] = reference
+                self.assertEqual(published, expected)
+                before = canonical.read_bytes()
+                with patch.object(families, "collect_mouse_matcher_numeric_review", return_value=copy.deepcopy(review)):
+                    repeated = families.audit_mouse_matcher_numeric_boundary(self.publication_args())
+                self.assertEqual(repeated["review_source"], reference)
+                self.assertEqual(canonical.read_bytes(), before)
+                self.assertEqual(len(list((root / reference["path"]).parent.iterdir())), 1)
+                self.assertFalse(list(root.rglob("*.tmp")))
+
+    def test_numeric_merge_requires_both_observed_references_and_the_frozen_predecessor(self):
+        reference = {"path": "review", "bytes": 1, "sha256": "a" * 64}
+        replacement = {"path": "next", "bytes": 2, "sha256": "b" * 64}
+        document = {"queries": {name: {"numeric_boundary_review": reference} for name in ("dpi_matcher", "dynamic_sensitivity")}}
+        review = {**copy.deepcopy(self.review), "previous_review_source": reference}
+        for mode in ("missing_expected", "wrong_expected", "missing_predecessor", "removed", "one_query_changed", "false_guard"):
+            candidate, current = copy.deepcopy(review), copy.deepcopy(document)
+            expected = reference
+            if mode == "missing_expected":
+                expected = None
+            elif mode == "wrong_expected":
+                expected = replacement
+            elif mode == "missing_predecessor":
+                candidate.pop("previous_review_source")
+            elif mode == "removed":
+                for query in current["queries"].values():
+                    query.pop("numeric_boundary_review")
+            elif mode == "one_query_changed":
+                current["queries"]["dynamic_sensitivity"]["numeric_boundary_review"] = replacement
+            else:
+                candidate["semantics"]["finite_nonnegative_tick_guard"] = True
+            before = copy.deepcopy(current)
+            with self.subTest(mode=mode), self.assertRaises(ValueError):
+                families.merge_frontend_semantic_review(current, candidate, replacement, expected_previous_review=expected)
+            self.assertEqual(current, before)
+        families.merge_frontend_semantic_review(document, review, replacement, expected_previous_review=reference)
+        self.assertTrue(all(query["numeric_boundary_review"] == replacement for query in document["queries"].values()))
+
+    def test_numeric_publisher_rejects_input_index_review_and_canonical_mutation_without_overwrite(self):
+        import contextlib
+        import io
+        for mode in ("source", "index", "candidate", "canonical", "prior"):
+            with self.subTest(mode=mode), tempfile.TemporaryDirectory() as directory, \
+                    patch.object(analysis, "ROOT", Path(directory)):
+                root = Path(directory)
+                review, prior, canonical, document, snapshot = self.publication_fixture(root)
+                for query in document["queries"].values():
+                    query["numeric_boundary_review"] = prior
+                analysis.save(canonical, document)
+                review["previous_review_source"] = prior
+                reference = self.freeze(root, review)
+                before = canonical.read_bytes()
+                merge = families.merge_frontend_semantic_review
+                concurrent = []
+                def mutate(*args, **kwargs):
+                    result = merge(*args, **kwargs)
+                    if mode == "source":
+                        (root / snapshot["artifacts"][0]["path"]).write_bytes(b"changed")
+                    elif mode == "index":
+                        analysis.save(root / ".analysis/inputs.json", {"inputs": []})
+                    elif mode == "candidate":
+                        (root / reference["path"]).write_bytes(b"changed")
+                    elif mode == "prior":
+                        (root / prior["path"]).write_bytes(b"changed")
+                    else:
+                        changed = {**document, "sibling": {"value": 18}}
+                        analysis.save(canonical, changed)
+                    concurrent.append(canonical.read_bytes())
+                    return result
+                with patch.object(families, "verify_mouse_matcher_numeric_review", return_value=snapshot), \
+                        patch.object(families, "merge_frontend_semantic_review", side_effect=mutate), \
+                        contextlib.redirect_stdout(io.StringIO()), self.assertRaises(ValueError):
+                    families.publish_frontend_semantic_review(self.publication_args(reference, prior))
+                self.assertEqual(canonical.read_bytes(), concurrent[0])
+                if mode != "canonical":
+                    self.assertEqual(canonical.read_bytes(), before)
+                self.assertFalse(list(root.rglob("*.tmp")))
+
+    def test_numeric_capture_preserves_concurrent_sibling_and_rejects_removed_or_changed_previous(self):
+        import contextlib
+        import io
+        for mode in ("sibling", "removed", "changed_bytes", "newer_review"):
+            with self.subTest(mode=mode), tempfile.TemporaryDirectory() as directory, \
+                    patch.object(analysis, "ROOT", Path(directory)):
+                root = Path(directory)
+                review, prior, canonical, document, snapshot = self.publication_fixture(root)
+                for query in document["queries"].values():
+                    query["numeric_boundary_review"] = prior
+                analysis.save(canonical, document)
+                candidate = copy.deepcopy(review)
+                candidate["rust_inputs"][0]["sha256"] = "f" * 64
+                concurrent = []
+                def collect():
+                    changed = copy.deepcopy(document)
+                    if mode == "sibling":
+                        changed["sibling"]["value"] = 18
+                    elif mode == "removed":
+                        for query in changed["queries"].values():
+                            query.pop("numeric_boundary_review")
+                    elif mode == "changed_bytes":
+                        (root / prior["path"]).write_bytes(b"changed")
+                    else:
+                        newer = {**copy.deepcopy(review), "previous_review_source": prior}
+                        reference = self.freeze(root, newer)
+                        for query in changed["queries"].values():
+                            query["numeric_boundary_review"] = reference
+                    analysis.save(canonical, changed)
+                    concurrent.append(canonical.read_bytes())
+                    return candidate
+                with patch.object(families, "collect_mouse_matcher_numeric_review", side_effect=collect), \
+                        patch.object(families, "verify_mouse_matcher_numeric_review", return_value=snapshot), \
+                        contextlib.redirect_stdout(io.StringIO()):
+                    if mode == "sibling":
+                        families.audit_mouse_matcher_numeric_boundary(self.publication_args())
+                        self.assertEqual(json.loads(canonical.read_bytes())["sibling"]["value"], 18)
+                    else:
+                        with self.assertRaises(ValueError):
+                            families.audit_mouse_matcher_numeric_boundary(self.publication_args())
+                        self.assertEqual(canonical.read_bytes(), concurrent[0])
+                self.assertFalse(list(root.rglob("*.tmp")))
+
+
 class FrontendSemanticMergeTests(unittest.TestCase):
     def receiver_mapping_fixture(self):
         reference = {"path": "review.json", "bytes": 10, "sha256": "a" * 64}
@@ -1560,7 +1993,7 @@ class FrontendSemanticMergeTests(unittest.TestCase):
         self.assertEqual(document, merged)
 
     def test_gamepad_missing_product_owner_conflicting_gate_or_newer_review_fails_before_mutation(self):
-        for mode in ("product", "owner", "lighting", "profile", "identity", "newer_review"):
+        for mode in ("product", "owner", "lighting", "profile", "identity", "newer_review", "product_review", "source_review"):
             document, review, reference = self.gamepad_fixture()
             if mode == "product":
                 review["products"].pop()
@@ -1572,12 +2005,210 @@ class FrontendSemanticMergeTests(unittest.TestCase):
                 review["products"][0]["obm"]["reads_controller_lighting"] = True
             elif mode == "identity":
                 review["products"][0]["identity"]["productId"] = 999
+            elif mode == "product_review":
+                document["gamepad_lighting"]["products"][0]["branch_selection"] = {"review_source": {"sha256": "b" * 64}}
+            elif mode == "source_review":
+                document["gamepad_lighting"]["products"][0]["source_review"] = {"review_source": {"sha256": "b" * 64}}
             else:
                 document["gamepad_lighting"]["branch_selection"] = {"review_source": {"sha256": "b" * 64}}
             before = copy.deepcopy(document)
             with self.subTest(mode=mode), self.assertRaises(ValueError):
                 families.merge_frontend_semantic_review(document, review, reference)
             self.assertEqual(document, before)
+
+    def test_gamepad_replacement_requires_the_exact_observed_previous_review(self):
+        document, review, reference = self.gamepad_fixture()
+        families.merge_frontend_semantic_review(document, review, reference)
+        prior = copy.deepcopy(reference)
+        replacement = {"path": "replacement.json", "bytes": 20, "sha256": "b" * 64}
+        next_review = copy.deepcopy(review)
+        next_review["previous_review_source"] = prior
+        original = copy.deepcopy(document)
+        for expected in (None, {**prior, "bytes": 11}):
+            with self.subTest(expected=expected), self.assertRaisesRegex(ValueError, "newer retained review"):
+                families.merge_frontend_semantic_review(document, next_review, replacement,
+                    expected_previous_review=expected)
+            self.assertEqual(document, original)
+        for predecessor in (None, {**prior, "bytes": 11}):
+            bad = {**next_review, "previous_review_source": predecessor}
+            with self.subTest(predecessor=predecessor), self.assertRaisesRegex(ValueError, "newer retained review"):
+                families.merge_frontend_semantic_review(document, bad, replacement, expected_previous_review=prior)
+            self.assertEqual(document, original)
+        families.merge_frontend_semantic_review(document, next_review, replacement, expected_previous_review=prior)
+        selected = document["gamepad_lighting"]["branch_selection"]
+        self.assertEqual(selected["review_source"], replacement)
+        self.assertEqual(selected["previous_review_source"], prior)
+        self.assertTrue(all(row["branch_selection"]["review_source"] == replacement
+                            for row in document["gamepad_lighting"]["products"]))
+        merged = copy.deepcopy(document)
+        families.merge_frontend_semantic_review(document, next_review, replacement, expected_previous_review=prior)
+        self.assertEqual(document, merged)
+
+    def test_gamepad_rebuild_keeps_successful_selection_and_other_products(self):
+        document, review, reference = self.gamepad_fixture()
+        families.merge_frontend_semantic_review(document, review, reference)
+        before = copy.deepcopy(document)
+        result = {"products": [{"product_id": 4115, "source_sets": ["current middleware"],
+            "failures": [{"stage": "capture", "error": "unavailable"}], "unresolved_chains": ["current source gap"]},
+            {"product_id": 2676, "source_review": {"mount": "current mount", "notification_branch": "indirect branch"}}],
+            "complete_module_bodies": {"current": "complete"}, "complete_callable_bodies": {},
+            "runtime_acceptance": "unverified"}
+        families.merge_gamepad_lighting_query(document, result)
+        section = document["gamepad_lighting"]
+        self.assertEqual(section["branch_selection"], before["gamepad_lighting"]["branch_selection"])
+        self.assertEqual(section["native_engine"], before["gamepad_lighting"]["native_engine"])
+        self.assertEqual(section["complete_module_bodies"], {"existing": "complete", "current": "complete"})
+        for previous, product in zip(before["gamepad_lighting"]["products"], section["products"]):
+            self.assertEqual(product["branch_selection"], previous["branch_selection"])
+            if product["product_id"] == 2676:
+                self.assertEqual(product["source_review"]["mount"], "current mount")
+                for field in ("review_source", "notification_branch", "obm_branch"):
+                    self.assertEqual(product["source_review"][field], previous["source_review"][field])
+            elif product["product_id"] != 4115:
+                self.assertEqual(product, previous)
+            else:
+                self.assertEqual(product["failures"], result["products"][0]["failures"])
+                self.assertEqual(product["unresolved_chains"], ["current source gap"])
+        self.assertEqual(result["products"][0].get("branch_selection"), None)
+        for field in ("branch_selection", "products", "duplicate_products"):
+            bad = copy.deepcopy(result)
+            if field == "branch_selection":
+                bad[field] = {"review_source": {"sha256": "c" * 64}}
+            elif field == "products":
+                bad[field][0]["branch_selection"] = {"review_source": {"sha256": "c" * 64}}
+            else:
+                bad["products"].append(copy.deepcopy(bad["products"][0]))
+            retained = copy.deepcopy(document)
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                families.merge_gamepad_lighting_query(document, bad)
+            self.assertEqual(document, retained)
+
+    @staticmethod
+    def freeze_gamepad_review(root, review):
+        import os
+        raw = (json.dumps(review, ensure_ascii=False, indent=2) + "\n").replace("\n", os.linesep).encode()
+        path = root / ".analysis/results/reverse-pending/review-sources" / (hashlib.sha256(raw).hexdigest() + ".json")
+        analysis.save(path, review)
+        return families.identity(path)
+
+    def gamepad_publication_fixture(self, root):
+        document, review, _ = self.gamepad_fixture()
+        original_path = root / ".analysis/inputs/frontend/gamepad-test/raw/source.js"
+        original_path.parent.mkdir(parents=True)
+        raw = b"const observed=7;"
+        original_path.write_bytes(raw)
+        original = families.identity(original_path)
+        owner_key = original["sha256"] + ":0:" + str(len(raw))
+        review["complete_owners"] = {owner_key: {"original": original, "byte_start": 0, "byte_end": len(raw),
+            "body": raw.decode(), "body_sha256": original["sha256"]}}
+        review.update(originals=[original], target_execution=False, whole_page_complete=False)
+        for row in review["products"]:
+            row["bootstrap_owner"] = owner_key
+            row["chain_owners"] = {"11365": owner_key}
+            row["ui_mount_owners"] = [owner_key]
+        reference = self.freeze_gamepad_review(root, review)
+        families.merge_frontend_semantic_review(document, review, reference)
+        canonical = root / ".analysis/results/frontend/gamepad-main-audit.json"
+        analysis.save(canonical, document)
+        return document, review, reference, canonical
+
+    @staticmethod
+    def gamepad_selection_args():
+        from types import SimpleNamespace
+        return SimpleNamespace(family="gamepad", function="main", query="gamepad-lighting-selection",
+                               product=None, prepare=False)
+
+    def test_gamepad_selection_publication_chains_verified_previous_and_reuses_identical_review(self):
+        import contextlib
+        import io
+        with tempfile.TemporaryDirectory() as directory, patch.object(analysis, "ROOT", Path(directory)):
+            root = Path(directory)
+            _, review, prior, canonical = self.gamepad_publication_fixture(root)
+            current = copy.deepcopy(review)
+            current["semantics"]["source_selection"] = "revalidated current source"
+            with patch.object(families, "gamepad_lighting_selection_sources", return_value=copy.deepcopy(current)), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                published = families.audit_gamepad_lighting_selection(self.gamepad_selection_args())
+            selected = json.loads(canonical.read_bytes())["gamepad_lighting"]["branch_selection"]
+            self.assertEqual(selected["previous_review_source"], prior)
+            reference = published["review_source"]
+            self.assertNotEqual(reference, prior)
+            self.assertEqual(json.loads((root / reference["path"]).read_bytes())["previous_review_source"], prior)
+            self.assertTrue(families.valid(prior))
+            before = canonical.read_bytes()
+            artifacts = sorted((root / ".analysis/results/reverse-pending/review-sources").iterdir())
+            with patch.object(families, "gamepad_lighting_selection_sources", return_value=copy.deepcopy(current)), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                repeated = families.audit_gamepad_lighting_selection(self.gamepad_selection_args())
+            self.assertEqual(repeated["review_source"], reference)
+            self.assertEqual(canonical.read_bytes(), before)
+            self.assertEqual(sorted((root / ".analysis/results/reverse-pending/review-sources").iterdir()), artifacts)
+            self.assertFalse(list(root.rglob("*.tmp")))
+
+    def test_gamepad_selection_rejects_invalid_stored_identity_before_collecting(self):
+        for mode in ("bytes", "sha256", "outside", "actual_bytes", "missing_reference", "scope"):
+            with self.subTest(mode=mode), tempfile.TemporaryDirectory() as directory, \
+                    patch.object(analysis, "ROOT", Path(directory)):
+                root = Path(directory)
+                document, review, reference, canonical = self.gamepad_publication_fixture(root)
+                stored = document["gamepad_lighting"]["branch_selection"]["review_source"]
+                if mode == "bytes":
+                    stored["bytes"] += 1
+                elif mode == "sha256":
+                    stored["sha256"] = "0" * 64
+                elif mode == "outside":
+                    stored["path"] = ".work/" + reference["sha256"] + ".json"
+                elif mode == "actual_bytes":
+                    (root / reference["path"]).write_bytes(b"changed")
+                elif mode == "missing_reference":
+                    document["gamepad_lighting"]["branch_selection"].pop("review_source")
+                else:
+                    wrong = {**review, "kind": "current_legacy_camera_selection_review"}
+                    document["gamepad_lighting"]["branch_selection"]["review_source"] = self.freeze_gamepad_review(root, wrong)
+                analysis.save(canonical, document)
+                before = canonical.read_bytes()
+                with patch.object(families, "gamepad_lighting_selection_sources") as collect, self.assertRaises(ValueError):
+                    families.audit_gamepad_lighting_selection(self.gamepad_selection_args())
+                collect.assert_not_called()
+                self.assertEqual(canonical.read_bytes(), before)
+
+    def test_gamepad_selection_rechecks_previous_reference_and_bytes_inside_publication_lock(self):
+        import contextlib
+        import io
+        for mode in ("newer_review", "removed_review", "changed_bytes", "changed_during_merge"):
+            with self.subTest(mode=mode), tempfile.TemporaryDirectory() as directory, \
+                    patch.object(analysis, "ROOT", Path(directory)):
+                root = Path(directory)
+                document, review, reference, canonical = self.gamepad_publication_fixture(root)
+                candidate = copy.deepcopy(review)
+                candidate["semantics"]["generation"] = "candidate"
+                concurrent_bytes = []
+                def collect():
+                    if mode == "newer_review":
+                        concurrent = {**copy.deepcopy(review), "previous_review_source": reference}
+                        concurrent["semantics"]["generation"] = "concurrent"
+                        newer = self.freeze_gamepad_review(root, concurrent)
+                        families.merge_frontend_semantic_review(document, concurrent, newer, expected_previous_review=reference)
+                        analysis.save(canonical, document)
+                    elif mode == "removed_review":
+                        document["gamepad_lighting"].pop("branch_selection")
+                        analysis.save(canonical, document)
+                    elif mode == "changed_bytes":
+                        (root / reference["path"]).write_bytes(b"changed during collection")
+                    concurrent_bytes.append(canonical.read_bytes())
+                    return candidate
+                merge = families.merge_frontend_semantic_review
+                def merge_and_change(*args, **kwargs):
+                    result = merge(*args, **kwargs)
+                    if mode == "changed_during_merge":
+                        (root / reference["path"]).write_bytes(b"changed during publication")
+                    return result
+                with patch.object(families, "gamepad_lighting_selection_sources", side_effect=collect), \
+                        patch.object(families, "merge_frontend_semantic_review", side_effect=merge_and_change), \
+                        contextlib.redirect_stdout(io.StringIO()), self.assertRaises(ValueError):
+                    families.audit_gamepad_lighting_selection(self.gamepad_selection_args())
+                self.assertEqual(canonical.read_bytes(), concurrent_bytes[0])
+                self.assertFalse(list(root.rglob("*.tmp")))
 
     def receiver_fixture(self):
         reference = {"path": "review.json", "bytes": 10, "sha256": "a" * 64}

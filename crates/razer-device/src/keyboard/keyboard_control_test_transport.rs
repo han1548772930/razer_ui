@@ -58,7 +58,10 @@ impl FeatureTransport for Mock {
         let mut remaining = self.send_errors_remaining.lock().unwrap();
         if *remaining != 0 {
             *remaining -= 1;
-            anyhow::bail!("scripted send failure");
+            return Err(crate::backend::native_io_failure(
+                crate::backend::NativeIoOutcome::Rejected,
+                anyhow::anyhow!("scripted send failure"),
+            ));
         }
         Ok(())
     }

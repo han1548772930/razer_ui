@@ -277,8 +277,10 @@ fn canceled_device_response_stops_the_next_band_even_when_source_ignores_stage_r
     let progress = &error.downcast_ref::<ExecutionFailure>().unwrap().progress;
     assert!(progress.setter_sent());
     assert!(!progress.confirmed());
+    assert!(!progress.source_result());
     assert_eq!(progress.stages().len(), 1);
-    assert!(progress.stages()[0].response().is_none());
+    assert_eq!(progress.stages()[0].command(), [11, 8, 33]);
+    assert_eq!(progress.stages()[0].response(), Some([0; 11].as_slice()));
     assert!(
         progress.stages()[0]
             .error()

@@ -199,25 +199,36 @@ impl GamepadProductWorkspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if path.ends_with("/deadzoneValue") {
-            if value < 7 {
-                let previous = self
-                    .previous_deadzones
-                    .get(path)
-                    .or_else(|| self.draft.pointer(path))
-                    .cloned()
-                    .expect("source previous deadzone");
-                self.low_deadzone = Some((path.to_owned(), previous));
+        if let Some(side) = deadzone_state::Side::from_path(path) {
+            if self.deadzone.select(
+                side,
+                value,
+                self.deadzone_values(),
+                self.trigger_runtime.guard(),
+            ) {
                 self.deadzone_dialog = Some(deadzone_dialog::DialogState::new(window, cx));
-            } else {
-                self.previous_deadzones
-                    .insert(path.to_owned(), json!(value));
             }
         }
-        let unchanged = self.draft.pointer(path) == Some(&json!(value));
-        self.write(path, json!(value), cx);
-        // Source progress release invokes its setter even when the nearest
-        // step is unchanged; in particular it still opens the low alert.
+        self.submit_thumbstick_value(path, json!(value), cx);
+    }
+
+    pub(super) fn deadzone_values(&self) -> [i64; 2] {
+        [
+            self.number(deadzone_state::Side::Left.path()),
+            self.number(deadzone_state::Side::Right.path()),
+        ]
+    }
+
+    pub(super) fn submit_thumbstick_value(
+        &mut self,
+        path: &str,
+        value: Value,
+        cx: &mut Context<Self>,
+    ) {
+        let unchanged = self.draft.pointer(path) == Some(&value);
+        self.write(path, value, cx);
+        // Source progress release and warning onClose dispatch their setter
+        // even when the optimistic control value is already equal.
         if unchanged {
             self.thumbstick_changed(path, cx);
             cx.emit(GamepadProductChanged);

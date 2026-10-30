@@ -7,6 +7,17 @@ use std::{
     collections::VecDeque,
 };
 
+#[derive(Debug)]
+struct ReadOwnerRetired;
+
+impl std::fmt::Display for ReadOwnerRetired {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("button read owner retired after native GET")
+    }
+}
+
+impl std::error::Error for ReadOwnerRetired {}
+
 enum Step {
     Send(Vec<u8>),
     SendFails(Vec<u8>),
@@ -37,7 +48,10 @@ impl FeatureTransport for Transport {
             Step::Send(expected) => assert_eq!(report, expected),
             Step::SendFails(expected) => {
                 assert_eq!(report, expected);
-                anyhow::bail!("simulated OUT error");
+                return Err(crate::backend::native_io_failure(
+                    crate::backend::NativeIoOutcome::Rejected,
+                    anyhow::anyhow!("simulated OUT error"),
+                ));
             }
             _ => panic!("OUT where IN was expected"),
         };
@@ -543,9 +557,100 @@ fn cancellation_after_ack_retains_ack_and_stops_before_readback() {
         .expect_err("cancel after ACK must not issue a GET");
     assert_eq!(failure.phase, ButtonFailurePhase::Cancelled);
     assert!(failure.device_state_may_have_changed());
+    assert!(crate::backend::exchange_release_completed(&failure.error));
     assert!(failure.progress.steps[0].acknowledgment_received);
     assert_eq!(failure.progress.steps[0].acknowledgment_data, [0x42, 0x53]);
     assert!(failure.progress.steps[0].observed.is_none());
+    assert!(!failure.progress.verified());
+    assert!(!failure.progress.source_completed);
+    transport.finish();
+}
+
+#[test]
+fn completed_button_read_diagnostics_require_a_full_matching_assignment() {
+    let target = target();
+    let valid = vec![
+        target.profile_id,
+        target.button_id,
+        target.mode.raw(),
+        0xee,
+        3,
+        1,
+        2,
+        3,
+        0xa5,
+        0x5a,
+        0x71,
+    ];
+    let mut wrong_identity = valid.clone();
+    wrong_identity[0] += 1;
+    let mut unknown_mode = valid.clone();
+    unknown_mode[2] = 2;
+    for (payload, expected_observation) in [
+        (valid.clone(), true),
+        (wrong_identity, false),
+        (unknown_mode, false),
+        (valid[..9].to_vec(), false),
+    ] {
+        let transport = Transport::new([
+            send(
+                [10, 2, 140],
+                &[target.profile_id, target.button_id, target.mode.raw()],
+                1,
+            ),
+            receive([10, 2, 140], &payload, 1),
+        ]);
+        let device = ExchangeProbe::failing_finish(&transport);
+        let error = MouseButtonMapping::new(&device, &cap(170))
+            .unwrap()
+            .read(target, txs(), || Ok(()))
+            .unwrap_err();
+        assert!(crate::backend::exchange_finalization_failed(&error));
+        let completed = CompletedButtonRead::from_error(&error);
+        assert_eq!(completed.is_some(), expected_observation);
+        if let Some(completed) = completed {
+            assert_eq!(completed.observed().assignment.target, target);
+            assert_eq!(completed.observed().assignment.function_id, 0xee);
+            assert_eq!(completed.observed().raw_data, [1, 2, 3, 0xa5, 0x5a]);
+            assert_eq!(completed.observed().raw_payload, payload);
+        }
+        transport.finish();
+    }
+}
+
+#[test]
+fn readback_owner_loss_keeps_the_parsed_assignment_without_verified_success() {
+    let target = target();
+    let observed = disabled_payload(target);
+    let transport = Transport::new([
+        send([10, 2, 12], &disabled_payload(target), 1),
+        receive([10, 2, 12], &[], 1),
+        send(
+            [10, 2, 140],
+            &[target.profile_id, target.button_id, target.mode.raw()],
+            2,
+        ),
+        receive([10, 2, 140], &observed, 2),
+    ]);
+    let failure = MouseButtonMapping::new(&transport, &cap(170))
+        .unwrap()
+        .apply(target, ButtonAction::Disabled, true, txs(), || {
+            if transport.steps.borrow().is_empty() {
+                return Err(ReadOwnerRetired.into());
+            }
+            Ok(())
+        })
+        .unwrap_err();
+    assert_eq!(failure.phase, ButtonFailurePhase::Readback);
+    assert_eq!(failure.failed_step, Some(0));
+    assert!(failure.error.is::<ReadOwnerRetired>());
+    assert!(failure.progress.source_completed);
+    assert!(failure.progress.steps[0].attempted);
+    assert!(failure.progress.steps[0].acknowledgment_received);
+    let readback = failure.progress.steps[0].observed.as_ref().unwrap();
+    assert_eq!(readback.assignment.target, target);
+    assert_eq!(readback.assignment.function_id, 0);
+    assert_eq!(readback.raw_payload, observed);
     assert!(!failure.progress.verified());
     transport.finish();
 }

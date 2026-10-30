@@ -138,7 +138,7 @@ mod connection_feature_tests {
             reply[offset] = value;
             replies.push((reply, 91));
         }
-        replies.push((original, 90));
+        replies.push((original, 8));
         for (response, returned) in replies {
             let mock = Mock {
                 response,
@@ -152,6 +152,21 @@ mod connection_feature_tests {
                     .iter()
                     .all(|request| request[6..9] == [4, 0, 147])
             );
+        }
+    }
+
+    #[test]
+    fn connection_probe_preserves_only_payload_bytes_actually_returned_after_the_header() {
+        for returned in [9, 10, 12, 13, 90, 91] {
+            let mock = Mock {
+                response: successful_reply(),
+                returned,
+                requests: RefCell::default(),
+            };
+            let observation = probe(&mock).unwrap();
+            let payload = [2, 17, 0, 29];
+            assert_eq!(observation.raw_data, payload[..(returned - 9).min(4)]);
+            assert_eq!(mock.requests.borrow().len(), 1);
         }
     }
 

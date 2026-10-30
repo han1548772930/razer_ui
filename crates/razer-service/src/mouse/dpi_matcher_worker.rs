@@ -799,10 +799,10 @@ fn run(
                 }
                 Err(error) => {
                     backend.emit(Update::Failure(format!("{error:#}")))?;
-                    if !controller.monitoring && backend.monitor_started() {
-                        backend.stop_input_monitoring()?;
-                    }
-                    if !controller.monitoring {
+                    if starting && !controller.monitoring {
+                        if backend.monitor_started() {
+                            backend.stop_input_monitoring()?;
+                        }
                         backend.release_matcher_locks()?;
                     }
                     if starting && options.is_some() {
@@ -816,7 +816,12 @@ fn run(
                 break;
             }
             if !closing.load(Ordering::Acquire) && controller.state() == State::Calibrating {
-                for batch in backend.events()? {
+                let batches = if controller.listening {
+                    backend.events()?
+                } else {
+                    vec![]
+                };
+                for batch in batches {
                     let initial_is_main = options
                         .as_ref()
                         .context("Matcher capture options are absent")?

@@ -2,8 +2,10 @@
 use super::clock::{NativeReturn, ReleaseReason, SourceClock};
 use anyhow::{Context as _, ensure};
 use razer_device::backend::{
-    ExchangeLease, ExchangeOptions, ExchangeTiming, ExchangeValidation, FeatureTransport,
-    HidBackend, HidNode, InterruptTransport, Protocol25Topology, ReportLengths, SourceCommandScope,
+    ExchangeLease, ExchangeOptions, ExchangeTiming, ExchangeValidation, FeatureBatch,
+    FeatureBatchReceipt, FeatureTransport, HidBackend, HidNode, InterruptTransport,
+    NativeIoOutcome, Protocol25Topology, ReportLengths, SourceCommandScope, native_io_failure,
+    native_io_outcome, reject_exchange_release, require_complete_send, validate_exchange_release,
 };
 use razer_platform::device_changes::ExactDeviceChangeGate;
 use serde_json::Value;
@@ -879,9 +881,14 @@ impl Entry {
         origin: Instant,
         pending: &PendingLease,
     ) {
-        let mut progress = LeaseProgress::default();
         loop {
             if pending.control.canceled() || !self.admitting().unwrap_or(false) {
+                while let Ok(request) = pending.inbox.try_recv() {
+                    request.reply(Err(native_io_failure(
+                        NativeIoOutcome::NotCalled,
+                        anyhow::anyhow!("Collection operation was canceled before native dispatch"),
+                    )));
+                }
                 return;
             }
             let request = match pending.inbox.recv_timeout(CONTROL_POLL) {
@@ -894,22 +901,23 @@ impl Entry {
                 || request.signature.owner.is_nil()
                 || request.signature.request.is_nil()
             {
-                request.reply(Err(
-                    "Collection operation has a stale or foreign identity".into()
-                ));
+                request.reply(Err(native_io_failure(
+                    NativeIoOutcome::NotCalled,
+                    anyhow::anyhow!("Collection operation has a stale or foreign identity"),
+                )));
                 continue;
             }
             match request.operation {
                 ActorOperation::Finish => {
                     let result = if pending.control.canceled() || !self.admitting().unwrap_or(false)
                     {
-                        Err("HID exchange cannot confirm release after cancellation or epoch invalidation".into())
+                        Err(native_io_failure(
+                            NativeIoOutcome::NotCalled,
+                            anyhow::anyhow!(
+                                "HID exchange cannot confirm release after cancellation or epoch invalidation"
+                            ),
+                        ))
                     } else {
-                        progress.finish_batch(
-                            clock,
-                            origin.elapsed(),
-                            pending.control.options.timing,
-                        );
                         let reason = match pending.control.options.timing {
                             ExchangeTiming::MutexOut { .. } => ReleaseReason::ExplicitMatched,
                             ExchangeTiming::Plain | ExchangeTiming::Batch => {
@@ -923,16 +931,7 @@ impl Entry {
                     return;
                 }
                 ActorOperation::Packet(operation) => {
-                    let result = self
-                        .execute(
-                            native,
-                            clock,
-                            origin,
-                            &pending.control,
-                            &mut progress,
-                            operation,
-                        )
-                        .map_err(|error| format!("{error:#}"));
+                    let result = self.execute(native, clock, origin, &pending.control, operation);
                     let _ = request.response.send(result);
                 }
             }
@@ -945,17 +944,14 @@ impl Entry {
         clock: &mut SourceClock,
         origin: Instant,
         control: &LeaseControl,
-        progress: &mut LeaseProgress,
         operation: Packet,
     ) -> anyhow::Result<PacketReply> {
-        ensure!(
-            !control.canceled() && self.admitting()?,
-            "Collection operation was canceled before native dispatch"
-        );
-        let sending_feature = matches!(operation, Packet::Send { .. });
-        if sending_feature {
-            let interval = progress.out_interval(control.options.timing);
-            if let Some(interval) = interval {
+        let admitted = (|| {
+            ensure!(
+                !control.canceled() && self.admitting()?,
+                "Collection operation was canceled before native dispatch"
+            );
+            if let Some(interval) = operation.out_interval(control.options.timing) {
                 while let Some(wait) = clock.out_wait(origin.elapsed(), interval) {
                     ensure!(
                         !control.canceled() && self.admitting()?,
@@ -964,19 +960,14 @@ impl Entry {
                     thread::sleep(wait);
                 }
             }
-        }
-        ensure!(
-            !control.canceled() && self.admitting()?,
-            "Collection operation was canceled before native dispatch"
-        );
-        progress.dispatched(control.options.timing, sending_feature);
-        let result = operation.execute(
-            native,
-            clock,
-            origin,
-            control.options.timing != ExchangeTiming::Batch,
-        );
-        progress.returned(control.options.timing, result.is_ok());
+            ensure!(
+                !control.canceled() && self.admitting()?,
+                "Collection operation was canceled before native dispatch"
+            );
+            Ok(())
+        })();
+        admitted.map_err(|error| native_io_failure(NativeIoOutcome::NotCalled, error))?;
+        let result = operation.execute(native, clock, origin);
         // Cancellation is observed after the actual native terminal return.
         // The actor, handle and owned buffer survive any blocked native call.
         let current = (|| {
@@ -986,7 +977,7 @@ impl Entry {
             );
             Ok(())
         })();
-        combine(result, current)
+        combine_packet(result, current)
     }
 
     fn interrupt(self: &Arc<Self>) -> anyhow::Result<Arc<InterruptOwner>> {
@@ -1114,11 +1105,11 @@ impl Drop for PendingAdmission {
 struct ActorRequest {
     signature: Signature,
     operation: ActorOperation,
-    response: SyncSender<Result<PacketReply, String>>,
+    response: SyncSender<anyhow::Result<PacketReply>>,
 }
 
 impl ActorRequest {
-    fn reply(self, result: Result<PacketReply, String>) {
+    fn reply(self, result: anyhow::Result<PacketReply>) {
         let _ = self.response.send(result);
     }
 }
@@ -1126,41 +1117,6 @@ impl ActorRequest {
 enum ActorOperation {
     Packet(Packet),
     Finish,
-}
-
-#[derive(Default)]
-struct LeaseProgress {
-    batch_started: bool,
-    batch_failed: bool,
-}
-
-impl LeaseProgress {
-    fn out_interval(&self, timing: ExchangeTiming) -> Option<Duration> {
-        match timing {
-            ExchangeTiming::Plain => None,
-            ExchangeTiming::MutexOut { interval } => Some(interval),
-            ExchangeTiming::Batch if !self.batch_started => Some(Duration::from_millis(2)),
-            ExchangeTiming::Batch => None,
-        }
-    }
-
-    fn dispatched(&mut self, timing: ExchangeTiming, sending_feature: bool) {
-        if timing == ExchangeTiming::Batch && sending_feature {
-            self.batch_started = true;
-        }
-    }
-
-    fn returned(&mut self, timing: ExchangeTiming, succeeded: bool) {
-        if timing == ExchangeTiming::Batch && !succeeded {
-            self.batch_failed = true;
-        }
-    }
-
-    fn finish_batch(&self, clock: &mut SourceClock, now: Duration, timing: ExchangeTiming) {
-        if timing == ExchangeTiming::Batch && self.batch_started && !self.batch_failed {
-            clock.native_return(now, NativeReturn::Batch);
-        }
-    }
 }
 
 enum Packet {
@@ -1172,8 +1128,11 @@ enum Packet {
         bytes: Vec<u8>,
         collection_max: bool,
     },
-    Output(Vec<u8>),
-    CountedOutput(Vec<u8>),
+    Batch(FeatureBatch),
+    Output {
+        bytes: Vec<u8>,
+        kind: OutputKind,
+    },
     Input(Vec<u8>),
     Interrupt {
         bytes: Vec<u8>,
@@ -1181,19 +1140,49 @@ enum Packet {
     },
 }
 
+enum OutputKind {
+    Complete,
+    Counted,
+}
+
 enum PacketReply {
     Unit,
     Count(usize),
     Bytes { bytes: Vec<u8>, count: usize },
+    Batch(FeatureBatchReceipt),
+}
+
+impl PacketReply {
+    fn native_outcome(&self) -> Option<NativeIoOutcome> {
+        match self {
+            Self::Unit => None,
+            Self::Count(byte_count)
+            | Self::Bytes {
+                count: byte_count, ..
+            } => Some(NativeIoOutcome::Returned {
+                byte_count: *byte_count,
+            }),
+            Self::Batch(receipt) => Some(NativeIoOutcome::Returned {
+                byte_count: receipt.byte_count(),
+            }),
+        }
+    }
 }
 
 impl Packet {
+    fn out_interval(&self, timing: ExchangeTiming) -> Option<Duration> {
+        match (self, timing) {
+            (Self::Batch(_), _) => Some(Duration::from_millis(2)),
+            (Self::Send { .. }, ExchangeTiming::MutexOut { interval }) => Some(interval),
+            _ => None,
+        }
+    }
+
     fn execute(
         self,
         native: &dyn FeatureTransport,
         clock: &mut SourceClock,
         origin: Instant,
-        update_clock: bool,
     ) -> anyhow::Result<PacketReply> {
         match self {
             Self::Send {
@@ -1201,22 +1190,16 @@ impl Packet {
                 collection_max,
             } => {
                 let result = if collection_max {
-                    native.send_feature_at_collection_max(&bytes)
+                    native.send_feature_at_collection_max_counted(&bytes)
                 } else {
-                    native.send_feature(&bytes)
+                    native.send_feature_counted(&bytes)
                 };
-                if update_clock {
-                    clock.native_return(
-                        origin.elapsed(),
-                        if result.is_ok() {
-                            NativeReturn::Send
-                        } else {
-                            NativeReturn::Threw
-                        },
-                    );
-                }
-                result?;
-                Ok(PacketReply::Unit)
+                clock.native_outcome(
+                    origin.elapsed(),
+                    NativeReturn::Send,
+                    native_result_outcome(&result),
+                );
+                result.map(PacketReply::Count)
             }
             Self::Get {
                 mut bytes,
@@ -1227,36 +1210,45 @@ impl Packet {
                 } else {
                     native.get_feature(&mut bytes)
                 };
-                if update_clock {
-                    clock.native_return(
-                        origin.elapsed(),
-                        if result.is_ok() {
-                            NativeReturn::Get
-                        } else {
-                            NativeReturn::Threw
-                        },
-                    );
-                }
-                let count = result?;
-                ensure!(
-                    count <= bytes.len(),
-                    "Native Feature byte count exceeds the owned buffer"
+                clock.native_outcome(
+                    origin.elapsed(),
+                    NativeReturn::Get,
+                    native_result_outcome(&result),
                 );
+                let count = result?;
+                if count > bytes.len() {
+                    return Err(native_io_failure(
+                        NativeIoOutcome::Returned { byte_count: count },
+                        anyhow::anyhow!("Native Feature byte count exceeds the owned buffer"),
+                    ));
+                }
                 Ok(PacketReply::Bytes { bytes, count })
             }
-            Self::Output(bytes) => {
-                native.write_output(&bytes)?;
-                Ok(PacketReply::Unit)
+            Self::Batch(batch) => {
+                let result = native.send_feature_batch(&batch);
+                let outcome = match &result {
+                    Ok(receipt) => Some(NativeIoOutcome::Returned {
+                        byte_count: receipt.byte_count(),
+                    }),
+                    Err(error) => native_io_outcome(error),
+                };
+                clock.native_outcome(origin.elapsed(), NativeReturn::Batch, outcome);
+                result.map(PacketReply::Batch)
             }
-            Self::CountedOutput(bytes) => {
-                native.write_output_counted(&bytes).map(PacketReply::Count)
-            }
+            Self::Output { bytes, kind } => match kind {
+                OutputKind::Complete => native
+                    .write_output(&bytes)
+                    .map(|()| PacketReply::Count(bytes.len())),
+                OutputKind::Counted => native.write_output_counted(&bytes).map(PacketReply::Count),
+            },
             Self::Input(mut bytes) => {
                 let count = native.get_input(&mut bytes)?;
-                ensure!(
-                    count <= bytes.len(),
-                    "Native Input byte count exceeds the owned buffer"
-                );
+                if count > bytes.len() {
+                    return Err(native_io_failure(
+                        NativeIoOutcome::Returned { byte_count: count },
+                        anyhow::anyhow!("Native Input byte count exceeds the owned buffer"),
+                    ));
+                }
                 Ok(PacketReply::Bytes { bytes, count })
             }
             Self::Interrupt {
@@ -1264,10 +1256,12 @@ impl Packet {
                 timeout_ms,
             } => {
                 let count = native.read_interrupt(&mut bytes, timeout_ms)?;
-                ensure!(
-                    count <= bytes.len(),
-                    "Native interrupt byte count exceeds the owned buffer"
-                );
+                if count > bytes.len() {
+                    return Err(native_io_failure(
+                        NativeIoOutcome::Returned { byte_count: count },
+                        anyhow::anyhow!("Native interrupt byte count exceeds the owned buffer"),
+                    ));
+                }
                 Ok(PacketReply::Bytes { bytes, count })
             }
         }
@@ -1283,38 +1277,56 @@ struct ActiveLease {
 
 impl ActiveLease {
     fn call(&self, operation: ActorOperation) -> anyhow::Result<PacketReply> {
-        ensure!(
-            !self.control.canceled() && self.entry.admitting()?,
-            "HID lease is canceled or stale"
-        );
+        let finishing = matches!(&operation, ActorOperation::Finish);
         let (response, receipt) = mpsc::sync_channel(1);
-        let mut request = ActorRequest {
-            signature: self.control.signature,
-            operation,
-            response,
-        };
-        loop {
-            match self.sender.try_send(request) {
-                Ok(()) => break,
-                Err(TrySendError::Full(pending)) => {
-                    request = pending;
-                    ensure!(
-                        !self.control.canceled() && self.entry.admitting()?,
-                        "HID packet admission was canceled"
-                    );
-                    thread::sleep(CONTROL_POLL);
-                }
-                Err(TrySendError::Disconnected(_)) => {
-                    anyhow::bail!("Native collection actor closed before packet admission")
+        let admitted = (|| {
+            ensure!(
+                !self.control.canceled() && self.entry.admitting()?,
+                "HID lease is canceled or stale"
+            );
+            let mut request = ActorRequest {
+                signature: self.control.signature,
+                operation,
+                response,
+            };
+            loop {
+                match self.sender.try_send(request) {
+                    Ok(()) => break,
+                    Err(TrySendError::Full(pending)) => {
+                        request = pending;
+                        ensure!(
+                            !self.control.canceled() && self.entry.admitting()?,
+                            "HID packet admission was canceled"
+                        );
+                        thread::sleep(CONTROL_POLL);
+                    }
+                    Err(TrySendError::Disconnected(_)) => {
+                        anyhow::bail!("Native collection actor closed before packet admission")
+                    }
                 }
             }
-        }
+            Ok(())
+        })();
+        admitted.map_err(|error| {
+            let error = native_io_failure(NativeIoOutcome::NotCalled, error);
+            if finishing {
+                reject_exchange_release(error)
+            } else {
+                error
+            }
+        })?;
         // Once dispatched, cancellation cannot discard the native operation.
         // Wait for its terminal result; its buffers belong to the actor.
         let result = receipt
             .recv()
-            .context("Native collection actor closed before terminal packet result")?
-            .map_err(anyhow::Error::msg);
+            .context("Native collection actor closed before terminal packet result")
+            .map_err(|error| {
+                if finishing {
+                    reject_exchange_release(error)
+                } else {
+                    error
+                }
+            })?;
         let current = (|| {
             ensure!(
                 !self.control.canceled(),
@@ -1322,7 +1334,12 @@ impl ActiveLease {
             );
             self.entry.validate_current()
         })();
-        combine(result, current)
+        if finishing {
+            validate_exchange_release(result.and_then(expect_unit), current)
+                .map(|()| PacketReply::Unit)
+        } else {
+            combine_packet(result, current)
+        }
     }
 
     fn finish(mut self) -> anyhow::Result<()> {
@@ -1364,7 +1381,7 @@ struct InterruptRequest {
     canceled: Arc<AtomicBool>,
     bytes: Vec<u8>,
     timeout_ms: u32,
-    response: SyncSender<Result<PacketReply, String>>,
+    response: SyncSender<anyhow::Result<PacketReply>>,
 }
 
 impl InterruptOwner {
@@ -1426,31 +1443,43 @@ impl InterruptOwner {
                 Err(RecvTimeoutError::Disconnected) => return,
             };
             let result = (|| {
-                ensure!(
-                    request.signature.epoch == entry.epoch
-                        && !request.signature.owner.is_nil()
-                        && !request.signature.request.is_nil(),
-                    "Interrupt operation has a stale or foreign identity"
-                );
-                ensure!(
-                    !request.canceled.load(Ordering::Acquire) && entry.admitting()?,
-                    "Interrupt read was canceled before native dispatch"
-                );
-                let count = native.read(&mut request.bytes, request.timeout_ms)?;
-                ensure!(
-                    count <= request.bytes.len(),
-                    "Native interrupt byte count exceeds the owned buffer"
-                );
-                ensure!(
-                    !request.canceled.load(Ordering::Acquire) && entry.admitting()?,
-                    "Interrupt read ended after cancellation or epoch invalidation"
-                );
+                let before = || {
+                    ensure!(
+                        request.signature.epoch == entry.epoch
+                            && !request.signature.owner.is_nil()
+                            && !request.signature.request.is_nil(),
+                        "Interrupt operation has a stale or foreign identity"
+                    );
+                    ensure!(
+                        !request.canceled.load(Ordering::Acquire) && entry.admitting()?,
+                        "Interrupt read was canceled before native dispatch"
+                    );
+                    Ok(())
+                };
+                let after = || {
+                    ensure!(
+                        !request.canceled.load(Ordering::Acquire) && entry.admitting()?,
+                        "Interrupt read ended after cancellation or epoch invalidation"
+                    );
+                    Ok(())
+                };
+                let count = razer_device::backend::checked_native_read(
+                    &before,
+                    &mut request.bytes,
+                    |bytes| native.read(bytes, request.timeout_ms),
+                    &after,
+                )?;
+                if count > request.bytes.len() {
+                    return Err(native_io_failure(
+                        NativeIoOutcome::Returned { byte_count: count },
+                        anyhow::anyhow!("Native interrupt byte count exceeds the owned buffer"),
+                    ));
+                }
                 Ok(PacketReply::Bytes {
                     bytes: request.bytes,
                     count,
                 })
-            })()
-            .map_err(|error: anyhow::Error| format!("{error:#}"));
+            })();
             let _ = request.response.send(result);
         }
     }
@@ -1516,38 +1545,44 @@ struct InterruptProxy {
 impl InterruptTransport for InterruptProxy {
     fn read(&self, report: &mut [u8], timeout_ms: u32) -> anyhow::Result<usize> {
         validate_buffer(report)?;
-        ensure!(
-            !self.canceled.load(Ordering::Acquire) && self.entry.admitting()?,
-            "Interrupt owner is canceled or stale"
-        );
         let (response, receipt) = mpsc::sync_channel(1);
-        let request = InterruptRequest {
-            signature: Signature {
-                owner: self.owner,
-                request: Uuid::new_v4(),
-                epoch: self.entry.epoch,
-            },
-            canceled: self.canceled.clone(),
-            bytes: report.to_vec(),
-            timeout_ms,
-            response,
-        };
-        match self.interrupt.sender.try_send(request) {
-            Ok(()) => {}
-            Err(TrySendError::Full(_)) => anyhow::bail!("Interrupt operation queue is full"),
-            Err(TrySendError::Disconnected(_)) => {
-                anyhow::bail!("Interrupt collection actor has closed")
+        let admitted = (|| {
+            ensure!(
+                !self.canceled.load(Ordering::Acquire) && self.entry.admitting()?,
+                "Interrupt owner is canceled or stale"
+            );
+            let request = InterruptRequest {
+                signature: Signature {
+                    owner: self.owner,
+                    request: Uuid::new_v4(),
+                    epoch: self.entry.epoch,
+                },
+                canceled: self.canceled.clone(),
+                bytes: report.to_vec(),
+                timeout_ms,
+                response,
+            };
+            match self.interrupt.sender.try_send(request) {
+                Ok(()) => {}
+                Err(TrySendError::Full(_)) => anyhow::bail!("Interrupt operation queue is full"),
+                Err(TrySendError::Disconnected(_)) => {
+                    anyhow::bail!("Interrupt collection actor has closed")
+                }
             }
-        }
-        let reply = receipt
+            Ok(())
+        })();
+        admitted.map_err(|error| native_io_failure(NativeIoOutcome::NotCalled, error))?;
+        let result = receipt
             .recv()
-            .context("Interrupt actor closed before terminal read result")?
-            .map_err(anyhow::Error::msg)?;
-        ensure!(
-            !self.canceled.load(Ordering::Acquire),
-            "Interrupt owner was canceled before consuming its terminal result"
-        );
-        self.entry.validate_current()?;
+            .context("Interrupt actor closed before terminal read result")?;
+        let current = (|| {
+            ensure!(
+                !self.canceled.load(Ordering::Acquire),
+                "Interrupt owner was canceled before consuming its terminal result"
+            );
+            self.entry.validate_current()
+        })();
+        let reply = combine_packet(result, current)?;
         copy_reply(reply, report)
     }
 
@@ -1590,10 +1625,12 @@ impl FeatureProxy {
     }
 
     fn packet(&self, packet: Packet) -> anyhow::Result<PacketReply> {
-        let lease = self.lease(ExchangeOptions::plain())?;
+        let lease = self
+            .lease(ExchangeOptions::plain())
+            .map_err(|error| native_io_failure(NativeIoOutcome::NotCalled, error))?;
         let result = lease.packet(packet);
         let finish = Box::new(lease).finish();
-        combine(result, finish)
+        combine_packet(result, finish)
     }
 }
 
@@ -1607,12 +1644,16 @@ struct QueuedExchange<'a> {
 
 impl QueuedExchange<'_> {
     fn packet(&self, packet: Packet) -> anyhow::Result<PacketReply> {
-        (self.validate)()?;
-        self.active
-            .borrow()
-            .as_ref()
-            .context("HID exchange has no current cycle")?
-            .call(ActorOperation::Packet(packet))
+        (self.validate)().map_err(|error| native_io_failure(NativeIoOutcome::NotCalled, error))?;
+        let result = {
+            let active = self.active.borrow();
+            let active = active
+                .as_ref()
+                .context("HID exchange has no current cycle")
+                .map_err(|error| native_io_failure(NativeIoOutcome::NotCalled, error))?;
+            active.call(ActorOperation::Packet(packet))
+        };
+        combine_packet(result, (self.validate)())
     }
 }
 
@@ -1622,13 +1663,14 @@ impl ExchangeLease for QueuedExchange<'_> {
     }
 
     fn retry_release(&self) -> anyhow::Result<()> {
-        (self.validate)()?;
+        (self.validate)().map_err(reject_exchange_release)?;
         let active = self
             .active
             .borrow_mut()
             .take()
-            .context("HID retry has no current cycle")?;
-        active.finish()?;
+            .context("HID retry has no current cycle")
+            .map_err(reject_exchange_release)?;
+        validate_exchange_release(active.finish(), (self.validate)())?;
         let next = self.proxy.entry.acquire(
             self.proxy.owner,
             self.proxy.canceled.clone(),
@@ -1640,28 +1682,43 @@ impl ExchangeLease for QueuedExchange<'_> {
     }
 
     fn finish(self: Box<Self>) -> anyhow::Result<()> {
-        (self.validate)()?;
+        (self.validate)().map_err(reject_exchange_release)?;
         let active = self
             .active
             .borrow_mut()
             .take()
-            .context("HID exchange has already released its cycle")?;
-        active.finish()
+            .context("HID exchange has already released its cycle")
+            .map_err(reject_exchange_release)?;
+        validate_exchange_release(active.finish(), (self.validate)())
     }
 }
 
 macro_rules! proxy_transport {
     () => {
+        fn send_feature_batch(&self, batch: &FeatureBatch) -> anyhow::Result<FeatureBatchReceipt> {
+            match self.packet(Packet::Batch(batch.clone()))? {
+                PacketReply::Batch(receipt) => Ok(receipt),
+                _ => anyhow::bail!("Feature batch returned the wrong typed result"),
+            }
+        }
         fn send_feature(&self, report: &[u8]) -> anyhow::Result<()> {
+            let count = self.send_feature_counted(report)?;
+            require_complete_send(count, report.len())
+        }
+        fn send_feature_counted(&self, report: &[u8]) -> anyhow::Result<usize> {
             validate_buffer(report)?;
-            expect_unit(self.packet(Packet::Send {
+            expect_count(self.packet(Packet::Send {
                 bytes: report.to_vec(),
                 collection_max: false,
             })?)
         }
         fn send_feature_at_collection_max(&self, report: &[u8]) -> anyhow::Result<()> {
+            let count = self.send_feature_at_collection_max_counted(report)?;
+            require_complete_send(count, report.len())
+        }
+        fn send_feature_at_collection_max_counted(&self, report: &[u8]) -> anyhow::Result<usize> {
             validate_buffer(report)?;
-            expect_unit(self.packet(Packet::Send {
+            expect_count(self.packet(Packet::Send {
                 bytes: report.to_vec(),
                 collection_max: true,
             })?)
@@ -1688,14 +1745,28 @@ macro_rules! proxy_transport {
         }
         fn write_output(&self, report: &[u8]) -> anyhow::Result<()> {
             validate_buffer(report)?;
-            expect_unit(self.packet(Packet::Output(report.to_vec()))?)
+            if !self.report_lengths()?.accepts_output_report(report) {
+                return Err(native_io_failure(
+                    NativeIoOutcome::NotCalled,
+                    anyhow::anyhow!(
+                        "Output report ID or length differs from the opened descriptor"
+                    ),
+                ));
+            }
+            require_complete_send(
+                expect_count(self.packet(Packet::Output {
+                    bytes: report.to_vec(),
+                    kind: OutputKind::Complete,
+                })?)?,
+                report.len(),
+            )
         }
         fn write_output_counted(&self, report: &[u8]) -> anyhow::Result<usize> {
             validate_buffer(report)?;
-            match self.packet(Packet::CountedOutput(report.to_vec()))? {
-                PacketReply::Count(count) => Ok(count),
-                _ => anyhow::bail!("Counted Output returned the wrong typed result"),
-            }
+            expect_count(self.packet(Packet::Output {
+                bytes: report.to_vec(),
+                kind: OutputKind::Counted,
+            })?)
         }
         fn get_input(&self, report: &mut [u8]) -> anyhow::Result<usize> {
             validate_buffer(report)?;
@@ -1764,11 +1835,14 @@ impl FeatureTransport for QueuedExchange<'_> {
 }
 
 fn validate_buffer(buffer: &[u8]) -> anyhow::Result<()> {
-    ensure!(
-        !buffer.is_empty() && buffer.len() <= MAX_BUFFER_BYTES,
-        "HID buffer is empty or exceeds the bounded operation size"
-    );
-    Ok(())
+    if !buffer.is_empty() && buffer.len() <= MAX_BUFFER_BYTES {
+        Ok(())
+    } else {
+        Err(native_io_failure(
+            NativeIoOutcome::NotCalled,
+            anyhow::anyhow!("HID buffer is empty or exceeds the bounded operation size"),
+        ))
+    }
 }
 
 fn no_validation() -> anyhow::Result<()> {
@@ -1781,6 +1855,22 @@ fn expect_unit(reply: PacketReply) -> anyhow::Result<()> {
         "HID operation returned the wrong typed result"
     );
     Ok(())
+}
+
+fn expect_count(reply: PacketReply) -> anyhow::Result<usize> {
+    match reply {
+        PacketReply::Count(count) => Ok(count),
+        _ => anyhow::bail!("Counted HID operation returned the wrong typed result"),
+    }
+}
+
+fn native_result_outcome(result: &anyhow::Result<usize>) -> Option<NativeIoOutcome> {
+    match result {
+        Ok(byte_count) => Some(NativeIoOutcome::Returned {
+            byte_count: *byte_count,
+        }),
+        Err(error) => native_io_outcome(error),
+    }
 }
 
 fn copy_reply(reply: PacketReply, buffer: &mut [u8]) -> anyhow::Result<usize> {
@@ -1803,6 +1893,23 @@ fn combine<T>(result: anyhow::Result<T>, cleanup: anyhow::Result<()>) -> anyhow:
         (Err(error), Err(cleanup)) => {
             Err(error.context(format!("HID cycle release also failed: {cleanup:#}")))
         }
+    }
+}
+
+fn combine_packet(
+    result: anyhow::Result<PacketReply>,
+    validation: anyhow::Result<()>,
+) -> anyhow::Result<PacketReply> {
+    match (result, validation) {
+        (Ok(PacketReply::Bytes { bytes, count }), Err(error)) => Err(
+            razer_device::backend::complete_native_read(Ok(count), &bytes, error),
+        ),
+        (Ok(PacketReply::Batch(receipt)), Err(error)) => Err(receipt.into_failure(error)),
+        (Ok(reply), Err(error)) => Err(match reply.native_outcome() {
+            Some(outcome) => native_io_failure(outcome, error),
+            None => error,
+        }),
+        (result, validation) => combine(result, validation),
     }
 }
 

@@ -4,7 +4,8 @@ use crate::{
     backend::FeatureTransport,
     device_reads::DeviceReadCapability,
     mouse_button_mapping::{
-        AssignmentMode, ButtonTarget, MouseButtonMapping, ObservedButtonAssignment,
+        AssignmentMode, ButtonTarget, CompletedButtonRead, MouseButtonMapping,
+        ObservedButtonAssignment,
     },
 };
 use anyhow::{Context as _, Result, ensure};
@@ -212,10 +213,17 @@ impl<'a> MouseButtonInventory<'a> {
             match observed {
                 Ok(observed) => report.entries[index].observed = Some(observed),
                 Err(error) => {
+                    if let Some(completed) = CompletedButtonRead::from_error(&error) {
+                        report.entries[index].observed = Some(completed.observed().clone());
+                    }
                     report.entries[index].error = Some(format!("{error:#}"));
-                    if cancelled.get() {
+                    if cancelled.get() || crate::backend::exchange_finalization_failed(&error) {
                         return Err(ButtonInventoryFailure {
-                            phase: ButtonInventoryFailurePhase::Cancelled,
+                            phase: if cancelled.get() {
+                                ButtonInventoryFailurePhase::Cancelled
+                            } else {
+                                ButtonInventoryFailurePhase::Read
+                            },
                             progress: report,
                             failed_target: Some(target),
                             error,

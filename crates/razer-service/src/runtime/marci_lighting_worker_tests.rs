@@ -1,4 +1,5 @@
 use super::*;
+use razer_device::backend::{NativeIoOutcome, native_io_failure, native_io_outcome};
 use razer_device::lighting_engine::{EngineEffect, EngineFrame, LedConfiguration};
 use std::{
     cell::{Cell, RefCell},
@@ -7,6 +8,98 @@ use std::{
 };
 
 type Calls = Rc<RefCell<Vec<String>>>;
+
+struct NativeCounts(RefCell<Vec<&'static str>>);
+impl FeatureTransport for NativeCounts {
+    fn send_feature(&self, _: &[u8]) -> anyhow::Result<()> {
+        panic!("Marci must retain the source collection route")
+    }
+    fn send_feature_at_collection_max_counted(&self, _: &[u8]) -> anyhow::Result<usize> {
+        self.0.borrow_mut().push("collection-send");
+        Ok(31)
+    }
+    fn get_feature(&self, _: &mut [u8]) -> anyhow::Result<usize> {
+        panic!("Marci must retain the source collection GET route")
+    }
+    fn get_feature_at_collection_max(&self, report: &mut [u8]) -> anyhow::Result<usize> {
+        self.0.borrow_mut().push("collection-read");
+        report[1] = 0x7b;
+        Ok(47)
+    }
+    fn write_output_counted(&self, _: &[u8]) -> anyhow::Result<usize> {
+        self.0.borrow_mut().push("source-output");
+        Ok(29)
+    }
+    fn metadata(&self) -> serde_json::Value {
+        serde_json::Value::Null
+    }
+}
+
+#[test]
+fn marci_late_delivery_keeps_each_native_count_and_source_channel() {
+    use razer_device::backend::{NativeIoOutcome, native_io_outcome};
+    let native = NativeCounts(RefCell::new(Vec::new()));
+    let validate = || Ok(());
+    let validate_after = || anyhow::bail!("Marci generation changed after native return");
+    let checked = Checked {
+        inner: &native,
+        validate: &validate,
+        validate_after: &validate_after,
+    };
+    let mut report = [0; 91];
+    for (result, byte_count) in [
+        (checked.send_feature_counted(&report), 31),
+        (checked.send_feature_at_collection_max_counted(&report), 31),
+        (checked.get_feature(&mut report), 47),
+        (checked.write_output_counted(&report), 29),
+    ] {
+        let error = result.unwrap_err();
+        assert_eq!(
+            native_io_outcome(&error),
+            Some(NativeIoOutcome::Returned { byte_count })
+        );
+        assert!(format!("{error:#}").contains("Marci generation changed after native return"));
+    }
+    assert_eq!(report[1], 0x7b);
+    assert_eq!(
+        *native.0.borrow(),
+        [
+            "collection-send",
+            "collection-send",
+            "collection-read",
+            "source-output"
+        ]
+    );
+}
+
+#[test]
+fn marci_preflight_prevents_io_and_complete_send_rejects_a_short_return() {
+    use razer_device::backend::{NativeIoOutcome, native_io_outcome};
+    let native = NativeCounts(RefCell::new(Vec::new()));
+    let validate = || anyhow::bail!("Marci owner canceled before native I/O");
+    let validate_after =
+        || -> anyhow::Result<()> { panic!("failed admission must not reach delivery validation") };
+    let checked = Checked {
+        inner: &native,
+        validate: &validate,
+        validate_after: &validate_after,
+    };
+    let error = checked.send_feature_counted(&[0; 91]).unwrap_err();
+    assert_eq!(native_io_outcome(&error), Some(NativeIoOutcome::NotCalled));
+    assert!(native.0.borrow().is_empty());
+
+    let checked = Checked {
+        inner: &native,
+        validate: &|| Ok(()),
+        validate_after: &|| Ok(()),
+    };
+    let error = checked.send_feature(&[0; 91]).unwrap_err();
+    assert_eq!(
+        native_io_outcome(&error),
+        Some(NativeIoOutcome::Returned { byte_count: 31 })
+    );
+    assert_eq!(*native.0.borrow(), ["collection-send"]);
+}
 
 struct Step {
     command: [u8; 3],
@@ -65,8 +158,48 @@ struct Transport {
     pending: RefCell<Option<(Vec<u8>, Step)>>,
     output_count: Cell<usize>,
     short_frame: bool,
+    probe_result: Option<OutputResult>,
+    frame_result: Option<OutputResult>,
     cancel: Arc<AtomicBool>,
 }
+
+#[derive(Clone, Copy)]
+enum OutputResult {
+    Returned { byte_count: usize, cancel: bool },
+    Failed(Option<NativeIoOutcome>),
+}
+
+impl OutputResult {
+    fn complete(self, canceled: &AtomicBool) -> anyhow::Result<usize> {
+        match self {
+            Self::Returned { byte_count, cancel } => {
+                if cancel {
+                    canceled.store(true, Ordering::Release);
+                }
+                Ok(byte_count)
+            }
+            Self::Failed(outcome) => {
+                let error = OutputFailure.into();
+                Err(match outcome {
+                    Some(outcome) => native_io_failure(outcome, error),
+                    None => error,
+                })
+            }
+        }
+    }
+}
+
+#[derive(Debug)]
+struct OutputFailure;
+
+impl std::fmt::Display for OutputFailure {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("scripted Marci Output failure")
+    }
+}
+
+impl std::error::Error for OutputFailure {}
+
 impl FeatureTransport for Transport {
     fn hid_node(&self) -> Option<&HidNode> {
         Some(&self.node)
@@ -104,10 +237,16 @@ impl FeatureTransport for Transport {
         if index == 0 {
             assert_eq!(&report[7..535], &[0; 528]);
             self.calls.borrow_mut().push("probe".into());
-            return Ok(781);
+            return match self.probe_result {
+                Some(result) => result.complete(&self.cancel),
+                None => Ok(781),
+            };
         }
         assert_eq!(&report[7..535], &[42; 528]);
         self.calls.borrow_mut().push("frame".into());
+        if let Some(result) = self.frame_result {
+            return result.complete(&self.cancel);
+        }
         if self.short_frame {
             Ok(780)
         } else {
@@ -210,10 +349,19 @@ struct Faults {
     normal_rejected: bool,
     cancel_before_start: bool,
     gates: bool,
+    probe_result: Option<OutputResult>,
+    frame_result: Option<OutputResult>,
 }
 fn exercise(faults: Faults) -> (anyhow::Result<()>, Status, Vec<String>) {
     let calls: Calls = Rc::new(RefCell::new(Vec::new()));
-    let steps = Rc::new(RefCell::new(script(faults.normal_rejected)));
+    let steps = Rc::new(RefCell::new(if faults.probe_result.is_some() {
+        VecDeque::from([
+            step([2, 0, 132], &[0, 0], &[0, 0]),
+            step([6, 15, 2], &[1, 0, 4, 0, 40, 0], &[]),
+        ])
+    } else {
+        script(faults.normal_rejected)
+    }));
     let canceled = Arc::new(AtomicBool::new(faults.cancel_before_start));
     let connection = Connection {
         output: Box::new(Transport {
@@ -223,6 +371,8 @@ fn exercise(faults: Faults) -> (anyhow::Result<()>, Status, Vec<String>) {
             pending: RefCell::new(None),
             output_count: Cell::new(0),
             short_frame: faults.short_frame,
+            probe_result: faults.probe_result,
+            frame_result: faults.frame_result,
             cancel: canceled.clone(),
         }),
         control_transport: Box::new(Transport {
@@ -232,6 +382,8 @@ fn exercise(faults: Faults) -> (anyhow::Result<()>, Status, Vec<String>) {
             pending: RefCell::new(None),
             output_count: Cell::new(0),
             short_frame: false,
+            probe_result: None,
+            frame_result: None,
             cancel: canceled.clone(),
         }),
         validate_identity: &|| Ok(()),
@@ -337,6 +489,127 @@ fn marci_worker_cancellation_after_transfer_restores_without_reusing_cancellatio
     assert_eq!(status.cleanup_errors.len(), 1);
     assert!(status.cleanup_errors[0].contains("HID exchange release failed"));
     assert_exit_order(&calls);
+}
+
+#[test]
+fn marci_worker_canceled_zero_and_short_frames_keep_terminal_receipts_and_release_failure() {
+    for byte_count in [0, 780] {
+        let (result, status, calls) = exercise(Faults {
+            frame_result: Some(OutputResult::Returned {
+                byte_count,
+                cancel: true,
+            }),
+            ..Default::default()
+        });
+        let error = result.unwrap_err();
+        assert!(error.is::<Canceled>());
+        assert_eq!(
+            native_io_outcome(&error),
+            Some(NativeIoOutcome::Returned { byte_count })
+        );
+        assert_eq!(status.frames_submitted, 1);
+        let receipt = status.last_output.unwrap();
+        assert_eq!(receipt.submitted_bytes, 781);
+        assert_eq!(receipt.transferred_bytes, byte_count);
+        assert!(!receipt.complete);
+        assert!(status.normal_mode_confirmed && status.exit_effect_confirmed);
+        assert!(status.renderer_released && status.transports_released);
+        assert_eq!(status.cleanup_errors.len(), 1);
+        assert!(status.cleanup_errors[0].contains("HID exchange release failed"));
+        assert_eq!(calls.iter().filter(|call| *call == "frame").count(), 1);
+        assert_exit_order(&calls);
+    }
+}
+
+#[test]
+fn marci_worker_failed_native_counts_remain_diagnostic_without_a_release_failure() {
+    for byte_count in [0, 780, 781] {
+        let outcome = NativeIoOutcome::Returned { byte_count };
+        let (result, status, calls) = exercise(Faults {
+            frame_result: Some(OutputResult::Failed(Some(outcome))),
+            ..Default::default()
+        });
+        let error = result.unwrap_err();
+        assert!(error.is::<OutputFailure>());
+        assert!(!error.is::<OutputReleaseFailure>());
+        assert_eq!(native_io_outcome(&error), Some(outcome));
+        assert_eq!(status.frames_submitted, 1);
+        let receipt = status.last_output.unwrap();
+        assert_eq!(receipt.submitted_bytes, 781);
+        assert_eq!(receipt.transferred_bytes, byte_count);
+        assert_eq!(receipt.complete, byte_count == 781);
+        assert!(status.normal_mode_confirmed && status.exit_effect_confirmed);
+        assert!(status.renderer_released && status.transports_released);
+        assert!(status.cleanup_errors.is_empty());
+        assert_eq!(calls.iter().filter(|call| *call == "frame").count(), 1);
+        assert_exit_order(&calls);
+    }
+}
+
+#[test]
+fn marci_worker_unobserved_and_rejected_frame_results_never_invent_completed_frames() {
+    for outcome in [
+        None,
+        Some(NativeIoOutcome::NotCalled),
+        Some(NativeIoOutcome::Rejected),
+    ] {
+        let (result, status, calls) = exercise(Faults {
+            frame_result: Some(OutputResult::Failed(outcome)),
+            ..Default::default()
+        });
+        let error = result.unwrap_err();
+        assert!(error.is::<OutputFailure>());
+        assert_eq!(native_io_outcome(&error), outcome);
+        assert!(CompletedOutputTransfer::from_error(&error).is_none());
+        assert!(!error.is::<OutputReleaseFailure>());
+        assert_eq!(status.frames_submitted, 0);
+        assert!(status.last_output.is_none());
+        assert_eq!(status.connection_output.unwrap().transferred_bytes, 781);
+        assert!(status.normal_mode_confirmed && status.exit_effect_confirmed);
+        assert!(status.renderer_released && status.transports_released);
+        assert!(status.cleanup_errors.is_empty());
+        assert_eq!(calls.iter().filter(|call| *call == "frame").count(), 1);
+        assert_exit_order(&calls);
+    }
+}
+
+#[test]
+fn marci_worker_connection_probe_keeps_terminal_counts_before_cancel_safe_cleanup() {
+    for byte_count in [0, 780, 781] {
+        let (result, status, calls) = exercise(Faults {
+            probe_result: Some(OutputResult::Returned {
+                byte_count,
+                cancel: true,
+            }),
+            ..Default::default()
+        });
+        let error = result.unwrap_err();
+        assert!(error.is::<Canceled>());
+        assert_eq!(
+            native_io_outcome(&error),
+            Some(NativeIoOutcome::Returned { byte_count })
+        );
+        assert_eq!(status.frames_submitted, 0);
+        assert!(status.last_output.is_none());
+        let receipt = status.connection_output.unwrap();
+        assert_eq!(receipt.submitted_bytes, 781);
+        assert_eq!(receipt.transferred_bytes, byte_count);
+        assert_eq!(receipt.complete, byte_count == 781);
+        assert!(status.normal_mode_confirmed && status.exit_effect_confirmed);
+        assert!(status.renderer_released && status.transports_released);
+        assert_eq!(status.cleanup_errors.len(), 1);
+        assert!(status.cleanup_errors[0].contains("HID exchange release failed"));
+        assert_eq!(
+            calls,
+            [
+                "probe",
+                "feature:2:0:132:[0, 0]",
+                "feature:6:15:2:[1, 0, 4, 0, 40, 0]",
+                "close-control",
+                "close-output",
+            ]
+        );
+    }
 }
 
 #[test]

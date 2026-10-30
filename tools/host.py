@@ -3477,6 +3477,30 @@ class HostLocalAudit:
                 "unresolved_acquisition": acquired.get("unresolved", []),
                 "failed_acquisition": [row for row in acquired["files"] if not row.get("path")]}, originals
 
+    def current_source_set(self, name):
+        """Select a reviewed route's newest stable retained deployment."""
+        import frontend
+        routes = {
+            "synapse-lighting-engine-current": ("https://apps.razer.com/synapse/lighting-engine/",
+                                                "synapse-lighting-engine-snapshot-*"),
+            "gamepad-mw-4115-current": ("https://apps.razer.com/synapse/products/4115/mw/",
+                                       "gamepad-mw-4115-snapshot-*"),
+        }
+        if name not in routes:
+            raise ValueError("Current source selection has no reviewed route: " + name)
+        route, pattern = routes[name]
+        boundary = self.a.ROOT / ".analysis/inputs/frontend"
+        candidates = [boundary / name / "acquisition.json",
+                      *sorted(boundary.glob(pattern + "/acquisition.json"))]
+        selected = frontend.current_source_selection(route, self, candidates=candidates)
+        capture = selected["capture"]
+        record = {key: selected[key] for key in ("name", "acquisition", "deployment",
+                  "capture_failures", "unresolved_acquisition", "failed_acquisition")}
+        record["capture"] = capture["manifest"] if capture else None
+        record["current_source_selection"] = {key: selected[key] for key in (
+            "name", "canonical_entry_url", "acquisition", "candidate_decisions")}
+        return record, selected["originals"]
+
     def bounded_observation_history(self, acquired, identity):
         """Verify appended dependencies without expanding the HTTP observation."""
         extensions = []
@@ -3806,13 +3830,8 @@ class HostLocalAudit:
             result["owner_id"] = self.retain_range(role, source, result["start_byte"], result["end_byte"], result["syntax"])
         return result
 
-    def webpack_export(self, role, files, module_id, export_name, *, namespace=None):
-        """Resolve an observed current factory and its static export getter.
-
-        Cross-chunk factories are searched only in the caller's verified
-        deployment source set. Missing/ambiguous IDs and dynamic getters are
-        rejected instead of borrowing similarly named minified bindings.
-        """
+    def webpack_factories(self, files, module_id):
+        """Find complete factories only in the supplied verified deployment."""
         matches = []
         for source in files:
             if Path(source["path"]).suffix != ".js":
@@ -3833,6 +3852,48 @@ class HostLocalAudit:
                     pending.extend(reversed(node.named_children))
                 self.module_cache[name] = modules
             matches.extend((source, node, value) for node, value in self.module_cache[name].get(module_id, []))
+        return matches
+
+    def named_class(self, role, source, root, name):
+        """Resolve a class by its own constructor's literal instance identity."""
+        def walk(node):
+            yield node
+            for child in node.named_children:
+                yield from walk(child)
+
+        def own_assignments(node):
+            yield node
+            for child in node.named_children:
+                if child.type not in {"class", "class_declaration", "function_expression", "function_declaration",
+                                      "arrow_function", "method_definition"}:
+                    yield from own_assignments(child)
+
+        matches = []
+        for node in walk(root):
+            if node.type not in {"class", "class_declaration"}:
+                continue
+            constructor = [child for child in node.child_by_field_name("body").named_children
+                           if child.type == "method_definition" and child.child_by_field_name("name").text == b"constructor"]
+            if len(constructor) != 1:
+                continue
+            identities = [child.child_by_field_name("right").text for child in own_assignments(constructor[0])
+                          if child.type == "assignment_expression"
+                          and child.child_by_field_name("left").text == b"this.name"]
+            if identities == [json.dumps(name).encode("utf-8")]:
+                matches.append(node)
+        if len(matches) != 1:
+            raise ValueError("Current named class is absent or ambiguous: " + role)
+        node = matches[0]
+        return node, self.retain_range(role, source, node.start_byte, node.end_byte, node.type)
+
+    def webpack_export(self, role, files, module_id, export_name, *, namespace=None):
+        """Resolve an observed current factory and its static export getter.
+
+        Cross-chunk factories are searched only in the caller's verified
+        deployment source set. Missing/ambiguous IDs and dynamic getters are
+        rejected instead of borrowing similarly named minified bindings.
+        """
+        matches = self.webpack_factories(files, module_id)
         if len(matches) != 1:
             raise ValueError(f"Current host webpack factory {module_id} is absent or ambiguous: {len(matches)}")
         source, node, factory = matches[0]
@@ -4246,16 +4307,37 @@ class HostLocalAudit:
             "native_semantics_complete": False, "target_execution": False}
 
 
+def current_host_extracted_inputs(indexed, receipt):
+    """Select extracted inputs from byte-identified current official packages."""
+    packages = {(row["path"], row["sha256"]) for row in receipt["files"]
+                if row.get("path") and row.get("manifest_identity_verified")}
+    return [row for row in indexed["inputs"]
+            if row["path"].startswith(".analysis/inputs/host-current/extracted/")
+            and (row.get("container"), row.get("container_sha256")) in packages]
+
+
+def current_host_asar_members(audit, indexed=None, receipt=None):
+    """Select retained ASAR members through the current official package closure."""
+    indexed = indexed if indexed is not None else json.loads(audit.artifact(audit.a.ROOT / ".analysis/inputs.json"))
+    receipt = receipt if receipt is not None else json.loads(audit.artifact(
+        audit.a.ROOT / ".analysis/inputs/host-current/acquisition.json"))
+    originals = {row["path"]: row for row in indexed["inputs"]}
+    archives = {(row["sha256"], row["bytes"]) for row in current_host_extracted_inputs(indexed, receipt)}
+    return [row for row in indexed["inputs"] if row["path"].startswith(".analysis/inputs/host-current/asar/")
+            and row.get("container") in originals
+            and (originals[row["container"]]["sha256"], originals[row["container"]]["bytes"]) in archives]
+
+
 def verified_host_owners(audit, suffixes):
     """Byte-verify complete ASAR members and their current official package."""
     indexed = json.loads(audit.artifact(audit.a.ROOT / ".analysis/inputs.json"))
     originals = {row["path"]: row for row in indexed["inputs"]}
     receipt_path = audit.a.ROOT / ".analysis/inputs/host-current/acquisition.json"
     receipt = json.loads(audit.artifact(receipt_path))
+    current_members = current_host_asar_members(audit, indexed, receipt)
     retained = {}
     for suffix in suffixes:
-        matches = [row for row in indexed["inputs"] if row["path"].startswith(".analysis/inputs/host-current/asar/")
-                   and row["path"].endswith("/" + suffix)]
+        matches = [row for row in current_members if row["path"].endswith("/" + suffix)]
         if len(matches) != 1:
             raise ValueError("Current complete host source is absent or ambiguous: " + suffix)
         row = matches[0]
@@ -4331,14 +4413,14 @@ def retain_no_browser_input_handler(audit):
 
 def verified_host_native(audit, suffix):
     indexed = json.loads(audit.artifact(audit.a.ROOT / ".analysis/inputs.json"))
-    matches = [row for row in indexed["inputs"] if row["path"].startswith(".analysis/inputs/host-current/extracted/")
-               and row["path"].endswith("/" + suffix)]
+    receipt_path = audit.a.ROOT / ".analysis/inputs/host-current/acquisition.json"
+    receipt = json.loads(audit.artifact(receipt_path))
+    matches = [row for row in current_host_extracted_inputs(indexed, receipt)
+               if row["path"].endswith("/" + suffix)]
     if len(matches) != 1:
         raise ValueError("Current host native input is absent or ambiguous: " + suffix)
     row = matches[0]
     audit.read(row)
-    receipt_path = audit.a.ROOT / ".analysis/inputs/host-current/acquisition.json"
-    receipt = json.loads(audit.artifact(receipt_path))
     packages = [item for item in receipt["files"] if item.get("path") == row.get("container")
                 and item.get("sha256") == row.get("container_sha256") and item.get("manifest_identity_verified")]
     if len(packages) != 1:
@@ -7622,12 +7704,9 @@ def lighting_catalog_projection(rows):
             "ordered_resolutions": resolutions}
 
 
-def audit_lighting_catalog(audit, engine_main):
+def audit_lighting_catalog(audit, engine_main, current_consumers):
     observation, files = audit.observed_sources("synapse-device-catalog-current",
         "https://apps.razer.com/synapse/dashboard/AvailableDevices.json")
-    main = next(row for row in files if Path(row["path"]).name == Path(engine_main["path"]).name)
-    if audit.read(main) != audit.read(engine_main):
-        raise ValueError("Observed lighting engine differs from the selected deployment")
     owner_path = audit.a.ROOT / ".analysis/results/frontend/synapse-device-catalog-current/source-owners.json"
     owners, owner_ids = json.loads(audit.artifact(owner_path)), []
     for owner in owners["owners"]:
@@ -7660,7 +7739,10 @@ def audit_lighting_catalog(audit, engine_main):
             recorded = analysis[key]
         if value != recorded:
             raise ValueError("Catalog projection differs from retained analysis: " + key)
-    return {"observation": observation, "owner_ids": owner_ids, "catalog": audit.sources[original["path"]],
+    return {"observation": observation, "historical_owner_ids": owner_ids,
+            "historical_scope": "The bounded catalog observation retains its original deployment; current consumers are independently located in the selected deployment",
+            "current_engine_main": audit.sources[engine_main["path"]],
+            "current_consumer_owner_ids": current_consumers, "catalog": audit.sources[original["path"]],
             **projection, "ordered_equality": "First row with strict scalar productId/dongleId/bleId equality; arrays and other ID fields do not match; no match preserves the input PID",
             "consumer": "DeviceInfo.configure uses vendor5426/1678 and feeds both manifests and middleware lighting SVG paths",
             "cache": "Getter may receive Service Worker DeviceDataJson stale cache and falls back to CacheAPI DeviceDataJson on failure/empty. This observation does not read a live browser cache",
@@ -7745,7 +7827,7 @@ def verify_reviewed_frontend_acquisition(audit, reference, indexed):
             "dependency_extensions": extensions, "historical_scope_preserved": True}
 
 
-def audit_deviceinfo_value_sources(audit, main, manifests):
+def audit_deviceinfo_value_sources(audit, main, manifests, current_protocol):
     """Recheck reviewed value sources against complete ASTs and retained manifests."""
     path = audit.a.ROOT / ".analysis/results/frontend/synapse-lighting-engine-current/deviceinfo-value-sources.json"
     retained = json.loads(audit.artifact(path))
@@ -7816,11 +7898,286 @@ def audit_deviceinfo_value_sources(audit, main, manifests):
             "quickEffectOnExit", "userQuickEffectOnExit", "getQuickEffect") if key.encode("utf-8") in raw}
         if counts != row["occurrences"]:
             raise ValueError("DeviceInfo keyword scan does not match retained source bytes")
-    return {"analysis": audit.artifacts[audit.a.rel(path)], "owner_ids": owners,
+    return {"analysis": audit.artifacts[audit.a.rel(path)], "historical_owner_ids": owners,
+            "historical_scope": "Retained value-source findings and complete classes belong to their original acquisitions; the selected deployment has independent AST owners",
+            "current_engine_main": audit.sources[main["path"]],
+            "current_owner_ids": current_protocol["device_info"],
+            "current_classes": current_protocol["classes"],
             "acquisition_relations": acquisition_relations,
-            "classes": retained["classes"], "manifest_projection": projection,
+            "historical_classes": retained["classes"], "manifest_projection": projection,
             "findings": retained["findings"], "remaining": retained["unresolved"],
             "target_execution": False, "actual_dll_comparison": "unverified"}
+
+
+def lighting_frontend_protocol_owners(audit, originals):
+    """Locate protocol and restore owners in the selected complete source ASTs."""
+    def walk(node):
+        yield node
+        for child in node.named_children:
+            yield from walk(child)
+
+    def one(role, source, root, syntax, predicate):
+        matches = [node for node in walk(root) if node.type in syntax and predicate(node)]
+        if len(matches) != 1:
+            raise ValueError("Current lighting owner is absent or ambiguous: " + role)
+        node = matches[0]
+        return node, audit.retain_range(role, source, node.start_byte, node.end_byte, node.type)
+
+    def factory(mid):
+        matches = audit.webpack_factories(originals, mid)
+        if len(matches) != 1:
+            raise ValueError("Current lighting factory is absent or ambiguous: " + str(mid))
+        return matches[0]
+
+    def member(node, field, name):
+        value = node.child_by_field_name(field)
+        return value is not None and value.type == "member_expression" \
+            and value.child_by_field_name("property").text == name.encode()
+
+    classes, constructors = [], []
+    default_classes = {4001: "rzDevice25", 3061: "rzDevice25LedMatrix", 7826: "rzDevice25Oled",
+        4026: "rzDevice25Linker", 8648: "rzDevice25Glitter", 1452: "rzDevice25GlitterWireless",
+        8508: "rzDevice25DualLinkMouse", 986: "rzDevice25DualLinkKeyboard",
+        7752: "rzDevice25LedMatrixBatchSender", 269: "rzDevice25LedMatrixSkipSetEffect"}
+    constructor_classes = {9396: "rzDevice", 4001: "rzDevice25", 334: "rzDevice25Chroma65",
+        3061: "rzDevice25LedMatrix", 269: "rzDevice25LedMatrixSkipSetEffect", 8648: "rzDevice25Glitter",
+        1452: "rzDevice25GlitterWireless", 330: "rzDevice25MarciT1", 2237: "rzDevice25AudioCamy",
+        1794: "rzDeviceIoT", 7752: "rzDevice25LedMatrixBatchSender", 6825: "rzDeviceLampArray"}
+    located = {}
+    for mid, name in {**default_classes, **constructor_classes}.items():
+        matches = audit.webpack_factories(originals, mid)
+        if not matches:
+            raise ValueError("Current lighting protocol factory is absent: " + name)
+        for source, module, owner in matches:
+            node, class_owner = audit.named_class("lighting_protocol_class_" + name, source, owner, name)
+            located.setdefault(name, []).append((source, node))
+            if mid in default_classes:
+                heritage = [child for child in node.named_children if child.type == "class_heritage"]
+                if len(heritage) != 1 or len(heritage[0].named_children) != 1:
+                    raise ValueError("Current lighting protocol base requires explicit analysis: " + name)
+                base = heritage[0].named_children[0]
+                receiver = base.child_by_field_name("object") if base.type == "member_expression" else base
+                if receiver.type != "identifier":
+                    raise ValueError("Current lighting protocol base has no lexical binding: " + name)
+                classes.append({"name": name, "module_id": mid, "owner_id": class_owner,
+                    "base_expression": base.text.decode(), "base_binding": audit.binding(
+                        "lighting_default_restore_base_" + name, source, receiver.text.decode(), receiver.start_byte)})
+            if mid in constructor_classes:
+                _, constructor = audit.callable_member("lighting_protocol_constructor_" + name, source,
+                    node.child_by_field_name("body"), "constructor")
+                constructors.append({"protocol": "base" if mid == 9396 else name,
+                                     "module_id": mid, "owner_id": constructor})
+    base_source, base = located["rzDevice25"][0]
+    for role, name in (("checksum", "_calculateChecksum"), ("transaction", "_getTransactionId"),
+                       ("frame", "_createDataSend")):
+        audit.callable_member("lighting_default_restore_" + role, base_source, base, name)
+
+    source, module, info_factory = factory(8199)
+    info, info_owner = audit.named_class("lighting_restore_device_info_complete_class", source,
+                                         info_factory, "DeviceInfo")
+    roles = {"complete_module": audit.retain_range("lighting_restore_device_info_complete_module",
+        source, module.start_byte, module.end_byte, module.type), "complete_class": info_owner}
+    info_nodes = {}
+    for role, name in (("constructor", "constructor"), ("configure", "configure"),
+            ("manifest_selection", "getManifestData"), ("partner_manifest", "getPartnerManifestData"),
+            ("manifest_fetch", "fetchManifestFromURL"), ("manifest_idb_read", "getManifestDataFromIndexedDB"),
+            ("manifest_idb_write", "writeManifestToIndexedDB"), ("local_profile_read", "getInfoFromLocalStorage"),
+            ("ui_effect", "setUIEffect")):
+        info_nodes[role], roles[role] = audit.callable_member("lighting_restore_device_info_" + role,
+                                                            source, info, name)
+    broker_source, _, broker = factory(5954)
+    for role, name in (("prepare_device", "prepareDevice"), ("create_device_info", "createNewDeviceInfo"),
+            ("available_devices", "getAvailableDevices"), ("software_effect_sync", "syncHWEffect"),
+            ("region_effect_init", "initRegionQuickEffect"), ("device_ready", "onDeviceInfoReady"),
+            ("unused_info_message", "onLightingEngineDeviceInfo")):
+        info_nodes[role], roles[role] = audit.callable_member("lighting_restore_device_info_" + role,
+            broker_source, broker, name, receiver=None if role == "unused_info_message" else "this")
+    _, roles["exit_target_assignment"] = one("lighting_restore_device_info_exit_target_assignment", source,
+        info_nodes["configure"], {"assignment_expression"},
+        lambda node: member(node, "left", "quickEffectOnExit") and member(node, "right", "quickEffectOnExit"))
+    _, roles["initial_snapshot"] = one("lighting_restore_device_info_initial_snapshot", source,
+        info_nodes["constructor"], {"assignment_expression"},
+        lambda node: node.child_by_field_name("left").text == b"this.userQuickEffectOnExit"
+        and node.child_by_field_name("right").text == b"void 0")
+    _, roles["snapshot_gate"] = one("lighting_restore_device_info_snapshot_gate", broker_source,
+        info_nodes["device_ready"], {"if_statement"}, lambda node: any(
+            part.type == "member_expression" and part.child_by_field_name("property").text == b"useUserQuickEffectOnExit"
+            for part in walk(node.child_by_field_name("condition"))))
+    helper_source, _, helper = factory(5459)
+    for role, name in (("snapshot_helper", "getChromaEffectCommon"),
+                       ("hardware_effect_setter_exception_consumer", "setChromaEffectCommon")):
+        _, roles[role] = audit.callable_member("lighting_restore_device_info_" + role, helper_source,
+                                               helper, name)
+    _, roles["snapshot_getter"] = audit.callable_member("lighting_restore_device_info_snapshot_getter",
+                                                        base_source, base, "getChromaEffectCommon")
+    for role, mid, key in (("primary_product", 6191, "IS"), ("snapshot_encoder", 6411, "a6"),
+                           ("snapshot_header", 5668, "COMMAND_GET_CHROMA_EFFECT_HEADER")):
+        exported = audit.webpack_export("lighting_restore_device_info_" + role, originals, mid, key)
+        roles[role] = exported["binding"]["owner_id"]
+    encoder_source, _, _ = factory(6411)
+    encoder_owner = audit.owners[roles["snapshot_encoder"]]
+    encoder = audit.tree(encoder_source).root_node.descendant_for_byte_range(
+        encoder_owner["byte_start"], encoder_owner["byte_end"] - 1)
+    parser_calls = [node for node in walk(encoder) if node.type == "call_expression"
+        and node.child_by_field_name("function").type == "identifier"
+        and node.parent.type == "sequence_expression" and node.parent.parent.type == "return_statement"]
+    if len(parser_calls) != 1:
+        raise ValueError("Current lighting snapshot parser has no unique actual return consumer")
+    callee = parser_calls[0].child_by_field_name("function")
+    parser = audit.binding("lighting_restore_device_info_snapshot_parser", encoder_source,
+                           callee.text.decode(), callee.start_byte)
+    if parser.get("resolution") != "declaration":
+        raise ValueError("Current lighting snapshot parser has no lexical declaration")
+    roles["snapshot_parser"] = parser["owner_id"]
+    context_source, context, _ = factory(7531)
+    roles["dynamic_context"] = audit.retain_range("lighting_restore_device_info_dynamic_context",
+        context_source, context.start_byte, context.end_byte, context.type)
+    default_source, _, default = factory(4238)
+    one("lighting_pid_zero_manifest_only", default_source, default, {"variable_declarator"},
+        lambda node: node.child_by_field_name("value") is not None
+        and node.child_by_field_name("value").type == "object" and any(
+            child.type == "pair" and child.child_by_field_name("key").text == b"quickEffectOnExit"
+            for child in node.child_by_field_name("value").named_children))
+    return {"classes": classes, "constructors": constructors, "device_info": roles}
+
+
+def lighting_frontend_abi(audit, source_set_record, originals):
+    """Read the current lighting initializer and its actual ABI configuration calls."""
+    mains = [row for row in originals if Path(row["path"]).name.startswith("main.")
+             and Path(row["path"]).suffix == ".js"]
+    if len(mains) != 1:
+        raise ValueError("Current lighting ABI main is absent or ambiguous")
+    main = mains[0]
+    factories = audit.webpack_factories([main], 2198)
+    if len(factories) != 1:
+        raise ValueError("Current lighting ABI factory is absent or ambiguous")
+    _, _, factory = factories[0]
+    parameters = factory.child_by_field_name("parameters")
+    if parameters is None or len(parameters.named_children) != 3 \
+            or any(parameter.type != "identifier" for parameter in parameters.named_children):
+        raise ValueError("Lighting ABI factory requires its three actual webpack parameters")
+    require_parameter = parameters.named_children[2]
+
+    def walk(node):
+        yield node
+        for child in node.named_children:
+            yield from walk(child)
+
+    def string(node):
+        if node is None or node.type != "string":
+            raise ValueError("Lighting ABI requires a literal string")
+        value = json.loads(node.text)
+        if not isinstance(value, str):
+            raise ValueError("Lighting ABI string has an invalid type")
+        return value
+
+    declarations = []
+    for node in walk(factory):
+        if node.type != "variable_declarator":
+            continue
+        value = node.child_by_field_name("value")
+        if value is not None and value.type == "object" and any(
+                child.type == "pair" and child.child_by_field_name("key").text == b'"4.0.2.0"'
+                and b"RzLightingApi:" in child.child_by_field_name("value").text for child in value.named_children):
+            declarations.append(node)
+    if len(declarations) != 1:
+        raise ValueError("Current lighting ABI declaration is absent or ambiguous")
+    declaration = declarations[0]
+    declaration_name = declaration.child_by_field_name("name")
+    if declaration_name.type != "identifier":
+        raise ValueError("Lighting ABI declaration has no lexical identifier")
+    initializer = declaration.parent
+    while initializer is not None and initializer.type != "method_definition":
+        initializer = initializer.parent
+    if initializer is None or initializer.child_by_field_name("name").text != b"init":
+        raise ValueError("Lighting ABI declaration has no complete init owner")
+    versions = {}
+    for version in declaration.child_by_field_name("value").named_children:
+        if version.type != "pair":
+            raise ValueError("Lighting ABI version table contains a dynamic field")
+        version_name = string(version.child_by_field_name("key"))
+        methods = version.child_by_field_name("value")
+        if not re.fullmatch(r"\d+\.\d+\.\d+\.\d+", version_name) or version_name in versions or methods.type != "object":
+            raise ValueError("Lighting ABI version is invalid or repeated")
+        parsed = {}
+        for method in methods.named_children:
+            if method.type != "pair":
+                raise ValueError("Lighting ABI method contains a dynamic field")
+            key = method.child_by_field_name("key")
+            if key.type not in {"string", "property_identifier"}:
+                raise ValueError("Lighting ABI method name is dynamic")
+            name = string(key) if key.type == "string" else key.text.decode("utf-8")
+            signature = method.child_by_field_name("value")
+            if signature.type != "array" or len(signature.named_children) != 2:
+                raise ValueError("Lighting ABI method signature is not a return/arguments pair")
+            returned, parameters = signature.named_children
+            if parameters.type != "array" or name in parsed:
+                raise ValueError("Lighting ABI method arguments are dynamic or repeated")
+            parsed[name] = [string(returned), [string(parameter) for parameter in parameters.named_children]]
+        versions[version_name] = parsed
+    declaration_owner = audit.retain_range("lighting_current_abi_declaration", main,
+        declaration.start_byte, declaration.end_byte, declaration.type)
+    calls = []
+    for node in walk(initializer):
+        if node.type != "call_expression":
+            continue
+        arguments = node.child_by_field_name("arguments").named_children
+        function = node.child_by_field_name("function")
+        wrapped_await = function.type == "call_expression" and function.child_by_field_name("function").text == b"await"
+        awaited = wrapped_await or node.parent.type == "await_expression"
+        if wrapped_await:
+            wrapped = function.child_by_field_name("arguments").named_children
+            if len(wrapped) != 2 or wrapped[0].text != b"0":
+                continue
+            function = wrapped[1]
+        if function.type == "parenthesized_expression" and len(function.named_children) == 1:
+            function = function.named_children[0]
+        if function.type == "sequence_expression" and len(function.named_children) == 2 \
+                and function.named_children[0].text == b"0":
+            function = function.named_children[1]
+        if function.type != "member_expression" or function.child_by_field_name("property").text not in {b"Qq", b"Sl"}:
+            continue
+        if len(arguments) != 3 or [argument.text for argument in arguments[:2]] != [b"this.dllName", b"this.channelName"] \
+                or arguments[2].text != declaration_name.text:
+            raise ValueError("Lighting ABI configuration does not consume the observed declaration")
+        binding = audit.binding("lighting_current_abi_call_table", main, declaration_name.text.decode(), arguments[2].start_byte)
+        if binding.get("owner_id") != declaration_owner:
+            raise ValueError("Lighting ABI configuration table is shadowed")
+        receiver = function.child_by_field_name("object")
+        if receiver.type != "identifier":
+            raise ValueError("Lighting ABI configuration has no lexical import receiver")
+        imported = audit.binding("lighting_current_abi_bridge_import", main, receiver.text.decode(), receiver.start_byte)
+        if imported.get("resolution") != "declaration":
+            raise ValueError("Lighting ABI configuration bridge has no lexical declaration")
+        imported_node = audit.tree(main).root_node.descendant_for_byte_range(imported.get("start_byte", -1),
+                                                                 imported.get("end_byte", 0) - 1)
+        imported_value = imported_node.child_by_field_name("value") if imported_node.type == "variable_declarator" else None
+        if imported.get("resolution") != "declaration" or imported_value is None or imported_value.type != "call_expression" \
+                or [argument.text for argument in imported_value.child_by_field_name("arguments").named_children] != [b"4407"]:
+            raise ValueError("Lighting ABI configuration bridge is not the current 4407 import")
+        importer = imported_value.child_by_field_name("function")
+        if importer.type != "identifier" or importer.text != require_parameter.text:
+            raise ValueError("Lighting ABI bridge is not imported by the actual webpack require parameter")
+        importer_binding = audit.binding("lighting_current_abi_require", main, importer.text.decode(), importer.start_byte)
+        if importer_binding.get("resolution") != "parameter_requires_caller_analysis" \
+                or (importer_binding.get("start_byte"), importer_binding.get("end_byte")) != (
+                    require_parameter.start_byte, require_parameter.end_byte):
+            raise ValueError("Lighting ABI webpack require parameter is shadowed")
+        exported = function.child_by_field_name("property").text.decode()
+        calls.append({"export": exported, "awaited": awaited,
+            "arguments": [argument.text.decode() for argument in arguments],
+            "call_owner": audit.retain_range("lighting_current_abi_configuration_" + exported, main,
+                node.start_byte, node.end_byte, node.type), "api_declaration_owner": declaration_owner,
+            "import_binding": imported, "require_binding": importer_binding, "bridge_export": audit.webpack_export(
+                "lighting_current_abi_bridge_" + exported, originals, 4407, exported)})
+    if sorted((call["export"], call["awaited"]) for call in calls) != [("Qq", True), ("Sl", False)]:
+        raise ValueError("Lighting ABI initializer lacks its two actual configuration branches")
+    return {"source_set": source_set_record["name"], "acquisition": source_set_record["acquisition"],
+            "current_source_selection": source_set_record.get("current_source_selection"),
+            "main": audit.sources[main["path"]], "init_owner": audit.retain_range("lighting_current_abi_initializer", main,
+                initializer.start_byte, initializer.end_byte, initializer.type),
+            "api_declaration_owner": declaration_owner, "api_versions": versions, "configuration_calls": calls,
+            "target_execution": False}
 
 
 def audit_host_local(args):
@@ -7852,7 +8209,7 @@ def audit_host_local(args):
         for tool in ("tools/host.py", "tools/evidence.py", "tools/families.py", "tools/analysis.py", "tools/workspace.py"):
             audit.artifact(a.ROOT / tool)
         settings, ui = audit.source_set("synapse-settings-current")
-        engine, mw = audit.source_set("synapse-lighting-engine-current")
+        engine, mw = audit.current_source_set("synapse-lighting-engine-current")
         report["source_sets"] = [settings, engine]
 
         def source(files, needle):
@@ -7885,11 +8242,14 @@ def audit_host_local(args):
             ("lighting_native_startup_lifecycle", 'Promise.resolve((async()=>{const e="LightingEngineModule.initRzLightingEngine()', {"variable_declarator"}),
         ]:
             audit.retain(role, main, anchor, kinds)
-        for role, anchor in (("lighting_protocol_initialization", 'this.initLightingDriver=async function(){let t=arguments.length>0&&void 0!==arguments[0]?arguments[0]:"";e.lightingEngine'),
-                             ("lighting_device_registration", "this.createLightingDeviceEx=async e=>{let{rzDevice"),
-                             ("lighting_normal_device_metadata", "this.addDevice=async function(t){let n=arguments.l"),
-                             ("lighting_multilink_device_metadata", "this.addMultiLinkSeqDevice=async function(t,n,i,o)")):
-            audit.retain(role, main, anchor, {"assignment_expression"})
+        for role, mid, name in (("lighting_protocol_initialization", 2578, "initLightingDriver"),
+                                ("lighting_device_registration", 2578, "createLightingDeviceEx"),
+                                ("lighting_normal_device_metadata", 2808, "addDevice"),
+                                ("lighting_multilink_device_metadata", 2808, "addMultiLinkSeqDevice")):
+            matches = audit.webpack_factories([main], mid)
+            if len(matches) != 1:
+                raise ValueError("Current lighting registration factory is absent or ambiguous: " + role)
+            audit.callable_member(role, main, matches[0][2], name, receiver="this")
         for name in ("configureDevicesDefaultData", "setDeviceToDefaultOnExit"):
             audit.callable_member("lighting_default_restore_producer_" + name, main,
                                   audit.tree(main).root_node, name, receiver="this")
@@ -7903,68 +8263,14 @@ def audit_host_local(args):
             audit.webpack_export("lighting_default_restore_header_" + key, mw, module_id, key)
             for module_id, key in ((2968, "COMMAND_SET_DEVICE_MODE_HEADER"),
                                    (5668, "COMMAND_SET_CHROMA_EFFECT_HEADER"))]
-        for name, start, end in (("checksum", 516122, 516191), ("transaction", 516191, 516287),
-                                 ("frame", 516287, 516581)):
-            node = audit.tree(main).root_node.descendant_for_byte_range(start, end - 1)
-            if node.type != "method_definition" or (node.start_byte, node.end_byte) != (start, end):
-                raise ValueError("Current lighting default frame AST boundary differs: " + name)
-            audit.retain_range("lighting_default_restore_" + name, main, start, end, node.type)
-        report["lighting_default_restore_classes"] = []
-        for name, filename, start, end, base_name in (
-                ("rzDevice25", "main.a383ea9e.js", 511609, 564815, "i"),
-                ("rzDevice25LedMatrix", "3061.825e8b6b.chunk.js", 689, 8065, "a"),
-                ("rzDevice25Oled", "7826.cb5be441.chunk.js", 3362, 23590, "n"),
-                ("rzDevice25Linker", "4026.605cf6b7.chunk.js", 690, 7437, "r"),
-                ("rzDevice25Linker", "3961.b993efcb.chunk.js", 2130, 8877, "r"),
-                ("rzDevice25Linker", "2314.1b86b87a.chunk.js", 695, 7442, "n"),
-                ("rzDevice25Linker", "8086.08213062.chunk.js", 193746, 200493, "n"),
-                ("rzDevice25Glitter", "8648.80c7d0df.chunk.js", 689, 6856, "n"),
-                ("rzDevice25Glitter", "1452.f8a38141.chunk.js", 6084, 12251, "r"),
-                ("rzDevice25GlitterWireless", "1452.f8a38141.chunk.js", 635, 5935, "r"),
-                ("rzDevice25DualLinkMouse", "8508.0c16c096.chunk.js", 700, 9258, "r"),
-                ("rzDevice25DualLinkKeyboard", "986.87fa2f57.chunk.js", 698, 8732, "r"),
-                ("rzDevice25LedMatrixBatchSender", "8086.08213062.chunk.js", 297537, 300692, "a"),
-                ("rzDevice25LedMatrixSkipSetEffect", "269.63b2c328.chunk.js", 618, 1269, "a")):
-            matches = [row for row in mw if Path(row["path"]).name == filename]
-            if len(matches) != 1:
-                raise ValueError("Current default-restore class original is absent or ambiguous: " + filename)
-            original = matches[0]
-            node = audit.tree(original).root_node.descendant_for_byte_range(start, end - 1)
-            if node.type not in {"class", "class_declaration"} or (node.start_byte, node.end_byte) != (start, end):
-                raise ValueError("Current default-restore class AST boundary differs: " + name)
-            if node.text.count(('this.name="' + name + '"').encode()) != 1:
-                raise ValueError("Current default-restore class identity differs: " + name)
-            owner = audit.retain_range("lighting_default_restore_class_" + name, original, start, end, node.type)
-            report["lighting_default_restore_classes"].append({"name": name, "owner_id": owner,
-                "base_binding": audit.binding("lighting_default_restore_base_" + name, original, base_name, start)})
+        protocol = lighting_frontend_protocol_owners(audit, mw)
+        report["lighting_default_restore_classes"] = protocol["classes"]
+        report["lighting_frontend_abi"] = lighting_frontend_abi(audit, engine, mw)
         report["lighting_default_restore_matrix_contract"] = [
             audit.webpack_export("lighting_default_restore_matrix_" + key, mw, module_id, key)
             for module_id, key in ((1306, "NEW_CHROMA_EFFECT_ID"), (7017, "LED_MATRIX_RGB_EFFECT_ID"),
                                    (7909, "COMMAND_SET_LED_MATRIX_RGB_EFFECT_HEADER"))]
-        report["lighting_protocol_constructors"] = []
-        for role, filename, start, end in (
-            ("base", "main.a383ea9e.js", 1475660, 1478620),
-            ("rzDevice25", "main.a383ea9e.js", 511629, 516074),
-            ("rzDevice25Chroma65", "334.68120187.chunk.js", 644, 1250),
-            ("rzDevice25LedMatrix", "3061.825e8b6b.chunk.js", 715, 5064),
-            ("rzDevice25LedMatrixSkipSetEffect", "269.63b2c328.chunk.js", 644, 1268),
-            ("rzDevice25Glitter", "8648.80c7d0df.chunk.js", 715, 2649),
-            ("rzDevice25GlitterWireless", "1452.f8a38141.chunk.js", 661, 5365),
-            ("rzDevice25Glitter_in_wireless_chunk", "1452.f8a38141.chunk.js", 6110, 8044),
-            ("rzDevice25MarciT1", "330.d43d2948.chunk.js", 878, 5093),
-            ("rzDevice25AudioCamy", "2237.e8b29886.chunk.js", 746, 5727),
-            ("rzDeviceIoT", "1794.13beaac0.chunk.js", 690, 3254),
-            ("rzDevice25LedMatrixBatchSender", "8086.08213062.chunk.js", 297563, 298327),
-            ("rzDeviceLampArray", "main.a383ea9e.js", 1118109, 1126709)):
-            found = [row for row in mw if Path(row["path"]).name == filename]
-            if len(found) != 1:
-                raise ValueError("Current lighting constructor source is absent or ambiguous: " + filename)
-            original = found[0]
-            constructor = audit.tree(original).root_node.descendant_for_byte_range(start, end - 1)
-            if constructor.type != "method_definition" or (constructor.start_byte, constructor.end_byte) != (start, end):
-                raise ValueError("Current lighting constructor AST boundary differs: " + role)
-            owner = audit.retain_range("lighting_protocol_constructor_" + role, original, start, end, constructor.type)
-            report["lighting_protocol_constructors"].append({"protocol": role, "owner_id": owner})
+        report["lighting_protocol_constructors"] = protocol["constructors"]
         # Resolve actual local lexical bindings, retaining their complete values
         # instead of substituting another same-named minified module constant.
         widget = audit.owners[page_ids[0]]
@@ -7993,33 +8299,7 @@ def audit_host_local(args):
         report["current_css"] = [{"original": row, "body": audit.read(row).decode("utf-8")}
             for row in ui if Path(row["path"]).suffix == ".css"]
         indexed = json.loads((a.ROOT / ".analysis/inputs.json").read_bytes())
-        report["lighting_restore_device_info_owners"] = []
-        for role, start, end in (
-                ("complete_module", 1281275, 1358467), ("complete_class", 1307479, 1358421),
-                ("constructor", 1307487, 1328958), ("configure", 1307512, 1319984),
-                ("prepare_device", 798037, 800387), ("create_device_info", 820622, 821045),
-                ("manifest_selection", 1330761, 1333740), ("partner_manifest", 1328958, 1330761),
-                ("manifest_fetch", 1333740, 1334329), ("manifest_idb_read", 1355596, 1356168),
-                ("manifest_idb_write", 1356168, 1356677), ("available_devices", 796031, 796548),
-                ("primary_product", 1072572, 1072716), ("exit_target_assignment", 1310886, 1310925),
-                ("local_profile_read", 1337557, 1340073), ("ui_effect", 1334912, 1335556),
-                ("software_effect_sync", 825229, 826331), ("region_effect_init", 821866, 823011),
-                ("device_ready", 800388, 820621), ("snapshot_gate", 814211, 814505),
-                ("snapshot_helper", 731819, 732880), ("snapshot_getter", 548800, 548901),
-                ("hardware_effect_setter_exception_consumer", 730954, 731819),
-                ("snapshot_encoder", 1091719, 1092237), ("snapshot_parser", 1091425, 1091718),
-                ("snapshot_header", 760197, 760226), ("initial_snapshot", 1327965, 1327998),
-                ("dynamic_context", 1186068, 1186476), ("unused_info_message", 913087, 913381)):
-            node = audit.tree(main).root_node.descendant_for_byte_range(start, end - 1)
-            if (node.start_byte, node.end_byte) != (start, end):
-                raise ValueError("Current restore DeviceInfo AST boundary differs: " + role)
-            report["lighting_restore_device_info_owners"].append(audit.retain_range(
-                "lighting_restore_device_info_" + role, main, start, end, node.type))
-        default_rows = [row for row in mw if Path(row["path"]).name == "4238.286b7bbe.chunk.js"]
-        if len(default_rows) != 1:
-            raise ValueError("Current PID zero manifest module is absent or ambiguous")
-        audit.retain("lighting_pid_zero_manifest_only", default_rows[0], "quickEffectOnExit:",
-                     {"variable_declarator"})
+        report["lighting_restore_device_info_owners"] = list(protocol["device_info"].values())
         manifest_rows = [row for row in indexed["inputs"] if row["path"].startswith(
             ".analysis/inputs/frontend/") and "-current/" in row["path"]
             and re.search(r"/DeviceManifest_\d+_\d+\.json$", row["path"])]
@@ -8060,9 +8340,10 @@ def audit_host_local(args):
             "device_identity_consumer": "DeviceInfo.configure retains the productId from discovered arguments and does not assign C.productId. A filename/declaration difference is retained explicitly; this query does not invent a filename-equality rule absent from that source owner",
             "all_official_products_covered": False, "latest_deployment_rechecked_this_query": False,
             "runtime_manifest_cache_read": False, "actual_dll_comparison": "unverified"}
-        report["lighting_catalog"] = audit_lighting_catalog(audit, main)
+        report["lighting_catalog"] = audit_lighting_catalog(audit, main, {role: protocol["device_info"][role]
+            for role in ("available_devices", "primary_product", "configure", "create_device_info", "manifest_selection")})
         report["iot_reconnect"] = audit_iot_reconnect(audit)
-        report["deviceinfo_value_sources"] = audit_deviceinfo_value_sources(audit, main, restore_manifests)
+        report["deviceinfo_value_sources"] = audit_deviceinfo_value_sources(audit, main, restore_manifests, protocol)
         report["settings_media"] = []
         for media in ("exclamation_icon.53d6d40b.svg", "wdl_large_icon.e610fd8c.svg",
                       "tooltip_questionmark.96138d2f.svg", "spinner.ef2d0235.svg"):
@@ -8071,7 +8352,7 @@ def audit_host_local(args):
             if len(found) != 1:
                 raise ValueError("Current settings media identity is absent or ambiguous: " + media)
             report["settings_media"].append({"original": found[0], "body": audit.read(found[0]).decode("utf-8")})
-        host_rows = [row for row in indexed["inputs"] if row["path"].startswith(".analysis/inputs/host-current/asar/")]
+        host_rows = current_host_asar_members(audit, indexed)
         host_sources = []
         for suffix in ("electron/modules/LampArray/LampArrayAction.js", "electron/modules/ffi/FFIPreloadMain.js",
                        "electron/modules/ffi_subprocess/FFIPreloadSubProcess.js", "electron/modules/ffi/ffiMain.js",

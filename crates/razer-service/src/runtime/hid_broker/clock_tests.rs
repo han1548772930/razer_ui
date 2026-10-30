@@ -1,4 +1,5 @@
 use super::{NativeReturn, ReleaseReason, SourceClock};
+use razer_device::backend::NativeIoOutcome;
 use std::time::Duration;
 
 // Expectations follow the current UsbRzDeviceAction send/get/batch/release
@@ -138,4 +139,51 @@ fn a_real_return_at_the_monotonic_origin_is_observed() {
     clock.native_return(Duration::ZERO, NativeReturn::Send);
     assert_eq!(clock.out_wait(ms(1), ms(5)), Some(ms(2)));
     assert_eq!(clock.out_wait(ms(5), ms(5)), None);
+}
+
+#[test]
+fn a_normal_native_return_updates_even_when_its_count_fails_an_adapter_check() {
+    let mut clock = SourceClock::default();
+    clock.native_outcome(
+        ms(100),
+        NativeReturn::Get,
+        Some(NativeIoOutcome::Returned { byte_count: 92 }),
+    );
+    assert_eq!(clock.out_wait(ms(101), ms(5)), Some(ms(2)));
+    assert_eq!(clock.out_wait(ms(105), ms(5)), None);
+}
+
+#[test]
+fn a_rejected_uncalled_or_unobserved_native_operation_does_not_refresh_the_clock() {
+    for outcome in [
+        Some(NativeIoOutcome::Rejected),
+        Some(NativeIoOutcome::NotCalled),
+        None,
+    ] {
+        let mut clock = SourceClock::default();
+        clock.native_outcome(ms(100), NativeReturn::Send, outcome);
+        assert_eq!(clock.out_wait(ms(101), ms(5)), None);
+        clock.native_return(ms(100), NativeReturn::Get);
+        clock.native_outcome(ms(104), NativeReturn::Send, outcome);
+        assert_eq!(clock.out_wait(ms(105), ms(5)), None);
+    }
+}
+
+#[test]
+fn a_zero_batch_terminal_return_updates_before_a_release_without_another_tick() {
+    let mut clock = SourceClock::default();
+    clock.native_outcome(
+        ms(100),
+        NativeReturn::Batch,
+        Some(NativeIoOutcome::Returned { byte_count: 0 }),
+    );
+    assert_eq!(clock.out_wait(ms(101), ms(2)), Some(ms(2)));
+    clock.release(ms(104), ReleaseReason::BatchFinally);
+    assert_eq!(clock.out_wait(ms(105), ms(5)), None);
+    clock.native_outcome(
+        ms(106),
+        NativeReturn::Batch,
+        Some(NativeIoOutcome::Rejected),
+    );
+    assert_eq!(clock.out_wait(ms(107), ms(5)), None);
 }

@@ -5,6 +5,17 @@ use std::{
     collections::VecDeque,
 };
 
+#[derive(Debug)]
+struct ReadOwnerRetired;
+
+impl std::fmt::Display for ReadOwnerRetired {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("inventory owner retired after native GET")
+    }
+}
+
+impl std::error::Error for ReadOwnerRetired {}
+
 enum Step {
     Send(Vec<u8>),
     Get(Vec<u8>),
@@ -32,7 +43,10 @@ impl FeatureTransport for Transport {
             }
             Step::SendError(expected) => {
                 assert_eq!(report, expected);
-                anyhow::bail!("simulated button failure")
+                Err(crate::backend::native_io_failure(
+                    crate::backend::NativeIoOutcome::Rejected,
+                    anyhow::anyhow!("simulated button failure"),
+                ))
             }
             _ => panic!("OUT where IN was expected"),
         }
@@ -300,15 +314,127 @@ fn cancellation_retains_completed_read_and_stops_remaining_modes() {
         })
         .expect_err("cancel must stop later I/O");
     assert_eq!(failure.phase, ButtonInventoryFailurePhase::Cancelled);
+    assert!(crate::backend::exchange_release_completed(&failure.error));
     assert!(!failure.progress.source_scan_completed);
+    assert!(!failure.progress.complete());
+    assert!(failure.progress.entries[0].attempted);
     assert!(failure.progress.entries[0].observed.is_some());
+    assert!(failure.progress.entries[0].error.is_some());
+    assert_eq!(
+        failure.failed_target,
+        Some(failure.progress.entries[0].target)
+    );
     assert!(!failure.progress.entries[1].attempted);
+    assert!(failure.progress.entries[1].error.is_none());
     assert!(
         failure.progress.entries[2..]
             .iter()
             .all(|entry| !entry.attempted && entry.observed.is_none() && entry.error.is_none())
     );
     transport.finish();
+}
+
+#[test]
+fn release_failure_stops_at_the_current_target_without_losing_its_assignment() {
+    let transport = Transport::new(fixture(170, 2, None).into_iter().take(2));
+    let device = ExchangeProbe::failing_finish(&transport);
+    let cap = cap(170);
+    let failure = MouseButtonInventory::new(&device, &cap)
+        .unwrap()
+        .read_profile(2, txs(), || Ok(()))
+        .unwrap_err();
+    assert_eq!(failure.phase, ButtonInventoryFailurePhase::Read);
+    assert!(crate::backend::exchange_finalization_failed(&failure.error));
+    assert!(!crate::backend::exchange_release_completed(&failure.error));
+    assert!(!failure.progress.source_scan_completed);
+    assert!(!failure.progress.complete());
+    let failed = &failure.progress.entries[0];
+    assert_eq!(failure.failed_target, Some(failed.target));
+    assert!(failed.attempted);
+    assert!(failed.error.is_some());
+    let observed = failed.observed.as_ref().unwrap();
+    assert_eq!(observed.assignment.target, failed.target);
+    assert_eq!(observed.assignment.function_id, 0xee);
+    assert_eq!(observed.raw_data, [1, 2, 3, 0xa5, 0x5a]);
+    assert!(
+        failure.progress.entries[1..]
+            .iter()
+            .all(|entry| { !entry.attempted && entry.observed.is_none() && entry.error.is_none() })
+    );
+    transport.finish();
+}
+
+#[test]
+fn cancellation_during_get_keeps_the_complete_assignment_on_the_failed_target() {
+    let transport = Transport::new(fixture(170, 2, None).into_iter().take(2));
+    let cap = cap(170);
+    let failure = MouseButtonInventory::new(&transport, &cap)
+        .unwrap()
+        .read_profile(2, txs(), || {
+            if transport.steps.borrow().is_empty() {
+                return Err(ReadOwnerRetired.into());
+            }
+            Ok(())
+        })
+        .unwrap_err();
+    assert_eq!(failure.phase, ButtonInventoryFailurePhase::Cancelled);
+    assert!(failure.error.is::<ReadOwnerRetired>());
+    assert!(!failure.progress.source_scan_completed);
+    assert!(!failure.progress.complete());
+    let failed = &failure.progress.entries[0];
+    assert_eq!(failure.failed_target, Some(failed.target));
+    assert!(failed.attempted);
+    assert!(failed.error.is_some());
+    let observed = failed.observed.as_ref().unwrap();
+    assert_eq!(observed.assignment.target, failed.target);
+    assert_eq!(observed.assignment.function_id, 0xee);
+    assert_eq!(observed.assignment.data_size, 3);
+    assert_eq!(observed.raw_data, [1, 2, 3, 0xa5, 0x5a]);
+    assert!(
+        failure.progress.entries[1..]
+            .iter()
+            .all(|entry| { !entry.attempted && entry.observed.is_none() && entry.error.is_none() })
+    );
+    transport.finish();
+}
+
+#[test]
+fn canceled_get_does_not_promote_invalid_assignment_payloads_into_inventory_observations() {
+    let first = profile_targets(170, 2).unwrap()[0];
+    for invalid in 0..3 {
+        let mut incoming = wire(first, 1, true);
+        match invalid {
+            0 => incoming[9] = 3,
+            1 => incoming[11] = 2,
+            2 => incoming[6] = 9,
+            _ => unreachable!(),
+        }
+        let transport = Transport::new([Step::Send(wire(first, 1, false)), Step::Get(incoming)]);
+        let cap = cap(170);
+        let failure = MouseButtonInventory::new(&transport, &cap)
+            .unwrap()
+            .read_profile(2, txs(), || {
+                if transport.steps.borrow().is_empty() {
+                    return Err(ReadOwnerRetired.into());
+                }
+                Ok(())
+            })
+            .unwrap_err();
+        assert_eq!(failure.phase, ButtonInventoryFailurePhase::Cancelled);
+        assert!(failure.error.is::<ReadOwnerRetired>());
+        assert!(crate::CompletedFeatureExchange::from_error(&failure.error).is_some());
+        assert!(CompletedButtonRead::from_error(&failure.error).is_none());
+        assert_eq!(failure.failed_target, Some(first));
+        assert!(!failure.progress.complete());
+        assert!(!failure.progress.source_scan_completed);
+        assert!(failure.progress.entries[0].attempted);
+        assert!(failure.progress.entries[0].observed.is_none());
+        assert!(failure.progress.entries[0].error.is_some());
+        assert!(failure.progress.entries[1..].iter().all(|entry| {
+            !entry.attempted && entry.observed.is_none() && entry.error.is_none()
+        }));
+        transport.finish();
+    }
 }
 
 #[test]

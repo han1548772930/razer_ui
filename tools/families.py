@@ -1521,6 +1521,8 @@ def audit_family_function(args):
         raise ValueError("Native keyboard lifecycle mode requires the keyboard-driver-request-lifecycle query")
     if getattr(args, "native_install_selection", None) and getattr(args, "query", None) != "driver-install-selection":
         raise ValueError("Native install selection mode requires the driver-install-selection query")
+    if getattr(args, "matcher_numeric_boundary", None):
+        return audit_mouse_matcher_numeric_boundary(args)
     if getattr(args, "receipt_only", False) and getattr(args, "query", None) not in ("mouse-customize", "mouse-dpi-backend", "mapping-engine", "audio-seiren-eq"):
         raise ValueError("Receipt-only refresh is supported for mouse-customize, mouse-dpi-backend, mapping-engine and audio-seiren-eq")
     if getattr(args, "query", None) == "mouse-dpi":
@@ -5397,6 +5399,58 @@ def matcher_owner_comparisons(requests, source_set, audit):
             raise ValueError("Matcher review range is not one complete AST owner")
         return node
 
+    state_machine_cache = {}
+
+    def state_machines(original, module):
+        key = (original["path"], module["byte_start"], module["byte_end"])
+        if key in state_machine_cache:
+            return state_machine_cache[key]
+
+        def fields(node):
+            if node is None or node.type != "object":
+                return {}
+            result = {}
+            for member in node.named_children:
+                if member.type == "comment":
+                    continue
+                if member.type != "pair":
+                    return {}
+                name, value = member.child_by_field_name("key"), member.child_by_field_name("value")
+                if name is None or name.type not in {"property_identifier", "identifier"} or name.text in result:
+                    return {}
+                result[name.text] = value
+            return result
+
+        found, pending = [], [exact_node(original, module["byte_start"], module["byte_end"])]
+        while pending:
+            node = pending.pop()
+            pending.extend(reversed(node.named_children))
+            if node.type != "variable_declarator":
+                continue
+            value = node.child_by_field_name("value")
+            if value is None or value.type != "arrow_function":
+                continue
+            body = value.child_by_field_name("body")
+            while body is not None and body.type == "parenthesized_expression" and len(body.named_children) == 1:
+                body = body.named_children[0]
+            root = fields(body)
+            initial, events, states = root.get(b"initial"), fields(root.get(b"on")), fields(root.get(b"states"))
+            if (initial is None or initial.type != "string" or initial.text not in {b'"idle"', b"'idle'"}
+                    or not {b"ON_DPI_CALIBRATION_GET_CURRENT_STATE", b"ON_DPI_CALIBRATION_RESET",
+                            b"ON_UPDATE_SENSITIVITY_PROFILE"} <= events.keys()
+                    or not {b"idle", b"requestingLock", b"calibrating", b"confirming", b"error"} <= states.keys()):
+                continue
+            cancel = fields(fields(fields(states[b"calibrating"]).get(b"on")).get(b"ON_DPI_CALIBRATION_CANCEL"))
+            target = cancel.get(b"target")
+            invoke = fields(fields(states[b"requestingLock"]).get(b"invoke"))
+            identifier = invoke.get(b"id")
+            if (target is not None and target.type == "string" and target.text in {b'"idle"', b"'idle'"}
+                    and identifier is not None and identifier.type == "string"
+                    and identifier.text in {b'"getDpiMatcherLocks"', b"'getDpiMatcherLocks'"}):
+                found.append(node)
+        state_machine_cache[key] = found
+        return found
+
     def retain(original, module):
         key = original["sha256"] + ":" + str(module["byte_start"]) + ":" + str(module["byte_end"])
         if key in factories:
@@ -5499,6 +5553,12 @@ def matcher_owner_comparisons(requests, source_set, audit):
             candidates = [(source, module) for source, module in candidate_modules
                           if "maxTravelDistance" in module["body"] and "CONFIRM" in module["body"]]
             locator = "complete_factory_with_maxTravelDistance_and_CONFIRM"
+        if "matcher_state_machine" in request["roles"]:
+            if len(state_machines(original, old_factory)) != 1:
+                raise ValueError("Matcher baseline state machine is absent or ambiguous in its complete factory")
+            candidates = [(source, module) for source, module in candidate_modules
+                          for _ in state_machines(source, module)]
+            locator = "complete_factory_with_matcher_state_machine_AST"
         if isinstance(old_factory["module_id"], str) and old_factory["module_id"].startswith("concatenated-entry@"):
             candidates = [(source, module) for source, module in candidate_modules
                           if isinstance(module["module_id"], str) and module["module_id"].startswith("concatenated-entry@")
@@ -16984,7 +17044,7 @@ def gamepad_lighting_palette_sources():
     import host
     audit, source_sets, files = host.HostLocalAudit(), [], {}
     for kind, name in (("ui", "gamepad-4115-current"), ("middleware", "gamepad-mw-4115-current")):
-        source_set, originals = audit.source_set(name)
+        source_set, originals = (audit.current_source_set(name) if kind == "middleware" else audit.source_set(name))
         if source_set["deployment"]["failures"]:
             raise ValueError("Current palette deployment selection failed")
         source_sets.append(source_set)
@@ -17060,6 +17120,17 @@ def gamepad_lighting_selection_sources():
         product = products[pid]
         middleware = next(row for row in product["source_sets"] if row["name"] == f"gamepad-mw-{pid}-current")
         ui = next(row for row in product["source_sets"] if row["name"] == f"gamepad-{pid}-current")
+        current_middleware = None
+        if pid == 4115:
+            current_middleware, _ = audit.current_source_set("gamepad-mw-4115-current")
+            selected_acquired = json.loads(audit.artifact(a.ROOT / current_middleware["acquisition"]["path"],
+                                                         current_middleware["acquisition"]))
+            selected_originals = [item for item in selected_acquired["files"] if item.get("path")]
+            middleware = {**middleware, "acquisition": current_middleware["acquisition"],
+                "complete_original_inputs": selected_originals,
+                "mounted_scripts": [item for item in selected_originals if Path(item["path"]).name.startswith("main.")
+                                    and item["path"].endswith(".js")],
+                "complete_modules": [], "complete_callables": []}
         for retained in (middleware, ui):
             acquired = json.loads(audit.artifact(a.ROOT / retained["acquisition"]["path"], retained["acquisition"]))
             if acquired.get("source_current_during_acquisition") is not True:
@@ -17069,17 +17140,34 @@ def gamepad_lighting_selection_sources():
             if any(actual.get(item["path"]) != {key: item[key] for key in ("path", "bytes", "sha256")}
                    for item in retained["complete_original_inputs"]):
                 raise ValueError("Gamepad selection acquisition and retained originals differ")
-            source_sets.append({"name": retained["name"], "acquisition": retained["acquisition"]})
-        capture_path = a.ROOT / f".analysis/results/frontend/gamepad-mw-{pid}-current/analysis.json"
-        capture = json.loads(audit.artifact(capture_path))
-        if capture.get("input_bytes_unchanged") is not True or capture.get("target_execution") is not False:
-            raise ValueError("Gamepad selection has no byte-verified static capture")
-        captured_inputs = {item["path"]: item for item in capture["original_inputs"]}
+            record = {"name": retained["name"], "acquisition": retained["acquisition"]}
+            if retained is middleware and current_middleware is not None:
+                record.update({key: current_middleware[key] for key in (
+                    "current_source_selection", "capture_failures", "failed_acquisition", "unresolved_acquisition")})
+            source_sets.append(record)
+        if current_middleware is None:
+            capture_path = a.ROOT / f".analysis/results/frontend/gamepad-mw-{pid}-current/analysis.json"
+            capture = json.loads(audit.artifact(capture_path))
+            if capture.get("input_bytes_unchanged") is not True or capture.get("target_execution") is not False:
+                raise ValueError("Gamepad selection has no byte-verified static capture")
+            captured_inputs = {item["path"]: item for item in capture["original_inputs"]}
+        else:
+            capture, captured_inputs = None, {}
         main = next(item for item in middleware["mounted_scripts"] if Path(item["path"]).name.startswith("main."))
         capture_index, parsed, module_owners = {}, {}, {}
         capture_rows = []
 
         def captured_module(mid, source):
+            if current_middleware is not None:
+                matches = audit.webpack_factories([source] if source is not None else middleware["complete_original_inputs"], mid)
+                if len(matches) != 1:
+                    raise ValueError("Gamepad current original AST factory is absent or ambiguous: " + str(mid))
+                original, node, _ = matches[0]
+                capture_rows.append({"extraction": "complete_original_ast_factory", "module_id": mid,
+                    "original": original, "original_ranges": [[node.start_byte, node.end_byte]],
+                    "complete_capture_available": current_middleware["capture"] is not None})
+                return audit.retain_range("gamepad_selected_factory_" + str(mid), original,
+                                          node.start_byte, node.end_byte, node.type)
             if source["path"] not in capture_index:
                 if captured_inputs.get(source["path"]) != {key: source[key] for key in ("path", "bytes", "sha256")}:
                     raise ValueError("Gamepad captured factory original differs")
@@ -17098,6 +17186,14 @@ def gamepad_lighting_selection_sources():
             return audit.retain_range("gamepad_selected_factory_" + str(mid), source, start, end, "arrow_function")
 
         def main_module_by(*anchors):
+            if current_middleware is not None:
+                found = [node for node in descendants(audit.tree(main).root_node)
+                    if node.type == "pair" and node.child_by_field_name("key").type == "number"
+                    and node.child_by_field_name("value").type in {"arrow_function", "function_expression"}
+                    and all(anchor in node.text for anchor in anchors)]
+                if len(found) != 1:
+                    raise ValueError("Gamepad current original AST handler/lifecycle factory is absent or ambiguous")
+                return javascript_integer_literal(found[0].child_by_field_name("key").text.decode())
             if main["path"] not in capture_index:
                 capture_index[main["path"]] = source_capture_modules(capture, main)
             raw = audit.read(main)
@@ -17121,7 +17217,7 @@ def gamepad_lighting_selection_sources():
                     module_owners[mid] = retain_reference(found[0], "gamepad_selected_factory_" + str(mid),
                                                           previous["complete_module_bodies"])
                 elif not found:
-                    module_owners[mid] = captured_module(mid, source or main)
+                    module_owners[mid] = captured_module(mid, source if current_middleware is not None else source or main)
                 else:
                     raise ValueError("Gamepad factory selection is ambiguous: " + str(mid))
             key = module_owners[mid]
@@ -17215,10 +17311,17 @@ def gamepad_lighting_selection_sources():
                 fields[field] = value.text.decode()
             return fields
 
-        bootstraps = [item for item in middleware["complete_callables"] if "source_controller_mount" in item["roles"]]
-        if len(bootstraps) != 1:
-            raise ValueError("Gamepad actual startup owner is absent or ambiguous")
-        bootstrap = retain_reference(bootstraps[0], "gamepad_current_startup", previous["complete_callable_bodies"])
+        if current_middleware is not None:
+            bootstraps = audit.retain("gamepad_current_startup", main, '.useFeature("controllerDevice","config",',
+                {"function_declaration", "method_definition", "arrow_function", "function_expression"})
+            if len(bootstraps) != 1:
+                raise ValueError("Gamepad current startup owner is absent or ambiguous")
+            bootstrap = bootstraps[0]
+        else:
+            bootstraps = [item for item in middleware["complete_callables"] if "source_controller_mount" in item["roles"]]
+            if len(bootstraps) != 1:
+                raise ValueError("Gamepad actual startup owner is absent or ambiguous")
+            bootstrap = retain_reference(bootstraps[0], "gamepad_current_startup", previous["complete_callable_bodies"])
         features = javascript_bootstrap_features(audit.owners[bootstrap]["body"].encode(), audit.parser, 47973, "A")
         registrations = {item["feature"]: item for item in features["registrations"]}
         selected = registrations["rzDeviceType"]
@@ -17358,6 +17461,8 @@ def gamepad_lighting_selection_sources():
             "generic_handler_module": generic_handler_mid, "lifecycle_module": lifecycle_mid,
             "chain_owners": {str(mid): key for mid, key in module_owners.items()},
             "capture_sources": capture_rows,
+            "current_source_selection": current_middleware["current_source_selection"] if current_middleware else None,
+            "capture_failures": current_middleware["capture_failures"] if current_middleware else [],
             "source_branch_selection_complete": True, "target_execution": False,
             "remaining_local_chains": ["Independent Rust implementation, all UI/backend consumers, actual DLL/device comparisons and runtime acceptance require their own current evidence"]}
         if pid in {2676, 2684}:
@@ -17366,8 +17471,8 @@ def gamepad_lighting_selection_sources():
             row["notification_resolution"] = ("The selected parser accepts legacy chroma sync events.84910 uses software-chroma handlers only when supportsLighting and lightingType=chroma; otherwise70784.bN changes profile data and publishes UI without invoking extended-static GET/SET. A disabled lighting page does not suppress the source notification branch")
         reviewed.append(row)
         print(f"gamepad-lighting-selection {pid}: adapter={device_type} parser={parser_mid} lighting={controller['supportsLighting']} obm-lighting={row['obm']['reads_controller_lighting']}", flush=True)
-        # Only small selected factories are parsed. Discard per-product ASTs;
-        # the complete owners and source byte identities remain retained.
+        # Release per-product parsed factory contexts. The audit retains each
+        # original AST, complete owner and verified source identity.
         parsed.clear()
     changed = audit.final_snapshot()
     if changed:
@@ -17386,7 +17491,35 @@ def gamepad_lighting_selection_sources():
         "rust_implementation": "unverified", "ui_backend_wiring": "unverified",
         "official_dll_comparison": "not_executed", "runtime_acceptance": "unverified",
         "cleanup": {"temporary_files_retained": [], "private_databases_created": [],
-                    "capture_policy": "Reused complete byte-verified captures; parsed selected factories only; no whole-library recapture"}}
+                    "capture_policy": "Reused byte-verified captures for retained deployments; located current4115 factories in complete original ASTs and retained unavailable full capture separately; no whole-library recapture"}}
+
+
+def retained_gamepad_lighting_review(section):
+    """Read the immutable selection actually referenced by the canonical audit."""
+    current = section.get("branch_selection")
+    if current is None:
+        return None, None
+    if not isinstance(current, dict):
+        raise ValueError("Retained gamepad selection has an invalid review section")
+    reference = current.get("review_source")
+    if (not isinstance(reference, dict) or set(reference) != {"path", "bytes", "sha256"}
+            or not isinstance(reference["path"], str) or Path(reference["path"]).is_absolute()
+            or type(reference["bytes"]) is not int or reference["bytes"] <= 0
+            or not isinstance(reference["sha256"], str) or not re.fullmatch(r"[a-f0-9]{64}", reference["sha256"])):
+        raise ValueError("Retained gamepad selection has an invalid review reference")
+    path = a.ROOT / reference["path"]
+    allowed = (a.ROOT / ".analysis/results/reverse-pending/review-sources").resolve()
+    if (not path.resolve().is_relative_to(allowed) or path.stem != reference["sha256"]
+            or path.suffix != ".json"):
+        raise ValueError("Retained gamepad selection is outside the hash-addressed review boundary")
+    raw = path.read_bytes()
+    if len(raw) != reference["bytes"] or hashlib.sha256(raw).hexdigest() != reference["sha256"]:
+        raise ValueError("Retained gamepad selection review bytes changed")
+    review = json.loads(raw)
+    if (not isinstance(review, dict) or review.get("kind") != "current_gamepad_lighting_selection_review"
+            or review.get("target_execution") is not False or review.get("whole_page_complete") is not False):
+        raise ValueError("Retained gamepad selection has a different review scope or verification boundary")
+    return deepcopy(reference), review
 
 
 def audit_gamepad_lighting_selection(args):
@@ -17396,7 +17529,17 @@ def audit_gamepad_lighting_selection(args):
     if (args.family != "gamepad" or args.function != "main" or args.prepare
             or args.product is not None and sorted(set(args.product)) != list(GAMEPAD_LIGHTING_SELECTION_PRODUCTS)):
         raise ValueError("Gamepad lighting selection requires all nine current gamepad main captures")
+    canonical = a.ROOT / ".analysis/results/frontend/gamepad-main-audit.json"
+    with a.index_lock():
+        previous_review, retained = retained_gamepad_lighting_review(json.loads(canonical.read_bytes())["gamepad_lighting"])
     review = gamepad_lighting_selection_sources()
+    if retained is not None and {key: value for key, value in retained.items() if key != "previous_review_source"} == review:
+        publication = copy.copy(args)
+        publication.semantic_review, publication.semantic_review_sha256 = previous_review["path"], previous_review["sha256"]
+        publication.semantic_previous_review = previous_review
+        return publish_frontend_semantic_review(publication)
+    if previous_review is not None:
+        review["previous_review_source"] = previous_review
     raw = (json.dumps(review, ensure_ascii=False, indent=2) + "\n").replace("\n", os.linesep).encode("utf-8")
     digest = hashlib.sha256(raw).hexdigest()
     path = a.ROOT / ".analysis/results/reverse-pending/review-sources" / (digest + ".json")
@@ -17409,7 +17552,98 @@ def audit_gamepad_lighting_selection(args):
             raise ValueError("Gamepad frozen review serialization differs from the shared publisher")
     publication = copy.copy(args)
     publication.semantic_review, publication.semantic_review_sha256 = a.rel(path), digest
+    publication.semantic_previous_review = previous_review
     return publish_frontend_semantic_review(publication)
+
+
+def merge_gamepad_lighting_query(document, result):
+    """Refresh collected lighting evidence while retaining independent reviews."""
+    old = document.get("gamepad_lighting", {})
+    merged = {**deepcopy(old), **deepcopy(result)}
+    previous = {row["product_id"]: row for row in old.get("products", [])}
+    incoming = {row["product_id"]: row for row in result["products"]}
+    if len(previous) != len(old.get("products", [])) or len(incoming) != len(result["products"]):
+        raise ValueError("Gamepad lighting audit repeats product identities")
+    if "branch_selection" in result and result["branch_selection"] != old.get("branch_selection"):
+        raise ValueError("Gamepad lighting collection cannot replace the retained selection review")
+    for pid, row in incoming.items():
+        prior = previous.get(pid, {})
+        if "branch_selection" in row and row["branch_selection"] != prior.get("branch_selection"):
+            raise ValueError("Gamepad lighting collection cannot replace a product selection review")
+        product = {**deepcopy(prior), **deepcopy(row)}
+        if prior.get("source_review", {}).get("review_source") is not None:
+            source_review = {**deepcopy(prior["source_review"]), **deepcopy(row.get("source_review", {}))}
+            for field in ("review_source", "notification_branch", "obm_branch"):
+                if field in prior["source_review"]:
+                    source_review[field] = deepcopy(prior["source_review"][field])
+            product["source_review"] = source_review
+        previous[pid] = product
+    merged["products"] = [deepcopy(previous[pid]) for pid in sorted(previous)]
+    for field in ("complete_module_bodies", "complete_callable_bodies"):
+        merged[field] = {**deepcopy(old.get(field, {})), **deepcopy(result.get(field, {}))}
+    document["gamepad_lighting"] = merged
+    return merged
+
+
+GAMEPAD_LIGHTING_ENGINE_INSTANCE_MODULES = {
+    1653: "protocol_constants_and_retry_limits",
+    4001: "protocol25_command_and_mutex_lifecycle",
+    4611: "dynamic_device_adapter_factory",
+    4921: "protocol25_software_frame_parent",
+    5451: "sage_pc_software_frame_adapter",
+    5954: "device_configuration_and_protocol_instance_lifecycle",
+    6411: "controller_frame_command_without_timing_override",
+    8199: "middleware_manifest_selection_and_device_configuration",
+    9396: "protocol_base_constructor_and_retry_clamping",
+}
+GAMEPAD_LIGHTING_ENGINE_INSTANCE_SCRIPTS = {
+    4921: "7665.1042e1fc.chunk.js",
+    5451: "5451.5593c8f6.chunk.js",
+}
+
+
+def validate_gamepad_lighting_instance_sources(engine, manifests):
+    """Require the actual software instance chain and every current edition input."""
+    originals = {row["path"]: row for row in engine["complete_original_inputs"]}
+    modules = {}
+    for row in engine["complete_modules"]:
+        if row["module_id"] in GAMEPAD_LIGHTING_ENGINE_INSTANCE_MODULES:
+            modules.setdefault(row["module_id"], []).append(row)
+    if any(len(modules.get(mid, [])) != 1 for mid in GAMEPAD_LIGHTING_ENGINE_INSTANCE_MODULES):
+        raise ValueError("Lighting Engine software instance has a missing or ambiguous complete factory")
+    for mid, role in GAMEPAD_LIGHTING_ENGINE_INSTANCE_MODULES.items():
+        row = modules[mid][0]
+        original = originals.get(row["original"]["path"], {})
+        if (role not in row["roles"] or any(original.get(key) != row["original"][key]
+                                           for key in ("bytes", "sha256"))):
+            raise ValueError("Lighting Engine software factory differs from its selected source")
+    for mid, filename in GAMEPAD_LIGHTING_ENGINE_INSTANCE_SCRIPTS.items():
+        if Path(modules[mid][0]["original"]["path"]).name != filename:
+            raise ValueError("Lighting Engine software adapter differs from its actual dynamic script")
+    for mid in (9396, 4001, 4921, 5451):
+        module = modules[mid][0]
+        classes = [row for row in engine["adapter_classes"] if row["module_id"] == mid]
+        if (len(classes) != 1 or classes[0]["original"] != module["original"]
+                or not module["byte_start"] <= classes[0]["byte_start"] < classes[0]["byte_end"] <= module["byte_end"]
+                or "constructor" not in classes[0]["methods"]):
+            raise ValueError("Lighting Engine software class inheritance chain is incomplete")
+    editions = (0, 128, 129, 130, 131, 132, 133)
+    by_edition = {}
+    expected_config = {"claimInterface": 2, "maxRetryIn": 30, "maxRetryOut": 20,
+        "rzDeviceName": "rzDevice25SagePC", "sleepTimeBetweenIn": 5,
+        "sleepTimeBetweenOut": 5, "sleepTimeBetweenOutIn": 5}
+    for row in manifests:
+        match = re.fullmatch(r"https://apps\.razer\.com/synapse/products/4115/mw/lighting-manifests/DeviceManifest_4115_(\d+)\.json",
+                             row["original"].get("url", ""))
+        manifest = row["complete_manifest"]
+        if (match is None or int(match[1]) not in editions or int(match[1]) in by_edition
+                or manifest.get("productId") != 4115 or manifest.get("vendorId") != 5426
+                or manifest.get("rzDeviceConfig") != expected_config):
+            raise ValueError("Lighting Engine software manifest has a different edition, identity or instance configuration")
+        by_edition[int(match[1])] = row["original"]
+    if set(by_edition) != set(editions):
+        raise ValueError("Lighting Engine software instance lacks one of its seven current middleware manifests")
+    return [{key: by_edition[edition][key] for key in ("path", "bytes", "sha256")} for edition in editions]
 
 
 def audit_gamepad_lighting(args):
@@ -17419,6 +17653,7 @@ def audit_gamepad_lighting(args):
     acquisition/indirect branches remain separate from implementation/runtime.
     """
     import importlib.metadata
+    import host
     import sys
     from collections import defaultdict, deque
     sys.path.insert(0, str(a.ROOT / "tools/analyzers/python-static"))
@@ -17430,6 +17665,7 @@ def audit_gamepad_lighting(args):
         "razer-pages", FAMILY_CANDIDATES["gamepad"]))))
     parser = Parser(Language(tree_sitter_javascript.language()))
     module_bodies, callable_bodies, checked = {}, {}, {}
+    source_audit = host.HostLocalAudit()
     middleware_ids = {
         70784: "controller_hardware_effect_read_write_and_initialization",
         65430: "controller_brightness_protocol", 50207: "sage_extended_static_adapter",
@@ -17446,7 +17682,7 @@ def audit_gamepad_lighting(args):
     ui_ids = {22127: "product_lighting_options_and_defaults", 13254: "quick_effect_defaults"}
     engine_ids = {2198: "native_ffi_owner_and_frame_dispatch", 2578: "engine_effect_facade",
         6394: "ui_to_quick_effect_converter", 8905: "quick_effect_parameters_and_lifecycle",
-        4921: "protocol25_software_frame_parent"}
+        **GAMEPAD_LIGHTING_ENGINE_INSTANCE_MODULES}
     anchors = {
         "source_controller_mount": b'.useFeature("controllerDevice","config",',
         "static_palette_editor": b'useOm',
@@ -17475,8 +17711,13 @@ def audit_gamepad_lighting(args):
                 "byte_end": node.end_byte, "body_sha256": digest}
 
     def source_set(name, kind):
-        receipt_path = a.ROOT / ".analysis/inputs/frontend" / name / "acquisition.json"
-        acquired = json.loads(receipt_path.read_bytes())
+        selected_source = None
+        if name in {"gamepad-mw-4115-current", "synapse-lighting-engine-current"}:
+            selected_source, _ = source_audit.current_source_set(name)
+            receipt_path = a.ROOT / selected_source["acquisition"]["path"]
+        else:
+            receipt_path = a.ROOT / ".analysis/inputs/frontend" / name / "acquisition.json"
+        acquired = json.loads(source_audit.artifact(receipt_path))
         if acquired.get("source_current_during_acquisition") is not True:
             raise ValueError("Current lighting deployment stability receipt is absent: " + name)
         originals = [item for item in acquired["files"] if item.get("path")]
@@ -17505,7 +17746,13 @@ def audit_gamepad_lighting(args):
             "complete_original_inputs": originals, "manifests": [], "source_css": [],
             "mounted_scripts": [], "complete_modules": [], "complete_callables": [],
             "adapter_classes": [], "rz_device_assignments": []}
+        if selected_source is not None:
+            result["selected_source_set"] = selected_source["name"]
+            result["current_source_selection"] = selected_source["current_source_selection"]
+            result["capture_failures"] = selected_source["capture_failures"]
         ids = middleware_ids if kind == "middleware" else engine_ids if kind == "engine" else ui_ids
+        adapter_ids = ({50207, 78786, 98773, 87969, 41863} if kind == "middleware"
+                       else {9396, 4001, 4921, 5451} if kind == "engine" else set())
         for original in originals:
             raw = read(original)
             path = original["path"]
@@ -17541,6 +17788,11 @@ def audit_gamepad_lighting(args):
                     raw, tree, original, modules, lambda node: keep(raw, node, callable_bodies))
             selected_modules = []
             for module in modules:
+                # The SagePC loader in4611 selects chunks7665/5451. The9873
+                # aggregate carries another5451 for other adapter branches.
+                if (kind == "engine" and module["module_id"] in GAMEPAD_LIGHTING_ENGINE_INSTANCE_SCRIPTS
+                        and Path(path).name != GAMEPAD_LIGHTING_ENGINE_INSTANCE_SCRIPTS[module["module_id"]]):
+                    continue
                 body = module["body"].encode("utf-8")
                 roles = [role for role, anchor in anchors.items() if anchor in body]
                 if module["module_id"] in ids:
@@ -17567,7 +17819,7 @@ def audit_gamepad_lighting(args):
                 while pending_nodes:
                     current = pending_nodes.pop()
                     pending_nodes.extend(reversed(current.named_children))
-                    if current.type in {"class", "class_declaration"} and module["module_id"] in {50207, 78786, 98773, 87969, 41863}:
+                    if current.type in {"class", "class_declaration"} and module["module_id"] in adapter_ids:
                         class_body = current.child_by_field_name("body")
                         result["adapter_classes"].append({"module_id": module["module_id"],
                             "original": original, **keep(raw, current, callable_bodies),
@@ -17592,6 +17844,15 @@ def audit_gamepad_lighting(args):
                         "reference_byte": match.start(), **keep(raw, owner, callable_bodies)})
         if not result["mounted_scripts"] or not valid(result["acquisition"]):
             raise ValueError("Lighting mounted source or acquisition receipt changed")
+        if kind == "engine":
+            middleware, _ = source_audit.current_source_set("gamepad-mw-4115-current")
+            middleware_acquired = json.loads(source_audit.artifact(
+                a.ROOT / middleware["acquisition"]["path"], middleware["acquisition"]))
+            manifests = [{"original": original, "complete_manifest": json.loads(read(original))}
+                         for original in middleware_acquired["files"]
+                         if "/products/4115/mw/lighting-manifests/DeviceManifest_4115_" in original.get("path", "")]
+            result["device_manifest_source"] = {"acquisition": middleware["acquisition"],
+                "originals": validate_gamepad_lighting_instance_sources(result, manifests)}
         return result
 
     products = []
@@ -17617,8 +17878,12 @@ def audit_gamepad_lighting(args):
         "runtime_acceptance": "unverified", "failures": [],
         "source_semantics": {
             "hardware": "2636 Sage uses a second observedGET when effectId13; observed index>8 selects custom mode. Optimistic profile edits are distinct from acknowledged writes.2636/4115 brightness compares a realGET and uses source floor/ceil conversion",
-            "software": "4115 uses current RzLightingEngineApi at25fps,8x10 perimeter mapped to1x32,source BGR conversion/no-color sentinel and fractional wave speed; frameOUT chunks25+7 have noIN/deviceACK",
-            "lifecycle": "Retained engine/device/effect handles, generation-aware frame discard, source input bridge, suspend without device destruction, exit spectrum restore and all native releases are distinct operations",
+            "software": "4115 uses current RzLightingEngineApi at25fps,8x10 perimeter mapped to1x32,source BGR conversion/no-color sentinel and fractional wave speed; the independent Lighting Engine manifest/configure/onDeviceInfoReady/_createRzDevice chain constructs a SagePC instance with a5ms host mutex clock. Its base9396 constructor clamps the manifest IN retry limit30 to constants1653 limit10; OUT remains20. The ordinary4115 MW instance uses10ms and is separate. Each25+7 frameOUT chunk uses the Lighting Engine instance5ms default without an override, enters its own rzDevice25 command lock, retries nonmatching normal OUT counts up to20 with one transaction, and finally releases before the success-only1ms wait including the last chunk. A failed chunk skips that wait and the SagePC catch continues the next chunk; noIN/deviceACK. Transactions are allocated only when each chunk enters sendCommand",
+            "controller_feature": {
+                "out": "Normal OUT requires an exact91-byte count, retries up to20 with the same report and transaction, and does not enter IN waiting or a release/reacquire cycle",
+                "in": "Busy status alone retries IN up to10; status0/3/4 or response identity mismatch releases and resends. Status5 and unknown statuses fail immediately. Acknowledged payload uses the actual response slice without a universal91-byte length gate",
+                "finalization": "Cancellation, typed native failures and final release retain terminal ACK diagnostics. Rust finishes once without an extra reacquire; actual DLL/device comparison remains unverified"},
+            "lifecycle": "Retained engine/device/effect handles, generation-aware frame discard, source input bridge, suspend without device destruction, exit spectrum restore and all native releases are distinct operations. The retained host UsbRzDeviceAction hid.releaseMutex case returns false with no release or I/O when no holder exists; its repeated final release is a static no-op boundary, not an actual-device validation",
             "verification": "Rust/static/simulated checks and real service/device/UI acceptance remain separate; source acquisition and selected bodies do not establish whole-page completion"}}
     try:
         result["palette_profile_chain"] = gamepad_lighting_palette_sources()
@@ -17647,18 +17912,18 @@ def audit_gamepad_lighting(args):
     except (KeyError, ValueError, OSError, IndexError, TypeError) as error:
         result["failures"].append({"source_set": "software_engine", "error": str(error)})
     result["complete_original_inputs_checked"] = list(checked.values())
-    if not all(valid(original) for original in checked.values()):
+    if not all(valid(original) for original in checked.values()) or source_audit.final_snapshot():
         raise ValueError("Lighting original changed during static query")
     report_path = a.ROOT / ".analysis/results/frontend/gamepad-main-audit.json"
-    report = json.loads(report_path.read_bytes()) if report_path.is_file() else {"schema_version": 1}
-    old_lighting = report.get("gamepad_lighting", {})
-    previous = {row["product_id"]: row for row in old_lighting.get("products", [])}
-    previous.update({row["product_id"]: row for row in products})
-    result["products"] = [previous[pid] for pid in sorted(previous)]
-    result["complete_module_bodies"] = {**old_lighting.get("complete_module_bodies", {}), **module_bodies}
-    result["complete_callable_bodies"] = {**old_lighting.get("complete_callable_bodies", {}), **callable_bodies}
-    report["gamepad_lighting"] = result
-    a.save(report_path, report)
+    with a.index_lock():
+        before = report_path.read_bytes() if report_path.is_file() else None
+        report = json.loads(before) if before is not None else {"schema_version": 1}
+        merge_gamepad_lighting_query(report, result)
+        if (report_path.read_bytes() if report_path.is_file() else None) != before:
+            raise ValueError("Gamepad audit changed during lighting publication")
+        a.save(report_path, report)
+        if json.loads(report_path.read_bytes()) != report:
+            raise ValueError("Published gamepad lighting differs from the complete merged audit")
     print(json.dumps({"receipt": a.rel(report_path), "query": "gamepad_lighting", "products": len(products),
         "complete_modules": len(module_bodies), "complete_callables": len(callable_bodies),
         "failures": len(result["failures"]) + sum(len(row["failures"]) for row in products),
@@ -20306,7 +20571,7 @@ def receiver_help_reset_sources(pid, *, acquire=False):
                 raise ValueError("Current receiver original is absent or ambiguous: " + kind + "/" + prefix)
             sources[kind + "_" + prefix] = found[0]
     main, middleware = sources["mw_main"], sources["mw_6120"]
-    engine_set, engine_files = audit.source_set("synapse-lighting-engine-current")
+    engine_set, engine_files = audit.current_source_set("synapse-lighting-engine-current")
     if engine_set["deployment"]["failures"]:
         raise ValueError("Current lighting engine deployment selection failed")
     sets.append(engine_set)
@@ -20315,7 +20580,7 @@ def receiver_help_reset_sources(pid, *, acquire=False):
     if len(engine_mains) != 1:
         raise ValueError("Current mounted lighting engine main is absent or ambiguous")
     sources["lighting_engine_main"] = engine = engine_mains[0]
-    peer_adapter_prefixes = ("4026", "2314", "8508", "9375", "8086", "rzHardwareEventsProtocol25Parser")
+    peer_adapter_prefixes = ("4026", "2314", "8508", "9375", "rzHardwareEventsProtocol25Parser")
     for prefix in peer_adapter_prefixes:
         matches = [source for source in engine_files
                    if Path(source["path"]).name.startswith(prefix + ".")
@@ -20323,6 +20588,14 @@ def receiver_help_reset_sources(pid, *, acquire=False):
         if len(matches) != 1:
             raise ValueError("Current receiver lighting adapter is absent or ambiguous: " + prefix)
         sources["lighting_adapter_" + prefix] = matches[0]
+    krakoff = audit.webpack_factories(engine_files, 5423)
+    if len(krakoff) != 1:
+        raise ValueError("Current receiver Krakoff protocol factory is absent or ambiguous")
+    sources["lighting_adapter_krakoff"] = krakoff[0][0]
+    base_factory = audit.webpack_factories([engine], 4001)
+    if len(base_factory) != 1:
+        raise ValueError("Current receiver base lighting factory is absent or ambiguous")
+    base_class, _ = audit.named_class("receiver_lighting_base_protocol", engine, base_factory[0][2], "rzDevice25")
     help_sources = [source for source in files["ui"] if source["path"].endswith(".js")
                     and b"this.retryDeviceSerial=()=>" in audit.read(source)
                     and b"this.resetDevice=()=>" in audit.read(source)]
@@ -20352,24 +20625,29 @@ def receiver_help_reset_sources(pid, *, acquire=False):
         ("lighting_driver_protocol_configuration", engine, 'type:"protocol.use_base_class"', {"assignment_expression"}),
         ("lighting_frame_callback_fallback", engine, "setChromaFrame error:", {"method_definition"}),
         ("lighting_base_protocol_factory", engine, 'this.name="rzDevice25"', {"class_declaration", "class"}),
-        ("lighting_base_frame_submission", engine, "async setChromaFrameLightingEngine(e){let{eventData:t}=e;const n=h.COMMAND_SET_CHROMA_FRAME_HEADER", {"method_definition"}),
-        ("lighting_base_power_query", engine, 'this.getPowerOnStatusCommon=async()=>{const e="getPowerOnStatusCommon",t=this.generateDefaultResult([],e);let n=!1', {"assignment_expression"}),
         ("lighting_hardware_event_consumer", engine, 'this.name="HardwareEventHandler"', {"class_declaration", "class"}),
         ("lighting_peer_factory_registration", engine, "rzDevice25Krakoff:()=>", {"variable_declarator"}),
         ("lighting_missing_ui_power_on", engine, "missing deviceInfo.getUIEffect(), force to static green", {"assignment_expression"}),
         ("lighting_peer_initialization_charging", engine, "await O.A.dockingStationMonitoring.addDock", {"method_definition", "assignment_expression"}),
-        ("lighting_peer_relay_claim_interface", engine, "E.rzDeviceConfig.claimInterface=n.rzDeviceConstructor.claimInterface", {"assignment_expression"}),
+        ("lighting_peer_relay_claim_interface", engine, ".rzDeviceConfig.claimInterface=", {"assignment_expression"}),
         ("lighting_peer_relay_creation", engine, "this.prepareDualLinkPairedDevice=", {"assignment_expression"}),
         ("lighting_peer_chroma_connect_attributes", engine, 'this.setAttribute=async(e,t,n)=>{try{await this.send({func:"SetAttribute"', {"assignment_expression"}),
         ("lighting_chroma_connect_local_service", engine, 'this.name="ChromaConnectApps"', {"class_declaration", "class"}),
         ("lighting_chroma_connect_mounted_initialization", engine, 'const e="initChromaConnect()"', {"arrow_function", "function_expression"}),
         ("lighting_chroma_connect_status_wrapper", engine, 'this.setSynapseStatus=async e=>', {"assignment_expression"}),
-        ("lighting_chroma_connect_mounted_lifecycle_effect", engine, 'return m.A.on(Ui.d4,t),m.A.on(Ui.bS,n),m.A.on(Ui.JX,i)', {"arrow_function"}),
-        ("lighting_chroma_connect_exit_order", engine, 'await N.A.setSynapseStatus(!1),await N.A.unInit()', {"function_expression"}),
+        ("lighting_chroma_connect_mounted_lifecycle_effect", engine, '"initChromaConnect()"', {"arrow_function"}),
         ("mounted_quick_effect_editor", sources["ui_main"], "this.changeEffect=", {"class", "class_declaration"}),
     ):
         roles[role] = audit.retain(role, source, needle, syntax, unique=False)
-    for prefix in peer_adapter_prefixes:
+    for role, name in (("lighting_base_frame_submission", "setChromaFrameLightingEngine"),
+                       ("lighting_base_power_query", "getPowerOnStatusCommon")):
+        _, roles[role] = audit.callable_member(role, engine, base_class, name)
+    exit_factory = audit.webpack_factories([engine], 5954)
+    if len(exit_factory) != 1:
+        raise ValueError("Current receiver lighting exit factory is absent or ambiguous")
+    _, roles["lighting_chroma_connect_exit_order"] = audit.callable_member(
+        "lighting_chroma_connect_exit_order", engine, exit_factory[0][2], "onExit", receiver="this")
+    for prefix in (*peer_adapter_prefixes, "krakoff"):
         source = sources["lighting_adapter_" + prefix]
         roles["lighting_adapter_" + prefix] = audit.retain_range(
             "lighting_adapter_" + prefix, source, 0, len(audit.read(source)), "program")
@@ -26562,9 +26840,298 @@ def audit_mouse_receiver_mapping(args):
     return publish_frontend_semantic_review(publication)
 
 
+MATCHER_NUMERIC_KIND = "current_mouse_matcher_numeric_boundary_review"
+MATCHER_NUMERIC_PRODUCTS = (190, 192, 222, 226, 229, 239)
+MATCHER_NUMERIC_REVALIDATION = {
+    "path": ".analysis/results/frontend-revalidation/946491207f8634af6a341b0b6630b1b91bd0c06a2ba9c93ad45bce6b6794ae88.json",
+    "bytes": 3209597, "sha256": "946491207f8634af6a341b0b6630b1b91bd0c06a2ba9c93ad45bce6b6794ae88"}
+MATCHER_NUMERIC_RUST_INPUTS = (
+    "crates/razer-device/src/transport/ecmascript_number.rs",
+    "crates/razer-device/src/mouse/dpi_matcher.rs",
+    "crates/razer-device/src/mouse/dpi_matcher_tests.rs",
+    "crates/razer-device/src/mouse/dpi_matcher_storage.rs",
+    "crates/razer-device/src/mouse/dpi_matcher_storage_tests.rs",
+    "crates/razer-device/src/mouse/mouse_dynamic_input.rs",
+    "crates/razer-service/src/mouse/dpi_matcher.rs",
+    "crates/razer-service/src/mouse/dpi_matcher_input.rs",
+    "crates/razer-service/src/mouse/dpi_matcher_worker.rs",
+    "crates/razer-service/src/mouse/dpi_matcher_tests.rs")
+MATCHER_NUMERIC_REMAINING = [
+    "The typed Number/Text event and typed profile contracts do not establish arbitrary JavaScript object coercion or malformed-document equivalence.",
+    "Complete START/RESET/CANCEL, timeout, lock failure, restore and release lifecycles require their separate source and Rust joins.",
+    "Product226 first initialization, its second edition, default construction, profile-stack persistence and complete OBM non-DPI branches remain incomplete.",
+    "Retained deployment references do not establish the complete host/device source acquisition closure.",
+    "Actual official DLL/device comparisons, UI/backend acceptance and application-window acceptance remain unverified."]
+
+
+def matcher_numeric_semantics():
+    return {"matcher_tick": "unary_plus", "invalid_numeric_text": "NaN",
+        "dynamic_tick_storage": "preserve_number_or_text",
+        "dynamic_tick_comparison": "utf16_when_both_text_else_number",
+        "dynamic_duration": "number_subtraction", "dynamic_strict_zero": "number_zero_only",
+        "finite_nonnegative_tick_guard": False, "nonpositive_duration": "retain_previous_speed",
+        "baseline": {"source": "active_local_serial_profile", "missing_or_null_dpiStages": 100,
+            "falsy_x": 100, "negative_and_infinite_x": "preserve",
+            "missing_active_or_stage": "error", "device_GET": False},
+        "confirmation": "preserve_source_number_and_independent_stage_library_save_order"}
+
+
+def matcher_numeric_ast(audit, owner, *, matcher):
+    """Verify one complete original factory and retain only small AST identities."""
+    import frontend
+    original = owner["original"]
+    raw = audit.read(original)
+    start, end = owner["byte_start"], owner["byte_end"]
+    if type(start) is not int or type(end) is not int or not 0 <= start < end <= len(raw):
+        raise ValueError("Matcher numeric factory range exceeds its original")
+    node = audit.tree(original).root_node.descendant_for_byte_range(start, end - 1)
+    while node is not None and (node.start_byte != start or node.end_byte != end):
+        node = node.parent
+    if (node is None or node.type not in {"pair", "method_definition"}
+            or node.type != owner["syntax"]
+            or hashlib.sha256(raw[start:end]).hexdigest() != owner["body_sha256"]
+            or frontend.syntax_identity(node) != owner["syntax_sha256"]):
+        raise ValueError("Matcher numeric factory is not its complete original AST owner")
+    key = node.child_by_field_name("key") or node.child_by_field_name("name")
+    if key is None or javascript_integer_literal(key.text.decode()) != owner["module_id"]:
+        raise ValueError("Matcher numeric factory module identity changed")
+    requirements = {
+        "dynamic_raw_tick": ("variable_declarator", "l=e.timeTick"),
+        "dynamic_comparison": ("binary_expression", "0!==M.lastTimeTick&&l>M.lastTimeTick"),
+        "dynamic_duration": ("augmented_assignment_expression", "r+=l-M.lastTimeTick"),
+        "dynamic_tick_update": ("assignment_expression", "M.lastTimeTick=l"),
+        "dynamic_speed_gate": ("binary_expression", "r>0&&(M.speed=Math.sqrt(Math.pow(o,2)+Math.pow(i,2))/(r/1e4))"),
+        "dynamic_nan_consumer": ("assignment_expression", "M.speed=Math.abs(isNaN(M.speed)?0:M.speed)")}
+    if matcher:
+        requirements.update({
+            "matcher_unary_tick": ("unary_expression", "+e.timeTick"),
+            "matcher_progress": ("assignment_expression", "M.process=Math.min(Math.round(M.main.traveledDistance/M.main.maxTravelDistance*100),99)"),
+            "matcher_distance_filter": ("binary_expression", "n.x<=0||n.timeTick<t"),
+            "matcher_stop_gate": ("binary_expression", "M.main.maxTravelDistance<=M.main.traveledDistance&&M.stoptime<=M.source.events[M.source.events.length-1].timeTick"),
+            "matcher_result": ("assignment_expression", "M.newDpi=Math.round(a/r*M.main.currentDpi)"),
+            "matcher_local_baseline": ("return_statement", "return(null===(e=o.dpiStages)||void 0===e?void 0:e.stages[(null===(t=o.dpiStages)||void 0===t?void 0:t.active)-1].x)||100")})
+    hits = {role: [] for role in requirements}
+    pending = [node]
+    while pending:
+        child = pending.pop()
+        for role, (syntax, expression) in requirements.items():
+            if child.type == syntax and child.text.decode() == expression:
+                hits[role].append(child)
+        pending.extend(reversed(child.named_children))
+    if any(len(rows) != 1 for rows in hits.values()):
+        raise ValueError("Matcher numeric consumer AST is absent or ambiguous")
+    callback = hits["dynamic_raw_tick"][0]
+    while callback is not None and callback.type != "arrow_function":
+        callback = callback.parent
+    if callback is None:
+        raise ValueError("Matcher dynamic Tick callback has no complete AST owner")
+    callback_nodes, pending = [], [callback]
+    while pending:
+        child = pending.pop()
+        if child.type == "if_statement":
+            callback_nodes.append(child.text.decode())
+        pending.extend(reversed(child.named_children))
+    if callback_nodes != ['if("mouseMove"!==t.type||!n)return;']:
+        raise ValueError("Matcher dynamic Tick callback has an additional event guard")
+    hits["dynamic_event_callback"] = [callback]
+    return {role: {"byte_start": rows[0].start_byte, "byte_end": rows[0].end_byte,
+        "syntax": rows[0].type, "body_sha256": hashlib.sha256(rows[0].text).hexdigest(),
+        "syntax_sha256": frontend.syntax_identity(rows[0])} for role, rows in hits.items()}
+
+
+def validate_mouse_matcher_numeric_scope(review):
+    if (review.get("kind") != MATCHER_NUMERIC_KIND or review.get("schema_version") != 1
+            or review.get("target_execution") is not False or review.get("whole_page_complete") is not False
+            or review.get("source_semantics_complete") is not False
+            or review.get("actual_dll_comparison") != "unverified" or review.get("runtime_acceptance") != "unverified"
+            or review.get("rust_validation") != "not_executed_by_this_static_review"
+            or review.get("source_review") != MATCHER_NUMERIC_REVALIDATION
+            or review.get("semantics") != matcher_numeric_semantics()
+            or review.get("remaining_local_chains") != MATCHER_NUMERIC_REMAINING
+            or review.get("scratch_resources_created") != [] or "complete_owners" in review):
+        raise ValueError("Matcher numeric review has a different scope or verification boundary")
+    rows = review.get("products", [])
+    if [row.get("product_id") for row in rows] != list(MATCHER_NUMERIC_PRODUCTS) + [196]:
+        raise ValueError("Matcher numeric review must cover six Matcher and seven dynamic branches exactly")
+    if [row.get("path") for row in review.get("rust_inputs", [])] != list(MATCHER_NUMERIC_RUST_INPUTS):
+        raise ValueError("Matcher numeric review has incomplete Rust input ownership")
+    return rows
+
+
+def verify_mouse_matcher_numeric_review(review):
+    """Resolve frozen references against indexed official bytes, never copied JS."""
+    import host
+    rows = validate_mouse_matcher_numeric_scope(review)
+    audit = host.HostLocalAudit()
+    index = json.loads((a.ROOT / ".analysis/inputs.json").read_bytes())["inputs"]
+    indexed = {}
+    for item in index:
+        indexed.setdefault(item["path"], []).append(item)
+    checked_index = {}
+
+    def indexed_original(original):
+        matches = indexed.get(original["path"], [])
+        if len(matches) != 1 or any(matches[0].get(key) != original[key] for key in ("bytes", "sha256")):
+            raise ValueError("Matcher numeric original/acquisition differs from its input index")
+        checked_index[original["path"]] = {key: original[key] for key in ("path", "bytes", "sha256")}
+
+    source = json.loads(audit.artifact(a.ROOT / review["source_review"]["path"], review["source_review"]))
+    if source.get("kind") != "mouse_matcher_deployment_owner_comparison" or source.get("target_execution") is not False:
+        raise ValueError("Matcher numeric source reference has a different deployment scope")
+    sources = {row["product_id"]: row for row in source["source_sets"] if row["layer"] == "mw"}
+    for row in rows:
+        pid = row["product_id"]
+        if row.get("matcher") is not (pid != 196):
+            raise ValueError("Matcher numeric product has a conflicting capability scope")
+        if pid != 196:
+            comparisons = [item for item in source["owner_comparisons"]
+                if item["product_id"] == pid and item["roles"] == ["monitor_factory"]]
+            if (len(comparisons) != 1 or row.get("factory_reference") != {
+                    "review_source": review["source_review"], "owner": comparisons[0]["new_owner"]}
+                    or row.get("acquisition") != sources[pid]["acquisition"]):
+                raise ValueError("Matcher numeric product references a different complete factory")
+            owner = source["complete_factories"][comparisons[0]["new_owner"]]
+        else:
+            owner = row.get("factory", {})
+            if (owner.get("original", {}).get("sha256") != "df8334aa3021d129893918cecb3c1d14b3727f476c42981bac3fb02f6736b633"
+                    or (owner.get("byte_start"), owner.get("byte_end"), owner.get("module_id")) != (1137610, 1146581, 32807)
+                    or owner.get("body_sha256") != "02be331a6c05b2689f411ab125ca774d96636db41e2ff4646d69f19d9b414afb"
+                    or "body" in owner or "factory_reference" in row):
+                raise ValueError("Matcher dynamic196 reference is not the retained original complete factory")
+        original = owner["original"]
+        if not re.search(r"/products/" + str(pid) + r"/mw/[^/]+\.js$", original["path"]):
+            raise ValueError("Matcher numeric original belongs to a different product")
+        indexed_original(original)
+        indexed_original(row["acquisition"])
+        acquired = json.loads(audit.artifact(a.ROOT / row["acquisition"]["path"], row["acquisition"]))
+        acquired_matches = [item for item in acquired.get("files", []) if item.get("path") == original["path"]]
+        if (acquired.get("source_current_during_acquisition") is not True
+                or acquired.get("target_execution") is not False
+                or acquired.get("entry_url") != f"https://apps.razer.com/synapse/products/{pid}/mw/index.html"
+                or len(acquired_matches) != 1
+                or any(acquired_matches[0].get(key) != original[key] for key in ("bytes", "sha256"))):
+            raise ValueError("Matcher numeric acquisition does not own its actual official original")
+        if row.get("consumers") != matcher_numeric_ast(audit, owner, matcher=pid != 196):
+            raise ValueError("Matcher numeric consumer reference differs from its complete original AST")
+    for item in review["rust_inputs"]:
+        path = a.resolve(item["path"], "crates")
+        if identity(path) != item:
+            raise ValueError("Matcher numeric Rust input identity changed")
+    if audit.final_snapshot() or any(not valid(item) for item in review["rust_inputs"]):
+        raise ValueError("Matcher numeric source bytes changed during verification")
+    return {"artifacts": [*audit.artifacts.values(), *review["rust_inputs"]],
+            "indexed_originals": list(checked_index.values())}
+
+
+def collect_mouse_matcher_numeric_review():
+    """Reuse the immutable six-factory comparison and the retained dynamic196 owner."""
+    import frontend
+    import host
+    audit = host.HostLocalAudit()
+    source = json.loads(audit.artifact(a.ROOT / MATCHER_NUMERIC_REVALIDATION["path"], MATCHER_NUMERIC_REVALIDATION))
+    products = []
+    for pid in MATCHER_NUMERIC_PRODUCTS:
+        comparison, = [item for item in source["owner_comparisons"]
+            if item["product_id"] == pid and item["roles"] == ["monitor_factory"]]
+        owner = source["complete_factories"][comparison["new_owner"]]
+        source_set, = [item for item in source["source_sets"] if item["product_id"] == pid and item["layer"] == "mw"]
+        products.append({"product_id": pid, "matcher": True, "acquisition": source_set["acquisition"],
+            "factory_reference": {"review_source": deepcopy(MATCHER_NUMERIC_REVALIDATION), "owner": comparison["new_owner"]},
+            "consumers": matcher_numeric_ast(audit, owner, matcher=True)})
+    section = json.loads((a.ROOT / ".analysis/results/frontend/mouse-mw-audit.json").read_bytes())["queries"]["dynamic_sensitivity"]
+    product, = [item for item in section["products"] if item["product_id"] == 196]
+    retained = section["complete_owners"][product["monitor_factory"]]
+    owner = {key: retained[key] for key in ("original", "byte_start", "byte_end", "syntax", "body_sha256")}
+    node = audit.tree(owner["original"]).root_node.descendant_for_byte_range(owner["byte_start"], owner["byte_end"] - 1)
+    owner.update({"module_id": 32807, "syntax_sha256": frontend.syntax_identity(node)})
+    products.append({"product_id": 196, "matcher": False, "factory": owner,
+        "acquisition": identity(a.ROOT / ".analysis/inputs/frontend/mouse-mw-196-current/acquisition.json"),
+        "consumers": matcher_numeric_ast(audit, owner, matcher=False)})
+    review = {"schema_version": 1, "kind": MATCHER_NUMERIC_KIND, "source_review": deepcopy(MATCHER_NUMERIC_REVALIDATION),
+        "products": products, "semantics": matcher_numeric_semantics(),
+        "rust_inputs": [identity(a.ROOT / name) for name in MATCHER_NUMERIC_RUST_INPUTS],
+        "remaining_local_chains": list(MATCHER_NUMERIC_REMAINING), "scratch_resources_created": [],
+        "target_execution": False, "whole_page_complete": False, "source_semantics_complete": False,
+        "rust_validation": "not_executed_by_this_static_review", "actual_dll_comparison": "unverified",
+        "runtime_acceptance": "unverified"}
+    verify_mouse_matcher_numeric_review(review)
+    return review
+
+
+def retained_mouse_matcher_numeric_review(document):
+    references = [document["queries"][name].get("numeric_boundary_review") for name in ("dpi_matcher", "dynamic_sensitivity")]
+    if references[0] != references[1]:
+        raise ValueError("Matcher numeric query references conflict")
+    reference = references[0]
+    if reference is None:
+        return None, None
+    if (not isinstance(reference, dict) or set(reference) != {"path", "bytes", "sha256"}
+            or not isinstance(reference.get("sha256"), str) or not re.fullmatch(r"[a-f0-9]{64}", reference["sha256"])
+            or reference.get("path") != ".analysis/results/reverse-pending/review-sources/" + reference["sha256"] + ".json"
+            or type(reference.get("bytes")) is not int or reference["bytes"] <= 0 or not valid(reference)):
+        raise ValueError("Retained Matcher numeric review has an invalid immutable identity")
+    review = json.loads((a.ROOT / reference["path"]).read_bytes())
+    if (review.get("kind") != MATCHER_NUMERIC_KIND or review.get("target_execution") is not False
+            or review.get("whole_page_complete") is not False):
+        raise ValueError("Retained Matcher numeric review has a different scope")
+    return deepcopy(reference), review
+
+
+def audit_mouse_matcher_numeric_boundary(args):
+    """Freeze or check one bounded review through the shared semantic publisher."""
+    import os
+    if (args.family != "mouse" or args.function != "mw" or args.query != "mouse-dpi-matcher"
+            or getattr(args, "prepare", False) or getattr(args, "receipt_only", False)
+            or args.product is not None and sorted(set(args.product)) != sorted((*MATCHER_NUMERIC_PRODUCTS, 196))):
+        raise ValueError("Matcher numeric boundary requires all six Matcher and seven dynamic mouse mw branches")
+    canonical = a.ROOT / ".analysis/results/frontend/mouse-mw-audit.json"
+    with a.index_lock():
+        previous, retained = retained_mouse_matcher_numeric_review(json.loads(canonical.read_bytes()))
+    if args.matcher_numeric_boundary == "check":
+        if retained is None:
+            raise ValueError("Matcher numeric boundary has no published retained review")
+        verify_mouse_matcher_numeric_review(retained)
+        result = {"review_source": previous, "products": list(MATCHER_NUMERIC_PRODUCTS) + [196],
+            "target_execution": False, "whole_page_complete": False, "runtime_acceptance": "unverified"}
+        print(json.dumps(result), flush=True)
+        return result
+    review = collect_mouse_matcher_numeric_review()
+    publication = copy.copy(args)
+    if retained is not None and {key: value for key, value in retained.items() if key != "previous_review_source"} == review:
+        publication.semantic_review, publication.semantic_review_sha256 = previous["path"], previous["sha256"]
+    else:
+        if previous is not None:
+            review["previous_review_source"] = previous
+        raw = (json.dumps(review, ensure_ascii=False, indent=2) + "\n").replace("\n", os.linesep).encode("utf-8")
+        digest = hashlib.sha256(raw).hexdigest()
+        path = a.ROOT / ".analysis/results/reverse-pending/review-sources" / (digest + ".json")
+        if path.exists():
+            if path.read_bytes() != raw:
+                raise ValueError("Matcher numeric hash-addressed review collides with retained bytes")
+        else:
+            a.save(path, review)
+            if path.read_bytes() != raw:
+                raise ValueError("Matcher numeric frozen serialization differs from the shared publisher")
+        publication.semantic_review, publication.semantic_review_sha256 = a.rel(path), digest
+    publication.semantic_previous_review = previous
+    return publish_frontend_semantic_review(publication)
+
+
 def merge_frontend_semantic_review(document, review, reference, *, expected_previous_review=None):
     """Add one reviewed semantic slice without replacing sibling audit state."""
     import copy
+    if review["kind"] == MATCHER_NUMERIC_KIND:
+        validate_mouse_matcher_numeric_scope(review)
+        references = [document["queries"][name].get("numeric_boundary_review") for name in ("dpi_matcher", "dynamic_sensitivity")]
+        current = references[0]
+        if (references[0] != references[1] or current != reference and
+                (current != expected_previous_review or review.get("previous_review_source") != current)):
+            raise ValueError("Matcher numeric review conflicts with a newer or removed retained review")
+        for name in ("dpi_matcher", "dynamic_sensitivity"):
+            document["queries"][name]["numeric_boundary_review"] = deepcopy(reference)
+        return {"products": list(MATCHER_NUMERIC_PRODUCTS) + [196], "complete_factory_references": 7,
+            "fields": ["queries/dpi_matcher/numeric_boundary_review", "queries/dynamic_sensitivity/numeric_boundary_review"],
+            "whole_page_complete": False}
     incoming = review["complete_owners"]
 
     def same_owner(left, right):
@@ -26749,8 +27316,17 @@ def merge_frontend_semantic_review(document, review, reference, *, expected_prev
                 or len(products) != len(section["products"]) or not scope <= products.keys()):
             raise ValueError("Gamepad selection review must cover the exact nine current products")
         current = section.get("branch_selection")
-        if current is not None and current.get("review_source") != reference:
+        current_reference = current.get("review_source") if current is not None else None
+        if (current is not None and current_reference is None
+                or current_reference != reference and (current_reference != expected_previous_review
+                    or review.get("previous_review_source") != current_reference)):
             raise ValueError("Gamepad selection review conflicts with a newer retained review")
+        for product in products.values():
+            branch = product.get("branch_selection")
+            source_reference = product.get("source_review", {}).get("review_source")
+            if (branch is not None and branch.get("review_source") != current_reference
+                    or source_reference is not None and source_reference != current_reference):
+                raise ValueError("Gamepad product selection conflicts with a newer retained review")
         for pid, row in reviewed.items():
             if (row["identity"]["productId"] != pid or not row["source_branch_selection_complete"]
                     or row["target_execution"] or not row["remaining_local_chains"]
@@ -26765,6 +27341,8 @@ def merge_frontend_semantic_review(document, review, reference, *, expected_prev
         selected.update({"review_source": reference, "source_branch_selection_complete": True,
             "target_execution": False, "whole_page_complete": False, "rust_implementation": "unverified",
             "ui_backend_wiring": "unverified", "official_dll_comparison": "not_executed", "runtime_acceptance": "unverified"})
+        if "previous_review_source" in review:
+            selected["previous_review_source"] = copy.deepcopy(review["previous_review_source"])
         for pid, row in reviewed.items():
             product = products[pid]
             product["branch_selection"] = copy.deepcopy(row)
@@ -26882,6 +27460,7 @@ def publish_frontend_semantic_review(args):
     if review.get("target_execution") is not False or review.get("whole_page_complete") is not False:
         raise ValueError("Static semantic publication cannot promote runtime completion")
     kinds = {"current_legacy_receiver_runtime_selection_review": ("mouse", "mouse-receiver-legacy", "mouse-main-audit.json"),
+             MATCHER_NUMERIC_KIND: ("mouse", "mouse-dpi-matcher", "mouse-mw-audit.json"),
              "current_keyboard_wireless_power_review": ("keyboard", "keyboard-wireless-power", "keyboard-mw-audit.json"),
              "current_legacy_receiver_mapping_descriptor_review": ("mouse", "mouse-receiver-mapping", "mouse-main-audit.json"),
              "current_legacy_receiver_resource_owner_review": ("mouse", "mouse-receiver-legacy", "mouse-main-audit.json"),
@@ -26894,8 +27473,15 @@ def publish_frontend_semantic_review(args):
     family, query, destination = kinds[review["kind"]]
     if args.family != family or args.query != query or getattr(args, "prepare", False):
         raise ValueError("Semantic review publication requires its matching family/query without resource preparation")
+    numeric_snapshot = None
+    if review["kind"] == MATCHER_NUMERIC_KIND:
+        if (args.function != "mw" or getattr(args, "receipt_only", False)
+                or args.product is not None and sorted(set(args.product)) != sorted((*MATCHER_NUMERIC_PRODUCTS, 196))):
+            raise ValueError("Matcher numeric publication requires the exact mouse mw product scope")
+        numeric_snapshot = verify_mouse_matcher_numeric_review(review)
     originals = {}
-    for key, owner in review["complete_owners"].items():
+    complete_owners = {} if numeric_snapshot is not None else review["complete_owners"]
+    for key, owner in complete_owners.items():
         original = owner["original"]
         if original["path"] not in originals:
             if not valid(original):
@@ -26914,17 +27500,34 @@ def publish_frontend_semantic_review(args):
             raise ValueError("Frontend semantic review source snapshot changed")
         if review["kind"] in {"current_gamepad_lighting_selection_review", "current_legacy_camera_selection_review", "current_legacy_camera_native_property_review", "current_legacy_receiver_mapping_descriptor_review", "current_keyboard_wireless_power_review"} and any(not valid(item) for item in review["verified_artifacts"]):
             raise ValueError("Frontend selection complete capture artifact changed")
-    elif any(not valid(item) for item in review["verified_artifacts"]):
+    elif numeric_snapshot is None and any(not valid(item) for item in review["verified_artifacts"]):
         raise ValueError("Receiver resource owner input/output bytes changed")
     reference = {"path": a.rel(path), "bytes": len(raw), "sha256": digest}
     target = a.ROOT / ".analysis/results/frontend" / destination
     with a.index_lock():
         before = target.read_bytes()
         document = json.loads(before)
+        previous_gamepad_review = None
+        previous_numeric_review = None
+        if numeric_snapshot is not None:
+            previous_numeric_review, _ = retained_mouse_matcher_numeric_review(document)
+        if review["kind"] == "current_gamepad_lighting_selection_review":
+            previous_gamepad_review, _ = retained_gamepad_lighting_review(document["gamepad_lighting"])
         result = merge_frontend_semantic_review(document, review, reference,
             expected_previous_review=getattr(args, "semantic_previous_review", None))
         if target.read_bytes() != before or path.read_bytes() != raw:
             raise ValueError("Canonical audit or frozen review changed during semantic publication")
+        if previous_gamepad_review is not None and not valid(previous_gamepad_review):
+            raise ValueError("Retained gamepad selection review bytes changed during publication")
+        if numeric_snapshot is not None:
+            if (previous_numeric_review is not None and not valid(previous_numeric_review)
+                    or any(not valid(item) for item in numeric_snapshot["artifacts"])):
+                raise ValueError("Matcher numeric source or retained review bytes changed during publication")
+            index = json.loads((a.ROOT / ".analysis/inputs.json").read_bytes())["inputs"]
+            for item in numeric_snapshot["indexed_originals"]:
+                matches = [row for row in index if row.get("path") == item["path"]]
+                if len(matches) != 1 or any(matches[0].get(key) != item[key] for key in ("bytes", "sha256")):
+                    raise ValueError("Matcher numeric indexed source identity changed during publication")
         a.save(target, document)
         published = json.loads(target.read_bytes())
         if published != document:
@@ -30082,6 +30685,8 @@ def add_commands(parsers):
                        help="Recheck all current manifest consumers of the shared 006A installer without execution")
     audit.add_argument("--semantic-review", help="Incrementally publish a hash-addressed reviewed frontend slice into its existing canonical audit")
     audit.add_argument("--semantic-review-sha256", help="Exact SHA-256 of the complete independently reviewed semantic slice")
+    audit.add_argument("--matcher-numeric-boundary", choices=["capture", "check"],
+                       help="Reuse exact Matcher/dynamic Tick factories and publish or check their bounded numeric review")
     audio_native = audit.add_mutually_exclusive_group()
     audio_native.add_argument("--native-client-branches", choices=["capture", "check", "negative"],
                               help="Update or independently verify only the audio-surround native client branch field")

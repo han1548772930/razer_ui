@@ -6,9 +6,21 @@ use std::{
     collections::VecDeque,
 };
 
+#[derive(Debug)]
+struct ReadOwnerRetired;
+
+impl std::fmt::Display for ReadOwnerRetired {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("haptic owner retired after native GET")
+    }
+}
+
+impl std::error::Error for ReadOwnerRetired {}
+
 enum Step {
     Send(Vec<u8>, bool),
     Get(Vec<u8>, usize),
+    UnprovenGet(Vec<u8>, usize),
     ReadError,
 }
 struct Transport {
@@ -55,6 +67,13 @@ impl FeatureTransport for Transport {
             Step::Get(reply, count) => {
                 report[..reply.len()].copy_from_slice(&reply);
                 Ok(count)
+            }
+            Step::UnprovenGet(reply, byte_count) => {
+                report[..reply.len()].copy_from_slice(&reply);
+                Err(crate::backend::native_io_failure(
+                    crate::backend::NativeIoOutcome::Returned { byte_count },
+                    anyhow::anyhow!("returned count has no retained native input bytes"),
+                ))
             }
             Step::ReadError => anyhow::bail!("Synthetic read failure/timeout"),
             Step::Send(..) => panic!("IN where OUT was expected"),
@@ -782,9 +801,221 @@ fn cancellation_after_actual_capacity_observation_prevents_the_first_custom_writ
             },
         )
         .unwrap_err();
-    assert_eq!(failure.phase, HapticFailurePhase::Write);
+    assert_eq!(failure.phase, HapticFailurePhase::Observe);
+    assert_eq!(failure.failed_step, None);
+    assert!(crate::backend::exchange_release_completed(&failure.error));
     assert!(failure.progress.steps.is_empty());
     assert_eq!(failure.progress.observations.len(), 1);
+    assert_eq!(
+        failure.progress.observations[0].value,
+        HapticValue::TableCapacity(HapticTableCapacity {
+            clockwise: 100,
+            counterclockwise: 100,
+            velocity_factor: 3,
+        })
+    );
+    assert!(!failure.progress.verified());
+    assert!(!failure.device_state_may_have_changed());
+    device.finish();
+}
+
+#[test]
+fn completed_haptic_reads_use_the_domain_parser_even_when_release_fails() {
+    let query = HapticRead::ActiveStage { profile: 1 };
+    for (payload, expected) in [
+        (vec![1, 3], Some(HapticValue::ActiveStage(3))),
+        (vec![5, 3], None),
+        (vec![1], None),
+        (vec![1, 7], None),
+    ] {
+        let device = Transport::new([
+            send([2, 21, 128], &[1], 1),
+            receive([2, 21, 128], &payload, 1, 2),
+        ]);
+        let transport = cap(231);
+        let leased = ExchangeProbe::failing_finish(&device);
+        let error = MouseHaptic::new(&leased, &transport)
+            .unwrap()
+            .read(query, transactions(), || Ok(()))
+            .unwrap_err();
+        assert!(crate::backend::exchange_finalization_failed(&error));
+        assert!(!crate::backend::exchange_release_completed(&error));
+        let completed = CompletedHapticRead::from_error(&error);
+        assert_eq!(completed.is_some(), expected.is_some());
+        if let Some(completed) = completed {
+            assert_eq!(completed.observation().query, query);
+            assert_eq!(Some(completed.observation().value.clone()), expected);
+        }
+        device.finish();
+    }
+}
+
+#[test]
+fn canceled_baseline_keeps_actual_stage_and_never_marks_a_skipped_write_verified() {
+    let device = Transport::new([
+        send([2, 21, 128], &[1], 1),
+        receive([2, 21, 128], &[1, 3], 1, 2),
+    ]);
+    let transport = cap(167);
+    let failure = MouseHaptic::new(&device, &transport)
+        .unwrap()
+        .apply(
+            HapticChange::ActiveStage(3),
+            &profiles(),
+            transactions(),
+            || {
+                if device.reads.get() != 0 {
+                    return Err(ReadOwnerRetired.into());
+                }
+                Ok(())
+            },
+        )
+        .unwrap_err();
+    assert_eq!(failure.phase, HapticFailurePhase::Observe);
+    assert_eq!(failure.failed_step, None);
+    assert!(failure.error.is::<ReadOwnerRetired>());
+    assert_eq!(failure.progress.observations.len(), 1);
+    assert_eq!(
+        failure.progress.observations[0].query,
+        HapticRead::ActiveStage { profile: 1 }
+    );
+    assert_eq!(
+        failure.progress.observations[0].value,
+        HapticValue::ActiveStage(3)
+    );
+    assert!(failure.progress.steps.is_empty());
+    assert!(!failure.progress.skipped_source_write);
+    assert!(!failure.progress.verified());
+    assert!(!failure.device_state_may_have_changed());
+    assert_eq!(device.sent.get(), 1);
+    assert_eq!(device.reads.get(), 1);
+    device.finish();
+}
+
+#[test]
+fn canceled_unwritten_profile_readback_keeps_both_observations_without_success() {
+    let device = Transport::new([
+        send([2, 21, 128], &[1], 1),
+        receive([2, 21, 128], &[1, 3], 1, 2),
+        send([2, 21, 128], &[5], 2),
+        receive([2, 21, 128], &[5, 3], 2, 2),
+    ]);
+    let transport = cap(167);
+    let failure = MouseHaptic::new(&device, &transport)
+        .unwrap()
+        .apply(
+            HapticChange::ActiveStage(3),
+            &profiles(),
+            transactions(),
+            || {
+                if device.reads.get() == 2 {
+                    return Err(ReadOwnerRetired.into());
+                }
+                Ok(())
+            },
+        )
+        .unwrap_err();
+    assert_eq!(failure.phase, HapticFailurePhase::Readback);
+    assert_eq!(failure.failed_step, None);
+    assert!(failure.error.is::<ReadOwnerRetired>());
+    assert_eq!(failure.progress.observations.len(), 2);
+    assert_eq!(
+        failure.progress.observations[0].query,
+        HapticRead::ActiveStage { profile: 1 }
+    );
+    assert_eq!(
+        failure.progress.observations[1].query,
+        HapticRead::ActiveStage { profile: 5 }
+    );
+    assert!(
+        failure
+            .progress
+            .observations
+            .iter()
+            .all(|observation| observation.value == HapticValue::ActiveStage(3))
+    );
+    assert!(failure.progress.steps.is_empty());
+    assert!(failure.progress.skipped_source_write);
+    assert!(!failure.progress.verified());
+    assert!(!failure.device_state_may_have_changed());
+    assert_eq!(device.sent.get(), 2);
+    assert_eq!(device.reads.get(), 2);
+    device.finish();
+}
+
+#[test]
+fn canceled_mutation_readback_keeps_the_actual_value_but_never_verifies() {
+    let device = Transport::new([
+        send([1, 21, 8], &[1], 1),
+        receive([1, 21, 8], &[1], 1, 2),
+        send([1, 21, 136], &[], 2),
+        receive([1, 21, 136], &[0], 2, 2),
+    ]);
+    let transport = cap(231);
+    let failure = MouseHaptic::new(&device, &transport)
+        .unwrap()
+        .apply(
+            HapticChange::BrowserMode(true),
+            &profiles(),
+            transactions(),
+            || {
+                if device.reads.get() == 2 {
+                    return Err(ReadOwnerRetired.into());
+                }
+                Ok(())
+            },
+        )
+        .unwrap_err();
+    assert_eq!(failure.phase, HapticFailurePhase::Readback);
+    assert_eq!(failure.failed_step, Some(0));
+    assert!(failure.error.is::<ReadOwnerRetired>());
+    assert!(failure.progress.steps[0].acknowledgment_received);
+    assert_eq!(
+        failure.progress.steps[0].acknowledged,
+        Some(HapticValue::BrowserMode(true))
+    );
+    assert_eq!(
+        failure.progress.steps[0].observed,
+        Some(HapticValue::BrowserMode(false))
+    );
+    assert!(!failure.progress.verified());
+    assert_eq!(device.sent.get(), 2);
+    assert_eq!(device.reads.get(), 2);
+    device.finish();
+}
+
+#[test]
+fn a_returned_get_count_without_retained_input_bytes_never_becomes_an_observation() {
+    let device = Transport::new([
+        send([2, 21, 128], &[1], 1),
+        Step::UnprovenGet(reply([2, 21, 128], &[1, 3], 1, 2), 91),
+    ]);
+    let transport = cap(231);
+    let failure = MouseHaptic::new(&device, &transport)
+        .unwrap()
+        .apply(
+            HapticChange::ActiveStage(3),
+            &profiles(),
+            transactions(),
+            || {
+                if device.reads.get() != 0 {
+                    return Err(ReadOwnerRetired.into());
+                }
+                Ok(())
+            },
+        )
+        .unwrap_err();
+    assert_eq!(failure.phase, HapticFailurePhase::Observe);
+    assert_eq!(failure.failed_step, None);
+    assert_eq!(
+        crate::backend::native_io_outcome(&failure.error),
+        Some(crate::backend::NativeIoOutcome::Returned { byte_count: 91 })
+    );
+    assert!(crate::backend::native_read_bytes(&failure.error).is_none());
+    assert!(CompletedHapticRead::from_error(&failure.error).is_none());
+    assert!(failure.progress.observations.is_empty());
+    assert!(failure.progress.steps.is_empty());
+    assert!(!failure.progress.verified());
     assert!(!failure.device_state_may_have_changed());
     device.finish();
 }
@@ -830,8 +1061,9 @@ fn cancellation_before_confirmation_keeps_the_completed_mutation_ack() {
             },
         )
         .unwrap_err();
-    assert_eq!(failure.phase, HapticFailurePhase::Readback);
+    assert_eq!(failure.phase, HapticFailurePhase::Write);
     assert_eq!(failure.failed_step, Some(0));
+    assert!(crate::backend::exchange_release_completed(&failure.error));
     assert!(failure.progress.steps[0].acknowledgment_received);
     assert_eq!(failure.progress.steps[0].observed, None);
     assert!(!failure.progress.verified());
@@ -1025,7 +1257,8 @@ fn cancellation_after_completed_ack_keeps_it_and_stops_the_next_profile() {
         )
         .unwrap_err();
     assert_eq!(f.phase, HapticFailurePhase::Write);
-    assert_eq!(f.failed_step, None);
+    assert_eq!(f.failed_step, Some(0));
+    assert!(crate::backend::exchange_release_completed(&f.error));
     assert_eq!(f.progress.steps.len(), 1);
     assert!(f.progress.steps[0].acknowledgment_received);
     assert!(f.device_state_may_have_changed());
@@ -1033,7 +1266,7 @@ fn cancellation_after_completed_ack_keeps_it_and_stops_the_next_profile() {
 }
 
 #[test]
-fn invalidated_session_after_io_does_not_accept_the_unvalidated_reply() {
+fn invalidated_session_after_io_retains_only_completed_ack_diagnostics() {
     for during_receive in [false, true] {
         let mut steps = vec![send([1, 21, 8], &[1], 1)];
         if during_receive {
@@ -1061,8 +1294,15 @@ fn invalidated_session_after_io_does_not_accept_the_unvalidated_reply() {
             )
             .unwrap_err();
         assert!(f.device_state_may_have_changed());
-        assert!(!f.progress.steps[0].acknowledgment_received);
+        assert_eq!(f.phase, HapticFailurePhase::Write);
+        assert_eq!(f.failed_step, Some(0));
+        assert_eq!(f.progress.steps[0].acknowledgment_received, during_receive);
+        assert_eq!(
+            f.progress.steps[0].acknowledged,
+            during_receive.then_some(HapticValue::BrowserMode(true))
+        );
         assert_eq!(f.progress.steps[0].observed, None);
+        assert!(!f.progress.verified());
         device.finish();
     }
 }

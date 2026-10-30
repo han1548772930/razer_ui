@@ -539,6 +539,9 @@ fn inventory(
                 match chunk {
                     Ok(chunk) => metadata.extend_from_slice(&chunk),
                     Err(error) => {
+                        if crate::backend::exchange_finalization_failed(&error) {
+                            return Err(error);
+                        }
                         guard()?;
                         read_error = Some(format!("{error:#}"));
                         metadata.clear();

@@ -870,8 +870,28 @@ fn cancelled_onboard_write_stops_instead_of_following_the_ordinary_aggregate_bra
         .unwrap_err();
     assert_eq!(failure.phase, BrightnessFailurePhase::Cancelled);
     assert_eq!(failure.progress.steps.len(), 2);
+    assert_eq!(failure.failed_step, Some(1));
     assert!(failure.device_state_may_have_changed());
-    assert!(!failure.progress.steps[1].acknowledgment_received);
+    let step = &failure.progress.steps[1];
+    assert!(step.write_attempted && step.acknowledgment_received);
+    assert_eq!(
+        step.acknowledged,
+        Some(BrightnessValue {
+            profile_id: 3,
+            region_id: 0,
+            raw_value: 84,
+            percent: 33,
+        })
+    );
+    assert!(!step.source_completed && step.observed.is_none());
+    assert!(
+        step.error
+            .as_deref()
+            .unwrap()
+            .contains("cancelled after onboard receive")
+    );
+    assert!(!failure.progress.source_completed && !failure.progress.verified());
+    assert_eq!((device.sent.get(), device.reads.get()), (4, 4));
     device.finish();
 }
 

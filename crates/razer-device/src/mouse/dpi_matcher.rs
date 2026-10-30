@@ -148,6 +148,11 @@ impl Calibration {
 }
 
 impl State {
+    /// STOP waiting is internal; the source state machine remains calibrating.
+    pub fn accepts_cancel(self) -> bool {
+        matches!(self, Self::Calibrating | Self::Stopping)
+    }
+
     pub fn phase(self) -> Phase {
         match self {
             Self::Ready | Self::RequestingLock => Phase::Ready,
@@ -228,7 +233,7 @@ impl InputBatch {
             };
             let time_tick = match row.time_tick.context("missing movement timeTick")? {
                 Tick::Number(number) => number,
-                Tick::Text(text) => text.parse::<f64>().context("invalid movement timeTick")?,
+                Tick::Text(text) => crate::ecmascript_number::from_string(&text),
             };
             movement.push(Movement { x, time_tick });
         }
@@ -310,6 +315,22 @@ impl Session {
     }
     pub fn reset(&mut self) {
         *self = Self::new(self.product);
+    }
+    /// The source CANCEL continuation sends its state-machine event before K
+    /// clears the movement record. Only calibrating accepts that event.
+    pub fn cancel_after_stop(&mut self) -> Option<Calibration> {
+        let previous = self.state;
+        let observation = if previous.accepts_cancel() {
+            self.state = State::Ready;
+            Some(self.response())
+        } else {
+            None
+        };
+        self.reset();
+        if observation.is_none() {
+            self.state = previous;
+        }
+        observation
     }
     pub fn fail(&mut self) {
         self.state = State::Error;

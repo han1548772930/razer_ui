@@ -1,4 +1,9 @@
 use super::*;
+use crate::backend::{
+    FeatureBatchOperation, FeatureBatchReceipt, NativeIoOutcome, execute_feature_batch,
+    native_io_outcome,
+};
+use crate::feature_exchange::tests::{ExchangeProbe, LeaseEvent};
 use std::cell::{Cell, RefCell};
 
 #[derive(Default)]
@@ -7,12 +12,29 @@ struct Transport {
     acknowledgements: RefCell<std::collections::VecDeque<Vec<u8>>>,
     fail_send: Cell<bool>,
     reads: Cell<usize>,
+    batches: RefCell<Vec<FeatureBatch>>,
+    returned_bytes: Cell<Option<usize>>,
 }
 impl FeatureTransport for Transport {
     fn send_feature(&self, report: &[u8]) -> anyhow::Result<()> {
         self.reports.borrow_mut().push(report.to_vec());
         ensure!(!self.fail_send.get(), "simulated uncertain Feature write");
         Ok(())
+    }
+    fn send_feature_at_collection_max_counted(&self, report: &[u8]) -> anyhow::Result<usize> {
+        self.send_feature(report)?;
+        Ok(match self.returned_bytes.get() {
+            Some(count) => count,
+            None => report.len(),
+        })
+    }
+    fn send_feature_batch(&self, batch: &FeatureBatch) -> anyhow::Result<FeatureBatchReceipt> {
+        self.batches.borrow_mut().push(batch.clone());
+        execute_feature_batch(
+            batch,
+            |report| self.send_feature_at_collection_max_counted(report),
+            |_| panic!("Dock frames contain one physical LED row"),
+        )
     }
     fn get_feature(&self, report: &mut [u8]) -> anyhow::Result<usize> {
         self.reads.set(self.reads.get() + 1);
@@ -78,9 +100,24 @@ fn receiver_lighting_native_frame_keeps_linker_registration_and_has_no_feature_g
     let transport = Transport::default();
     let capability = capability(164);
     let mut lighting = LightingHid::new(&capability).unwrap();
+    let probe = ExchangeProbe::new(&transport);
     lighting
-        .send_frame(&transport, &frame(), 19, &|| Ok(()))
+        .send_frame(&probe, &frame(), 19, &|| Ok(()))
         .unwrap();
+    assert_eq!(
+        probe.events(),
+        [
+            LeaseEvent::Begin(crate::backend::ExchangeTiming::Batch),
+            LeaseEvent::Batch,
+            LeaseEvent::Finish,
+        ]
+    );
+    let batches = transport.batches.borrow();
+    assert_eq!(batches.len(), 1);
+    assert!(matches!(
+        batches[0].operations(),
+        [FeatureBatchOperation::Report { .. }]
+    ));
     let reports = transport.reports.borrow();
     assert_eq!(reports.len(), 1);
     let report = &reports[0];
@@ -109,8 +146,89 @@ fn frame_release_failure_retains_actual_submission_without_fabricating_an_ack() 
         .downcast_ref::<crate::ReceiverFrameSubmissionFailure>()
         .unwrap();
     assert_eq!(progress.reports_submitted, 1);
+    let batch = FeatureBatchFailure::from_error(&error).unwrap();
+    assert_eq!(batch.progress.reports_submitted(), 1);
+    assert_eq!(batch.raw_return, Some(91));
+    assert_eq!(
+        native_io_outcome(&error),
+        Some(NativeIoOutcome::Returned { byte_count: 91 })
+    );
     assert!(crate::backend::exchange_finalization_failed(&error));
+    assert_eq!(
+        probe.events(),
+        [
+            LeaseEvent::Begin(crate::backend::ExchangeTiming::Batch),
+            LeaseEvent::Batch,
+            LeaseEvent::Finish,
+        ]
+    );
     assert_eq!(transport.reports.borrow().len(), 1);
+    assert_eq!(transport.reads.get(), 0);
+}
+
+#[test]
+fn receiver_frame_rejects_zero_short_and_overlong_normal_returns_without_inventing_progress() {
+    for byte_count in [0, 90, 92] {
+        let transport = Transport::default();
+        transport.returned_bytes.set(Some(byte_count));
+        let probe = ExchangeProbe::new(&transport);
+        let error = LightingHid::new(&capability(164))
+            .unwrap()
+            .send_frame(&probe, &frame(), 19, &|| Ok(()))
+            .unwrap_err();
+        let failure = error
+            .downcast_ref::<crate::ReceiverFrameSubmissionFailure>()
+            .unwrap();
+        assert_eq!(failure.reports_submitted, 0);
+        let batch = FeatureBatchFailure::from_error(&error).unwrap();
+        assert_eq!(batch.progress.reports_submitted(), 0);
+        assert_eq!(batch.progress.report_returns[0].returned_bytes, byte_count);
+        assert_eq!(batch.raw_return, Some(byte_count as i32));
+        assert_eq!(
+            native_io_outcome(&error),
+            Some(NativeIoOutcome::Returned { byte_count })
+        );
+        assert_eq!(transport.batches.borrow().len(), 1);
+        assert_eq!(transport.reports.borrow().len(), 1);
+        assert_eq!(transport.reads.get(), 0);
+        assert_eq!(probe.events().last(), Some(&LeaseEvent::Finish));
+    }
+}
+
+#[test]
+fn receiver_frame_cancellation_after_batch_return_retains_submission_and_forced_cleanup() {
+    let transport = Transport::default();
+    let probe = ExchangeProbe::new(&transport);
+    let error = LightingHid::new(&capability(164))
+        .unwrap()
+        .send_frame(&probe, &frame(), 19, &|| {
+            ensure!(
+                transport.reports.borrow().is_empty(),
+                "simulated canceled frame owner"
+            );
+            Ok(())
+        })
+        .unwrap_err();
+    let failure = error
+        .downcast_ref::<crate::ReceiverFrameSubmissionFailure>()
+        .unwrap();
+    assert_eq!(failure.reports_submitted, 1);
+    let batch = FeatureBatchFailure::from_error(&error).unwrap();
+    assert_eq!(batch.progress.reports_submitted(), 1);
+    assert_eq!(batch.raw_return, Some(91));
+    assert_eq!(
+        native_io_outcome(&error),
+        Some(NativeIoOutcome::Returned { byte_count: 91 })
+    );
+    assert!(crate::backend::exchange_finalization_failed(&error));
+    assert_eq!(
+        probe.events(),
+        [
+            LeaseEvent::Begin(crate::backend::ExchangeTiming::Batch),
+            LeaseEvent::Batch,
+            LeaseEvent::ForcedDrop,
+        ]
+    );
     assert_eq!(transport.reads.get(), 0);
 }
 

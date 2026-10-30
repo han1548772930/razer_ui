@@ -7,6 +7,25 @@ use std::{
     rc::Rc,
 };
 
+#[derive(Debug)]
+struct ScriptedTerminalFailure;
+
+impl std::fmt::Display for ScriptedTerminalFailure {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("scripted typed BlackShark native failure")
+    }
+}
+
+impl std::error::Error for ScriptedTerminalFailure {}
+
+fn terminal_failure(outcome: Option<NativeIoOutcome>) -> anyhow::Error {
+    let error = ScriptedTerminalFailure.into();
+    match outcome {
+        Some(outcome) => crate::backend::native_io_failure(outcome, error),
+        None => error,
+    }
+}
+
 #[test]
 fn help_factory_reset1398_mic_observer_keeps_the_actual_status_and_wire_header() {
     for (byte, expected) in [
@@ -223,7 +242,9 @@ fn roller_failed_getter_does_not_claim_default_was_observed() {
 #[derive(Default)]
 struct MockState {
     outputs: Vec<Vec<u8>>,
+    output_returns: VecDeque<Result<usize>>,
     replies: VecDeque<Result<Vec<u8>>>,
+    input_returns: VecDeque<Result<usize>>,
     waits: Vec<u64>,
     reads: usize,
     fail_write: bool,
@@ -250,6 +271,19 @@ impl FeatureTransport for MockHid {
         ensure!(!state.fail_write, "simulated output exception");
         Ok(())
     }
+    fn write_output_counted(&self, report: &[u8]) -> Result<usize> {
+        let scripted = self.state.borrow_mut().output_returns.pop_front();
+        if let Some(Err(error)) = &scripted {
+            if native_io_outcome(error) == Some(NativeIoOutcome::NotCalled) {
+                return scripted.expect("a scripted preflight error is present");
+            }
+        }
+        self.write_output(report)?;
+        match scripted {
+            Some(result) => result,
+            None => Ok(report.len()),
+        }
+    }
     fn read_interrupt(&self, report: &mut [u8], timeout_ms: u32) -> Result<usize> {
         assert_eq!(timeout_ms, BLACKSHARK_INPUT_TIMEOUT_MS);
         let mut state = self.state.borrow_mut();
@@ -262,7 +296,10 @@ impl FeatureTransport for MockHid {
         if count <= report.len() {
             report[..count].copy_from_slice(&bytes);
         }
-        Ok(count)
+        match state.input_returns.pop_front() {
+            Some(result) => result,
+            None => Ok(count),
+        }
     }
     fn report_lengths(&self) -> Result<ReportLengths> {
         Ok(self.lengths.clone())
@@ -704,6 +741,7 @@ fn cancellation_before_and_during_io_preserves_attempts_and_observed_ack() {
     assert_eq!(state.borrow().outputs.len(), 1);
     assert_eq!(state.borrow().reads, 0);
     assert!(result.attempts[0].output_completed);
+    assert_eq!(result.attempts[0].output_returned_bytes, Some(64));
     let (mut firmware, state) = session(1398, 1398, vec![reply(0x9e, 2, &[1])]);
     state.borrow_mut().cancel_after_read = true;
     let guard_state = state.clone();
@@ -719,6 +757,7 @@ fn cancellation_before_and_during_io_preserves_attempts_and_observed_ack() {
         waits(state.clone()),
     );
     assert!(!result.succeeded());
+    assert!(!result.completed);
     assert!(result.acknowledged());
     assert_eq!(result.attempts[0].inputs, [reply(0x9e, 2, &[1])]);
     assert!(
@@ -733,6 +772,445 @@ fn cancellation_before_and_during_io_preserves_attempts_and_observed_ack() {
         result.failure.unwrap().kind,
         BlackSharkFirmwareFailureKind::Validation
     );
+}
+
+#[test]
+fn counted_output_retries_normal_short_returns_before_reading_the_actual_reply() {
+    for (owner, connected, delay) in [
+        (1398, 1398, 5),
+        (1398, 1399, 30),
+        (1401, 1401, 5),
+        (1401, 1402, 30),
+        (2638, 2638, 5),
+        (2638, 2645, 30),
+        (2641, 2641, 5),
+        (2641, 2648, 30),
+        (4124, 4124, 5),
+        (4124, 4123, 30),
+        (4126, 4126, 30),
+    ] {
+        let acknowledged = reply(0x9e, 2, &[1]);
+        let (mut firmware, state) = session(owner, connected, vec![acknowledged.clone()]);
+        state
+            .borrow_mut()
+            .output_returns
+            .extend([Ok(0), Ok(63), Ok(64)]);
+        let result = firmware.set_preset_eq_enabled(true, |_| Ok(()), waits(state.clone()));
+        assert!(result.succeeded());
+        assert!(result.acknowledged());
+        assert_eq!(result.attempts.len(), 3);
+        let mut expected = vec![0; 64];
+        expected[..14].copy_from_slice(&[2, 0, 0x60, 0, 0, 0, 5, 0, 0, 0, 0x9e, 0, 1, 1]);
+        expected[62] = 0xf9;
+        for (attempt, count) in result.attempts.iter().zip([0, 63, 64]) {
+            assert_eq!(attempt.output, expected);
+            assert!(attempt.output_attempted);
+            assert_eq!(attempt.output_returned_bytes, Some(count));
+            assert_eq!(attempt.output_completed, count == 64);
+            if count == 64 {
+                assert_eq!(attempt.inputs, [acknowledged.clone()]);
+                assert!(attempt.reply.as_ref().unwrap().source_success());
+            } else {
+                assert!(attempt.inputs.is_empty());
+                assert!(attempt.reply.is_none());
+            }
+        }
+        let state = state.borrow();
+        assert_eq!(state.outputs, vec![expected; 3]);
+        assert_eq!(state.reads, 1);
+        assert_eq!(state.waits, [10, delay]);
+        assert!(state.output_returns.is_empty());
+        assert!(state.replies.is_empty());
+    }
+}
+
+#[test]
+fn counted_output_normal_oversized_count_retries_exactly_until_64_for_every_source_route() {
+    for (owner, connected, delay) in [
+        (1398, 1398, 5),
+        (1398, 1399, 30),
+        (1401, 1401, 5),
+        (1401, 1402, 30),
+        (2638, 2638, 5),
+        (2638, 2645, 30),
+        (2641, 2641, 5),
+        (2641, 2648, 30),
+        (4124, 4124, 5),
+        (4124, 4123, 30),
+        (4126, 4126, 30),
+    ] {
+        for complete_after_retry in [false, true] {
+            let acknowledged = reply(0x9e, 2, &[1]);
+            let packets = if complete_after_retry {
+                vec![acknowledged.clone()]
+            } else {
+                vec![]
+            };
+            let (mut firmware, state) = session(owner, connected, packets);
+            state
+                .borrow_mut()
+                .output_returns
+                .extend(if complete_after_retry {
+                    vec![Ok(65), Ok(64)]
+                } else {
+                    vec![Ok(65), Ok(65), Ok(65)]
+                });
+            let result = firmware.set_preset_eq_enabled(true, |_| Ok(()), waits(state.clone()));
+            assert_eq!(result.succeeded(), complete_after_retry);
+            assert_eq!(result.acknowledged(), complete_after_retry);
+            assert_eq!(
+                result.attempts.len(),
+                if complete_after_retry { 2 } else { 3 }
+            );
+            let mut expected = vec![0; 64];
+            expected[..14].copy_from_slice(&[2, 0, 0x60, 0, 0, 0, 5, 0, 0, 0, 0x9e, 0, 1, 1]);
+            expected[62] = 0xf9;
+            for (ordinal, attempt) in result.attempts.iter().enumerate() {
+                let complete = complete_after_retry && ordinal == 1;
+                assert_eq!(attempt.output, expected);
+                assert!(attempt.output_attempted);
+                assert_eq!(
+                    attempt.output_returned_bytes,
+                    Some(if complete { 64 } else { 65 })
+                );
+                assert_eq!(attempt.output_completed, complete);
+                if complete {
+                    assert_eq!(attempt.inputs, [acknowledged.clone()]);
+                } else {
+                    assert!(attempt.inputs.is_empty());
+                    assert!(attempt.reply.is_none());
+                }
+            }
+            if !complete_after_retry {
+                assert_eq!(
+                    result.failure.unwrap().kind,
+                    BlackSharkFirmwareFailureKind::Transport
+                );
+            }
+            let state = state.borrow();
+            assert_eq!(
+                state.outputs,
+                vec![expected; if complete_after_retry { 2 } else { 3 }]
+            );
+            assert_eq!(state.reads, usize::from(complete_after_retry));
+            assert_eq!(
+                state.waits,
+                if complete_after_retry {
+                    vec![10, delay]
+                } else {
+                    vec![10]
+                }
+            );
+            assert!(state.output_returns.is_empty());
+            assert!(state.replies.is_empty());
+        }
+    }
+}
+
+#[test]
+fn counted_output_exhausts_unequal_returns_without_reading_or_fabricating_acknowledgement() {
+    for count in [0, 1, 63, 65] {
+        let (mut firmware, state) = session(1398, 1398, vec![]);
+        state
+            .borrow_mut()
+            .output_returns
+            .extend((0..3).map(|_| Ok(count)));
+        let result = firmware.set_preset_eq_enabled(true, |_| Ok(()), waits(state.clone()));
+        assert!(!result.succeeded());
+        assert!(!result.acknowledged());
+        assert_eq!(result.attempts.len(), 3);
+        for attempt in &result.attempts {
+            assert!(attempt.output_attempted);
+            assert_eq!(attempt.output_returned_bytes, Some(count));
+            assert!(!attempt.output_completed);
+            assert!(attempt.inputs.is_empty());
+            assert!(attempt.reply.is_none());
+        }
+        assert_eq!(state.borrow().outputs.len(), 3);
+        assert_eq!(state.borrow().reads, 0);
+        assert_eq!(state.borrow().waits, [10]);
+        assert!(state.borrow().output_returns.is_empty());
+        assert_eq!(
+            result.failure.unwrap().kind,
+            BlackSharkFirmwareFailureKind::Transport
+        );
+    }
+}
+
+#[test]
+fn counted_output_cancellation_after_a_short_return_prevents_the_next_send() {
+    let (mut firmware, state) = session(1398, 1398, vec![]);
+    state.borrow_mut().output_returns.extend([Ok(63), Ok(64)]);
+    let result = firmware.set_preset_eq_enabled(
+        true,
+        |_| {
+            ensure!(
+                state.borrow().outputs.is_empty(),
+                "canceled after a short output"
+            );
+            Ok(())
+        },
+        waits(state.clone()),
+    );
+    assert!(!result.succeeded());
+    assert!(!result.acknowledged());
+    assert_eq!(result.attempts.len(), 1);
+    assert_eq!(result.attempts[0].output_returned_bytes, Some(63));
+    assert!(!result.attempts[0].output_completed);
+    assert!(result.attempts[0].inputs.is_empty());
+    assert_eq!(
+        result.failure.unwrap().kind,
+        BlackSharkFirmwareFailureKind::Validation
+    );
+    let state = state.borrow();
+    assert_eq!(state.outputs.len(), 1);
+    assert_eq!(state.reads, 0);
+    assert_eq!(state.waits, [10]);
+    assert_eq!(state.output_returns.len(), 1);
+}
+
+#[test]
+fn counted_output_preserves_failed_returns_without_reading_or_retrying() {
+    for (outcome, attempted) in [
+        (None, false),
+        (Some(NativeIoOutcome::NotCalled), false),
+        (Some(NativeIoOutcome::Rejected), true),
+        (Some(NativeIoOutcome::Returned { byte_count: 0 }), true),
+        (Some(NativeIoOutcome::Returned { byte_count: 63 }), true),
+        (Some(NativeIoOutcome::Returned { byte_count: 64 }), true),
+        (Some(NativeIoOutcome::Returned { byte_count: 65 }), true),
+    ] {
+        let (mut firmware, state) = session(1398, 1398, vec![]);
+        state
+            .borrow_mut()
+            .output_returns
+            .push_back(Err(terminal_failure(outcome)));
+        let result = firmware.set_preset_eq_enabled(true, |_| Ok(()), waits(state.clone()));
+        let expected_count = match outcome {
+            Some(NativeIoOutcome::Returned { byte_count }) => Some(byte_count),
+            _ => None,
+        };
+        assert!(!result.succeeded());
+        assert!(!result.acknowledged());
+        assert_eq!(result.attempts.len(), 1);
+        assert_eq!(result.attempts[0].output_attempted, attempted);
+        assert_eq!(result.attempts[0].output_returned_bytes, expected_count);
+        assert_eq!(
+            result.attempts[0].output_completed,
+            expected_count == Some(64)
+        );
+        assert_eq!(state.borrow().reads, 0);
+        assert_eq!(
+            state.borrow().outputs.len(),
+            if outcome == Some(NativeIoOutcome::NotCalled) {
+                0
+            } else {
+                1
+            }
+        );
+        let failure = result.failure.unwrap();
+        assert_eq!(failure.kind, BlackSharkFirmwareFailureKind::Transport);
+        assert!(
+            failure
+                .message
+                .contains("scripted typed BlackShark native failure")
+        );
+    }
+}
+
+#[test]
+fn native_failure_and_release_failure_are_both_retained_without_more_io() {
+    struct FailingRelease {
+        inner: MockHid,
+        releases: Rc<Cell<usize>>,
+    }
+    struct Lease<'a>(&'a FailingRelease);
+    impl crate::backend::ExchangeLease for Lease<'_> {
+        fn transport(&self) -> &dyn FeatureTransport {
+            &self.0.inner
+        }
+        fn retry_release(&self) -> Result<()> {
+            panic!("a terminal native failure must not retry release")
+        }
+        fn finish(self: Box<Self>) -> Result<()> {
+            self.0.releases.set(self.0.releases.get() + 1);
+            Err(anyhow::anyhow!("scripted independent release failure"))
+        }
+    }
+    impl FeatureTransport for FailingRelease {
+        fn begin_exchange(
+            &self,
+            _: crate::backend::ExchangeOptions,
+        ) -> Result<Box<dyn crate::backend::ExchangeLease + '_>> {
+            Ok(Box::new(Lease(self)))
+        }
+        fn send_feature(&self, _: &[u8]) -> Result<()> {
+            panic!("BlackShark must use its retained Output lease")
+        }
+        fn get_feature(&self, _: &mut [u8]) -> Result<usize> {
+            panic!("BlackShark must use its retained interrupt lease")
+        }
+        fn report_lengths(&self) -> Result<ReportLengths> {
+            self.inner.report_lengths()
+        }
+        fn metadata(&self) -> Value {
+            self.inner.metadata()
+        }
+    }
+
+    for during_input in [false, true] {
+        let state = Rc::new(RefCell::new(MockState::default()));
+        if during_input {
+            state
+                .borrow_mut()
+                .replies
+                .push_back(Err(terminal_failure(None)));
+        } else {
+            state
+                .borrow_mut()
+                .output_returns
+                .push_back(Err(terminal_failure(None)));
+        }
+        let releases = Rc::new(Cell::new(0));
+        let mut firmware = BlackSharkFirmwareSession::new(
+            identity(1398, 1398),
+            Box::new(FailingRelease {
+                inner: MockHid {
+                    state: state.clone(),
+                    lengths: report_lengths(),
+                },
+                releases: releases.clone(),
+            }),
+        )
+        .unwrap();
+        let result = firmware.set_preset_eq_enabled(true, |_| Ok(()), waits(state.clone()));
+        assert!(!result.succeeded());
+        assert!(!result.acknowledged());
+        let failure = result.failure.unwrap();
+        assert_eq!(failure.kind, BlackSharkFirmwareFailureKind::Transport);
+        assert!(
+            failure
+                .message
+                .contains("scripted typed BlackShark native failure")
+        );
+        assert!(failure.message.contains("HID exchange release also failed"));
+        assert!(
+            failure
+                .message
+                .contains("scripted independent release failure")
+        );
+        assert_eq!(state.borrow().outputs.len(), 1);
+        assert_eq!(state.borrow().reads, usize::from(during_input));
+        assert_eq!(releases.get(), 1);
+    }
+}
+
+#[test]
+fn interrupt_diagnostics_require_trusted_bytes_and_a_complete_protocol_reply() {
+    for outcome in [
+        None,
+        Some(NativeIoOutcome::NotCalled),
+        Some(NativeIoOutcome::Rejected),
+        Some(NativeIoOutcome::Returned { byte_count: 0 }),
+        Some(NativeIoOutcome::Returned { byte_count: 63 }),
+        Some(NativeIoOutcome::Returned { byte_count: 64 }),
+        Some(NativeIoOutcome::Returned { byte_count: 65 }),
+    ] {
+        for cancel_after_read in [false, true] {
+            let (mut firmware, state) = session(1398, 1398, vec![reply(0x9e, 2, &[1])]);
+            state
+                .borrow_mut()
+                .input_returns
+                .push_back(Err(terminal_failure(outcome)));
+            let validation_state = state.clone();
+            let result = firmware.set_preset_eq_enabled(
+                true,
+                |_| {
+                    ensure!(
+                        !cancel_after_read || validation_state.borrow().reads == 0,
+                        "owner changed while reading an untrusted terminal failure"
+                    );
+                    Ok(())
+                },
+                waits(state.clone()),
+            );
+            assert!(!result.succeeded());
+            assert!(!result.completed);
+            assert!(!result.acknowledged());
+            assert!(result.attempts[0].inputs.is_empty());
+            assert!(result.attempts[0].reply.is_none());
+            assert_eq!(state.borrow().outputs.len(), 1);
+            assert_eq!(state.borrow().reads, 1);
+            let failure = result.failure.unwrap();
+            assert_eq!(
+                failure.kind,
+                if cancel_after_read {
+                    BlackSharkFirmwareFailureKind::Validation
+                } else {
+                    BlackSharkFirmwareFailureKind::Transport
+                }
+            );
+            assert!(
+                failure
+                    .message
+                    .contains("scripted typed BlackShark native failure")
+            );
+        }
+    }
+
+    for count in [0, 1, 63, 64, 65] {
+        let mut packet = reply(0x9e, 2, &[1]);
+        packet.truncate(count);
+        let (mut firmware, state) = session(1398, 1398, vec![packet.clone()]);
+        if count == 65 {
+            state.borrow_mut().input_returns.push_back(Ok(65));
+        }
+        let validation_state = state.clone();
+        let result = firmware.set_preset_eq_enabled(
+            true,
+            |_| {
+                ensure!(
+                    validation_state.borrow().reads == 0,
+                    "owner changed during read"
+                );
+                Ok(())
+            },
+            waits(state.clone()),
+        );
+        assert!(!result.succeeded());
+        assert!(!result.completed);
+        assert_eq!(result.acknowledged(), count == 64);
+        assert_eq!(
+            result.attempts[0].inputs,
+            if count <= 64 { vec![packet] } else { vec![] }
+        );
+        assert_eq!(result.attempts[0].output_returned_bytes, Some(64));
+        assert_eq!(state.borrow().outputs.len(), 1);
+        assert_eq!(state.borrow().reads, 1);
+        assert_eq!(
+            result.failure.unwrap().kind,
+            BlackSharkFirmwareFailureKind::Validation
+        );
+    }
+
+    let (mut firmware, state) = session(1398, 1398, vec![reply(0x95, 2, &[1])]);
+    let validation_state = state.clone();
+    let result = firmware.set_preset_eq_enabled(
+        true,
+        |_| {
+            ensure!(
+                validation_state.borrow().reads == 0,
+                "owner changed during read"
+            );
+            Ok(())
+        },
+        waits(state.clone()),
+    );
+    assert!(!result.acknowledged());
+    assert_eq!(result.attempts[0].inputs, [reply(0x95, 2, &[1])]);
+    assert_eq!(result.attempts[0].rejected_inputs.len(), 1);
+    assert_eq!(state.borrow().outputs.len(), 1);
+    assert_eq!(state.borrow().reads, 1);
 }
 
 #[test]

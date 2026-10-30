@@ -577,6 +577,26 @@ fn mouse_dynamic_monitor_publishes_each_products_native_string_tick_result() {
                 r#"[{"timeTick":"10000","data":"{\"type\":\"mouseMove\",\"x\":3,\"y\":4}"},{"timeTick":"10000","data":"{\"type\":\"mouseMove\",\"x\":6,\"y\":8}"}]"#,
                 0.,
             ),
+            (
+                r#"[{"timeTick":"0x10","data":"{\"type\":\"mouseMove\",\"x\":99,\"y\":99}"},{"timeTick":32,"data":"{\"type\":\"mouseMove\",\"x\":3,\"y\":4}"}]"#,
+                3125.,
+            ),
+            (
+                r#"[{"timeTick":" ","data":"{\"type\":\"mouseMove\",\"x\":99,\"y\":99}"},{"timeTick":10000,"data":"{\"type\":\"mouseMove\",\"x\":3,\"y\":4}"}]"#,
+                5.,
+            ),
+            (
+                r#"[{"timeTick":-10000,"data":"{\"type\":\"mouseMove\",\"x\":99,\"y\":99}"},{"timeTick":0,"data":"{\"type\":\"mouseMove\",\"x\":3,\"y\":4}"}]"#,
+                5.,
+            ),
+            (
+                r#"[{"timeTick":10000,"data":"{\"type\":\"mouseMove\",\"x\":99,\"y\":99}"},{"timeTick":"invalid","data":"{\"type\":\"mouseMove\",\"x\":3,\"y\":4}"}]"#,
+                0.,
+            ),
+            (
+                r#"[{"timeTick":"-Infinity","data":"{\"type\":\"mouseMove\",\"x\":99,\"y\":99}"},{"timeTick":20000,"data":"{\"type\":\"mouseMove\",\"x\":3,\"y\":4}"}]"#,
+                0.,
+            ),
         ] {
             let mut backend = Backend::new();
             let event = InputEvent::from_native(
@@ -669,8 +689,7 @@ fn mouse_dynamic_monitor_rejects_invalid_callback_and_unsupported_product_with_c
             InputEvent::from_native(
                 r#"{"containerId":"current","productId":226,"vendorId":5426}"#,
                 1,
-                r#"[{"timeTick":"invalid","data":"{\"type\":\"mouseMove\",\"x\":3,\"y\":4}"}]"#
-                    .into(),
+                r#"[{"timeTick":true,"data":"{\"type\":\"mouseMove\",\"x\":3,\"y\":4}"}]"#.into(),
             )
             .unwrap(),
         ]));
@@ -686,7 +705,7 @@ fn mouse_dynamic_monitor_rejects_invalid_callback_and_unsupported_product_with_c
                 }
             },
             || clock(Duration::ZERO),
-            || {},
+            || panic!("An invalid callback must fail before the next capture wait"),
         );
         assert!(result.result.is_err());
         assert!(result.cleanup_failure.is_none());

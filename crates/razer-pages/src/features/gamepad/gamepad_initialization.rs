@@ -156,7 +156,12 @@ pub fn import_controller_profile(
             }
             ProfileValue::Lighting { effect } => {
                 let mut settings: lighting_state::ControllerLightingSettings =
-                    serde_json::from_value(result["profile"]["controllerLightingEffects"].clone())?;
+                    match result["profile"].get("controllerLightingEffects") {
+                        Some(saved) => serde_json::from_value(saved.clone())?,
+                        // 31759 rebuilds the slot from 69427's default before
+                        // 11365 applies this getter's actual observation.
+                        None => lighting_state::ControllerLightingSettings::default(),
+                    };
                 settings.observe(effect)?;
                 result["profile"]["controllerLightingEffects"] = serde_json::to_value(settings)?;
             }
@@ -336,6 +341,168 @@ mod tests {
         controller_triggers::{AnalogTrigger, DigitalTrigger, ThumbstickValue},
     };
     use std::prelude::v1::test;
+    #[test]
+    fn controller_initialization_imports_real_lighting_without_a_local_feature_record() {
+        use razer_device::controller_lighting::ObservedEffect;
+
+        let spec = source_product(2636).unwrap();
+        assert!(spec.profile.get("controllerLightingEffects").is_none());
+        for effect in [
+            ObservedEffect {
+                profile_slot: 3,
+                region_id: 0,
+                effect_id: 0,
+                flags: 0,
+                rate: 0,
+                color_count: 0,
+                color_bytes: Vec::new(),
+            },
+            ObservedEffect {
+                profile_slot: 3,
+                region_id: 0,
+                effect_id: 13,
+                flags: 9,
+                rate: 1,
+                color_count: 2,
+                color_bytes: vec![0x12, 0x34, 0x56, 0xab, 0xcd, 0xef],
+            },
+        ] {
+            let observed = ProfileObservation {
+                slot: 3,
+                fields: vec![
+                    ProfileRead {
+                        field: ProfileField::Brightness,
+                        result: Read::Observed {
+                            value: ProfileValue::Brightness { raw: 127 },
+                        },
+                    },
+                    ProfileRead {
+                        field: ProfileField::ControllerLightingEffects,
+                        result: Read::Observed {
+                            value: ProfileValue::Lighting {
+                                effect: effect.clone(),
+                            },
+                        },
+                    },
+                ],
+            };
+            let imported = import_controller_profile(2636, None, &observed, None)
+                .unwrap()
+                .settings;
+            assert_eq!(imported["profile"]["brightness"]["value"], 50);
+            assert_eq!(imported["profile"]["brightness"]["isEnabled"], true);
+            let settings: lighting_state::ControllerLightingSettings =
+                serde_json::from_value(imported["profile"]["controllerLightingEffects"].clone())
+                    .unwrap();
+            assert_eq!(
+                settings.protocol_effect().unwrap(),
+                if effect.effect_id == 0 {
+                    razer_device::controller_lighting::ControllerEffect::Off
+                } else {
+                    razer_device::controller_lighting::ControllerEffect::Static {
+                        index: 9,
+                        custom_colors: vec![[0x12, 0x34, 0x56], [0xab, 0xcd, 0xef]],
+                    }
+                }
+            );
+            assert_eq!(imported["profile"]["obmSlotId"], json!([3]));
+            assert!(imported.get("device_write_acknowledged").is_none());
+        }
+    }
+
+    #[test]
+    fn controller_initialization_failed_or_missing_lighting_does_not_create_a_feature_record() {
+        for result in [
+            Read::Unobserved,
+            Read::Failed {
+                error: "actual lighting getter failed".into(),
+            },
+        ] {
+            let observed = ProfileObservation {
+                slot: 3,
+                fields: vec![ProfileRead {
+                    field: ProfileField::ControllerLightingEffects,
+                    result,
+                }],
+            };
+            let imported = import_controller_profile(2636, None, &observed, None)
+                .unwrap()
+                .settings;
+            assert!(
+                imported["profile"]
+                    .get("controllerLightingEffects")
+                    .is_none()
+            );
+            assert!(!matches!(observed.fields[0].result, Read::Observed { .. }));
+        }
+    }
+
+    #[test]
+    fn controller_initialization_lighting_observation_replaces_cached_effect_and_retains_local_fields()
+     {
+        use razer_device::controller_lighting::ObservedEffect;
+
+        let spec = source_product(2636).unwrap();
+        let mut previous = json!({"profile":spec.profile,"controller":spec.controller});
+        previous["profile"]["controllerLightingEffects"] =
+            serde_json::to_value(lighting_state::ControllerLightingSettings::default()).unwrap();
+        previous["profile"]["brightness"]["value"] = json!(73);
+        previous["profile"]["switchOffLighting"] =
+            json!({"isIdle":true,"idleTime":11,"whenDisplayOff":false});
+        let observed = ProfileObservation {
+            slot: 3,
+            fields: vec![
+                ProfileRead {
+                    field: ProfileField::Brightness,
+                    result: Read::Observed {
+                        value: ProfileValue::Brightness { raw: 0 },
+                    },
+                },
+                ProfileRead {
+                    field: ProfileField::ControllerLightingEffects,
+                    result: Read::Observed {
+                        value: ProfileValue::Lighting {
+                            effect: ObservedEffect {
+                                profile_slot: 3,
+                                region_id: 0,
+                                effect_id: 0,
+                                flags: 0,
+                                rate: 0,
+                                color_count: 0,
+                                color_bytes: Vec::new(),
+                            },
+                        },
+                    },
+                },
+            ],
+        };
+        let imported = import_controller_profile(2636, Some(&previous), &observed, None)
+            .unwrap()
+            .settings;
+        assert_eq!(
+            imported["profile"]["controllerLightingEffects"]["effectId"],
+            0
+        );
+        assert_eq!(imported["profile"]["brightness"]["isEnabled"], false);
+        assert_eq!(imported["profile"]["brightness"]["value"], 73);
+        assert_eq!(
+            imported["profile"]["switchOffLighting"],
+            previous["profile"]["switchOffLighting"]
+        );
+
+        let mut unknown = observed.clone();
+        let Read::Observed {
+            value: ProfileValue::Lighting { effect },
+        } = &mut unknown.fields[1].result
+        else {
+            panic!("expected the scripted lighting observation")
+        };
+        effect.effect_id = 0xff;
+        assert!(import_controller_profile(2636, Some(&previous), &unknown, None).is_err());
+        previous["profile"]["controllerLightingEffects"] = serde_json::Value::Null;
+        assert!(import_controller_profile(2636, Some(&previous), &observed, None).is_err());
+    }
+
     #[test]
     fn controller_initialization_socd_source_and_ui_projection_survive_profile_restoration() {
         use razer_device::controller_initialization::SocdMode;

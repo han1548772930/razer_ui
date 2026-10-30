@@ -1,17 +1,46 @@
 use super::*;
+use crate::backend::{
+    FeatureBatchOperation, FeatureBatchReceipt, NativeIoOutcome, execute_feature_batch,
+    native_io_failure, native_io_outcome,
+};
+use crate::feature_exchange::tests::{ExchangeProbe, LeaseEvent};
+use std::cell::Cell;
 use std::collections::VecDeque;
 use std::sync::Mutex;
 struct Fake {
     sent: Mutex<Vec<Vec<u8>>>,
     payload: Vec<u8>,
     statuses: Mutex<VecDeque<u8>>,
+    native_results: Mutex<VecDeque<anyhow::Result<usize>>>,
+    batches: Mutex<Vec<FeatureBatch>>,
+    waits: Mutex<Vec<u8>>,
+    reads: Cell<usize>,
 }
 impl FeatureTransport for Fake {
     fn send_feature(&self, bytes: &[u8]) -> anyhow::Result<()> {
         self.sent.lock().unwrap().push(bytes.to_vec());
         Ok(())
     }
+    fn send_feature_at_collection_max_counted(&self, bytes: &[u8]) -> anyhow::Result<usize> {
+        self.send_feature(bytes)?;
+        match self.native_results.lock().unwrap().pop_front() {
+            Some(result) => result,
+            None => Ok(bytes.len()),
+        }
+    }
+    fn send_feature_batch(&self, batch: &FeatureBatch) -> anyhow::Result<FeatureBatchReceipt> {
+        self.batches.lock().unwrap().push(batch.clone());
+        execute_feature_batch(
+            batch,
+            |bytes| self.send_feature_at_collection_max_counted(bytes),
+            |milliseconds| {
+                self.waits.lock().unwrap().push(milliseconds);
+                Ok(())
+            },
+        )
+    }
     fn get_feature(&self, bytes: &mut [u8]) -> anyhow::Result<usize> {
+        self.reads.set(self.reads.get() + 1);
         let sent = self.sent.lock().unwrap().last().unwrap().clone();
         bytes.fill(0);
         bytes[1] = self.statuses.lock().unwrap().pop_front().unwrap_or(2);
@@ -30,6 +59,10 @@ fn fake(payload: &[u8]) -> Fake {
         sent: Mutex::new(Vec::new()),
         payload: payload.to_vec(),
         statuses: Mutex::new(VecDeque::new()),
+        native_results: Mutex::new(VecDeque::new()),
+        batches: Mutex::new(Vec::new()),
+        waits: Mutex::new(Vec::new()),
+        reads: Cell::new(0),
     }
 }
 
@@ -132,10 +165,214 @@ fn peer_frame_release_failure_keeps_a_submission_count_without_a_feature_reply()
         .downcast_ref::<crate::ReceiverFrameSubmissionFailure>()
         .unwrap();
     assert_eq!(progress.reports_submitted, 1);
+    let batch = FeatureBatchFailure::from_error(&error).unwrap();
+    assert_eq!(batch.progress.reports_submitted(), 1);
+    assert_eq!(batch.raw_return, Some(91));
+    assert_eq!(
+        native_io_outcome(&error),
+        Some(NativeIoOutcome::Returned { byte_count: 91 })
+    );
     assert!(crate::backend::exchange_finalization_failed(&error));
+    assert_eq!(probe.events().last(), Some(&LeaseEvent::Finish));
     assert_eq!(io.sent.lock().unwrap().len(), 1);
     assert!(io.statuses.lock().unwrap().is_empty());
+    assert_eq!(io.reads.get(), 0);
 }
+
+fn three_row_frame() -> EngineFrame {
+    EngineFrame {
+        device_handle: 7,
+        region_id: 0,
+        num_row: 3,
+        num_col: 2,
+        frame: (0..18).collect(),
+    }
+}
+
+#[test]
+fn peer_factories_flush_one_batch_with_source_delays_only_between_rows() {
+    for (product, report_id, transaction_prefix) in
+        [(214, 0, 0), (215, 0, 0), (227, 3, 0), (221, 3, 224)]
+    {
+        let mut peer = PeerHid::new(immediate_support(product, 0)).unwrap();
+        let io = fake(&[]);
+        let probe = ExchangeProbe::new(&io);
+        let frame = three_row_frame();
+        assert_eq!(
+            peer.send_frame(&probe, &frame, 7, 3, 2, &|| Ok(()))
+                .unwrap(),
+            3
+        );
+        assert_eq!(
+            probe.events(),
+            [
+                LeaseEvent::Begin(crate::backend::ExchangeTiming::Batch),
+                LeaseEvent::Batch,
+                LeaseEvent::Finish,
+            ]
+        );
+        let batches = io.batches.lock().unwrap();
+        assert_eq!(batches.len(), 1);
+        assert!(matches!(
+            batches[0].operations(),
+            [
+                FeatureBatchOperation::Report { .. },
+                FeatureBatchOperation::Sleep { milliseconds: 1 },
+                FeatureBatchOperation::Report { .. },
+                FeatureBatchOperation::Sleep { milliseconds: 1 },
+                FeatureBatchOperation::Report { .. },
+            ]
+        ));
+        assert_eq!(*io.waits.lock().unwrap(), [1, 1]);
+        let reports = io.sent.lock().unwrap();
+        assert_eq!(reports.len(), 3);
+        for (row, report) in reports.iter().enumerate() {
+            assert_eq!(report.len(), 91);
+            assert_eq!(report[0], report_id);
+            assert_eq!(report[2], transaction_prefix + row as u8);
+            assert_eq!(&report[6..14], &[11, 15, 3, 0, 0, row as u8, 0, 1]);
+            assert_eq!(&report[14..20], &frame.frame[row * 6..(row + 1) * 6]);
+            assert_eq!(report[89], report[3..89].iter().fold(0, |sum, b| sum ^ b));
+        }
+        assert_eq!(io.reads.get(), 0);
+    }
+}
+
+#[test]
+fn peer_batch_failure_keeps_partial_native_progress_and_releases_without_sending_later_rows() {
+    for returned_before_failure in [false, true] {
+        let mut peer = PeerHid::new(immediate_support(221, 0)).unwrap();
+        let io = fake(&[]);
+        let outcome = if returned_before_failure {
+            NativeIoOutcome::Returned { byte_count: 91 }
+        } else {
+            NativeIoOutcome::Rejected
+        };
+        io.native_results.lock().unwrap().extend([
+            Ok(91),
+            Err(native_io_failure(
+                outcome,
+                anyhow::anyhow!("simulated second row failure"),
+            )),
+        ]);
+        let probe = ExchangeProbe::new(&io);
+        let error = peer
+            .send_frame(&probe, &three_row_frame(), 7, 3, 2, &|| Ok(()))
+            .unwrap_err();
+        let expected = if returned_before_failure { 2 } else { 1 };
+        assert_eq!(
+            error
+                .downcast_ref::<crate::ReceiverFrameSubmissionFailure>()
+                .unwrap()
+                .reports_submitted,
+            expected
+        );
+        let batch = FeatureBatchFailure::from_error(&error).unwrap();
+        assert_eq!(batch.progress.reports_submitted(), expected as usize);
+        assert_eq!(batch.progress.completed_operations, 2);
+        assert_eq!(batch.raw_return, None);
+        assert_eq!(native_io_outcome(&error), Some(NativeIoOutcome::Rejected));
+        assert_eq!(io.batches.lock().unwrap().len(), 1);
+        assert_eq!(io.sent.lock().unwrap().len(), 2);
+        assert_eq!(*io.waits.lock().unwrap(), [1]);
+        assert_eq!(io.reads.get(), 0);
+        assert_eq!(probe.events().last(), Some(&LeaseEvent::Finish));
+        let frame = EngineFrame {
+            num_row: 1,
+            frame: vec![0; 6],
+            ..three_row_frame()
+        };
+        assert_eq!(
+            peer.send_frame(&probe, &frame, 7, 1, 2, &|| Ok(()))
+                .unwrap(),
+            1
+        );
+        assert_eq!(io.sent.lock().unwrap().last().unwrap()[2], 227);
+    }
+}
+
+#[test]
+fn peer_batch_normal_zero_stops_before_later_rows_and_keeps_the_prior_submission() {
+    let mut peer = PeerHid::new(immediate_support(221, 0)).unwrap();
+    let io = fake(&[]);
+    io.native_results.lock().unwrap().extend([Ok(91), Ok(0)]);
+    let probe = ExchangeProbe::new(&io);
+    let error = peer
+        .send_frame(&probe, &three_row_frame(), 7, 3, 2, &|| Ok(()))
+        .unwrap_err();
+    assert_eq!(
+        error
+            .downcast_ref::<crate::ReceiverFrameSubmissionFailure>()
+            .unwrap()
+            .reports_submitted,
+        1
+    );
+    let batch = FeatureBatchFailure::from_error(&error).unwrap();
+    assert_eq!(batch.progress.reports_submitted(), 1);
+    assert_eq!(batch.progress.report_returns[1].returned_bytes, 0);
+    assert_eq!(batch.raw_return, Some(0));
+    assert_eq!(
+        native_io_outcome(&error),
+        Some(NativeIoOutcome::Returned { byte_count: 0 })
+    );
+    assert_eq!(io.batches.lock().unwrap().len(), 1);
+    assert_eq!(io.sent.lock().unwrap().len(), 2);
+    assert_eq!(*io.waits.lock().unwrap(), [1]);
+    assert_eq!(io.reads.get(), 0);
+    assert_eq!(probe.events().last(), Some(&LeaseEvent::Finish));
+}
+
+#[test]
+fn peer_frame_cancellation_does_not_interrupt_the_admitted_native_batch_or_publish_success() {
+    let mut peer = PeerHid::new(immediate_support(221, 0)).unwrap();
+    let io = fake(&[]);
+    let probe = ExchangeProbe::new(&io);
+    assert!(
+        peer.send_frame(&probe, &three_row_frame(), 7, 3, 2, &|| {
+            anyhow::bail!("simulated canceled admission")
+        })
+        .is_err()
+    );
+    assert!(probe.events().is_empty());
+    assert!(io.batches.lock().unwrap().is_empty());
+    let error = peer
+        .send_frame(&probe, &three_row_frame(), 7, 3, 2, &|| {
+            ensure!(
+                io.sent.lock().unwrap().is_empty(),
+                "simulated canceled owner"
+            );
+            Ok(())
+        })
+        .unwrap_err();
+    assert_eq!(
+        error
+            .downcast_ref::<crate::ReceiverFrameSubmissionFailure>()
+            .unwrap()
+            .reports_submitted,
+        3
+    );
+    let batch = FeatureBatchFailure::from_error(&error).unwrap();
+    assert_eq!(batch.progress.reports_submitted(), 3);
+    assert_eq!(batch.raw_return, Some(273));
+    assert_eq!(
+        native_io_outcome(&error),
+        Some(NativeIoOutcome::Returned { byte_count: 273 })
+    );
+    assert_eq!(io.batches.lock().unwrap().len(), 1);
+    assert_eq!(io.sent.lock().unwrap().len(), 3);
+    assert_eq!(*io.waits.lock().unwrap(), [1, 1]);
+    assert_eq!(io.reads.get(), 0);
+    assert!(crate::backend::exchange_finalization_failed(&error));
+    assert_eq!(
+        probe.events(),
+        [
+            LeaseEvent::Begin(crate::backend::ExchangeTiming::Batch),
+            LeaseEvent::Batch,
+            LeaseEvent::ForcedDrop,
+        ]
+    );
+}
+
 #[test]
 fn edition_battery_and_dock_getters_require_real_payloads_and_source_prefixes() {
     let support = super::super::peer_support(227, 0).unwrap();

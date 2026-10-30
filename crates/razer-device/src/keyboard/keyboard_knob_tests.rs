@@ -746,7 +746,8 @@ fn cancellation_before_write_and_between_writes_preserves_real_progress() {
         },
     )
     .unwrap_err();
-    assert_eq!(error.phase, KnobFailurePhase::CurrentModeWrite);
+    assert_eq!(error.phase, KnobFailurePhase::ConfigurationWrite);
+    assert!(crate::backend::exchange_release_completed(&error.error));
     assert_eq!(error.report.configuration.acknowledgment_data, Some(vec![]));
     assert!(!error.report.current_mode.attempted);
     assert!(!error.report.verified());

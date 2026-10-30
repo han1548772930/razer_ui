@@ -6,7 +6,7 @@ use razer_device::{
     controller_lighting::{
         LightingOperation, LightingProtocol, LightingResult, SoftwareEffect, SoftwarePhase,
         SoftwareStatus, capability,
-        software::{SoftwareHid, led_configuration},
+        software::{FrameSubmission, FrameSubmissionFailure, SoftwareHid, led_configuration},
     },
 };
 use razer_hid::with_backend;
@@ -39,6 +39,42 @@ enum Message {
     },
     Wake,
 }
+
+fn record_frame_submission(
+    status: &Mutex<SoftwareStatus>,
+    result: anyhow::Result<FrameSubmission>,
+) -> anyhow::Result<()> {
+    let progress = match &result {
+        Ok(submission) => Some((
+            submission.reports_submitted,
+            submission.complete,
+            submission.errors.as_slice(),
+        )),
+        Err(error) => error
+            .downcast_ref::<FrameSubmissionFailure>()
+            .map(|failure| {
+                (
+                    failure.reports_submitted,
+                    failure.reports_submitted == 2,
+                    failure.errors.as_slice(),
+                )
+            }),
+    };
+    if let Some((reports, complete, errors)) = progress {
+        if let Ok(mut state) = status.lock() {
+            state.reports_submitted += u64::from(reports);
+            state.frames_submitted += u64::from(complete);
+            for error in errors {
+                diagnostic(&mut state.errors, error.clone());
+            }
+        }
+    }
+    match result?.interruption {
+        Some(error) => Err(error),
+        None => Ok(()),
+    }
+}
+
 struct Job {
     node: HidNode,
     generation: u64,
@@ -311,7 +347,12 @@ fn check_cancellation(canceled: &AtomicBool) -> anyhow::Result<()> {
 
 fn complete_status(status: &Mutex<SoftwareStatus>, result: anyhow::Result<()>) {
     let result = match result {
-        Err(error) if error.is::<LightingCanceled>() => Ok(()),
+        Err(error)
+            if error.is::<LightingCanceled>()
+                && !razer_device::backend::exchange_finalization_failed(&error) =>
+        {
+            Ok(())
+        }
         result => result,
     };
     if let Ok(mut state) = status.lock() {
@@ -528,23 +569,16 @@ fn run_checked(
                 let frames = session.engine.frames()?;
                 if !session.suspended {
                     for frame in frames {
-                        let sent = hid.send_frame(
-                            &frame,
-                            session
-                                .device_handle
-                                .context("Missing lighting device handle")?,
-                            &mut |duration| wait(duration),
+                        record_frame_submission(
+                            status,
+                            hid.send_frame(
+                                &frame,
+                                session
+                                    .device_handle
+                                    .context("Missing lighting device handle")?,
+                                &mut |duration| wait(duration),
+                            ),
                         )?;
-                        if let Ok(mut state) = status.lock() {
-                            state.reports_submitted += u64::from(sent.reports_submitted);
-                            state.frames_submitted += u64::from(sent.complete);
-                            for error in sent.errors {
-                                diagnostic(&mut state.errors, error);
-                            }
-                        }
-                        if let Some(error) = sent.interruption {
-                            return Err(error);
-                        }
                     }
                 }
                 next_frame = Instant::now() + Duration::from_millis(40);

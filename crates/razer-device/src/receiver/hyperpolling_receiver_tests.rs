@@ -11,7 +11,10 @@ impl FeatureTransport for Transport {
     fn send_feature(&self, bytes: &[u8]) -> anyhow::Result<()> {
         self.sent.borrow_mut().push(bytes.to_vec());
         if self.send_error {
-            anyhow::bail!("send uncertain");
+            return Err(crate::backend::native_io_failure(
+                crate::backend::NativeIoOutcome::Rejected,
+                anyhow::anyhow!("send uncertain"),
+            ));
         }
         Ok(())
     }

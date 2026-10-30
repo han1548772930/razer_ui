@@ -32,10 +32,8 @@ impl GamepadProductWorkspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if let Some((path, previous)) = self.low_deadzone.take() {
-            if rollback {
-                self.write(&path, previous, cx);
-            }
+        if let Some(previous) = self.deadzone.dismiss(rollback, &self.trigger_runtime.guard()) {
+            self.submit_thumbstick_value(previous.path(), json!(previous.value()), cx);
         }
         if let Some(state) = self.deadzone_dialog.take() {
             if let Some(focus) = state.return_focus {
@@ -55,9 +53,9 @@ impl GamepadProductWorkspace {
             return div().into_any_element();
         };
         let zero = self
-            .low_deadzone
-            .as_ref()
-            .is_some_and(|(path, _)| self.number(path) == 0);
+            .deadzone
+            .warning_side()
+            .is_some_and(|side| self.number(side.path()) == 0);
         let title = t(if zero {
             "ZERO_DEADZONES_WARNING"
         } else {
@@ -222,9 +220,9 @@ impl GamepadProductWorkspace {
                         )
                         .on_click(cx.listener(|this, _, window, cx| {
                             let side = this
-                                .low_deadzone
-                                .as_ref()
-                                .map(|(path, _)| if path.contains("leftStick") { 1 } else { 2 });
+                                .deadzone
+                                .warning_side()
+                                .map(deadzone_state::Side::part);
                             this.dismiss_deadzone(false, window, cx);
                             if matches!(this.spec.product_id, 2676 | 2684) {
                                 if let Some(side) = side {

@@ -168,6 +168,109 @@ fn cancellation_propagates_outside_initialization_native_error_catch() {
 }
 
 #[test]
+fn initialization_release_failure_stops_before_retry_or_effect_replay() {
+    use crate::feature_exchange::tests::{ExchangeProbe, LeaseEvent};
+    use std::cell::Cell;
+
+    for failed_exchange in [1, 2] {
+        let io = Simulated::new([(2, vec![1]), (2, vec![]), (2, vec![])]);
+        let finished = Cell::new(0);
+        let check = || {
+            finished.set(finished.get() + 1);
+            anyhow::ensure!(finished.get() != failed_exchange, "release failed");
+            Ok(())
+        };
+        let probe = ExchangeProbe::with_finish_check(&io, &check);
+        let mut waits = Vec::new();
+        let error = LightingProtocol::new(&probe, capability(2636).unwrap(), |duration| {
+            waits.push(duration);
+            Ok(())
+        })
+        .execute(&LightingOperation::Initialize {
+            profile_slot: 3,
+            effect: ControllerEffect::Off,
+        })
+        .unwrap_err();
+
+        assert!(crate::backend::exchange_finalization_failed(&error));
+        let completed = crate::CompletedFeatureExchange::from_error(&error).unwrap();
+        assert_eq!(
+            completed.command(),
+            if failed_exchange == 1 {
+                [1, 0, 214]
+            } else {
+                [1, 0, 86]
+            }
+        );
+        assert_eq!(
+            completed.data(),
+            if failed_exchange == 1 { &[1][..] } else { &[] }
+        );
+        assert_eq!(io.sent.borrow().len(), failed_exchange);
+        assert!(!waits.contains(&Duration::from_millis(100)));
+        assert_eq!(
+            probe
+                .events()
+                .iter()
+                .filter(|event| **event == LeaseEvent::Finish)
+                .count(),
+            failed_exchange
+        );
+    }
+}
+
+#[test]
+fn region_release_failure_cannot_become_a_fallback_brightness_read_or_write() {
+    use crate::feature_exchange::tests::{ExchangeProbe, LeaseEvent};
+
+    for product_id in [2636, 4115] {
+        for operation in [
+            LightingOperation::ReadBrightness,
+            LightingOperation::Brightness { value: 50 },
+        ] {
+            for status in [2, 5] {
+                let io = Simulated::new([(status, vec![4]), (2, vec![1, 1, 127]), (2, vec![])]);
+                let probe = ExchangeProbe::failing_finish(&io);
+                let error =
+                    LightingProtocol::new(&probe, capability(product_id).unwrap(), |_| Ok(()))
+                        .execute(&operation)
+                        .unwrap_err();
+
+                assert!(crate::backend::exchange_finalization_failed(&error));
+                assert_eq!(
+                    crate::feature_exchange::acknowledged_error(&error),
+                    (status == 2).then_some(&[4][..])
+                );
+                assert_eq!(io.sent.borrow().len(), 1);
+                assert_eq!(&io.sent.borrow()[0][6..9], &[80, 15, 128]);
+                assert_eq!(io.replies.borrow().len(), 2);
+                assert_eq!(
+                    probe
+                        .events()
+                        .iter()
+                        .filter(|event| **event == LeaseEvent::Finish)
+                        .count(),
+                    1
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn ordinary_region_query_failure_retains_the_source_region_one_request() {
+    for product_id in [2636, 4115] {
+        let io = Simulated::new([(5, vec![]), (2, vec![1, 1, 127])]);
+        let result = LightingProtocol::new(&io, capability(product_id).unwrap(), |_| Ok(()))
+            .execute(&LightingOperation::ReadBrightness)
+            .unwrap();
+        assert_eq!(result.brightness.unwrap().value, 50);
+        assert_eq!(result.acknowledged_writes, 0);
+        assert_eq!(&io.sent.borrow()[1][6..12], &[3, 15, 132, 1, 1, 0]);
+    }
+}
+
+#[test]
 fn brightness_uses_observed_region_and_source_floor_and_ceil_conversions() {
     let io = Simulated::new([(2, vec![4, 60, 0, 1, 1]), (2, vec![1, 4, 127]), (2, vec![])]);
     let result = run(&io, &LightingOperation::Brightness { value: 50 }).unwrap();

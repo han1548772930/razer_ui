@@ -2,6 +2,8 @@
 
 当前音频产品没有一条通用的“写配置即生效”链路。音量可能属于 OS 端点；EQ 可能属于 THX DSP、固件预设、板载多槽或麦克风参数 EQ；页面还可能把持久化字段作为编辑来源。适用型号与实际注册分支见 [家族矩阵](README.md#产品与适用边界)，具体页面与 props 见 [逐产品原件](products/)。
 
+1398／1401／2638／2641／4124／4126 的 [固件 EQ 传输所有者](../../../crates/razer-device/src/audio/thx_blackshark_firmware.rs)遵循当前 `AudioBillieT1Wired._sendCommandOut` 的计数条件：只有正常返回 64 字节才进入 Input 读取，其他正常计数保持同一报文并最多尝试三次；传输错误、取消、连接失效及释放失败终止当前操作。[模拟测试](../../../crates/razer-device/src/audio/thx_blackshark_firmware_tests.rs)分别覆盖六个所有者及其 11 条有线／接收器路由的正常计数重试、耗尽和取消，实际执行状态见[统一验证收据](../../../.analysis/validation.json)。这些测试不证明真实设备写回或官方 DLL 功能对照已经通过。
+
 ## 播放与真实音频端点
 
 旧音频 restore 的 `speakerVolume/volume` 分支读取 `getDefaultSpeakerDevice()` 的 `volume/muted` 后发布 `MW_CHANGE_VOLUME_TO_UI`，不把保存的音量直接当作当前系统音量。`micVolume` 也有实读当前 capture 端点的路径；安装 `audioBasicFeature` 或 THX generic 后，旧分支主动跳过，由相应 feature 处理，不能两套同时执行。

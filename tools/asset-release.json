@@ -1,8 +1,8 @@
 {
   "schema_version": 2,
   "format": "files",
-  "tag": "assets-179f1fe19d98b70eb708",
-  "source_sha256": "179f1fe19d98b70eb708d4663e2a476b09b70ee30fffe1564490d886c445ba38",
+  "tag": "assets-a545d4df653e0d8593a4",
+  "source_sha256": "a545d4df653e0d8593a449a729d8b710003dc1682b4bf79cd40e6bd503859aa8",
   "git_files": [
     {
       "path": "assets/synapse/shared/pending-source-audit/33892a0b56b91958-tray-gear-light.rgba",
@@ -33658,6 +33658,11 @@
           "sha256": "00a8a8c49ee495b20c4c5ba0c300f517c277dc74443918efeecc219add549be4"
         },
         {
+          "path": "assets/synapse/shared/products/00b4973678e35c642e08866fcf311b408e749414dbd175a09bd84da9bd4f4a06.webp",
+          "bytes": 22500558,
+          "sha256": "00b4973678e35c642e08866fcf311b408e749414dbd175a09bd84da9bd4f4a06"
+        },
+        {
           "path": "assets/synapse/shared/products/01415d956dc6b497-keyboard-floating-icon_draggable.be674683.svg",
           "bytes": 772,
           "sha256": "01415d956dc6b497a1d4e2109e08f631497cc201490fc9ac22b04499545275f2"
@@ -33908,6 +33913,11 @@
           "sha256": "0e0a160411b7cd7627028a34d206af4cb440d4e09b1ab3113d21995a84fdecc9"
         },
         {
+          "path": "assets/synapse/shared/products/0e21cd9047f35ea7c6612305048e8caa7a547e77e8910b33acf68184d5a8282b.svg",
+          "bytes": 14703,
+          "sha256": "0e21cd9047f35ea7c6612305048e8caa7a547e77e8910b33acf68184d5a8282b"
+        },
+        {
           "path": "assets/synapse/shared/products/0e25bc077dfaaad6-preview-source-1404-0-0-1x.svg",
           "bytes": 10689,
           "sha256": "0e25bc077dfaaad6b97b55ca27d3613a4ae6e3fdaeb81a0443fa6a28c9acf4f2"
@@ -34113,6 +34123,11 @@
           "sha256": "1846c270122cd57583983fbfca383dae316317f48fd4f0272ba90a65fb79c6f6"
         },
         {
+          "path": "assets/synapse/shared/products/189764e413687536299d468dc5023ad698401f4ea650bb630ae076c20ba20f18.webp",
+          "bytes": 3954458,
+          "sha256": "189764e413687536299d468dc5023ad698401f4ea650bb630ae076c20ba20f18"
+        },
+        {
           "path": "assets/synapse/shared/products/18aec781d2475a1f-current-dashboard-103-0-3-product-3x.png",
           "bytes": 71736,
           "sha256": "18aec781d2475a1f4d19638bc1087ece4c59869dd84a4b4a89aa716a8773c09c"
@@ -34298,6 +34313,11 @@
           "sha256": "21bd2d19ecd6a751f8c95dc816aabaa5de4fedf71ac912f09caabd84409fb032"
         },
         {
+          "path": "assets/synapse/shared/products/220bb83c336de7738d0c7f32ef232d932ed931f08cd4cb08c23b2416eb1b65ed.webp",
+          "bytes": 9700682,
+          "sha256": "220bb83c336de7738d0c7f32ef232d932ed931f08cd4cb08c23b2416eb1b65ed"
+        },
+        {
           "path": "assets/synapse/shared/products/222ce48909fa8497-icon_config_joystick.f5f05356.svg",
           "bytes": 483,
           "sha256": "222ce48909fa8497740a0705f7c419449c6093ce0895cb5427579809ba03205e"
@@ -34358,6 +34378,11 @@
           "sha256": "25a4601f062d35a26d2a3030e09e126737650f7ba40f22f62f59c74ba3f2506d"
         },
         {
+          "path": "assets/synapse/shared/products/264a8e883deccab8f85b8bd6874d0510fb0b0cd25dc009c6309f7dd41bb88210.webp",
+          "bytes": 19546120,
+          "sha256": "264a8e883deccab8f85b8bd6874d0510fb0b0cd25dc009c6309f7dd41bb88210"
+        },
+        {
           "path": "assets/synapse/shared/products/26c724435bfac571-preview-source-695-129-7-3x.png",
           "bytes": 824735,
           "sha256": "26c724435bfac571dcb640324711f84b361176339832d73a2d04b536267eee1a"
@@ -34381,6 +34406,11 @@
           "path": "assets/synapse/shared/products/28be1a7cfef14d2b-preview-source-710-0-4-1x.png",
           "bytes": 47932,
           "sha256": "28be1a7cfef14d2b0639b7ec5572ed31ccbad057a39815a30303d7766c422420"
+        },
+        {
+          "path": "assets/synapse/shared/products/28e7008e145670b1648af6915c105280256c00c1a3f86d0c33d64dd9f6ed5ddd.webp",
+          "bytes": 5067606,
+          "sha256": "28e7008e145670b1648af6915c105280256c00c1a3f86d0c33d64dd9f6ed5ddd"
         },
         {
           "path": "assets/synapse/shared/products/2926d4aec7a83686-9-3x.98efe2da.png",
@@ -34808,6 +34838,11 @@
           "sha256": "3ac65d5167f9564644aca6894d58b8717417bdf70cd8a2ffe975a373c33c64d9"
         },
         {
+          "path": "assets/synapse/shared/products/3ad43bf7c2bf11eeb82b6266378cac03e7537e48847b112e594f39ee97ba4ece.svg",
+          "bytes": 7769,
+          "sha256": "3ad43bf7c2bf11eeb82b6266378cac03e7537e48847b112e594f39ee97ba4ece"
+        },
+        {
           "path": "assets/synapse/shared/products/3af2a0b4395ab42f-preview-source-624-0-9-3x.png",
           "bytes": 305027,
           "sha256": "3af2a0b4395ab42f96a2415d2eda56c46bfe547ed35cff4d1d5cb0ed496cc04b"
@@ -34966,6 +35001,11 @@
           "path": "assets/synapse/shared/products/41f1f80da55de5a3-current-dashboard-182-128-0-product-3x.png",
           "bytes": 37806,
           "sha256": "41f1f80da55de5a35153549068e1cfc1613b6c98e903d1f418a2c3d8deeb8d13"
+        },
+        {
+          "path": "assets/synapse/shared/products/421596396e7c4680abab370dda9b428f30b285de0e7c562e2c412c23c0a65e2f.svg",
+          "bytes": 14704,
+          "sha256": "421596396e7c4680abab370dda9b428f30b285de0e7c562e2c412c23c0a65e2f"
         },
         {
           "path": "assets/synapse/shared/products/42779bbde2f340d3-preview-source-563-129-9-3x.png",
@@ -35288,6 +35328,11 @@
           "sha256": "518af6f3a70ebacf52af93ebbe3d36f4c570c7b554d99fe785aca91f01f93dc1"
         },
         {
+          "path": "assets/synapse/shared/products/518c5e047f9016354567f46a5f5d66f5920284efb423998f22b33a0fe6c57683.svg",
+          "bytes": 759,
+          "sha256": "518c5e047f9016354567f46a5f5d66f5920284efb423998f22b33a0fe6c57683"
+        },
+        {
           "path": "assets/synapse/shared/products/521de8086fdfc20b-current-dashboard-564-0-1-product-1x.png",
           "bytes": 31927,
           "sha256": "521de8086fdfc20bcffbf53bc63818cfc82f1d71435a61f7cc74f55d67f9e15a"
@@ -35466,6 +35511,11 @@
           "path": "assets/synapse/shared/products/5ac1c60a365004ca-audio-sound-5ac1c60a365004ca.svg",
           "bytes": 444,
           "sha256": "5ac1c60a365004ca5cbf8c65702ac8196ba77d0e807e36247a2297a01304d566"
+        },
+        {
+          "path": "assets/synapse/shared/products/5ac2fbc5404132eb41aae64d0596bd8dca7e32e392fc1a89ad75732d7e4fa08e.webp",
+          "bytes": 5800620,
+          "sha256": "5ac2fbc5404132eb41aae64d0596bd8dca7e32e392fc1a89ad75732d7e4fa08e"
         },
         {
           "path": "assets/synapse/shared/products/5afe293f27146f17-preview-source-595-0-0-1x.png",
@@ -36003,6 +36053,11 @@
           "sha256": "7441cf4474c435d6f8e1489f764f3b57c42f56c8e6101d126b5fc98409754943"
         },
         {
+          "path": "assets/synapse/shared/products/746041a202b4ea23fde04fb82501759495f4eb18f4046638e50b9f1f7bff0ca7.webp",
+          "bytes": 12354494,
+          "sha256": "746041a202b4ea23fde04fb82501759495f4eb18f4046638e50b9f1f7bff0ca7"
+        },
+        {
           "path": "assets/synapse/shared/products/7498dfcdc12d7c53-preview-source-710-0-9-3x.png",
           "bytes": 202779,
           "sha256": "7498dfcdc12d7c5341762d5ea81b635f4461611e287e801878642621e91992cf"
@@ -36193,6 +36248,11 @@
           "sha256": "7bf93d2d7e3c9c409f10383fbfdd21dc7dfbb06fc0eeeea11b3b62ddf9da75e5"
         },
         {
+          "path": "assets/synapse/shared/products/7c00600e931a86492351ecc14c9cfcd5c45e377424befdbcc46e0a7cd40e37a4.svg",
+          "bytes": 999,
+          "sha256": "7c00600e931a86492351ecc14c9cfcd5c45e377424befdbcc46e0a7cd40e37a4"
+        },
+        {
           "path": "assets/synapse/shared/products/7c2bb68578330ddc-mapping-interdevice.svg",
           "bytes": 492,
           "sha256": "7c2bb68578330ddc139d959cd11ef8315452ecfd139cc71b2679d6a864c05611"
@@ -36363,6 +36423,11 @@
           "sha256": "8493176e58a1c3b560f77213c6a5bbe55bf0ca6082f4c536b1bfe3c4d216a38c"
         },
         {
+          "path": "assets/synapse/shared/products/84e085225f0b77217d41a48e7fedd99fa6862d88423f85eeb3eb83a7786ed945.webp",
+          "bytes": 3986880,
+          "sha256": "84e085225f0b77217d41a48e7fedd99fa6862d88423f85eeb3eb83a7786ed945"
+        },
+        {
           "path": "assets/synapse/shared/products/84fc70716a75fa62-89.png",
           "bytes": 359125,
           "sha256": "84fc70716a75fa6268c2bcbe973394159e0cbac789bc7dbfadc76c2693ce51c7"
@@ -36436,6 +36501,11 @@
           "path": "assets/synapse/shared/products/884b0dc40ee5ded8-preview-source-563-129-3-3x.png",
           "bytes": 1362804,
           "sha256": "884b0dc40ee5ded80165944561069cfd9a44a42e955b54cfbdbf6f37c7d5ea49"
+        },
+        {
+          "path": "assets/synapse/shared/products/88590838d90f64f4761e7d51e5b166665c9d4c583ffc6cd05b706b7d7108fda3.webp",
+          "bytes": 20125574,
+          "sha256": "88590838d90f64f4761e7d51e5b166665c9d4c583ffc6cd05b706b7d7108fda3"
         },
         {
           "path": "assets/synapse/shared/products/888bf6e33caec2e9-16-3x.6a9ad3e8.png",
@@ -36561,6 +36631,11 @@
           "path": "assets/synapse/shared/products/8fe170211c8b459e-12-1x.824e48d4.png",
           "bytes": 64072,
           "sha256": "8fe170211c8b459e099cc30882a6fc4dd688b4c8c92c6b823f1c3069b2a1828e"
+        },
+        {
+          "path": "assets/synapse/shared/products/90819ba6b0ef03406d8f9180be2fb2d79af611e3007b297e18f99e902d173537.svg",
+          "bytes": 7823,
+          "sha256": "90819ba6b0ef03406d8f9180be2fb2d79af611e3007b297e18f99e902d173537"
         },
         {
           "path": "assets/synapse/shared/products/90e49a186ce8891f-100.png",
@@ -36741,6 +36816,11 @@
           "path": "assets/synapse/shared/products/9a41b865000215e2-current-dashboard-678-0-10-product-1x.png",
           "bytes": 52153,
           "sha256": "9a41b865000215e21b03462b0a42ec470432a421dbb67784c7f63c4cd0c20c5f"
+        },
+        {
+          "path": "assets/synapse/shared/products/9a9a9c30f1c3b90774227e36fe270a74fe294de1c004e1839d077e2fd9036440.webp",
+          "bytes": 4858748,
+          "sha256": "9a9a9c30f1c3b90774227e36fe270a74fe294de1c004e1839d077e2fd9036440"
         },
         {
           "path": "assets/synapse/shared/products/9acf5cda798e8fc7-preview-source-594-0-7-3x.png",
@@ -37138,6 +37218,11 @@
           "sha256": "b13e923351468bb7c6d105f001adcc966c55b8374b5e032544db69f82e06c417"
         },
         {
+          "path": "assets/synapse/shared/products/b1ac8e27f3c382201d5388e88da902715a2fca03332a887d3da3478bb1df580f.svg",
+          "bytes": 7823,
+          "sha256": "b1ac8e27f3c382201d5388e88da902715a2fca03332a887d3da3478bb1df580f"
+        },
+        {
           "path": "assets/synapse/shared/products/b1c1f1ff02b1c884-11-1x.71937982.png",
           "bytes": 85509,
           "sha256": "b1c1f1ff02b1c884e623898ae245a0e5baab5af95fb0901c0bdfc2644ed57dc0"
@@ -37533,6 +37618,11 @@
           "sha256": "c2fa9bd612f60bafc5a981c08544fd9430bb05f0038bf400589b089a95a39f61"
         },
         {
+          "path": "assets/synapse/shared/products/c321e1f79224cfbdc37922a80ae542035241174ba6d8d99734e9963be7689d01.webp",
+          "bytes": 7652814,
+          "sha256": "c321e1f79224cfbdc37922a80ae542035241174ba6d8d99734e9963be7689d01"
+        },
+        {
           "path": "assets/synapse/shared/products/c37c06fbf9c844c3-5-3x.6933d95f.png",
           "bytes": 339465,
           "sha256": "c37c06fbf9c844c39010b3754be9a80df0ca29375475d43218b6c8b9c76f76d4"
@@ -37581,6 +37671,11 @@
           "path": "assets/synapse/shared/products/c50b5c08019ed53e-preview-source-564-0-3-3x.png",
           "bytes": 389580,
           "sha256": "c50b5c08019ed53e76990e014cd6391621cb3d183f5656c964cdd7dbbf816bf8"
+        },
+        {
+          "path": "assets/synapse/shared/products/c5683ec717bb6c678d6490dc52326ad3d77048d364d9d27cabb2cb0ceecaf829.webp",
+          "bytes": 18123094,
+          "sha256": "c5683ec717bb6c678d6490dc52326ad3d77048d364d9d27cabb2cb0ceecaf829"
         },
         {
           "path": "assets/synapse/shared/products/c590592794fed72d-preview-source-598-0-0-3x.png",
@@ -37821,6 +37916,11 @@
           "path": "assets/synapse/shared/products/d21bfb7bb9edbdc6-mapping-sensitivity.svg",
           "bytes": 768,
           "sha256": "d21bfb7bb9edbdc630d093a961e7f986763d653fc71321ba05ee39813f43722c"
+        },
+        {
+          "path": "assets/synapse/shared/products/d24667064d5b09d1e64166fcc2a3001a28cbd52af2406d017826162574bc6eb9.webp",
+          "bytes": 13477578,
+          "sha256": "d24667064d5b09d1e64166fcc2a3001a28cbd52af2406d017826162574bc6eb9"
         },
         {
           "path": "assets/synapse/shared/products/d282c5dc8af946f5-current-dashboard-664-0-2-product-1x.png",
@@ -38328,6 +38428,11 @@
           "sha256": "eb52837e506435d6109f8977c7f882d64689a1569aac7d00efdd08ab383c0f90"
         },
         {
+          "path": "assets/synapse/shared/products/eb99f3a22845455cb2d6444fb5e2ab30b8dec020869180cb3e4b5d166430b35d.webp",
+          "bytes": 9884016,
+          "sha256": "eb99f3a22845455cb2d6444fb5e2ab30b8dec020869180cb3e4b5d166430b35d"
+        },
+        {
           "path": "assets/synapse/shared/products/ebba6ed17fe586f0-keyboard-keymap-slot-4.png",
           "bytes": 157,
           "sha256": "ebba6ed17fe586f02cb09923ba4b8a212dd7f7f513edf0d6ebd5b56e956e4506"
@@ -38371,6 +38476,11 @@
           "path": "assets/synapse/shared/products/ecec55800ba32424-oled-home-image-6.png",
           "bytes": 4332,
           "sha256": "ecec55800ba3242437720d999ec9dd7a767405b37732a9dba8702fa80fa5ef80"
+        },
+        {
+          "path": "assets/synapse/shared/products/ed82f5244d4a4da44bbe88fdddc85d970335d2fa7704d08953648d2d28c55859.webp",
+          "bytes": 23354240,
+          "sha256": "ed82f5244d4a4da44bbe88fdddc85d970335d2fa7704d08953648d2d28c55859"
         },
         {
           "path": "assets/synapse/shared/products/edcf0c345effa16f-current-dashboard-664-0-16-product-1x.png",
@@ -38618,6 +38728,11 @@
           "sha256": "fac2e48b38cdce6c72b7a68675b7dd8f831f41fab0f882ea8aff131994227bb7"
         },
         {
+          "path": "assets/synapse/shared/products/fae92a64c2cfff221435e280c67f2056291f6515bcdebfb3701a4ceb6639c697.webp",
+          "bytes": 14315326,
+          "sha256": "fae92a64c2cfff221435e280c67f2056291f6515bcdebfb3701a4ceb6639c697"
+        },
+        {
           "path": "assets/synapse/shared/products/faf4ed00b01c6131-current-dashboard-660-0-9-product-3x.png",
           "bytes": 208896,
           "sha256": "faf4ed00b01c61314c5bc7b19133d62d8a40aedd175a475b073431f8f0b2f498"
@@ -38703,6 +38818,11 @@
           "sha256": "fe4bb703753f0219643b0c25c905e84d54383916f4ce0c9469bc19f734feb828"
         },
         {
+          "path": "assets/synapse/shared/products/fe6861bead0d09d1129183a3e87d5d3885dadfc68344857934bc2675c09dd5ab.webp",
+          "bytes": 13284432,
+          "sha256": "fe6861bead0d09d1129183a3e87d5d3885dadfc68344857934bc2675c09dd5ab"
+        },
+        {
           "path": "assets/synapse/shared/products/fe696a54189e20d4-preview-source-582-128-0-3x.png",
           "bytes": 2622246,
           "sha256": "fe696a54189e20d4b446718b6bab5318a5f574bd252fa3e7bbd911d143386882"
@@ -38713,6 +38833,11 @@
           "sha256": "fed3400fe010de18ccb359ab9f2da9fa7b56157272c25ebfed954ccd765f076a"
         },
         {
+          "path": "assets/synapse/shared/products/ff535cab7375d592a42ecab896b4339d319147ab857e3888c9f4d3eeaeaadbbe.svg",
+          "bytes": 7769,
+          "sha256": "ff535cab7375d592a42ecab896b4339d319147ab857e3888c9f4d3eeaeaadbbe"
+        },
+        {
           "path": "assets/synapse/shared/products/ff97209fb53ab5aa-10-1x.df286f33.png",
           "bytes": 71539,
           "sha256": "ff97209fb53ab5aaf5941104d1839158ac7a60259f1dfb9b2a749610b9d4bcc4"
@@ -38721,6 +38846,11 @@
           "path": "assets/synapse/shared/products/ffbb06d0cc3dabdb-preview-source-563-0-0-1x.png",
           "bytes": 74919,
           "sha256": "ffbb06d0cc3dabdb804cbd7ac9c5f7d1719e28d035f8eee6267830e3e751c6fd"
+        },
+        {
+          "path": "assets/synapse/shared/products/ffc4db193f29b923e6abd143b5b7c352ced2fdba5246f0876a180bc09686fa49.webp",
+          "bytes": 11253756,
+          "sha256": "ffc4db193f29b923e6abd143b5b7c352ced2fdba5246f0876a180bc09686fa49"
         },
         {
           "path": "assets/synapse/shared/source-unverified/006ca179e5e4e29429a4f55ea304491e4e14308fca2cf005eb5860c0d0017117.svg",
@@ -41638,6 +41768,6 @@
   "storage": {
     "provider": "huggingface",
     "repository": "han1548772930/razer-ui-assets",
-    "revision": "77aeef86fa5a1a3c928c1cf8311a9b3a4eb030bf"
+    "revision": "7b84565adba1676716bbfaac6271dc5a9de7e007"
   }
 }

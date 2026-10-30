@@ -316,7 +316,10 @@ impl<'a, T: FeatureTransport + ?Sized, W: FnMut(Duration) -> anyhow::Result<()>>
         // first observed region is used; an empty successful list keeps 0.
         let region = match self.exchange([80, 15, 128], &[]) {
             Ok(regions) => regions.first().copied().unwrap_or(0),
-            Err(_) => {
+            Err(error) => {
+                if crate::backend::exchange_finalization_failed(&error) {
+                    return Err(error);
+                }
                 // getBrightness's wrapper catches a failed region query and
                 // selects region1. The owner must still propagate cancellation.
                 (self.wait)(Duration::ZERO)?;
@@ -368,12 +371,13 @@ impl<'a, T: FeatureTransport + ?Sized, W: FnMut(Duration) -> anyhow::Result<()>>
                         }
                         Ok(())
                     })();
-                    if attempt.is_ok() {
-                        break;
+                    match attempt {
+                        Ok(()) => break,
+                        Err(error) if crate::backend::exchange_finalization_failed(&error) => {
+                            return Err(error);
+                        }
+                        Err(error) => initialized.failures.push(format!("{error:#}")),
                     }
-                    initialized
-                        .failures
-                        .push(format!("{:#}", attempt.unwrap_err()));
                     // Check cancellation outside the caught native failure,
                     // preserving the source retry delay without swallowing it.
                     (self.wait)(Duration::from_millis(100))?;

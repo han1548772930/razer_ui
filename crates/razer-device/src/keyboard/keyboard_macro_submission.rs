@@ -112,19 +112,20 @@ fn locked_macro_ids(
                     acknowledgement: None,
                 });
                 let step = receipt.submissions.last_mut().unwrap();
-                let result = feature_exchange::exchange_with_report_data_size_observing_send(
-                    device,
-                    &transport,
-                    step.command,
-                    &step.payload,
-                    next()?,
-                    step.payload.len() as u8,
-                    guard,
-                    &mut || step.attempted = true,
-                );
+                let exchange_result =
+                    feature_exchange::exchange_with_report_data_size_observing_send(
+                        device,
+                        &transport,
+                        step.command,
+                        &step.payload,
+                        next()?,
+                        step.payload.len() as u8,
+                        guard,
+                        &mut || step.attempted = true,
+                    );
                 step.acknowledgement =
-                    feature_exchange::acknowledged_reply(&result).map(<[u8]>::to_vec);
-                let response = result?;
+                    feature_exchange::acknowledged_reply(&exchange_result).map(<[u8]>::to_vec);
+                let response = exchange_result?;
                 ensure!(
                     response.len() == 1 + 9 * keys.len() && response[0] == profile.profile_id,
                     "Locked profile assignment response has a wrong size/slot"
@@ -327,12 +328,14 @@ pub(super) fn synchronize(
                         memory.released(candidate.allocated_size_with_name)?;
                     }
                     Err(error) => {
-                        guard()?;
-                        // Lt retains a failed delete and retries the add. A
-                        // non-capacity add error still stops subsequent writes.
-                        if error.phase == MacroFailurePhase::Cancelled {
+                        if error.phase == MacroFailurePhase::Cancelled
+                            || crate::backend::exchange_finalization_failed(error.error())
+                        {
                             return Err(error.into());
                         }
+                        // Lt retains a failed delete and retries the add. A
+                        // non-capacity add error still stops subsequent writes.
+                        guard()?;
                     }
                 }
                 added = record_mutation(

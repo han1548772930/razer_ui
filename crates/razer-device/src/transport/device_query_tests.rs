@@ -1,7 +1,10 @@
 //! Current sendCommand/_getUSBTransferInResult retry paths, exercised without HID.
 use super::*;
 use crate::device_reads::{DeviceReadKind, DeviceReadValue};
-use std::{cell::RefCell, collections::VecDeque};
+use std::{
+    cell::{Cell, RefCell},
+    collections::VecDeque,
+};
 
 enum Input {
     Status(u8),
@@ -112,7 +115,7 @@ fn truncated_report_cannot_be_promoted_to_success_or_retried_as_complete() {
 }
 
 #[test]
-fn validation_failure_after_input_discards_value() {
+fn validation_failure_after_input_retains_value_only_as_failure_diagnostics() {
     let (cap, command) = battery_cap();
     let transport = Transport::new([Input::Status(2)]);
     let result = read_device(&transport, &cap, &command, 7, || {
@@ -122,7 +125,21 @@ fn validation_failure_after_input_discards_value() {
         );
         Ok(())
     });
-    assert!(completed_reading(&result).is_none());
+    assert!(result.is_err());
+    assert!(matches!(
+        completed_reading(&result),
+        Some(DeviceReadValue::Battery { percent: 100 })
+    ));
+    assert_eq!(
+        crate::backend::native_io_outcome(result.as_ref().unwrap_err()),
+        Some(crate::backend::NativeIoOutcome::Returned { byte_count: 91 })
+    );
+    assert_eq!(
+        crate::backend::native_read_bytes(result.as_ref().unwrap_err())
+            .unwrap()
+            .len(),
+        91
+    );
     assert_eq!(
         result.unwrap_err().root_cause().to_string(),
         "route disappeared after IN"
@@ -177,6 +194,419 @@ fn cancellation_before_out_does_not_submit_a_report() {
     let transport = Transport::new([]);
     assert!(read_device(&transport, &cap, &command, 7, || anyhow::bail!("cancelled")).is_err());
     assert!(transport.outputs.borrow().is_empty());
+}
+
+#[derive(Debug)]
+struct NativeQueryFailure;
+
+impl std::fmt::Display for NativeQueryFailure {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("native query result rejected before publication")
+    }
+}
+
+impl std::error::Error for NativeQueryFailure {}
+
+#[derive(Debug)]
+struct QueryOwnerExpired;
+
+impl std::fmt::Display for QueryOwnerExpired {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("query owner expired after native return")
+    }
+}
+
+impl std::error::Error for QueryOwnerExpired {}
+
+#[derive(Clone, Copy)]
+enum TerminalRead {
+    Returned(usize),
+    RetainedError(usize),
+    UnprovenError(Option<crate::backend::NativeIoOutcome>),
+}
+
+struct TerminalTransport {
+    response: Vec<u8>,
+    result: TerminalRead,
+    current: Cell<bool>,
+    retire_after_send: bool,
+    retire_after_get: bool,
+    send_error: Option<Option<crate::backend::NativeIoOutcome>>,
+    outputs: Cell<usize>,
+    inputs: Cell<usize>,
+}
+
+impl TerminalTransport {
+    fn new(response: Vec<u8>, result: TerminalRead, retire_after_get: bool) -> Self {
+        Self {
+            response,
+            result,
+            current: Cell::new(true),
+            retire_after_send: false,
+            retire_after_get,
+            send_error: None,
+            outputs: Cell::new(0),
+            inputs: Cell::new(0),
+        }
+    }
+
+    fn deadline(&self) -> anyhow::Result<()> {
+        if self.current.get() {
+            Ok(())
+        } else {
+            Err(QueryOwnerExpired.into())
+        }
+    }
+}
+
+impl FeatureTransport for TerminalTransport {
+    fn send_feature(&self, report: &[u8]) -> anyhow::Result<()> {
+        crate::backend::require_complete_send(self.send_feature_counted(report)?, report.len())
+    }
+
+    fn send_feature_counted(&self, report: &[u8]) -> anyhow::Result<usize> {
+        assert_eq!(
+            self.outputs.get(),
+            0,
+            "terminal query must never repeat OUT"
+        );
+        self.outputs.set(1);
+        if self.retire_after_send {
+            self.current.set(false);
+        }
+        match self.send_error {
+            None => Ok(report.len()),
+            Some(outcome) => {
+                let error = NativeQueryFailure.into();
+                Err(match outcome {
+                    Some(outcome) => crate::backend::native_io_failure(outcome, error),
+                    None => error,
+                })
+            }
+        }
+    }
+
+    fn get_feature(&self, report: &mut [u8]) -> anyhow::Result<usize> {
+        assert_eq!(self.inputs.get(), 0, "terminal query must never repeat IN");
+        self.inputs.set(1);
+        report.copy_from_slice(&self.response);
+        if self.retire_after_get {
+            self.current.set(false);
+        }
+        match self.result {
+            TerminalRead::Returned(count) => Ok(count),
+            TerminalRead::RetainedError(count) => Err(crate::backend::complete_native_read(
+                Ok(count),
+                report,
+                NativeQueryFailure.into(),
+            )),
+            TerminalRead::UnprovenError(outcome) => {
+                let error = NativeQueryFailure.into();
+                Err(match outcome {
+                    Some(outcome) => crate::backend::native_io_failure(outcome, error),
+                    None => error,
+                })
+            }
+        }
+    }
+
+    fn metadata(&self) -> serde_json::Value {
+        serde_json::Value::Null
+    }
+}
+
+fn query_reply(command: [u8; 3], transaction: u8, payload: &[u8]) -> Vec<u8> {
+    let mut bytes = vec![0; 91];
+    bytes[1] = 2;
+    bytes[2] = transaction;
+    bytes[6..9].copy_from_slice(&command);
+    bytes[6] = payload.len() as u8;
+    bytes[9..9 + payload.len()].copy_from_slice(payload);
+    bytes
+}
+
+fn receiver_cap() -> crate::receiver_capabilities::ReceiverCapability {
+    let mut cap = crate::receiver_capabilities::capability(241)
+        .unwrap()
+        .clone();
+    cap.sleep_between_out_ms = 0;
+    cap.sleep_between_out_in_ms = 0;
+    cap.sleep_between_in_ms = 0;
+    cap
+}
+
+#[test]
+fn terminal_device_read_receipts_share_the_normal_decoder_and_stop_retries() {
+    let (cap, command) = battery_cap();
+    for (case, count, accepted) in [
+        (0, 91, true),
+        (1, 91, false),
+        (2, 91, false),
+        (3, 91, false),
+        (4, 91, false),
+        (5, 91, false),
+        (6, 91, false),
+        (7, 91, false),
+        (0, 0, false),
+        (0, 90, false),
+    ] {
+        let mut bytes = query_reply(command.command, 7, &[0, 255]);
+        match case {
+            1 => bytes[1] = 1,
+            2 => bytes[2] ^= 1,
+            3 => bytes[7] ^= 1,
+            4 => bytes[8] ^= 1,
+            5 => bytes[6] = 1,
+            6 => bytes[9] = 1,
+            7 => bytes[1] = 5,
+            _ => {}
+        }
+        for retire_after_get in [false, true] {
+            let transport = TerminalTransport::new(
+                bytes.clone(),
+                TerminalRead::RetainedError(count),
+                retire_after_get,
+            );
+            let result = read_device(&transport, &cap, &command, 7, || transport.deadline());
+            let error = result.as_ref().unwrap_err();
+            assert!(error.is::<NativeQueryFailure>());
+            assert_eq!(completed_reading(&result).is_some(), accepted);
+            if accepted {
+                assert!(matches!(
+                    completed_reading(&result),
+                    Some(DeviceReadValue::Battery { percent: 100 })
+                ));
+            }
+            assert_eq!(
+                crate::backend::native_io_outcome(error),
+                Some(crate::backend::NativeIoOutcome::Returned { byte_count: count })
+            );
+            assert_eq!(crate::backend::native_read_bytes(error), bytes.get(..count));
+            assert_eq!(transport.outputs.get(), 1);
+            assert_eq!(transport.inputs.get(), 1);
+        }
+    }
+}
+
+#[test]
+fn query_failures_with_counts_but_without_owned_input_bytes_never_create_readings() {
+    use crate::backend::NativeIoOutcome;
+    let (device_cap, command) = battery_cap();
+    let receiver_cap = receiver_cap();
+    for receiver in [false, true] {
+        let bytes = if receiver {
+            query_reply(receiver_cap.command, 7, &[2, 1, 0, 182, 0xfe, 0xab, 0xcd])
+        } else {
+            query_reply(command.command, 7, &[0, 255])
+        };
+        for outcome in [
+            None,
+            Some(NativeIoOutcome::NotCalled),
+            Some(NativeIoOutcome::Rejected),
+            Some(NativeIoOutcome::Returned { byte_count: 91 }),
+        ] {
+            let transport =
+                TerminalTransport::new(bytes.clone(), TerminalRead::UnprovenError(outcome), true);
+            let error = if receiver {
+                read_receiver(&transport, &receiver_cap, 7, || transport.deadline()).unwrap_err()
+            } else {
+                read_device(&transport, &device_cap, &command, 7, || {
+                    transport.deadline()
+                })
+                .unwrap_err()
+            };
+            assert!(error.is::<NativeQueryFailure>());
+            assert_eq!(crate::backend::native_io_outcome(&error), outcome);
+            assert!(crate::backend::native_read_bytes(&error).is_none());
+            assert!(CompletedDeviceRead::from_error(&error).is_none());
+            assert!(CompletedReceiverRead::from_error(&error).is_none());
+            assert_eq!(transport.outputs.get(), 1);
+            assert_eq!(transport.inputs.get(), 1);
+        }
+    }
+}
+
+#[test]
+fn canceled_queries_preserve_exact_native_counts_without_promoting_short_input() {
+    let (device_cap, command) = battery_cap();
+    let receiver_cap = receiver_cap();
+    for receiver in [false, true] {
+        let bytes = if receiver {
+            query_reply(receiver_cap.command, 7, &[2, 1, 0, 182, 0xfe, 0xab, 0xcd])
+        } else {
+            query_reply(command.command, 7, &[0, 255])
+        };
+        for byte_count in [0, 90, 91, 92] {
+            let transport =
+                TerminalTransport::new(bytes.clone(), TerminalRead::Returned(byte_count), true);
+            let error = if receiver {
+                read_receiver(&transport, &receiver_cap, 7, || transport.deadline()).unwrap_err()
+            } else {
+                read_device(&transport, &device_cap, &command, 7, || {
+                    transport.deadline()
+                })
+                .unwrap_err()
+            };
+            assert!(error.is::<QueryOwnerExpired>());
+            assert_eq!(
+                crate::backend::native_io_outcome(&error),
+                Some(crate::backend::NativeIoOutcome::Returned { byte_count })
+            );
+            assert_eq!(
+                crate::backend::native_read_bytes(&error),
+                bytes.get(..byte_count)
+            );
+            if receiver {
+                assert_eq!(
+                    CompletedReceiverRead::from_error(&error).is_some(),
+                    byte_count == 91
+                );
+                assert!(CompletedDeviceRead::from_error(&error).is_none());
+            } else {
+                assert_eq!(
+                    CompletedDeviceRead::from_error(&error).is_some(),
+                    byte_count == 91
+                );
+                assert!(CompletedReceiverRead::from_error(&error).is_none());
+            }
+            assert_eq!(transport.outputs.get(), 1);
+            assert_eq!(transport.inputs.get(), 1);
+        }
+    }
+}
+
+#[test]
+fn query_deadlines_keep_actual_send_counts_and_original_native_failure_causes() {
+    use crate::backend::NativeIoOutcome;
+    let (device_cap, command) = battery_cap();
+    let receiver_cap = receiver_cap();
+    for receiver in [false, true] {
+        for send_error in [
+            None,
+            Some(None),
+            Some(Some(NativeIoOutcome::NotCalled)),
+            Some(Some(NativeIoOutcome::Rejected)),
+            Some(Some(NativeIoOutcome::Returned { byte_count: 37 })),
+        ] {
+            let mut transport =
+                TerminalTransport::new(vec![0; 91], TerminalRead::Returned(91), false);
+            transport.retire_after_send = true;
+            transport.send_error = send_error;
+            let error = if receiver {
+                read_receiver(&transport, &receiver_cap, 7, || transport.deadline()).unwrap_err()
+            } else {
+                read_device(&transport, &device_cap, &command, 7, || {
+                    transport.deadline()
+                })
+                .unwrap_err()
+            };
+            assert_eq!(
+                crate::backend::native_io_outcome(&error),
+                send_error.unwrap_or(Some(NativeIoOutcome::Returned { byte_count: 91 }))
+            );
+            assert_eq!(error.is::<NativeQueryFailure>(), send_error.is_some());
+            if send_error.is_none() {
+                assert!(error.is::<QueryOwnerExpired>());
+            }
+            assert!(CompletedDeviceRead::from_error(&error).is_none());
+            assert!(CompletedReceiverRead::from_error(&error).is_none());
+            assert_eq!(transport.outputs.get(), 1);
+            assert_eq!(transport.inputs.get(), 0);
+        }
+    }
+}
+
+#[test]
+fn receiver_read_terminal_input_and_release_failures_keep_only_valid_device_lists() {
+    let cap = receiver_cap();
+    for payload in [vec![0], vec![2, 1, 0, 182, 0xfe, 0xab, 0xcd]] {
+        let expected = if payload[0] == 0 {
+            Vec::new()
+        } else {
+            vec![(182, 1), (0xabcd, 0xfe)]
+        };
+        for retire_after_get in [false, true] {
+            let bytes = query_reply(cap.command, 7, &payload);
+            let transport =
+                TerminalTransport::new(bytes, TerminalRead::RetainedError(91), retire_after_get);
+            let error = read_receiver(&transport, &cap, 7, || transport.deadline()).unwrap_err();
+            assert!(error.is::<NativeQueryFailure>());
+            assert_eq!(
+                CompletedReceiverRead::from_error(&error).unwrap().devices(),
+                expected
+            );
+            assert_eq!(transport.outputs.get(), 1);
+            assert_eq!(transport.inputs.get(), 1);
+        }
+        let bytes = query_reply(cap.command, 7, &payload);
+        let transport = TerminalTransport::new(bytes, TerminalRead::Returned(91), false);
+        let probe = crate::feature_exchange::tests::ExchangeProbe::failing_finish(&transport);
+        let error = read_receiver(&probe, &cap, 7, || Ok(())).unwrap_err();
+        assert!(crate::backend::exchange_finalization_failed(&error));
+        assert_eq!(
+            CompletedReceiverRead::from_error(&error).unwrap().devices(),
+            expected
+        );
+        assert_eq!(transport.outputs.get(), 1);
+        assert_eq!(transport.inputs.get(), 1);
+    }
+}
+
+#[test]
+fn rejected_receiver_inputs_never_become_an_empty_or_current_device_list() {
+    let cap = receiver_cap();
+    for (case, count) in [
+        (0, 0),
+        (0, 90),
+        (1, 91),
+        (2, 91),
+        (3, 91),
+        (4, 91),
+        (5, 91),
+        (6, 91),
+    ] {
+        let mut bytes = query_reply(cap.command, 7, &[1, 1, 0, 182]);
+        match case {
+            1 => bytes[1] = 1,
+            2 => bytes[2] ^= 1,
+            3 => bytes[7] ^= 1,
+            4 => bytes[8] ^= 1,
+            5 => bytes[6] = 3,
+            6 => bytes[1] = 5,
+            _ => {}
+        }
+        let transport = TerminalTransport::new(bytes, TerminalRead::RetainedError(count), false);
+        let error = read_receiver(&transport, &cap, 7, || transport.deadline()).unwrap_err();
+        assert!(error.is::<NativeQueryFailure>());
+        assert!(CompletedReceiverRead::from_error(&error).is_none());
+        assert_eq!(transport.outputs.get(), 1);
+        assert_eq!(transport.inputs.get(), 1);
+    }
+}
+
+#[test]
+fn receiver_owner_loss_after_full_input_or_matched_release_never_returns_success() {
+    let cap = receiver_cap();
+    let expected = [(182, 1), (0xabcd, 0xfe)];
+    for during_get in [false, true] {
+        let bytes = query_reply(cap.command, 7, &[2, 1, 0, 182, 0xfe, 0xab, 0xcd]);
+        let transport = TerminalTransport::new(bytes, TerminalRead::Returned(91), during_get);
+        let retire = || transport.current.set(false);
+        let probe =
+            crate::feature_exchange::tests::ExchangeProbe::with_on_finish(&transport, &retire);
+        let error = read_receiver(&probe, &cap, 7, || transport.deadline()).unwrap_err();
+        assert!(error.is::<QueryOwnerExpired>());
+        assert_eq!(
+            crate::backend::exchange_release_completed(&error),
+            !during_get
+        );
+        assert_eq!(
+            CompletedReceiverRead::from_error(&error).unwrap().devices(),
+            expected
+        );
+        assert_eq!(transport.outputs.get(), 1);
+        assert_eq!(transport.inputs.get(), 1);
+    }
 }
 
 #[derive(Default)]

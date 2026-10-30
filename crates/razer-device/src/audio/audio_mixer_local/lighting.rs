@@ -100,11 +100,16 @@ pub fn submit_sample(
             for _ in 0..10 {
                 std::thread::sleep(Duration::from_millis(10));
                 validate()?;
-                transfer.sends_attempted += 1;
-                match lease.transport().send_feature(&report) {
+                let sent = lease.transport().send_feature_counted(&report);
+                transfer.observe_send(&sent);
+                progress.feature_written = transfer.sends_completed > 0;
+                if let Err(validation) = validate() {
+                    return Err(crate::backend::complete_native_io(sent, validation));
+                }
+                match sent
+                    .and_then(|count| crate::backend::require_complete_send(count, report.len()))
+                {
                     Ok(()) => {
-                        transfer.sends_completed += 1;
-                        progress.feature_written = true;
                         return Ok(());
                     }
                     Err(error) => {
@@ -449,6 +454,247 @@ pub(super) fn execute(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::{
+        cell::{Cell, RefCell},
+        collections::VecDeque,
+    };
+
+    enum MeterSend {
+        Completed,
+        Failed,
+        FinalizationFailed,
+    }
+
+    struct MeterTransport {
+        steps: RefCell<VecDeque<MeterSend>>,
+        reports: RefCell<Vec<Vec<u8>>>,
+    }
+
+    impl MeterTransport {
+        fn new(steps: impl IntoIterator<Item = MeterSend>) -> Self {
+            Self {
+                steps: RefCell::new(steps.into_iter().collect()),
+                reports: RefCell::new(Vec::new()),
+            }
+        }
+    }
+
+    impl FeatureTransport for MeterTransport {
+        fn send_feature(&self, report: &[u8]) -> anyhow::Result<()> {
+            // Independent RVA 0x36ca0 Feature7/64 template and 0x368c0
+            // left*100 truncation for the four requested sample sources.
+            let mut expected = [0; 64];
+            expected[..13].copy_from_slice(&[7, 0, 31, 0, 0, 0, 4, 15, 19, 23, 56, 99, 23]);
+            assert_eq!(report, expected);
+            self.reports.borrow_mut().push(report.to_vec());
+            match self.steps.borrow_mut().pop_front().unwrap() {
+                MeterSend::Completed => Ok(()),
+                MeterSend::Failed => Err(crate::backend::native_io_failure(
+                    crate::backend::NativeIoOutcome::Rejected,
+                    anyhow::anyhow!("ordinary native Feature failure"),
+                )),
+                MeterSend::FinalizationFailed => Err(crate::backend::native_io_failure(
+                    crate::backend::NativeIoOutcome::Rejected,
+                    crate::backend::finalization_failure(anyhow::anyhow!(
+                        "inner exchange ownership was lost"
+                    )),
+                )),
+            }
+        }
+
+        fn get_feature(&self, _: &mut [u8]) -> anyhow::Result<usize> {
+            panic!("the source meter frame has no Feature readback")
+        }
+
+        fn metadata(&self) -> Value {
+            Value::Null
+        }
+    }
+
+    fn raw_meter_peaks() -> [Option<f32>; 7] {
+        [
+            Some(0.237),
+            None,
+            None,
+            None,
+            Some(0.569),
+            Some(0.991),
+            None,
+        ]
+    }
+
+    #[test]
+    fn meter_sample_retries_ordinary_native_failure_without_changing_the_source_frame() {
+        let io = MeterTransport::new([MeterSend::Failed, MeterSend::Completed]);
+        let probe = crate::feature_exchange::tests::ExchangeProbe::new(&io);
+        let result = submit_sample(
+            &probe,
+            [0, 4, 5, 0],
+            raw_meter_peaks(),
+            "actual-container".into(),
+            &|| Ok(()),
+        )
+        .unwrap();
+        assert_eq!(result.peaks, [23, 56, 99, 23]);
+        assert_eq!(result.raw_peak, raw_meter_peaks());
+        assert!(result.feature_written);
+        assert_eq!(io.reports.borrow().len(), 2);
+        assert!(io.steps.borrow().is_empty());
+        assert_eq!(probe.timings(), [crate::backend::ExchangeTiming::Plain]);
+    }
+
+    #[test]
+    fn meter_sample_stops_after_ten_ordinary_failures_with_actual_peaks_in_diagnostics() {
+        let io = MeterTransport::new((0..10).map(|_| MeterSend::Failed));
+        let error = submit_sample(
+            &io,
+            [0, 4, 5, 0],
+            raw_meter_peaks(),
+            "actual-container".into(),
+            &|| Ok(()),
+        )
+        .unwrap_err();
+        let failure = error.downcast_ref::<SampleFailure>().unwrap();
+        assert_eq!(failure.progress.raw_peak, raw_meter_peaks());
+        assert_eq!(failure.progress.peaks, [23, 56, 99, 23]);
+        assert!(!failure.progress.feature_written);
+        assert_eq!(failure.transfer.sends_attempted, 10);
+        assert_eq!(failure.transfer.sends_completed, 0);
+        assert!(failure.transfer.input.is_none());
+        assert_eq!(io.reports.borrow().len(), 10);
+        assert!(io.steps.borrow().is_empty());
+        assert_eq!(
+            error.root_cause().to_string(),
+            "ordinary native Feature failure"
+        );
+    }
+
+    #[test]
+    fn meter_sample_does_not_retry_a_terminal_exchange_failure() {
+        let io = MeterTransport::new([MeterSend::FinalizationFailed, MeterSend::Completed]);
+        let error = submit_sample(
+            &io,
+            [0, 4, 5, 0],
+            raw_meter_peaks(),
+            "actual-container".into(),
+            &|| Ok(()),
+        )
+        .unwrap_err();
+        assert!(crate::backend::exchange_finalization_failed(&error));
+        let failure = error.downcast_ref::<SampleFailure>().unwrap();
+        assert_eq!(failure.transfer.sends_attempted, 1);
+        assert_eq!(failure.transfer.sends_completed, 0);
+        assert!(!failure.progress.feature_written);
+        assert_eq!(io.reports.borrow().len(), 1);
+        assert_eq!(io.steps.borrow().len(), 1);
+        assert_eq!(
+            error.root_cause().to_string(),
+            "inner exchange ownership was lost"
+        );
+    }
+
+    #[test]
+    fn meter_sample_preserves_completed_feature_and_peaks_when_release_or_final_owner_fails() {
+        for release_failure in [true, false] {
+            let io = MeterTransport::new([MeterSend::Completed]);
+            let stale = Cell::new(false);
+            let replace = || stale.set(true);
+            let probe = if release_failure {
+                crate::feature_exchange::tests::ExchangeProbe::failing_finish(&io)
+            } else {
+                crate::feature_exchange::tests::ExchangeProbe::with_on_finish(&io, &replace)
+            };
+            let error = submit_sample(
+                &probe,
+                [0, 4, 5, 0],
+                raw_meter_peaks(),
+                "actual-container".into(),
+                &|| {
+                    ensure!(!stale.get(), "meter sample owner replaced during release");
+                    Ok(())
+                },
+            )
+            .unwrap_err();
+            assert!(crate::backend::exchange_finalization_failed(&error));
+            let failure = error.downcast_ref::<SampleFailure>().unwrap();
+            assert_eq!(failure.progress.sources, [0, 4, 5, 0]);
+            assert_eq!(failure.progress.raw_peak, raw_meter_peaks());
+            assert_eq!(failure.progress.peaks, [23, 56, 99, 23]);
+            assert_eq!(failure.progress.device_container_id, "actual-container");
+            assert!(failure.progress.feature_written);
+            assert_eq!(failure.transfer.sends_attempted, 1);
+            assert_eq!(failure.transfer.sends_completed, 1);
+            assert!(failure.transfer.input.is_none());
+            assert_eq!(io.reports.borrow().len(), 1);
+            assert!(io.steps.borrow().is_empty());
+            assert_eq!(
+                error.root_cause().to_string(),
+                if release_failure {
+                    "simulated explicit release failed"
+                } else {
+                    "meter sample owner replaced during release"
+                }
+            );
+        }
+    }
+
+    #[test]
+    fn meter_sample_keeps_observed_peaks_when_admission_is_canceled_without_writing() {
+        let io = MeterTransport::new([]);
+        let probe = crate::feature_exchange::tests::ExchangeProbe::new(&io);
+        let error = submit_sample(
+            &probe,
+            [0, 4, 5, 0],
+            raw_meter_peaks(),
+            "actual-container".into(),
+            &|| anyhow::bail!("meter sample canceled before admission"),
+        )
+        .unwrap_err();
+        let failure = error.downcast_ref::<SampleFailure>().unwrap();
+        assert_eq!(failure.progress.raw_peak, raw_meter_peaks());
+        assert!(!failure.progress.feature_written);
+        assert_eq!(failure.transfer.sends_attempted, 0);
+        assert_eq!(failure.transfer.sends_completed, 0);
+        assert!(failure.transfer.input.is_none());
+        assert!(io.reports.borrow().is_empty());
+        assert!(probe.timings().is_empty());
+    }
+
+    #[test]
+    fn meter_sample_retains_a_completed_send_only_as_diagnostics_after_owner_loss() {
+        let io = MeterTransport::new([MeterSend::Completed]);
+        let error = submit_sample(
+            &io,
+            [0, 4, 5, 0],
+            raw_meter_peaks(),
+            "actual-container".into(),
+            &|| {
+                ensure!(
+                    io.reports.borrow().is_empty(),
+                    "meter owner changed during send"
+                );
+                Ok(())
+            },
+        )
+        .unwrap_err();
+        let failure = error.downcast_ref::<SampleFailure>().unwrap();
+        assert!(failure.progress.feature_written);
+        assert_eq!(failure.progress.peaks, [23, 56, 99, 23]);
+        assert_eq!(
+            (
+                failure.transfer.sends_attempted,
+                failure.transfer.sends_completed
+            ),
+            (1, 1)
+        );
+        assert_eq!(
+            crate::backend::native_io_outcome(&error),
+            Some(crate::backend::NativeIoOutcome::Returned { byte_count: 64 })
+        );
+        assert_eq!(io.reports.borrow().len(), 1);
+        assert!(format!("{error:#}").contains("meter owner changed during send"));
+    }
+
     #[test]
     fn source_region_templates_and_mute_pairs() {
         let command=effect(&json!({"regionId":16,"selectedEffectId":1,"selectedEffectSetting":{"color1":["#010203","#040506"]}})).unwrap();

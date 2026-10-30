@@ -1,7 +1,9 @@
 //! Identity-checked current local controller lighting Feature operations.
 use anyhow::{Context as _, ensure};
 use razer_device::{
-    backend::{FeatureTransport, HidNode},
+    backend::{
+        FeatureTransport, HidNode, checked_native_io, checked_native_read, require_complete_send,
+    },
     controller_lighting::{LightingOperation, LightingProtocol, capability},
 };
 use razer_hid::with_backend;
@@ -121,27 +123,53 @@ impl FeatureTransport for CheckedTransport<'_> {
     fn hid_node(&self) -> Option<&HidNode> {
         self.inner.hid_node()
     }
+    fn send_feature_batch(
+        &self,
+        batch: &razer_device::backend::FeatureBatch,
+    ) -> anyhow::Result<razer_device::backend::FeatureBatchReceipt> {
+        razer_device::backend::checked_feature_batch(
+            self.validate,
+            || self.inner.send_feature_batch(batch),
+            self.validate,
+        )
+    }
     fn send_feature(&self, report: &[u8]) -> anyhow::Result<()> {
-        (self.validate)()?;
-        self.inner.send_feature(report)?;
-        (self.validate)()
+        let count = self.send_feature_counted(report)?;
+        require_complete_send(count, report.len())
+    }
+    fn send_feature_counted(&self, report: &[u8]) -> anyhow::Result<usize> {
+        checked_native_io(
+            self.validate,
+            || self.inner.send_feature_counted(report),
+            self.validate,
+        )
     }
     fn get_feature(&self, report: &mut [u8]) -> anyhow::Result<usize> {
-        (self.validate)()?;
-        let count = self.inner.get_feature(report)?;
-        (self.validate)()?;
-        Ok(count)
+        checked_native_read(
+            self.validate,
+            report,
+            |report| self.inner.get_feature(report),
+            self.validate,
+        )
     }
     fn send_feature_at_collection_max(&self, report: &[u8]) -> anyhow::Result<()> {
-        (self.validate)()?;
-        self.inner.send_feature_at_collection_max(report)?;
-        (self.validate)()
+        let count = self.send_feature_at_collection_max_counted(report)?;
+        require_complete_send(count, report.len())
+    }
+    fn send_feature_at_collection_max_counted(&self, report: &[u8]) -> anyhow::Result<usize> {
+        checked_native_io(
+            self.validate,
+            || self.inner.send_feature_at_collection_max_counted(report),
+            self.validate,
+        )
     }
     fn get_feature_at_collection_max(&self, report: &mut [u8]) -> anyhow::Result<usize> {
-        (self.validate)()?;
-        let count = self.inner.get_feature_at_collection_max(report)?;
-        (self.validate)()?;
-        Ok(count)
+        checked_native_read(
+            self.validate,
+            report,
+            |report| self.inner.get_feature_at_collection_max(report),
+            self.validate,
+        )
     }
     fn metadata(&self) -> Value {
         self.inner.metadata()

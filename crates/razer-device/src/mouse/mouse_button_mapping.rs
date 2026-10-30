@@ -224,6 +224,33 @@ pub struct ObservedButtonAssignment {
     pub raw_payload: Vec<u8>,
 }
 
+/// A decoded assignment remains diagnostic when its retained owner or release
+/// fails. It cannot authorize publishing state or continuing the command chain.
+#[derive(Clone, Debug)]
+pub struct CompletedButtonRead {
+    observed: ObservedButtonAssignment,
+}
+
+impl CompletedButtonRead {
+    pub fn from_error(error: &anyhow::Error) -> Option<&Self> {
+        error.downcast_ref()
+    }
+
+    pub fn observed(&self) -> &ObservedButtonAssignment {
+        &self.observed
+    }
+}
+
+impl std::fmt::Display for CompletedButtonRead {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            formatter,
+            "Mouse button assignment for {:?} retained as diagnostics",
+            self.observed.assignment.target
+        )
+    }
+}
+
 #[derive(Clone, Debug, Serialize)]
 pub struct ButtonWriteStep {
     pub target: ButtonTarget,
@@ -587,7 +614,7 @@ impl<'a> MouseButtonMapping<'a> {
         target.validate()?;
         validate()?;
         let transaction = next_transaction()?;
-        let data = exchange_with_report_data_size_observing_send(
+        let response = exchange_with_report_data_size_observing_send(
             self.device,
             self.transport,
             GET_ASSIGNMENT,
@@ -596,8 +623,20 @@ impl<'a> MouseButtonMapping<'a> {
             REPORT_DATA_SIZE,
             validate,
             observe_send,
-        )?;
-        parse_assignment(self.transport.product_id, target, &data)
+        );
+        match response {
+            Ok(data) => parse_assignment(self.transport.product_id, target, &data),
+            Err(error) => {
+                let observed =
+                    crate::feature_exchange::acknowledged_error(&error).and_then(|data| {
+                        parse_assignment(self.transport.product_id, target, data).ok()
+                    });
+                Err(match observed {
+                    Some(observed) => error.context(CompletedButtonRead { observed }),
+                    None => error,
+                })
+            }
+        }
     }
 
     pub fn apply(
@@ -774,6 +813,9 @@ impl<'a> MouseButtonMapping<'a> {
         let observed = match self.read(target, &mut next_transaction, &validate) {
             Ok(value) => value,
             Err(error) => {
+                if let Some(completed) = CompletedButtonRead::from_error(&error) {
+                    report.steps[0].observed = Some(completed.observed().clone());
+                }
                 return Err(ButtonWriteFailure {
                     phase: ButtonFailurePhase::Readback,
                     progress: report,

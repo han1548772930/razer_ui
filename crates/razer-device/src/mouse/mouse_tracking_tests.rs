@@ -1,6 +1,6 @@
 //! Exact synthetic Feature reports exercise production code, never a device.
 use super::*;
-use crate::feature_exchange::tests::ExchangeProbe;
+use crate::feature_exchange::tests::{ExchangeProbe, LeaseEvent};
 use std::{
     cell::{Cell, RefCell},
     collections::VecDeque,
@@ -227,15 +227,27 @@ fn cancellation_after_an_ack_keeps_it_and_stops_before_next_command() {
         Ok(())
     })
     .unwrap_err();
-    assert_eq!(error.phase, TrackingFailurePhase::AfterAcknowledgement);
+    assert_eq!(error.phase, TrackingFailurePhase::Command);
+    assert_eq!(error.step, Some(TrackingStep::SensorState));
     assert_eq!(error.acknowledgements.len(), 1);
-    assert!(!error.command_may_have_reached_device);
-    assert_eq!(device.sends.get(), 1);
+    assert_eq!(error.acknowledgements[0].payload, [0, 4, 1]);
+    assert!(error.command_may_have_reached_device);
+    assert!(error.error.contains("Synthetic post-ACK cancellation"));
+    assert!(matches!(
+        leased.events().as_slice(),
+        [
+            LeaseEvent::Begin(_),
+            LeaseEvent::Send,
+            LeaseEvent::Get,
+            LeaseEvent::Finish
+        ]
+    ));
+    assert_eq!((device.sends.get(), device.reads.get()), (1, 1));
     device.finish();
 }
 
 #[test]
-fn cancellation_during_reply_does_not_invent_a_confirmed_ack() {
+fn cancellation_during_reply_retains_only_diagnostic_ack_and_rejects_the_command() {
     let device = Transport::new(exchange([3, 11, 3], &[0, 4, 1], 1, &[0, 4, 1]));
     let error = apply(&device, &cap(204), ASYMMETRIC, transactions(), || {
         ensure!(
@@ -246,7 +258,8 @@ fn cancellation_during_reply_does_not_invent_a_confirmed_ack() {
     })
     .unwrap_err();
     assert_eq!(error.phase, TrackingFailurePhase::Command);
-    assert!(error.acknowledgements.is_empty());
+    assert_eq!(error.acknowledgements.len(), 1);
+    assert_eq!(error.acknowledgements[0].payload, [0, 4, 1]);
     assert!(error.command_may_have_reached_device);
     device.finish();
 }

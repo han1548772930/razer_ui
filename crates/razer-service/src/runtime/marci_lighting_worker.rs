@@ -5,10 +5,10 @@ use crate::runtime::{
     native,
 };
 use razer_device::{
-    backend::{FeatureTransport, HidNode, ReportLengths},
+    backend::{FeatureTransport, HidNode, ReportLengths, checked_native_io, require_complete_send},
     marci_lighting::{
-        Control, Frame, LatestFrames, OutputReleaseFailure, exit_effect_for_quick,
-        led_configuration, manifest_exit_effect, submit_javascript_frame,
+        CompletedOutputTransfer, Control, Frame, LatestFrames, OutputReleaseFailure,
+        exit_effect_for_quick, led_configuration, manifest_exit_effect, submit_javascript_frame,
     },
 };
 use razer_hid::with_backend;
@@ -53,22 +53,43 @@ impl FeatureTransport for Checked<'_> {
     fn hid_node(&self) -> Option<&HidNode> {
         self.inner.hid_node()
     }
+    fn send_feature_batch(
+        &self,
+        batch: &razer_device::backend::FeatureBatch,
+    ) -> anyhow::Result<razer_device::backend::FeatureBatchReceipt> {
+        razer_device::backend::checked_feature_batch(
+            self.validate,
+            || self.inner.send_feature_batch(batch),
+            self.validate_after,
+        )
+    }
     fn send_feature(&self, report: &[u8]) -> anyhow::Result<()> {
-        (self.validate)()?;
-        self.inner.send_feature_at_collection_max(report)?;
-        (self.validate_after)()
+        let count = self.send_feature_counted(report)?;
+        require_complete_send(count, report.len())
+    }
+    fn send_feature_counted(&self, report: &[u8]) -> anyhow::Result<usize> {
+        checked_native_io(
+            self.validate,
+            || self.inner.send_feature_at_collection_max_counted(report),
+            self.validate_after,
+        )
+    }
+    fn send_feature_at_collection_max_counted(&self, report: &[u8]) -> anyhow::Result<usize> {
+        self.send_feature_counted(report)
     }
     fn get_feature(&self, report: &mut [u8]) -> anyhow::Result<usize> {
-        (self.validate)()?;
-        let count = self.inner.get_feature_at_collection_max(report)?;
-        (self.validate_after)()?;
-        Ok(count)
+        checked_native_io(
+            self.validate,
+            || self.inner.get_feature_at_collection_max(report),
+            self.validate_after,
+        )
     }
     fn write_output_counted(&self, report: &[u8]) -> anyhow::Result<usize> {
-        (self.validate)()?;
-        let count = self.inner.write_output_counted(report)?;
-        (self.validate_after)()?;
-        Ok(count)
+        checked_native_io(
+            self.validate,
+            || self.inner.write_output_counted(report),
+            self.validate_after,
+        )
     }
     fn report_lengths(&self) -> anyhow::Result<ReportLengths> {
         self.inner.report_lengths()
@@ -256,15 +277,21 @@ fn run_connected<E: EngineAdapter>(
                         Some(anyhow::anyhow!("Marci Output connection probe was short"));
                 }
                 Err(error) => {
-                    if let Some(failure) = error.downcast_ref::<OutputReleaseFailure>() {
+                    if let Some(completed) = CompletedOutputTransfer::from_error(&error) {
                         update(status, |s| {
-                            s.connection_output = Some(failure.receipt.clone());
+                            s.connection_output = Some(completed.receipt().clone());
+                        });
+                    }
+                    if error.is::<OutputReleaseFailure>() {
+                        update(status, |s| {
                             s.cleanup_errors
                                 .push(format!("Output connection exchange: {error:#}"));
                         });
                         return Err(error);
                     }
-                    if error.is::<Canceled>() {
+                    if CompletedOutputTransfer::from_error(&error).is_some()
+                        || error.is::<Canceled>()
+                    {
                         return Err(error);
                     }
                     probe_failure = Some(error);
@@ -362,10 +389,14 @@ fn run_connected<E: EngineAdapter>(
                 let receipt = match submit_javascript_frame(&checked_output, &frame) {
                     Ok(receipt) => receipt,
                     Err(error) => {
-                        if let Some(failure) = error.downcast_ref::<OutputReleaseFailure>() {
+                        if let Some(completed) = CompletedOutputTransfer::from_error(&error) {
                             update(status, |s| {
                                 s.frames_submitted += 1;
-                                s.last_output = Some(failure.receipt.clone());
+                                s.last_output = Some(completed.receipt().clone());
+                            });
+                        }
+                        if error.is::<OutputReleaseFailure>() {
+                            update(status, |s| {
                                 s.cleanup_errors
                                     .push(format!("Output frame exchange: {error:#}"));
                             });

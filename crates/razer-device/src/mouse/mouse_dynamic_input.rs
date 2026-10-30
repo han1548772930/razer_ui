@@ -26,20 +26,12 @@ struct Tick {
     text: Option<String>,
 }
 impl Tick {
-    fn decode(wire: WireTick) -> anyhow::Result<Self> {
+    fn decode(wire: WireTick) -> Self {
         let (number, text) = match wire {
             WireTick::Number(number) => (number, None),
-            WireTick::Text(text) => (
-                text.parse::<f64>()
-                    .context("Dynamic movement has invalid timeTick")?,
-                Some(text),
-            ),
+            WireTick::Text(text) => (crate::ecmascript_number::from_string(&text), Some(text)),
         };
-        ensure!(
-            number.is_finite() && number >= 0.,
-            "Dynamic movement contains nonfinite or negative timing data"
-        );
-        Ok(Self { number, text })
+        Self { number, text }
     }
 
     fn is_numeric_zero(&self) -> bool {
@@ -50,7 +42,9 @@ impl Tick {
         match (&self.text, &previous.text) {
             // Native ticks are decimal strings. JSON.parse preserves their
             // type: string/string `>` compares lexically, subtraction does not.
-            (Some(current), Some(previous)) => current > previous,
+            (Some(current), Some(previous)) => {
+                current.encode_utf16().cmp(previous.encode_utf16()).is_gt()
+            }
             _ => self.number > previous.number,
         }
     }
@@ -109,7 +103,7 @@ impl Speed {
             };
             let tick = Tick::decode(serde_json::from_value(
                 row.time_tick.context("Dynamic movement omits timeTick")?,
-            )?)?;
+            )?);
             ensure!(
                 dx.is_finite() && dy.is_finite(),
                 "Dynamic movement contains nonfinite coordinates"
@@ -306,10 +300,10 @@ mod tests {
                 .unwrap();
             for invalid in [
                 r#"[{"timeTick":"15000","data":"{\"type\":\"mouseMove\",\"x\":99,\"y\":99}"},{"data":"{\"type\":\"mouseMove\",\"x\":1,\"y\":2}"}]"#,
-                r#"[{"timeTick":"NaN","data":"{\"type\":\"mouseMove\",\"x\":1,\"y\":2}"}]"#,
-                r#"[{"timeTick":-1,"data":"{\"type\":\"mouseMove\",\"x\":1,\"y\":2}"}]"#,
+                r#"[{"timeTick":true,"data":"{\"type\":\"mouseMove\",\"x\":1,\"y\":2}"}]"#,
+                r#"[{"timeTick":null,"data":"{\"type\":\"mouseMove\",\"x\":1,\"y\":2}"}]"#,
+                r#"[{"timeTick":[],"data":"{\"type\":\"mouseMove\",\"x\":1,\"y\":2}"}]"#,
                 r#"[{"timeTick":20000,"data":"{\"type\":\"mouseMove\",\"x\":1}"}]"#,
-                r#"[{"timeTick":"Infinity","data":"{\"type\":\"mouseMove\",\"x\":1,\"y\":2}"}]"#,
                 r#"[{"timeTick":20000,"data":"broken"}]"#,
                 "{}",
             ] {
@@ -317,6 +311,96 @@ mod tests {
             }
             speed.observe(r#"[{"data":"{\"type\":\"mouseDown\"}"},{"timeTick":"20000","data":"{\"type\":\"mouseMove\",\"x\":6,\"y\":8}"}]"#).unwrap();
             assert_eq!(speed.publish(), 10.);
+        }
+    }
+
+    #[test]
+    fn dynamic_tick_conversion_preserves_source_string_comparison_and_number_arithmetic() {
+        for product_id in [190, 192, 196, 222, 226, 229, 239] {
+            for (first, second, expected) in [
+                (serde_json::json!("0x10"), serde_json::json!(32), 3125.),
+                (serde_json::json!("0b10000"), serde_json::json!(32), 3125.),
+                (serde_json::json!("0o20"), serde_json::json!(32), 3125.),
+                (serde_json::json!("0x10"), serde_json::json!("0x20"), 3125.),
+                (serde_json::json!("0x9"), serde_json::json!("0x10"), 0.),
+                (serde_json::json!(""), serde_json::json!(10000), 5.),
+                (serde_json::json!(" \u{feff}"), serde_json::json!(10000), 5.),
+                (serde_json::json!("-0"), serde_json::json!(10000), 5.),
+                (serde_json::json!(0), serde_json::json!(10000), 0.),
+                (serde_json::json!(-10000), serde_json::json!(0), 5.),
+                (
+                    serde_json::json!("\u{feff}1e4\u{3000}"),
+                    serde_json::json!(20000),
+                    5.,
+                ),
+                (serde_json::json!("-Infinity"), serde_json::json!(20000), 0.),
+                (serde_json::json!("1e400"), serde_json::json!(20000), 0.),
+                (serde_json::json!("NaN"), serde_json::json!(20000), 0.),
+                (
+                    serde_json::json!("not-a-number"),
+                    serde_json::json!(20000),
+                    0.,
+                ),
+            ] {
+                let events = serde_json::json!([
+                    {"timeTick":first,"data":r#"{"type":"mouseMove","x":99,"y":99}"#},
+                    {"timeTick":second,"data":r#"{"type":"mouseMove","x":3,"y":4}"#},
+                ]);
+                let mut speed = Speed::new(product_id).unwrap();
+                speed.observe(&events.to_string()).unwrap();
+                assert_eq!(speed.publish(), expected, "{product_id}: {events}");
+                assert_eq!(speed.publish(), 0.);
+            }
+        }
+    }
+
+    #[test]
+    fn dynamic_nonfinite_ticks_follow_source_comparison_and_infinite_duration() {
+        for product_id in [190, 192, 196, 222, 226, 229, 239] {
+            // A positive infinite tick passes `l > lastTimeTick`; finite
+            // distance divided by its infinite duration produces zero. NaN
+            // and negative infinity fail that comparison. A subsequent finite
+            // tick after negative infinity also has infinite duration.
+            for (text, after_nonfinite, after_first_finite) in [
+                ("NaN", 5., 5.),
+                ("inf", 5., 5.),
+                ("not-a-number", 5., 5.),
+                ("1e400", 0., 0.),
+                ("Infinity", 0., 0.),
+                ("+Infinity", 0., 0.),
+                ("-1e400", 5., 0.),
+                ("-Infinity", 5., 0.),
+            ] {
+                let mut speed = Speed::new(product_id).unwrap();
+                speed.observe(r#"[{"timeTick":10000,"data":"{\"type\":\"mouseMove\",\"x\":0,\"y\":0}"},{"timeTick":20000,"data":"{\"type\":\"mouseMove\",\"x\":3,\"y\":4}"}]"#).unwrap();
+                assert_eq!(speed.clone().publish(), 5.);
+                let event = serde_json::json!([{
+                    "timeTick":text,"data":r#"{"type":"mouseMove","x":99,"y":99}"#,
+                }]);
+                speed.observe(&event.to_string()).unwrap();
+                assert_eq!(
+                    speed.clone().publish(),
+                    after_nonfinite,
+                    "{product_id}: {text} after finite baseline",
+                );
+                assert_eq!(speed.last_tick.text.as_deref(), Some(text));
+                speed
+                    .observe(
+                        r#"[{"timeTick":30000,"data":"{\"type\":\"mouseMove\",\"x\":6,\"y\":8}"}]"#,
+                    )
+                    .unwrap();
+                assert_eq!(
+                    speed.clone().publish(),
+                    after_first_finite,
+                    "{product_id}: first finite tick after {text}",
+                );
+                speed
+                    .observe(
+                        r#"[{"timeTick":40000,"data":"{\"type\":\"mouseMove\",\"x\":6,\"y\":8}"}]"#,
+                    )
+                    .unwrap();
+                assert_eq!(speed.publish(), 10., "{product_id}: recovered after {text}");
+            }
         }
     }
     #[test]

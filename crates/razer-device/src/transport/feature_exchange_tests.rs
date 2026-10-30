@@ -7,6 +7,7 @@ use std::cell::{Cell, RefCell};
 pub(crate) enum LeaseEvent {
     Begin(ExchangeTiming),
     Send,
+    Batch,
     Get,
     RetryRelease,
     Finish,
@@ -66,6 +67,10 @@ impl<'a> ExchangeProbe<'a> {
                 _ => None,
             })
             .collect()
+    }
+
+    pub(crate) fn events(&self) -> Vec<LeaseEvent> {
+        self.events.borrow().clone()
     }
 }
 
@@ -151,9 +156,29 @@ impl FeatureTransport for ProbeLease<'_> {
         self.owner.inner.send_feature(report)
     }
 
+    fn send_feature_counted(&self, report: &[u8]) -> anyhow::Result<usize> {
+        self.owner.events.borrow_mut().push(LeaseEvent::Send);
+        self.owner.inner.send_feature_counted(report)
+    }
+
     fn send_feature_at_collection_max(&self, report: &[u8]) -> anyhow::Result<()> {
         self.owner.events.borrow_mut().push(LeaseEvent::Send);
         self.owner.inner.send_feature_at_collection_max(report)
+    }
+
+    fn send_feature_at_collection_max_counted(&self, report: &[u8]) -> anyhow::Result<usize> {
+        self.owner.events.borrow_mut().push(LeaseEvent::Send);
+        self.owner
+            .inner
+            .send_feature_at_collection_max_counted(report)
+    }
+
+    fn send_feature_batch(
+        &self,
+        batch: &crate::backend::FeatureBatch,
+    ) -> anyhow::Result<crate::backend::FeatureBatchReceipt> {
+        self.owner.events.borrow_mut().push(LeaseEvent::Batch);
+        self.owner.inner.send_feature_batch(batch)
     }
 
     fn get_feature(&self, report: &mut [u8]) -> anyhow::Result<usize> {
@@ -253,6 +278,261 @@ fn capability() -> DeviceReadCapability {
     cap
 }
 
+struct ObservedIo<'a> {
+    protocol: ProtocolIo,
+    returns: RefCell<std::collections::VecDeque<anyhow::Result<usize>>>,
+    events: &'a RefCell<Vec<&'static str>>,
+    retire_on_send: Option<&'a Cell<bool>>,
+    retire_on_get: Option<&'a Cell<bool>>,
+}
+
+impl<'a> ObservedIo<'a> {
+    fn new(
+        events: &'a RefCell<Vec<&'static str>>,
+        returns: impl IntoIterator<Item = anyhow::Result<usize>>,
+    ) -> Self {
+        Self {
+            protocol: ProtocolIo::new([(2, false)]),
+            returns: RefCell::new(returns.into_iter().collect()),
+            events,
+            retire_on_send: None,
+            retire_on_get: None,
+        }
+    }
+}
+
+impl FeatureTransport for ObservedIo<'_> {
+    fn send_feature(&self, _: &[u8]) -> anyhow::Result<()> {
+        panic!("send observation requires the counted terminal result")
+    }
+
+    fn send_feature_at_collection_max_counted(&self, report: &[u8]) -> anyhow::Result<usize> {
+        let result = self.returns.borrow_mut().pop_front().unwrap();
+        if result.is_ok() {
+            self.protocol.send_feature(report)?;
+        }
+        if let Some(current) = self.retire_on_send {
+            current.set(false);
+        }
+        self.events.borrow_mut().push("send returned");
+        result
+    }
+
+    fn get_feature(&self, report: &mut [u8]) -> anyhow::Result<usize> {
+        let result = self.protocol.get_feature(report);
+        if let Some(current) = self.retire_on_get {
+            current.set(false);
+        }
+        self.events.borrow_mut().push("get returned");
+        result
+    }
+
+    fn metadata(&self) -> Value {
+        Value::Null
+    }
+}
+
+fn observed_send_failure(outcome: Option<crate::backend::NativeIoOutcome>) -> anyhow::Error {
+    let error: anyhow::Error = std::io::Error::other("simulated native send failure").into();
+    match outcome {
+        Some(outcome) => crate::backend::native_io_failure(outcome, error),
+        None => error,
+    }
+}
+
+#[test]
+fn send_observers_reconcile_terminal_outcomes_in_source_retry_order() {
+    use crate::backend::NativeIoOutcome;
+    for (first, expected_attempts) in [
+        (Err(observed_send_failure(None)), 1),
+        (
+            Err(observed_send_failure(Some(NativeIoOutcome::NotCalled))),
+            1,
+        ),
+        (
+            Err(observed_send_failure(Some(NativeIoOutcome::Rejected))),
+            2,
+        ),
+        (
+            Err(observed_send_failure(Some(NativeIoOutcome::Returned {
+                byte_count: 90,
+            }))),
+            2,
+        ),
+        (Ok(0), 2),
+        (Ok(90), 2),
+    ] {
+        let events = RefCell::new(Vec::new());
+        let io = ObservedIo::new(&events, [first, Ok(91)]);
+        let probe = ExchangeProbe::new(&io);
+        let attempts = Cell::new(0usize);
+        let reply = exchange_with_report_data_size_observing_send(
+            &probe,
+            &capability(),
+            [2, 7, 128],
+            &[],
+            3,
+            2,
+            &|| Ok(()),
+            &mut || {
+                attempts.set(attempts.get() + 1);
+                events.borrow_mut().push("send observed");
+            },
+        )
+        .unwrap();
+        assert_eq!(reply, [23, 42]);
+        assert_eq!(attempts.get(), expected_attempts);
+        let expected = if expected_attempts == 2 {
+            vec![
+                "send returned",
+                "send observed",
+                "send returned",
+                "send observed",
+                "get returned",
+            ]
+        } else {
+            vec![
+                "send returned",
+                "send returned",
+                "send observed",
+                "get returned",
+            ]
+        };
+        assert_eq!(*events.borrow(), expected);
+        assert_eq!(
+            probe.events(),
+            [
+                LeaseEvent::Begin(ExchangeTiming::MutexOut {
+                    interval: Duration::ZERO,
+                }),
+                LeaseEvent::Send,
+                LeaseEvent::Send,
+                LeaseEvent::Get,
+                LeaseEvent::Finish,
+            ]
+        );
+    }
+}
+
+#[test]
+fn canceled_and_stale_send_owners_keep_terminal_attempts_and_errors_without_retrying() {
+    use crate::backend::{NativeIoOutcome, native_io_outcome};
+    for owner_error in ["simulated canceled owner", "simulated stale connection"] {
+        for outcome in [
+            None,
+            Some(NativeIoOutcome::NotCalled),
+            Some(NativeIoOutcome::Rejected),
+            Some(NativeIoOutcome::Returned { byte_count: 90 }),
+            Some(NativeIoOutcome::Returned { byte_count: 91 }),
+        ] {
+            let events = RefCell::new(Vec::new());
+            let current = Cell::new(true);
+            let first = match outcome {
+                Some(NativeIoOutcome::Returned { byte_count: 91 }) => Ok(91),
+                _ => Err(observed_send_failure(outcome)),
+            };
+            let mut io = ObservedIo::new(&events, [first]);
+            io.retire_on_send = Some(&current);
+            let probe = ExchangeProbe::new(&io);
+            let mut attempts = 0usize;
+            let result = exchange_with_report_data_size_observing_send(
+                &probe,
+                &capability(),
+                [2, 7, 128],
+                &[],
+                3,
+                2,
+                &|| {
+                    ensure!(current.get(), "{owner_error}");
+                    Ok(())
+                },
+                &mut || {
+                    attempts += 1;
+                    events.borrow_mut().push("send observed");
+                },
+            );
+            assert!(acknowledged_reply(&result).is_none());
+            let error = result.unwrap_err();
+            assert_eq!(native_io_outcome(&error), outcome);
+            assert!(format!("{error:#}").contains(owner_error));
+            assert_eq!(
+                error.downcast_ref::<std::io::Error>().is_some(),
+                outcome != Some(NativeIoOutcome::Returned { byte_count: 91 })
+            );
+            let attempted = matches!(
+                outcome,
+                Some(NativeIoOutcome::Returned { .. } | NativeIoOutcome::Rejected)
+            );
+            assert_eq!(attempts, usize::from(attempted));
+            assert_eq!(
+                *events.borrow(),
+                if attempted {
+                    vec!["send returned", "send observed"]
+                } else {
+                    vec!["send returned"]
+                }
+            );
+            assert_eq!(
+                probe.events(),
+                [
+                    LeaseEvent::Begin(ExchangeTiming::MutexOut {
+                        interval: Duration::ZERO,
+                    }),
+                    LeaseEvent::Send,
+                    LeaseEvent::ForcedDrop,
+                ]
+            );
+            assert!(crate::backend::exchange_finalization_failed(&error));
+        }
+    }
+}
+
+#[test]
+fn cancellation_after_get_retains_validated_ack_as_diagnostics_and_rejects_publication() {
+    let events = RefCell::new(Vec::new());
+    let current = Cell::new(true);
+    let mut io = ObservedIo::new(&events, [Ok(91)]);
+    io.retire_on_get = Some(&current);
+    let probe = ExchangeProbe::new(&io);
+    let result = exchange_with_report_data_size_observing_send(
+        &probe,
+        &capability(),
+        [2, 7, 128],
+        &[],
+        3,
+        2,
+        &|| {
+            ensure!(current.get(), "simulated stale GET owner");
+            Ok(())
+        },
+        &mut || events.borrow_mut().push("send observed"),
+    );
+    assert!(result.is_err());
+    assert_eq!(acknowledged_reply(&result), Some([23, 42].as_slice()));
+    let error = result.unwrap_err();
+    assert_eq!(
+        crate::backend::native_io_outcome(&error),
+        Some(crate::backend::NativeIoOutcome::Returned { byte_count: 91 })
+    );
+    assert_eq!(crate::backend::native_read_bytes(&error).unwrap().len(), 91);
+    assert_eq!(
+        *events.borrow(),
+        ["send returned", "send observed", "get returned"]
+    );
+    assert_eq!(
+        probe.events(),
+        [
+            LeaseEvent::Begin(ExchangeTiming::MutexOut {
+                interval: Duration::ZERO,
+            }),
+            LeaseEvent::Send,
+            LeaseEvent::Get,
+            LeaseEvent::ForcedDrop,
+        ]
+    );
+    assert!(crate::backend::exchange_finalization_failed(&error));
+}
+
 #[test]
 fn full_feature_retry_chain_keeps_admission_and_marks_only_complete_out_retry_boundaries() {
     let io = ProtocolIo::new([(1, false), (2, true), (2, false)]);
@@ -305,6 +585,78 @@ fn audited_host_caught_send_failures_retry_without_an_intermediate_hid_release()
             "source class {source_class}"
         );
     }
+}
+
+#[test]
+fn source_out_count_predicate_does_not_read_or_release_for_a_non_91_return() {
+    struct CountedIo {
+        inner: ProtocolIo,
+        counts: RefCell<std::collections::VecDeque<usize>>,
+    }
+    impl FeatureTransport for CountedIo {
+        fn send_feature(&self, _: &[u8]) -> anyhow::Result<()> {
+            panic!("the source OUT count predicate requires the counted boundary")
+        }
+        fn send_feature_at_collection_max_counted(&self, report: &[u8]) -> anyhow::Result<usize> {
+            self.inner.send_feature(report)?;
+            Ok(self
+                .counts
+                .borrow_mut()
+                .pop_front()
+                .expect("unexpected OUT"))
+        }
+        fn get_feature(&self, report: &mut [u8]) -> anyhow::Result<usize> {
+            self.inner.get_feature(report)
+        }
+        fn metadata(&self) -> Value {
+            Value::Null
+        }
+    }
+    // MW190's sendCommand accepts count === 91 before issuing GET. This tests
+    // that predicate, not an unproven short-success branch of Windows SET.
+    for count in [0, 90, 92] {
+        let io = CountedIo {
+            inner: ProtocolIo::new([(2, false)]),
+            counts: RefCell::new([count, 91].into()),
+        };
+        let probe = ExchangeProbe::new(&io);
+        exchange(&probe, &capability(), [2, 7, 128], &[], 3, &|| Ok(())).unwrap();
+        assert_eq!(
+            *probe.events.borrow(),
+            [
+                LeaseEvent::Begin(ExchangeTiming::MutexOut {
+                    interval: Duration::ZERO
+                }),
+                LeaseEvent::Send,
+                LeaseEvent::Send,
+                LeaseEvent::Get,
+                LeaseEvent::Finish,
+            ]
+        );
+    }
+    let mut cap = capability();
+    cap.max_retry_out = 2;
+    let io = CountedIo {
+        inner: ProtocolIo::new([]),
+        counts: RefCell::new([90, 90].into()),
+    };
+    let probe = ExchangeProbe::new(&io);
+    let error = exchange(&probe, &cap, [2, 7, 128], &[], 3, &|| Ok(())).unwrap_err();
+    assert_eq!(
+        crate::backend::native_io_outcome(&error),
+        Some(crate::backend::NativeIoOutcome::Returned { byte_count: 90 })
+    );
+    assert_eq!(
+        *probe.events.borrow(),
+        [
+            LeaseEvent::Begin(ExchangeTiming::MutexOut {
+                interval: Duration::ZERO
+            }),
+            LeaseEvent::Send,
+            LeaseEvent::Send,
+            LeaseEvent::Finish,
+        ]
+    );
 }
 
 #[test]
@@ -476,6 +828,9 @@ fn decoded_reply_survives_a_checked_leases_after_release_guard_failure() {
     let result = exchange(&transport, &capability(), [2, 7, 128], &[], 3, &|| Ok(()));
     assert!(result.is_err());
     assert_eq!(acknowledged_reply(&result), Some([23, 42].as_slice()));
+    assert!(crate::backend::exchange_release_completed(
+        result.as_ref().unwrap_err()
+    ));
     assert!(format!("{:#}", result.unwrap_err()).contains("after-release cancellation"));
     assert_eq!(probe.events.borrow().last(), Some(&LeaseEvent::Finish));
     assert_eq!(probe.events.borrow().len(), 4);
@@ -502,20 +857,128 @@ fn unaccepted_or_unparsed_packets_do_not_create_acknowledgement_evidence() {
         assert!(format!("{:#}", result.unwrap_err()).contains("explicit release failed"));
         assert_eq!(probe.events.borrow().len(), 4);
     }
+}
 
-    let io = ProtocolIo::new([(2, false)]);
-    let probe = ExchangeProbe::new(&io);
-    let result = exchange(&probe, &capability(), [2, 7, 128], &[], 3, &|| {
-        ensure!(
-            probe.events.borrow().last() != Some(&LeaseEvent::Get),
-            "simulated cancellation while GET returned"
+#[test]
+fn canceled_read_receipts_use_the_same_protocol_acceptance_checks() {
+    for (status, stale, count, length, accepted) in [
+        (2, false, 91, 2, true),
+        (2, true, 91, 2, false),
+        (1, false, 91, 2, false),
+        (3, false, 91, 2, false),
+        (5, false, 91, 2, false),
+        (2, false, 90, 2, false),
+        (2, false, 92, 2, false),
+        (2, false, 91, 81, false),
+    ] {
+        let io = ProtocolIo::new([(status, stale)]);
+        io.response_count.set(count);
+        io.response_length.set(length);
+        let probe = ExchangeProbe::new(&io);
+        let result = exchange(&probe, &capability(), [2, 7, 128], &[], 3, &|| {
+            ensure!(
+                probe.events.borrow().last() != Some(&LeaseEvent::Get),
+                "canceled during GET"
+            );
+            Ok(())
+        });
+        assert!(result.is_err());
+        assert_eq!(acknowledged_reply(&result).is_some(), accepted);
+        assert!(io.replies.borrow().is_empty());
+        assert_eq!(probe.events.borrow().last(), Some(&LeaseEvent::ForcedDrop));
+        assert_eq!(probe.events.borrow().len(), 4);
+    }
+}
+
+#[test]
+fn native_count_without_a_read_receipt_never_authenticates_an_error_buffer() {
+    struct ReadError<'a> {
+        inner: ProtocolIo,
+        current: &'a Cell<bool>,
+        receipt: bool,
+    }
+    impl FeatureTransport for ReadError<'_> {
+        fn send_feature(&self, report: &[u8]) -> anyhow::Result<()> {
+            self.inner.send_feature(report)
+        }
+        fn get_feature(&self, report: &mut [u8]) -> anyhow::Result<usize> {
+            let count = self.inner.get_feature(report)?;
+            self.current.set(false);
+            let error = anyhow::anyhow!("retired read owner");
+            Err(if self.receipt {
+                crate::backend::complete_native_read(Ok(count), report, error)
+            } else {
+                crate::backend::native_io_failure(
+                    crate::backend::NativeIoOutcome::Returned { byte_count: count },
+                    error,
+                )
+            })
+        }
+        fn metadata(&self) -> Value {
+            Value::Null
+        }
+    }
+    for receipt in [false, true] {
+        let current = Cell::new(true);
+        let io = ReadError {
+            inner: ProtocolIo::new([(2, false)]),
+            current: &current,
+            receipt,
+        };
+        let result = exchange(&io, &capability(), [2, 7, 128], &[], 3, &|| {
+            ensure!(current.get(), "caller retired");
+            Ok(())
+        });
+        assert!(result.is_err());
+        assert_eq!(acknowledged_reply(&result).is_some(), receipt);
+        assert!(format!("{:#}", result.unwrap_err()).contains("retired read owner"));
+        assert!(io.inner.replies.borrow().is_empty());
+    }
+}
+
+#[test]
+fn canceled_read_receipts_reject_each_unmatched_command_byte() {
+    struct ChangedCommand {
+        inner: ProtocolIo,
+        byte: usize,
+        retired: Cell<bool>,
+    }
+    impl FeatureTransport for ChangedCommand {
+        fn send_feature(&self, report: &[u8]) -> anyhow::Result<()> {
+            self.inner.send_feature(report)
+        }
+        fn get_feature(&self, report: &mut [u8]) -> anyhow::Result<usize> {
+            let count = self.inner.get_feature(report)?;
+            report[self.byte] ^= 1;
+            self.retired.set(true);
+            Ok(count)
+        }
+        fn metadata(&self) -> Value {
+            Value::Null
+        }
+    }
+    for byte in [7, 8] {
+        let io = ChangedCommand {
+            inner: ProtocolIo::new([(2, false)]),
+            byte,
+            retired: Cell::new(false),
+        };
+        let probe = ExchangeProbe::new(&io);
+        let result = exchange(&probe, &capability(), [2, 7, 128], &[], 3, &|| {
+            ensure!(!io.retired.get(), "read owner retired");
+            Ok(())
+        });
+        assert!(result.is_err());
+        assert!(acknowledged_reply(&result).is_none());
+        assert_eq!(
+            crate::backend::native_read_bytes(result.as_ref().unwrap_err())
+                .unwrap()
+                .len(),
+            91
         );
-        Ok(())
-    });
-    assert!(result.is_err());
-    assert!(acknowledged_reply(&result).is_none());
-    assert!(io.replies.borrow().is_empty());
-    assert_eq!(probe.events.borrow().last(), Some(&LeaseEvent::ForcedDrop));
+        assert_eq!(probe.events().last(), Some(&LeaseEvent::ForcedDrop));
+        assert_eq!(probe.events().len(), 4);
+    }
 }
 
 #[test]

@@ -356,7 +356,10 @@ impl FeatureTransport for Device {
         assert_eq!(report[89], report[3..89].iter().fold(0, |a, b| a ^ b));
         self.reports.borrow_mut().push(report.to_vec());
         if self.faults_active() && self.fail_send.get() == Some((report[7], report[8])) {
-            anyhow::bail!("synthetic OUT lost");
+            return Err(crate::backend::native_io_failure(
+                crate::backend::NativeIoOutcome::Rejected,
+                anyhow::anyhow!("synthetic OUT lost"),
+            ));
         }
         *self.pending.borrow_mut() = Some(report.to_vec());
         Ok(())

@@ -327,23 +327,217 @@ fn dpi_matcher_lock_failure_stops_monitoring_and_returns_to_source_idle() {
 }
 
 #[test]
-fn dpi_matcher_cancel_attempts_both_releases_and_retries_only_failed_one() {
+fn dpi_matcher_owner_cleanup_attempts_both_releases_and_retries_only_failed_one() {
     for fail in ["stop", "unlock"] {
         let mut controller = Controller::default();
         let mut backend = SimulatedBackend::default();
         controller.command("START", None, &mut backend).unwrap();
         backend.calls.clear();
         backend.fail = Some(fail);
-        assert!(controller.command("CANCEL", None, &mut backend).is_err());
+        assert!(controller.cleanup(&mut backend).is_err());
         assert_eq!(backend.calls, ["stop", "unlock"]);
         assert_eq!(controller.monitoring, fail == "stop");
         assert_eq!(controller.locked, fail == "unlock");
         backend.calls.clear();
         backend.fail = None;
-        let replies = controller.command("CANCEL", None, &mut backend).unwrap();
+        controller.cleanup(&mut backend).unwrap();
         assert_eq!(backend.calls, [fail]);
-        assert_eq!(calibration(&replies[0]).phase(), Phase::Ready);
         assert!(!controller.monitoring && !controller.locked);
+        assert!(!controller.listening);
+    }
+}
+
+#[test]
+fn dpi_matcher_cancel_detaches_before_stop_and_never_unlocks_or_resets_on_stop_failure() {
+    use razer_device::dpi_matcher::Product;
+    for product_id in [190, 192, 222, 226, 229, 239] {
+        let mut controller = Controller::new(Product::new(product_id).unwrap());
+        let mut backend = SimulatedBackend::default();
+        controller.command("START", None, &mut backend).unwrap();
+        controller
+            .ingest(
+                input("reference", 123, &[(1., 100.)]),
+                false,
+                0,
+                &mut backend,
+            )
+            .unwrap();
+        controller
+            .ingest(
+                input("main", product_id, &[(1., 2000.)]),
+                true,
+                1,
+                &mut backend,
+            )
+            .unwrap();
+        let retained = Calibration::new(Phase::Calibrating, 50., 800., 0.);
+        assert_eq!(controller.response(), retained);
+        backend.calls.clear();
+        backend.fail = Some("stop");
+        assert!(controller.command("CANCEL", None, &mut backend).is_err());
+        assert_eq!(backend.calls, ["stop"]);
+        assert!(controller.monitoring && controller.locked);
+        assert!(!controller.listening);
+        assert_eq!(controller.response(), retained);
+        assert!(
+            controller
+                .ingest(
+                    input("main", product_id, &[(2., 9999.)]),
+                    true,
+                    2,
+                    &mut backend
+                )
+                .unwrap_err()
+                .to_string()
+                .contains("listener is detached")
+        );
+        assert_eq!(backend.calls, ["stop"]);
+        assert_eq!(controller.response(), retained);
+        let state = controller.command("GET_STATE", None, &mut backend).unwrap();
+        assert_eq!(calibration(&state[0]), retained);
+        assert!(backend.calibrations.is_empty());
+        assert!(backend.persisted.is_empty());
+        assert!(backend.drafts.is_empty());
+        backend.calls.clear();
+        backend.fail = None;
+        let canceled = controller.command("CANCEL", None, &mut backend).unwrap();
+        assert_eq!(backend.calls, ["stop", "unlock"]);
+        assert_eq!(
+            calibration(&canceled[0]),
+            Calibration::new(Phase::Ready, 50., 800., 0.)
+        );
+        assert_eq!(
+            controller.response(),
+            Calibration::new(Phase::Ready, 0., 0., 0.)
+        );
+        assert!(!controller.monitoring && !controller.locked && !controller.listening);
+        assert!(controller.session.source_container().is_empty());
+        assert_eq!(controller.session.source_product_id, None);
+        assert!(controller.tick(10000, &mut backend).unwrap().is_none());
+        assert!(
+            controller
+                .command("CANCEL", None, &mut backend)
+                .unwrap()
+                .is_empty()
+        );
+        assert_eq!(backend.calls, ["stop", "unlock"]);
+        assert_eq!(backend.version, 1);
+        controller.command("START", None, &mut backend).unwrap();
+        assert!(controller.monitoring && controller.locked && controller.listening);
+        controller
+            .ingest(
+                input("fresh-main", product_id, &[(5., 4000.)]),
+                true,
+                20_000,
+                &mut backend,
+            )
+            .unwrap();
+        assert_eq!(controller.response().process(), 0.);
+        controller.command("CANCEL", None, &mut backend).unwrap();
+        assert!(!controller.monitoring && !controller.locked && !controller.listening);
+    }
+}
+
+#[test]
+fn dpi_matcher_cancel_retries_only_unacknowledged_unlock_after_successful_stop() {
+    use razer_device::dpi_matcher::Product;
+    for product_id in [190, 192, 222, 226, 229, 239] {
+        let mut controller = Controller::new(Product::new(product_id).unwrap());
+        let mut backend = SimulatedBackend::default();
+        controller.command("START", None, &mut backend).unwrap();
+        let retained = controller.response();
+        backend.calls.clear();
+        backend.fail = Some("unlock");
+        assert!(controller.command("CANCEL", None, &mut backend).is_err());
+        assert_eq!(backend.calls, ["stop", "unlock"]);
+        assert!(!controller.monitoring && !controller.listening && controller.locked);
+        assert_eq!(controller.response(), retained);
+        assert!(backend.calibrations.is_empty());
+        backend.calls.clear();
+        backend.fail = None;
+        let canceled = controller.command("CANCEL", None, &mut backend).unwrap();
+        assert_eq!(backend.calls, ["unlock"]);
+        assert_eq!(
+            calibration(&canceled[0]),
+            Calibration::new(Phase::Ready, 0., 800., 0.)
+        );
+        assert_eq!(
+            controller.response(),
+            Calibration::new(Phase::Ready, 0., 0., 0.)
+        );
+        assert!(!controller.monitoring && !controller.locked && !controller.listening);
+    }
+}
+
+#[test]
+fn dpi_matcher_failed_cancel_keeps_the_already_armed_source_timeout() {
+    use razer_device::dpi_matcher::Product;
+    for product_id in [190, 192, 222, 226, 229, 239] {
+        let mut controller = Controller::new(Product::new(product_id).unwrap());
+        let mut backend = SimulatedBackend::default();
+        controller.command("START", None, &mut backend).unwrap();
+        controller
+            .ingest(input("reference", 123, &[(1., 100.)]), false, 0, &mut backend)
+            .unwrap();
+        controller
+            .ingest(input("main", product_id, &[(1., 2000.)]), true, 1, &mut backend)
+            .unwrap();
+        backend.calls.clear();
+        backend.fail = Some("stop");
+        assert!(controller.command("CANCEL", None, &mut backend).is_err());
+        assert!(!controller.listening && controller.monitoring && controller.locked);
+        assert!(controller.tick(500, &mut backend).unwrap().is_none());
+        assert_eq!(controller.response().phase(), Phase::Calibrating);
+        backend.fail = None;
+        let expired = controller.tick(501, &mut backend).unwrap().unwrap();
+        assert_eq!(expired, Calibration::new(Phase::Error, 0., 0., 0.));
+        assert_eq!(backend.calls, ["stop", "stop", "unlock"]);
+        assert!(!controller.listening && !controller.monitoring && !controller.locked);
+    }
+}
+
+#[test]
+fn dpi_matcher_ignored_cancel_keeps_a_prior_completion_or_timeout_unlock_obligation() {
+    use razer_device::dpi_matcher::Product;
+    for product_id in [190, 192, 222, 226, 229, 239] {
+        for completed in [false, true] {
+            let mut controller = Controller::new(Product::new(product_id).unwrap());
+            let mut backend = SimulatedBackend::default();
+            if completed {
+                await_stop(&mut controller, &mut backend, product_id);
+                backend.fail = Some("unlock");
+                assert!(
+                    controller
+                        .ingest(input("main", product_id, &[(40., -100.)]), true, 3, &mut backend)
+                        .is_err()
+                );
+                assert_eq!(controller.response().phase(), Phase::Completed);
+            } else {
+                controller.command("START", None, &mut backend).unwrap();
+                controller
+                    .ingest(input("reference", 123, &[(1., 100.)]), false, 0, &mut backend)
+                    .unwrap();
+                controller
+                    .ingest(input("main", product_id, &[(1., 1.)]), true, 1, &mut backend)
+                    .unwrap();
+                backend.fail = Some("unlock");
+                assert!(controller.tick(501, &mut backend).is_err());
+                assert_eq!(controller.response().phase(), Phase::Error);
+            }
+            assert!(!controller.monitoring && !controller.listening && controller.locked);
+            backend.calls.clear();
+            backend.fail = None;
+            assert!(controller.command("CANCEL", None, &mut backend).unwrap().is_empty());
+            assert!(backend.calls.is_empty());
+            assert!(controller.locked);
+            assert_eq!(
+                controller.response().phase(),
+                if completed { Phase::Completed } else { Phase::Error },
+            );
+            controller.cleanup(&mut backend).unwrap();
+            assert_eq!(backend.calls, ["unlock"]);
+            assert!(!controller.monitoring && !controller.listening && !controller.locked);
+        }
     }
 }
 
@@ -400,6 +594,125 @@ fn await_stop(controller: &mut Controller, backend: &mut SimulatedBackend, produ
 }
 
 #[test]
+fn dpi_matcher_decoded_radix_ticks_wait_for_stop_and_preserve_its_failure() {
+    use razer_device::dpi_matcher::{InputBatch, Product};
+    for product_id in [190, 192, 222, 226, 229, 239] {
+        for stop_fails in [false, true] {
+            let mut controller = Controller::new(Product::new(product_id).unwrap());
+            let mut backend = SimulatedBackend {
+                product_id,
+                expected_dpi: 400.,
+                identity: Some(("measured".into(), ProfileName::Text("Reference".into()))),
+                ..Default::default()
+            };
+            controller.command("START", None, &mut backend).unwrap();
+            let source = InputBatch::from_event(123, "source", r#"[{"timeTick":"0x14","data":"{\"type\":\"mouseMove\",\"x\":1000}"},{"timeTick":"0o36","data":"{\"type\":\"mouseMove\",\"x\":1250}"}]"#).unwrap();
+            let main = InputBatch::from_event(product_id, "main", r#"[{"timeTick":"1e1","data":"{\"type\":\"mouseMove\",\"x\":1000}"},{"timeTick":"0b10100","data":"{\"type\":\"mouseMove\",\"x\":2000}"},{"timeTick":"30","data":"{\"type\":\"mouseMove\",\"x\":2500}"}]"#).unwrap();
+            controller.ingest(source, false, 0, &mut backend).unwrap();
+            let progress = controller.ingest(main, true, 1, &mut backend).unwrap();
+            assert_eq!(progress.process(), 99.);
+            assert_eq!(progress.current_dpi(), Some(800.));
+            assert_eq!(progress.phase(), Phase::Calibrating);
+            assert!(controller.session.new_dpi().is_none());
+            assert_eq!(backend.calls, ["read", "start", "lock"]);
+            assert!(backend.persisted.is_empty());
+
+            backend.calls.clear();
+            backend.fail = stop_fails.then_some("stop");
+            let final_main = InputBatch::from_event(
+                product_id,
+                "main",
+                r#"[{"timeTick":"4e1","data":"{\"type\":\"mouseMove\",\"x\":-100}"}]"#,
+            )
+            .unwrap();
+            let completed = controller.ingest(final_main, true, 2, &mut backend);
+            if stop_fails {
+                assert!(completed.is_err());
+                assert_eq!(backend.calls, ["stop"]);
+                assert!(controller.monitoring && controller.locked);
+                assert!(controller.session.new_dpi().is_none());
+                assert!(controller.command("CONFIRM", None, &mut backend).is_err());
+                assert!(backend.persisted.is_empty());
+                backend.calls.clear();
+                backend.fail = None;
+                controller.command("CANCEL", None, &mut backend).unwrap();
+                assert_eq!(backend.calls, ["stop", "unlock"]);
+                assert_eq!(controller.response().phase(), Phase::Ready);
+            } else {
+                let completed = completed.unwrap();
+                assert_eq!(completed.phase(), Phase::Completed);
+                assert_eq!(completed.new_dpi(), 400.);
+                assert_eq!(backend.calls, ["stop", "unlock"]);
+                backend.calls.clear();
+                controller.command("CONFIRM", None, &mut backend).unwrap();
+                assert_eq!(
+                    backend.calls,
+                    [
+                        "read",
+                        "identity",
+                        "calibration",
+                        "draft",
+                        "persist_stages",
+                        "submit",
+                        "persist_profiles"
+                    ]
+                );
+                assert_eq!(
+                    backend
+                        .data
+                        .library()
+                        .profiles()
+                        .last()
+                        .unwrap()
+                        .dpi()
+                        .unwrap()
+                        .x()
+                        .unwrap()
+                        .value(),
+                    400.
+                );
+                assert!(backend.failures.is_empty());
+            }
+            assert!(!controller.monitoring && !controller.locked);
+        }
+    }
+}
+
+#[test]
+fn dpi_matcher_invalid_numeric_text_is_a_sample_and_times_out_without_persisting() {
+    use razer_device::dpi_matcher::{InputBatch, Product};
+    for product_id in [190, 192, 222, 226, 229, 239] {
+        let mut controller = Controller::new(Product::new(product_id).unwrap());
+        let mut backend = SimulatedBackend::default();
+        controller.command("START", None, &mut backend).unwrap();
+        let source = InputBatch::from_event(
+            123,
+            "source",
+            r#"[{"timeTick":"not-a-number","data":"{\"type\":\"mouseMove\",\"x\":2250}"}]"#,
+        )
+        .unwrap();
+        let main = InputBatch::from_event(
+            product_id,
+            "main",
+            r#"[{"timeTick":"1","data":"{\"type\":\"mouseMove\",\"x\":4500}"}]"#,
+        )
+        .unwrap();
+        controller.ingest(source, false, 0, &mut backend).unwrap();
+        let progress = controller.ingest(main, true, 1, &mut backend).unwrap();
+        assert_eq!(progress.process(), 99.);
+        assert_eq!(progress.phase(), Phase::Calibrating);
+        assert_eq!(backend.calls, ["read", "start", "lock"]);
+        assert!(controller.tick(500, &mut backend).unwrap().is_none());
+        let error = controller.tick(501, &mut backend).unwrap().unwrap();
+        assert_eq!(error.phase(), Phase::Error);
+        assert_eq!(backend.calls, ["read", "start", "lock", "stop", "unlock"]);
+        assert!(!controller.monitoring && !controller.locked);
+        assert!(backend.persisted.is_empty());
+        assert!(controller.session.new_dpi().is_none());
+    }
+}
+
+#[test]
 fn dpi_matcher_progress_snapshots_advance_without_extra_callbacks_or_early_completion() {
     for product_id in [190, 192, 222, 226, 229, 239] {
         let mut controller =
@@ -435,7 +748,7 @@ fn dpi_matcher_progress_snapshots_advance_without_extra_callbacks_or_early_compl
         assert!(controller.monitoring && controller.locked);
         let canceled = controller.command("CANCEL", None, &mut backend).unwrap();
         assert_eq!(backend.calls, ["read", "start", "lock", "stop", "unlock"]);
-        assert_eq!(calibration(&canceled[0]).process(), 0.);
+        assert_eq!(calibration(&canceled[0]).process(), 99.);
         assert_eq!(calibration(&canceled[0]).phase(), Phase::Ready);
         assert!(!controller.monitoring && !controller.locked);
     }

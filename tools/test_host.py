@@ -33,6 +33,234 @@ from host import (HostLocalAudit, add_commands, audit_host_local, publish_host_s
                   collect_chroma_dashboard_launch, verify_chroma_dashboard_launch)
 
 
+class HostCurrentSourceRouteTests(unittest.TestCase):
+    def setUp(self):
+        import analysis
+        self.audit = HostLocalAudit()
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name).resolve()
+        patched = patch.object(analysis, "ROOT", self.root)
+        patched.start()
+        self.addCleanup(patched.stop)
+
+    def test_reviewed_routes_share_selector_and_preserve_missing_capture_and_failures(self):
+        import frontend
+        for name, route, snapshot in (
+            ("synapse-lighting-engine-current", "https://apps.razer.com/synapse/lighting-engine/", "synapse-lighting-engine-snapshot-new"),
+            ("gamepad-mw-4115-current", "https://apps.razer.com/synapse/products/4115/mw/", "gamepad-mw-4115-snapshot-new-closure"),
+        ):
+            with self.subTest(route=route):
+                receipt = self.root / ".analysis/inputs/frontend" / snapshot / "acquisition.json"
+                receipt.parent.mkdir(parents=True, exist_ok=True)
+                receipt.write_text("{}", encoding="utf-8")
+                selected = {"name": snapshot, "canonical_entry_url": route, "acquisition": {"path": receipt.as_posix()},
+                    "deployment": {"failures": []}, "capture": None,
+                    "capture_failures": ["complete_capture_unavailable"], "unresolved_acquisition": ["map"],
+                    "failed_acquisition": [{"http_status": 404}], "originals": [{"path": "main.js"}],
+                    "candidate_decisions": [{"name": name, "disposition": "superseded"}]}
+                with patch.object(frontend, "current_source_selection", return_value=selected) as select:
+                    result, originals = self.audit.current_source_set(name)
+                self.assertEqual(select.call_args.args, (route, self.audit))
+                self.assertIn(receipt, select.call_args.kwargs["candidates"])
+                self.assertEqual(originals, selected["originals"])
+                self.assertEqual(result["failed_acquisition"], selected["failed_acquisition"])
+                self.assertEqual(result["capture_failures"], ["complete_capture_unavailable"])
+                self.assertIsNone(result["capture"])
+                self.assertEqual(result["current_source_selection"]["candidate_decisions"], selected["candidate_decisions"])
+
+    def test_selector_failure_cannot_fall_back_to_the_legacy_directory(self):
+        with patch("frontend.current_source_selection", side_effect=ValueError("newest bytes differ")), \
+                patch.object(self.audit, "source_set") as legacy:
+            with self.assertRaisesRegex(ValueError, "newest bytes differ"):
+                self.audit.current_source_set("synapse-lighting-engine-current")
+        legacy.assert_not_called()
+
+    def test_corrupt_newest_snapshot_bytes_cannot_select_the_valid_legacy_source(self):
+        entry = "https://apps.razer.com/synapse/lighting-engine/"
+        for name, date in (("synapse-lighting-engine-current", "2026-10-01T00:00:00Z"),
+                           ("synapse-lighting-engine-snapshot-new", "2026-10-30T00:00:00Z")):
+            folder = self.root / ".analysis/inputs/frontend" / name
+            folder.mkdir(parents=True)
+            rows = []
+            for filename, raw in (("index.html", b'<script src="main.js"></script>'), ("main.js", b"run();")):
+                path = folder / filename
+                path.write_bytes(raw)
+                rows.append({"path": path.relative_to(self.root).as_posix(), "url": entry + filename,
+                    "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()})
+            rows[0]["url"] = entry
+            acquired = {"entry_url": entry, "recorded_at_utc": date, "files": rows, "edges": [],
+                "source_current_during_acquisition": True, "target_execution": False,
+                "stability": [{"url": entry, "unchanged": True,
+                    "before_sha256": rows[0]["sha256"], "after_sha256": rows[0]["sha256"]}]}
+            (folder / "acquisition.json").write_text(json.dumps(acquired), encoding="utf-8")
+        (folder / "main.js").write_bytes(b"changed();")
+        with self.assertRaisesRegex(ValueError, "Newest frontend deployment failed"):
+            self.audit.current_source_set("synapse-lighting-engine-current")
+
+    def test_unreviewed_route_cannot_borrow_a_known_product(self):
+        with self.assertRaisesRegex(ValueError, "no reviewed route"):
+            self.audit.current_source_set("gamepad-mw-4133-current")
+
+
+class LightingFrontendOwnerTests(unittest.TestCase):
+    def setUp(self):
+        import analysis
+        self.audit = HostLocalAudit()
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name).resolve()
+        patched = patch.object(analysis, "ROOT", self.root)
+        patched.start()
+        self.addCleanup(patched.stop)
+
+    def source(self, text, name="main.fixture.js"):
+        raw = text.encode("utf-8")
+        path = self.root / ".analysis/inputs/frontend/fixture/raw" / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(raw)
+        return {"path": path.relative_to(self.root).as_posix(), "bytes": len(raw),
+                "sha256": hashlib.sha256(raw).hexdigest()}
+
+    def test_class_identity_comes_from_its_own_constructor(self):
+        source = self.source('class Other{constructor(){this.callback=()=>{this.name="Protocol"}}}'
+                             'class Actual{constructor(){this.name="Protocol"}send(){return 1}}')
+        node, owner = self.audit.named_class("protocol", source, self.audit.tree(source).root_node, "Protocol")
+        self.assertTrue(node.text.startswith(b"class Actual"))
+        self.assertEqual(self.audit.owners[owner]["syntax"], "class_declaration")
+
+    def test_two_real_constructor_identities_are_ambiguous(self):
+        source = self.source('class A{constructor(){this.name="Protocol"}}class B{constructor(){this.name="Protocol"}}')
+        with self.assertRaisesRegex(ValueError, "absent or ambiguous"):
+            self.audit.named_class("protocol", source, self.audit.tree(source).root_node, "Protocol")
+
+    def test_dynamic_identity_write_cannot_be_ignored(self):
+        source = self.source('class A{constructor(){this.name="Protocol";this.name=readName()}}')
+        with self.assertRaisesRegex(ValueError, "absent or ambiguous"):
+            self.audit.named_class("protocol", source, self.audit.tree(source).root_node, "Protocol")
+
+    def test_repeated_factories_remain_separate_and_export_needs_scope(self):
+        text = 'const modules={7:(e,t,n)=>{n.d(t,{A:()=>C});class C{constructor(){this.name="Protocol"}}}};'
+        left, right = self.source(text, "left.js"), self.source(text, "right.js")
+        matches = self.audit.webpack_factories([left, right], 7)
+        self.assertEqual(len(matches), 2)
+        for source, _, factory in matches:
+            self.audit.named_class("protocol", source, factory, "Protocol")
+        with self.assertRaisesRegex(ValueError, "ambiguous: 2"):
+            self.audit.webpack_export("protocol", [left, right], 7, "A")
+
+    def abi(self, mutate=lambda value: value):
+        from host import lighting_frontend_abi
+        source = self.source(mutate('const modules={2198:(e,t,n)=>{const c=n(4407);class Engine{async init(){'
+            'const a={"4.0.2.0":{RzLightingApi:["pointer",["string"]],FreeMalloc:["void",["pointer"]]},'
+            '"4.0.3.0":{PollEvents:["pointer",[]]}};'
+            'return this.usingIpcLighting?await(0,c.Qq)(this.dllName,this.channelName,a):'
+            '(0,c.Sl)(this.dllName,this.channelName,a)}}},'
+            '4407:(e,t,n)=>{n.d(t,{Qq:()=>q,Sl:()=>s});const q=(d,c,a)=>a,s=(d,c,a)=>a}};'))
+        return lighting_frontend_abi(self.audit, {"name": "fixture", "acquisition": {"path": "fixture"}}, [source])
+
+    def test_abi_reads_literal_table_and_both_actual_configuration_calls(self):
+        result = self.abi()
+        self.assertEqual(result["api_versions"]["4.0.2.0"]["RzLightingApi"], ["pointer", ["string"]])
+        self.assertEqual([(row["export"], row["awaited"]) for row in result["configuration_calls"]],
+                         [("Qq", True), ("Sl", False)])
+        self.assertEqual(len({row["api_declaration_owner"] for row in result["configuration_calls"]}), 1)
+        self.assertFalse(result["target_execution"])
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_abi_rejects_wrong_table_argument(self):
+        with self.assertRaisesRegex(ValueError, "does not consume"):
+            self.abi(lambda text: text.replace("this.channelName,a", "this.channelName,other", 1))
+
+    def test_abi_rejects_shadowed_table(self):
+        with self.assertRaisesRegex(ValueError, "shadowed"):
+            self.abi(lambda text: text.replace("return this.usingIpcLighting?", "return ((a)=>this.usingIpcLighting?")
+                     .replace("this.channelName,a)}}}", "this.channelName,a))({})}}}"))
+
+    def test_abi_rejects_wrong_bridge_import(self):
+        with self.assertRaisesRegex(ValueError, "4407 import"):
+            self.abi(lambda text: text.replace("n(4407)", "n(4408)"))
+
+    def test_abi_rejects_same_number_from_an_unrelated_function(self):
+        with self.assertRaisesRegex(ValueError, "actual webpack require"):
+            self.abi(lambda text: text.replace("n(4407)", "unrelated(4407)"))
+
+    def test_abi_rejects_missing_await_on_ipc_configuration(self):
+        with self.assertRaisesRegex(ValueError, "two actual configuration"):
+            self.abi(lambda text: text.replace("await(0,c.Qq)", "(0,c.Qq)"))
+
+    def test_abi_rejects_dynamic_signature(self):
+        with self.assertRaisesRegex(ValueError, "literal string"):
+            self.abi(lambda text: text.replace('["pointer",["string"]]', '[returnType,["string"]]'))
+
+
+class CurrentHostArchiveSelectionTests(unittest.TestCase):
+    def test_official_package_closure_excludes_unrelated_installed_asar_members(self):
+        from host import current_host_asar_members
+        package = {"path": "package", "sha256": "package-sha", "manifest_identity_verified": True}
+        official = {"path": ".analysis/inputs/host-current/extracted/current/app.asar", "sha256": "official-sha",
+                    "bytes": 10, "container": "package", "container_sha256": "package-sha"}
+        installed = {"path": ".analysis/inputs/installed-current/app.asar", "sha256": "installed-sha", "bytes": 11}
+        member = {"path": ".analysis/inputs/host-current/asar/current/electron/main.js", "container": official["path"]}
+        unrelated = {"path": ".analysis/inputs/host-current/asar/installed/electron/main.js", "container": installed["path"]}
+        result = current_host_asar_members(None, {"inputs": [official, installed, member, unrelated]}, {"files": [package]})
+        self.assertEqual(result, [member])
+        package["manifest_identity_verified"] = False
+        self.assertEqual(current_host_asar_members(None, {"inputs": [official, member]}, {"files": [package]}), [])
+
+    def native_fixture(self, *, conflict=False, corrupt=False):
+        import analysis
+        audit = HostLocalAudit()
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name).resolve()
+        patched = patch.object(analysis, "ROOT", root)
+        patched.start()
+        self.addCleanup(patched.stop)
+
+        def original(name, raw, **fields):
+            path = root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(raw)
+            return {"path": name, "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest(), **fields}
+
+        package = original(".analysis/inputs/host-current/blobs/current/package.exe", b"package",
+                           manifest_identity_verified=True)
+        current = original(".analysis/inputs/host-current/extracted/current/CommonDLL/library.dll", b"current",
+                           container=package["path"], container_sha256=package["sha256"])
+        old = original(".analysis/inputs/host-current/extracted/old/CommonDLL/library.dll", b"old",
+                       container="old-package", container_sha256="old-sha")
+        rows = [package, current, old]
+        if conflict:
+            rows.append(original(".analysis/inputs/host-current/extracted/also-current/CommonDLL/library.dll", b"other",
+                                 container=package["path"], container_sha256=package["sha256"]))
+        original(".analysis/inputs/host-current/acquisition.json", json.dumps({"files": [package]}).encode())
+        original(".analysis/inputs.json", json.dumps({"inputs": rows}).encode())
+        if corrupt:
+            (root / current["path"]).write_bytes(b"changed-current")
+        return audit, current
+
+    def test_native_selection_ignores_same_name_outside_current_official_package(self):
+        from host import verified_host_native
+        audit, expected = self.native_fixture()
+        actual, provenance = verified_host_native(audit, "CommonDLL/library.dll")
+        self.assertEqual(actual, expected)
+        self.assertEqual(provenance["official_package"]["path"], expected["container"])
+        self.assertEqual(audit.final_snapshot(), [])
+
+    def test_two_current_native_candidates_remain_an_error(self):
+        from host import verified_host_native
+        audit, _ = self.native_fixture(conflict=True)
+        with self.assertRaisesRegex(ValueError, "absent or ambiguous"):
+            verified_host_native(audit, "CommonDLL/library.dll")
+
+    def test_corrupt_current_native_cannot_fall_back_to_old_package(self):
+        from host import verified_host_native
+        audit, _ = self.native_fixture(corrupt=True)
+        with self.assertRaisesRegex(ValueError, "identity differs"):
+            verified_host_native(audit, "CommonDLL/library.dll")
+
+
 class KeypadMappingStaticTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

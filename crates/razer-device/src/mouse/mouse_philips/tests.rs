@@ -1,5 +1,5 @@
 use super::*;
-use crate::feature_exchange::tests::ExchangeProbe;
+use crate::feature_exchange::tests::{ExchangeProbe, LeaseEvent};
 use serde_json::json;
 use std::{
     cell::{Cell, RefCell},
@@ -231,9 +231,22 @@ fn cancel_after_ack_preserves_it_without_sending_another_setter() {
         Ok(())
     })
     .unwrap_err();
-    assert_eq!(failure.phase, FailurePhase::AfterAcknowledgement);
+    assert_eq!(failure.phase, FailurePhase::Command);
+    assert_eq!(failure.step, Some(Step::SensorState));
     assert_eq!(failure.acknowledgements.len(), 1);
-    assert!(!failure.command_may_have_reached_device);
+    assert!(failure.acknowledgements[0].payload.is_empty());
+    assert!(failure.command_may_have_reached_device);
+    assert!(failure.error.contains("Canceled after ACK"));
+    assert!(matches!(
+        leased.events().as_slice(),
+        [
+            LeaseEvent::Begin(_),
+            LeaseEvent::Send,
+            LeaseEvent::Get,
+            LeaseEvent::Finish
+        ]
+    ));
+    assert_eq!(device.sends.get(), 1);
     device.finish();
 }
 #[test]

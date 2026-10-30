@@ -967,7 +967,11 @@ mod tests {
         cap.transport.sleep_between_out_ms = 0;
         cap.transport.sleep_between_out_in_ms = 0;
         cap.transport.sleep_between_in_ms = 0;
-        let requested = draft(true, 1, &[(800, 800, true, false)]);
+        let requested = draft(
+            true,
+            1,
+            &[(800, 800, true, false), (1600, 1600, true, false)],
+        );
         let error = apply_current(&leased, &cap, &requested, transaction_sequence(), || Ok(()))
             .unwrap_err();
         let progress = error.downcast_ref::<DpiStagesWriteFailure>().unwrap();

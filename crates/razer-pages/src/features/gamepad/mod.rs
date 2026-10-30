@@ -71,6 +71,8 @@ mod customize_artwork;
 
 #[path = "gamepad_deadzone_dialog.rs"]
 mod deadzone_dialog;
+#[path = "gamepad_deadzone_state.rs"]
+mod deadzone_state;
 #[path = "kitsune.rs"]
 mod kitsune;
 #[cfg(test)]
@@ -194,8 +196,7 @@ pub struct GamepadProductWorkspace {
     customize_hover: Option<String>,
     sensitivity: bool,
     thumbstick_ui: thumbsticks::ThumbstickUi,
-    low_deadzone: Option<(String, Value)>,
-    previous_deadzones: BTreeMap<String, Value>,
+    deadzone: deadzone_state::DeadzoneState,
     deadzone_dialog: Option<deadzone_dialog::DialogState>,
     calibration_state: calibration::state::CalibrationState,
     calibration_resources: crate::runtime_resources::TextResources,
@@ -248,8 +249,7 @@ impl GamepadProductWorkspace {
             customize_hover: None,
             sensitivity: false,
             thumbstick_ui: Default::default(),
-            low_deadzone: None,
-            previous_deadzones: BTreeMap::new(),
+            deadzone: Default::default(),
             deadzone_dialog: None,
             calibration_state: Default::default(),
             calibration_resources: Default::default(),
@@ -357,13 +357,7 @@ impl GamepadProductWorkspace {
             // once on entry. Continue does not replace these rollback values.
             if key == "THUMBSTICKS" {
                 self.sensitivity = false;
-                self.previous_deadzones.clear();
-                for side in ["leftStick", "rightStick"] {
-                    let path = format!("/controller/{side}/deadzoneValue");
-                    if let Some(value) = self.draft.pointer(&path) {
-                        self.previous_deadzones.insert(path, value.clone());
-                    }
-                }
+                self.deadzone.enter(self.deadzone_values(), self.trigger_runtime.guard());
             }
             self.page = key.into();
             if key == "TAB_POWER" {
@@ -375,7 +369,6 @@ impl GamepadProductWorkspace {
             self.refresh_thumbstick_artwork(cx);
             self.refresh_trigger_visualization(cx);
             self.dismiss_deadzone(false, window, cx);
-            self.low_deadzone = None;
             self.request_trigger_read(cx);
             self.request_controller_sleep(cx);
             if key == "TAB_LIGHTING" {
@@ -417,7 +410,6 @@ impl GamepadProductWorkspace {
         self.selected_button = None;
         self.customize_hover = None;
         self.dismiss_deadzone(false, window, cx);
-        self.low_deadzone = None;
         if let Err(error) = self.restore_lighting_profile() {
             eprintln!("[controller-lighting] Saved settings could not be restored: {error:#}");
         }

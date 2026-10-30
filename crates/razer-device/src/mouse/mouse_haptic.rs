@@ -761,6 +761,34 @@ pub struct HapticObservation {
     pub query: HapticRead,
     pub value: HapticValue,
 }
+
+/// A valid haptic observation survives a failed ownership or release boundary
+/// only as diagnostics; callers must still stop the operation with its error.
+#[derive(Clone, Debug)]
+pub struct CompletedHapticRead {
+    observation: HapticObservation,
+}
+
+impl CompletedHapticRead {
+    pub fn from_error(error: &anyhow::Error) -> Option<&Self> {
+        error.downcast_ref()
+    }
+
+    pub fn observation(&self) -> &HapticObservation {
+        &self.observation
+    }
+}
+
+impl std::fmt::Display for CompletedHapticRead {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            formatter,
+            "Haptic observation for {:?} retained as diagnostics",
+            self.observation.query
+        )
+    }
+}
+
 #[derive(Clone, Debug, Serialize)]
 pub struct HapticWriteStep {
     pub query: HapticRead,
@@ -840,15 +868,46 @@ impl<'a> MouseHaptic<'a> {
         let command = query.command(false)?;
         let payload = query.payload()?;
         validate()?;
-        let data = exchange(
+        let response = exchange(
             self.device,
             self.transport,
             command,
             &payload,
             next_transaction()?,
             &validate,
-        )?;
-        parse(query, &data)
+        );
+        match response {
+            Ok(data) => parse(query, &data),
+            Err(error) => {
+                let value = crate::feature_exchange::acknowledged_error(&error)
+                    .and_then(|data| parse(query, data).ok());
+                Err(match value {
+                    Some(value) => error.context(CompletedHapticRead {
+                        observation: HapticObservation { query, value },
+                    }),
+                    None => error,
+                })
+            }
+        }
+    }
+
+    fn read_observing(
+        &self,
+        query: HapticRead,
+        next_transaction: impl FnMut() -> Result<u8>,
+        validate: &impl Fn() -> Result<()>,
+        observe: &mut impl FnMut(&HapticValue),
+    ) -> Result<HapticValue> {
+        let result = self.read(query, next_transaction, validate);
+        match &result {
+            Ok(value) => observe(value),
+            Err(error) => {
+                if let Some(completed) = CompletedHapticRead::from_error(error) {
+                    observe(&completed.observation().value);
+                }
+            }
+        }
+        result
     }
     pub fn apply(
         &self,
@@ -957,14 +1016,16 @@ impl<'a> MouseHaptic<'a> {
         if let Some(needed) = needed_capacity {
             let result = (|| -> Result<()> {
                 let query = HapticRead::TableCapacity;
-                let value = self.read(query, &mut next_transaction, &validate)?;
+                let value =
+                    self.read_observing(query, &mut next_transaction, &validate, &mut |value| {
+                        progress.observations.push(HapticObservation {
+                            query,
+                            value: value.clone(),
+                        })
+                    })?;
                 let HapticValue::TableCapacity(actual) = value else {
                     unreachable!()
                 };
-                progress.observations.push(HapticObservation {
-                    query,
-                    value: HapticValue::TableCapacity(actual),
-                });
                 ensure!(
                     actual.clockwise >= needed.clockwise
                         && actual.counterclockwise >= needed.counterclockwise
@@ -985,22 +1046,29 @@ impl<'a> MouseHaptic<'a> {
                 profile: profiles[0],
             };
             let baseline = self
-                .read(query, &mut next_transaction, &validate)
+                .read_observing(query, &mut next_transaction, &validate, &mut |value| {
+                    progress.observations.push(HapticObservation {
+                        query,
+                        value: value.clone(),
+                    })
+                })
                 .map_err(|e| fail(HapticFailurePhase::Observe, progress.clone(), None, e))?;
-            progress.observations.push(HapticObservation {
-                query,
-                value: baseline.clone(),
-            });
             if baseline == HapticValue::ActiveStage(requested) {
                 progress.skipped_source_write = true;
                 for profile in profiles.into_iter().skip(1) {
                     let query = HapticRead::ActiveStage { profile };
                     let result = (|| -> Result<()> {
-                        let value = self.read(query, &mut next_transaction, &validate)?;
-                        progress.observations.push(HapticObservation {
+                        let value = self.read_observing(
                             query,
-                            value: value.clone(),
-                        });
+                            &mut next_transaction,
+                            &validate,
+                            &mut |value| {
+                                progress.observations.push(HapticObservation {
+                                    query,
+                                    value: value.clone(),
+                                })
+                            },
+                        )?;
                         ensure!(
                             value == HapticValue::ActiveStage(requested),
                             "Unwritten haptic target has a different active stage"
@@ -1054,8 +1122,12 @@ impl<'a> MouseHaptic<'a> {
         for index in 0..progress.steps.len() {
             let step = progress.steps[index].clone();
             let result = (|| -> Result<()> {
-                let value = self.read(step.query, &mut next_transaction, &validate)?;
-                progress.steps[index].observed = Some(value.clone());
+                let value = self.read_observing(
+                    step.query,
+                    &mut next_transaction,
+                    &validate,
+                    &mut |value| progress.steps[index].observed = Some(value.clone()),
+                )?;
                 ensure!(
                     value == step.requested,
                     "Haptic getter readback differs from the requested value"

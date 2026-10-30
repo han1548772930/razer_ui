@@ -6,6 +6,10 @@ pub use crate::lighting_engine::{
 };
 use anyhow::ensure;
 
+// The lighting-engine manifest creates its own SagePC instance. The common
+// adapter clamps its declared IN retry count to the Protocol25 limit of ten.
+const SOFTWARE_COMMAND_INTERVAL: std::time::Duration = std::time::Duration::from_millis(5);
+
 pub fn led_configuration(edition: u8) -> anyhow::Result<LedConfiguration> {
     ensure!(
         matches!(edition, 0 | 128..=133),
@@ -77,15 +81,23 @@ pub fn frame_reports(
     frame.validate_kitsune(device_handle)?;
     let mut reports = Vec::with_capacity(2);
     for start in [0usize, 25] {
-        let end = (start + 25).min(32);
-        let mut data = vec![0, 0, 0, start as u8, (end - 1) as u8];
-        data.extend_from_slice(&frame.frame[start * 3..end * 3]);
-        let report =
-            super::controller_feature::report(4, *transaction, [data.len() as u8, 15, 3], &data)?;
-        *transaction = (*transaction + 1) % 31;
-        reports.push(report);
+        reports.push(frame_report(frame, start, transaction)?);
     }
     Ok(reports)
+}
+
+fn frame_report(
+    frame: &EngineFrame,
+    start: usize,
+    transaction: &mut u8,
+) -> anyhow::Result<[u8; 91]> {
+    let end = (start + 25).min(32);
+    let mut data = vec![0, 0, 0, start as u8, (end - 1) as u8];
+    data.extend_from_slice(&frame.frame[start * 3..end * 3]);
+    let report =
+        super::controller_feature::report(4, *transaction, [data.len() as u8, 15, 3], &data)?;
+    *transaction = (*transaction + 1) % 31;
+    Ok(report)
 }
 
 #[derive(Debug, Default)]
@@ -149,12 +161,11 @@ impl<'a, T: crate::backend::FeatureTransport + ?Sized> SoftwareHid<'a, T> {
             &[profile, 0, effect, 0, 0, 0],
         )?;
         self.transaction = (self.transaction + 1) % 31;
-        super::controller_feature::exchange_with_in_limit(
+        super::controller_feature::exchange(
             self.transport,
             &request,
-            std::time::Duration::from_millis(5),
+            SOFTWARE_COMMAND_INTERVAL,
             wait,
-            30,
         )?;
         Ok(())
     }
@@ -164,58 +175,85 @@ impl<'a, T: crate::backend::FeatureTransport + ?Sized> SoftwareHid<'a, T> {
         device_handle: u32,
         wait: &mut impl FnMut(std::time::Duration) -> anyhow::Result<()>,
     ) -> anyhow::Result<FrameSubmission> {
-        let reports = frame_reports(frame, device_handle, &mut self.transaction)?;
-        let mut submission = None;
-        let completed = crate::feature_exchange::with_exchange(
-            self.transport,
-            crate::backend::ExchangeOptions::batch(),
-            |transport, _| {
-                let mut result = FrameSubmission::default();
-                for report in reports {
-                    let mut submitted = false;
-                    let mut error = String::new();
+        frame.validate_kitsune(device_handle)?;
+        let mut result = FrameSubmission::default();
+        for start in [0, 25] {
+            if let Err(error) = wait(std::time::Duration::ZERO) {
+                result.interruption = Some(error);
+                return Ok(result);
+            }
+            let report = frame_report(frame, start, &mut self.transaction)?;
+            let options = crate::feature_exchange::with_protocol25_scope(
+                crate::backend::ExchangeOptions::mutex_out(SOFTWARE_COMMAND_INTERVAL),
+                "rzDevice25",
+            );
+            let submitted =
+                crate::feature_exchange::with_exchange(self.transport, options, |transport, _| {
+                    let mut last_error = String::from("No controller frame OUT return");
                     for _ in 0..20 {
-                        if let Err(e) = wait(std::time::Duration::from_millis(5)) {
-                            result.interruption = Some(e);
-                            submission = Some(result);
-                            return Ok(());
+                        wait(std::time::Duration::ZERO)?;
+                        let sent = transport.send_feature_at_collection_max_counted(&report);
+                        let complete = match &sent {
+                            Ok(count) => *count == report.len(),
+                            Err(error) => matches!(
+                                crate::backend::native_io_outcome(error),
+                                Some(crate::backend::NativeIoOutcome::Returned { byte_count })
+                                    if byte_count == report.len()
+                            ),
+                        };
+                        if complete {
+                            result.reports_submitted += 1;
+                            result.complete = result.reports_submitted == 2;
                         }
-                        match transport.send_feature_at_collection_max(&report) {
-                            Ok(()) => {
-                                submitted = true;
-                                result.reports_submitted += 1;
-                                result.complete = result.reports_submitted == 2;
-                                break;
+                        if let Err(validation) = wait(std::time::Duration::ZERO) {
+                            return Err(crate::backend::complete_native_io(sent, validation));
+                        }
+                        match sent {
+                            Ok(count) if count == report.len() => return Ok(true),
+                            Ok(count) => {
+                                last_error = format!(
+                                    "Controller frame OUT returned {count} bytes; expected {}",
+                                    report.len()
+                                );
                             }
-                            Err(e) => error = format!("{e:#}"),
+                            Err(error)
+                                if crate::backend::exchange_finalization_failed(&error)
+                                    || matches!(
+                                        crate::backend::native_io_outcome(&error),
+                                        Some(
+                                            crate::backend::NativeIoOutcome::NotCalled
+                                                | crate::backend::NativeIoOutcome::Returned { .. }
+                                        )
+                                    ) =>
+                            {
+                                return Err(error);
+                            }
+                            Err(error) => last_error = format!("{error:#}"),
                         }
                     }
-                    if !submitted {
-                        result.errors.push(error);
-                    }
-                    if let Err(e) = wait(std::time::Duration::from_millis(1)) {
-                        result.interruption = Some(e);
-                        submission = Some(result);
-                        return Ok(());
-                    }
+                    result.errors.push(last_error);
+                    Ok(false)
+                });
+            let submitted = submitted.map_err(|error| {
+                error.context(FrameSubmissionFailure {
+                    reports_submitted: result.reports_submitted,
+                    errors: result.errors.clone(),
+                    interruption: result
+                        .interruption
+                        .as_ref()
+                        .map(|error| format!("{error:#}")),
+                })
+            })?;
+            // SagePC waits only after sendCommand has returned and released its
+            // own HID cycle, including after the final successful chunk.
+            if submitted {
+                if let Err(error) = wait(std::time::Duration::from_millis(1)) {
+                    result.interruption = Some(error);
+                    return Ok(result);
                 }
-                result.complete = result.reports_submitted == 2;
-                submission = Some(result);
-                Ok(())
-            },
-        );
-        if let Err(error) = completed {
-            return Err(match submission {
-                Some(progress) => error.context(FrameSubmissionFailure {
-                    reports_submitted: progress.reports_submitted,
-                    errors: progress.errors,
-                    interruption: progress.interruption.map(|error| format!("{error:#}")),
-                }),
-                None => error,
-            });
+            }
         }
-        submission
-            .ok_or_else(|| anyhow::anyhow!("Controller frame exchange returned no submission"))
+        Ok(result)
     }
 }
 
