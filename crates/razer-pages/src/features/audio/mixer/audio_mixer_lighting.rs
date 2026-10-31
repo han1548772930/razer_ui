@@ -4,7 +4,8 @@
 use super::audio_mixer_theme::Colors as C;
 use super::*;
 use crate::features::lighting_color::LightingColorPicker;
-use gpui_kit::base::{Button as BaseButton, Radio};
+use razer_widgets::keyboard_navigation::Button as BaseButton;
+use gpui_kit::base::{Radio};
 use gpui_kit::component::color_picker::{ColorPickerEvent, ColorPickerState};
 use razer_widgets::source_slider::SourceSlider;
 #[path = "audio_mixer_lighting_preview.rs"]

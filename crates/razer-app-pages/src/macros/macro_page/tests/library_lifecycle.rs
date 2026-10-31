@@ -300,87 +300,138 @@ fn empty_recording_marks_a_draft_and_cancellation_cannot_append(cx: &mut TestApp
 }
 
 #[gpui_kit::test]
-fn external_record_profile_updates_the_current_consumer_without_replacing_an_action_draft(cx: &mut TestAppContext) {
-    use razer_model::macro_library::{MovementMode,recording::{DelayMode,Preferences,Seconds}};
-    let (page,library,_) = open(cx,existing_file(MacroType::Standard,Tutorial::Complete));
-    page.update(cx,|page,_| { page.actions=vec![text("unsaved")]; });
-    let profile = Preferences {
-        start_delay:4,fixed:Seconds::new(0.375).unwrap(),
-        random:[Seconds::new(0.125).unwrap(),Seconds::new(0.75).unwrap()],
-        movement:MovementMode::Relative,macro_type:MacroType::Sequence,delay_mode:DelayMode::Fixed,
+fn external_record_profile_updates_the_current_consumer_without_replacing_an_action_draft(
+    cx: &mut TestAppContext,
+) {
+    use razer_model::macro_library::{
+        MovementMode,
+        recording::{DelayMode, Preferences, Seconds},
     };
-    library.update(cx,|library,cx| {
-        let mut file=library.snapshot();
-        file.recording_preferences=Some(profile.clone());
-        library.replace(file,cx);
+    let (page, library, _) = open(cx, existing_file(MacroType::Standard, Tutorial::Complete));
+    page.update(cx, |page, _| {
+        page.actions = vec![text("unsaved")];
+    });
+    let profile = Preferences {
+        start_delay: 4,
+        fixed: Seconds::new(0.375).unwrap(),
+        random: [Seconds::new(0.125).unwrap(), Seconds::new(0.75).unwrap()],
+        movement: MovementMode::Relative,
+        macro_type: MacroType::Sequence,
+        delay_mode: DelayMode::Fixed,
+    };
+    library.update(cx, |library, cx| {
+        let mut file = library.snapshot();
+        file.recording_preferences = Some(profile.clone());
+        library.replace(file, cx);
     });
     cx.update(|cx| {
-        let page=page.read(cx);
-        assert_eq!(page.actions,vec![text("unsaved")]);
-        assert_eq!(page.record_preferences(),profile);
-        let options=page.recording_commit_options(cx).unwrap();
-        assert_eq!(options.macro_type,MacroType::Standard);
-        assert_eq!(options.finalization_macro_type,MacroType::Sequence);
-        assert_eq!(options.finalization_delay_mode,1);
-        assert_eq!(options.movement_mode,3);
-        assert_eq!(options.fixed,0.375);
-        assert_eq!(options.random,[0.125,0.75]);
-        assert_eq!(page.record_ui.start.read(cx).selected_value().map(String::as_str),Some("4s"));
+        let page = page.read(cx);
+        assert_eq!(page.actions, vec![text("unsaved")]);
+        assert_eq!(page.record_preferences(), profile);
+        let options = page.recording_commit_options(cx).unwrap();
+        assert_eq!(options.macro_type, MacroType::Standard);
+        assert_eq!(options.finalization_macro_type, MacroType::Sequence);
+        assert_eq!(options.finalization_delay_mode, 1);
+        assert_eq!(options.movement_mode, 3);
+        assert_eq!(options.fixed, 0.375);
+        assert_eq!(options.random, [0.125, 0.75]);
+        assert_eq!(
+            page.record_ui
+                .start
+                .read(cx)
+                .selected_value()
+                .map(String::as_str),
+            Some("4s")
+        );
     });
 }
 
 #[gpui_kit::test]
-fn saving_and_reloading_keeps_the_commit_engine_lane_and_undo_rebuilds_from_actions(cx: &mut TestAppContext) {
-    let (page,library,_) = open(cx,existing_file(MacroType::Phased,Tutorial::Complete));
-    page.update(cx,|page,cx| {
-        page.entries[0].active_phase=Some(2);
-        let mut row=ActionItem::new(ActionKind::Keyboard);
-        row.phase=Some(1);
-        row.keyboard=Some(razer_model::macro_library::KeyboardEvent {
-            pair_id:Some(1),makecode:Some(65),state:Some(0),flag:Some(0),key_type:None,
+fn saving_and_reloading_keeps_the_commit_engine_lane_and_undo_rebuilds_from_actions(
+    cx: &mut TestAppContext,
+) {
+    let (page, library, _) = open(cx, existing_file(MacroType::Phased, Tutorial::Complete));
+    page.update(cx, |page, cx| {
+        page.entries[0].active_phase = Some(2);
+        let mut row = ActionItem::new(ActionKind::Keyboard);
+        row.phase = Some(1);
+        row.keyboard = Some(razer_model::macro_library::KeyboardEvent {
+            pair_id: Some(1),
+            makecode: Some(65),
+            state: Some(0),
+            flag: Some(0),
+            key_type: None,
         });
-        page.commit_recorded_actions(vec![row],cx).unwrap();
+        page.commit_recorded_actions(vec![row], cx).unwrap();
         assert!(page.save_actions(cx));
     });
-    let saved=cx.update(|cx|library.read(cx).snapshot());
-    let documents=saved.source_macro_documents().unwrap();
-    assert_eq!(documents[0]["macroEvents"][1]["phase"],1);
-    assert_eq!(documents[0]["appEngine"]["holdEvents"],serde_json::json!([]));
-    assert_eq!(documents[0]["appEngine"]["releaseEvents"],serde_json::json!([{"type":"keyboard","scancode":30,"flag":0}]));
-    let decoded:MacroLibraryFile=serde_json::from_slice(&serde_json::to_vec(&saved).unwrap()).unwrap();
-    let (reloaded,reloaded_library,_) = open(cx,decoded);
-    reloaded.update(cx,|page,cx| {
-        assert_eq!(page.actions[0].phase,Some(1));
-        let before=page.actions.clone();
-        page.add_action("text",cx);
-        assert_eq!(page.actions.len(),before.len()+1);
+    let saved = cx.update(|cx| library.read(cx).snapshot());
+    let documents = saved.source_macro_documents().unwrap();
+    assert_eq!(documents[0]["macroEvents"][1]["phase"], 1);
+    assert_eq!(
+        documents[0]["appEngine"]["holdEvents"],
+        serde_json::json!([])
+    );
+    assert_eq!(
+        documents[0]["appEngine"]["releaseEvents"],
+        serde_json::json!([{"type":"keyboard","scancode":30,"flag":0}])
+    );
+    let decoded: MacroLibraryFile =
+        serde_json::from_slice(&serde_json::to_vec(&saved).unwrap()).unwrap();
+    let (reloaded, reloaded_library, _) = open(cx, decoded);
+    reloaded.update(cx, |page, cx| {
+        assert_eq!(page.actions[0].phase, Some(1));
+        let before = page.actions.clone();
+        page.add_action("text", cx);
+        assert_eq!(page.actions.len(), before.len() + 1);
         page.undo_action(cx);
-        assert_eq!(page.actions,before);
+        assert_eq!(page.actions, before);
         // An actual undo dispatch rebuilds appEngine even when macroEvents
         // matches a previously saved snapshot after the history transition.
         assert!(page.can_save());
         assert!(page.save_actions(cx));
     });
     cx.update(|cx| {
-        let documents=reloaded_library.read(cx).snapshot().source_macro_documents().unwrap();
-        assert_eq!(documents[0]["appEngine"]["holdEvents"],serde_json::json!([{"type":"keyboard","scancode":30,"flag":0}]));
-        assert_eq!(documents[0]["appEngine"]["releaseEvents"],serde_json::json!([]));
+        let documents = reloaded_library
+            .read(cx)
+            .snapshot()
+            .source_macro_documents()
+            .unwrap();
+        assert_eq!(
+            documents[0]["appEngine"]["holdEvents"],
+            serde_json::json!([{"type":"keyboard","scancode":30,"flag":0}])
+        );
+        assert_eq!(
+            documents[0]["appEngine"]["releaseEvents"],
+            serde_json::json!([])
+        );
     });
 }
 
 #[gpui_kit::test]
 fn stale_recording_updates_cannot_finish_or_overwrite_the_current_owner(cx: &mut TestAppContext) {
-    let (page,_,_) = open(cx,existing_file(MacroType::Standard,Tutorial::Complete));
-    page.update(cx,|page,cx| {
-        page.recording.stage=recording::Stage::Recording;
-        page.recording.count=4;
-        page.receive_recording_update(u64::MAX,recording_actor::Update::Preview {first_row:0,rows:vec![text("stale")]},cx);
-        page.receive_recording_update(u64::MAX,recording_actor::Update::Finished(Err("stale failure".into())),cx);
+    let (page, _, _) = open(cx, existing_file(MacroType::Standard, Tutorial::Complete));
+    page.update(cx, |page, cx| {
+        page.recording.stage = recording::Stage::Recording;
+        page.recording.count = 4;
+        page.receive_recording_update(
+            u64::MAX,
+            recording_actor::Update::Preview {
+                first_row: 0,
+                rows: vec![text("stale")],
+            },
+            cx,
+        );
+        page.receive_recording_update(
+            u64::MAX,
+            recording_actor::Update::Finished(Err("stale failure".into())),
+            cx,
+        );
         assert!(page.recording_busy());
-        assert_eq!(page.recording.count,4);
+        assert_eq!(page.recording.count, 4);
         assert!(page.recording.preview.is_empty());
         assert!(page.recording.error.is_none());
-        page.receive_recording_update(0,recording_actor::Update::Progress(5),cx);
-        assert_eq!(page.recording.count,5);
+        page.receive_recording_update(0, recording_actor::Update::Progress(5), cx);
+        assert_eq!(page.recording.count, 5);
     });
 }

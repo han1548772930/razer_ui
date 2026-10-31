@@ -2,8 +2,9 @@
 //! Complete source owners/resources: mouse-receiver-indicator unified query.
 use super::*;
 use crate::features::controls::Choice;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::base::{
-    Button as BaseButton, DialogBackdrop, DialogPopup, InlineElement, InlineRenderContext,
+    DialogBackdrop, DialogPopup, InlineElement, InlineRenderContext,
     MarkdownExtensions, MarkdownNode, MarkdownParseContext, MarkdownPlugin,
     TextView as BaseTextView, TextViewStyle as BaseTextViewStyle, markdown_ast,
 };

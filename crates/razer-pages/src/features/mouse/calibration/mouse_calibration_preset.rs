@@ -1,7 +1,7 @@
 //! Each page, functional caller, setter and original mat is audited separately
 //! in mouse-preset-calibration-current-source.json. PID 185 stays independent.
 use super::*;
-use gpui_kit::base::Button as BaseButton;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 
 #[derive(Deserialize)]
 pub(super) struct Spec {

@@ -1328,7 +1328,7 @@ impl KeyboardProductWorkspace {
             .gap(surface::css(10.))
             .when(self.spec.analog_customize_layout(), |row| {
                 row.child(
-                    gpui_kit::base::Button::new("keyboard-controller-toggle")
+                    razer_widgets::keyboard_navigation::Button::new("keyboard-controller-toggle")
                         .accessibility_label(t("KEYBOARD_ANALOG_OPTIONS"))
                         .w(surface::css(38.))
                         .h(surface::css(27.))
@@ -1358,7 +1358,7 @@ impl KeyboardProductWorkspace {
                 )
             })
             .child(
-                gpui_kit::base::Button::new("keyboard-button-drawer-toggle")
+                razer_widgets::keyboard_navigation::Button::new("keyboard-button-drawer-toggle")
                     .accessibility_label(t("TAB_CUSTOMIZE"))
                     .w(surface::css(38.))
                     .h(surface::css(27.))
@@ -1387,7 +1387,7 @@ impl KeyboardProductWorkspace {
                     })),
             )
             .child(
-                gpui_kit::base::Button::new("keyboard-hypershift")
+                razer_widgets::keyboard_navigation::Button::new("keyboard-hypershift")
                     .disabled(self.customize_controls_disabled())
                     .accessibility_label(t("HYPERSHIFT"))
                     .flex()

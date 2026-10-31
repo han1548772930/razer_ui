@@ -4410,6 +4410,7 @@ def fetch_frontend(args, *, refresh_ledger=True):
     processed = set()
     edges = []
     declared_manifests = set()
+    explicit_roots = set()
     report_dir = ROOT / ".analysis/results/frontend" / output.name / "chunk-references"
     report_dir.mkdir(parents=True, exist_ok=True)
 
@@ -4430,9 +4431,11 @@ def fetch_frontend(args, *, refresh_ledger=True):
         return edge
 
     for seed in getattr(args, "seed_urls", None) or []:
-        # Caller-supplied product manifest, explicitly distinguished from an
-        # HTML reference. It still passes normal origin/path validation.
-        enqueue(entry, seed, "explicit-retained-manifest")
+        # Host-declared entry resources have their own stability boundary even
+        # when they are not linked by HTML or named manifest.json.
+        edge = enqueue(entry, seed, "explicit-retained-manifest")
+        if edge is not None and urllib.parse.urlsplit(edge["to"]).netloc == origin:
+            explicit_roots.add(edge["to"])
 
     while set(queue) - processed:
         checkpoint()
@@ -4592,12 +4595,12 @@ def fetch_frontend(args, *, refresh_ledger=True):
                            **({"reuse_acquisitions": reuse.receipts} if reuse is not None else {})})
         emit({"acquired": sum("path" in r for r in rows.values()),
               "requested": len(queue), "failures": sum("error" in r for r in rows.values())})
-    # Re-read the entry and manifest to detect a deployment changing during acquisition.
+    # Re-read all deployment roots to detect changes during acquisition.
     stability = []
     asset_manifest = asset_manifest_probe
     if rows.get(asset_manifest, {}).get("path"):
         declared_manifests.add(asset_manifest)
-    for url in dict.fromkeys([entry, *sorted(declared_manifests)]):
+    for url in dict.fromkeys([entry, *sorted(declared_manifests | explicit_roots)]):
         checkpoint()
         try:
             if getattr(args, "revalidate_artifact", None) is not None:

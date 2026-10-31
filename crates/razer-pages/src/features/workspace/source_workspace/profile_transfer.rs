@@ -1,7 +1,8 @@
 //! Current756 UI55714 ImportExportModal. File selection parses a local
 //! snapshot; the workspace owns subsequent persistence and device publication.
 use super::*;
-use gpui_kit::base::{Button as BaseButton, Dialog, DialogPopup};
+use razer_widgets::keyboard_navigation::Button as BaseButton;
+use gpui_kit::base::{Dialog, DialogPopup};
 use gpui_kit::component::checkbox::Checkbox;
 use razer_i18n as i18n;
 use serde::Deserialize;

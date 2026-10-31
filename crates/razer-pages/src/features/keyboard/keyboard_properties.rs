@@ -1,6 +1,7 @@
 //! Current 515 ordinary panel plus statically proven analog page consumers.
 use super::*;
-use gpui_kit::{base::Button as BaseButton, component::WindowExt as _};
+use razer_widgets::keyboard_navigation::Button as BaseButton;
+use gpui_kit::{component::WindowExt as _};
 use razer_platform::system;
 use razer_widgets::theme::SnapTapColors as Colors;
 

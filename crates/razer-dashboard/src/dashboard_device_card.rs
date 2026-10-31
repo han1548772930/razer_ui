@@ -769,7 +769,7 @@ impl RenderOnce for Badge {
         .size(css(size));
         let visual = if let Some(action) = self.action {
             override_button(
-                gpui_kit::base::Button::new("badge-action")
+                razer_widgets::keyboard_navigation::Button::new("badge-action")
                     .accessibility_label(i18n::t(tip))
                     .size_full()
                     .relative()

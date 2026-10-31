@@ -1,5 +1,6 @@
 use super::{DeviceKind, open};
-use gpui_kit::base::{Button, Popover};
+use razer_widgets::keyboard_navigation::Button;
+use gpui_kit::base::{Popover};
 use gpui_kit::component::v_flex;
 use gpui_kit::component::{Root, Theme};
 use gpui_kit::test::TestWindowExt as _;

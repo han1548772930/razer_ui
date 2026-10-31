@@ -198,7 +198,7 @@ impl QuickMacroEditor {
             .w_full()
             .h(surface::css(27.))
             .child(
-                gpui_kit::base::Button::new("quick-macro-type-control")
+                razer_widgets::keyboard_navigation::Button::new("quick-macro-type-control")
                     .track_focus(&self.type_focus)
                     .accessibility_label(format!("{}: {title}", text("TYPE")))
                     .aria_expanded(self.type_menu_open)
@@ -302,7 +302,7 @@ impl QuickMacroEditor {
                     }
                 }))
                 .children(choices.into_iter().enumerate().map(|(index, item)| {
-                    gpui_kit::base::Button::new(("quick-macro-type-option", index))
+                    razer_widgets::keyboard_navigation::Button::new(("quick-macro-type-option", index))
                         .track_focus(&self.type_option_focus[index])
                         .accessibility_label(item.label)
                         .aria_selected(self.kind == item.value)
@@ -604,7 +604,7 @@ impl QuickMacroEditor {
                             })),
                     )
                     .child(
-                        gpui_kit::base::Button::new("quick-macro-program-browse")
+                        razer_widgets::keyboard_navigation::Button::new("quick-macro-program-browse")
                             .accessibility_label(format!(
                                 "{}: {}",
                                 text("PROGRAM"),
@@ -688,7 +688,7 @@ impl QuickMacroEditor {
             .when(disabled, |field| field.opacity(0.3));
         if self.keys.is_empty() && !self.capturing {
             field = field.child(
-                gpui_kit::base::Button::new("quick-macro-capture-start")
+                razer_widgets::keyboard_navigation::Button::new("quick-macro-capture-start")
                     .accessibility_label("Start typing")
                     .disabled(disabled)
                     .px(surface::css(10.))
@@ -770,7 +770,7 @@ impl QuickMacroEditor {
             let press_key = key.clone();
             let remove_key = key.clone();
             field = field.child(
-                gpui_kit::base::Button::new(SharedString::from(format!("quick-macro-key-{key}")))
+                razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!("quick-macro-key-{key}")))
                     .accessibility_label(format!("Remove {key}"))
                     .relative()
                     .px(surface::css(10.))
@@ -913,7 +913,7 @@ impl Render for QuickMacroEditor {
             .text_size(surface::css(14.))
             .relative()
             .child(
-                gpui_kit::base::Button::new("quick-macro-close")
+                razer_widgets::keyboard_navigation::Button::new("quick-macro-close")
                     .accessibility_label(text("CLOSE"))
                     .absolute()
                     .right_0()
@@ -978,7 +978,7 @@ impl Render for QuickMacroEditor {
                     .justify_between()
                     .child(div().text_color(Colors::muted()).child(text("ACTION")))
                     .child(
-                        gpui_kit::base::Button::new("quick-macro-clear")
+                        razer_widgets::keyboard_navigation::Button::new("quick-macro-clear")
                             .accessibility_label(text("CLEAR"))
                             .disabled(
                                 self.keys.is_empty()

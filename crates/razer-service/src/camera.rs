@@ -190,10 +190,15 @@ impl CameraDeviceSession {
         #[cfg(windows)]
         {
             if self.session.target().product_id == razer_device::camera::KIYO_V2_PRO_PRODUCT_ID {
-                let mut transport = extensions::CameraKsSession::new(self.session.transport_mut(), scope, validate);
+                let mut transport =
+                    extensions::CameraKsSession::new(self.session.transport_mut(), scope, validate);
                 Ok(self.serial.read_pro(&mut transport, validate))
             } else {
-                let mut transport = focus_family::CameraFamilyKsSession::new(self.session.transport_mut(), scope, validate);
+                let mut transport = focus_family::CameraFamilyKsSession::new(
+                    self.session.transport_mut(),
+                    scope,
+                    validate,
+                );
                 Ok(self.serial.read_family(&mut transport, validate))
             }
         }

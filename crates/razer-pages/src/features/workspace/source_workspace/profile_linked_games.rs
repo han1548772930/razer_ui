@@ -1,8 +1,8 @@
 //! Current Profiles 1255 embedded root: fixed profile, game tiles and program browser.
 //! Local executable metadata never starts, scans or monitors a program.
 use crate::features::Choice;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::base::{
-    Button as BaseButton,
     motion::{Easing, Presence, Transition},
 };
 use gpui_kit::component::{

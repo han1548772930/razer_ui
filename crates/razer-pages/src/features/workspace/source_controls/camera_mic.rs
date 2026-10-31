@@ -339,7 +339,7 @@ impl SourceControls {
                                 .line_height(surface::css(16.))
                                 .child(razer_i18n::t("DEVICE_REBOOT_DESCRIPTION"))
                                 .child(
-                                    gpui_kit::base::Button::new("3595:microphone-reboot")
+                                    razer_widgets::keyboard_navigation::Button::new("3595:microphone-reboot")
                                         .accessibility_label(razer_i18n::t("DEVICE_REBOOT"))
                                         .disabled(disabled)
                                         .self_start()

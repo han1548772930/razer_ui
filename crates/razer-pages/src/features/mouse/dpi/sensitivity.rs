@@ -1,7 +1,7 @@
 //! 182 IM -> jm -> Vm: five retained DPI slots, per-slot XY and visibility.
 //! Native GPUI drag/drop owns capture; slot IDs preserve controls across reorder.
 use super::{settings::Sensitivity, workspace::DeviceWorkspace};
-use gpui_kit::base::Button as BaseButton;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::base::{NumberInput, StepAction};
 use gpui_kit::component::{
     ActiveTheme, Disableable,
@@ -251,7 +251,7 @@ impl RenderOnce for DpiNumberInput {
         let hover = razer_widgets::theme::DropdownColors::new().hover();
         let active = cx.theme().button_primary_foreground.opacity(0.1);
         let arrow_owner = self.owner.clone();
-        let arrow = move |button: BaseButton, asset, at_limit, top, action| {
+        let arrow = move |button: gpui_kit::base::Button, asset, at_limit, top, action| {
             let opacity = if at_limit { 0.3 } else { 1. };
             let down = arrow_owner.clone();
             let up = arrow_owner.clone();

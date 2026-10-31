@@ -1,6 +1,7 @@
 //! Current 70 XT / 226 es -> 4230: integer stepping and local row previews.
 use super::*;
-use gpui_kit::base::{Button as BaseButton, NumberInput, StepAction};
+use gpui_kit::base::Button as BaseButton;
+use gpui_kit::base::{NumberInput, StepAction};
 use std::time::Duration;
 
 #[derive(Default)]

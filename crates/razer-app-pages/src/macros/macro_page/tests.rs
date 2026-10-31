@@ -11,6 +11,10 @@ use std::time::Duration;
 
 #[path = "tests/library_lifecycle.rs"]
 mod library_lifecycle;
+#[path = "tests/record_preferences.rs"]
+mod record_preferences;
+#[path = "tests/text_lifecycle.rs"]
+mod text_lifecycle;
 
 fn open(
     cx: &mut TestAppContext,

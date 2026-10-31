@@ -687,6 +687,175 @@ class TypedTableTests(unittest.TestCase):
             with self.subTest(invalid=invalid), self.assertRaises(ValueError):
                 families.registry_manifest_editions({"productTranslations": invalid}, 105, 104)
 
+    @staticmethod
+    def registry_ast(raw):
+        import families
+        from tree_sitter import Language, Parser
+        import tree_sitter_javascript
+        tree = Parser(Language(tree_sitter_javascript.language())).parse(raw)
+        if tree.root_node.has_error:
+            raise AssertionError("navigation fixture has an AST error")
+        original = {"path": ".analysis/inputs/frontend/test/navigation.js", "bytes": len(raw),
+                    "sha256": hashlib.sha256(raw).hexdigest()}
+        owners = families.keyboard_source_modules(raw.decode())
+        modules = {row["module_id"]: [(original, row)] for row in owners}
+        return tree, owners, modules
+
+    @staticmethod
+    def registry_root_fixture(*, macro=False, chroma=False, detached_create=False):
+        branches = []
+        if macro:
+            branches.append('macro:(0,j.jsx)(Lazy,{macro:macroValue,lazy:()=>Promise.all([require.e(8),require.e(9)]).then(require.bind(require,80))})')
+        if chroma:
+            branches.append('chromaApp:(0,j.jsx)(Lazy,{lazy:()=>require.e(7).then(require.bind(require,70))})')
+        branches.append('default:(0,j.jsx)(Lazy,{lazy:()=>Promise.all([require.e(1),require.e(2)]).then(require.bind(require,10))})')
+        create = '(0,ReactDOM.createRoot)' if detached_create else 'ReactDOM.createRoot'
+        return ('(()=>{function Page(){const {displayMode:mode,macro:macroValue}=React.useMemo(()=>{'
+                'const url=new URL(location.href);return {displayMode:url.searchParams.get("displayMode"),macro:url.searchParams.get("macro")}},[]);'
+                'return(0,j.jsx)(Selector,{$name:mode,children:{' + ','.join(branches) + '}})}'
+                + create + '(document.getElementById("root")).render((0,j.jsx)(Page,{}));})();').encode()
+
+    def test_registry_root_contract_reads_actual_optional_modes_and_both_create_root_forms(self):
+        import families
+        for macro, chroma, detached in ((False, True, False), (True, False, True), (True, True, False)):
+            raw = self.registry_root_fixture(macro=macro, chroma=chroma, detached_create=detached)
+            tree, owners, _ = self.registry_ast(raw)
+            contract = families.registry_display_root_contract(raw, tree, owners)
+            self.assertEqual([row["display_mode"] for row in contract["roots"]],
+                             (["macro"] if macro else []) + (["chromaApp"] if chroma else []) + ["default"])
+            self.assertEqual(contract["roots"][-1]["chunk_ids"], [1, 2])
+            self.assertEqual(contract["roots"][-1]["module_id"], 10)
+        source = self.registry_root_fixture(macro=True)
+        for before, after in ((b'get("displayMode")', b'get("otherMode")'),
+                              (b'require.bind(require,10)', b'require.bind(other,10)'),
+                              (b'require.e(1),require.e(2)', b'require.e(1),,require.e(2)'),
+                              (b'default:(0,j.jsx)', b'unknown:(0,j.jsx)'),
+                              (b'(0,j.jsx)(Selector', b'(effect(),j.jsx)(Selector')):
+            changed = source.replace(before, after)
+            tree, owners, _ = self.registry_ast(changed)
+            with self.subTest(before=before), self.assertRaises(ValueError):
+                families.registry_display_root_contract(changed, tree, owners)
+
+    @staticmethod
+    def registry_navigation_fixture(*, callback=False, ble=False, fallback=False, fragment=False):
+        field = "renderComponent:()=>" if callback else "component:"
+        pages = ('[{id:1,name:labels.LIGHTING,' + field + '(0,j.jsx)(shared.A,{})},'
+                 '{id:2,name:labels.HELP,' + field + '(0,j.jsx)(Help,{})}]')
+        secondary = '[{id:2,name:labels.HELP,' + field + '(0,j.jsx)(Help,{})}]'
+        lookup = 'this.state.navs.find(row=>row.name===this.state.active_view)'
+        rendered = lookup + ('.renderComponent()' if callback else '.component')
+        if fallback:
+            rendered = '{let selected=' + lookup + ';return selected||(selected=this.state.navs[0]),selected.component}'
+        ready = '(0,j.jsx)(Connected,{})'
+        if fragment:
+            ready = '(0,j.jsx)(j.Fragment,{children:' + ready + '})'
+        return ('(()=>{const modules={101:(module,exports,require)=>{require.d(exports,{default:()=>Root});'
+                'const labels=require(201),shared=require(401);class Help extends React.Component{}'
+                'class Navigator extends React.Component{constructor(){super();const full=' + pages + ',ble=' + secondary + ';'
+                'this.state={navs:' + ('this.props.isBle?ble:full' if ble else 'full') + '};this.renderView=()=>'
+                + rendered + ';}render(){return(0,j.jsx)(Frame,{children:this.renderView()})}}'
+                'const Connected=(0,redux.connect)(state=>state)(Navigator);'
+                'class Gate extends React.Component{constructor(){super();this.renderView=()=>this.props.setupStatus===State.READY?'
+                + ready + ':(0,j.jsx)(Loading,{});}render(){return(0,j.jsx)(Frame,{children:this.renderView()})}}'
+                'const Root=(0,redux.connect)(state=>state)(Gate);},'
+                '201:(module,exports,require)=>{require.d(exports,{LIGHTING:()=>light,HELP:()=>help});const light="TAB_LIGHTING",help="HELP";},'
+                '301:(module,exports,require)=>{require.d(exports,{default:()=>Root});const shared=require(401),frame=require(402),tutorial=require(403);'
+                'class Chroma extends React.Component{render(){return(0,j.jsxs)(frame.A,{children:['
+                '(0,j.jsx)(tutorial.A,{autoOpen:!1}),(0,j.jsx)(shared.A,{isIframe:!0})]})}}'
+                'const Root=(0,redux.connect)(state=>state)(Chroma);}};})();').encode()
+
+    def test_registry_navigation_traces_gate_arrays_and_direct_or_callback_rendering(self):
+        import families
+        for callback, ble, fallback, fragment in ((False, False, True, False), (False, False, False, True), (True, True, False, False)):
+            raw = self.registry_navigation_fixture(callback=callback, ble=ble, fallback=fallback, fragment=fragment)
+            tree, _, modules = self.registry_ast(raw)
+            result = families.registry_default_navigation_contract(raw, tree, modules[101][0][1], modules)
+            self.assertEqual(result["owner_name"], "Navigator")
+            self.assertEqual([page["kind"] for page in result["groups"][0]["pages"]], ["TAB_LIGHTING", "HELP"])
+            self.assertEqual(result["renderer_field"], "renderComponent" if callback else "component")
+            self.assertEqual(result["missing_active_view"], "first_navigation" if fallback else "required_match")
+            self.assertEqual(len(result["groups"]), 2 if ble else 1)
+            if ble:
+                self.assertFalse(result["groups"][1]["primary"])
+                self.assertEqual([page["kind"] for page in result["groups"][1]["pages"]], ["HELP"])
+
+    def test_registry_navigation_rejects_unwired_gate_unknown_lookup_and_unobserved_rows(self):
+        import families
+        source = self.registry_navigation_fixture(fallback=True)
+        for before, after in ((b'this.props.setupStatus===State.READY', b'this.props.setupStatus===State.UNKNOWN'),
+                              (b'children:this.renderView()', b'children:null'),
+                              (b'row.name===this.state.active_view', b'row.name===this.state.previous_view'),
+                              (b'selected=this.state.navs[0]', b'selected=this.state.navs[1]'),
+                              (b'const full=[{id:1', b'const full=[,{id:1'),
+                              (b'labels.LIGHTING', b'labels.ABSENT')):
+            raw = source.replace(before, after)
+            tree, _, modules = self.registry_ast(raw)
+            with self.subTest(before=before), self.assertRaises(ValueError):
+                families.registry_default_navigation_contract(raw, tree, modules[101][0][1], modules)
+
+    def test_standalone_navigation_matches_shared_page_exports_without_reducer_text_inference(self):
+        import families
+        raw = self.registry_navigation_fixture()
+        tree, _, modules = self.registry_ast(raw)
+        default = families.registry_default_navigation_contract(raw, tree, modules[101][0][1], modules)
+        standalone = families.registry_standalone_navigation_contract(raw, tree, modules[301][0][1], default["groups"])
+        self.assertEqual([page["kind"] for page in standalone["pages"]], ["TAB_LIGHTING"])
+        self.assertEqual(standalone["pages"][0]["props"], {"isIframe": "!0"})
+        self.assertEqual(len(standalone["other_mounts"]), 2)
+        changed = raw.replace(b'shared=require(401),frame=', b'shared=require(999),frame=')
+        tree, _, modules = self.registry_ast(changed)
+        with self.assertRaisesRegex(ValueError, "references are absent"):
+            families.registry_standalone_navigation_contract(changed, tree, modules[301][0][1], default["groups"])
+
+    @staticmethod
+    def registry_edition_fixture():
+        return (b'const action="device/editionLayoutId",defaults={editionId:0,layoutId:0};'
+                b'const reducer=(state,event)=>{switch(event.type){'
+                b'case action:return{...state,...links(event.payload.editionId),'
+                b'editionId:event.payload.editionId,layoutId:event.payload.layoutId};'
+                b'default:return state}};'
+                b'const combined=combineReducers({deviceReducer:reducer});')
+
+    def test_registry_editions_keep_ui_and_middleware_declarations_distinct(self):
+        import families
+        ui = {"definition": {"edition_ids": None}}
+        peer = {"status": "verified", "definition": {"edition_ids": [0, 128, 130, 131]}}
+        result, evidence = families.registry_edition_metadata(ui, peer, ui_main=self.registry_edition_fixture())
+        self.assertEqual(result, [0, 128, 130, 131])
+        self.assertIsNone(ui["definition"]["edition_ids"])
+        self.assertIsNone(evidence["ui_declared_edition_ids"])
+        self.assertEqual(evidence["selected_source_role"], "middleware")
+        self.assertEqual(evidence["ui_reducer_contract"]["action"], "device/editionLayoutId")
+        initialized = self.registry_edition_fixture().replace(
+            b'switch(event.type)', b'switch(state||(state=defaults),observe(event,state),event.type)')
+        self.assertEqual(families.registry_ui_edition_contract(initialized)["payload_fields"], ["editionId", "layoutId"])
+        ui["definition"]["edition_ids"] = [3, 0]
+        result, evidence = families.registry_edition_metadata(ui, peer, ui_main=b'not parsed')
+        self.assertEqual(result, [3, 0])
+        self.assertEqual(evidence["selected_source_role"], "ui")
+        ui["definition"]["edition_ids"] = None
+        peer = {"status": "official_source_unavailable"}
+        result, evidence = families.registry_edition_metadata(ui, peer, ui_main=self.registry_edition_fixture())
+        self.assertIsNone(result)
+        self.assertIsNone(evidence["selected_source_role"])
+
+    def test_registry_editions_reject_filtered_wrong_and_unregistered_ui_payloads(self):
+        import families
+        source = self.registry_edition_fixture()
+        for before, after in (
+            (b'editionId:event.payload.editionId', b'editionId:event.payload.editionId||0'),
+            (b'layoutId:event.payload.layoutId', b'layoutId:event.payload.editionId'),
+            (b'layoutId:event.payload.layoutId}', b'layoutId:event.payload.layoutId,...defaults}'),
+            (b'deviceReducer:reducer', b'deviceReducer:otherReducer'),
+            (b'device/editionLayoutId', b'unrelated/action'),
+            (b'switch(event.type)', b'switch(other.type)'),
+            (b'switch(event.type)', b'switch(event.payload.editionId=0,event.type)'),
+            (b'...state,...links', b'...defaults,...links'),
+            (b'...state,...links', b'...state,editionId:0,...links'),
+        ):
+            with self.subTest(after=after), self.assertRaises(ValueError):
+                families.registry_ui_edition_contract(source.replace(before, after))
+
     def test_transfer_source_owner_is_the_inner_complete_concatenated_entry(self):
         raw = ('(()=>{const nested=()=>{return 1};(()=>{const exports={};require.d(exports,{DeviceInfo:()=>info});'
                'const info={productId:769,category:"HUE"};})();})();').encode()
@@ -1135,6 +1304,30 @@ class TypedTableTests(unittest.TestCase):
                 with patch.object(typed_tables, "ROOT", root), patch.object(analysis, "ROOT", root), self.assertRaises(ValueError):
                     typed_tables._capture_identity_product((756, routes, {}))
 
+    def test_identity_capture_retains_missing_media_without_accepting_a_missing_mounted_script(self):
+        import analysis
+        for tag, required in ((b'<link rel="icon" href="missing.svg">', False),
+                              (b'<script src="missing.js"></script>', True)):
+            with self.subTest(required=required), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                routes, receipts = self.identity_acquisition_fixture(root)
+                path, document = receipts[1]
+                original = document["files"][0]
+                raw = (root / original["path"]).read_bytes() + tag
+                missing = original["url"].removesuffix("index.html") + ("missing.js" if required else "missing.svg")
+                document["files"].append({"url": missing, "error": "HTTP Error 404: Not Found"})
+                document["unresolved"] = [{"url": missing, "error": "HTTP Error 404: Not Found"}]
+                self.update_identity_original(root, path, document, 0, raw)
+                with patch.object(typed_tables, "ROOT", root), patch.object(analysis, "ROOT", root):
+                    if required:
+                        with self.assertRaises(ValueError):
+                            typed_tables._capture_identity_product((756, routes, {}))
+                    else:
+                        result, _ = typed_tables._capture_identity_product((756, routes, {}))
+                        self.assertEqual(result["middleware"]["productId"], 756)
+                        retained = json.loads(path.read_bytes())
+                        self.assertEqual(retained["unresolved"], document["unresolved"])
+
     def test_identity_official_absence_requires_two_matching_failures_and_static_acquisition(self):
         import analysis
         import frontend
@@ -1312,6 +1505,33 @@ class TypedTableTests(unittest.TestCase):
                 output.write_bytes(raw.replace(b'ble_id: Some(758)', b'ble_id: None', 1))
                 with self.assertRaisesRegex(ValueError,"identities differ"):
                     typed_tables.prepare_current_identity_table(check=True,workers=2)
+
+    def test_default_protocol_generation_uses_the_same_current_identity_schema(self):
+        import analysis
+        reads = self.current_read_fixture()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.identity_generation_fixture(root)
+            sources = {
+                typed_tables.READ_INPUT: json.dumps({"schema_version": 1, "products": reads}).encode(),
+                typed_tables.QUERY_INPUT: self.source_fixture("receiver-query-capabilities.json"),
+                typed_tables.PAIR_CAP_INPUT: self.source_fixture("receiver-pairing-capabilities.json"),
+                typed_tables.PAIR_CATALOG_INPUT: self.source_fixture("receiver-pairing-catalog.json"),
+            }
+            for name, raw in sources.items():
+                path = root / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(raw)
+            with patch.object(typed_tables, "ROOT", root), patch.object(analysis, "ROOT", root), \
+                    patch.object(typed_tables, "current_read_sources", return_value=(reads, [])):
+                typed_tables.prepare_current_identity_table(workers=2)
+                output = root / typed_tables.IDENTITY_OUTPUT
+                explicit = output.read_bytes()
+                generated = typed_tables.prepare_local_protocol_tables(workers=2)
+                self.assertIn(typed_tables.IDENTITY_OUTPUT, generated["paths"])
+                self.assertEqual(output.read_bytes(), explicit)
+                self.assertTrue(typed_tables.prepare_local_protocol_tables(check=True, workers=2)["passed"])
+                self.assertEqual(output.read_bytes(), explicit)
 
     def test_identity_publication_failure_keeps_old_table_and_releases_its_temporary(self):
         import analysis

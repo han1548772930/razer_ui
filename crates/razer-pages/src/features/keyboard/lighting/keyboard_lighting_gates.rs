@@ -1,7 +1,7 @@
 //! Current mounted Lighting roots and their factory/BLE/WDL guards.
 //! See keyboard-lighting-gates-2026-10-11.json for source hashes and slices.
 use super::*;
-use gpui_kit::base::Button as BaseButton;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::theme::KeyboardRgbEffectColors as Colors;
 
 impl KeyboardProductWorkspace {

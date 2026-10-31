@@ -103,6 +103,311 @@ class HostCurrentSourceRouteTests(unittest.TestCase):
             self.audit.current_source_set("gamepad-mw-4133-current")
 
 
+class HelpRuntimeVersionsTests(unittest.TestCase):
+    # Reduced static owners from the current 3594 Help component and helpers.
+    # The fixture is parsed as text; no vendor JavaScript is executed.
+    SOURCE = r'''
+const normalize=e=>(null!==e&&void 0!==e?e:"").replace(/[{}]/g,"").toLowerCase(),
+select=(e,{containerId:E,productIds:_})=>{var a;if(!Array.isArray(e))return;
+const t=normalize(E),i=_.filter(e=>void 0!==e&&null!==e).map(String),
+o=t&&e.find(e=>(e=>{try{return normalize(new URL(e).searchParams.get("containerId"))}
+catch(E){return""}})(null===e||void 0===e?void 0:e.windowName)===t),
+n=e.find(e=>i.includes((e=>{try{const E=new URL(e).pathname.split("/").filter(Boolean),
+_=E.findIndex(e=>"products"===e.toLowerCase()),a=_>=0?E[_+1]:"";
+return/^\d+$/.test(a)?a:""}catch(E){return""}})
+(null===e||void 0===e?void 0:e.windowName)));
+return null===(a=o||n)||void 0===a?void 0:a.value},key="mwVersion";
+class Help {
+constructor(e){this.state={serialNumber:e.serialNumber,uiVersion:void 0,mwVersion:void 0,synapseVersion:void 0}}
+componentDidMount(){this.getDeviceUIVersionFromUIElement(),this.getDeviceMWVersionFromWindowsStorage(),this.getAppVersion()}
+componentDidUpdate(e,E){}
+getDeviceMWVersionFromWindowsStorage(){var e,E;null===(e=api.getWindowStorageItem(key))||void 0===e||null===(E=e.then(e=>{if(!e)return;const E=select(JSON.parse(e),{containerId:new URLSearchParams(window.location.search).get("containerId"),productIds:[device.DeviceInfo.productId,device.DeviceInfo.dongleId]});E&&this.setState({mwVersion:E})}))||void 0===E||E.catch(e=>{console.error("Failed to read mwVersion from window storage:",e)})}
+getAppVersion(){try{const e=localStorage.getItem("apps");if(e){const E=JSON.parse(e).find(e=>"synapse"===e.name);if(E&&E.version){let e="4.0.0";e=["4",...E.version.split(".").slice(1)].join("."),console.log("Found synapse version:",e),this.setState({synapseVersion:e})}}}catch(e){console.error("Error reading version from local storage:",e)}}
+getDeviceUIVersionFromUIElement(){const e=document.querySelector("noscript#version");if(console.log("device UI buildInfo:",e),e)try{const E=e.innerHTML;if(console.log("device UI html:",E),E.indexOf("VERSION_PLACEHOLDER")>=0)return;const _=JSON.parse(E);console.log("device UI:",_);let a=_.version,t=_.buildVersion;console.log("device UI version:",a),console.log("device UI buildVersion:",t),this.setState({uiVersion:`${a}.${t}`})}catch(E){console.error("Failed to parse device ui version data from noscript:",E)}}
+render(){return null}
+}
+const Connected=connect(state,actions)(Help);
+'''
+
+    def setUp(self):
+        import analysis
+        self.audit = HostLocalAudit()
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name).resolve()
+        patched = patch.object(analysis, "ROOT", self.root)
+        patched.start()
+        self.addCleanup(patched.stop)
+
+    def source(self, body, name="main.js"):
+        raw = body.encode("utf-8")
+        path = self.root / ".analysis/inputs/frontend/help-fixture" / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(raw)
+        return {"path": path.relative_to(self.root).as_posix(), "bytes": len(raw),
+                "sha256": hashlib.sha256(raw).hexdigest()}
+
+    def analyze(self, transform=lambda value: value, mount=True):
+        from host import help_runtime_components
+        body = self.SOURCE + ('const root=(0,react.jsx)(Connected,{hasCamoStudio:!0,resetObm:this.resetDevice});' if mount else '')
+        return help_runtime_components(self.audit, [self.source(transform(body))])
+
+    def test_complete_getters_scoped_helpers_and_actual_props_are_retained(self):
+        result, = self.analyze()
+        self.assertEqual(result["middleware"]["mode"], "scoped")
+        self.assertEqual(result["middleware"]["storage_key"], "mwVersion")
+        self.assertTrue(result["retains_serial"])
+        self.assertEqual(result["mounts"][0]["props"], {"hasCamoStudio": "!0", "resetObm": "this.resetDevice"})
+        self.assertEqual(set(result["methods"]), {"constructor", "componentDidMount", "componentDidUpdate",
+            "getDeviceUIVersionFromUIElement", "getDeviceMWVersionFromWindowsStorage", "getAppVersion", "render"})
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_alias_names_can_change_without_borrowing_other_lexical_bindings(self):
+        result, = self.analyze(lambda value: value.replace("normalize", "canonicalContainer")
+            .replace("select(", "pickVersion(").replace("select=", "pickVersion=")
+            .replace("Connected", "ActualHelp").replace("Help {", "CurrentHelp {").replace("(Help)", "(CurrentHelp)"))
+        self.assertEqual(result["middleware"]["product_fields"], ["productId", "dongleId"])
+
+    def test_unmounted_class_cannot_prove_a_runtime_consumer(self):
+        with self.assertRaisesRegex(ValueError, "no statically resolved mounted JSX"):
+            self.analyze(mount=False)
+
+    def test_shadowed_same_name_mount_cannot_be_borrowed(self):
+        with self.assertRaisesRegex(ValueError, "no statically resolved mounted JSX"):
+            self.analyze(lambda value: value.replace("const root=", "function unrelated(Connected){const root=") + "}")
+
+    def test_cross_chunk_export_and_namespace_import_reach_actual_mount(self):
+        from host import help_runtime_components
+        component = self.source('const modules={17:(e,t,n)=>{n.d(t,{A:()=>Connected});' + self.SOURCE + '}};', "help.chunk.js")
+        caller = self.source('const modules={99:(e,t,n)=>{const help=n(17);'
+            'const root=(0,react.jsx)(help.A,{resetObm:this.resetDevice});}};', "main.js")
+        result, = help_runtime_components(self.audit, [caller, component])
+        self.assertEqual(result["mounts"][0]["original"]["path"], caller["path"])
+        self.assertEqual(result["mounts"][0]["props"], {"resetObm": "this.resetDevice"})
+        self.assertEqual(len(result["binding_links"]), 2)
+
+    def lazy_sources(self, change_caller=lambda body: body, change_wrapper=lambda body: body):
+        component = self.source('self.chunks.push([[50],{17:(e,t,n)=>{n.d(t,{default:()=>Connected});' +
+                                self.SOURCE + '}}]);', "help.chunk.js")
+        wrapper = ('const modules={31:(e,t,n)=>{n.d(t,{kg:()=>E});'
+                   'const E=({lazy:e,LoadingComponent:t,ErrorComponent:n,...o})=>{'
+                   'const[r,E]=(0,i.useState)(null),[_,s]=(0,i.useState)(null);'
+                   'return(0,i.useEffect)(()=>((async()=>{try{const t=await e();E(()=>t.default)}'
+                   'catch(t){console.error("Asynchronous component loading failed",t),'
+                   's(t instanceof Error?t:new Error("AsyncComponent loading failed."))}})(),'
+                   '()=>{E(null),s(null)}),[e]),_?n||null:r?(0,a.jsx)(r,{...o}):t||null}}};')
+        caller = ('const modules={99:(e,t,n)=>{const loader=n(31);'
+                  'const root=(0,react.jsx)(loader.kg,{lazy:()=>Promise.all([n.e(7),n.e(50)]).then(n.bind(n,17)),resetObm:this.resetDevice});}};')
+        return [self.source(change_wrapper(wrapper), "wrapper.js"),
+                self.source(change_caller(caller), "main.js"), component]
+
+    def test_lazy_component_follows_actual_chunk_default_export_and_forwarded_props(self):
+        from host import help_runtime_components
+        row, = help_runtime_components(self.audit, self.lazy_sources())
+        mounted, = row["mounts"]
+        self.assertEqual(mounted["props"], {"resetObm": "this.resetDevice"})
+        self.assertEqual(mounted["lazy_import"]["chunk_ids"], [7, 50])
+        self.assertEqual(mounted["lazy_import"]["registered_chunk_ids"], [50])
+        self.assertFalse(mounted["lazy_import"]["cleanup_cancels_import"])
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_lazy_target_requires_its_published_chunk_and_actual_require(self):
+        from host import help_runtime_components
+        for old, new, message in (
+                ('n.e(50)', 'n.e(51)', "registered chunk"),
+                ('n.bind(n,17)', 'n.bind(other,17)', "different require"),
+                ('n.e(50)', 'other.e(50)', "chunk request"),
+                ('n.e(7),n.e(50)', 'n.e(50),n.e(50)', "duplicate chunk"),
+                ('lazy:()=>', 'loader:()=>', "no statically resolved mounted JSX")):
+            with self.subTest(replacement=new), self.assertRaisesRegex(ValueError, message):
+                help_runtime_components(self.audit, self.lazy_sources(lambda body: body.replace(old, new)))
+            self.audit = HostLocalAudit()
+
+    def test_lazy_renderer_cannot_drop_props_change_export_or_fabricate_cancellation(self):
+        from host import help_runtime_components
+        for old, new in (('t.default', 't.other'), ('(r,{...o})', '(r,{})'),
+                         ('()=>{E(null),s(null)}', '()=>{cancel(),E(null),s(null)}')):
+            with self.subTest(replacement=new), self.assertRaisesRegex(ValueError, "complete default-export"):
+                help_runtime_components(self.audit, self.lazy_sources(change_wrapper=lambda body: body.replace(old, new)))
+            self.audit = HostLocalAudit()
+
+    def test_export_must_target_actual_factory_exports(self):
+        from host import help_runtime_components
+        component = self.source('const modules={17:(e,t,n)=>{n.d(other,{A:()=>Connected});' + self.SOURCE + '}};', "help.chunk.js")
+        caller = self.source('const modules={99:(e,t,n)=>{const help=n(17);'
+            'const root=(0,react.jsx)(help.A,{});}};', "main.js")
+        with self.assertRaisesRegex(ValueError, "no statically resolved mounted JSX"):
+            help_runtime_components(self.audit, [caller, component])
+
+    def test_shadowed_require_cannot_claim_cross_chunk_mount(self):
+        from host import help_runtime_components
+        component = self.source('const modules={17:(e,t,n)=>{n.d(t,{A:()=>Connected});' + self.SOURCE + '}};', "help.chunk.js")
+        caller = self.source('const modules={99:(e,t,n)=>{function unrelated(n){const help=n(17);'
+            'const root=(0,react.jsx)(help.A,{});}}};', "main.js")
+        with self.assertRaisesRegex(ValueError, "no statically resolved mounted JSX"):
+            help_runtime_components(self.audit, [caller, component])
+
+    def test_storage_key_follows_real_exported_object(self):
+        from host import help_runtime_components
+        component = self.source('const modules={17:(e,t,n)=>{const storage=n(23);' +
+            self.SOURCE.replace("api.getWindowStorageItem(key)", "api.getWindowStorageItem(storage.K.MW_VERSION)") +
+            '(0,react.jsx)(Connected,{});}};', "help.chunk.js")
+        constants = self.source('const modules={23:(e,t,n)=>{n.d(t,{K:()=>keys});'
+            'const keys={MW_VERSION:"mwVersion"};}};', "constants.chunk.js")
+        result, = help_runtime_components(self.audit, [component, constants])
+        self.assertEqual(result["middleware"]["storage_key_source"]["path"], constants["path"])
+
+    def test_storage_key_can_follow_the_actual_bootstrap_require(self):
+        from host import help_runtime_components
+        prefix = ('const modules={23:(e,t,n)=>{n.d(t,{K:()=>keys});const keys={MW_VERSION:"mwVersion"};}},cache={};'
+                  'function require(id){var found=cache[id];if(void 0!==found)return found.exports;'
+                  'var entry=cache[id]={id:id,loaded:!1,exports:{}};'
+                  'return modules[id](entry,entry.exports,require),entry.loaded=!0,entry.exports}'
+                  'const storage=require(23);')
+        source = self.source(prefix + self.SOURCE.replace(
+            "api.getWindowStorageItem(key)", "api.getWindowStorageItem(storage.K.MW_VERSION)") +
+            '(0,react.jsx)(Connected,{});')
+        row, = help_runtime_components(self.audit, [source])
+        self.assertEqual(row["middleware"]["storage_key"], "mwVersion")
+        self.assertTrue(any("source_bootstrap_require" in owner["roles"] for owner in self.audit.owners.values()))
+
+    def test_direct_component_alias_preserves_its_lexical_mount(self):
+        row, = self.analyze(lambda value: value.replace("const root=", "const Alias=Connected;const root=")
+                           .replace("(Connected,{hasCamoStudio", "(Alias,{hasCamoStudio"))
+        self.assertEqual(row["mounts"][0]["props"]["hasCamoStudio"], "!0")
+
+    def test_changed_selector_output_or_order_is_rejected(self):
+        for before, after in (("a=o||n", "a=n||o"), ("void 0:a.value", "void 0:a.version"),
+                              ('get("containerId")', 'get("other")'), ("DeviceInfo.dongleId", "DeviceInfo.productId")):
+            with self.subTest(before=before), self.assertRaises(ValueError):
+                self.analyze(lambda value, before=before, after=after: value.replace(before, after))
+            self.audit = HostLocalAudit()
+
+    def test_missing_normalizer_or_changed_storage_key_is_rejected(self):
+        for before, after in (("const normalize=", "const missing="), ('key="mwVersion"', 'key="version"')):
+            with self.subTest(before=before), self.assertRaises(ValueError):
+                self.analyze(lambda value, before=before, after=after: value.replace(before, after))
+            self.audit = HostLocalAudit()
+
+    def test_current_direct_promise_variant_preserves_scoped_selection(self):
+        result, = self.analyze(lambda value: value.replace("var e,E;null===(e=", "var e;null===(e=")
+            .replace("||null===(E=e.then(", "||e.then(").replace("}))||void 0===E||E.catch", "}).catch"))
+        self.assertEqual(result["middleware"]["mode"], "scoped")
+        self.assertEqual(result["middleware"]["promise_variant"], "direct_then_result")
+
+    def test_scoped_selector_with_lowered_parameter_destructuring_is_complete(self):
+        result, = self.analyze(lambda value: value.replace(
+            "select=(e,{containerId:E,productIds:_})=>{var a;",
+            "select=(e,options)=>{var a;let{containerId:E,productIds:_}=options;"))
+        self.assertEqual(result["middleware"]["mode"], "scoped")
+
+    def test_current_first_record_variant_is_not_misclassified_as_scoped(self):
+        first = ('getDeviceMWVersionFromWindowsStorage(){api.getWindowStorageItem(key).then(e=>{'
+                 'var t;const s=JSON.parse(e);0!==s.length&&this.setState('
+                 '{mwVersion:null===(t=s[0])||void 0===t?void 0:t.value})})}')
+        def replace(value):
+            start = value.index("getDeviceMWVersionFromWindowsStorage(){")
+            end = value.index("\ngetAppVersion(){", start)
+            return value[:start] + first + value[end:]
+        result, = self.analyze(replace)
+        self.assertEqual(result["middleware"]["mode"], "first")
+        self.assertFalse(result["middleware"]["promise_failure_handler"])
+
+    def test_getter_content_globals_and_missing_value_paths_are_checked(self):
+        for before, after in (('.slice(1)', '.slice(0)'), ('localStorage.getItem', 'otherStorage.getItem'),
+                              ('indexOf("VERSION_PLACEHOLDER")>=0', 'indexOf("VERSION_PLACEHOLDER")>0'),
+                              ("E&&this.setState({mwVersion:E})", "this.setState({mwVersion:E})"),
+                              ("synapseVersion:void 0", 'synapseVersion:"4.0.0"')):
+            with self.subTest(before=before), self.assertRaises(ValueError):
+                self.analyze(lambda value, before=before, after=after: value.replace(before, after))
+            self.audit = HostLocalAudit()
+
+    def test_getters_must_run_directly_in_mount_order(self):
+        for before, after in (("this.getAppVersion()", "()=>this.getAppVersion()"),
+                              ("this.getDeviceUIVersionFromUIElement(),this.getDeviceMWVersionFromWindowsStorage()",
+                               "this.getDeviceMWVersionFromWindowsStorage(),this.getDeviceUIVersionFromUIElement()")):
+            with self.subTest(before=before), self.assertRaisesRegex(ValueError, "mount order"):
+                self.analyze(lambda value, before=before, after=after: value.replace(before, after))
+            self.audit = HostLocalAudit()
+
+    def test_dynamic_props_and_nonprop_serial_initializer_are_rejected(self):
+        for before, after in (("{hasCamoStudio:!0,", "{...other,hasCamoStudio:!0,"),
+                              ("serialNumber:e.serialNumber", "serialNumber:cached.serialNumber")):
+            with self.subTest(before=before), self.assertRaises(ValueError):
+                self.analyze(lambda value, before=before, after=after: value.replace(before, after))
+            self.audit = HostLocalAudit()
+
+    def test_ui_build_integer_string_missing_and_placeholder_are_distinct(self):
+        from host import help_runtime_ui_version
+        for build in (2610141058, "2610141058"):
+            raw = ('<noscript id="version">' + json.dumps({"version": "1.0.0", "buildVersion": build}) + '</noscript>').encode()
+            self.assertEqual(help_runtime_ui_version(raw), {"version": "1.0.0", "build_version": build})
+        self.assertIsNone(help_runtime_ui_version(b"<html></html>"))
+        self.assertIsNone(help_runtime_ui_version(b'<noscript id="version">VERSION_PLACEHOLDER</noscript>'))
+
+    def test_ui_build_ambiguity_nested_markup_and_invalid_fields_fail(self):
+        from host import help_runtime_ui_version
+        valid = b'<noscript id="version">{"version":"1","buildVersion":2}</noscript>'
+        for raw in (valid + valid, valid[:-11], valid.replace(b'{"version"', b'<b>{"version"'),
+                    valid.replace(b':2', b':true'), valid.replace(b':2', b':-2'),
+                    valid.replace(b':2', b':""'), valid.replace(b'{"version"', b'{&quot;version&quot;')):
+            with self.subTest(raw=raw), self.assertRaises(ValueError):
+                help_runtime_ui_version(raw)
+
+    def query(self, *, fail=False):
+        import analysis
+        import frontend
+        import host
+        import resource_database
+        catalog = self.root / ".analysis/inputs/help-catalog.json"
+        catalog.parent.mkdir(parents=True, exist_ok=True)
+        catalog.write_text(json.dumps([{"product_id": pid, "pages": [{"view_more": True, "offset": pid}]}
+                                       for pid in (3594, 3595)]), encoding="utf-8")
+        for name in ("host.py", "frontend.py", "evidence.py"):
+            path = self.root / "tools" / name
+            path.parent.mkdir(exist_ok=True)
+            path.write_text("# query fixture\n", encoding="utf-8")
+        entry = self.source('<noscript id="version">{"version":"1","buildVersion":2}</noscript>', "index.html")
+        body = self.SOURCE + '(0,react.jsx)(Connected,{});'
+        main = self.source(body.replace(".slice(1)", ".slice(0)") if fail else body)
+        main["url"] = "https://apps.razer.com/synapse/products/3594/ui/main.js"
+        source = {"audit": self.audit, "status": "verified", "entry": entry, "acquisition": {"path": "fixture"},
+                  "acquired": {}, "selection": {"originals": [main]}, "freshness": [], "files": {main["url"]: main}}
+        args = argparse.Namespace(product=[3594], query="help-runtime-versions")
+        with patch.object(frontend, "current_acquisition_routes", return_value={}), \
+                patch.object(frontend, "latest_deployment_observations", return_value={}), \
+                patch.object(frontend, "current_product_source", return_value=source), \
+                patch.object(frontend, "verify_latest_deployment_observations",
+                             side_effect=lambda acquired, rows, audit, **kwargs: [{"url": row["url"]} for row in rows]), \
+                patch.object(resource_database, "PRODUCT_HELP", catalog.relative_to(self.root).as_posix()), \
+                patch.object(host, "__file__", str(self.root / "tools/host.py")), patch("builtins.print"):
+            if fail:
+                with self.assertRaisesRegex(ValueError, "remains unresolved"):
+                    host.audit_host_help_runtime_versions(args)
+            else:
+                host.audit_host_help_runtime_versions(args)
+        return json.loads((analysis.ROOT / ".analysis/results/host-current/local-audit.json").read_bytes())["help_runtime_versions"]
+
+    def test_partial_query_does_not_claim_full_coverage_or_publisher_chain(self):
+        report = self.query()
+        self.assertEqual(report["requested_products"], [3594])
+        self.assertEqual(report["all_local_help_products"], [3594, 3595])
+        self.assertTrue(report["mounted_consumers_complete"])
+        self.assertFalse(report["coverage_complete"])
+        self.assertFalse(report["source_chain_complete"])
+        self.assertEqual(report["runtime_acceptance"], "unverified")
+
+    def test_failed_query_retains_selected_originals_complete_methods_and_failure(self):
+        report = self.query(fail=True)
+        self.assertFalse(report["mounted_consumers_complete"])
+        self.assertFalse(report["coverage_complete"])
+        self.assertTrue(report["complete_source_owners"])
+        self.assertTrue(report["verified_artifacts"])
+        self.assertEqual(report["products"][0]["acquisition"], {"path": "fixture"})
+        self.assertEqual(report["products"][0]["ui_version"], {"version": "1", "build_version": 2})
+        self.assertIn("getAppVersion", report["products"][0]["failures"][0])
+
+
 class LightingFrontendOwnerTests(unittest.TestCase):
     def setUp(self):
         import analysis

@@ -1,7 +1,8 @@
 //! Alexa's standalone frontend (Bp / Yp / yE / OE), with isolated preview scenes.
 //! Installation, authentication and device state are never inferred from a preview.
 use gpui_kit::base::motion::{Easing, Presence, Transition};
-use gpui_kit::base::{Button, Checkbox, CheckboxState, Collapsible, Link};
+use razer_widgets::keyboard_navigation::Button;
+use gpui_kit::base::{Checkbox, CheckboxState, Collapsible, Link};
 use gpui_kit::component::{
     select::{SelectEvent, SelectState},
     *,

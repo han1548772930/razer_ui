@@ -1,7 +1,7 @@
 //! Current product 784's device layout and IoT card. Local edits are independent
 //! of the unavailable device transport; only the explicit preview supplies observations.
 use crate::features::Choice;
-use gpui_kit::base::Button as BaseButton;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::base::TestSupportExt as _;
 use gpui_kit::component::{
     button::Button,

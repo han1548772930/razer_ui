@@ -308,7 +308,7 @@ impl AudioProductWorkspace {
         panel
             .child(body)
             .child(
-                gpui_kit::base::Button::new(SharedString::from(format!(
+                razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!(
                     "mixer-dynamics-mode-{base}"
                 )))
                 .mt(surface::css(20.))

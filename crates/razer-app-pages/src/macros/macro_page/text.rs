@@ -1,10 +1,10 @@
-//! Current 58190.dn text modal. Draft text is committed only by its own Save.
+//! Current 7003.Pt text modal. Draft text is committed only by its own Save.
 use super::text_overlay::{TextAnchor, TextOverlay};
 use super::*;
 use razer_catalog::emoji::EmojiSearchTable;
 use razer_widgets::surface;
 use serde::Deserialize;
-use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::OnceLock, time::Instant};
+use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::OnceLock};
 
 pub fn tip_opacity(id: ElementId, hovered: bool, window: &mut Window, cx: &mut App) -> f32 {
     motion::transition(
@@ -136,7 +136,7 @@ pub fn text_source() -> &'static TextSource {
 
 pub struct TextRowState {
     pub armed: bool,
-    pub mounted: Instant,
+    pub emoji_loaded: bool,
     pub query: String,
     pub applied_query: String,
     pub category: usize,
@@ -155,6 +155,8 @@ pub struct TextUi {
     pub hovered_emoji: Option<(usize, usize)>,
     pub windows_version: Option<String>,
     pub editor_bounds: Rc<std::cell::Cell<Bounds<Pixels>>>,
+    emoji_generation: u64,
+    emoji_task: Option<Task<()>>,
     rows: RefCell<HashMap<(u64, usize), Rc<RefCell<TextRowState>>>>,
 }
 
@@ -168,12 +170,57 @@ impl TextUi {
             hovered_emoji: None,
             windows_version: None,
             editor_bounds: Default::default(),
+            emoji_generation: 0,
+            emoji_task: None,
             rows: Default::default(),
         }
+    }
+
+    pub(super) fn close_emoji(&mut self) {
+        self.emoji_open = false;
+        self.hovered_emoji = None;
+        self.emoji_generation = self.emoji_generation.wrapping_add(1);
+        self.emoji_task = None;
+    }
+
+    pub(super) fn reconcile_rows(&mut self, previous: &[Entry], next: &[Entry]) {
+        self.rows.borrow_mut().retain(|(id, index), _| {
+            previous
+                .iter()
+                .find(|entry| entry.id == *id)
+                .zip(next.iter().find(|entry| entry.id == *id))
+                .is_some_and(|(previous, next)| previous.retains_text_editor(next, *index))
+        });
     }
 }
 
 impl MacroPage {
+    pub(super) fn sync_text_editor_value(
+        &mut self,
+        previous: Option<&str>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(index) = self.editing_action else {
+            return;
+        };
+        let Some(value) = self
+            .actions
+            .get(index)
+            .filter(|action| action.kind == ActionKind::Text)
+            .map(|action| action.value.clone())
+        else {
+            return;
+        };
+        if previous == Some(value.as_str()) {
+            return;
+        }
+        self.text_ui.previous = value.clone();
+        self.text_row(index, cx).borrow_mut().armed |= !value.is_empty();
+        self.text_editor
+            .update(cx, |input, cx| input.set_value(value, window, cx));
+    }
+
     pub fn text_value_popup(
         &self,
         index: usize,
@@ -187,7 +234,11 @@ impl MacroPage {
         let opened = self.editing_action == Some(index);
         let label = if opened {
             let value = self.text_editor.read(cx).value().to_string();
-            if value.is_empty() { tr("TEXT_TEXT_FUNCTION_PLACEHOLDER") } else { value }
+            if value.is_empty() {
+                tr("TEXT_TEXT_FUNCTION_PLACEHOLDER")
+            } else {
+                value
+            }
         } else {
             label
         };
@@ -229,15 +280,6 @@ impl MacroPage {
                     },
                 ))
             });
-        // on is mounted with dn, including its 30ms initial data-loading delay.
-        if cx
-            .background_executor()
-            .now()
-            .duration_since(row.borrow().mounted)
-            < Duration::from_millis(30)
-        {
-            window.request_animation_frame();
-        }
         if opened {
             root = root.child(
                 razer_assets::deferred_resource(TextOverlay {
@@ -315,10 +357,8 @@ impl MacroPage {
                     .priority(103),
                 )
             })
-            .on_click(cx.listener(|this, _, _, cx| {
-                this.text_ui.emoji_open = !this.text_ui.emoji_open;
-                this.text_ui.hovered_emoji = None;
-                cx.notify();
+            .on_click(cx.listener(move |this, _, window, cx| {
+                this.toggle_text_emoji(index, window, cx);
             }));
         let character_id: ElementId = ("macro-text-character", index).into();
         let character_pointer = surface::pointer_state(character_id.clone(), window, cx);
@@ -463,7 +503,7 @@ impl MacroPage {
             .into_any_element()
     }
 
-    pub fn text_row(&self, index: usize, cx: &App) -> Rc<RefCell<TextRowState>> {
+    pub fn text_row(&self, index: usize, _cx: &App) -> Rc<RefCell<TextRowState>> {
         self.text_ui
             .rows
             .borrow_mut()
@@ -474,7 +514,7 @@ impl MacroPage {
                         .actions()
                         .get(index)
                         .is_some_and(|item| !item.value.is_empty()),
-                    mounted: cx.background_executor().now(),
+                    emoji_loaded: false,
                     query: String::new(),
                     applied_query: String::new(),
                     category: 0,
@@ -517,10 +557,64 @@ impl MacroPage {
             .search
             .update(cx, |input, cx| input.set_value(query, window, cx));
         self.text_ui.previous = value.clone();
-        self.text_ui.emoji_open = false;
-        self.text_ui.hovered_emoji = None;
+        self.text_ui.close_emoji();
         self.text_editor
             .update(cx, |input, cx| input.set_value(value, window, cx));
+        cx.notify();
+    }
+
+    pub(super) fn toggle_text_emoji(
+        &mut self,
+        index: usize,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.editing_action != Some(index) {
+            return;
+        }
+        if self.text_ui.emoji_open {
+            self.text_ui.close_emoji();
+            cx.notify();
+            return;
+        }
+        let Some(document) = self.current else {
+            return;
+        };
+        self.text_ui.close_emoji();
+        self.text_ui.emoji_open = true;
+        let row = self.text_row(index, cx);
+        {
+            let mut row = row.borrow_mut();
+            row.emoji_loaded = false;
+            row.query.clear();
+            row.applied_query.clear();
+            row.scroll = ScrollHandle::new();
+        }
+        self.text_ui.ignored_query = Some(String::new());
+        self.text_ui
+            .search
+            .update(cx, |input, cx| input.set_value("", window, cx));
+        let generation = self.text_ui.emoji_generation;
+        self.text_ui.emoji_task = Some(cx.spawn(async move |this, cx| {
+            cx.background_executor()
+                .timer(Duration::from_millis(30))
+                .await;
+            let _ = this.update(cx, |this, cx| {
+                if this.text_ui.emoji_generation != generation
+                    || !this.text_ui.emoji_open
+                    || this.current != Some(document)
+                    || this.editing_action != Some(index)
+                {
+                    return;
+                }
+                // x replaces its initial list after the timer even if a query
+                // was entered while the panel was loading.
+                let mut row = row.borrow_mut();
+                row.emoji_loaded = true;
+                row.applied_query.clear();
+                cx.notify();
+            });
+        }));
         cx.notify();
     }
 
@@ -562,6 +656,7 @@ impl MacroPage {
             let mut row = row.borrow_mut();
             row.query = query.clone();
             row.applied_query = query;
+            row.emoji_loaded = true;
         }
         self.text_ui.hovered_emoji = None;
         cx.notify();
@@ -572,8 +667,7 @@ impl MacroPage {
             self.text_row(index, cx).borrow_mut().armed = false;
         }
         self.editing_action = None;
-        self.text_ui.emoji_open = false;
-        self.text_ui.hovered_emoji = None;
+        self.text_ui.close_emoji();
         self.focus.focus(window, cx);
         cx.notify();
     }

@@ -7,7 +7,8 @@ use super::{
     workspace::{Continue, DeviceWorkspace},
 };
 use crate::nav::Tab;
-use gpui_kit::base::{Button as BaseButton, Popover, PopoverState, TestSupportExt as _};
+use razer_widgets::keyboard_navigation::Button as BaseButton;
+use gpui_kit::base::{Popover, PopoverState, TestSupportExt as _};
 use gpui_kit::component::{
     button::{Button, ButtonCustomVariant, ButtonVariants},
     color_picker::{ColorPickerEvent, ColorPickerState},
@@ -1135,7 +1136,7 @@ impl DeviceWorkspace {
                             })),
                     )
                     .child(
-                        gpui_kit::base::Button::new(SharedString::from(format!("dial-drag-{uid}")))
+                        razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!("dial-drag-{uid}")))
                             .accessibility_label("拖动排序模式，或按上、下方向键调整顺序")
                             .w(surface::css(8.))
                             .h(surface::css(20.))

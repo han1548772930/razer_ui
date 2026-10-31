@@ -1,4 +1,4 @@
-//! Shared current 58190.va row used by both ja and Ka list roots.
+//! Shared current 7003.bi row used by both Ri and Mi list roots.
 use super::*;
 use std::rc::Rc;
 
@@ -15,7 +15,10 @@ impl MacroPage {
         let action = &baseline[index];
         let last_in_phase = self.current_macro_type() == MacroType::Phased
             && action.phase.is_some()
-            && baseline.iter().skip(index + 1).all(|next| next.phase != action.phase);
+            && baseline
+                .iter()
+                .skip(index + 1)
+                .all(|next| next.phase != action.phase);
 
         let selected = self.selected_actions.contains(&index);
         let paired = self.action_pair_highlighted(index);

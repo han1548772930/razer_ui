@@ -1,7 +1,7 @@
 //! Current actuation-point editor. Raw mapping units stay in persisted profiles.
 //! Sensor feedback, Rapid Trigger and Snap Tap have separate service contracts.
 use super::*;
-use gpui_kit::base::Button as BaseButton;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::component::tooltip::Tooltip;
 use std::collections::BTreeSet;
 use std::time::Instant;

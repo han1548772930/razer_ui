@@ -757,7 +757,7 @@ impl SourceControls {
             return div().into_any_element();
         }
         let button = |id: &'static str, label: &str, camera: bool| {
-            gpui_kit::base::Button::new(id)
+            razer_widgets::keyboard_navigation::Button::new(id)
                 .accessibility_label(razer_i18n::t(label))
                 .h(surface::css(27.))
                 .min_w(surface::css(90.))

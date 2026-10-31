@@ -409,7 +409,7 @@ impl SourceControls {
                     .justify_end()
                     .when(disabled, |view| view.opacity(0.3))
                     .child(
-                        gpui_kit::base::Button::new("camera-reset-all")
+                        razer_widgets::keyboard_navigation::Button::new("camera-reset-all")
                             .accessibility_label(razer_i18n::t("RESET_ALL_SETTING"))
                             .p_0()
                             .size(surface::css(16.))
@@ -433,7 +433,7 @@ impl SourceControls {
                             )),
                     )
                     .child(
-                        gpui_kit::base::Button::new("camera-save-flash")
+                        razer_widgets::keyboard_navigation::Button::new("camera-save-flash")
                             .accessibility_label(razer_i18n::t("SAVE"))
                             .disabled(disabled || !self.camera_footer.changed)
                             .h(surface::css(27.))

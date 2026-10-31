@@ -93,7 +93,11 @@ pub(super) fn recording_shortcut_key(input: &str) -> Result<recording_decode::Sh
 pub use razer_widgets::keyboard_capture::RawKey;
 
 pub(super) fn shortcut_capture_input(event: &RawKey) -> Option<&'static str> {
-    let code = if event.down() && event.code() == 92 { 91 } else { event.code() };
+    let code = if event.down() && event.code() == 92 {
+        91
+    } else {
+        event.code()
+    };
     let right_location = match event.code() {
         16 => event.scan() == 0x36,
         17 | 18 => event.extended(),
@@ -102,9 +106,36 @@ pub(super) fn shortcut_capture_input(event: &RawKey) -> Option<&'static str> {
     };
     // Ss selects the flag-2 table row for DOM_KEY_LOCATION_RIGHT on both
     // keyboard edges; the Windows message retains the required physical bits.
-    data().keys.iter().find(|key| {
-        key.code.parse::<u16>().ok() == Some(code) && (!right_location || key.flag == 2)
-    }).and_then(|key| key.input_id.as_deref())
+    data()
+        .keys
+        .iter()
+        .find(|key| {
+            key.code.parse::<u16>().ok() == Some(code) && (!right_location || key.flag == 2)
+        })
+        .and_then(|key| key.input_id.as_deref())
+}
+
+#[cfg(test)]
+mod shortcut_tests {
+    use super::*;
+
+    #[::core::prelude::v1::test]
+    fn physical_location_selects_left_and_right_modifiers_on_both_edges() {
+        for down in [true, false] {
+            for (code, scan, extended, expected) in [
+                (16, 0x2a, false, "KEY_LEFT_SHIFT"),
+                (16, 0x36, false, "KEY_RIGHT_SHIFT"),
+                (17, 0x1d, false, "KEY_LEFT_CTRL"),
+                (17, 0x1d, true, "KEY_RIGHT_CTRL"),
+                (18, 0x38, false, "KEY_LEFT_ALT"),
+                (18, 0x38, true, "KEY_RIGHT_ALT"),
+                (65, 0x1e, false, "KEY_A"),
+            ] {
+                let event = RawKey::new(code, scan, extended, down, Instant::now());
+                assert_eq!(shortcut_capture_input(&event), Some(expected));
+            }
+        }
+    }
 }
 
 fn captured_key(event: &RawKey) -> Option<&'static Key> {

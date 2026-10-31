@@ -180,3 +180,40 @@ fn failed_publication_preserves_the_valid_previous_document() {
             .ends_with(".tmp")
     }));
 }
+
+#[test]
+fn initial_tab_accepts_every_present_raw_value_without_overwriting_it() {
+    let temp = Temp::new();
+    for raw in ["false", "null", "undefined", "", "{broken", "true"] {
+        crate::source_local::set_raw(&temp.path(), "isInitialTabKeyHit", raw).unwrap();
+        let before = std::fs::read(temp.path()).unwrap();
+        assert_eq!(record_initial_tab_at(&temp.path()).unwrap(), InitialTabObservation::Present);
+        assert_eq!(std::fs::read(temp.path()).unwrap(), before);
+    }
+}
+
+#[test]
+fn initial_tab_records_only_the_missing_key_and_reports_actual_write_failure() {
+    let temp = Temp::new();
+    crate::source_local::set_raw(&temp.path(), "extension", "unchanged").unwrap();
+    let before = std::fs::read(temp.path()).unwrap();
+    std::fs::create_dir(temp.path().with_extension("json.bak")).unwrap();
+    assert!(matches!(record_initial_tab_at(&temp.path()).unwrap(),
+        InitialTabObservation::First { persistence: Err(_) }));
+    assert_eq!(std::fs::read(temp.path()).unwrap(), before);
+    std::fs::remove_dir(temp.path().with_extension("json.bak")).unwrap();
+    assert_eq!(record_initial_tab_at(&temp.path()).unwrap(),
+        InitialTabObservation::First { persistence: Ok(()) });
+    assert_eq!(crate::source_local::get_raw(&temp.path(), "isInitialTabKeyHit").unwrap().as_deref(), Some("true"));
+    assert_eq!(crate::source_local::get_raw(&temp.path(), "extension").unwrap().as_deref(), Some("unchanged"));
+    assert_eq!(record_initial_tab_at(&temp.path()).unwrap(), InitialTabObservation::Present);
+}
+
+#[test]
+fn initial_tab_failed_read_never_writes_or_becomes_a_first_tab() {
+    let temp = Temp::new();
+    std::fs::write(temp.path(), b"malformed source storage").unwrap();
+    let before = std::fs::read(temp.path()).unwrap();
+    assert!(record_initial_tab_at(&temp.path()).is_err());
+    assert_eq!(std::fs::read(temp.path()).unwrap(), before);
+}

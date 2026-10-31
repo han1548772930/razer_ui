@@ -1,6 +1,7 @@
 //! Current 3334/3337 uU -> SU/AU number editing; local draft submission only.
 use super::*;
-use gpui_kit::base::{Button as BaseButton, NumberInput, StepAction};
+use gpui_kit::base::Button as BaseButton;
+use gpui_kit::base::{NumberInput, StepAction};
 use gpui_kit::component::input::{Input, InputEvent, InputState, MaskPattern};
 use std::{cell::Cell, rc::Rc, time::Duration};
 

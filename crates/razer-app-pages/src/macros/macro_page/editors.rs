@@ -253,7 +253,7 @@ impl MacroPage {
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let owner = cx.entity().downgrade();
-        let arrow = |button: BaseButton, resource: &'static str| {
+        let arrow = |button: gpui_kit::base::Button, resource: &'static str| {
             button
                 .w(css(18.))
                 .h(css(12.))
@@ -288,6 +288,89 @@ impl MacroPage {
                     .on_step(move |action, window, cx| {
                         let _ = owner.update(cx, |this, cx| {
                             this.step_numeric_input(kind, action, window, cx);
+                        });
+                    }),
+            )
+            .into_any_element()
+    }
+
+    pub(super) fn randomized_bound_editor(
+        &self,
+        index: usize,
+        bound: DelayBound,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        let input = if bound == DelayBound::Min {
+            &self.delay_min_editor
+        } else {
+            &self.delay_max_editor
+        };
+        let name = if bound == DelayBound::Min {
+            "macro-delay-min-input"
+        } else {
+            "macro-delay-max-input"
+        };
+        let owner = cx.entity().downgrade();
+        let arrow = |button: gpui_kit::base::Button, resource: &'static str| {
+            button
+                .w(css(18.))
+                .h(css(12.))
+                .p_0()
+                .hover(|style| style.bg(rgba(0xffffff1a)))
+                .active(|style| style.bg(rgba(0x0000001a)))
+                .child(img(resource).size(css(8.)))
+        };
+        div()
+            .w(css(88.))
+            .h(css(27.))
+            .border_1()
+            .border_color(rgb(0x44d62c))
+            .bg(rgb(0x111111))
+            .when(bound == DelayBound::Min, |view| view.ml(css(4.)))
+            .when(bound == DelayBound::Max, |view| view.mr(css(4.)))
+            .child(
+                NumberInput::new(input)
+                    .size_full()
+                    .controls_right()
+                    .input(
+                        Input::new(input)
+                            .id((name, index))
+                            .appearance(false)
+                            .bordered(false)
+                            .focus_bordered(false)
+                            .h(css(25.))
+                            .p_0()
+                            .pl(css(6.))
+                            .text_size(css(14.)),
+                    )
+                    .increment_button(move |button| arrow(button, "synapse/stepper-up.svg"))
+                    .decrement_button(move |button| arrow(button, "synapse/stepper-down.svg"))
+                    .on_step(move |action, window, cx| {
+                        let _ = owner.update(cx, |this, cx| {
+                            if this.randomized_open != Some(index) {
+                                return;
+                            }
+                            let input = if bound == DelayBound::Min {
+                                this.delay_min_editor.clone()
+                            } else {
+                                this.delay_max_editor.clone()
+                            };
+                            let value = source_float(&input.read(cx).value()).unwrap_or(0.);
+                            let next =
+                                value + if action == StepAction::Increment { 0.1 } else { -0.1 };
+                            let next = format!("{next:.3}")
+                                .trim_end_matches('0')
+                                .trim_end_matches('.')
+                                .to_owned();
+                            if !valid_randomized_draft(&next) {
+                                return;
+                            }
+                            input.update(cx, |input, cx| {
+                                input.set_value(next, window, cx);
+                                input.select_all(window, cx);
+                            });
+                            this.update_randomized_range(bound, window, cx);
+                            cx.notify();
                         });
                     }),
             )

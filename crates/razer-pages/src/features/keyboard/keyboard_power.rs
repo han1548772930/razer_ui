@@ -279,7 +279,7 @@ impl KeyboardProductWorkspace {
                             .w(surface::css(310.))
                             .h(surface::css(height))
                             .child(
-                                gpui_kit::base::Button::new(id)
+                                razer_widgets::keyboard_navigation::Button::new(id)
                                     .disabled(!is_dongle)
                                     .accessibility_label(t(label))
                                     .flex()
@@ -362,7 +362,7 @@ impl KeyboardProductWorkspace {
             .children(values.iter().map(|&value| {
                 let path = path.to_owned();
                 let selected = self.draft.pointer(&path).and_then(Value::as_u64) == Some(value);
-                gpui_kit::base::Button::new(SharedString::from(format!(
+                razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!(
                     "keyboard-power-{path}-{value}"
                 )))
                 .accessibility_label(value.to_string())

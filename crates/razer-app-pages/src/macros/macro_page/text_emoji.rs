@@ -1,4 +1,4 @@
-//! Macro's own emoji picker (58190.on/en/an), independent of Dashboard MapText.
+//! Macro's lazily mounted emoji picker and its local search/variant state.
 use super::text::{text_source, tip_opacity, tip_surface};
 use super::text_overlay::{TextAnchor, TextOverlay};
 use super::*;
@@ -9,7 +9,7 @@ impl MacroPage {
     fn text_emoji_groups(&self, index: usize, cx: &App) -> Vec<(String, Vec<String>)> {
         let row = self.text_row(index, cx);
         let row = row.borrow();
-        if cx.background_executor().now().duration_since(row.mounted) < Duration::from_millis(30) {
+        if !row.emoji_loaded {
             return vec![];
         }
         let source = text_source();

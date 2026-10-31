@@ -1,6 +1,6 @@
 //! Current keyboard RGB Effects widgets; profile changes remain local drafts.
 use super::*;
-use gpui_kit::base::Button as BaseButton;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::theme::KeyboardRgbEffectColors as Colors;
 
 impl KeyboardProductWorkspace {

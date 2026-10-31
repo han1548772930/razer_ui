@@ -1,6 +1,7 @@
 //! Native presentation of current Settings SVG class transitions and tooltips.
+use razer_widgets::keyboard_navigation::Button;
 use gpui_kit::base::{
-    Button, Tooltip,
+    Tooltip,
     motion::{Easing, Presence, Transition},
 };
 use gpui_kit::{prelude::FluentBuilder as _, *};

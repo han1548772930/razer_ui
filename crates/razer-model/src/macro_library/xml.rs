@@ -332,7 +332,9 @@ pub fn encode(entry: &Entry, entries: &[Entry]) -> Result<String, String> {
             .filter_map(|a| a.mouse_movement.as_ref().map(|m| m.mode))
             .collect::<std::collections::HashSet<_>>();
         if modes.len() > 1 {
-            return Err("旧本地宏包含多种鼠标移动模式且未保留执行引擎，无法确定 XML 移动模式。".into());
+            return Err(
+                "旧本地宏包含多种鼠标移动模式且未保留执行引擎，无法确定 XML 移动模式。".into(),
+            );
         }
         modes.iter().next().copied().unwrap_or(entry.xml_mouse_mode)
     };

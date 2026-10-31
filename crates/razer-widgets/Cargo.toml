@@ -8,6 +8,7 @@ razer-i18n.workspace = true
 gpui-kit.workspace = true
 razer-assets.workspace = true
 razer-model.workspace = true
+razer-state.workspace = true
 unicode-segmentation.workspace = true
 unicode-linebreak.workspace = true
 unicode-script.workspace = true

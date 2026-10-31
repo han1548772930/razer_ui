@@ -219,7 +219,7 @@ impl HueWorkspace {
                                 .child(bar)
                         })
                         .child(
-                            gpui_kit::base::Button::new("hue-cancel-pair")
+                            razer_widgets::keyboard_navigation::Button::new("hue-cancel-pair")
                                 .absolute()
                                 .left_full()
                                 .ml(surface::css(10.))

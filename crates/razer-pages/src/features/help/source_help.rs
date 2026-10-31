@@ -1,5 +1,6 @@
 //! Retained Help UI from each product's mounted current source component.
-use gpui_kit::base::{Button as BaseButton, ElementExt as _};
+use razer_widgets::keyboard_navigation::Button as BaseButton;
+use gpui_kit::base::{ElementExt as _};
 use gpui_kit::component::button::Button;
 use gpui_kit::component::spinner::Spinner;
 use gpui_kit::component::*;
@@ -30,7 +31,9 @@ mod runtime_versions;
 mod system;
 #[path = "source_help_versions.rs"]
 mod versions;
-pub use camo::{HelpCamoCommand, HelpCamoInstallationStatus, HelpCamoObservation, HelpCamoRequested};
+pub use camo::{
+    HelpCamoCommand, HelpCamoInstallationStatus, HelpCamoObservation, HelpCamoRequested,
+};
 pub use runtime_versions::{
     HelpRuntimeVersionStatus, HelpRuntimeVersionsObservation, HelpRuntimeVersionsRequest,
     HelpRuntimeVersionsStatus,
@@ -349,9 +352,10 @@ impl SourceHelp {
             || self.device.device_container_id != device.device_container_id
             || self.device.edition_id != device.edition_id
             || self.device.layout_id != device.layout_id
-            || self.device.dashboard.connection_observation != device.dashboard.connection_observation;
-        let camera_observation_changed = self.device.dashboard.readonly_camera_serial
-            != device.dashboard.readonly_camera_serial;
+            || self.device.dashboard.connection_observation
+                != device.dashboard.connection_observation;
+        let camera_observation_changed =
+            self.device.dashboard.readonly_camera_serial != device.dashboard.readonly_camera_serial;
         let runtime_identity_changed = self.device.product_id != device.product_id
             || self.device.real_product_id != device.real_product_id
             || self.device.serial_number != device.serial_number
@@ -482,7 +486,11 @@ impl SourceHelp {
         if self.metadata().is_some_and(|(_, page)| page.camo) {
             self.camo_serial()
         } else if matches!(self.device.product_id, 3594..=3596) {
-            self.device.dashboard.readonly_camera_serial.serial().unwrap_or("")
+            self.device
+                .dashboard
+                .readonly_camera_serial
+                .serial()
+                .unwrap_or("")
         } else if self.retains_mounted_serial() {
             &self.mounted_serial
         } else {
@@ -1105,7 +1113,8 @@ impl Render for SourceHelp {
                                 "COPY_SERIAL"
                             }),
                             self.copied_serial
-                                || (matches!(self.device.product_id, 3594..=3596) && serial.is_empty()),
+                                || (matches!(self.device.product_id, 3594..=3596)
+                                    && serial.is_empty()),
                             cx,
                         )
                         .self_start()

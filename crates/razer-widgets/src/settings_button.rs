@@ -1,8 +1,8 @@
 //! Settings 720: `.setting-block .thx-btn.test`, not the Component outline button.
 use crate::surface::css;
 use crate::theme::SettingsButtonColors;
+use crate::keyboard_navigation::Button;
 use gpui_kit::base::{
-    Button,
     motion::{self, Easing, Transition},
 };
 use gpui_kit::component::ActiveTheme as _;

@@ -522,7 +522,7 @@ struct CloseInteraction {
     pressed: bool,
 }
 
-fn modal_close_button(label: &str, window: &mut Window, cx: &mut App) -> gpui_kit::base::Button {
+fn modal_close_button(label: &str, window: &mut Window, cx: &mut App) -> razer_widgets::keyboard_navigation::Button {
     let state = window.use_keyed_state(
         (ElementId::from("keyboard-calibration-close"), "state"),
         cx,
@@ -544,7 +544,7 @@ fn modal_close_button(label: &str, window: &mut Window, cx: &mut App) -> gpui_ki
         window,
         cx,
     );
-    gpui_kit::base::Button::new("keyboard-calibration-close")
+    razer_widgets::keyboard_navigation::Button::new("keyboard-calibration-close")
         .absolute()
         .top_0()
         .right_0()
@@ -584,8 +584,8 @@ fn modal_close_button(label: &str, window: &mut Window, cx: &mut App) -> gpui_ki
         .child(img("synapse/mapping-close.svg").size(surface::css(20.)))
 }
 
-fn close_button(id: &'static str, label: &str, cx: &App) -> gpui_kit::base::Button {
-    gpui_kit::base::Button::new(id)
+fn close_button(id: &'static str, label: &str, cx: &App) -> razer_widgets::keyboard_navigation::Button {
+    razer_widgets::keyboard_navigation::Button::new(id)
         .absolute()
         .top(surface::css(10.))
         .right(surface::css(10.))
@@ -601,8 +601,8 @@ fn command_button(
     primary: bool,
     disabled: bool,
     cx: &App,
-) -> gpui_kit::base::Button {
-    gpui_kit::base::Button::new(id)
+) -> razer_widgets::keyboard_navigation::Button {
+    razer_widgets::keyboard_navigation::Button::new(id)
         .accessibility_label(label.clone())
         .disabled(disabled)
         .h(surface::css(27.))

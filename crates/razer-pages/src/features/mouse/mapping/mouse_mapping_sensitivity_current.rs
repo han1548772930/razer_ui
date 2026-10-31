@@ -433,7 +433,7 @@ impl MouseProductWorkspace {
                             }),
                     )
                     .child(
-                        gpui_kit::base::Button::new("mouse-current-sensitivity-configure")
+                        razer_widgets::keyboard_navigation::Button::new("mouse-current-sensitivity-configure")
                             .p_0()
                             .mt(surface::css(10.))
                             .mb(surface::css(20.))

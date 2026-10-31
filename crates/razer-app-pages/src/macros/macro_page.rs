@@ -1,8 +1,9 @@
 //! Current Macro business IIFE and 58190/21700/1519; current contract:
 //! docs/products/shared/macros.md. Local drafts remain separate from observed
 //! recorder events and device metadata. CSS px scale with the shared rem unit.
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::base::{
-    Button as BaseButton, TestSupportExt as _,
+    TestSupportExt as _,
     motion::{self, Easing, Presence, Transition},
 };
 use gpui_kit::component::{
@@ -49,8 +50,10 @@ mod record_options;
 mod record_shortcut;
 #[path = "macro_page/recording.rs"]
 mod recording;
-use razer_model::macro_library::ExecutionSnapshot;
+#[path = "macro_page/tooltip.rs"]
+mod tooltip;
 use razer_model::macro_library::recording as recording_decode;
+use razer_model::macro_library::{ExecutionSnapshot, MacroType};
 use razer_service::mapping::recorder as recording_actor;
 #[path = "macro_page/row_actions.rs"]
 mod row_actions;
@@ -223,7 +226,7 @@ impl MacroPage {
         let keyboard_focus = cx.focus_handle();
         let mut record_ui = record_options::RecordUi::new(window, cx);
         record_ui.shortcut.selected = file.record_shortcut.clone();
-        let record_subscriptions = [
+        let mut record_subscriptions = [
             (&record_ui.fixed, record_options::NumberField::Fixed),
             (&record_ui.min, record_options::NumberField::Min),
             (&record_ui.max, record_options::NumberField::Max),
@@ -243,6 +246,16 @@ impl MacroPage {
             })
         })
         .collect::<Vec<_>>();
+        for (index, focus) in record_ui.help_focus.iter().enumerate() {
+            record_subscriptions.push(cx.on_focus(focus, window, move |this, _, cx| {
+                this.record_ui.set_help(index, true);
+                cx.notify();
+            }));
+            record_subscriptions.push(cx.on_blur(focus, window, move |this, _, cx| {
+                this.record_ui.set_help(index, false);
+                cx.notify();
+            }));
+        }
         let subscriptions = vec![
             cx.subscribe(&record_ui.start, |this, _, event, cx| {
                 if let select::SelectEvent::Confirm(Some(value)) = event {
@@ -560,8 +573,7 @@ impl MacroPage {
         self.hovered_action = None;
         self.cancel_keyboard_editor();
         self.editing_action = None;
-        self.text_ui.emoji_open = false;
-        self.text_ui.hovered_emoji = None;
+        self.text_ui.close_emoji();
         self.cancel_launch_editor();
         self.randomized_open = None;
         self.choice_action = None;
@@ -673,8 +685,7 @@ impl MacroPage {
         if kind == ActionKind::Text {
             // dn's outside/close path discards its modal draft. Only its own
             // Save dispatches updateMacroItem; an outer Save must not commit it.
-            self.text_ui.emoji_open = false;
-            self.text_ui.hovered_emoji = None;
+            self.text_ui.close_emoji();
             cx.notify();
             return;
         }

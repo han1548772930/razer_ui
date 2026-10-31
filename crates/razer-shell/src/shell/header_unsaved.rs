@@ -1,6 +1,7 @@
 //! Current App/96776/R and w: profile list, conditional trigger and dropdown lifecycle.
 use gpui_kit::base::motion::{Easing, Presence, Transition};
-use gpui_kit::base::{Button as BaseButton, PopoverState, Positioner};
+use razer_widgets::keyboard_navigation::Button as BaseButton;
+use gpui_kit::base::{PopoverState, Positioner};
 use gpui_kit::component::{
     button::{Button, ButtonRounded, ButtonVariants},
     *,

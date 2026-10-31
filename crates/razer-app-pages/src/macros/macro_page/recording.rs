@@ -238,7 +238,12 @@ impl MacroPage {
         }
     }
 
-    pub(super) fn receive_recording_update(&mut self, generation: u64, update: Update, cx: &mut Context<Self>) {
+    pub(super) fn receive_recording_update(
+        &mut self,
+        generation: u64,
+        update: Update,
+        cx: &mut Context<Self>,
+    ) {
         if self.recording.generation != generation {
             return;
         }

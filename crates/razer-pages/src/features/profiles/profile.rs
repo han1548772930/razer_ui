@@ -1,7 +1,8 @@
 //! Local profile commands. The source bundles share naming, inline rename and
 //! delete rules; only the workspace store is written, never the device service.
 use super::*;
-use gpui_kit::base::{Button as BaseButton, Popover, PopoverState};
+use razer_widgets::keyboard_navigation::Button as BaseButton;
+use gpui_kit::base::{Popover, PopoverState};
 use gpui_kit::component::{
     button::ButtonCustomVariant,
     input::{Escape, Input},

@@ -1,4 +1,4 @@
-//! Current 58190 Za/$r/Ur/vr and 25572.G recording preferences.
+//! Current 7003.As/Ss controls and 5572.U recording preferences.
 use super::editors::{source_float, source_number};
 use super::*;
 use gpui_kit::component::select::SelectState;
@@ -54,6 +54,7 @@ pub struct RecordUi {
     ignored_drafts: [Option<String>; 3],
     number_tasks: [Option<Task<()>>; 2],
     help: Option<usize>,
+    pub(super) help_focus: Vec<FocusHandle>,
     help_bounds: Vec<Rc<Cell<Bounds<Pixels>>>>,
     pub trigger_bounds: Rc<Cell<Bounds<Pixels>>>,
 }
@@ -85,6 +86,7 @@ impl RecordUi {
             ignored_drafts: [None, None, None],
             number_tasks: [None, None],
             help: None,
+            help_focus: (0..5).map(|_| cx.focus_handle().tab_stop(true)).collect(),
             help_bounds: (0..5).map(|_| Default::default()).collect(),
             trigger_bounds: Default::default(),
         }
@@ -93,6 +95,10 @@ impl RecordUi {
         self.open = false;
         self.help = None;
         self.shortcut.stop();
+    }
+
+    pub(super) fn set_help(&mut self, index: usize, visible: bool) {
+        self.help = (visible && self.open).then_some(index);
     }
 
     fn delay_time(&self) -> f64 {
@@ -140,6 +146,43 @@ fn normalized_number(raw: &str, random: bool) -> Option<String> {
     Some(value)
 }
 
+#[cfg(test)]
+mod number_tests {
+    use super::normalized_number;
+
+    #[::core::prelude::v1::test]
+    fn fixed_text_accepts_partial_decimals_and_truncates_each_segment() {
+        for (input, expected) in [
+            ("", ""),
+            (".", "."),
+            ("4.", "4."),
+            (".1256", ".125"),
+            ("1234.5678", "123.567"),
+        ] {
+            assert_eq!(normalized_number(input, false).as_deref(), Some(expected));
+        }
+        for input in ["-1", "+1", "1e2", " 1", "1.2.3", "Infinity", "NaN"] {
+            assert!(normalized_number(input, false).is_none());
+        }
+    }
+
+    #[::core::prelude::v1::test]
+    fn randomized_text_keeps_source_number_and_parse_float_acceptance() {
+        for (input, expected) in [
+            ("", ""),
+            ("-1", "-1"),
+            ("0x1", "0x1"),
+            ("0.1234", "0.123"),
+            ("5.", "5."),
+        ] {
+            assert_eq!(normalized_number(input, true).as_deref(), Some(expected));
+        }
+        for input in [".", "5.001", "6", "not a number"] {
+            assert!(normalized_number(input, true).is_none());
+        }
+    }
+}
+
 impl MacroPage {
     pub(super) fn record_preferences(&self) -> Preferences {
         self.record_ui.profile.clone()
@@ -174,8 +217,28 @@ impl MacroPage {
             self.recording.error = Some(error);
             return;
         }
+        let fixed_changed = self.record_ui.profile.fixed != profile.fixed;
         self.record_ui.profile = profile;
-        self.reset_record_number_drafts(window, cx);
+        if fixed_changed {
+            self.write_record_draft(
+                NumberField::Fixed,
+                self.record_ui.delay_time().to_string(),
+                window,
+                cx,
+            );
+        }
+        self.write_record_draft(
+            NumberField::Min,
+            self.record_ui.random()[0].to_string(),
+            window,
+            cx,
+        );
+        self.write_record_draft(
+            NumberField::Max,
+            self.record_ui.random()[1].to_string(),
+            window,
+            cx,
+        );
         let selected = usize::from(self.record_ui.profile.start_delay);
         self.record_ui.start.update(cx, |state, cx| {
             state.set_selected_index(Some(IndexPath::new(selected)), window, cx);
@@ -388,7 +451,12 @@ impl MacroPage {
                         Ok(value) => {
                             if this.record_ui.profile.fixed != value {
                                 this.record_ui.profile.fixed = value;
-                                this.write_record_draft(NumberField::Fixed, pair[0].to_string(), window, cx);
+                                this.write_record_draft(
+                                    NumberField::Fixed,
+                                    pair[0].to_string(),
+                                    window,
+                                    cx,
+                                );
                             }
                         }
                         Err(error) => {
@@ -401,8 +469,18 @@ impl MacroPage {
                     match (Seconds::new(pair[0]), Seconds::new(pair[1])) {
                         (Ok(min), Ok(max)) => {
                             this.record_ui.profile.random = [min, max];
-                            this.write_record_draft(NumberField::Min, pair[0].to_string(), window, cx);
-                            this.write_record_draft(NumberField::Max, pair[1].to_string(), window, cx);
+                            this.write_record_draft(
+                                NumberField::Min,
+                                pair[0].to_string(),
+                                window,
+                                cx,
+                            );
+                            this.write_record_draft(
+                                NumberField::Max,
+                                pair[1].to_string(),
+                                window,
+                                cx,
+                            );
                         }
                         (Err(error), _) | (_, Err(error)) => {
                             this.recording.error = Some(error);
@@ -522,11 +600,12 @@ impl MacroPage {
                     .map(|(index, group)| {
                         let last = if standard { index == 4 } else { index == 2 };
                         let mut header = h_flex().items_center().justify_between().child(
-                            div()
-                                .flex_1()
-                                .min_w_0()
-                                .text_ellipsis()
-                                .child(tr(&group.header.name).to_uppercase()),
+                            super::tooltip::heading(
+                                index,
+                                tr(&group.header.name).to_uppercase(),
+                                window,
+                                cx,
+                            ),
                         );
                         if index == 0 {
                             header = header.child(
@@ -753,8 +832,10 @@ impl MacroPage {
             cx,
         );
         let anchor = self.record_ui.help_bounds[index].clone();
-        div()
-            .id(("macro-record-help-trigger", index))
+        BaseButton::new(("macro-record-help-trigger", index))
+            .track_focus(&self.record_ui.help_focus[index])
+            .tab_stop(true)
+            .p_0()
             .relative()
             .size(css(14.))
             .flex_shrink_0()
@@ -763,7 +844,7 @@ impl MacroPage {
                 move |bounds, _, _| anchor.set(bounds)
             })
             .on_hover(cx.listener(move |this, hovered: &bool, _, cx| {
-                this.record_ui.help = hovered.then_some(index);
+                this.record_ui.set_help(index, *hovered);
                 cx.notify();
             }))
             .child(
@@ -782,6 +863,8 @@ impl MacroPage {
                         anchor,
                         upward: index == 4,
                         content: div()
+                            .id(("macro-record-help-content", index))
+                            .test_support()
                             .w(css(300.))
                             .px(css(10.))
                             .py(css(8.))
@@ -911,8 +994,7 @@ impl MacroPage {
             if delay_mode == 2
                 && (!random
                     .iter()
-                    .all(|value| value.is_finite() && (0. ..=5.).contains(value))
-                    )
+                    .all(|value| value.is_finite() && (0. ..=5.).contains(value)))
             {
                 return Err("随机录制延迟必须在 0–5 秒内".into());
             }

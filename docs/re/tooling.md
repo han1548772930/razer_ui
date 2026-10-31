@@ -103,7 +103,7 @@ Windows x64 的模糊目标构建还需匹配的 MSVC AddressSanitizer 运行库
 
 `prepare-emoji-search` 对 mouse190、keyboard679、Macro 与 Dashboard 的已保留 JS 原件核对实际字节和获取收据，用静态 AST 读取完整字符串，逐项比较 1,936 条 `(emo, name)` 及顺序。SQLite 保存 1,857 条唯一记录，顺序表保留 79 个重复项；全部分组、tab、变体及排除列表分别回读核对，保留 Macro 与 Mouse 分支差异。初始词表共享迁移的非搜索 Rust token 等价性、最终数据库全字段往返核验、完整 callable owners 和解析器版本存于统一 [固定表记录](../../.analysis/results/typed-data.json)。旧重复生产数据、数据宏、分区与 Rust 资源索引已清理，设备协议表继续使用普通有类型构造函数。`catalog_data.py` 静态核对完整构造 AST，将相同子树存为有界且无环的目录 DAG，并生成领域所有者内的普通解码函数；每张目录具有纯 Rust 完整解码检查。`tools/resource-mappings.json` 合并资源 alias／选择条件并保留完整顺序与重复项，迁移与数据库字节等价收据保存在同一固定表记录。搜索数据相等不代表各页面过滤规则相同，也不提升原件部署稳定性或依赖闭包状态。
 
-`prepare-locale-exports` 使用 Python 3.14.7、Tree-sitter 0.25.2／JavaScript grammar 0.25.0 和 json5 0.12.1，核验获取收据后静态读取当前完整 main 的工厂、语言路由和每个字典 export。解析保留实际 lexical scope，识别已支持的字面量与 alias getter；路由必须唯一，无法静态证明的动态值明确失败，不执行 JS。当前完整提取 48,150 条 export，向 10 个语种各补 6 个缺键；58,527 条原有翻译保留，94 处当前 export 与旧值的差异逐项记录。完整函数体／字节范围、实际来源与 baseline 身份、工具版本及合并策略见[词表准备收据](../../.analysis/results/locale-preparation.json)。生成器逐字段回读 schema 4 的 58,587 条翻译并校验顺序、重复、类型及已移除的旧生产路径；该迁移不补造旧词表尚未闭合的厂商来源，也不代表真实窗口语言呈现已验收。
+`prepare-locale-exports` 核验获取收据后，静态读取当前完整 main 的工厂、语言路由和每个字典 export。解析保留实际 lexical scope，识别已支持的字面量与 alias getter；路由必须唯一，无法静态证明的动态值明确失败，不执行 JS。`--updates` 按 namespace、键集合和完整语言绑定合批发布，保留其他键的来源；重复发布不新增来源副本。原版确实缺少的翻译须逐语言列入 `absent_keys` 并通过 AST 校验，删除该键的旧值后由原版规定的英语 fallback 处理，不能复制英语伪造翻译。所有选定键仍须具备英语原值。完整函数体／字节范围、实际来源与 baseline 身份、工具版本、当前条目数及合并策略见[词表准备收据](../../.analysis/results/locale-preparation.json)。生成器逐字段回读独立 SQLite 目录库并校验顺序、重复和类型；这不补造未闭合的厂商来源，也不代表窗口语言呈现已经验收。
 
 ## 主机与安装证据
 

@@ -1,13 +1,15 @@
+use crate::keyboard_navigation::Button as BaseButton;
+use gpui_kit::base::Presence;
 use gpui_kit::base::motion::{self, Easing, Transition};
-use gpui_kit::base::{Button as BaseButton, Presence};
 use gpui_kit::component::{
     button::{Button, ButtonCustomVariant, ButtonVariants},
     *,
 };
 use gpui_kit::{prelude::FluentBuilder as _, *};
-use std::time::Duration;
+use std::{rc::Rc, time::Duration};
 
 use super::source_tooltip::SourceTooltip;
+use crate::keyboard_navigation::{FocusBehavior, FocusRing, focus_target};
 
 pub use super::synapse_select::{select, select_alexa};
 
@@ -45,9 +47,10 @@ pub fn navigation_button(
     label: impl Into<SharedString>,
     selected: bool,
     cx: &App,
-) -> gpui_kit::base::Button {
+) -> crate::keyboard_navigation::Button {
     let label = label.into().to_uppercase();
-    gpui_kit::base::Button::new(id)
+    crate::keyboard_navigation::Button::new(id)
+        .focus_ring(FocusRing::Tabs)
         .accessibility_label(label.clone())
         .selected(selected)
         .h(css(28.))
@@ -91,7 +94,6 @@ pub fn navigation_button(
                     .text_color(cx.theme().primary_foreground)
             })
         })
-        .focus_visible(|style| style.border_1().border_color(cx.theme().primary))
         .styles(|styles| styles.disabled(|style| style.opacity(0.3)))
         .child(label)
 }
@@ -225,7 +227,7 @@ pub fn nav_overflow(
                         };
                         let on_select = on_select.clone();
                         let popup = popup.clone();
-                        gpui_kit::base::Button::new((id, index))
+                        crate::keyboard_navigation::Button::new((id, index))
                             .accessibility_label(label.clone())
                             .child(label.to_uppercase())
                             .flex()
@@ -349,8 +351,8 @@ pub fn hover_border_button(
     filled: bool,
     size: f32,
     state: Entity<HoverBorderState>,
-) -> gpui_kit::base::Button {
-    gpui_kit::base::Button::new(id)
+) -> crate::keyboard_navigation::Button {
+    crate::keyboard_navigation::Button::new(id)
         .accessibility_label(label)
         .size(css(size))
         .p_0()
@@ -476,10 +478,11 @@ pub fn history_button(
     forward: bool,
     enabled: bool,
     cx: &App,
-) -> gpui_kit::base::Button {
+) -> crate::keyboard_navigation::Button {
     // Dashboard 96776:l -> 54693:IUp/OXp; Profiles 43:r -> 4693.
     let label = razer_i18n::t(if forward { "FORWARD" } else { "BACK" });
-    gpui_kit::base::Button::new(id)
+    crate::keyboard_navigation::Button::new(id)
+        .focus_ring(FocusRing::Toolbar)
         .accessibility_label(label.clone())
         .disabled(!enabled)
         .occlude()
@@ -492,7 +495,6 @@ pub fn history_button(
             button.hover(|style| style.bg(cx.theme().secondary_hover))
         })
         .styles(|styles| styles.disabled(|style| style.opacity(0.3)))
-        .focus_visible(|style| style.border_1().border_color(cx.theme().primary))
         .tooltip(move |window, cx| tooltip::Tooltip::new(label.clone()).build(window, cx))
         .child(
             img(if forward {
@@ -517,7 +519,7 @@ pub fn keymap_close_button(
     label: &'static str,
     window: &mut Window,
     cx: &mut App,
-) -> gpui_kit::base::Button {
+) -> crate::keyboard_navigation::Button {
     use super::theme::KeymapCloseColors;
     let transition = Transition::new(Duration::from_millis(200)).easing(Easing::Ease);
     let state = window.use_keyed_state((ElementId::from(id), "close-state"), cx, |_, _| {
@@ -548,7 +550,7 @@ pub fn keymap_close_button(
     } else {
         0.
     };
-    gpui_kit::base::Button::new(id)
+    crate::keyboard_navigation::Button::new(id)
         .accessibility_label(label)
         .size(css(36.))
         .p_0()
@@ -596,7 +598,34 @@ pub struct SynapseSwitch {
     checked: bool,
     disabled: bool,
     label: Option<SharedString>,
+    on_change: Option<Rc<dyn Fn(&bool, &mut Window, &mut App)>>,
 }
+
+#[derive(Debug, PartialEq)]
+enum SwitchArrow {
+    Ignore,
+    Consume,
+    Change(bool),
+}
+
+impl SwitchArrow {
+    fn for_key(key: &str, checked: bool, disabled: bool) -> Self {
+        if disabled {
+            return Self::Ignore;
+        }
+        let next = match key {
+            "right" | "down" => true,
+            "left" | "up" => false,
+            _ => return Self::Ignore,
+        };
+        if next == checked {
+            Self::Consume
+        } else {
+            Self::Change(next)
+        }
+    }
+}
+
 impl SynapseSwitch {
     pub fn new(id: impl Into<ElementId>) -> Self {
         let id = id.into();
@@ -606,6 +635,7 @@ impl SynapseSwitch {
             checked: false,
             disabled: false,
             label: None,
+            on_change: None,
         }
     }
     pub fn checked(mut self, checked: bool) -> Self {
@@ -624,6 +654,8 @@ impl SynapseSwitch {
         self
     }
     pub fn on_change(mut self, handler: impl Fn(&bool, &mut Window, &mut App) + 'static) -> Self {
+        let handler = Rc::new(handler);
+        self.on_change = Some(handler.clone());
         self.base = self
             .base
             .on_change(move |value, _, window, cx| handler(&value, window, cx));
@@ -646,6 +678,9 @@ impl RenderOnce for SynapseSwitch {
             .read(cx)
             .clone();
         let focused = focus.is_focused(window);
+        let checked = self.checked;
+        let disabled = self.disabled;
+        let on_change = self.on_change;
         // Source .switch and .handle have separate CSS ease transitions. Keep
         // the controlled value immediate while only its presentation moves.
         let background_mix = motion::transition(
@@ -662,8 +697,24 @@ impl RenderOnce for SynapseSwitch {
             window,
             cx,
         );
-        self.base
+        let element = self
+            .base
             .track_focus(&focus)
+            .capture_key_down(move |event, window, cx| {
+                let request = SwitchArrow::for_key(&event.keystroke.key, checked, disabled);
+                if request == SwitchArrow::Ignore {
+                    return;
+                }
+                // rz-accessibility A consumes every switch arrow, including
+                // arrows that already agree with its controlled checked value.
+                window.prevent_default();
+                cx.stop_propagation();
+                if let SwitchArrow::Change(next) = request
+                    && let Some(handler) = &on_change
+                {
+                    handler(&next, window, cx);
+                }
+            })
             .flex()
             .items_center()
             .gap_2()
@@ -704,7 +755,8 @@ impl RenderOnce for SynapseSwitch {
                             .bg(cx.theme().switch_thumb),
                     ),
             )
-            .when_some(self.label, |s, label| s.child(div().min_w_0().child(label)))
+            .when_some(self.label, |s, label| s.child(div().min_w_0().child(label)));
+        focus_target(element, &focus, FocusBehavior::LocalArrows, !disabled)
     }
 }
 

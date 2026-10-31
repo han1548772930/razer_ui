@@ -263,54 +263,53 @@ impl StudioPlayback {
     }
     fn spinner(
         &self,
-        button: BaseButton,
         action: StepAction,
         cx: &mut Context<Self>,
-    ) -> BaseButton {
+    ) -> impl FnOnce(gpui_kit::base::Button) -> gpui_kit::base::Button + 'static + use<> {
         let owner = cx.weak_entity();
         let press = owner.clone();
         let release = owner.clone();
         let leave = owner.clone();
-        button
-            .p_0()
-            .relative()
-            .w(surface::css(16.))
-            .bg(transparent_black())
-            .hover(|style| style.bg(Colors::spinner_hover()))
-            .when(
-                (action == StepAction::Increment && self.cycles == source().playback.max)
-                    || (action == StepAction::Decrement && self.cycles == source().playback.min),
-                |view| view.opacity(0.3),
-            )
-            .on_mouse_down(MouseButton::Left, move |_, window, cx| {
-                let _ = press.update(cx, |this, cx| this.press(action, window, cx));
-            })
-            .on_mouse_up(MouseButton::Left, move |_, window, cx| {
-                let _ = release.update(cx, |this, cx| this.release(action, window, cx));
-            })
-            .on_hover(move |hovered, window, cx| {
-                if !hovered {
-                    let _ = leave.update(cx, |this, cx| {
-                        if this.held {
-                            this.release(action, window, cx);
-                        }
-                    });
-                }
-            })
-            .child(
-                razer_assets::resource_svg()
-                    .path("synapse/chroma-studio-brightness-pointer.svg")
-                    .w(surface::css(8.))
-                    .h(surface::css(4.))
-                    .text_color(Colors::dropdown_arrow())
-                    .with_transformation(Transformation::rotate(radians(
-                        if action == StepAction::Increment {
-                            std::f32::consts::PI
-                        } else {
-                            0.
-                        },
-                    ))),
-            )
+        let at_boundary = (action == StepAction::Increment && self.cycles == source().playback.max)
+            || (action == StepAction::Decrement && self.cycles == source().playback.min);
+        move |button| {
+            button
+                .p_0()
+                .relative()
+                .w(surface::css(16.))
+                .bg(transparent_black())
+                .hover(|style| style.bg(Colors::spinner_hover()))
+                .when(at_boundary, |view| view.opacity(0.3))
+                .on_mouse_down(MouseButton::Left, move |_, window, cx| {
+                    let _ = press.update(cx, |this, cx| this.press(action, window, cx));
+                })
+                .on_mouse_up(MouseButton::Left, move |_, window, cx| {
+                    let _ = release.update(cx, |this, cx| this.release(action, window, cx));
+                })
+                .on_hover(move |hovered, window, cx| {
+                    if !hovered {
+                        let _ = leave.update(cx, |this, cx| {
+                            if this.held {
+                                this.release(action, window, cx);
+                            }
+                        });
+                    }
+                })
+                .child(
+                    razer_assets::resource_svg()
+                        .path("synapse/chroma-studio-brightness-pointer.svg")
+                        .w(surface::css(8.))
+                        .h(surface::css(4.))
+                        .text_color(Colors::dropdown_arrow())
+                        .with_transformation(Transformation::rotate(radians(
+                            if action == StepAction::Increment {
+                                std::f32::consts::PI
+                            } else {
+                                0.
+                            },
+                        ))),
+                )
+        }
     }
     fn menu(&self, start: bool, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let state = if start {
@@ -418,8 +417,8 @@ impl StudioPlayback {
 }
 impl Render for StudioPlayback {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let increment = self.spinner(BaseButton::new("up"), StepAction::Increment, cx);
-        let decrement = self.spinner(BaseButton::new("down"), StepAction::Decrement, cx);
+        let increment = self.spinner(StepAction::Increment, cx);
+        let decrement = self.spinner(StepAction::Decrement, cx);
         let owner = cx.weak_entity();
         let cycles = div()
             .flex()
@@ -477,8 +476,8 @@ impl Render for StudioPlayback {
                                     .py(surface::css(2.))
                                     .text_size(surface::css(14.)),
                             )
-                            .increment_button(move |_| increment)
-                            .decrement_button(move |_| decrement)
+                            .increment_button(increment)
+                            .decrement_button(decrement)
                             .on_step(move |action, window, cx| {
                                 let _ = owner.update(cx, |this, cx| {
                                     if !this.suppress_click {

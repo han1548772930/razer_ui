@@ -2,8 +2,8 @@
 //! Browsing and navigation are local. Native discovery/install results are never
 //! synthesized from clicks, timers, or the catalogue of supported products.
 use super::app_picker::PickerModule;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::base::{
-    Button as BaseButton,
     motion::{self, Easing, Transition},
 };
 use gpui_kit::component::*;

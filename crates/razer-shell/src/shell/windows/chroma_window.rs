@@ -367,7 +367,7 @@ impl ChromaWindow {
         let mut frame = host_tabs::tab_frame(id.into(), active)
             .w(css(host_tabs::tab_width(&label, window)))
             .child(
-                gpui_kit::base::Button::new(id)
+                razer_widgets::keyboard_navigation::Button::new(id)
                     .accessibility_label(label.clone())
                     .flex()
                     .items_center()
@@ -397,7 +397,7 @@ impl ChromaWindow {
             );
         if tab != ChromaTab::Dashboard {
             frame = frame.child(
-                gpui_kit::base::Button::new(SharedString::from(format!("close-{}-tab", tab.id())))
+                razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!("close-{}-tab", tab.id())))
                     .accessibility_label(razer_i18n::t("CLOSE"))
                     .absolute()
                     .right(css(5.))

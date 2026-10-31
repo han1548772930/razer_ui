@@ -30,7 +30,7 @@ impl HueWorkspace {
         if !self.bridge.is_loading && self.alert != Some(BridgeAlert::Remove) {
             if self.bridge.bridge_enabled {
                 icon = icon.child(
-                    gpui_kit::base::Button::new("hue-refresh-bridge")
+                    razer_widgets::keyboard_navigation::Button::new("hue-refresh-bridge")
                         .absolute()
                         .top(surface::css(25.))
                         .left(surface::css(25.))
@@ -57,7 +57,7 @@ impl HueWorkspace {
                 );
             }
             icon = icon.child(
-                gpui_kit::base::Button::new("hue-remove-bridge")
+                razer_widgets::keyboard_navigation::Button::new("hue-remove-bridge")
                     .absolute()
                     .left(surface::css(-15.))
                     .top(surface::css(65.))

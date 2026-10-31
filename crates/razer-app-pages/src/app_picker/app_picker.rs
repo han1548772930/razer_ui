@@ -1,6 +1,7 @@
 //! `/rz-app-menu/`: source three-column picker, with explicit installation facts.
 //! The shell owns opening pages and services; this view only emits requests.
-use gpui_kit::base::{Button, PopoverState, Positioner};
+use razer_widgets::keyboard_navigation::Button;
+use gpui_kit::base::{PopoverState, Positioner};
 use gpui_kit::component::{
     select::{Select, SelectEvent, SelectState},
     tooltip::Tooltip,

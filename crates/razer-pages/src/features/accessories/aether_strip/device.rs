@@ -190,7 +190,7 @@ impl AetherStrip {
                 .when(selected, |v| v.pt(surface::css(28.)));
             let id = peer.id.clone();
             device = device.child(
-                gpui_kit::base::Button::new((
+                razer_widgets::keyboard_navigation::Button::new((
                     ElementId::from("aether-device-image"),
                     SharedString::from(peer.id.clone()),
                 ))
@@ -238,7 +238,7 @@ impl AetherStrip {
                     peer.name.clone()
                 };
                 device = device.child(
-                    gpui_kit::base::Button::new((
+                    razer_widgets::keyboard_navigation::Button::new((
                         ElementId::from("aether-device-name"),
                         SharedString::from(peer.id.clone()),
                     ))
@@ -458,7 +458,7 @@ impl AetherStrip {
                 let name = peer.name.clone();
                 // `.indicator--item[tooltip]:before{right:auto;top:calc(100% + 10px);
                 //  width:fit-content}`：编号项的提示框左边缘贴左边缘、下方 10px。
-                let item = gpui_kit::base::Button::new((
+                let item = razer_widgets::keyboard_navigation::Button::new((
                     ElementId::from("aether-device-indicator"),
                     SharedString::from(id.clone()),
                 ))
@@ -693,7 +693,7 @@ impl Render for DeviceDialog {
             })
             .child(
                 h_flex().justify_center().child(
-                    gpui_kit::base::Button::new("aether-device-dialog-confirm")
+                    razer_widgets::keyboard_navigation::Button::new("aether-device-dialog-confirm")
                         .accessibility_label(text(if remove { "REMOVE" } else { "TAKE_CONTROL" }))
                         .bg(Colors::remove())
                         .text_color(Colors::background())

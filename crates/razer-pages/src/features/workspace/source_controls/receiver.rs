@@ -465,7 +465,7 @@ impl SourceControls {
                                         )
                                         .child(razer_i18n::t("PAIRING_UTILITY").to_uppercase())
                                         .child(
-                                            gpui_kit::base::Button::new("receiver-close-pairing")
+                                            razer_widgets::keyboard_navigation::Button::new("receiver-close-pairing")
                                                 .accessibility_label(razer_i18n::t("CLOSE"))
                                                 .absolute()
                                                 .right(surface::css(5.))

@@ -445,7 +445,7 @@ impl RenderOnce for KeyRegion {
                 .size_full(),
             )
             .child(
-                gpui_kit::base::Button::new(id)
+                razer_widgets::keyboard_navigation::Button::new(id)
                     .track_focus(&focus)
                     .accessibility_label(key.label.clone())
                     .selected(self.selected)
@@ -732,7 +732,7 @@ mod tests {
                     .h(px(100.))
                     .on_click(move |_, _, _| parent.set(parent.get() + 1))
                     .child(
-                        gpui_kit::base::Button::new("underneath")
+                        razer_widgets::keyboard_navigation::Button::new("underneath")
                             .absolute()
                             .size_full()
                             .on_click(move |_, _, _| underneath.set(underneath.get() + 1)),

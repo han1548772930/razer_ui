@@ -1,7 +1,8 @@
 //! Actual ordinary ButtonPanel consumers, independently audited for all 76 mice.
 //! The page's local mapping projection supplies rows; no device write is inferred.
 use super::*;
-use gpui_kit::base::{Button as BaseButton, ElementExt as _};
+use razer_widgets::keyboard_navigation::Button as BaseButton;
+use gpui_kit::base::{ElementExt as _};
 use razer_widgets::theme::{MouseCustomizeColors as Colors, MouseSidebarColors as PanelColors};
 use std::{
     cell::{Cell, RefCell},

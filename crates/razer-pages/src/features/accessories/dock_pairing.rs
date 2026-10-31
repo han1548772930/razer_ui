@@ -392,7 +392,7 @@ impl DockPairing {
             );
         if paired.is_empty() {
             content = content.child(
-                gpui_kit::base::Button::new("dock-open-pairing")
+                razer_widgets::keyboard_navigation::Button::new("dock-open-pairing")
                     .disabled(self.multi_pairing && !self.dongle)
                     .accessibility_label(self.spec.text("OPEN_PAIRING_UTILITY"))
                     .h(surface::css(44.))
@@ -428,7 +428,7 @@ impl DockPairing {
                         peer.name.clone()
                     });
                     let link = |name: SharedString, product_id: u32, edition_id: u32| {
-                        gpui_kit::base::Button::new(SharedString::from(format!(
+                        razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!(
                             "dock-device-link-{product_id}-{edition_id}"
                         )))
                         .accessibility_label(name.clone())
@@ -484,7 +484,7 @@ impl DockPairing {
                             !any_connected
                         };
                         let name_button =
-                            gpui_kit::base::Button::new("dock-paired-name-open-pairing")
+                            razer_widgets::keyboard_navigation::Button::new("dock-paired-name-open-pairing")
                                 .disabled(disabled)
                                 .underline()
                                 .text_color(if !disabled {
@@ -522,7 +522,7 @@ impl DockPairing {
                                 .find(|(pid, _)| *pid == peer.product_id)
                         });
                         view.child(
-                            gpui_kit::base::Button::new("dock-polling-navigation")
+                            razer_widgets::keyboard_navigation::Button::new("dock-polling-navigation")
                                 .mt(surface::css(10.))
                                 .text_size(surface::css(12.))
                                 .text_color(Colors::dialog_warning_text())
@@ -705,7 +705,7 @@ fn command(
     cx: &App,
 ) -> SourceCommand {
     let id = id.into();
-    let base = gpui_kit::base::Button::new(id.clone())
+    let base = razer_widgets::keyboard_navigation::Button::new(id.clone())
         .accessibility_label(label.clone())
         .disabled(disabled)
         .h(surface::css(28.))
@@ -749,7 +749,7 @@ enum CommandKind {
 #[derive(IntoElement)]
 struct SourceCommand {
     id: ElementId,
-    base: gpui_kit::base::Button,
+    base: razer_widgets::keyboard_navigation::Button,
     primary: bool,
     disabled: bool,
     kind: CommandKind,

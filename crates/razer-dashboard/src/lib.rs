@@ -81,10 +81,10 @@ pub fn dashboard_group_toggle(
     label: &str,
     collapsed: bool,
     cx: &App,
-) -> gpui_kit::base::Button {
+) -> razer_widgets::keyboard_navigation::Button {
     // A Base Button avoids the styled Button's centered, nowrap content slot.
     // The complete title row remains keyboard-operable without moving its text.
-    gpui_kit::base::Button::new((ElementId::from(id), "toggle"))
+    razer_widgets::keyboard_navigation::Button::new((ElementId::from(id), "toggle"))
         .group(id)
         .h(surface::css(18.))
         .p_0()

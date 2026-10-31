@@ -696,7 +696,7 @@ impl AudioMedia {
             )
             .when(!self.shown, |player| {
                 player.child(
-                    gpui_kit::base::Button::new("audible-demo-start")
+                    razer_widgets::keyboard_navigation::Button::new("audible-demo-start")
                         .absolute()
                         .inset_0()
                         .p_0()
@@ -819,7 +819,7 @@ impl AudioMedia {
                                 ),
                         )
                         .child(
-                            gpui_kit::base::Button::new("audible-demo-toggle")
+                            razer_widgets::keyboard_navigation::Button::new("audible-demo-toggle")
                                 .w(surface::css(self.button_width))
                                 .h_full()
                                 .p_0()
@@ -842,7 +842,7 @@ impl AudioMedia {
                                 ),
                         )
                         .child(
-                            gpui_kit::base::Button::new("audible-demo-fullscreen")
+                            razer_widgets::keyboard_navigation::Button::new("audible-demo-fullscreen")
                                 .w(surface::css(self.button_width))
                                 .h_full()
                                 .p_0()

@@ -1,8 +1,8 @@
 //! Current 958 Ambient region presets: 30x20, 4px white regions and a
 //! 100ms ease-in-out border transition. Selection belongs to StudioProperties.
 use super::{Colors, label};
+use razer_widgets::keyboard_navigation::Button;
 use gpui_kit::base::{
-    Button,
     motion::{self, Easing, Interpolate, Transition},
 };
 use gpui_kit::{prelude::FluentBuilder as _, *};

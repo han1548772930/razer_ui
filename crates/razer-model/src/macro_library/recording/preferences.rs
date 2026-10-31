@@ -156,4 +156,40 @@ mod tests {
         serialized["fixed"] = json!("invalid");
         assert!(serde_json::from_value::<Preferences>(serialized).is_err());
     }
+
+    #[test]
+    fn startup_restores_zero_delays_independently_and_preserves_nonzero_preferences() {
+        let defaults = Preferences::default();
+        assert_eq!(defaults.fixed.value(), 0.2);
+        assert_eq!(defaults.random.map(Seconds::value), [0.2, 0.5]);
+        let live = Preferences {
+            start_delay: 4,
+            fixed: Seconds::ZERO,
+            random: [Seconds::ZERO, Seconds::new(0.1).unwrap()],
+            movement: MovementMode::Relative,
+            macro_type: MacroType::Sequence,
+            delay_mode: DelayMode::Randomized,
+        };
+        live.validate().unwrap();
+        let decoded: Preferences =
+            serde_json::from_value(serde_json::to_value(&live).unwrap()).unwrap();
+        assert_eq!(decoded, live);
+        let restored = decoded.restored();
+        assert_eq!(restored.fixed.value(), 0.2);
+        assert_eq!(restored.random.map(Seconds::value), [0.2, 0.1]);
+        assert_eq!(restored.start_delay, 4);
+        assert_eq!(restored.movement, MovementMode::Relative);
+        assert_eq!(restored.macro_type, MacroType::Sequence);
+        assert_eq!(restored.delay_mode, DelayMode::Randomized);
+        restored.validate().unwrap();
+        assert_eq!(restored.clone().restored(), restored);
+        let restored = Preferences {
+            fixed: Seconds::new(0.125).unwrap(),
+            random: [Seconds::new(0.05).unwrap(), Seconds::ZERO],
+            ..defaults
+        }
+        .restored();
+        assert_eq!(restored.fixed.value(), 0.125);
+        assert_eq!(restored.random.map(Seconds::value), [0.05, 0.5]);
+    }
 }

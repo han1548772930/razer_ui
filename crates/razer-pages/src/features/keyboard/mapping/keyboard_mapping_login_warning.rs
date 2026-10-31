@@ -121,7 +121,7 @@ impl RenderOnce for Warning {
                             )
                             .child(
                                 h_flex().justify_center().mt(surface::css(17.)).child(
-                                    gpui_kit::base::Button::new("keyboard-mapping-login-ok")
+                                    razer_widgets::keyboard_navigation::Button::new("keyboard-mapping-login-ok")
                                         .accessibility_label(t("OK"))
                                         .w(surface::css(90.))
                                         .h(surface::css(27.))

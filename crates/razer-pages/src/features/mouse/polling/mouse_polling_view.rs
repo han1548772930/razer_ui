@@ -1,7 +1,7 @@
 //! Current 226 wi/Xs/zs polling panel. Observations never become profile writes.
 use super::*;
 use crate::features::mouse_polling::source_spec;
-use gpui_kit::base::Button as BaseButton;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use std::collections::BTreeSet;
 use std::sync::{
     Arc,

@@ -385,7 +385,7 @@ impl AudioProductWorkspace {
             .children(modes.iter().map(|mode| {
                 let value = mode.value.clone();
                 let selected = current == &value;
-                gpui_kit::base::Button::new(SharedString::from(format!(
+                razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!(
                     "audio-enhancements-mode-{low_latency}-{value}"
                 )))
                 .accessibility_label(message(row, &mode.name))
@@ -537,7 +537,7 @@ impl AudioProductWorkspace {
                                 .map(|value| {
                                     let value = *value;
                                     let selected = level == Some(u64::from(value));
-                                    gpui_kit::base::Button::new(SharedString::from(format!(
+                                    razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!(
                                         "audio-anc-level-{value}"
                                     )))
                                     .accessibility_label(value.to_string())
@@ -614,7 +614,7 @@ impl AudioProductWorkspace {
                         .children(setting.options.iter().map(|tab| {
                             let key = tab.key.clone();
                             let selected = self.enhancements.current == key;
-                            gpui_kit::base::Button::new(SharedString::from(format!(
+                            razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!(
                                 "audio-enhancement-tab-{key}"
                             )))
                             .accessibility_label(message(row, &tab.name))

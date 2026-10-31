@@ -220,6 +220,41 @@ pub(super) fn source_entry(document: &Value, id: u64) -> Result<Entry, String> {
 }
 
 impl Entry {
+    /// Ri/Mi key text components by source Type, row position and Id; moving
+    /// between phases or changing the current macro replaces that owner.
+    pub fn retains_text_editor(&self, next: &Entry, index: usize) -> bool {
+        let row_id = |entry: &Entry| {
+            entry
+                .source_document
+                .as_ref()
+                .and_then(|document| document.get("macroEvents"))
+                .and_then(Value::as_array)
+                .and_then(|events| {
+                    events
+                        .iter()
+                        .filter(|event| {
+                            event.get("Type").and_then(Value::as_str) != Some("actionBar")
+                        })
+                        .nth(index)
+                })
+                .and_then(|event| event.get("Id"))
+                .cloned()
+        };
+        self.xml_guid.is_some()
+            && self.xml_guid == next.xml_guid
+            && (self.macro_type == MacroType::Phased) == (next.macro_type == MacroType::Phased)
+            && self
+                .actions
+                .get(index)
+                .zip(next.actions.get(index))
+                .is_some_and(|(previous, next)| {
+                    previous.kind == ActionKind::Text
+                        && next.kind == ActionKind::Text
+                        && previous.phase == next.phase
+                })
+            && row_id(self) == row_id(next)
+    }
+
     pub(super) fn retained_source_document(&self) -> Result<Option<Value>, String> {
         if self.execution.is_some() {
             return Ok(None);

@@ -168,6 +168,30 @@ pub fn save(flag: Flag, value: bool) -> anyhow::Result<()> {
     save_at(&crate::source_local::path()?, flag, value)
 }
 
+/// `isInitialTabKeyHit` is tested for presence, without parsing its string.
+/// The source opens the guide after a missing-key read even if its write fails.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum InitialTabObservation {
+    Present,
+    First { persistence: Result<(), String> },
+}
+
+fn record_initial_tab_at(path: &Path) -> anyhow::Result<InitialTabObservation> {
+    const KEY: &str = "isInitialTabKeyHit";
+    if crate::source_local::get_raw(path, KEY)?.is_some() {
+        return Ok(InitialTabObservation::Present);
+    }
+    Ok(InitialTabObservation::First {
+        persistence: crate::source_local::set_raw(path, KEY, "true")
+            .map_err(|error| format!("{error:#}")),
+    })
+}
+
+/// Read and record a real Tab event on the serialized local preference worker.
+pub fn record_initial_tab() -> anyhow::Result<InitialTabObservation> {
+    record_initial_tab_at(&crate::source_local::path()?)
+}
+
 #[cfg(test)]
 #[path = "ui_preferences/tests.rs"]
 mod tests;

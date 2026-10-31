@@ -55,7 +55,7 @@ fn source(pid: u32) -> &'static Source {
         .find(|row| row.product_id == pid)
         .expect("audited current root unsaved mapping caller")
 }
-fn button(id: &str, label: String) -> gpui_kit::base::Button {
+fn button(id: &str, label: String) -> razer_widgets::keyboard_navigation::Button {
     let long = label.encode_utf16().count() > 9;
     BaseButton::new(SharedString::from(id.to_owned()))
         .min_w(surface::css(90.))

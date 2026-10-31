@@ -63,7 +63,7 @@ pub(super) fn help(id: SharedString, text: String, warning: bool) -> AnyElement 
                 window,
                 cx,
             );
-            gpui_kit::base::Button::new((ElementId::from(animation_id.clone()), "icon"))
+            razer_widgets::keyboard_navigation::Button::new((ElementId::from(animation_id.clone()), "icon"))
                 .accessibility_label(text.clone())
                 .w(surface::css(size))
                 .h(surface::css(size))
@@ -139,7 +139,7 @@ impl SourceControls {
             let first = self.value(control) == Some(&control.options[0].value);
             let next = control.options[usize::from(first)].value.clone();
             let key = control.key.clone();
-            return gpui_kit::base::Button::new(SharedString::from(key.clone()))
+            return razer_widgets::keyboard_navigation::Button::new(SharedString::from(key.clone()))
                 .accessibility_label(razer_i18n::t(&control.label))
                 .disabled(disabled)
                 .self_start()
@@ -210,7 +210,7 @@ impl SourceControls {
                     let selected = self.value(control) == Some(&option.value);
                     let key = control.key.clone();
                     let value = option.value.clone();
-                    gpui_kit::base::Button::new(SharedString::from(format!("{key}:{value}")))
+                    razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!("{key}:{value}")))
                         .accessibility_label(razer_i18n::t(&option.label))
                         .disabled(disabled)
                         .min_w(surface::css(if key.ends_with(":iso") { 75. } else { 90. }))
@@ -378,7 +378,7 @@ impl SourceControls {
             .text_size(surface::css(14.))
             .line_height(surface::css(16.))
             .child(if group.collapsible {
-                gpui_kit::base::Button::new(SharedString::from(format!("{}:toggle", group.key)))
+                razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!("{}:toggle", group.key)))
                     .accessibility_label(title)
                     .disabled(inherited_disabled)
                     .p_0()
@@ -424,7 +424,7 @@ impl SourceControls {
         {
             let key = control.key.clone();
             header = header.child(
-                gpui_kit::base::Button::new(SharedString::from(format!("{key}:header")))
+                razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!("{key}:header")))
                     .accessibility_label(razer_i18n::t(&control.label))
                     .ml(surface::css(10.))
                     .w(surface::css(20.))

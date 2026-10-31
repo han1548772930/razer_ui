@@ -1,7 +1,8 @@
 //! Current mounted Performance Matcher panels and popups. Local view state and
 //! observed service state stay separate; emitted actions are never fake replies.
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::{
-    base::{Button as BaseButton, ElementExt as _},
+    base::{ElementExt as _},
     component::{
         Disableable, IndexPath, h_flex,
         input::{Input, InputEvent, InputState},

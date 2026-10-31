@@ -199,7 +199,7 @@ impl IntroductionTour {
                     // The source renders an underlined div command. Use a semantic
                     // Button so Tab/Enter retain the same close action as a click.
                     .child(
-                        gpui_kit::base::Button::new("introduction-tour-skip")
+                        razer_widgets::keyboard_navigation::Button::new("introduction-tour-skip")
                             .accessibility_label(i18n::t("SKIP").to_uppercase())
                             .child(div().underline().child(i18n::t("SKIP").to_uppercase()))
                             .flex()
@@ -230,7 +230,7 @@ fn tour_button(
     disabled: bool,
     window: &mut Window,
     cx: &mut App,
-) -> gpui_kit::base::Button {
+) -> razer_widgets::keyboard_navigation::Button {
     let state = window.use_keyed_state((ElementId::from(id), "opacity-state"), cx, |_, _| {
         TourButtonState::default()
     });
@@ -254,7 +254,7 @@ fn tour_button(
     } else {
         TourColors::secondary()
     };
-    gpui_kit::base::Button::new(id)
+    razer_widgets::keyboard_navigation::Button::new(id)
         .accessibility_label(i18n::t(label).to_uppercase())
         .child(i18n::t(label).to_uppercase())
         .flex()

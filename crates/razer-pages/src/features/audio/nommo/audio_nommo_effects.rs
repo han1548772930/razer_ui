@@ -3,7 +3,8 @@
 use super::*;
 use crate::features::lighting_color::LightingColorPicker;
 use gpui_kit::base::motion::{self, Easing, Transition};
-use gpui_kit::base::{Button as BaseButton, Tabs};
+use razer_widgets::keyboard_navigation::Button as BaseButton;
+use gpui_kit::base::{Tabs};
 use gpui_kit::component::color_picker::{ColorPickerEvent, ColorPickerState};
 use razer_widgets::stepper::Stepper;
 use razer_widgets::stepper::StepperEvent;

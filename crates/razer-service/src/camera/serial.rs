@@ -12,7 +12,9 @@ pub struct CameraSerialSession {
 
 impl CameraSerialSession {
     pub fn open(scope: CameraScope) -> Result<Self> {
-        Ok(Self { inner: ScopedCameraSession::open_mode(scope, false)? })
+        Ok(Self {
+            inner: ScopedCameraSession::open_mode(scope, false)?,
+        })
     }
 
     pub fn initialize(scope: CameraScope, validate: &impl Fn() -> Result<()>) -> Result<Self> {
@@ -25,7 +27,8 @@ impl CameraSerialSession {
                 std::thread::sleep(delay);
                 validate()
             },
-        ).map_err(anyhow::Error::new)
+        )
+        .map_err(anyhow::Error::new)
     }
 
     pub fn read(&mut self, validate: &impl Fn() -> Result<()>) -> Result<CameraSerialProgress> {
@@ -65,9 +68,17 @@ impl CameraInitializationFailure {
 
 impl fmt::Display for CameraInitializationFailure {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(formatter, "Camera initialization failed after {} open attempts", self.attempts.len())?;
+        write!(
+            formatter,
+            "Camera initialization failed after {} open attempts",
+            self.attempts.len()
+        )?;
         for attempt in &self.attempts {
-            write!(formatter, "; wrapper {} / native {}: {}", attempt.wrapper_attempt, attempt.native_attempt, attempt.error)?;
+            write!(
+                formatter,
+                "; wrapper {} / native {}: {}",
+                attempt.wrapper_attempt, attempt.native_attempt, attempt.error
+            )?;
         }
         if let Some(error) = &self.interruption {
             write!(formatter, "; interrupted: {error}")?;
@@ -82,7 +93,10 @@ fn initialize_with<T>(
     validate: &impl Fn() -> Result<()>,
     mut wait: impl FnMut(Duration) -> Result<()>,
 ) -> std::result::Result<T, CameraInitializationFailure> {
-    let mut failure = CameraInitializationFailure { attempts: Vec::new(), interruption: None };
+    let mut failure = CameraInitializationFailure {
+        attempts: Vec::new(),
+        interruption: None,
+    };
     let result = (|| -> Result<Option<T>> {
         // rzCamKimberly.init retries DeviceInitialize ten times with 100 ms
         // after false. Each native 577e0/57640 call tries thirty binds with

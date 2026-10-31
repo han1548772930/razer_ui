@@ -382,31 +382,9 @@ impl MacroPage {
             if self.randomized_open == Some(index) {
                 h_flex()
                     .items_center()
-                    .child(
-                        Input::new(&self.delay_min_editor)
-                            .id(("macro-delay-min-input", index))
-                            .appearance(false)
-                            .w(css(60.))
-                            .h(css(27.))
-                            .px(css(4.))
-                            .bg(rgb(0x111111))
-                            .border_1()
-                            .border_color(rgb(0x44d62c))
-                            .text_size(css(14.)),
-                    )
+                    .child(self.randomized_bound_editor(index, DelayBound::Min, cx))
                     .child(div().text_size(css(14.)).child(" - "))
-                    .child(
-                        Input::new(&self.delay_max_editor)
-                            .id(("macro-delay-max-input", index))
-                            .appearance(false)
-                            .w(css(60.))
-                            .h(css(27.))
-                            .px(css(4.))
-                            .bg(rgb(0x111111))
-                            .border_1()
-                            .border_color(rgb(0x44d62c))
-                            .text_size(css(14.)),
-                    )
+                    .child(self.randomized_bound_editor(index, DelayBound::Max, cx))
                     .into_any_element()
             } else {
                 h_flex()

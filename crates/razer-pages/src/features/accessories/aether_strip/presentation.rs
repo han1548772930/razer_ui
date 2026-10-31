@@ -36,7 +36,7 @@ impl RenderOnce for ShapeChoice {
             window,
             cx,
         );
-        gpui_kit::base::Button::new(id)
+        razer_widgets::keyboard_navigation::Button::new(id)
             .disabled(!self.enabled)
             .accessibility_label(format!("{} · {}", text("DEVICE_LAYOUT"), self.sides))
             .selected(self.selected)

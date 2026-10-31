@@ -1,7 +1,7 @@
 //! Current Raptor, Hanbo, PWM controller and cooling-pad native local settings.
 //! Hardware observations and capability lists are never restored from a profile.
 use crate::features::Choice;
-use gpui_kit::base::Button as BaseButton;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::component::{
     ActiveTheme, Disableable, Selectable,
     button::Button,

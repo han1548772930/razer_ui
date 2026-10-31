@@ -230,7 +230,7 @@ impl AudioProductWorkspace {
                     .h(surface::css(40.))
                     .gap(surface::css(10.))
                     .child(
-                        gpui_kit::base::Button::new(SharedString::from(format!(
+                        razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!(
                             "current-app-remove-{index}"
                         )))
                         .size(surface::css(30.))
@@ -293,7 +293,7 @@ impl AudioProductWorkspace {
                             })),
                     )
                     .child(
-                        gpui_kit::base::Button::new(SharedString::from(format!(
+                        razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!(
                             "current-app-output-{index}"
                         )))
                         .w(surface::css(180.))
@@ -338,7 +338,7 @@ impl AudioProductWorkspace {
                         .children(outputs.iter().enumerate().map(|(option_index, output)| {
                             let selecting = app.clone();
                             let option = output.clone();
-                            gpui_kit::base::Button::new(SharedString::from(format!(
+                            razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!(
                                 "current-app-option-{index}-{option_index}"
                             )))
                             .disabled(output["name"] == json!("divider"))
@@ -408,7 +408,7 @@ impl AudioProductWorkspace {
                     self.current_sound_app_row(app, index, &outputs, row, cx)
                 }))
                 .child(
-                    gpui_kit::base::Button::new("current-audio-add-app")
+                    razer_widgets::keyboard_navigation::Button::new("current-audio-add-app")
                         .h(surface::css(48.))
                         .p_0()
                         .child(img(row.media.icon_add.clone()).size(surface::css(30.)))
@@ -439,7 +439,7 @@ impl AudioProductWorkspace {
                         h_flex()
                             .gap(surface::css(10.))
                             .child(
-                                gpui_kit::base::Button::new("current-app-remove-cancel")
+                                razer_widgets::keyboard_navigation::Button::new("current-app-remove-cancel")
                                     .child(message(row, "CANCEL"))
                                     .on_click(cx.listener(|this, _, _, cx| {
                                         this.sound.apps_remove_shown = false;
@@ -447,7 +447,7 @@ impl AudioProductWorkspace {
                                     })),
                             )
                             .child(
-                                gpui_kit::base::Button::new("current-app-remove-confirm")
+                                razer_widgets::keyboard_navigation::Button::new("current-app-remove-confirm")
                                     .child(message(row, "CONFIRM"))
                                     .on_click(cx.listener(|this, _, _, cx| {
                                         this.confirm_remove_sound_app(cx)
@@ -460,7 +460,7 @@ impl AudioProductWorkspace {
     }
     fn current_sound_apps_search(&self, row: &Product, cx: &Context<Self>) -> AnyElement {
         if !self.sound.apps_searching {
-            return gpui_kit::base::Button::new("current-installed-apps-search")
+            return razer_widgets::keyboard_navigation::Button::new("current-installed-apps-search")
                 .size(surface::css(26.))
                 .p_0()
                 .active(|style| style.opacity(0.7))
@@ -518,7 +518,7 @@ impl AudioProductWorkspace {
             )
             .when(!text.is_empty(), |body| {
                 body.child(
-                    gpui_kit::base::Button::new("current-installed-apps-clear-search")
+                    razer_widgets::keyboard_navigation::Button::new("current-installed-apps-clear-search")
                         .absolute()
                         .right_0()
                         .top_0()
@@ -577,9 +577,9 @@ impl AudioProductWorkspace {
         razer_assets::deferred_resource(div().absolute().inset_0().flex().items_center().justify_center().bg(rgba(0x000000b3)).child(
             v_flex().w(surface::css(950.)).max_h(window.viewport_size().height*0.98).bg(rgb(0x222222)).p(surface::css(20.)).border_1().border_color(Colors::border())
                 .child(h_flex().justify_between().child(message(row,"ADD_GAME_TITLE"))
-                    .child(gpui_kit::base::Button::new("current-installed-apps-close").child("×").on_click(cx.listener(|this,_,window,cx|this.close_sound_apps(window,cx)))))
+                    .child(razer_widgets::keyboard_navigation::Button::new("current-installed-apps-close").child("×").on_click(cx.listener(|this,_,window,cx|this.close_sound_apps(window,cx)))))
                 .child(h_flex().gap(surface::css(10.))
-                    .child(gpui_kit::base::Button::new("current-installed-apps-refresh").size(surface::css(26.)).p_0()
+                    .child(razer_widgets::keyboard_navigation::Button::new("current-installed-apps-refresh").size(surface::css(26.)).p_0()
                         .active(|style| style.opacity(0.7))
                         .when(self.sound.apps_refresh, |body| body.child(Spinner::new().small()))
                         .when(!self.sound.apps_refresh, |body| body.child(img(row.media.css.get(if self.sound.apps_refresh_hovered {"icon_refresh.green"} else {"icon_refresh"}).cloned().unwrap_or_default()).size(surface::css(20.))))
@@ -587,11 +587,11 @@ impl AudioProductWorkspace {
                         .on_click(cx.listener(|this,_,window,cx|this.refresh_sound_apps(window,cx))))
                     .child(self.current_sound_apps_search(row,cx))
                     .child(message(row,"STILL_DONT_SEE_YOUR_GAME"))
-                    .child(gpui_kit::base::Button::new("current-installed-apps-browse").child(message(row,"BROWSE"))
+                    .child(razer_widgets::keyboard_navigation::Button::new("current-installed-apps-browse").child(message(row,"BROWSE"))
                         .on_click(cx.listener(|this,_,_,cx|this.emit_sound(vec![json!({"sourceCall":{"method":"showFileOpenDialog","args":["Open",true,"[\".exe\"]"]},"responseChain":"JSON.parse then addApp for each selected path"})],cx)))))
                 .child(v_flex().id("current-installed-apps-list").scrollable_y().max_h(surface::css(500.))
                     .children(apps.iter().enumerate().map(|(index,app)|{let path=app["path"].as_str().unwrap_or_default().to_string();
-                        gpui_kit::base::Button::new(SharedString::from(format!("current-installed-app-{index}"))).w_full().h(surface::css(80.)).p(surface::css(10.))
+                        razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!("current-installed-app-{index}"))).w_full().h(surface::css(80.)).p(surface::css(10.))
                             .when_some(app["logo"].as_str().filter(|logo| !logo.is_empty()), |body, logo| body.child(img(logo.to_string()).size(surface::css(80.)).object_fit(ObjectFit::Contain)))
                             .child(v_flex().child(app["name"].as_str().unwrap_or_default().to_string()).child(path.clone()))
                             .on_click(cx.listener(move|this,_,window,cx|this.add_sound_app(path.clone(),window,cx)))

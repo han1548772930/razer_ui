@@ -1,8 +1,8 @@
 //! Source: 182 QP → 5107 and Map* chunks; 653 → 3241/2667.
 //! These are local profile assignments, never a native Synapse wire format.
 use super::*;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::base::{
-    Button as BaseButton,
     motion::{self, Easing, Transition},
 };
 use gpui_kit::component::{

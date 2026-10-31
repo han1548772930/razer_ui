@@ -4,7 +4,8 @@ use super::{
     MODULES, Module, ModuleAction, ModuleCatalog, ModuleCatalogEvent, module_action,
     module_description, module_detail_action, module_group_heading,
 };
-use gpui_kit::base::{Button as BaseButton, Popover, Progress, ProgressIndicator, ProgressTrack};
+use razer_widgets::keyboard_navigation::Button as BaseButton;
+use gpui_kit::base::{Popover, Progress, ProgressIndicator, ProgressTrack};
 use gpui_kit::component::{
     button::{Button, ButtonVariants},
     checkbox::Checkbox,

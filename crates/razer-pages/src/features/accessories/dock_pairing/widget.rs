@@ -269,7 +269,7 @@ impl Render for DualLinkWidget {
                 .gap(surface::css(20.))
                 .child(img(spec.asset("icon-multideviceparing")).size(surface::css(44.)))
                 .child(
-                    gpui_kit::base::Button::new("keyboard-duallink-open")
+                    razer_widgets::keyboard_navigation::Button::new("keyboard-duallink-open")
                         .disabled(disabled)
                         .accessibility_label(spec.text("OPEN_PAIRING_UTILITY"))
                         .h(surface::css(44.))

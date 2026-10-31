@@ -691,7 +691,7 @@ impl AudioProductWorkspace {
         )
         .child(self.sound_balance_slider(row, window, cx))
         .child(
-            gpui_kit::base::Button::new("current-game-chat-tutorial")
+            razer_widgets::keyboard_navigation::Button::new("current-game-chat-tutorial")
                 .mt(surface::css(45.))
                 .p_0()
                 .underline()
@@ -716,7 +716,7 @@ impl AudioProductWorkspace {
         row: &Product,
         cx: &Context<Self>,
     ) -> AnyElement {
-        gpui_kit::base::Button::new(id)
+        razer_widgets::keyboard_navigation::Button::new(id)
             .p_0()
             .self_start()
             .text_color(Colors::text())
@@ -792,7 +792,7 @@ impl AudioProductWorkspace {
             .mb(surface::css(10.))
             .px(surface::css(10.))
             .child(
-                gpui_kit::base::Button::new("current-stereo-thx-toggle")
+                razer_widgets::keyboard_navigation::Button::new("current-stereo-thx-toggle")
                     .h(surface::css(36.))
                     .px(surface::css(4.))
                     .rounded(surface::css(18.))

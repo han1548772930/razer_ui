@@ -86,11 +86,20 @@ impl HelpCamoObservation {
     pub fn request(&self) -> &HelpCamoRequested {
         &self.request
     }
-    pub fn serial(request: HelpCamoRequested, result: Result<CameraSerialProgress, String>) -> Self {
-        Self { request, result: Outcome::Serial(result) }
+    pub fn serial(
+        request: HelpCamoRequested,
+        result: Result<CameraSerialProgress, String>,
+    ) -> Self {
+        Self {
+            request,
+            result: Outcome::Serial(result),
+        }
     }
     pub fn launched(request: HelpCamoRequested, result: Result<(), String>) -> Self {
-        Self { request, result: Outcome::Launch(result) }
+        Self {
+            request,
+            result: Outcome::Launch(result),
+        }
     }
     pub fn failed(request: HelpCamoRequested, error: String) -> Self {
         let result = match request.command {
@@ -100,9 +109,13 @@ impl HelpCamoObservation {
         };
         Self { request, result }
     }
-    pub(in crate::features) fn serial_result(&self) -> Option<&Result<CameraSerialProgress, String>> {
+    pub(in crate::features) fn serial_result(
+        &self,
+    ) -> Option<&Result<CameraSerialProgress, String>> {
         match &self.result {
-            Outcome::Serial(result) => Some(result),
+            Outcome::Serial(result) if self.request.command == HelpCamoCommand::GetSerialNumber => {
+                Some(result)
+            }
             _ => None,
         }
     }
@@ -166,8 +179,14 @@ impl State {
 
     fn observe_serial(&mut self, observation: &CameraSerialObservation) {
         self.serial_error = observation.error().map(str::to_owned);
-        self.loading_serial = matches!(observation, CameraSerialObservation::Reading);
-        if !self.loading_serial {
+        if matches!(observation, CameraSerialObservation::Reading) {
+            // Mount validates the current serial. The source starts its Help
+            // shimmer only after Retry, independently of root initialization.
+            if !self.loading_serial {
+                self.validate("");
+            }
+        } else {
+            self.loading_serial = false;
             self.validate(observation.serial().unwrap_or(""));
         }
     }
@@ -215,18 +234,20 @@ impl SourceHelp {
     pub(super) fn camo_request(&self, command: HelpCamoCommand) -> Option<HelpCamoRequested> {
         let offset = self.page_offset?;
         let (_, page) = self.metadata()?;
-        (page.camo && page.offset == offset && !self.camo.cancelled.load(Ordering::Acquire)).then(|| HelpCamoRequested {
-            owner: self.camo.owner,
-            generation: self.camo.generation,
-            product_id: self.device.product_id,
-            real_product_id: self.device.real_product_id,
-            container_id: self.device.device_container_id.clone(),
-            edition_id: self.device.edition_id,
-            layout_id: self.device.layout_id,
-            page_offset: page.offset,
-            command,
-            cancelled: self.camo.cancelled.clone(),
-        })
+        (page.camo && page.offset == offset && !self.camo.cancelled.load(Ordering::Acquire)).then(
+            || HelpCamoRequested {
+                owner: self.camo.owner,
+                generation: self.camo.generation,
+                product_id: self.device.product_id,
+                real_product_id: self.device.real_product_id,
+                container_id: self.device.device_container_id.clone(),
+                edition_id: self.device.edition_id,
+                layout_id: self.device.layout_id,
+                page_offset: page.offset,
+                command,
+                cancelled: self.camo.cancelled.clone(),
+            },
+        )
     }
     pub(in crate::features) fn accepts_camo_request(&self, request: &HelpCamoRequested) -> bool {
         self.camo_request(HelpCamoCommand::Observe)
@@ -250,7 +271,8 @@ impl SourceHelp {
         }
         self.camo.cancelled = Arc::new(AtomicBool::new(false));
         if let Some(request) = self.camo_request(HelpCamoCommand::Observe) {
-            self.camo.observe_serial(&self.device.dashboard.readonly_camera_serial);
+            self.camo
+                .observe_serial(&self.device.dashboard.readonly_camera_serial);
             self.camo.installation = HelpCamoInstallationStatus::Loading;
             cx.emit(request);
         }
@@ -277,7 +299,8 @@ impl SourceHelp {
     }
     pub(super) fn camo_observation_changed(&mut self, cx: &mut Context<Self>) {
         if self.camo_request(HelpCamoCommand::Observe).is_some() {
-            self.camo.observe_serial(&self.device.dashboard.readonly_camera_serial);
+            self.camo
+                .observe_serial(&self.device.dashboard.readonly_camera_serial);
             cx.notify();
         }
     }
@@ -290,20 +313,32 @@ impl SourceHelp {
             return false;
         }
         match observation.result {
-            Outcome::Installation(result) if observation.request.command == HelpCamoCommand::Observe => {
+            Outcome::Installation(result)
+                if observation.request.command == HelpCamoCommand::Observe =>
+            {
                 self.camo.installation = match result {
                     Ok(installed) => HelpCamoInstallationStatus::Observed(installed),
                     Err(error) => HelpCamoInstallationStatus::Failed(error),
                 };
             }
-            Outcome::Serial(result) if observation.request.command == HelpCamoCommand::GetSerialNumber => {
+            Outcome::Serial(result)
+                if observation.request.command == HelpCamoCommand::GetSerialNumber =>
+            {
+                if result
+                    .as_ref()
+                    .is_ok_and(|progress| progress.product_id() != self.device.product_id)
+                {
+                    return false;
+                }
                 let serial = match result {
                     Ok(progress) => CameraSerialObservation::Read(progress),
                     Err(error) => CameraSerialObservation::Failed(error),
                 };
                 self.camo.observe_serial(&serial);
             }
-            Outcome::Launch(result) if observation.request.command == HelpCamoCommand::LaunchInstalled => {
+            Outcome::Launch(result)
+                if observation.request.command == HelpCamoCommand::LaunchInstalled =>
+            {
                 self.camo.launch = Some(result);
             }
             _ => return false,
@@ -420,3 +455,7 @@ impl SourceHelp {
         panel.into_any_element()
     }
 }
+
+#[cfg(test)]
+#[path = "source_help_camo_tests.rs"]
+mod tests;

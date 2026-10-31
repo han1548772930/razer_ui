@@ -1,6 +1,6 @@
 //! Current owner-mounted PID 1453 Power tutorial and PID 1398 THX instructions.
 //! This entity outlives Help tab changes, matching the original product owner.
-use gpui_kit::base::Button;
+use razer_widgets::keyboard_navigation::Button;
 use gpui_kit::component::{h_flex, v_flex};
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use razer_i18n as i18n;

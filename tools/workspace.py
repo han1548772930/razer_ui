@@ -439,6 +439,8 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
     chroma_session = ("razer_service", "chroma_connect", "Session")
     gui_source = owner.startswith(tuple("crates/" + name + "/src/" for name in (
         "razer-pages", "razer-app-pages", "razer-settings", "razer-shell", "razer-dashboard", "razer-widgets", "razer-tray")))
+    keyboard_navigation_owner = "crates/razer-widgets/src/keyboard_navigation.rs"
+    keyboard_button_owner = "crates/razer-widgets/src/keyboard_navigation/button.rs"
     source_lifecycle = "crates/razer-pages/src/features/workspace/source_workspace/lifecycle.rs"
     mapping_pages = ("crates/razer-pages/src/features/mapping/", "crates/razer-pages/src/features/mouse/mapping/",
                      "crates/razer-pages/src/features/keyboard/mapping/")
@@ -563,6 +565,18 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
                     thread_builders.add(alias)
     def resolved_call(parts):
         return imports.get(parts[0], (parts[0],)) + tuple(parts[1:])
+    native_button_types = {("gpui_kit", "base", "Button"), ("gpui_kit", "base", "button", "Button")}
+    button_aliases = set()
+    changed = True
+    while changed:
+        changed = False
+        for declaration in declarations:
+            if declaration.type == "type_item":
+                target = resolved_call(text(declaration.child_by_field_name("type")).split("::"))
+                alias = text(declaration.child_by_field_name("name"))
+                if (target in native_button_types or len(target) == 1 and target[0] in button_aliases) and alias not in button_aliases:
+                    button_aliases.add(alias)
+                    changed = True
     def inspect_gui_operation(node, prefix, runtime, worker, targets, native_methods=(), revision_owner=None):
         if node.type == "call_expression":
             function = node.child_by_field_name("function")
@@ -1038,6 +1052,21 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
                     break
         if in_test(node) and not legacy_ipc_function(node):
             continue
+        if gui_source and owner != keyboard_button_owner and node.type == "scoped_identifier":
+            path = resolved_call(text(node).split("::"))
+            if path[-1:] == ("new",) and (path[:-1] in native_button_types
+                    or len(path) == 2 and path[0] in button_aliases):
+                fail(node, "source_button_bypasses_window_navigation", keyboard_button_owner + "::Button")
+        if owner == keyboard_navigation_owner and node.type == "function_item" \
+                and text(node.child_by_field_name("name")) == "new":
+            implementation = next((parent for parent in ancestors(node) if parent.type == "impl_item"), None)
+            if implementation is not None and text(implementation.child_by_field_name("type")) == "KeyboardNavigation":
+                retention = [call for call in walk(node) if call.type == "call_expression"
+                             and call.child_by_field_name("function").type == "field_expression"
+                             and text(call.child_by_field_name("function").child_by_field_name("value")) == "window"
+                             and text(call.child_by_field_name("function").child_by_field_name("field")) == "set_view_retention"]
+                if len(retention) != 1 or [text(argument) for argument in retention[0].child_by_field_name("arguments").named_children] != ["false"]:
+                    fail(node, "keyboard_navigation_replays_stale_focus_geometry", keyboard_navigation_owner + "::KeyboardNavigation::new")
         if owner != hid_clock and node.type == "call_expression":
             if native_clock_call(node, "native_return") is not None:
                 fail(node, "hid_native_clock_bypasses_outcome_owner", hid_clock + "::SourceClock::native_outcome")
@@ -1336,7 +1365,7 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
                 fail(node, "page_owns_macro_recording_decoder", macro_recording)
             if name in {"SuspensionReceipt", "RestoreReceipt", "ActionReply"} and (owner.startswith(macro_page) or owner in {macro_recorder, macro_native}):
                 fail(node, "duplicate_macro_recording_receipt", macro_receipts)
-            if name == "RecordingUi" and owner == macro_page + "/recording.rs" and not {"command", "countdown_task", "updates_task", "generation", "document", "cancelled"} <= fields:
+            if name == "RecordingUi" and owner == macro_page + "/recording.rs" and not {"command", "countdown_task", "updates_task", "generation", "cancelled"} <= fields:
                 fail(node, "macro_recording_has_no_page_session_owner", macro_page + "/recording.rs")
             if name == "UiPreferences" and owner.startswith("crates/") and owner != preference_state:
                 fail(node, "duplicate_ui_preference_state_owner", preference_state)
@@ -1590,9 +1619,38 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
                     fail(node, "ui_preferences_has_no_retained_worker", preference_state)
             if owner == macro_page + "/recording.rs" and name == "start_recording":
                 fields = {text(child.child_by_field_name("field")) for child in walk(node) if child.type == "field_expression"}
-                if not {"command", "updates_task", "generation", "document", "current", "cancelled"} <= fields or "detach" in called_methods(node):
+                methods = called_methods(node)
+                if (not {"command", "updates_task", "generation"} <= fields
+                        or "receive_recording_update" not in methods
+                        or {"detach", "accept_recording_update", "commit_recorded_actions"} & methods):
                     fail(node, "macro_recording_accepts_unowned_completion", macro_page + "/recording.rs")
-            if owner == macro_recorder and free_function and name in {"spawn_with", "spawn_with_registry"}:
+            if owner == macro_page + "/recording.rs" and name == "receive_recording_update":
+                deliveries = [call for call in walk(node) if call.type == "call_expression"
+                              and call.child_by_field_name("function").type == "field_expression"
+                              and text(call.child_by_field_name("function").child_by_field_name("value")) == "self"
+                              and text(call.child_by_field_name("function").child_by_field_name("field")) == "accept_recording_update"]
+                guards = [branch for branch in walk(node) if branch.type == "if_expression"
+                          and condition_atoms(branch.child_by_field_name("condition")) == {"self.recording.generation!=generation"}]
+                if not deliveries or any(not any(preceding_return(guard, call) for guard in guards) for call in deliveries):
+                    fail(node, "macro_recording_accepts_stale_session", macro_page + "/recording.rs::receive_recording_update")
+            if owner == macro_page + "/recording.rs" and name == "commit_recorded_actions":
+                fields = {text(child.child_by_field_name("field")) for child in walk(node) if child.type == "field_expression"}
+                commits = [call for call in walk(node) if call.type == "call_expression"
+                           and call.child_by_field_name("function").type == "field_expression"
+                           and text(call.child_by_field_name("function").child_by_field_name("field")) == "append_recorded_actions"]
+                guards = [branch for branch in walk(node) if branch.type == "if_expression"
+                          and condition_atoms(branch.child_by_field_name("condition")) == {"self.recording.cancelled"}]
+                if (not {"current", "actions", "library_snapshot"} <= fields or not commits
+                        or "recording_commit_options" not in called_methods(node)
+                        or any(not any(preceding_return(guard, call) for guard in guards) for call in commits)):
+                    fail(node, "macro_recording_commit_ignores_current_profile", macro_page + "/recording.rs::commit_recorded_actions")
+            if owner == macro_recorder and free_function and name == "spawn_with_registry":
+                statements = node.child_by_field_name("body").named_children
+                tail = statements[-1] if statements else None
+                if (tail is None or tail.type != "call_expression" or resolved_call(text(tail.child_by_field_name("function")).split("::")) != ("spawn_with_geometry",)
+                        or [text(argument) for argument in tail.child_by_field_name("arguments").named_children][:3] != ["options", "factory", "registry"]):
+                    fail(node, "macro_recorder_bypasses_capture_worker", macro_recorder + "::spawn_with_geometry")
+            if owner == macro_recorder and free_function and name == "spawn_with_geometry":
                 direct = calls(node)
                 if not any(len(parts) >= 2 and aliases.get(parts[-2]) == "WorkerGuard" and parts[-1] == "start" for parts, _ in direct):
                     fail(node, "mapping_worker_bypasses_cleanup_accounting", mapping_workers + "mod.rs")
@@ -6447,7 +6505,22 @@ def frontend_refresh_plan(observation_path, *, priority_sources=(), source_names
     return {"observation": identity, "observed": observed, "jobs": jobs}
 
 
-def _frontend_refresh_result(path, resource):
+def frontend_refresh_manifest_roots(acquired):
+    """Retain caller-declared static roots and host-supplied product manifests."""
+    import analysis
+    entry = acquired["entry_url"]
+    roots = {edge["to"] for edge in acquired.get("edges", [])
+             if edge.get("kind") == "explicit-retained-manifest"}
+    if re.fullmatch(r"/synapse/products/[0-9]+/mw/(?:index\.html)?", urllib.parse.urlsplit(entry).path):
+        roots.add(urllib.parse.urljoin(entry, "manifest.json"))
+    for url in roots:
+        if (analysis.artifact_url(entry, url) != url
+                or urllib.parse.urlsplit(url).netloc != urllib.parse.urlsplit(entry).netloc):
+            raise ValueError("Frontend refresh manifest root differs from its official source origin")
+    return sorted(roots)
+
+
+def _frontend_refresh_result(path, resource, required_manifests=()):
     import analysis
     import evidence
     import families
@@ -6459,6 +6532,16 @@ def _frontend_refresh_result(path, resource):
     deployment = evidence.frontend_deployment_sources(acquired)
     gaps = families.frontend_reference_gaps(acquired)
     failures = list(deployment["failures"])
+    files = {row["url"]: row for row in originals}
+    stability = {row["url"]: row for row in acquired.get("stability", [])}
+    for url in required_manifests:
+        original, checked = files.get(url), stability.get(url)
+        if original is None:
+            failures.append({"kind": "required_manifest_root_missing", "url": url})
+        elif (checked is None or checked.get("unchanged") is not True
+                or checked.get("before_sha256") != original["sha256"]
+                or checked.get("after_sha256") != original["sha256"]):
+            failures.append({"kind": "required_manifest_stability_unverified", "url": url})
     for kind in ("declared_non_map_missing", "unattributed_non_map_missing"):
         failures.extend({"kind": kind, "reference": row} for row in gaps.get(kind, []))
     if acquired.get("source_current_during_acquisition") is not True:
@@ -6518,14 +6601,16 @@ def refresh_current_frontends(observation_path, *, workers=4, network_workers=12
         def refresh(job):
             resource.checkpoint()
             analysis.verify_source_rows([job["acquisition"]])
+            baseline = json.loads((ROOT / job["acquisition"]["path"]).read_bytes())
+            required_manifests = frontend_refresh_manifest_roots(baseline)
+            reuse = [*reuse_acquisitions]
             candidates = newer.get(job["route"], [])
             if candidates:
                 candidate = max(candidates)[1]
-                result = _frontend_refresh_result(candidate, resource)
+                result = _frontend_refresh_result(candidate, resource, required_manifests)
                 if result["status"] == "acquired":
                     return {**result, "reused_newer_acquisition": True}
-            baseline = json.loads((ROOT / job["acquisition"]["path"]).read_bytes())
-            reuse = [*reuse_acquisitions]
+                reuse.append(relative(candidate))
             if baseline.get("source_current_during_acquisition") is True:
                 reuse.append(job["acquisition"]["path"])
             attempts = []
@@ -6541,7 +6626,7 @@ def refresh_current_frontends(observation_path, *, workers=4, network_workers=12
                     raise ValueError("Refresh snapshot belongs to a different observation")
                 if "source_current_during_acquisition" not in previous:
                     break
-                result = _frontend_refresh_result(receipt, resource)
+                result = _frontend_refresh_result(receipt, resource, required_manifests)
                 attempts.append(result)
                 if result["status"] == "acquired":
                     return {**result, "attempts": attempts, "resumed_verified_snapshot": True}
@@ -6549,11 +6634,12 @@ def refresh_current_frontends(observation_path, *, workers=4, network_workers=12
                     reuse.append(relative(receipt))
                 number += 1
             analysis.fetch_frontend(SimpleNamespace(url=baseline["entry_url"], output=relative(output),
-                reuse_acquisition=reuse, no_refresh_gaps=True, refresh_observation=identity,
+                reuse_acquisition=list(dict.fromkeys(reuse)), seed_urls=required_manifests,
+                no_refresh_gaps=True, refresh_observation=identity,
                 download_artifact=resource.download, revalidate_artifact=resource.revalidate,
                 enumerate_artifact=resource.enumerate, index_artifacts=resource.index,
                 checkpoint=resource.checkpoint, progress=lambda _: None), refresh_ledger=False)
-            result = _frontend_refresh_result(receipt, resource)
+            result = _frontend_refresh_result(receipt, resource, required_manifests)
             attempts.append(result)
             return {**result, "attempts": attempts}
 
@@ -9989,12 +10075,50 @@ def locale_preparation_catalog(*, migrate_legacy=False):
     return document, snapshots, baseline
 
 
+def merge_locale_preparation_entries(previous, prepared):
+    """Keep the original owner of every key not replaced by this publication."""
+    current_kinds = {"current_routed_exports", "current_chunk_exports"}
+    entries = list(previous)
+    for update in prepared:
+        if update["kind"] not in current_kinds:
+            entries = [row for row in entries if (row["kind"], row.get("namespace"))
+                       != (update["kind"], update.get("namespace"))]
+            entries.append(update)
+            continue
+        keys = update.get("keys")
+        if not isinstance(keys, list) or not keys or len(set(keys)) != len(keys):
+            raise ValueError("Current locale provenance requires the exact selected keys")
+        retained = []
+        for row in entries:
+            if row["kind"] not in current_kinds or row.get("namespace") != update.get("namespace"):
+                retained.append(row)
+                continue
+            owned = row.get("keys")
+            if not isinstance(owned, list) or not owned or len(set(owned)) != len(owned):
+                raise ValueError("Retained current locale provenance lacks its selected keys")
+            remaining = [key for key in owned if key not in keys]
+            if remaining:
+                prefix = row.get("namespace")
+                destinations = {prefix + "." + key if prefix else key for key in remaining}
+                retained.append({**row, "keys": remaining,
+                    **({"absent_keys": {locale: [key for key in values if key in remaining]
+                                        for locale, values in row["absent_keys"].items()
+                                        if any(key in remaining for key in values)}} if "absent_keys" in row else {}),
+                    "changes": {locale: {key: value for key, value in values.items() if key in destinations}
+                                for locale, values in row.get("changes", {}).items()}})
+        entries = retained + [update]
+    return entries
+
+
 def publish_locale_preparation(document, snapshots, baseline, prepared, *, check=False):
     """Publish verified maintenance words, regenerate SQLite, then retire old inputs."""
     import analysis
     import resource_database
     resource_database.validate_locales(document)
     destination = ROOT / resource_database.LOCALES
+    report_path = ROOT / resource_database.LOCALE_REPORT
+    previous = resource_database.unique_json(report_path.read_bytes()) if report_path.is_file() else {"entries": []}
+    entries = merge_locale_preparation_entries(previous["entries"], prepared)
     output = (json.dumps(document, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
     for path, before in snapshots:
         if path.read_bytes() != before:
@@ -10035,12 +10159,8 @@ def publish_locale_preparation(document, snapshots, baseline, prepared, *, check
         legacy_directory = ROOT / "locales"
         if baseline and not any(legacy_directory.iterdir()):
             legacy_directory.rmdir()
-    report_path = ROOT / resource_database.LOCALE_REPORT
     if not check:
-        previous = resource_database.unique_json(report_path.read_bytes()) if report_path.is_file() else {"entries": []}
-        identities = {(row["kind"], row.get("namespace")) for row in prepared}
-        previous["entries"] = [row for row in previous["entries"]
-                               if (row["kind"], row.get("namespace")) not in identities] + prepared
+        previous["entries"] = entries
         if baseline:
             previous["baseline"] = [{key: value for key, value in row.items() if key != "_raw"} for row in baseline]
         from importlib.metadata import version
@@ -10104,7 +10224,7 @@ def prepare_locale_updates(updates, *, check=False):
         prepared, changes, destinations = [], [], set()
         for update in updates:
             if (not isinstance(update, dict) or set(update) - {
-                    "acquisition", "source", "bindings", "namespace", "keys"}
+                    "acquisition", "source", "bindings", "namespace", "keys", "absent_keys"}
                     or not isinstance(update.get("acquisition"), str)
                     or ("source" in update) == ("bindings" in update)):
                 raise ValueError("Locale update requires one acquisition and one source or language map")
@@ -10115,6 +10235,16 @@ def prepare_locale_updates(updates, *, check=False):
             if keys is not None and (not isinstance(keys, list) or not keys
                     or any(not isinstance(key, str) or not key for key in keys) or len(set(keys)) != len(keys)):
                 raise ValueError("Locale update keys must be nonempty unique strings")
+            absent = update.get("absent_keys", {})
+            if (not isinstance(absent, dict) or not set(absent) <= set(by_locale)
+                    or any(not isinstance(missing, list) or not missing
+                           or any(not isinstance(key, str) for key in missing)
+                           or len(set(missing)) != len(missing)
+                           or keys is None or not set(missing) <= set(keys)
+                           for missing in absent.values())):
+                raise ValueError("Absent locale keys require exact selected keys for known languages")
+            if absent.get("en"):
+                raise ValueError("Selected locale keys must have their source English values")
             acquisition = update["acquisition"]
             if "source" in update:
                 raw, provenance = locale_preparation_source(acquisition, update["source"])
@@ -10133,32 +10263,43 @@ def prepare_locale_updates(updates, *, check=False):
                     leaf = Path(urllib.parse.urlsplit(original["source"]["url"]).path).name
                     if not re.fullmatch(r"trans-" + re.escape(locale) + r"\.[A-Za-z0-9_-]+\.chunk\.js", leaf):
                         raise ValueError("Locale chunk URL differs from its language: " + locale)
-                    selected[locale] = evidence.locale_chunk_exports(raw, keys)
+                    selected[locale] = evidence.locale_chunk_exports(raw, keys, absent_keys=absent.get(locale, ()))
                     values[locale] = selected[locale]["values"]
                     provenances.append(original)
                 provenance = {"sources": provenances,
                               "inputs": [row for original in provenances for row in original["inputs"]]}
                 kind = "current_chunk_exports"
+            if keys is None:
+                keys = sorted(next(iter(values.values())))
+                if not keys or any(set(words) != set(keys) for words in values.values()):
+                    raise ValueError("Complete locale owners must declare the same keys in every language")
             delta = {}
             for locale, row in by_locale.items():
                 current = values[locale]
-                if keys is not None and not set(keys) <= current.keys():
+                missing = set(absent.get(locale, ()))
+                if (keys is not None and set(keys) - current.keys() != missing
+                        or missing & current.keys()):
                     raise ValueError("Locale source does not provide every requested key: " + locale)
                 current = {key: value for key, value in current.items() if keys is None or key in keys}
                 words, changed = row["messages"], {}
-                for key, value in current.items():
+                for key in keys:
+                    observed = key not in missing
+                    value = current[key] if observed else None
                     key = namespace + "." + key if namespace else key
                     identity = (locale, key)
                     if identity in destinations:
                         raise ValueError("Locale update repeats a destination: " + locale + "/" + key)
                     destinations.add(identity)
-                    if key not in words or words[key] != value:
+                    if (observed and (key not in words or words[key] != value)) or (not observed and key in words):
                         changed[key] = {"previous": words.get(key), "current": value}
-                    words[key] = value
+                    if observed:
+                        words[key] = value
+                    else:
+                        words.pop(key, None)
                 row["messages"] = dict(sorted(words.items()))
                 delta[locale] = changed
             prepared.append({"kind": kind, "namespace": namespace, "provenance": provenance,
-                             "dictionary": selected, "keys": keys,
+                             "dictionary": selected, "keys": keys, "absent_keys": absent,
                              "merge_policy": "Replace only keys selected from each current source owner",
                              "changes": delta})
             changes.append({"namespace": namespace, "keys_changed": {locale: len(rows) for locale, rows in delta.items()}})
@@ -13314,6 +13455,35 @@ def rust_test_scope(command, inventories):
 def rust_validation_commands():
     """Current pure/mock suites, shared by execution and owner validation."""
     return [
+        ("keyboard-navigation", ["cargo", "test", "--locked", "--offline", "-p", "razer-widgets", "--lib", "keyboard_navigation", "--",
+                                 "--skip", "keyboard_navigation::button::tests::button_navigation_preserves_focus_and_activation_requires_window",
+                                 "--skip", "keyboard_navigation::tests::guide_closes_through_keyboard_and_pointer_with_window_owned_focus"]),
+        ("source-select-keyboard", ["cargo", "test", "--locked", "--offline", "-p", "razer-widgets", "--lib", "synapse_select::keyboard_tests"]),
+        ("source-switch-keyboard", ["cargo", "test", "--locked", "--offline", "-p", "razer-widgets", "--lib", "source_switch_arrows"]),
+        ("macro-library", ["cargo", "test", "--locked", "--offline", "-p", "razer-model", "--lib", "macro_library"]),
+        ("macro-recorder-service", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "mapping::recorder"]),
+        ("macro-shortcut-service", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "mapping::shortcuts"]),
+        ("macro-page-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-app-pages", "--lib", "macro_page", "--",
+                              "--skip", "macro_page::tests::library_lifecycle::two_retained_pages_publish_from_the_latest_shared_library",
+                              "--skip", "macro_page::tests::tutorial_buttons_unlock_local_action_editing_and_save",
+                              "--skip", "macro_page::tests::tutorial_skip_is_reachable_above_standard_and_phased_lists",
+                              "--skip", "macro_page::tests::recording_settings_receive_clicks_above_the_disabled_list",
+                              "--skip", "macro_page::tests::profile_commands_resume_after_settings_and_save_the_suspended_new_action",
+                              "--skip", "macro_page::tests::unsaved_escape_keeps_draft_and_discard_resumes_new_without_saving",
+                              "--skip", "macro_page::tests::profile_commands_stay_disabled_through_recording_lifecycle",
+                              "--skip", "macro_page::tests::macro_name_paste_truncates_utf16_and_escape_discards_the_name_draft",
+                              "--skip", "macro_page::tests::command_input_keeps_whitespace_through_enter_and_local_save",
+                              "--skip", "macro_page::tests::whitespace_only_command_change_is_saved_from_the_pending_editor",
+                              "--skip", "macro_page::tests::clearing_delay_keeps_the_previous_valid_timer",
+                              "--skip", "macro_page::tests::command_timer_reads_current_text_at_the_first_pending_deadline",
+                              "--skip", "macro_page::tests::loop_input_normalizes_and_updates_its_pair_after_150ms"]),
+        ("macro-library-page", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "macro_library"]),
+        ("ui-preferences-storage", ["cargo", "test", "--locked", "--offline", "-p", "razer-storage", "--lib", "ui_preferences"]),
+        ("camera-identity-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "camera_identity", "--",
+                                   "--skip", "features::source_workspace::camera_identity::tests::camera_workspace_publishes_connection_read_failures_and_restarts_after_canceled_exit"]),
+        ("help-camo-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "source_help::camo"]),
+        ("help-camo-shell", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "help_camo", "--",
+                             "--skip", "shell::help_camo::tests::camera_delivery_retains_a_worker_joined_after_the_current_reply_drain"]),
         ("ipc-client", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "client_tests"]),
         ("ipc-failure-diagnostics", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "failure_diagnostics::tests"]),
         ("hid-broker", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "runtime::hid_broker"]),

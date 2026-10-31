@@ -2,7 +2,8 @@
 //! viewport-overflow placement; audio 1422 opts into its wrapper/edge branch.
 use super::*;
 use crate::scroll::SourceScrollable as _;
-use gpui_kit::base::{Button as BaseButton, Positioner};
+use crate::keyboard_navigation::Button as BaseButton;
+use gpui_kit::base::{Positioner};
 use gpui_kit::component::v_flex;
 
 impl<I: SelectItem<Value = String> + 'static> SynapseSelectView<I> {
@@ -33,8 +34,10 @@ impl<I: SelectItem<Value = String> + 'static> SynapseSelectView<I> {
         let current_image = current
             .and_then(|(value, _, _)| self.pointer_decorations.get(value))
             .and_then(|decoration| decoration.content_image.as_ref());
-        let disabled = self.disabled || options.len() <= 1;
+        let disabled = self.is_disabled(cx);
         let open = self.open && !disabled;
+        let focus = self.state.focus_handle(cx).tab_stop(true);
+        let generation = self.generation;
         let colors = DropdownColors::new();
         let bounds = self.pointer_bounds.clone();
         let border = motion::transition(
@@ -57,7 +60,7 @@ impl<I: SelectItem<Value = String> + 'static> SynapseSelectView<I> {
         );
         let click = self.on_trigger_click.clone();
         let trigger = BaseButton::new("source-pointer-trigger")
-            .focusable(false)
+            .track_focus(&focus)
             .disabled(disabled)
             .accessibility_label(self.label.clone().unwrap_or_else(|| title.clone()))
             .w_full()
@@ -140,46 +143,60 @@ impl<I: SelectItem<Value = String> + 'static> SynapseSelectView<I> {
                 let value = value.clone();
                 let checked = selected.as_ref() == Some(&value);
                 let disabled = *disabled;
+                let focus = self
+                    .list
+                    .read(cx)
+                    .delegate()
+                    .focus
+                    .get(&value)
+                    .cloned()
+                    .expect("Every current option owns a stable focus handle");
                 let image = self
                     .pointer_decorations
                     .get(&value)
                     .and_then(|decoration| decoration.content_image.as_ref());
-                BaseButton::new(SharedString::from(format!("source-pointer-option-{value}")))
-                    .focusable(false)
-                    .disabled(disabled)
-                    .w_full()
-                    .accessibility_label(title.clone())
-                    .h(self.pointer_style.row_height)
-                    .flex_shrink_0()
-                    .p(css(4.))
-                    .text_size(css(14.))
-                    .line_height(css(17.))
-                    .justify_start()
-                    .when(image.is_some(), |row| {
-                        row.p(css(8.)).items_center().justify_center()
-                    })
-                    .text_color(if checked {
-                        cx.theme().primary
-                    } else {
-                        cx.theme().foreground
-                    })
-                    .when(!disabled, |row| {
-                        row.hover(|style| style.bg(colors.hover()))
-                            .active(|style| style.text_color(cx.theme().primary))
-                    })
-                    .when(disabled, |row| row.opacity(0.3))
-                    .child(if let Some(image) = image {
-                        div().flex().items_center().justify_center().child(
-                            img(image.path.clone())
-                                .w(css(image.width))
-                                .h(css(image.height)),
-                        )
-                    } else {
-                        div().w_full().truncate().child(title.clone())
-                    })
-                    .on_click(cx.listener(move |this, _, window, cx| {
-                        this.confirm(value.clone(), window, cx)
-                    }))
+                let row =
+                    BaseButton::new(SharedString::from(format!("source-pointer-option-{value}")))
+                        .track_focus(&focus)
+                        .tab_stop(false)
+                        .role(Role::ListBoxOption)
+                        .aria_selected(checked)
+                        .disabled(disabled)
+                        .w_full()
+                        .accessibility_label(title.clone())
+                        .h(self.pointer_style.row_height)
+                        .flex_shrink_0()
+                        .p(css(4.))
+                        .text_size(css(14.))
+                        .line_height(css(17.))
+                        .justify_start()
+                        .when(image.is_some(), |row| {
+                            row.p(css(8.)).items_center().justify_center()
+                        })
+                        .text_color(if checked {
+                            cx.theme().primary
+                        } else {
+                            cx.theme().foreground
+                        })
+                        .when(!disabled, |row| {
+                            row.hover(|style| style.bg(colors.hover()))
+                                .active(|style| style.text_color(cx.theme().primary))
+                        })
+                        .when(disabled, |row| row.opacity(0.3))
+                        .child(if let Some(image) = image {
+                            div().flex().items_center().justify_center().child(
+                                img(image.path.clone())
+                                    .w(css(image.width))
+                                    .h(css(image.height)),
+                            )
+                        } else {
+                            div().w_full().truncate().child(title.clone())
+                        })
+                        .on_click(cx.listener(move |this, _, window, cx| {
+                            this.confirm(value.clone(), generation, window, cx)
+                        }));
+                focus_target(row, &focus, FocusBehavior::LocalVertical, !disabled)
+                    .ring(FocusRing::Options)
             })
             .collect::<Vec<_>>();
         let width = self.width;
@@ -191,13 +208,16 @@ impl<I: SelectItem<Value = String> + 'static> SynapseSelectView<I> {
             .refine_style(&self.style)
             .on_prepaint({
                 let owner = cx.entity().downgrade();
-                let bounds = bounds.clone();
-                move |current, _, cx| {
-                    bounds.set(current);
-                    let _ = owner.update(cx, |this, _| this.width = current.size.width);
+                move |current, window, cx| {
+                    let _ = owner.update(cx, |this, cx| this.did_layout(current, window, cx));
                 }
             })
-            .child(trigger)
+            .child(focus_target(
+                trigger,
+                &focus,
+                FocusBehavior::LocalVertical,
+                !disabled,
+            ))
             .when(open, |root| {
                 let reveal = Presence::new((self.id.clone(), "source-pointer-reveal"), true)
                     .transition(Transition::new(Duration::from_millis(200)).easing(Easing::Ease))

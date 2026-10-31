@@ -514,7 +514,9 @@ def locale_export_dictionaries(raw, locales):
                         pair.child_by_field_name("value")) for pair in node.named_children]
         except ValueError:
             continue
-        if set(key for key, _ in entries) == wanted:
+        if (set(key for key, _ in entries) == wanted
+                and all(value.type in {"identifier", "arrow_function", "function_expression"}
+                        for _, value in entries)):
             candidates.append((node, owner, entries))
     if len(candidates) != 1:
         raise ValueError(f"Mounted locale map is not unique: {len(candidates)}")
@@ -553,12 +555,16 @@ def locale_export_dictionaries(raw, locales):
             "dictionaries": dictionary_owners, "javascript_executed": False}
 
 
-def locale_chunk_exports(raw, keys=None):
+def locale_chunk_exports(raw, keys=None, *, absent_keys=()):
     """Read a complete translation chunk's actual webpack export-parameter owner."""
     source = _LocaleSource(raw)
     wanted = None if keys is None else set(keys)
     if wanted is not None and (not wanted or len(wanted) != len(keys)):
         raise ValueError("Locale keys must be nonempty and unique")
+    absent = set(absent_keys)
+    if (len(absent) != len(absent_keys) or (absent and wanted is None)
+            or not absent <= (wanted or set())):
+        raise ValueError("Absent locale keys must be unique selected keys")
     candidates = []
     for call, target, dictionary in source.exports:
         owner = source.scope(call)
@@ -573,16 +579,18 @@ def locale_chunk_exports(raw, keys=None):
             continue
         keys_in_owner = {source.property_key(pair.child_by_field_name("key"), owner)
                          for pair in dictionary.named_children if pair.type == "pair"}
-        if wanted is None or wanted <= keys_in_owner:
+        if wanted is None or wanted - absent <= keys_in_owner:
             candidates.append((dictionary, owner, factory))
     if len(candidates) != 1:
         raise ValueError(f"Locale chunk export owner is not unique: {len(candidates)}")
     dictionary, owner, factory = candidates[0]
     values, resolved = source.values(dictionary, owner, getters=True)
+    if absent & values.keys():
+        raise ValueError("Declared absent locale key is present in the current source")
     if wanted is not None:
         values = {key: value for key, value in values.items() if key in wanted}
         resolved = [row for row in resolved if row["key"] in wanted]
-    return {"values": values, "owner": source.region(dictionary),
+    return {"values": values, "absent_keys": sorted(absent), "owner": source.region(dictionary),
             "complete_factory": source.region(factory), "resolved_exports": resolved,
             "javascript_executed": False}
 
@@ -1182,6 +1190,674 @@ def frontend_deployment_sources(acquired):
                 and Path(urllib.parse.urlsplit(url).path).suffix.lower() in {".js", ".mjs", ".css"}],
             "unresolved_acquisition_references": acquired.get("unresolved", []),
             "source_semantics_complete": False, "target_execution": False}
+
+
+_KEYBOARD_RUNTIME_ROUTE = "https://apps.razer.com/synapse/assets/js/keyboard-nav/rz-accessibility.min.js"
+_KEYBOARD_LOADER = (
+    'function(){if(window.RzAccessibility)return Promise.resolve(window.RzAccessibility);'
+    'if(pending)return pending;const e=window.__RZ_A11Y_SRC__||'
+    '"/synapse/assets/js/keyboard-nav/rz-accessibility.min.js";'
+    'return pending=new Promise((t,o)=>{const n=document.createElement("script");'
+    'n.src=e,n.async=!0,n.setAttribute("data-rz-accessibility","");'
+    'const i=setTimeout(()=>r("timed out after 10000ms"),1e4),'
+    'r=t=>{clearTimeout(i),pending=null,n.remove(),'
+    'o(new Error("[rz-accessibility] "+t+": "+e))};'
+    'n.addEventListener("load",()=>{clearTimeout(i),window.RzAccessibility?'
+    't(window.RzAccessibility):r("loaded but window.RzAccessibility is not defined")}),'
+    'n.addEventListener("error",()=>r("failed to load")),document.head.appendChild(n)}),pending}'
+)
+_KEYBOARD_EFFECT = (
+    '()=>{let e=!1;return load().then(t=>{e||t&&t.init(document.getElementById("root"))})'
+    '.catch(e=>{console.warn("[rz-accessibility] failed to load keyboard-navigation runtime:",e)}),'
+    '()=>{e=!0}}'
+)
+
+
+def _keyboard_component_owner(node):
+    while node is not None:
+        if node.type in {"function_declaration", "class_declaration"}:
+            return node
+        if node.type == "variable_declarator":
+            value = node.child_by_field_name("value")
+            if value is not None and value.type in {"arrow_function", "function_expression", "class"}:
+                return node
+        node = node.parent
+    raise ValueError("Keyboard navigation has no complete named component owner")
+
+
+def _keyboard_unwrap(node):
+    while node.type in {"parenthesized_expression", "sequence_expression"}:
+        node = node.named_children[-1]
+    return node
+
+
+def _keyboard_range(audit, source, node):
+    raw = audit.read(source)[node.start_byte:node.end_byte]
+    return {"original": audit.sources[source["path"]], "syntax": node.type,
+            "byte_start": node.start_byte, "byte_end": node.end_byte,
+            "body_sha256": hashlib.sha256(raw).hexdigest()}
+
+
+def _keyboard_startup_path(audit, source, node):
+    """Require an invoked bootstrap or promise callback at each function boundary."""
+    calls = []
+    current = node
+    while current is not None:
+        if current.type in {"arrow_function", "function_expression", "function_declaration", "method_definition"}:
+            caller = current.parent
+            while caller is not None and caller.type == "parenthesized_expression":
+                caller = caller.parent
+            if caller is not None and caller.type == "arguments":
+                call = caller.parent
+                function = call.child_by_field_name("function") if call.type == "call_expression" else None
+                if (function is None or function.type != "member_expression"
+                        or function.child_by_field_name("property").text not in {b"then", b"catch", b"finally"}):
+                    raise ValueError("Keyboard root is inside a callback without an audited startup invocation")
+            elif caller is not None and caller.type == "call_expression" and _keyboard_unwrap(caller.child_by_field_name("function")) == current:
+                call = caller
+            else:
+                raise ValueError("Keyboard root is inside an uninvoked function owner")
+            calls.append(_keyboard_range(audit, source, call))
+            current = call
+        current = current.parent
+    return calls
+
+
+def _keyboard_require_binding(audit, source, function):
+    import host
+    return host.javascript_require_binding(audit, source, function)
+
+
+def _keyboard_import_namespace(audit, originals, source, namespace):
+    import host
+    return host.javascript_import_namespace(audit, originals, source, namespace, role="keyboard_root_import")
+
+
+def _keyboard_reactdom_external(audit, originals, source, namespace):
+    provider, value, provider_owner = _keyboard_import_namespace(audit, originals, source, namespace)
+    body = value.child_by_field_name("body")
+    params = value.child_by_field_name("parameters") or value.child_by_field_name("parameter")
+    params = params.named_children if params.type == "formal_parameters" else [params]
+    statements = [statement for statement in body.named_children
+                  if not (statement.type == "expression_statement" and statement.named_children[0].text == b'"use strict"')]
+    if len(params) != 1 or len(statements) != 1 or statements[0].type != "expression_statement":
+        raise ValueError("Keyboard root provider is not the actual ReactDOM external")
+    assignment = statements[0].named_children[0]
+    if (assignment.type != "assignment_expression" or assignment.child_by_field_name("left").text != params[0].text + b".exports"
+            or assignment.child_by_field_name("right").text != b"ReactDOM"):
+        raise ValueError("Keyboard root provider resolves a different global")
+    return provider_owner
+
+
+def _keyboard_create_root(audit, originals, source, node):
+    import host
+    function = _keyboard_unwrap(node)
+    if function.type != "member_expression":
+        raise ValueError("Keyboard root has no concrete createRoot binding")
+    if function.child_by_field_name("property").text == b"createRoot":
+        return []
+    imported, factory, alias_owner = _keyboard_import_namespace(
+        audit, originals, source, function.child_by_field_name("object"))
+    params = factory.child_by_field_name("parameters").named_children
+    if len(params) != 3:
+        raise ValueError("Keyboard root alias factory has no exports parameter")
+    aliases = []
+    for candidate in host._help_nodes(factory):
+        if candidate.type != "assignment_expression":
+            continue
+        target = candidate.child_by_field_name("left")
+        if (target.type != "member_expression" or target.child_by_field_name("property").text != function.child_by_field_name("property").text
+                or target.child_by_field_name("object").text != params[1].text):
+            continue
+        value = candidate.child_by_field_name("right")
+        if value.type != "member_expression" or value.child_by_field_name("property").text != b"createRoot":
+            raise ValueError("Keyboard root alias exports a different operation")
+        aliases.append(value.child_by_field_name("object"))
+    if len(aliases) != 1:
+        raise ValueError("Keyboard root alias has no unique createRoot export")
+    return [alias_owner, _keyboard_reactdom_external(audit, originals, imported, aliases[0])]
+
+
+def _keyboard_legacy_root(audit, originals, source, receiver):
+    import host
+    if receiver.type != "call_expression" or receiver.child_by_field_name("arguments").named_child_count:
+        raise ValueError("Keyboard legacy render has no audited ReactDOM receiver")
+    getter = receiver.child_by_field_name("function")
+    if getter.type != "identifier":
+        raise ValueError("Keyboard legacy ReactDOM getter has no stable binding")
+    binding = audit.binding("keyboard_reactdom_getter", source, getter.text.decode(), getter.start_byte)
+    declaration = host._help_binding_node(audit, source, binding)
+    value = declaration.child_by_field_name("value")
+    if value is None or value.type != "call_expression":
+        raise ValueError("Keyboard legacy root is not the real imported ReactDOM getter")
+    function = value.child_by_field_name("function")
+    args = value.child_by_field_name("arguments").named_children
+    if function.type != "member_expression" or function.child_by_field_name("property").text != b"n" or len(args) != 1:
+        raise ValueError("Keyboard legacy ReactDOM import has changed its interop call")
+    require = function.child_by_field_name("object")
+    actual_require = _keyboard_require_binding(audit, source, require)
+    interop = []
+    for hit in re.finditer(rb"(?<![\w$])" + re.escape(require.text) + rb"\.n\s*=", audit.read(source)):
+        node = audit.tree(source).root_node.descendant_for_byte_range(hit.start(), hit.end() - 1)
+        while node is not None and node.type != "assignment_expression":
+            node = node.parent
+        if node is None:
+            continue
+        resolved = audit.binding("keyboard_reactdom_interop_require", source, require.text.decode(), hit.start())
+        if resolved.get("start_byte") != actual_require.get("start_byte") or resolved.get("end_byte") != actual_require.get("end_byte"):
+            continue
+        expected = 'interop=e=>{var t=e&&e.__esModule?()=>e.default:()=>e;return require.d(t,{a:t}),t}'
+        if (host.help_runtime_shape(audit.parser, "interop=" + node.child_by_field_name("right").text.decode())
+                != host.help_runtime_shape(audit.parser, expected)):
+            raise ValueError("Keyboard legacy root uses a different interop getter")
+        interop.append(audit.retain_range("keyboard_reactdom_interop", source, node.start_byte, node.end_byte, node.type))
+    if len(interop) != 1:
+        raise ValueError("Keyboard legacy root has no unique actual interop implementation")
+    return [binding["owner_id"], *interop, _keyboard_reactdom_external(audit, originals, source, args[0])]
+
+
+def _keyboard_dom_target(audit, originals, source, value):
+    import host
+    original, target = host._help_runtime_value(audit, originals, source, value)
+    if target.text != b'document.getElementById("root")':
+        raise ValueError("Keyboard root uses an unaudited DOM target")
+    return _keyboard_range(audit, original, target)
+
+
+def _keyboard_root_call(audit, originals, source, node):
+    current = node
+    while current is not None:
+        if current.type == "call_expression":
+            function = current.child_by_field_name("function")
+            if function.type == "member_expression" and function.child_by_field_name("property").text == b"render":
+                created = function.child_by_field_name("object")
+                render_args = current.child_by_field_name("arguments").named_children
+                if len(render_args) == 2:
+                    aliases = _keyboard_legacy_root(audit, originals, source, created)
+                    target = _keyboard_dom_target(audit, originals, source, render_args[1])
+                    return {"owner": audit.retain_range("keyboard_root_render", source,
+                                current.start_byte, current.end_byte, current.type),
+                            "reactdom_legacy_aliases": aliases, "dom_target": target,
+                            "startup_invocations": _keyboard_startup_path(audit, source, current)}
+                if created.type == "call_expression":
+                    factory = created.child_by_field_name("function")
+                    aliases = _keyboard_create_root(audit, originals, source, factory)
+                    arguments = created.child_by_field_name("arguments").named_children
+                    if len(arguments) != 1:
+                        raise ValueError("Keyboard root uses an unaudited DOM target")
+                    target = _keyboard_dom_target(audit, originals, source, arguments[0])
+                    return {"owner": audit.retain_range("keyboard_root_render", source,
+                                current.start_byte, current.end_byte, current.type),
+                            "create_root_aliases": aliases, "dom_target": target,
+                            "startup_invocations": _keyboard_startup_path(audit, source, current)}
+        current = current.parent
+    raise ValueError("Keyboard wrapper has no actual createRoot/render consumer")
+
+
+def keyboard_navigation_loaders(audit, originals, main):
+    import host
+    raw = audit.read(main)
+    owners = {}
+    for hit in re.finditer(rb"__RZ_A11Y_SRC__", raw):
+        property_node = audit.tree(main).root_node.descendant_for_byte_range(hit.start(), hit.end() - 1)
+        if property_node.type != "property_identifier":
+            continue
+        member = property_node.parent
+        if member.type != "member_expression" or member.child_by_field_name("object").text != b"window":
+            raise ValueError("Keyboard loader source override has an unaudited owner")
+        node = member
+        while node is not None and node.type not in {"function_expression", "arrow_function", "function_declaration"}:
+            node = node.parent
+        if node is None:
+            raise ValueError("Keyboard source override has no complete loader function")
+        owners[(node.start_byte, node.end_byte)] = node
+    results = []
+    for loader in owners.values():
+        retained = audit.retain_range("keyboard_loader", main, loader.start_byte, loader.end_byte, loader.type)
+        if (host.help_runtime_shape(audit.parser, "load=" + loader.text.decode())
+                != host.help_runtime_shape(audit.parser, "load=" + _KEYBOARD_LOADER)):
+            raise ValueError("Keyboard loader differs from the complete cache, timeout and error contract")
+        call = loader.parent
+        if call.type != "call_expression" or call.child_by_field_name("function") != loader or call.child_by_field_name("arguments").named_child_count:
+            raise ValueError("Keyboard loader is not immediately invoked by its effect")
+        effect = call.parent
+        while effect is not None and effect.type not in {"arrow_function", "function_expression"}:
+            effect = effect.parent
+        if effect is None:
+            raise ValueError("Keyboard loader has no complete effect owner")
+        body = effect.text[:loader.start_byte - effect.start_byte] + b"load" + effect.text[loader.end_byte - effect.start_byte:]
+        if (host.help_runtime_shape(audit.parser, "effect=" + body.decode())
+                != host.help_runtime_shape(audit.parser, "effect=" + _KEYBOARD_EFFECT)):
+            raise ValueError("Keyboard effect changed initialization, failure or unmount cancellation")
+        arguments = effect.parent
+        if arguments.type != "arguments" or arguments.parent.type != "call_expression":
+            raise ValueError("Keyboard effect is not passed to a lifecycle hook")
+        hook = arguments.parent
+        function = _keyboard_unwrap(hook.child_by_field_name("function"))
+        args = arguments.named_children
+        if (function.type != "member_expression" or function.child_by_field_name("property").text != b"useEffect"
+                or len(args) != 2 or args[0] != effect or args[1].type != "array" or args[1].named_child_count):
+            raise ValueError("Keyboard effect has an unaudited hook or dependency list")
+        cache_returns = [node for node in host._help_nodes(loader) if node.type == "return_statement"
+                         and node.named_child_count == 1 and node.named_children[0].type == "identifier"]
+        if len(cache_returns) != 1:
+            raise ValueError("Keyboard promise cache has no unique source owner")
+        reference = cache_returns[0].named_children[0]
+        cache = audit.binding("keyboard_loader_cache", main, reference.text.decode(), reference.start_byte)
+        cache_node = host._help_binding_node(audit, main, cache)
+        if (cache_node.type != "variable_declarator" or cache_node.child_by_field_name("value") is None
+                or cache_node.child_by_field_name("value").text != b"null"
+                or effect.start_byte <= cache_node.start_byte < effect.end_byte):
+            raise ValueError("Keyboard loader cache does not retain the audited initial null owner")
+        component = _keyboard_component_owner(hook)
+        component_owner = audit.retain_range("keyboard_wrapper", main,
+                                            component.start_byte, component.end_byte, component.type)
+        flow = host.javascript_component_mounts(audit, originals, main, component, role="keyboard")
+        roots = []
+        for mount in flow["mounts"]:
+            source = next(item for item in originals if item["path"] == mount["original"]["path"])
+            owner = audit.owners[mount["owner"]]
+            element = audit.tree(source).root_node.descendant_for_byte_range(owner["byte_start"], owner["byte_end"] - 1)
+            roots.append({"mount": mount, **_keyboard_root_call(audit, originals, source, element)})
+        results.append({"loader": retained, "effect": audit.retain_range("keyboard_effect", main,
+                            effect.start_byte, effect.end_byte, effect.type),
+                        "hook": audit.retain_range("keyboard_hook", main, hook.start_byte, hook.end_byte, hook.type),
+                        "wrapper": component_owner, "cache": cache["owner_id"], "roots": roots,
+                        "binding_links": flow["binding_links"], "default_runtime_route": _KEYBOARD_RUNTIME_ROUTE,
+                        "late_completion_guard": True, "timeout_ms": 10000,
+                        "failure_resets_cache_and_removes_script": True,
+                        "source_unmount_calls_runtime_destroy": False})
+    return results
+
+
+def keyboard_navigation_shared_runtime(audit, original):
+    import host
+    tree = audit.tree(original)
+    declarations = [node for node in tree.root_node.named_children if node.type != "comment"]
+    if len(declarations) != 1 or declarations[0].type != "variable_declaration" or declarations[0].named_child_count != 1:
+        raise ValueError("Shared keyboard runtime has no unique complete top-level declaration")
+    declaration = declarations[0].named_children[0]
+    if declaration.type != "variable_declarator" or declaration.child_by_field_name("name").text != b"RzAccessibility":
+        raise ValueError("Shared keyboard runtime exports a different browser identity")
+    call = declaration.child_by_field_name("value")
+    if call.type != "call_expression" or call.child_by_field_name("function").type != "function_expression":
+        raise ValueError("Shared keyboard runtime is not the current complete IIFE")
+    function = call.child_by_field_name("function")
+    params = function.child_by_field_name("parameters").named_children
+    args = call.child_by_field_name("arguments").named_children
+    if len(params) != 1 or params[0].type != "identifier" or len(args) != 1 or args[0].text != b"{}":
+        raise ValueError("Shared keyboard runtime has changed its export object initialization")
+    exports = {}
+    for node in host._help_nodes(function):
+        if node.type != "assignment_expression":
+            continue
+        target = node.child_by_field_name("left")
+        if target.type != "member_expression" or target.child_by_field_name("object").text != params[0].text:
+            continue
+        reference = target.child_by_field_name("object")
+        binding = audit.binding("keyboard_runtime_export_object", original, reference.text.decode(), reference.start_byte)
+        if binding.get("start_byte") != params[0].start_byte or binding.get("end_byte") != params[0].end_byte:
+            continue
+        name = target.child_by_field_name("property").text.decode()
+        value = node.child_by_field_name("right")
+        if name in exports or value.type != "identifier":
+            raise ValueError("Shared keyboard runtime has a repeated or dynamic export")
+        implementation = audit.binding("keyboard_runtime_" + name, original, value.text.decode(), value.start_byte)
+        if implementation["resolution"] != "declaration":
+            raise ValueError("Shared keyboard runtime export has no complete lexical implementation")
+        exports[name] = implementation["owner_id"]
+    required = {"init", "openGuide", "closeGuide", "isGuideOpen", "isInitialized", "default"}
+    if set(exports) != required:
+        raise ValueError("Shared keyboard runtime export set differs from its audited API")
+    return {"iife": audit.retain_range("keyboard_shared_runtime", original,
+                        declaration.start_byte, declaration.end_byte, declaration.type),
+            "exports": exports, "original": audit.sources[original["path"]], "target_execution": False}
+
+
+_KEYBOARD_CHROMA_COMPONENT = (
+    'function Component(e){const{app:t}=e;let s="";switch(t){'
+    'case"chroma":s=keys.IFV;break;case"synapse":s=keys.njo;break;default:s=""}'
+    'return(0,jsx.jsx)(Block,{title:keys.r6A,hasSwitch:!1,children:(0,jsx.jsx)("div",'
+    '{className:"setting-block",children:(0,jsx.jsxs)("div",{className:"setting-row",children:['
+    '(0,jsx.jsx)("div",{className:"thx-btn test",onClick:()=>{var e;'
+    'return null===(e=window.RzAccessibility)||void 0===e?void 0:e.openGuide()},'
+    'role:"button",tabIndex:0,children:(0,jsx.jsx)(Translator.A,{text:keys.o1z})}),'
+    '(0,jsx.jsx)("div",{className:"setting-name",children:(0,jsx.jsx)(Translator.A,{text:s})})]})})})}'
+)
+_KEYBOARD_TRANSLATE = (
+    'get=(e,t={})=>{var s;const n={...t};let a=n._lang;if(null===dictionary)return"";'
+    'a?delete n._lang:a=language(),dictionary[a]||(a=locales.Nm);'
+    'let o=null!==(s=dictionary[a][e])&&void 0!==s?s:dictionary[locales.Nm][e];'
+    'if(o){let e;for(const[t,s]of Object.entries(n))e=new RegExp(`{{${t}}}`,"g"),o=o.replace(e,s)}'
+    'else console.debug("[getTextItem][%s]",e);const r=o||e;'
+    'return t.a&&t.aEnd&&"string"===typeof r&&!r.includes("<a")?`${t.a}${r}${t.aEnd}`:r}'
+)
+_KEYBOARD_UPDATE_LANGUAGE = (
+    'update=(e,t,s=()=>{})=>a=>{const o=language(e);'
+    'null===dictionary&&a({type:actions.Ztp,payload:"unknown"});'
+    'new Promise(e=>{t?t().then(({default:t})=>{providers=t,e(providers)}):e(providers)})'
+    '.then(e=>{const t=[e[locales.Nm]()];o!==locales.Nm&&t.push(e[o]()),'
+    'Promise.all(t).then(([e,r])=>{dictionary={[locales.Nm]:e},t.length>1&&(dictionary[o]=r),'
+    'a({type:actions.Ztp,payload:o}),s()})})}'
+)
+
+
+def _keyboard_lazy_root_exports(audit, originals, main, roots):
+    import host
+    exports = []
+    for root in roots:
+        owner = audit.owners[root["owner"]]
+        node = audit.tree(main).root_node.descendant_for_byte_range(owner["byte_start"], owner["byte_end"] - 1)
+        callback = node
+        while callback is not None and callback.type not in {"arrow_function", "function_expression"}:
+            callback = callback.parent
+        if callback is None:
+            continue
+        parameters = callback.child_by_field_name("parameters")
+        if parameters is None or parameters.named_child_count != 1 or parameters.named_children[0].type != "object_pattern":
+            continue
+        fields = parameters.named_children[0].named_children
+        if len(fields) != 1 or fields[0].type != "pair_pattern":
+            continue
+        key, value = fields[0].child_by_field_name("key"), fields[0].child_by_field_name("value")
+        if key is None or value is None or value.type != "identifier":
+            continue
+        arguments = callback.parent
+        if arguments.type != "arguments" or arguments.parent.type != "call_expression":
+            continue
+        then = arguments.parent.child_by_field_name("function")
+        if then.type != "member_expression" or then.child_by_field_name("property").text != b"then":
+            continue
+        requested = then.child_by_field_name("object")
+        if requested.type != "call_expression":
+            continue
+        previous = requested.child_by_field_name("function")
+        calls = requested.child_by_field_name("arguments").named_children
+        if (previous.type != "member_expression" or previous.child_by_field_name("property").text != b"then"
+                or len(calls) != 1 or calls[0].type != "call_expression"):
+            continue
+        bound = calls[0]
+        binding = bound.child_by_field_name("function")
+        args = bound.child_by_field_name("arguments").named_children
+        if (binding.type != "member_expression" or binding.child_by_field_name("property").text != b"bind"
+                or len(args) != 2 or args[1].type != "number"):
+            continue
+        require = binding.child_by_field_name("object")
+        if args[0].text != require.text:
+            raise ValueError("Keyboard lazy root has a different require receiver")
+        _keyboard_require_binding(audit, main, require)
+        references = [ref for ref in host._help_nodes(node) if ref.type == "identifier" and ref.text == value.text
+                      and ref.parent.type == "arguments" and ref.parent.named_children[0] == ref]
+        if not references or any(audit.binding("keyboard_lazy_root_parameter", main, ref.text.decode(), ref.start_byte).get("start_byte") != value.start_byte
+                                 for ref in references):
+            raise ValueError("Keyboard lazy root does not render the imported export")
+        module_id, export_name = int(args[1].text), key.text.decode()
+        exports.append({"module_id": module_id, "export": export_name, "root": root["owner"],
+                        "request": audit.retain_range("keyboard_lazy_root_request", main,
+                                                     bound.start_byte, bound.end_byte, bound.type),
+                        "provider": audit.webpack_export("keyboard_lazy_root_provider", originals, module_id, export_name)})
+    if not exports:
+        raise ValueError("Keyboard settings has no audited lazy root export")
+    return exports
+
+
+def _keyboard_component_paths(audit, originals, original, component, exports):
+    import host
+    pending, visited, paths, reached = [(original, component)], set(), [], False
+    terminals = {(row["module_id"], row["export"]) for row in exports}
+    while pending:
+        source, current = pending.pop()
+        identity = (source["path"], current.start_byte, current.end_byte)
+        if identity in visited:
+            continue
+        visited.add(identity)
+        owner = audit.retain_range("keyboard_guide_component", source, current.start_byte, current.end_byte, current.type)
+        flow = host.javascript_component_mounts(audit, originals, source, current,
+                                                role="keyboard_guide", terminal_exports=terminals)
+        paths.append({"component": owner, **flow})
+        reached |= bool(flow["terminal_exports"])
+        for mount in flow["mounts"]:
+            parent_source = next(row for row in originals if row["path"] == mount["original"]["path"])
+            record = audit.owners[mount["owner"]]
+            element = audit.tree(parent_source).root_node.descendant_for_byte_range(record["byte_start"], record["byte_end"] - 1)
+            pending.append((parent_source, _keyboard_component_owner(element.parent)))
+    if not reached:
+        raise ValueError("Keyboard guide component has no path to the actual root export")
+    return paths
+
+
+def keyboard_navigation_translation_fallback(audit, originals, original, component):
+    import host
+    keys = {"r6A": "KEYBOARD_NAVIGATION", "o1z": "VIEW_ALL_SHORTCUTS",
+            "IFV": "KEYBOARD_NAVIGATION_CHROMA_MSG", "njo": "KEYBOARD_NAVIGATION_SYNAPSE_MSG"}
+    constants = {}
+    for symbol, expected in keys.items():
+        references = [node for node in host._help_nodes(component) if node.type == "member_expression"
+                      and node.child_by_field_name("property").text.decode() == symbol]
+        if len(references) != 1:
+            raise ValueError("Keyboard guide text has no unique source constant: " + symbol)
+        source, value = host._help_runtime_value(audit, originals, original, references[0])
+        if value.type != "string" or json.loads(value.text) != expected:
+            raise ValueError("Keyboard guide constant resolves to a different translation key")
+        constants[expected] = _keyboard_range(audit, source, value)
+    translators = []
+    for call in host._help_nodes(component):
+        if call.type != "call_expression":
+            continue
+        args = call.child_by_field_name("arguments").named_children
+        if len(args) < 2 or args[0].type != "member_expression" or args[1].type != "object":
+            continue
+        if not any(pair.type == "pair" and pair.child_by_field_name("key").text == b"text" for pair in args[1].named_children):
+            continue
+        source, connected = host._help_runtime_value(audit, originals, original, args[0])
+        if connected.type != "call_expression" or connected.child_by_field_name("arguments").named_child_count != 1:
+            raise ValueError("Keyboard translation component has no connected state owner")
+        source, translator = host._help_runtime_value(audit, originals, source, connected.child_by_field_name("arguments").named_children[0])
+        translators.append((source, translator))
+    unique = {(source["path"], node.start_byte, node.end_byte) for source, node in translators}
+    if len(unique) != 1:
+        raise ValueError("Keyboard guide rows do not use one verified translation component")
+    source, translator = translators[0]
+    readers = []
+    for node in host._help_nodes(translator):
+        if node.type == "call_expression":
+            function = _keyboard_unwrap(node.child_by_field_name("function"))
+            if function.type == "member_expression" and function.child_by_field_name("property").text == b"getTextItem":
+                readers.append(host._help_runtime_value(audit, originals, source, function))
+    if not readers or len({(row["path"], node.start_byte, node.end_byte) for row, node in readers}) != 1:
+        raise ValueError("Keyboard translator has no unique actual getTextItem implementation")
+    source, getter = readers[0]
+    if (host.help_runtime_shape(audit.parser, "get=" + getter.text.decode())
+            != host.help_runtime_shape(audit.parser, _KEYBOARD_TRANSLATE)):
+        raise ValueError("Keyboard translation differs from the complete missing-language/key fallback")
+    factory = host._help_factory(getter)
+    if factory is None:
+        raise ValueError("Keyboard translation reader has no complete module owner")
+    update = audit.webpack_export("keyboard_language_update", originals, factory["module_id"], "updateLanguage")
+    update_source = next(row for row in originals if row["path"] == update["original"]["path"])
+    updater = host._help_binding_node(audit, update_source, update["binding"])
+    if (host.help_runtime_shape(audit.parser, update["binding"]["body"])
+            != host.help_runtime_shape(audit.parser, _KEYBOARD_UPDATE_LANGUAGE)):
+        raise ValueError("Keyboard language publisher does not load the audited fallback dictionary")
+    defaults = []
+    for source_row, node in ((source, getter), (update_source, updater)):
+        for member in host._help_nodes(node):
+            if member.type == "member_expression" and member.child_by_field_name("property").text == b"Nm":
+                constant_source, value = host._help_runtime_value(audit, originals, source_row, member)
+                if value.type != "string" or json.loads(value.text) != "en":
+                    raise ValueError("Keyboard translation fallback language is not the actual English constant")
+                defaults.append(_keyboard_range(audit, constant_source, value))
+    if not defaults:
+        raise ValueError("Keyboard translation has no resolved default language")
+    null_checks = [node for node in host._help_nodes(getter) if node.type == "binary_expression"
+                   and node.child_by_field_name("left").type == "null"
+                   and node.child_by_field_name("right").type == "identifier"]
+    if len(null_checks) != 1:
+        raise ValueError("Keyboard translation dictionary state is ambiguous")
+    state = null_checks[0].child_by_field_name("right")
+    read_binding = audit.binding("keyboard_language_dictionary", source, state.text.decode(), state.start_byte)
+    writes = [node.child_by_field_name("left") for node in host._help_nodes(updater) if node.type == "assignment_expression"
+              and node.child_by_field_name("left").type == "identifier" and node.child_by_field_name("right").type == "object"]
+    if len(writes) != 1:
+        raise ValueError("Keyboard language publisher has no unique dictionary write")
+    write_binding = audit.binding("keyboard_language_dictionary_writer", update_source, writes[0].text.decode(), writes[0].start_byte)
+    if (source["path"], read_binding.get("start_byte"), read_binding.get("end_byte")) != (
+            update_source["path"], write_binding.get("start_byte"), write_binding.get("end_byte")):
+        raise ValueError("Keyboard translation reader and language publisher use different dictionaries")
+    return {"constants": constants, "translator": audit.retain_range("keyboard_translator", translators[0][0],
+                translator.start_byte, translator.end_byte, translator.type),
+            "get_text": audit.retain_range("keyboard_get_text", source, getter.start_byte, getter.end_byte, getter.type),
+            "update_language": update, "dictionary": read_binding["owner_id"], "default_language": "en",
+            "default_language_constants": defaults,
+            "missing_dictionary": "empty_until_loaded", "missing_language": "english",
+            "missing_key": "english_then_source_key"}
+
+
+def keyboard_navigation_chroma_guide(audit, originals, main, loaders):
+    import host
+    components = {}
+    for original in originals:
+        raw = audit.read(original)
+        for match in re.finditer(rb"openGuide", raw):
+            node = audit.tree(original).root_node.descendant_for_byte_range(match.start(), match.end() - 1)
+            if node.type != "property_identifier":
+                continue
+            component = _keyboard_component_owner(node)
+            components[(original["path"], component.start_byte, component.end_byte)] = (original, component)
+    if len(components) != 1:
+        raise ValueError("Chroma keyboard guide has no unique complete component")
+    original, component = next(iter(components.values()))
+    if (host.help_runtime_shape(audit.parser, "component=" + component.text.decode())
+            != host.help_runtime_shape(audit.parser, "component=" + _KEYBOARD_CHROMA_COMPONENT)):
+        raise ValueError("Chroma keyboard guide changed its action, state or accessible button contract")
+    exports = _keyboard_lazy_root_exports(audit, originals, main, [root for loader in loaders for root in loader["roots"]])
+    paths = _keyboard_component_paths(audit, originals, original, component, exports)
+    if not any(mount["props"].get("app") == '"chroma"' for path in paths for mount in path["mounts"]):
+        raise ValueError("Keyboard guide does not receive the Chroma application branch at its actual mount")
+    return {"component": audit.retain_range("keyboard_chroma_guide", original,
+                        component.start_byte, component.end_byte, component.type),
+            "root_exports": exports, "mount_paths": paths,
+            "translation": keyboard_navigation_translation_fallback(audit, originals, original, component)}
+
+
+def audit_keyboard_navigation(args):
+    import concurrent.futures
+    import frontend
+    import host
+    routes = frontend.current_acquisition_routes()
+    observer = host.HostLocalAudit()
+    observations = frontend.latest_deployment_observations(observer)
+    for name in ("tools/evidence.py", "tools/host.py", "tools/frontend.py"):
+        observer.artifact(a.ROOT / name)
+    all_routes = sorted(route for route in routes if urllib.parse.urlsplit(route).path.endswith("/")
+                        and not re.search(r"/products/\d+/mw/$", urllib.parse.urlsplit(route).path))
+    products = set(getattr(args, "product", None) or ())
+    requested = [route for route in all_routes if not products
+                 or re.fullmatch(r"https://apps\.razer\.com/synapse/products/(\d+)/ui/", route)
+                 and int(re.fullmatch(r"https://apps\.razer\.com/synapse/products/(\d+)/ui/", route)[1]) in products]
+    if not requested or products and {int(re.search(r"/products/(\d+)/", route)[1]) for route in requested} != products:
+        raise ValueError("Keyboard navigation query contains an unavailable product route")
+    report = {"recorded_at_utc": a.stamp(), "tool": observer.families.identity(Path(__file__)),
+              "parser": observer.parser_versions, "requested_routes": requested, "all_current_page_routes": all_routes,
+              "pages": [], "failures": [], "complete_source_owners": [], "verified_artifacts": [],
+              "source_acquisition_complete": False, "mounted_consumers_complete": False,
+              "source_chain_complete": False, "coverage_complete": False,
+              "query_writes_product_code": False, "target_execution": False, "runtime_acceptance": "unverified",
+              "scope": "Actual current main loaders, retained effect/cache owners, invoked roots, shared keyboard IIFE, and mounted Chroma guide translation"}
+
+    def collect_artifacts(audit):
+        report["complete_source_owners"].extend(audit.owners.values())
+        for name, identity in audit.artifacts.items():
+            previous = observer.artifacts.get(name)
+            if previous is not None and previous != identity:
+                report["failures"].append({"path": name, "error": "Keyboard query observed conflicting artifact identities"})
+            else:
+                observer.artifacts[name] = identity
+
+    shared_audit = None
+    try:
+        shared = frontend.current_deployment_source(_KEYBOARD_RUNTIME_ROUTE,
+            candidates=routes.get(_KEYBOARD_RUNTIME_ROUTE, []), observations=observations)
+        shared_audit = shared.get("audit")
+        report["shared_source"] = {name: shared[name] for name in ("status", "acquisition", "entry") if name in shared}
+        if shared["status"] != "verified":
+            raise ValueError("Current shared keyboard runtime is officially unavailable")
+        report["shared_runtime"] = keyboard_navigation_shared_runtime(shared_audit, shared["entry"])
+        report["shared_source"]["freshness"] = frontend.verify_latest_deployment_observations(
+            shared["acquired"], [shared["entry"]], shared_audit, observations=observations)
+    except (OSError, ValueError, KeyError, TypeError, AttributeError, IndexError, StopIteration) as error:
+        report["failures"].append({"route": _KEYBOARD_RUNTIME_ROUTE, "error": f"{type(error).__name__}: {error}"})
+    finally:
+        if shared_audit is not None:
+            collect_artifacts(shared_audit)
+
+    def inspect_page(route):
+        row = {"route": route, "failures": [], "source_semantics_complete": False, "runtime_acceptance": "unverified"}
+        audit = None
+        try:
+            match = re.fullmatch(r"https://apps\.razer\.com/synapse/products/(\d+)/ui/", route)
+            source = (frontend.current_product_source(int(match[1]), "ui", candidates=routes[route], observations=observations)
+                      if match else frontend.current_deployment_source(route, candidates=routes[route], observations=observations))
+            audit = source.get("audit")
+            row.update({name: source[name] for name in ("status", "acquisition", "entry", "manifest") if name in source})
+            if source["status"] != "verified":
+                raise ValueError("Current keyboard page source is officially unavailable")
+            row["selection"] = {name: source["selection"][name] for name in ("name", "canonical_entry_url", "candidate_decisions")
+                                if name in source["selection"]}
+            mains = [item for item in source["selection"]["deployment"]["sources"] if item["identity_verified"]
+                     and item["deployment_role"] == "html_include"
+                     and re.search(r"/main\.[\w]+\.js$", urllib.parse.urlsplit(item["url"]).path)]
+            if len(mains) != 1:
+                raise ValueError("Current keyboard page has no unique mounted main")
+            main = source["files"][mains[0]["url"]]
+            row["main"] = main
+            originals = list({item["path"]: item for item in source["selection"]["originals"]
+                              if item["path"].endswith(".js")}.values())
+            row["loaders"] = keyboard_navigation_loaders(audit, originals, main)
+            if not row["loaders"]:
+                row["status"] = "no_keyboard_loader_in_current_main"
+                raise ValueError("Current mounted main declares no audited keyboard-navigation loader")
+            if route == "https://apps.razer.com/chroma-app/settings/":
+                row["chroma_guide"] = keyboard_navigation_chroma_guide(audit, originals, main, row["loaders"])
+            row["freshness"] = frontend.verify_latest_deployment_observations(
+                source["acquired"], [item for item in source["files"].values() if item.get("path") in audit.parsed],
+                audit, observations=observations)
+            row["changed_during_query"] = audit.final_snapshot()
+            if row["changed_during_query"]:
+                raise ValueError("Current keyboard page originals changed during query")
+            row["source_semantics_complete"] = True
+        except (OSError, ValueError, KeyError, TypeError, AttributeError, IndexError, StopIteration) as error:
+            row["failures"].append(f"{type(error).__name__}: {error}")
+        return row, audit
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+        futures = {executor.submit(inspect_page, route): route for route in requested}
+        for future in concurrent.futures.as_completed(futures):
+            row, audit = future.result()
+            futures.pop(future)
+            report["pages"].append(row)
+            if audit is not None:
+                collect_artifacts(audit)
+            report["failures"].extend({"route": row["route"], "error": error} for error in row["failures"])
+            print(json.dumps({"query": "keyboard-navigation", "route": row["route"], "failures": row["failures"]}), flush=True)
+    report["pages"].sort(key=lambda row: row["route"])
+    report["changed_inputs"] = observer.final_snapshot()
+    if report["changed_inputs"]:
+        report["failures"].append({"error": "Keyboard query inputs changed", "paths": report["changed_inputs"]})
+    report["verified_artifacts"] = list(observer.artifacts.values())
+    report["complete_source_owners"] = list({row["id"]: row for row in report["complete_source_owners"]}.values())
+    report["source_acquisition_complete"] = (report.get("shared_source", {}).get("status") == "verified"
+        and all(row.get("acquisition") is not None and row.get("main") is not None for row in report["pages"]))
+    report["mounted_consumers_complete"] = all(row["source_semantics_complete"] for row in report["pages"])
+    report["source_chain_complete"] = not report["failures"] and report["mounted_consumers_complete"]
+    report["coverage_complete"] = requested == all_routes and report["source_chain_complete"]
+    report["verification_boundary"] = (
+        "Static caller, lexical/export resolution and original bytes do not establish GPUI focus/shortcut behavior, "
+        "runtime window acceptance, or device/DLL comparisons; absent current loaders and unresolved mounts remain incomplete.")
+    host.publish_host_static_query(report, a.ROOT / ".analysis/results/host-current/local-audit.json", a, "keyboard_navigation")
+    if report["failures"]:
+        raise ValueError("Current keyboard-navigation source query remains unresolved")
+    return report
 
 
 def audit_ui_tree():

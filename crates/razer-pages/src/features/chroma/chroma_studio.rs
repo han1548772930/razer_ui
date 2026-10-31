@@ -1,8 +1,8 @@
 //! Independent current Studio root (xt → 4264), separate from Chroma Dashboard.
 //! Device/LED state intentionally starts empty: a product catalogue is not a
 //! device enumeration. Layer edits are retained locally and never call a DLL.
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::{
-    base::Button as BaseButton,
     component::{
         button::Button,
         input::{Input, InputEvent, InputState},

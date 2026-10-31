@@ -3,7 +3,8 @@ use crate::features::{HelpCamoObservation, HelpCamoRequested};
 
 impl SourceProductWorkspace {
     pub fn accepts_help_camo(&self, request: &HelpCamoRequested, cx: &App) -> bool {
-        self.active && !self.exiting
+        self.active
+            && !self.exiting
             && self.device.product_id == request.product_id()
             && self.help.read(cx).accepts_camo_request(request)
     }
@@ -23,7 +24,10 @@ impl SourceProductWorkspace {
             return false;
         }
         if let Some(result) = observation.serial_result() {
-            if result.as_ref().is_ok_and(|progress| progress.product_id() != self.device.product_id) {
+            if result
+                .as_ref()
+                .is_ok_and(|progress| progress.product_id() != self.device.product_id)
+            {
                 return false;
             }
             let state = match result.clone() {

@@ -182,7 +182,7 @@ impl HueWorkspace {
                     .rounded(surface::css(18.))
                     .children([(false, "QUICK_EFFECTS"), (true, "ADVANCED_EFFECTS")].map(
                         |(advanced, key)| {
-                            gpui_kit::base::Button::new(key)
+                            razer_widgets::keyboard_navigation::Button::new(key)
                                 .role(Role::Tab)
                                 .selected(self.advanced == advanced)
                                 .disabled(!enabled)
@@ -225,7 +225,7 @@ impl HueWorkspace {
                                     surface::select(&self.effect).disabled(!enabled).w_full(),
                                 ))
                                 .child(
-                                    gpui_kit::base::Button::new("hue-sync-effects")
+                                    razer_widgets::keyboard_navigation::Button::new("hue-sync-effects")
                                         .disabled(true)
                                         .p_0()
                                         .flex()
@@ -261,7 +261,7 @@ impl HueWorkspace {
                     .top(surface::css(5.))
                     .h(surface::css(36.))
                     .child(
-                        gpui_kit::base::Button::new("hue-advanced-tutorial-dot")
+                        razer_widgets::keyboard_navigation::Button::new("hue-advanced-tutorial-dot")
                             .p_0()
                             .size(surface::css(36.))
                             .accessibility_label(i18n::t("ADVANCED_EFFECT_DETAILS"))
@@ -367,7 +367,7 @@ impl HueWorkspace {
                         .enumerate()
                         .map(|(position, region)| {
                             let selected = setting["screen"].as_str() == Some(region);
-                            gpui_kit::base::Button::new((
+                            razer_widgets::keyboard_navigation::Button::new((
                                 ElementId::from("hue-screen-region"),
                                 region,
                             ))
@@ -498,7 +498,7 @@ impl HueWorkspace {
                         .child(surface::select(&self.chroma_profiles).disabled(true)),
                 )
                 .child(
-                    gpui_kit::base::Button::new("hue-launch-chroma")
+                    razer_widgets::keyboard_navigation::Button::new("hue-launch-chroma")
                         .disabled(false)
                         .w(surface::css(240.))
                         .h(surface::css(50.))

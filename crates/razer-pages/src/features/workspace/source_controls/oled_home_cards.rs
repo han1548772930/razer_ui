@@ -286,7 +286,7 @@ fn card_action(
     icon: &'static str,
     apply: bool,
     disabled: bool,
-) -> gpui_kit::base::Button {
+) -> razer_widgets::keyboard_navigation::Button {
     let color = if disabled {
         rgb(0x707070)
     } else if apply {
@@ -294,7 +294,7 @@ fn card_action(
     } else {
         rgb(0xffffff)
     };
-    gpui_kit::base::Button::new(SharedString::from(id))
+    razer_widgets::keyboard_navigation::Button::new(SharedString::from(id))
         .accessibility_label(t(label))
         .disabled(disabled)
         .flex()

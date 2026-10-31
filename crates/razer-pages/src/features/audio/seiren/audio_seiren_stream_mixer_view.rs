@@ -3,8 +3,9 @@
 use super::super::audio_seiren_eq::colors::Colors as C;
 use super::*;
 use gpui_kit::base::motion::{self, Easing, Transition};
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::base::{
-    Button as BaseButton, Checkbox as BaseCheckbox, Dialog, ElementExt as _, Positioner,
+    Checkbox as BaseCheckbox, Dialog, ElementExt as _, Positioner,
     Slider as BaseSlider, SliderIndicator, SliderThumb, SliderTrack,
 };
 use gpui_kit::component::{

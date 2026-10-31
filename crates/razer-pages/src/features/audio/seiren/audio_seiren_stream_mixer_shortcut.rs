@@ -3,7 +3,8 @@
 //! owned by the shell worker and restored on blur, unmount and cancellation.
 use super::super::audio_seiren_eq::colors::Colors as C;
 use super::*;
-use gpui_kit::base::{Button as BaseButton, Tooltip as BaseTooltip};
+use razer_widgets::keyboard_navigation::Button as BaseButton;
+use gpui_kit::base::{Tooltip as BaseTooltip};
 
 impl AudioProductWorkspace {
     fn emit_seiren_stream_mixer_capture(&mut self, cx: &mut Context<Self>) {

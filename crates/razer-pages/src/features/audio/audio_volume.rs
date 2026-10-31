@@ -124,7 +124,7 @@ impl AudioProductWorkspace {
                 ),
         )
         .child(
-            gpui_kit::base::Button::new("audio-open-volume-mixer")
+            razer_widgets::keyboard_navigation::Button::new("audio-open-volume-mixer")
                 .group("audio-open-volume-mixer")
                 .accessibility_label(t("OPEN_WINDOW_VOLUME_MIXER"))
                 .h(surface::css(44.))

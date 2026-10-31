@@ -2,7 +2,8 @@
 //! This owns local view preferences; it does not invent SDK applications,
 //! firmware releases, installed modules, or immersive-engine capabilities.
 use super::{app_picker::PickerModule, introduction_tour::TourKind};
-use gpui_kit::base::{Button as BaseButton, Switch};
+use razer_widgets::keyboard_navigation::Button as BaseButton;
+use gpui_kit::base::{Switch};
 use gpui_kit::component::{
     checkbox::Checkbox,
     input::{Input, InputState},

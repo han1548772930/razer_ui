@@ -1,4 +1,4 @@
-//! Current U -> 25572.B remoteUpdate consumer and 88152.S2 profile identities.
+//! Current x -> 5572.W remoteUpdate consumer and 8152.S2 profile identities.
 use super::*;
 use razer_pages::features::macro_library::MacroLibraryFile;
 use std::collections::HashMap;
@@ -38,7 +38,11 @@ fn same_entry(previous: &Entry, next: &Entry) -> bool {
 }
 
 impl MacroPage {
-    pub(super) fn refresh_translated_actions(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    pub(super) fn refresh_translated_actions(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         let mut candidate = self.library_snapshot.clone();
         candidate.entries = self.entries.clone();
         for entry in &mut candidate.entries {
@@ -58,8 +62,11 @@ impl MacroPage {
             }
             Ok(true) => {}
         }
-        let previous_text = self.editing_action.and_then(|index| self.actions.get(index))
-            .filter(|action| action.kind == ActionKind::Text).map(|action| action.value.clone());
+        let previous_text = self
+            .editing_action
+            .and_then(|index| self.actions.get(index))
+            .filter(|action| action.kind == ActionKind::Text)
+            .map(|action| action.value.clone());
         self.actions_dirty |= self.actions != self.saved_actions;
         for (id, draft) in &mut self.inactive_drafts {
             if let Some(previous) = self.entries.iter().find(|entry| entry.id == *id) {
@@ -71,20 +78,16 @@ impl MacroPage {
             }
         }
         self.entries = candidate.entries;
-        if let Some(entry) = self.entries.iter().find(|entry| Some(entry.id) == self.current) {
+        if let Some(entry) = self
+            .entries
+            .iter()
+            .find(|entry| Some(entry.id) == self.current)
+        {
             self.actions = entry.actions.clone();
             self.saved_actions = entry.actions.clone();
             self.execution = entry.execution.clone();
         }
-        if let Some(index) = self.editing_action
-            && let Some(value) = self.actions.get(index).filter(|action| action.kind == ActionKind::Text)
-                .map(|action| action.value.clone())
-            && previous_text.as_ref() != Some(&value)
-        {
-            self.text_ui.previous = value.clone();
-            self.text_row(index, cx).borrow_mut().armed |= !value.is_empty();
-            self.text_editor.update(cx, |input, cx| input.set_value(value, window, cx));
-        }
+        self.sync_text_editor_value(previous_text.as_deref(), window, cx);
         self.publish_library(cx);
         self.refresh_recording_preview();
         self.update_recording_preview_options(cx);
@@ -117,12 +120,21 @@ impl MacroPage {
     }
 
     pub(super) fn rebuild_action_execution(&mut self) {
-        let Some(entry) = self.entries.iter().find(|entry|Some(entry.id)==self.current) else { return; };
+        let Some(entry) = self
+            .entries
+            .iter()
+            .find(|entry| Some(entry.id) == self.current)
+        else {
+            return;
+        };
         match self.library_snapshot.execution_for_actions(
-            entry,&self.actions,self.execution.as_ref(),self.recording_movement_setting(),
+            entry,
+            &self.actions,
+            self.execution.as_ref(),
+            self.recording_movement_setting(),
         ) {
-            Ok(execution) => self.execution=Some(execution),
-            Err(error) => self.recording.error=Some(error),
+            Ok(execution) => self.execution = Some(execution),
+            Err(error) => self.recording.error = Some(error),
         }
     }
 
@@ -190,7 +202,20 @@ impl MacroPage {
                 (None, None) => false,
                 _ => true,
             };
-        if replace_actions || changed_current {
+        let retained_text = self.editing_action.filter(|index| {
+            self.actions
+                .get(*index)
+                .is_some_and(|action| action.kind == ActionKind::Text)
+                && !reload
+                && !changed_current
+                && old_current
+                    .zip(new_current)
+                    .is_some_and(|(previous, next)| previous.retains_text_editor(next, *index))
+        });
+        let previous_text = retained_text
+            .and_then(|index| self.actions.get(index))
+            .map(|action| action.value.clone());
+        if (replace_actions || changed_current) && retained_text.is_none() {
             // New macroEvents invalidate row-index editors and delayed commits;
             // the independently mounted recording settings remain open.
             self.cancel_action_editors();
@@ -215,6 +240,7 @@ impl MacroPage {
             .filter_map(|entry| Some((entry.xml_guid.clone()?, drafts.remove(&entry.id)?)))
             .collect();
         let previous = std::mem::replace(&mut self.entries, snapshot.entries.clone());
+        self.text_ui.reconcile_rows(&previous, &self.entries);
         for entry in &mut self.entries {
             if let Some(old) = previous.iter().find(|old| same_entry(old, entry)) {
                 entry.open = old.open;
@@ -304,6 +330,9 @@ impl MacroPage {
             self.adopt_record_preferences(snapshot.recording_preferences.clone(), window, cx);
         }
         self.library_snapshot = snapshot;
+        if retained_text.is_some() {
+            self.sync_text_editor_value(previous_text.as_deref(), window, cx);
+        }
         self.sync_phased_mount(cx);
         self.refresh_recording_preview();
         self.update_recording_preview_options(cx);

@@ -3,7 +3,7 @@
 //! The list is deliberately data-in/data-out.  A caller must provide the
 //! launcher observations produced by the host/renderer path; this module does
 //! not manufacture a Synapse row or infer installed applications.
-use gpui_kit::base::Button as BaseButton;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::base::motion::{self, Easing, Transition};
 use gpui_kit::*;
 use razer_widgets::surface;

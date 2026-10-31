@@ -163,7 +163,14 @@ pub(super) fn middleware_version(
     raw: Result<Option<String>, String>,
 ) -> HelpRuntimeVersionStatus {
     read(raw, |raw| {
-        let entries: Vec<WindowEntry> = serde_json::from_str(raw)
+        let document: Value = serde_json::from_str(raw)
+            .map_err(|error| format!("Invalid middleware WindowStorage records: {error}"))?;
+        // The scoped source helper checks Array.isArray before examining the
+        // records. A valid non-array document supplies no observed version.
+        if selection(product_id) == Selection::Scoped && !document.is_array() {
+            return Ok(None);
+        }
+        let entries: Vec<WindowEntry> = serde_json::from_value(document)
             .map_err(|error| format!("Invalid middleware WindowStorage records: {error}"))?;
         match selection(product_id) {
             Selection::First => entries

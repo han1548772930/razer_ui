@@ -4,7 +4,7 @@ use super::{
     settings::Effect,
     workspace::{DeviceWorkspace, WorkspaceEvent},
 };
-use gpui_kit::base::Button as BaseButton;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::component::{
     button::{Button, ButtonCustomVariant, ButtonVariants},
     checkbox::Checkbox,

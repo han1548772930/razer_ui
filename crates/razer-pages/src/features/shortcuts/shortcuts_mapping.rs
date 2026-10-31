@@ -1,7 +1,7 @@
 // Current ie → ee/M + dt/Map* tree. The source's list and mapping container
 // are siblings; the .custom-global-shortcuts .key-config selector does not match.
+use razer_widgets::keyboard_navigation::Button as ShortcutButton;
 use gpui_kit::base::{
-    Button as ShortcutButton,
     motion::{self, Easing, Transition},
 };
 use gpui_kit::component::radio::Radio;

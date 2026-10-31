@@ -747,7 +747,7 @@ impl AudioProductWorkspace {
             .gap(surface::css(5.))
             .children(
                 [(false, "SOUNDBAR"), (true, "HEADSET")].map(|(headset, label)| {
-                    gpui_kit::base::Button::new(("leviathan-output", u64::from(headset)))
+                    razer_widgets::keyboard_navigation::Button::new(("leviathan-output", u64::from(headset)))
                         .px(surface::css(10.))
                         .py(surface::css(5.))
                         .rounded(surface::css(13.))
@@ -810,7 +810,7 @@ impl AudioProductWorkspace {
         )
         .relative()
         .child(
-            gpui_kit::base::Button::new("leviathan-switch-bluetooth")
+            razer_widgets::keyboard_navigation::Button::new("leviathan-switch-bluetooth")
                 .self_start()
                 .h(surface::css(27.))
                 .px(surface::css(16.))
@@ -885,7 +885,7 @@ impl AudioProductWorkspace {
                     .child(t("INPUT_CONFIRM_POPUP_TIP")),
             )
             .child(
-                gpui_kit::base::Button::new("leviathan-confirm-bluetooth")
+                razer_widgets::keyboard_navigation::Button::new("leviathan-confirm-bluetooth")
                     .mt(surface::css(10.))
                     .px(surface::css(16.))
                     .py(surface::css(6.))
@@ -1088,7 +1088,7 @@ impl AudioProductWorkspace {
             .mb(surface::css(20.))
             .items_stretch()
             .children(labels.into_iter().enumerate().map(|(id, (title, body))| {
-                gpui_kit::base::Button::new((
+                razer_widgets::keyboard_navigation::Button::new((
                     if fullscreen {
                         "leviathan-fullscreen-mode"
                     } else {
@@ -1183,7 +1183,7 @@ impl AudioProductWorkspace {
                     .mr(surface::css(20.)),
                 )
                 .child(
-                    gpui_kit::base::Button::new("leviathan-open-sound-properties")
+                    razer_widgets::keyboard_navigation::Button::new("leviathan-open-sound-properties")
                         .group("leviathan-properties-link")
                         .h(surface::css(44.))
                         .line_height(surface::css(44.))

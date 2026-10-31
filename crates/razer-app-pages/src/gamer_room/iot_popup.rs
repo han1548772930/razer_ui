@@ -1,7 +1,7 @@
 //! IotPopupRoot 28256: gt -> GENERAL / dt (Gamer Room) / rt (Key Light).
 //! Network/device results below exist only in explicitly selected preview scenes.
 //! No native discovery, Wi-Fi configuration, localStorage or identify call is made.
-use gpui_kit::base::Button as BaseButton;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::component::{
     button::{Button, ButtonCustomVariant, ButtonVariants},
     input::{Input, InputState},

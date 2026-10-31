@@ -359,7 +359,7 @@ impl Render for Automation {
                     .rounded(surface::css(5.))
                     .bg(Colors::row())
                     .child(
-                        gpui_kit::base::Button::new(("automation-edit", id))
+                        razer_widgets::keyboard_navigation::Button::new(("automation-edit", id))
                             .accessibility_label(text("EDIT_AUTOMATION"))
                             .flex()
                             .items_center()
@@ -406,7 +406,7 @@ impl Render for Automation {
         }
         if self.rules.len() < 6 {
             widget = widget.child(
-                gpui_kit::base::Button::new("automation-add")
+                razer_widgets::keyboard_navigation::Button::new("automation-add")
                     .accessibility_label(text("ADD_AUTOMATION"))
                     .h(surface::css(60.))
                     .w(surface::css(520.))

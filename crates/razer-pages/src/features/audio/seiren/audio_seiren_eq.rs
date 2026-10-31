@@ -3,7 +3,8 @@
 //! source previews are separate from native write acknowledgements.
 use super::*;
 use gpui_kit::base::motion::{self, Easing, Presence, Transition};
-use gpui_kit::base::{Button as BaseButton, Popover, Select as BaseSelect};
+use razer_widgets::keyboard_navigation::Button as BaseButton;
+use gpui_kit::base::{Popover, Select as BaseSelect};
 use gpui_kit::component::IndexPath;
 use razer_widgets::{
     source_text::SourceText,

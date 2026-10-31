@@ -1,6 +1,6 @@
 //! Source-declared DPI rows with independently verified schema and presentation capabilities.
 use super::*;
-use gpui_kit::base::Button as BaseButton;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub(super) struct HoverState {

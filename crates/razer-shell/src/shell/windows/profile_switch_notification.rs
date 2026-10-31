@@ -1,7 +1,7 @@
 //! Current StreamMixer -> WindowStorage -> resident notification-manager window.
 //! Source: PID1422 44857.w/P; notification-manager 5568, 2864 and Root CSS.
 use super::AppShell;
-use gpui_kit::base::Button;
+use razer_widgets::keyboard_navigation::Button;
 use gpui_kit::*;
 use razer_storage::{
     host::{HostStorage, HostStorageCall, HostStorageView, HostStoreKind},

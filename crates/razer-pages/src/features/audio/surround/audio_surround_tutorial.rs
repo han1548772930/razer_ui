@@ -1,6 +1,6 @@
 //! Current six-step muted onboarding mounted by Carol owners and Soma Surround.
 use super::*;
-use gpui_kit::base::Button as BaseButton;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::theme::HelpOwnerColors as Colors;
 
 impl AudioProductWorkspace {

@@ -1,5 +1,5 @@
 //! The editor's macroEvents and its already compiled appEngine are separate.
-//! h.nu appends to existing lanes; Gs rebuilds lanes after an action edit.
+//! y.nu appends to existing lanes; Vs rebuilds lanes after an action edit.
 use super::*;
 use serde_json::{Number, Value, json};
 use std::collections::BTreeMap;
@@ -148,7 +148,9 @@ pub struct EngineState {
 
 impl EngineState {
     pub fn ordinary_events(&self) -> Result<&[EngineEvent], String> {
-        self.events.as_deref().ok_or_else(|| "Macro appEngine ordinary events are absent".into())
+        self.events
+            .as_deref()
+            .ok_or_else(|| "Macro appEngine ordinary events are absent".into())
     }
 
     fn validate_lanes(&self, kind: MacroType) -> Result<(), String> {
@@ -218,6 +220,10 @@ impl ExecutionSnapshot {
     pub fn matches(&self, actions: &[ActionItem]) -> bool {
         !self.invalidated && self.actions == actions
     }
+
+    pub(super) fn validate(&self, kind: MacroType) -> Result<(), String> {
+        self.engine.validate_lanes(kind)
+    }
 }
 
 pub struct RecordedAppend {
@@ -229,6 +235,7 @@ pub struct RecordedAppend {
 impl Entry {
     pub fn editor_execution(&self) -> Result<ExecutionSnapshot, String> {
         if let Some(execution) = &self.execution {
+            execution.validate(self.macro_type)?;
             return Ok(execution.clone());
         }
         let (engine, invalidated) = if let Some(document) = &self.source_document {
@@ -289,17 +296,23 @@ impl MacroLibraryFile {
                 let setting = execution.engine.movement.setting();
                 // $ writes the selected global mode back to actionBar. Keep
                 // its other external fields alongside the updated execution.
-                if let Some(bar) = entry.source_document.as_mut()
+                if let Some(bar) = entry
+                    .source_document
+                    .as_mut()
                     .and_then(|document| document.get_mut("macroEvents"))
                     .and_then(Value::as_array_mut)
                     .and_then(|events| events.first_mut())
                 {
-                    let bar = bar.as_object_mut().ok_or("Macro action bar is not an object")?;
+                    let bar = bar
+                        .as_object_mut()
+                        .ok_or("Macro action bar is not an object")?;
                     let profile = bar.entry("recordProfile").or_insert_with(|| json!({}));
                     if profile.is_null() {
                         *profile = json!({});
                     }
-                    profile.as_object_mut().ok_or("Macro action bar profile is not an object")?
+                    profile
+                        .as_object_mut()
+                        .ok_or("Macro action bar profile is not an object")?
                         .insert("mmtSetting".into(), setting.into());
                 }
                 entry.execution = Some(execution);
@@ -315,17 +328,25 @@ impl MacroLibraryFile {
 
     fn rebuild_translated_execution(&self, entry: &Entry) -> Result<ExecutionSnapshot, String> {
         let previous = entry.editor_execution()?;
-        let stored_setting = entry.source_document.as_ref()
+        let stored_setting = entry
+            .source_document
+            .as_ref()
             .and_then(|document| document.get("macroEvents"))
             .and_then(Value::as_array)
             .and_then(|events| events.first())
             .and_then(|bar| bar.get("recordProfile"))
             .and_then(|profile| profile.get("mmtSetting"))
             .filter(|value| !value.is_null())
-            .map(|value| value.as_u64().and_then(|value| u8::try_from(value).ok())
-                .ok_or_else(|| "Invalid macro action bar movement setting".to_string()))
+            .map(|value| {
+                value
+                    .as_u64()
+                    .and_then(|value| u8::try_from(value).ok())
+                    .ok_or_else(|| "Invalid macro action bar movement setting".to_string())
+            })
             .transpose()?;
-        let movement = stored_setting.map(MovementMode::from_setting).transpose()?
+        let movement = stored_setting
+            .map(MovementMode::from_setting)
+            .transpose()?
             .unwrap_or(previous.engine.movement);
         let mut engine = EngineState::empty(movement);
         if entry.macro_type == MacroType::Phased {
@@ -344,11 +365,19 @@ impl MacroLibraryFile {
                     engine.lane(action.phase)?.extend(compiled);
                 }
             } else {
-                engine.events.as_mut().expect("ordinary translation lane").extend(compiled);
+                engine
+                    .events
+                    .as_mut()
+                    .expect("ordinary translation lane")
+                    .extend(compiled);
             }
         }
         engine.hash(entry.macro_type)?;
-        Ok(ExecutionSnapshot { actions:entry.actions.clone(), engine, invalidated:false })
+        Ok(ExecutionSnapshot {
+            actions: entry.actions.clone(),
+            engine,
+            invalidated: false,
+        })
     }
 
     pub fn execution_for_actions(
@@ -360,6 +389,7 @@ impl MacroLibraryFile {
     ) -> Result<ExecutionSnapshot, String> {
         let previous = draft.or(entry.execution.as_ref());
         if let Some(snapshot) = previous.filter(|snapshot| snapshot.matches(actions)) {
+            snapshot.validate(entry.macro_type)?;
             return Ok(snapshot.clone());
         }
         let mode = MovementMode::from_setting(conversion_mode)?;
@@ -402,7 +432,11 @@ impl MacroLibraryFile {
                     engine.lane(action.phase)?.extend(compiled);
                 }
             } else {
-                engine.events.as_mut().expect("ordinary lane rebuilt above").extend(compiled);
+                engine
+                    .events
+                    .as_mut()
+                    .expect("ordinary lane rebuilt above")
+                    .extend(compiled);
             }
         }
         if entry.macro_type != MacroType::Phased && engine.ordinary_events()?.is_empty() {
@@ -458,7 +492,12 @@ impl MacroLibraryFile {
             if entry.macro_type == MacroType::Phased {
                 execution.engine.lane(entry.active_phase)?.extend(compiled);
             } else {
-                execution.engine.events.as_mut().ok_or("Macro appEngine ordinary events are absent")?.extend(compiled);
+                execution
+                    .engine
+                    .events
+                    .as_mut()
+                    .ok_or("Macro appEngine ordinary events are absent")?
+                    .extend(compiled);
             }
         }
         if execution.engine.ordinary_events()?.is_empty() {

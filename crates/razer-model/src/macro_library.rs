@@ -261,7 +261,10 @@ mod recorder_preference_tests {
 
 impl MacroLibraryFile {
     pub fn restore_recording_preferences(&mut self) {
-        self.recording_preferences = self.recording_preferences.take().map(|profile| profile.restored());
+        self.recording_preferences = self
+            .recording_preferences
+            .take()
+            .map(|profile| profile.restored());
     }
 
     /// Validate the entire forest before allowing it into the local workspace.
@@ -291,6 +294,9 @@ impl MacroLibraryFile {
         let mut entries = HashMap::with_capacity(self.entries.len());
         let mut xml_guids = HashSet::new();
         for entry in &self.entries {
+            if let Some(execution) = &entry.execution {
+                execution.validate(entry.macro_type)?;
+            }
             if entry.active_phase.is_some_and(|phase| phase > 2) {
                 return Err(format!("Invalid active phase in {}", entry.id));
             }
@@ -328,9 +334,11 @@ impl MacroLibraryFile {
             let mut mouse_pairs = HashMap::<u64, usize>::new();
             let mut loop_pairs = HashMap::<u64, usize>::new();
             for action in &entry.actions {
-                if action.translation_key.as_ref().is_some_and(|key| {
-                    action.kind != ActionKind::Text || key.is_empty()
-                }) {
+                if action
+                    .translation_key
+                    .as_ref()
+                    .is_some_and(|key| action.kind != ActionKind::Text || key.is_empty())
+                {
                     return Err(format!("Invalid text translation identity in {}", entry.id));
                 }
                 if action.xml_macro_guid.as_ref().is_some_and(|guid| {

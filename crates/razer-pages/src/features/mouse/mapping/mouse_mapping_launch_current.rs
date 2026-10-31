@@ -1,7 +1,7 @@
 //! Per-product mounted MapLaunch drafts. Current source evidence is under
 //! docs/re/mouse-launch-current/. Native submission remains a separate gap.
 use super::*;
-use gpui_kit::base::Button as BaseButton;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::component::radio::Radio;
 
 #[derive(Deserialize)]

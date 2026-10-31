@@ -239,3 +239,11 @@ fn absent_failed_and_invalid_storage_never_become_default_versions() {
         HelpRuntimeVersionStatus::Failed("read denied".into())
     );
 }
+
+#[test]
+fn scoped_window_storage_non_array_documents_are_missing_without_a_parse_failure() {
+    for raw in ["null", "{}", "true", "42", "\"version\""] {
+        assert_eq!(middleware_version(3595, "", Ok(Some(raw.into()))), HelpRuntimeVersionStatus::Missing);
+    }
+    assert!(matches!(middleware_version(3595, "", Ok(Some("{".into()))), HelpRuntimeVersionStatus::Failed(_)));
+}

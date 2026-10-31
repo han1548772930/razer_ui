@@ -6110,6 +6110,13 @@ class LocaleExportDictionaryTests(unittest.TestCase):
             self.assertEqual(hashlib.sha256(body).hexdigest(), region["sha256"])
         self.assertIn("function Localizer", result["complete_factory"]["body"])
 
+    def test_inline_component_words_and_regional_names_are_not_export_namespace_routes(self):
+        source = self.source() + (";const region={en:'en-US','zh-CN':'zh-CN'};"
+            "const monitor={en:{SENSOR:'Temperature'},'zh-CN':{SENSOR:'温度'}};").encode()
+        result = evidence.locale_export_dictionaries(source, ["en", "zh-CN"])
+        self.assertEqual(result["values"]["en"]["SHOW_GUIDE"], "Show Guide")
+        self.assertNotIn("SENSOR", result["values"]["en"])
+
     def test_dynamic_cyclic_ambiguous_and_escaped_owner_dictionaries_are_rejected(self):
         source = self.source()
         invalid = (
@@ -6195,6 +6202,17 @@ class LocaleChunkExportTests(unittest.TestCase):
                 raw + raw):
             with self.subTest(raw=changed), self.assertRaises(ValueError):
                 evidence.locale_chunk_exports(changed, ['SECS'])
+
+    def test_declared_absence_is_verified_without_fabricating_a_translation(self):
+        raw = self.source()
+        selected = evidence.locale_chunk_exports(raw, ['TITLE', 'MISSING'], absent_keys=['MISSING'])
+        self.assertEqual(selected['values'], {'TITLE': 'Keyboard Shortcuts'})
+        self.assertEqual(selected['absent_keys'], ['MISSING'])
+        self.assertEqual(evidence.locale_chunk_exports(raw, ['MISSING'], absent_keys=['MISSING'])['values'], {})
+        for keys, absent in ((['SECS'], ['SECS']), (['TITLE'], ['MISSING']),
+                             (['MISSING'], ['MISSING', 'MISSING']), (None, ['MISSING'])):
+            with self.subTest(keys=keys, absent=absent), self.assertRaises(ValueError):
+                evidence.locale_chunk_exports(raw, keys, absent_keys=absent)
 
 
 class JavascriptBindingTests(unittest.TestCase):
@@ -6347,6 +6365,21 @@ class FrontendDeploymentTests(unittest.TestCase):
     setUp = EvidenceTests.setUp
     tearDown = EvidenceTests.tearDown
     source = EvidenceTests.source
+
+    def test_standalone_script_entry_keeps_importer_semantics_separate(self):
+        path = self.source(".analysis/inputs/frontend/shared/runtime", b"const runtime={};")
+        original = families.identity(path)
+        url = "https://apps.razer.com/synapse/assets/js/runtime.js"
+        result = evidence.frontend_deployment_sources({"entry_url": url,
+            "files": [{"url": url, "content_type": "text/javascript", **original}],
+            "source_current_during_acquisition": True,
+            "stability": [{"url": url, "unchanged": True,
+                           "before_sha256": original["sha256"], "after_sha256": original["sha256"]}]})
+        self.assertFalse(result["entry_is_html"])
+        self.assertEqual(result["failures"], [])
+        self.assertEqual(result["sources"][0]["deployment_role"], "standalone_entry_requires_importer_audit")
+        self.assertTrue(result["sources"][0]["identity_verified"])
+        self.assertFalse(result["source_semantics_complete"])
 
     def test_host_capture_module_resolution_uses_verified_asar_input_and_real_command_root(self):
         original_path = self.source(".analysis/inputs/host-current/asar/archive/electron/common.js", b"complete source")
@@ -8008,6 +8041,208 @@ class ToolVerificationSnapshotTests(unittest.TestCase):
         evidence.add_commands(parser.add_subparsers(dest="command", required=True))
         args = parser.parse_args(["verify-analysis-tools", "--test", "test_host", "--test", "test_evidence.ToolVerificationSnapshotTests"])
         self.assertEqual(args.test, ["test_host", "test_evidence.ToolVerificationSnapshotTests"])
+
+
+class KeyboardNavigationSourceTests(unittest.TestCase):
+    LOADER = (
+        'function(){if(window.RzAccessibility)return Promise.resolve(window.RzAccessibility);'
+        'if(pending)return pending;const e=window.__RZ_A11Y_SRC__||'
+        '"/synapse/assets/js/keyboard-nav/rz-accessibility.min.js";'
+        'return pending=new Promise((t,o)=>{const n=document.createElement("script");'
+        'n.src=e,n.async=!0,n.setAttribute("data-rz-accessibility","");'
+        'const i=setTimeout(()=>r("timed out after 10000ms"),1e4),'
+        'r=t=>{clearTimeout(i),pending=null,n.remove(),o(new Error("[rz-accessibility] "+t+": "+e))};'
+        'n.addEventListener("load",()=>{clearTimeout(i),window.RzAccessibility?t(window.RzAccessibility):'
+        'r("loaded but window.RzAccessibility is not defined")}),'
+        'n.addEventListener("error",()=>r("failed to load")),document.head.appendChild(n)}),pending}'
+    )
+
+    def setUp(self):
+        self.audit = host.HostLocalAudit()
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name).resolve()
+        patched = patch.object(analysis, "ROOT", self.root)
+        patched.start()
+        self.addCleanup(patched.stop)
+
+    def source(self, body, name="main.js"):
+        raw = body.encode("utf-8")
+        path = self.root / ".analysis/inputs/frontend/keyboard-fixture" / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(raw)
+        return {"path": path.relative_to(self.root).as_posix(), "bytes": len(raw),
+                "sha256": hashlib.sha256(raw).hexdigest()}
+
+    def body(self):
+        return ('(()=>{let pending=null;const Wrapper=({children:t})=>((0,React.useEffect)(()=>{'
+                'let e=!1;return ' + self.LOADER + '().then(t=>{e||t&&t.init(document.getElementById("root"))})'
+                '.catch(e=>{console.warn("[rz-accessibility] failed to load keyboard-navigation runtime:",e)}),'
+                '()=>{e=!0}},[]),(0,jsx.jsx)(jsx.Fragment,{children:t}));'
+                'ReactDOM.createRoot(document.getElementById("root")).render((0,jsx.jsx)(Wrapper,{children:null}));})();')
+
+    def loaders(self, transform=lambda value: value):
+        source = self.source(transform(self.body()))
+        return evidence.keyboard_navigation_loaders(self.audit, [source], source)
+
+    def test_complete_loader_effect_cache_and_root_are_retained(self):
+        row, = self.loaders()
+        self.assertTrue(row["late_completion_guard"])
+        self.assertTrue(row["failure_resets_cache_and_removes_script"])
+        self.assertEqual(row["timeout_ms"], 10000)
+        self.assertFalse(row["source_unmount_calls_runtime_destroy"])
+        self.assertEqual(len(row["roots"]), 1)
+        self.assertEqual(len(row["roots"][0]["startup_invocations"]), 1)
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_renamed_retained_promise_and_component_keep_the_same_behavior(self):
+        row, = self.loaders(lambda value: value.replace("pending", "cachedRuntime").replace("Wrapper", "RootBoundary"))
+        self.assertEqual(self.audit.owners[row["cache"]]["body"], "cachedRuntime=null")
+
+    def test_timeout_failure_cleanup_and_real_promise_are_exact(self):
+        for before, after in ((",1e4)", ",5e3)"), ("pending=null,n.remove()", "pending=null"),
+                              ("new Promise", "new OtherPromise")):
+            with self.subTest(before=before), self.assertRaisesRegex(ValueError, "loader differs"):
+                self.loaders(lambda value, before=before, after=after: value.replace(before, after))
+            self.audit = host.HostLocalAudit()
+
+    def test_late_completion_and_unmount_guard_cannot_be_dropped(self):
+        for before, after in (("e||t&&t.init", "t&&t.init"), ("()=>{e=!0}", "()=>{e=!1}")):
+            with self.subTest(before=before), self.assertRaisesRegex(ValueError, "effect changed"):
+                self.loaders(lambda value, before=before, after=after: value.replace(before, after))
+            self.audit = host.HostLocalAudit()
+
+    def test_hook_and_dependency_list_are_checked(self):
+        for before, after in (("React.useEffect", "React.useMemo"), ("},[])", "},[value])")):
+            with self.subTest(before=before), self.assertRaisesRegex(ValueError, "hook or dependency"):
+                self.loaders(lambda value, before=before, after=after: value.replace(before, after))
+            self.audit = host.HostLocalAudit()
+
+    def test_cache_must_have_the_audited_initial_value(self):
+        with self.assertRaisesRegex(ValueError, "initial null"):
+            self.loaders(lambda value: value.replace("let pending=null", "let pending=existing"))
+
+    def test_declared_but_unmounted_wrapper_is_not_a_runtime_path(self):
+        with self.assertRaisesRegex(ValueError, "no statically resolved mounted JSX"):
+            self.loaders(lambda value: value.replace('(0,jsx.jsx)(Wrapper,{children:null})', "null"))
+
+    def test_root_inside_an_uncalled_function_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "uninvoked function"):
+            self.loaders(lambda value: value.replace("ReactDOM.createRoot", "function notStarted(){ReactDOM.createRoot")
+                .replace("{children:null}));})();", "{children:null}));}})();"))
+
+    def test_root_element_must_match_effect_initialization_target(self):
+        with self.assertRaisesRegex(ValueError, "DOM target"):
+            self.loaders(lambda value: value.replace('ReactDOM.createRoot(document.getElementById("root"))',
+                                                     'ReactDOM.createRoot(document.getElementById("other"))'))
+
+    def test_root_element_can_use_its_actual_lexical_binding(self):
+        row, = self.loaders(lambda value: value.replace("ReactDOM.createRoot(document",
+            'const target=document.getElementById("root");ReactDOM.createRoot(document', 1)
+            .replace('ReactDOM.createRoot(document.getElementById("root"))', "ReactDOM.createRoot(target)"))
+        self.assertEqual(row["roots"][0]["dom_target"]["syntax"], "call_expression")
+
+    def test_legacy_render_traces_actual_interop_and_reactdom_external(self):
+        prefix = ('const modules={5206:e=>{"use strict";e.exports=ReactDOM}},cache={};'
+                  'function require(id){var found=cache[id];if(void 0!==found)return found.exports;'
+                  'var entry=cache[id]={id:id,loaded:!1,exports:{}};'
+                  'return modules[id](entry,entry.exports,require),entry.loaded=!0,entry.exports}'
+                  'require.n=e=>{var t=e&&e.__esModule?()=>e.default:()=>e;return require.d(t,{a:t}),t};'
+                  'const client=require(5206),getter=require.n(client);')
+        row, = self.loaders(lambda value: value.replace("(()=>{", "(()=>{" + prefix, 1)
+            .replace('ReactDOM.createRoot(document.getElementById("root")).render((0,jsx.jsx)(Wrapper,{children:null}))',
+                     'getter().render((0,jsx.jsx)(Wrapper,{children:null}),document.getElementById("root"))'))
+        self.assertEqual(len(row["roots"][0]["reactdom_legacy_aliases"]), 3)
+
+    def test_textual_override_name_is_not_a_loader(self):
+        source = self.source('const unrelated="__RZ_A11Y_SRC__";')
+        self.assertEqual(evidence.keyboard_navigation_loaders(self.audit, [source], source), [])
+
+    def test_actual_create_root_commonjs_alias_is_resolved(self):
+        prefix = ('const modules={260:(e,t,n)=>{"use strict";var o=n(5206);t.H=o.createRoot,o.hydrateRoot},'
+                  '5206:e=>{"use strict";e.exports=ReactDOM}},cache={};'
+                  'function require(id){var found=cache[id];if(void 0!==found)return found.exports;'
+                  'var entry=cache[id]={id:id,loaded:!1,exports:{}};'
+                  'return modules[id].call(entry.exports,entry,entry.exports,require),entry.loaded=!0,entry.exports}'
+                  'const client=require(260);')
+        row, = self.loaders(lambda value: value.replace("(()=>{", "(()=>{" + prefix, 1)
+                           .replace("ReactDOM.createRoot(document", "(0,client.H)(document"))
+        self.assertEqual(len(row["roots"][0]["create_root_aliases"]), 2)
+
+    def shared(self, transform=lambda value: value):
+        body = ('var RzAccessibility=function(api){"use strict";'
+                'function init(root){}function open(){}function close(){}function isOpen(){}'
+                'function isReady(){}const runtime={};return api.init=init,api.openGuide=open,api.closeGuide=close,'
+                'api.isGuideOpen=isOpen,api.isInitialized=isReady,api.default=runtime,api}({});')
+        return evidence.keyboard_navigation_shared_runtime(self.audit, self.source(transform(body), "runtime.js"))
+
+    def test_shared_iife_retains_the_actual_exported_implementations(self):
+        row = self.shared()
+        self.assertEqual(set(row["exports"]), {"init", "openGuide", "closeGuide", "isGuideOpen", "isInitialized", "default"})
+        self.assertTrue(self.audit.owners[row["iife"]]["body"].startswith("RzAccessibility=function"))
+        self.assertFalse(row["target_execution"])
+
+    def test_shared_runtime_cannot_borrow_unknown_repeated_or_dynamic_exports(self):
+        for before, after in (("api.init=init", "api.init=unknown"),
+                              ("api.openGuide=open", "api.openGuide=open,api.openGuide=open"),
+                              ("api.openGuide=open", "api.openGuide=makeOpen()"), ("}({})", "}({initial:true})")):
+            with self.subTest(before=before), self.assertRaises(ValueError):
+                self.shared(lambda value, before=before, after=after: value.replace(before, after))
+            self.audit = host.HostLocalAudit()
+
+    def translation(self, transform=lambda value: value):
+        getter = (
+            'p=(e,t={})=>{var s;const n={...t};let a=n._lang;if(null===l)return"";'
+            'a?delete n._lang:a=h(),l[a]||(a=i.Nm);'
+            'let o=null!==(s=l[a][e])&&void 0!==s?s:l[i.Nm][e];'
+            'if(o){let e;for(const[t,s]of Object.entries(n))e=new RegExp(`{{${t}}}`,"g"),o=o.replace(e,s)}'
+            'else console.debug("[getTextItem][%s]",e);const r=o||e;'
+            'return t.a&&t.aEnd&&"string"===typeof r&&!r.includes("<a")?`${t.a}${r}${t.aEnd}`:r}'
+        )
+        updater = (
+            'd=(e,t,s=()=>{})=>a=>{const o=c(e);null===l&&a({type:n.Ztp,payload:"unknown"});'
+            'new Promise(e=>{t?t().then(({default:t})=>{r=t,e(r)}):e(r)})'
+            '.then(e=>{const t=[e[i.Nm]()];o!==i.Nm&&t.push(e[o]()),Promise.all(t).then(([e,r])=>{'
+            'l={[i.Nm]:e},t.length>1&&(l[o]=r),a({type:n.Ztp,payload:o}),s()})})}'
+        )
+        body = (
+            'const modules={1:(e,t,n)=>{const keys=n(2),H=n(3);function Panel(){return jsx(Block,'
+            '{title:keys.r6A,children:[jsx(H.A,{text:keys.o1z}),jsx(H.A,{text:keys.IFV}),jsx(H.A,{text:keys.njo})]})}},'
+            '2:(e,t,n)=>{n.d(t,{r6A:()=>title,o1z:()=>action,IFV:()=>chroma,njo:()=>synapse});'
+            'const title="KEYBOARD_NAVIGATION",action="VIEW_ALL_SHORTCUTS",chroma="KEYBOARD_NAVIGATION_CHROMA_MSG",'
+            'synapse="KEYBOARD_NAVIGATION_SYNAPSE_MSG"},'
+            '3:(e,t,n)=>{n.d(t,{A:()=>Connected});const i=n(4),Translator=({text:e,lang:s})=>(0,i.getTextItem)(e,{_lang:s});'
+            'const Connected=connect(state,actions)(Translator)},'
+            '4:(e,t,s)=>{s.d(t,{getTextItem:()=>p,updateLanguage:()=>d});'
+            'const i=s(5),n={Ztp:"language"};let r,l=null,other=null;const c=e=>e,h=()=>"en";const ' + getter + ';const ' + updater + '},'
+            '5:(e,t,n)=>{n.d(t,{Nm:()=>english});const english="en"}};'
+        )
+        source = self.source(transform(body))
+        component = next(node for node in host._help_nodes(self.audit.tree(source).root_node)
+                         if node.type == "function_declaration" and node.child_by_field_name("name").text == b"Panel")
+        return evidence.keyboard_navigation_translation_fallback(self.audit, [source], source, component)
+
+    def test_chroma_translation_keys_reader_publisher_and_english_fallback_are_connected(self):
+        result = self.translation()
+        self.assertEqual(result["default_language"], "en")
+        self.assertEqual(result["missing_key"], "english_then_source_key")
+        self.assertEqual(set(result["constants"]), {"KEYBOARD_NAVIGATION", "VIEW_ALL_SHORTCUTS",
+                                                   "KEYBOARD_NAVIGATION_CHROMA_MSG", "KEYBOARD_NAVIGATION_SYNAPSE_MSG"})
+        self.assertEqual(self.audit.owners[result["dictionary"]]["body"], "l=null")
+
+    def test_translation_changed_fallback_language_key_or_loading_order_is_rejected(self):
+        for before, after in (('english="en"', 'english="de"'), ('title="KEYBOARD_NAVIGATION"', 'title="OTHER"'),
+                              ("const t=[e[i.Nm]()]", "const t=[]"), ("s:l[i.Nm][e]", "s:e")):
+            with self.subTest(before=before), self.assertRaises(ValueError):
+                self.translation(lambda value, before=before, after=after: value.replace(before, after))
+            self.audit = host.HostLocalAudit()
+
+    def test_translation_cannot_claim_a_different_dictionary_publisher(self):
+        def change(value):
+            before, updater = value.split("const d=", 1)
+            return before + "const d=" + updater.replace("null===l", "null===other").replace("l={[", "other={[").replace("l[o]", "other[o]")
+        with self.assertRaisesRegex(ValueError, "different dictionaries"):
+            self.translation(change)
 
 
 VERIFICATION_TEST_MODULES = ("test_evidence", "test_rust_data", "test_typed_tables", "test_windows_installer", "test_workspace",

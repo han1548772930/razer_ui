@@ -499,7 +499,13 @@ impl Device {
     pub fn observe_camera_serial(&mut self, observation: CameraSerialObservation) -> bool {
         if !matches!(self.product_id, 3594..=3596)
             || (!matches!(observation, CameraSerialObservation::Unobserved)
-                && self.dashboard.connection_observation.is_none())
+                && !matches!(
+                    self.dashboard.connection_observation,
+                    Some(
+                        DeviceConnectionObservation::UsbPresent
+                            | DeviceConnectionObservation::HidPresent
+                    )
+                ))
         {
             return false;
         }
@@ -776,6 +782,117 @@ pub fn localized(pairs: &[(&str, &str)]) -> LocalizedText {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn camera_serial_progress() -> razer_device::camera_serial::CameraSerialProgress {
+        use razer_device::camera_extensions::{CameraExtensionTransport, CameraKsCallOutcome};
+        struct Wire(std::collections::VecDeque<[u8; 8]>);
+        impl CameraExtensionTransport for Wire {
+            fn begin_node(&mut self, node: u32) -> anyhow::Result<()> {
+                assert_eq!(node, 3);
+                Ok(())
+            }
+            fn end_node(&mut self) {}
+            fn ks_property(
+                &mut self,
+                header: &[u8; 32],
+                data: &mut [u8; 8],
+            ) -> anyhow::Result<CameraKsCallOutcome> {
+                match u32::from_le_bytes(header[20..24].try_into().unwrap()) {
+                    0x1000_0002 => {}
+                    0x1000_0001 => *data = self.0.pop_front().unwrap(),
+                    flags => panic!("unexpected camera property flags {flags:#x}"),
+                }
+                Ok(CameraKsCallOutcome {
+                    hresult: 0,
+                    bytes_returned: 8,
+                })
+            }
+            fn wait_ms(&mut self, _: u32) -> anyhow::Result<()> {
+                Ok(())
+            }
+        }
+        let mut wire = Wire(std::collections::VecDeque::from([
+            [0, 0, 0, b'A', b'B', b'2', b'4', b'0'],
+            [0, 0, 0, b'1', b'R', b'Z', b'0', b'1'],
+            [0, 0, 0, b'1', b'2', b'3', b'4', b'5'],
+        ]));
+        razer_device::camera_serial::CameraSerialState::new(3594)
+            .unwrap()
+            .read_pro(&mut wire, &|| Ok(()))
+    }
+
+    #[test]
+    fn camera_serial_is_current_connection_evidence_independent_of_the_persisted_identity() {
+        let mut device = crate::test_devices::mouse();
+        device.product_id = 3594;
+        device.serial_number = "LOCAL-SAVED-SERIAL".into();
+        device.observe_connection(None);
+        let read = CameraSerialObservation::Read(camera_serial_progress());
+        assert!(!device.observe_camera_serial(read.clone()));
+        assert_eq!(device.serial_number, "LOCAL-SAVED-SERIAL");
+        device.observe_connection(Some(DeviceConnectionObservation::UsbPresent));
+        assert!(device.observe_camera_serial(CameraSerialObservation::Reading));
+        assert_eq!(device.dashboard.readonly_camera_serial.serial(), None);
+        assert!(device.observe_camera_serial(read.clone()));
+        assert_eq!(device.serial_number, "AB2401RZ0112345");
+        assert_eq!(
+            device.dashboard.readonly_camera_serial.serial(),
+            Some("AB2401RZ0112345")
+        );
+        let mut restored: Device =
+            serde_json::from_value(serde_json::to_value(&device).unwrap()).unwrap();
+        assert_eq!(restored.serial_number, "AB2401RZ0112345");
+        assert_eq!(
+            restored.dashboard.readonly_camera_serial,
+            CameraSerialObservation::Unobserved
+        );
+        assert!(
+            device.observe_camera_serial(CameraSerialObservation::Failed(
+                "current read failed".into()
+            ))
+        );
+        assert_eq!(device.dashboard.readonly_camera_serial.serial(), None);
+        assert_eq!(
+            device.dashboard.readonly_camera_serial.error(),
+            Some("current read failed")
+        );
+        assert_eq!(device.serial_number, "AB2401RZ0112345");
+        device.observe_connection(None);
+        assert_eq!(
+            device.dashboard.readonly_camera_serial,
+            CameraSerialObservation::Unobserved
+        );
+        assert!(!device.observe_camera_serial(read.clone()));
+        device.observe_connection(Some(DeviceConnectionObservation::HidPresent));
+        assert!(device.observe_camera_serial(read));
+        device.begin_local_session();
+        assert_eq!(
+            device.dashboard.readonly_camera_serial,
+            CameraSerialObservation::Unobserved
+        );
+        restored.begin_local_session();
+        assert_eq!(restored.dashboard.readonly_camera_serial.serial(), None);
+    }
+
+    #[test]
+    fn camera_serial_rejects_other_products_and_receiver_presence() {
+        let read = CameraSerialObservation::Read(camera_serial_progress());
+        for product_id in [3595, 3596, 100] {
+            let mut device = crate::test_devices::mouse();
+            device.product_id = product_id;
+            device.observe_connection(Some(DeviceConnectionObservation::UsbPresent));
+            assert!(!device.observe_camera_serial(read.clone()));
+            assert_eq!(
+                device.dashboard.readonly_camera_serial,
+                CameraSerialObservation::Unobserved
+            );
+        }
+        let mut device = crate::test_devices::mouse();
+        device.product_id = 3594;
+        device.observe_connection(Some(DeviceConnectionObservation::ReceiverPeer(1)));
+        assert!(!device.observe_camera_serial(CameraSerialObservation::Reading));
+        assert!(!device.observe_camera_serial(read));
+    }
 
     #[test]
     fn display_name_uses_requested_source_locale() {

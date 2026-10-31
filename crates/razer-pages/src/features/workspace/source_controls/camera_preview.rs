@@ -203,7 +203,7 @@ impl SourceControls {
                     .child(razer_i18n::t(description_key))
             })
             .child(
-                gpui_kit::base::Button::new("camera-launch-selected-app")
+                razer_widgets::keyboard_navigation::Button::new("camera-launch-selected-app")
                     .accessibility_label(razer_i18n::t(link_key))
                     .p_0()
                     .self_start()
@@ -236,7 +236,7 @@ impl SourceControls {
                     .mr(surface::css(10.)),
             )
             .child(
-                gpui_kit::base::Button::new("camera-windows-settings")
+                razer_widgets::keyboard_navigation::Button::new("camera-windows-settings")
                     .disabled(self.camera_settings_blocked())
                     .p_0()
                     .text_size(surface::css(14.))
@@ -333,7 +333,7 @@ impl SourceControls {
             .ml_auto()
             .items_center()
             .child(
-                gpui_kit::base::Button::new("camera-preview-refresh")
+                razer_widgets::keyboard_navigation::Button::new("camera-preview-refresh")
                     .accessibility_label(razer_i18n::t("REFRESH"))
                     .p_0()
                     .size(surface::css(20.))
@@ -358,7 +358,7 @@ impl SourceControls {
                     })),
             )
             .child(
-                gpui_kit::base::Button::new("camera-preview-toggle")
+                razer_widgets::keyboard_navigation::Button::new("camera-preview-toggle")
                     .accessibility_label(
                         self.preview_spec()
                             .map_or(String::new(), |spec| razer_i18n::t(&spec.source_title)),
@@ -474,7 +474,7 @@ impl SourceControls {
                 &spec.preview_off
             }))
             .child(
-                gpui_kit::base::Button::new("camera-preview-enable")
+                razer_widgets::keyboard_navigation::Button::new("camera-preview-enable")
                     .p_0()
                     .mt(surface::css(16.))
                     .cursor_pointer()

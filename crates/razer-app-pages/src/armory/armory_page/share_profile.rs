@@ -1,6 +1,7 @@
 //! Current Armory 24988 / 13784 PROFILE form, opened with an actual local
 //! device snapshot. No contribution UUID, author, download or success is made up.
-use gpui_kit::base::{Button, Dialog, DialogPopup};
+use razer_widgets::keyboard_navigation::Button;
+use gpui_kit::base::{Dialog, DialogPopup};
 use gpui_kit::component::{
     input::{Input, InputEvent, InputState, Textarea, TextareaState},
     select::{SelectEvent, SelectState},

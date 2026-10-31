@@ -1,7 +1,7 @@
 //! Native controller pages from each current product's mounted components.
 //! `profile` and the independent Redux controller states remain separate.
 //! Optimistic source state and actual service acknowledgements have separate owners.
-use gpui_kit::base::Button as BaseButton;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::component::{
     Disableable, Selectable, StyledExt,
     button::Button,

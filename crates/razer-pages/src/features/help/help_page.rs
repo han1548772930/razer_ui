@@ -1,6 +1,6 @@
 //! WN / Qd / rv: product support is a device page, reached from the Help icon.
 use super::workspace::DeviceWorkspace;
-use gpui_kit::base::Button as BaseButton;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::component::*;
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use razer_i18n as i18n;

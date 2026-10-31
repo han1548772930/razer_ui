@@ -66,6 +66,7 @@ impl DeviceCategory {
 
 /// Fixed DeviceInfo declarations. These fields do not establish a connection.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct SourceProductIdentity {
     pub product_id: u32,
     pub dongle_id: Option<u32>,
@@ -529,6 +530,18 @@ mod tests {
     }
 
     #[test]
+    fn unavailable_official_pages_do_not_remove_a_declared_host_candidate() {
+        let identity = unique(lookup(680));
+        assert_eq!(identity.source_product_id, 680);
+        assert_eq!(identity.real_product_id, 680);
+        assert_eq!(identity.product_id, 680);
+        assert_eq!(ui_product_identity(680), None);
+        assert_eq!(middleware_product_identity(680), None);
+        assert_eq!(middleware_category(680), None);
+        assert_eq!(claim_interface(680), None);
+    }
+
+    #[test]
     fn claim_interfaces_preserve_physical_branches_and_absent_declarations() {
         assert_eq!(claim_interface(756), Some(3));
         for (mounted, physical, expected) in [
@@ -546,9 +559,6 @@ mod tests {
         assert_eq!(claim_interface_for(691, 693), None);
         assert_eq!(claim_interface_for(1383, 1385), None);
         assert_eq!(claim_interface(100), None);
-        assert_eq!(claim_interface(680), None);
-        assert_eq!(ui_product_identity(680), None);
-        assert_eq!(middleware_category(680), None);
         assert_eq!(claim_interface(65535), None);
     }
 

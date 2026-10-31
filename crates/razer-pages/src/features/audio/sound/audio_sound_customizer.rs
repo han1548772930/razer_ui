@@ -218,7 +218,7 @@ impl AudioProductWorkspace {
             .child(self.sound_wheel_canvas(row))
             .child(self.sound_smart_switch_canvas(row))
             .child(
-                gpui_kit::base::Button::new("headset-wheel-mapping")
+                razer_widgets::keyboard_navigation::Button::new("headset-wheel-mapping")
                     .absolute()
                     .left(surface::css(496.))
                     .bottom(surface::css(12.))
@@ -259,7 +259,7 @@ impl AudioProductWorkspace {
             )
             .when_some(self.source_owner.clone(), |body, owner| {
                 body.child(
-                    gpui_kit::base::Button::new("headset-view-smart-switch")
+                    razer_widgets::keyboard_navigation::Button::new("headset-view-smart-switch")
                         .absolute()
                         .left(surface::css(495.))
                         .bottom(surface::css(92.))

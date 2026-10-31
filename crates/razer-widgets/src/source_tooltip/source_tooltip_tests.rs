@@ -1,5 +1,5 @@
 use super::{SourceTooltip, SourceTooltipKind};
-use gpui_kit::base::Button;
+use crate::keyboard_navigation::Button;
 use gpui_kit::component::{Root, Theme};
 use gpui_kit::test::TestWindowExt as _;
 use gpui_kit::{

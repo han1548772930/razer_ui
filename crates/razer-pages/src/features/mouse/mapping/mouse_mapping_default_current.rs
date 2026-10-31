@@ -1,7 +1,7 @@
 //! Each current MapDefault's imported localization and DEFAULTPROFILE policy.
 //! A missing `dpiStages` property is a source mismatch, never filled from drafts.
 use super::*;
-use gpui_kit::base::Button as BaseButton;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::theme::{MouseCustomizeColors, MouseMappingColors};
 
 #[derive(Deserialize)]

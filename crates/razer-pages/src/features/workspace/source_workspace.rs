@@ -24,10 +24,10 @@ use serde_json::Value;
 mod accessory;
 #[path = "source_workspace/audio_mixer_local_settings.rs"]
 mod audio_mixer_local_settings;
-#[path = "source_workspace/controller_initialization.rs"]
-mod controller_initialization;
 #[path = "source_workspace/camera_identity.rs"]
 mod camera_identity;
+#[path = "source_workspace/controller_initialization.rs"]
+mod controller_initialization;
 #[path = "source_workspace/help_camo.rs"]
 mod help_camo;
 #[path = "source_workspace/help_owner.rs"]
@@ -50,8 +50,8 @@ mod keyboard_local_profiles;
 mod keyboard_mapping;
 #[path = "source_workspace/keyboard_profile_inventory.rs"]
 mod keyboard_profile_inventory;
-pub use controller_initialization::ControllerInitializationRequested;
 pub use camera_identity::CameraIdentityRequested;
+pub use controller_initialization::ControllerInitializationRequested;
 #[path = "source_workspace/controller_socd.rs"]
 mod controller_socd;
 pub use controller_socd::ControllerSocdRequested;
@@ -4050,7 +4050,9 @@ impl SourceProductWorkspace {
         subscriptions.push(cx.subscribe(
             &help,
             |_: &mut Self, _, request: &super::HelpRuntimeVersionsRequest, cx| {
-                cx.emit(WorkspaceEvent::HelpRuntimeVersionsRequested(request.clone()));
+                cx.emit(WorkspaceEvent::HelpRuntimeVersionsRequested(
+                    request.clone(),
+                ));
             },
         ));
         subscriptions.push(cx.subscribe(
@@ -4059,7 +4061,10 @@ impl SourceProductWorkspace {
                 if *request.command() == super::HelpCamoCommand::GetSerialNumber
                     && this.accepts_help_camo(request, cx)
                 {
-                    this.publish_camera_serial(razer_model::model::CameraSerialObservation::Reading, cx);
+                    this.publish_camera_serial(
+                        razer_model::model::CameraSerialObservation::Reading,
+                        cx,
+                    );
                 }
                 cx.emit(WorkspaceEvent::HelpCamoRequested(request.clone()));
             },

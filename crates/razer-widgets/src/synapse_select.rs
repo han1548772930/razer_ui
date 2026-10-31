@@ -15,6 +15,7 @@ use super::{
     surface::css,
     theme::{AlexaColors, DropdownColors},
 };
+use crate::keyboard_navigation::{self, FocusBehavior, FocusRing, focus_target};
 use std::time::Duration;
 use std::{collections::BTreeMap, rc::Rc};
 #[path = "synapse_select_pointer.rs"]
@@ -164,6 +165,91 @@ impl Presentation {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum SelectFocus {
+    Outside,
+    Trigger,
+    Option(usize),
+}
+
+#[derive(Debug, PartialEq)]
+enum SelectKeyRequest {
+    Ignore,
+    Toggle,
+    Focus(usize),
+    Confirm(usize),
+    Tab { backwards: bool },
+}
+
+struct SelectKeyboard<'a, I> {
+    presentation: Presentation,
+    open: bool,
+    disabled: bool,
+    focus: SelectFocus,
+    items: &'a [I],
+}
+
+impl<I: SelectItem> SelectKeyboard<'_, I> {
+    fn request(&self, key: &str, shift: bool) -> SelectKeyRequest {
+        if self.presentation != Presentation::Synapse
+            || self.disabled
+            || self.focus == SelectFocus::Outside
+        {
+            return SelectKeyRequest::Ignore;
+        }
+        match key {
+            "up" | "down" => {
+                let available = self
+                    .items
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(ix, item)| (!item.disabled()).then_some(ix))
+                    .collect::<Vec<_>>();
+                // The source inspects mounted .option:not(.inactive) elements.
+                // A closed menu has none, so its first arrow only clicks open.
+                if !self.open || available.is_empty() {
+                    return if self.focus == SelectFocus::Trigger {
+                        SelectKeyRequest::Toggle
+                    } else {
+                        SelectKeyRequest::Ignore
+                    };
+                }
+                let focused = match self.focus {
+                    SelectFocus::Option(ix) => available.iter().position(|entry| *entry == ix),
+                    _ => None,
+                };
+                let next = match (focused, key) {
+                    (Some(ix), "down") => (ix + 1) % available.len(),
+                    (Some(0), "up") | (None, "up") => available.len() - 1,
+                    (Some(ix), "up") => ix - 1,
+                    (None, _) => 0,
+                    _ => unreachable!(),
+                };
+                SelectKeyRequest::Focus(available[next])
+            }
+            "enter" | "space" => match self.focus {
+                SelectFocus::Trigger => SelectKeyRequest::Toggle,
+                SelectFocus::Option(ix)
+                    if self.open && self.items.get(ix).is_some_and(|item| !item.disabled()) =>
+                {
+                    SelectKeyRequest::Confirm(ix)
+                }
+                _ => SelectKeyRequest::Ignore,
+            },
+            // Unlike arrow navigation, source c counts inactive options too.
+            "tab" if self.open && !self.items.is_empty() => {
+                SelectKeyRequest::Tab { backwards: shift }
+            }
+            _ => SelectKeyRequest::Ignore,
+        }
+    }
+}
+
+struct TabRequest {
+    generation: u64,
+    backwards: bool,
+}
+
 pub fn select<I: SelectItem<Value = String> + 'static>(
     state: &Entity<SelectState<Vec<I>>>,
 ) -> SynapseSelect<I> {
@@ -196,7 +282,7 @@ pub fn select_alexa<I: SelectItem<Value = String> + 'static>(
     }
 }
 
-/// Current module 7734 renders clickable divs without tabIndex or key handlers.
+/// Current module 7734 pointer presentation, with the host's shared keyboard behavior.
 /// Use only where the mounted source caller and that dependency are verified.
 pub fn select_pointer<I: SelectItem<Value = String> + 'static>(
     state: &Entity<SelectState<Vec<I>>>,
@@ -238,7 +324,7 @@ impl<I: SelectItem<Value = String> + 'static> SynapseSelect<I> {
         self
     }
 
-    /// Use the source's pointer-only dropdown with decorated, grouped options.
+    /// Use the source's pointer presentation with decorated, grouped options.
     /// Kit's ordinary List remains unchanged: it requires equal-height rows,
     /// while this source renders a separate 9px, non-selectable divider.
     pub fn pointer_option_decorations(
@@ -288,10 +374,10 @@ impl<I: SelectItem<Value = String> + 'static> SynapseSelect<I> {
         self
     }
 
-    /// Observe an actual click on the trigger, including closing clicks.
-    /// Menu option clicks, keyboard open actions and state synchronization do
-    /// not call this adapter. Kit's popover stops mouse-down propagation, so
-    /// attach source document-click behavior to the trigger itself.
+    /// Observe trigger activation, including source keyboard-generated clicks.
+    /// Menu option clicks and state synchronization do not call this adapter.
+    /// Kit's popover stops mouse-down propagation, so source document-click
+    /// behavior belongs on the trigger itself.
     pub fn on_trigger_click(
         mut self,
         handler: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
@@ -334,11 +420,14 @@ struct SynapseSelectView<I: SelectItem<Value = String> + 'static> {
     allow_one_item: bool,
     pointer_bounds: Rc<std::cell::Cell<Bounds<Pixels>>>,
     open: bool,
+    generation: u64,
+    pending_tab: Option<TabRequest>,
     hovered: bool,
     width: Pixels,
     _popup_context: Option<DeferredPopover>,
     _state_observer: Subscription,
     _activation_observer: Subscription,
+    _keyboard_subscription: Subscription,
 }
 
 impl<I: SelectItem<Value = String> + 'static> SynapseSelectView<I> {
@@ -356,11 +445,22 @@ impl<I: SelectItem<Value = String> + 'static> SynapseSelectView<I> {
                     committed: None,
                     cursor: None,
                     presentation: Presentation::Synapse,
+                    focus: BTreeMap::new(),
+                    generation: 0,
                     view,
                 },
                 window,
                 cx,
             )
+        });
+        let window_id = window.window_handle().window_id();
+        let view = cx.entity().downgrade();
+        let keyboard = cx.intercept_keystrokes(move |event, window, cx| {
+            if window.window_handle().window_id() == window_id {
+                let _ = view.update(cx, |view, cx| {
+                    view.on_source_key(&event.keystroke, window, cx);
+                });
+            }
         });
         Self {
             _state_observer: cx.observe_in(&state, window, |view, state, window, cx| {
@@ -405,19 +505,153 @@ impl<I: SelectItem<Value = String> + 'static> SynapseSelectView<I> {
             allow_one_item: false,
             pointer_bounds: Rc::new(std::cell::Cell::new(Bounds::default())),
             open: false,
+            generation: 0,
+            pending_tab: None,
             hovered: false,
             width: px(0.),
             _popup_context: None,
+            _keyboard_subscription: keyboard,
+        }
+    }
+
+    fn is_disabled(&self, cx: &App) -> bool {
+        self.disabled
+            || (self.pointer_only
+                && !self.allow_one_item
+                && self.list.read(cx).delegate().items.len() <= 1)
+    }
+
+    fn current_focus(&self, window: &Window, cx: &App) -> SelectFocus {
+        if self.state.focus_handle(cx).is_focused(window) {
+            return SelectFocus::Trigger;
+        }
+        let options = self.list.read(cx).delegate();
+        options
+            .items
+            .iter()
+            .position(|item| {
+                options
+                    .focus
+                    .get(item.value())
+                    .is_some_and(|focus| focus.is_focused(window))
+            })
+            .map(SelectFocus::Option)
+            .unwrap_or(SelectFocus::Outside)
+    }
+
+    fn on_source_key(&mut self, key: &Keystroke, window: &mut Window, cx: &mut Context<Self>) {
+        let request = SelectKeyboard {
+            presentation: self.presentation,
+            open: self.open,
+            disabled: self.is_disabled(cx),
+            focus: self.current_focus(window, cx),
+            items: &self.list.read(cx).delegate().items,
+        }
+        .request(&key.key, key.modifiers.shift);
+        if request == SelectKeyRequest::Ignore {
+            return;
+        }
+        // Interception precedes Kit's Select/List actions and its private Tab
+        // action. All paths still enter this dropdown's controlled state owner.
+        window.prevent_default();
+        cx.stop_propagation();
+        match request {
+            SelectKeyRequest::Ignore => unreachable!(),
+            SelectKeyRequest::Toggle => self.activate_source_trigger(window, cx),
+            SelectKeyRequest::Focus(ix) => {
+                let focus = self.list.update(cx, |list, cx| {
+                    let item = &list.delegate().items[ix];
+                    let focus = list.delegate().focus.get(item.value()).cloned();
+                    list.set_selected_index(Some(IndexPath::new(ix)), window, cx);
+                    list.scroll_to_selected_item(window, cx);
+                    focus
+                });
+                if self.pointer_only {
+                    self.pointer_scroll.scroll_to_item(ix);
+                }
+                if let Some(focus) = focus {
+                    focus.focus(window, cx);
+                }
+                cx.notify();
+            }
+            SelectKeyRequest::Confirm(ix) => {
+                let value = self.list.read(cx).delegate().items[ix].value().clone();
+                self.confirm(value, self.generation, window, cx);
+            }
+            SelectKeyRequest::Tab { backwards } => {
+                self.activate_source_trigger(window, cx);
+                if !self.open {
+                    self.pending_tab = Some(TabRequest {
+                        generation: self.generation,
+                        backwards,
+                    });
+                    cx.notify();
+                }
+            }
+        }
+    }
+
+    fn activate_source_trigger(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.set_open(!self.open, window, cx);
+        if let Some(handler) = self.on_trigger_click.clone() {
+            // Source O synthesizes left down/up/click at the trigger's center,
+            // with no modifiers, including for arrows and Tab dismissal.
+            let position = self.pointer_bounds.get().center();
+            let click = ClickEvent::Mouse(MouseClickEvent {
+                down: MouseDownEvent {
+                    button: MouseButton::Left,
+                    position,
+                    ..Default::default()
+                },
+                up: MouseUpEvent {
+                    button: MouseButton::Left,
+                    position,
+                    ..Default::default()
+                },
+            });
+            handler(&click, window, cx);
+        }
+    }
+
+    fn did_layout(&mut self, bounds: Bounds<Pixels>, window: &mut Window, cx: &mut Context<Self>) {
+        self.width = bounds.size.width;
+        self.pointer_bounds.set(bounds);
+        if let Some(request) = self.pending_tab.take() {
+            let owner = cx.entity().downgrade();
+            // Run after this closed frame has painted every remaining target.
+            window.defer(cx, move |window, cx| {
+                let _ = owner.update(cx, |owner, cx| {
+                    if !owner.open
+                        && owner.generation == request.generation
+                        && !owner.is_disabled(cx)
+                    {
+                        keyboard_navigation::focus_adjacent_to(
+                            &owner.state.focus_handle(cx),
+                            request.backwards,
+                            window,
+                            cx,
+                        );
+                    }
+                });
+            });
         }
     }
 
     /// Glue the controlled Base Select and Popover to the framework List cursor.
     fn set_open(&mut self, open: bool, window: &mut Window, cx: &mut Context<Self>) {
-        let open = open && !self.disabled;
+        let open = open && !self.is_disabled(cx);
         if self.open == open {
             return;
         }
         self.open = open;
+        self.generation = self
+            .generation
+            .checked_add(1)
+            .expect("Select generation exhausted");
+        self.pending_tab = None;
+        self.list.update(cx, |list, _| {
+            list.delegate_mut().generation = self.generation
+        });
         self._popup_context = (self.presentation == Presentation::Alexa && open)
             .then(|| GlobalState::register_deferred_popover(cx));
         if open {
@@ -443,8 +677,10 @@ impl<I: SelectItem<Value = String> + 'static> SynapseSelectView<I> {
                 self.list.focus_handle(cx).focus(window, cx);
             }
         } else {
+            let restore_focus = window.is_window_active()
+                && (!self.pointer_only || self.current_focus(window, cx) != SelectFocus::Outside);
             self.state.update(cx, |state, cx| {
-                if !self.pointer_only && window.is_window_active() {
+                if restore_focus {
                     state.focus(window, cx);
                 }
                 cx.emit(DismissEvent);
@@ -453,8 +689,24 @@ impl<I: SelectItem<Value = String> + 'static> SynapseSelectView<I> {
         cx.notify();
     }
 
-    fn confirm(&mut self, value: String, window: &mut Window, cx: &mut Context<Self>) {
-        if self.disabled || !self.open {
+    fn confirm(
+        &mut self,
+        value: String,
+        generation: u64,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.is_disabled(cx)
+            || !self.open
+            || self.generation != generation
+            || !self
+                .list
+                .read(cx)
+                .delegate()
+                .items
+                .iter()
+                .any(|item| item.value() == &value && !item.disabled())
+        {
             return;
         }
         self.state.update(cx, |state, cx| {
@@ -501,6 +753,16 @@ impl<I: SelectItem<Value = String> + 'static> SynapseSelectView<I> {
                 })
                 .map(IndexPath::new);
             list.delegate_mut().items = items;
+            let options = list.delegate_mut();
+            options
+                .focus
+                .retain(|value, _| options.items.iter().any(|item| item.value() == value));
+            for item in &options.items {
+                options
+                    .focus
+                    .entry(item.value().clone())
+                    .or_insert_with(|| cx.focus_handle());
+            }
             list.delegate_mut().committed = committed;
             list.delegate_mut().presentation = presentation;
             if items_changed && list.selected_index() != cursor {
@@ -539,10 +801,10 @@ impl<I: SelectItem<Value = String> + 'static> RenderOnce for SynapseSelect<I> {
             view.pointer_style = self.pointer_style;
             view.pointer_placement = self.pointer_placement;
             view.allow_one_item = self.allow_one_item;
-            if self.disabled {
+            view.sync_items(self.items, window, cx);
+            if view.is_disabled(cx) {
                 view.set_open(false, window, cx);
             }
-            view.sync_items(self.items, window, cx);
         });
         view
     }
@@ -553,7 +815,7 @@ impl<I: SelectItem<Value = String> + 'static> Render for SynapseSelectView<I> {
         if self.pointer_only {
             return self.render_pointer(window, cx);
         }
-        let focus = self.state.focus_handle(cx);
+        let focus = self.state.focus_handle(cx).tab_stop(true);
         let content_focus = self.list.focus_handle(cx);
         let options = self.list.read(cx).delegate();
         let selected = self.state.read(cx).selected_value();
@@ -690,16 +952,16 @@ impl<I: SelectItem<Value = String> + 'static> Render for SynapseSelectView<I> {
             .refine_style(&self.style)
             .on_prepaint({
                 let view = cx.entity().downgrade();
-                move |bounds, _, cx| {
-                    _ = view.update(cx, |view, _| view.width = bounds.size.width);
+                move |bounds, window, cx| {
+                    _ = view.update(cx, |view, cx| view.did_layout(bounds, window, cx));
                 }
             })
-            .child(
+            .child(focus_target(
                 BaseSelect::new(self.id.clone())
                     .open(open)
                     .disabled(self.disabled)
                     .focus_handle(&focus)
-                    .content_focus_handle(&content_focus)
+                    .content_focus_handle(if alexa { &content_focus } else { &focus })
                     .accessibility_value(title)
                     .when_some(self.label.clone(), |this, label| {
                         this.accessibility_label(label)
@@ -789,7 +1051,7 @@ impl<I: SelectItem<Value = String> + 'static> Render for SynapseSelectView<I> {
                     } else {
                         Popover::new("options-popover")
                             .open(open)
-                            .track_focus(&content_focus)
+                            .track_focus(&focus)
                             // The trigger sits inside the 1px border; 2px reaches the
                             // original dropdown bottom plus `.s3-options { margin-top:1px }`.
                             .offset(px(2.))
@@ -831,7 +1093,14 @@ impl<I: SelectItem<Value = String> + 'static> Render for SynapseSelectView<I> {
                             })
                             .into_any_element()
                     }),
-            )
+                &focus,
+                if alexa {
+                    FocusBehavior::Spatial
+                } else {
+                    FocusBehavior::LocalVertical
+                },
+                !self.disabled,
+            ))
             .into_any_element()
     }
 }
@@ -842,6 +1111,8 @@ struct Options<I: SelectItem<Value = String> + 'static> {
     committed: Option<String>,
     cursor: Option<IndexPath>,
     presentation: Presentation,
+    focus: BTreeMap<String, FocusHandle>,
+    generation: u64,
     view: WeakEntity<SynapseSelectView<I>>,
 }
 
@@ -866,6 +1137,9 @@ impl<I: SelectItem<Value = String> + 'static> ListDelegate for Options<I> {
             highlighted: false,
             disabled: item.disabled(),
             presentation: self.presentation,
+            focus: (self.presentation == Presentation::Synapse)
+                .then(|| self.focus.get(item.value()).cloned())
+                .flatten(),
         })
     }
 
@@ -886,10 +1160,11 @@ impl<I: SelectItem<Value = String> + 'static> ListDelegate for Options<I> {
             return;
         }
         let value = item.value().clone();
+        let generation = self.generation;
         let view = self.view.clone();
         // Release the List borrow before an owner callback can refresh its options.
         window.defer(cx, move |window, cx| {
-            _ = view.update(cx, |view, cx| view.confirm(value, window, cx));
+            _ = view.update(cx, |view, cx| view.confirm(value, generation, window, cx));
         });
     }
 
@@ -910,6 +1185,7 @@ struct OptionRow {
     highlighted: bool,
     disabled: bool,
     presentation: Presentation,
+    focus: Option<FocusHandle>,
 }
 
 impl Selectable for OptionRow {
@@ -950,7 +1226,7 @@ impl RenderOnce for OptionRow {
             );
             (state, color)
         });
-        div()
+        let element = div()
             .id(self.id)
             .test_support()
             .role(Role::ListBoxOption)
@@ -978,8 +1254,7 @@ impl RenderOnce for OptionRow {
                     }))
             })
             .when(!self.disabled && !alexa, |this| {
-                this.when(self.highlighted && !self.checked, |this| this.bg(hover))
-                    .hover(|this| this.bg(hover))
+                this.hover(|this| this.bg(hover))
                     .active(|this| this.text_color(cx.theme().primary))
             })
             .when(self.disabled, |this| {
@@ -992,7 +1267,170 @@ impl RenderOnce for OptionRow {
             .overflow_hidden()
             .whitespace_nowrap()
             .text_ellipsis()
-            .child(self.title)
+            .child(self.title);
+        if let Some(focus) = self.focus {
+            focus_target(
+                element.track_focus(&focus),
+                &focus,
+                FocusBehavior::LocalVertical,
+                !self.disabled,
+            )
+            .ring(FocusRing::Options)
+            .into_any_element()
+        } else {
+            element.into_any_element()
+        }
+    }
+}
+
+#[cfg(test)]
+mod keyboard_tests {
+    use super::{Presentation, SelectFocus, SelectKeyRequest, SelectKeyboard};
+    use gpui_kit::SharedString;
+    use gpui_kit::component::select::SelectItem;
+
+    #[derive(Clone)]
+    struct Item {
+        value: &'static str,
+        disabled: bool,
+    }
+    impl SelectItem for Item {
+        type Value = &'static str;
+        fn title(&self) -> SharedString {
+            self.value.into()
+        }
+        fn value(&self) -> &Self::Value {
+            &self.value
+        }
+        fn disabled(&self) -> bool {
+            self.disabled
+        }
+    }
+
+    fn options() -> [Item; 4] {
+        [
+            Item {
+                value: "alpha",
+                disabled: false,
+            },
+            Item {
+                value: "inactive",
+                disabled: true,
+            },
+            Item {
+                value: "beta",
+                disabled: false,
+            },
+            Item {
+                value: "gamma",
+                disabled: false,
+            },
+        ]
+    }
+
+    #[test]
+    fn source_arrows_open_first_then_focus_boundaries_and_wrap_over_inactive_options() {
+        let items = options();
+        let mut keyboard = SelectKeyboard {
+            presentation: Presentation::Synapse,
+            open: false,
+            disabled: false,
+            focus: SelectFocus::Trigger,
+            items: &items,
+        };
+        assert_eq!(keyboard.request("down", false), SelectKeyRequest::Toggle);
+        assert_eq!(keyboard.request("up", false), SelectKeyRequest::Toggle);
+        keyboard.open = true;
+        assert_eq!(keyboard.request("down", false), SelectKeyRequest::Focus(0));
+        assert_eq!(keyboard.request("up", false), SelectKeyRequest::Focus(3));
+        for (current, next, previous) in [(0, 2, 3), (2, 3, 0), (3, 0, 2)] {
+            keyboard.focus = SelectFocus::Option(current);
+            assert_eq!(
+                keyboard.request("down", false),
+                SelectKeyRequest::Focus(next)
+            );
+            assert_eq!(
+                keyboard.request("up", false),
+                SelectKeyRequest::Focus(previous)
+            );
+        }
+        keyboard.focus = SelectFocus::Option(1);
+        assert_eq!(keyboard.request("down", false), SelectKeyRequest::Focus(0));
+        assert_eq!(keyboard.request("up", false), SelectKeyRequest::Focus(3));
+        assert_eq!(keyboard.request("enter", false), SelectKeyRequest::Ignore);
+    }
+
+    #[test]
+    fn source_tab_counts_inactive_rows_but_empty_menus_keep_normal_tab_behavior() {
+        let items = [Item {
+            value: "inactive",
+            disabled: true,
+        }];
+        let mut keyboard = SelectKeyboard {
+            presentation: Presentation::Synapse,
+            open: true,
+            disabled: false,
+            focus: SelectFocus::Trigger,
+            items: &items,
+        };
+        assert_eq!(
+            keyboard.request("tab", false),
+            SelectKeyRequest::Tab { backwards: false }
+        );
+        assert_eq!(
+            keyboard.request("tab", true),
+            SelectKeyRequest::Tab { backwards: true }
+        );
+        assert_eq!(keyboard.request("down", false), SelectKeyRequest::Toggle);
+        keyboard.items = &[];
+        assert_eq!(keyboard.request("tab", false), SelectKeyRequest::Ignore);
+        keyboard.items = &items;
+        keyboard.open = false;
+        assert_eq!(keyboard.request("tab", false), SelectKeyRequest::Ignore);
+    }
+
+    #[test]
+    fn source_activation_distinguishes_trigger_focus_and_committed_option() {
+        let items = options();
+        let mut keyboard = SelectKeyboard {
+            presentation: Presentation::Synapse,
+            open: true,
+            disabled: false,
+            focus: SelectFocus::Trigger,
+            items: &items,
+        };
+        for key in ["enter", "space"] {
+            assert_eq!(keyboard.request(key, false), SelectKeyRequest::Toggle);
+        }
+        keyboard.focus = SelectFocus::Option(2);
+        for key in ["enter", "space"] {
+            assert_eq!(keyboard.request(key, false), SelectKeyRequest::Confirm(2));
+        }
+        for key in ["left", "right", "escape", "home", "end"] {
+            assert_eq!(keyboard.request(key, false), SelectKeyRequest::Ignore);
+        }
+    }
+
+    #[test]
+    fn source_special_navigation_does_not_apply_to_alexa_disabled_or_unfocused_controls() {
+        let items = options();
+        let mut keyboard = SelectKeyboard {
+            presentation: Presentation::Alexa,
+            open: true,
+            disabled: false,
+            focus: SelectFocus::Trigger,
+            items: &items,
+        };
+        for key in ["up", "down", "enter", "space", "tab"] {
+            assert_eq!(keyboard.request(key, false), SelectKeyRequest::Ignore);
+        }
+        keyboard.presentation = Presentation::Synapse;
+        keyboard.disabled = true;
+        assert_eq!(keyboard.request("down", false), SelectKeyRequest::Ignore);
+        assert_eq!(keyboard.request("tab", false), SelectKeyRequest::Ignore);
+        keyboard.disabled = false;
+        keyboard.focus = SelectFocus::Outside;
+        assert_eq!(keyboard.request("down", false), SelectKeyRequest::Ignore);
     }
 }
 
@@ -1118,7 +1556,7 @@ mod tests {
     }
 
     #[gpui_kit::test]
-    fn pointer_image_options_keep_domain_value_and_do_not_add_keyboard_selection(
+    fn pointer_image_options_keep_domain_value_and_support_source_keyboard_focus(
         cx: &mut TestAppContext,
     ) {
         cx.update(|cx| {
@@ -1160,7 +1598,7 @@ mod tests {
             );
             window.press("down", cx);
             window.press("enter", cx);
-            assert!(window.try_find("source-pointer-options-clip").is_some());
+            assert!(window.try_find("source-pointer-options-clip").is_none());
             assert_eq!(
                 fixture
                     .read(cx)
@@ -1168,8 +1606,9 @@ mod tests {
                     .read(cx)
                     .selected_value()
                     .map(String::as_str),
-                Some("peaking"),
+                Some("lowpass"),
             );
+            window.click("source-pointer-trigger", cx);
             window.click("source-pointer-option-highpass", cx);
         })
         .unwrap();
@@ -1178,7 +1617,10 @@ mod tests {
             window.render_frame(cx);
             assert_eq!(
                 fixture.read(cx).confirmed,
-                vec![Some(String::from("highpass"))],
+                vec![
+                    Some(String::from("lowpass")),
+                    Some(String::from("highpass"))
+                ],
             );
             assert_eq!(
                 fixture
@@ -1213,9 +1655,9 @@ mod tests {
 
         cx.update_window(handle.into(), |_, window, cx| {
             window.render_frame(cx);
-            let focused = window.focused(cx);
             window.click("source-pointer-trigger", cx);
-            assert_eq!(window.focused(cx), focused);
+            let focused = window.focused(cx);
+            assert_eq!(window.find("source-pointer-trigger").focused(), Some(true));
             let viewport = window.find("source-pointer-options-clip").bounds();
             assert_eq!(viewport.size.height, px(180.));
             assert_pointer_option_in_view(window, "Alpha");
@@ -1277,8 +1719,8 @@ mod tests {
 
         cx.update_window(handle.into(), |_, window, cx| {
             window.render_frame(cx);
-            let focused = window.focused(cx);
             window.click("source-pointer-trigger", cx);
+            let focused = window.focused(cx);
             assert_pointer_option_in_view(window, "Choice 10");
             window.click("source-pointer-trigger", cx);
             assert!(window.try_find("source-pointer-options-clip").is_none());
@@ -1496,7 +1938,7 @@ mod tests {
             assert_eq!(window.find("choice").expanded(), Some(false));
             assert_eq!(window.find("choice").focused(), Some(true));
             window.press("enter", cx);
-            window.press("up", cx);
+            window.press("down", cx);
             window.press("enter", cx);
         })
         .unwrap();
@@ -1632,7 +2074,8 @@ mod tests {
         cx.update_window(handle.into(), |_, window, cx| {
             window.render_frame(cx);
             window.within("choice").click("input", cx);
-            window.press("down", cx); // Cursor is Beta, committed value is Alpha.
+            window.press("down", cx);
+            window.press("down", cx); // Focus is Beta, committed value is Alpha.
             fixture.update(cx, |view, cx| {
                 view.set_options(&["Inserted", "Alpha", "Beta", "Gamma"], "Alpha", window, cx);
             });
@@ -1661,6 +2104,7 @@ mod tests {
             assert_eq!(window.find("source-options").bounds().size.height, px(77.));
             assert_eq!(window.find("option-Alpha").selected(), Some(true));
             assert_eq!(fixture.read(cx).confirmed.len(), 1);
+            window.press("down", cx);
             window.press("down", cx);
             // An unrelated parent redraw must leave the pending cursor alone.
             fixture.update(cx, |_, cx| cx.notify());

@@ -1,7 +1,7 @@
 //! Electron TabUI: tab lifetime is separate from retained device configuration.
 use super::{AppShell, Location, Tab};
+use razer_widgets::keyboard_navigation::Button;
 use gpui_kit::base::{
-    Button,
     motion::{self, Easing, Transition},
 };
 use gpui_kit::component::*;

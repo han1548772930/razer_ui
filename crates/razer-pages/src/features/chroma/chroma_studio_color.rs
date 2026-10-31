@@ -2,7 +2,8 @@
 //! Independent of the device-product color picker; emits only completed edits.
 use super::theme::Colors;
 use crate::features::screen_color::{ScreenColorCapture, ScreenColorUpdate, ScreenColorUpdateKind};
-use gpui_kit::base::{Button, Slider, SliderIndicator, SliderThumb, SliderTrack};
+use razer_widgets::keyboard_navigation::Button;
+use gpui_kit::base::{Slider, SliderIndicator, SliderThumb, SliderTrack};
 use gpui_kit::component::{
     input::{Input, InputEvent, InputState},
     menu::{ContextMenuExt, PopupMenuItem},

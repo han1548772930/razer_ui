@@ -505,7 +505,7 @@ impl RenderOnce for DashboardGrid {
                     )
                     .into_any_element()
                 } else {
-                    let button = gpui_kit::base::Button::new(id.clone())
+                    let button = razer_widgets::keyboard_navigation::Button::new(id.clone())
                         .accessibility_label(card.label)
                         .when_some(card.focus, |button, focus| button.track_focus(&focus))
                         .focusable(card.action.is_some())

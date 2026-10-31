@@ -5,7 +5,7 @@ use super::{
     controls::{Choice, Choices},
     workspace::{Continue, DeviceWorkspace},
 };
-use gpui_kit::base::Button as BaseButton;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::component::{
     ActiveTheme, IndexPath,
     button::{Button, ButtonCustomVariant, ButtonVariants},

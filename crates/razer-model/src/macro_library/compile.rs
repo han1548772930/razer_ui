@@ -1,4 +1,4 @@
-//! Current macro main.f7cc2d30: source events and ordinary/phased publication.
+//! Current macro main.6a2e8a10: source events and ordinary/phased publication.
 //! Local editor identities are resolved to persistent UUIDs before compilation.
 use super::*;
 use serde_json::{Value, json};

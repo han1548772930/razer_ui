@@ -21705,6 +21705,527 @@ def inline_product_names(receipt_path, main):
     return {"declared_product_id": declared_pid, "product_translations": translations, "evidence": evidence}
 
 
+class RegistrySourceAst:
+    """Lexical AST operations shared by product roots and navigation consumers."""
+
+    def __init__(self, raw, tree):
+        import evidence
+        self.raw, self.tree = raw, tree
+        self.bindings = evidence.JavascriptBindings(raw, tree)
+
+    @staticmethod
+    def walk(node):
+        pending = [node]
+        while pending:
+            item = pending.pop()
+            yield item
+            pending.extend(reversed(item.named_children))
+
+    @staticmethod
+    def unwrap(node):
+        while node is not None and node.type in {"parenthesized_expression", "sequence_expression"}:
+            values = node.named_children
+            if node.type == "sequence_expression" and any(value.text != b"0" for value in values[:-1]):
+                raise ValueError("Current navigation call has an unresolved sequence prefix")
+            node = values[-1] if values else None
+        return node
+
+    @staticmethod
+    def member(node, name):
+        return node is not None and node.type == "member_expression" and node.child_by_field_name("property").text == name
+
+    @staticmethod
+    def arguments(node):
+        return node.child_by_field_name("arguments").named_children
+
+    @staticmethod
+    def array_items(node):
+        if node.type != "array":
+            raise ValueError("Current navigation requires a literal array")
+        result, expect_item = [], True
+        for item in node.children[1:-1]:
+            if item.type == "comment":
+                continue
+            if item.type == ",":
+                if expect_item:
+                    raise ValueError("Current navigation array has an unobserved element")
+                expect_item = True
+            else:
+                if not expect_item or item.type == "spread_element":
+                    raise ValueError("Current navigation array has an unresolved element")
+                result.append(item)
+                expect_item = False
+        return result
+
+    @staticmethod
+    def fields(node):
+        import json5
+        if node is None or node.type != "object":
+            raise ValueError("Current display-mode properties are not a fixed object")
+        result = {}
+        for pair in node.named_children:
+            if pair.type == "comment":
+                continue
+            if pair.type != "pair" or pair.child_by_field_name("key").type not in {"property_identifier", "string"}:
+                raise ValueError("Current display-mode object contains an unresolved property")
+            key = pair.child_by_field_name("key").text.decode()
+            if pair.child_by_field_name("key").type == "string":
+                key = json5.loads(key)
+            if key in result:
+                raise ValueError("Current display-mode object repeats a branch or property")
+            result[key] = pair.child_by_field_name("value")
+        return result
+
+    def jsx(self, node):
+        node = self.unwrap(node)
+        if node is None or node.type != "call_expression":
+            raise ValueError("Current display-mode branch is not an explicit JSX mount")
+        function = self.unwrap(node.child_by_field_name("function"))
+        if not (self.member(function, b"jsx") or self.member(function, b"jsxs")) or len(self.arguments(node)) != 2:
+            raise ValueError("Current display-mode branch has an unresolved JSX factory")
+        component, props = self.arguments(node)
+        return component, self.fields(props)
+
+    def capture(self, node):
+        return {"byte_start": node.start_byte, "byte_end": node.end_byte,
+                "character_start": len(self.raw[:node.start_byte].decode()),
+                "character_end": len(self.raw[:node.end_byte].decode()),
+                "expression": node.text.decode(), "sha256": hashlib.sha256(node.text).hexdigest()}
+
+    def declaration(self, node):
+        if node.type != "identifier":
+            raise ValueError("Current navigation reference is not a lexical identifier")
+        binding = self.bindings.resolve(node.text.decode(), node.start_byte)
+        if binding["resolution"] != "declaration":
+            raise ValueError("Current navigation lexical declaration is unresolved: " + node.text.decode())
+        found = self.tree.root_node.descendant_for_byte_range(binding["start_byte"], binding["end_byte"] - 1)
+        if found.start_byte != binding["start_byte"] or found.end_byte != binding["end_byte"]:
+            raise ValueError("Current navigation declaration boundary is inconsistent")
+        return found
+
+    def resolve(self, node, chain=()):
+        node = self.unwrap(node)
+        if node.type != "identifier":
+            return node
+        declaration = self.declaration(node)
+        if declaration.start_byte in chain:
+            raise ValueError("Current navigation declaration is cyclic")
+        if declaration.type in {"class_declaration", "function_declaration"}:
+            return declaration
+        value = declaration.child_by_field_name("value")
+        if value is None:
+            raise ValueError("Current navigation declaration has no initializer")
+        return self.resolve(value, (*chain, declaration.start_byte))
+
+    def exported_value(self, factory, export_name):
+        complete = self.tree.root_node.descendant_for_byte_range(factory["byte_start"], factory["byte_end"] - 1)
+        function = complete.child_by_field_name("value") if complete.type == "pair" else complete
+        parameters = function.child_by_field_name("parameters").named_children
+        if len(parameters) != 3 or any(parameter.type != "identifier" for parameter in parameters):
+            raise ValueError("Current navigation factory has unresolved module parameters")
+        exports_name, require_name = parameters[1].text, parameters[2].text
+        exported = []
+        for node in self.walk(function.child_by_field_name("body")):
+            if node.type != "call_expression" or not self.member(node.child_by_field_name("function"), b"d"):
+                continue
+            callee, args = node.child_by_field_name("function"), self.arguments(node)
+            if callee.child_by_field_name("object").text != require_name or len(args) != 2 or args[0].text != exports_name:
+                continue
+            definitions = self.fields(args[1])
+            if export_name in definitions:
+                exported.append(definitions[export_name])
+        if len(exported) != 1 or exported[0].type not in {"arrow_function", "function_expression"}:
+            raise ValueError("Current navigation has no unique export getter: " + export_name)
+        value = exported[0].child_by_field_name("body")
+        if value.type == "statement_block":
+            statements = [node for node in value.named_children if node.type != "comment"]
+            if len(statements) != 1 or statements[0].type != "return_statement" or len(statements[0].named_children) != 1:
+                raise ValueError("Current navigation export getter has an unresolved body")
+            value = statements[0].named_children[0]
+        return value, require_name
+
+    def connected_class(self, value):
+        chain = []
+        while True:
+            value = self.unwrap(value)
+            if value.type == "identifier":
+                declaration = self.declaration(value)
+                if any(row["byte_start"] == declaration.start_byte for row in chain):
+                    raise ValueError("Current navigation component aliases are cyclic")
+                chain.append(self.capture(declaration))
+                value = declaration if declaration.type == "class_declaration" else declaration.child_by_field_name("value")
+            elif value.type == "call_expression":
+                wrapper = self.unwrap(value.child_by_field_name("function"))
+                if (wrapper.type != "call_expression" or not self.member(self.unwrap(wrapper.child_by_field_name("function")), b"connect")
+                        or len(self.arguments(value)) != 1):
+                    raise ValueError("Current navigation component wrapper is not a verified connect call")
+                chain.append(self.capture(value))
+                value = self.arguments(value)[0]
+            elif value.type in {"class", "class_declaration"}:
+                return value, chain
+            else:
+                raise ValueError("Current navigation component is not a complete class")
+
+    def callable_member(self, owner, name):
+        found = []
+        for node in self.walk(owner.child_by_field_name("body")):
+            if node.type == "assignment_expression" and node.child_by_field_name("left").text == b"this." + name:
+                found.append(node.child_by_field_name("right"))
+            elif node.type == "field_definition" and node.child_by_field_name("property").text == name:
+                found.append(node.child_by_field_name("value"))
+            elif node.type == "method_definition" and node.child_by_field_name("name").text == name:
+                found.append(node)
+        if len(found) != 1 or found[0].type not in {"arrow_function", "function_expression", "method_definition"}:
+            raise ValueError("Current navigation callable is absent or ambiguous: " + name.decode())
+        return found[0]
+
+    def component_reference(self, component, require_name):
+        resolved = self.resolve(component)
+        if resolved.type == "member_expression":
+            imported = self.resolve(resolved.child_by_field_name("object"))
+            if (imported.type == "call_expression" and imported.child_by_field_name("function").text == require_name
+                    and len(self.arguments(imported)) == 1 and self.arguments(imported)[0].type == "number"
+                    and resolved.child_by_field_name("property").type == "property_identifier"):
+                return {"kind": "webpack_export", "module_id": javascript_integer_literal(self.arguments(imported)[0].text.decode()),
+                        "export": resolved.child_by_field_name("property").text.decode()}
+        return {"kind": "local_expression", "original_sha256": hashlib.sha256(self.raw).hexdigest(),
+                "byte_start": resolved.start_byte, "byte_end": resolved.end_byte}
+
+
+def registry_display_root_contract(raw, tree, owners):
+    """Read the mounted React root and every explicit display-mode lazy branch."""
+    ast = RegistrySourceAst(raw, tree)
+    walk, unwrap, member, arguments = ast.walk, ast.unwrap, ast.member, ast.arguments
+    fields, jsx, capture = ast.fields, ast.jsx, ast.capture
+    mounts = []
+    for node in walk(tree.root_node):
+        if node.type != "call_expression" or not member(node.child_by_field_name("function"), b"render"):
+            continue
+        receiver = unwrap(node.child_by_field_name("function").child_by_field_name("object"))
+        if (receiver is None or receiver.type != "call_expression"
+                or not member(unwrap(receiver.child_by_field_name("function")), b"createRoot")
+                or len(arguments(receiver)) != 1):
+            continue
+        target = arguments(receiver)[0]
+        if (target.type == "call_expression" and target.child_by_field_name("function").text == b"document.getElementById"
+                and len(arguments(target)) == 1 and arguments(target)[0].text in {b'"root"', b"'root'"}):
+            if len(arguments(node)) != 1:
+                raise ValueError("Current mounted root has unexpected render arguments")
+            jsx(arguments(node)[0])
+            mounts.append(node)
+    if len(mounts) != 1:
+        raise ValueError("Current product has no unique explicit React root mount")
+    mount = mounts[0]
+    enclosing = [owner for owner in owners if owner["byte_start"] <= mount.start_byte < mount.end_byte <= owner["byte_end"]]
+    if not enclosing:
+        raise ValueError("Current product root mount has no complete factory owner")
+    owner = min(enclosing, key=lambda row: row["byte_end"] - row["byte_start"])
+    selections = []
+    for node in walk(tree.root_node):
+        if not owner["byte_start"] <= node.start_byte < node.end_byte <= owner["byte_end"] or node.type != "call_expression":
+            continue
+        function = unwrap(node.child_by_field_name("function"))
+        args = arguments(node)
+        if not (member(function, b"jsx") or member(function, b"jsxs")) or len(args) != 2 or args[1].type != "object":
+            continue
+        names = {pair.child_by_field_name("key").text for pair in args[1].named_children if pair.type == "pair"}
+        if {b"$name", b"children"} <= names:
+            selections.append((node, fields(args[1])))
+    if len(selections) != 1:
+        raise ValueError("Current mounted factory has no unique display-mode selection")
+    selected, props = selections[0]
+    selector = props["$name"]
+    if selector.type != "identifier":
+        raise ValueError("Current display-mode selector is not a lexical query binding")
+    binding = ast.bindings.resolve(selector.text.decode(), selector.start_byte)
+    if binding["resolution"] not in {"declaration", "destructuring_requires_value_analysis"}:
+        raise ValueError("Current display-mode query binding is unresolved")
+    declaration = tree.root_node.descendant_for_byte_range(binding["start_byte"], binding["end_byte"] - 1)
+    pattern, query = declaration.child_by_field_name("name"), declaration.child_by_field_name("value")
+    aliases = [pair for pair in pattern.named_children if pair.type == "pair_pattern"
+               and pair.child_by_field_name("key").text == b"displayMode"
+               and pair.child_by_field_name("value").text == selector.text] if pattern is not None and pattern.type == "object_pattern" else []
+    getters = [node for node in walk(query) if node.type == "pair" and node.child_by_field_name("key").text == b"displayMode"] if query else []
+    if len(aliases) != 1 or len(getters) != 1:
+        raise ValueError("Current display-mode selector does not resolve the displayMode query field")
+    getter = unwrap(getters[0].child_by_field_name("value"))
+    if (getter.type != "call_expression" or not member(getter.child_by_field_name("function"), b"get")
+            or not member(getter.child_by_field_name("function").child_by_field_name("object"), b"searchParams")
+            or len(arguments(getter)) != 1 or arguments(getter)[0].text not in {b'"displayMode"', b"'displayMode'"}):
+        raise ValueError("Current display-mode selector reads another query parameter")
+    branches = fields(props["children"])
+    if "default" not in branches or not branches.keys() <= {"macro", "chromaApp", "default"}:
+        raise ValueError("Current display-mode branch set is not completely supported")
+    roots = []
+    for mode, expression in branches.items():
+        _, branch = jsx(expression)
+        if set(branch) != ({"macro", "lazy"} if mode == "macro" else {"lazy"}):
+            raise ValueError("Current lazy-root properties are not completely resolved")
+        lazy = branch["lazy"]
+        if lazy.type not in {"arrow_function", "function_expression"}:
+            raise ValueError("Current lazy-root loader is not a fixed callable")
+        loading = unwrap(lazy.child_by_field_name("body"))
+        if loading.type != "call_expression" or not member(loading.child_by_field_name("function"), b"then") or len(arguments(loading)) != 1:
+            raise ValueError("Current lazy-root completion is not an explicit module import")
+        module = arguments(loading)[0]
+        if (module.type != "call_expression" or not member(module.child_by_field_name("function"), b"bind")
+                or len(arguments(module)) != 2 or arguments(module)[1].type != "number"):
+            raise ValueError("Current lazy-root has no literal module binding")
+        require = module.child_by_field_name("function").child_by_field_name("object")
+        if require.type != "identifier" or arguments(module)[0].text != require.text:
+            raise ValueError("Current lazy-root require binding is inconsistent")
+        loading_chunks = unwrap(loading.child_by_field_name("function").child_by_field_name("object"))
+        if (loading_chunks.type == "call_expression" and loading_chunks.child_by_field_name("function").text == b"Promise.all"
+                and len(arguments(loading_chunks)) == 1 and arguments(loading_chunks)[0].type == "array"):
+            chunk_calls = ast.array_items(arguments(loading_chunks)[0])
+        else:
+            chunk_calls = [loading_chunks]
+        chunk_ids = []
+        for call in chunk_calls:
+            if (call.type != "call_expression" or not member(call.child_by_field_name("function"), b"e")
+                    or call.child_by_field_name("function").child_by_field_name("object").text != require.text
+                    or len(arguments(call)) != 1 or arguments(call)[0].type != "number"):
+                raise ValueError("Current lazy-root chunk dependency is not a fixed import")
+            chunk_ids.append(javascript_integer_literal(arguments(call)[0].text.decode()))
+        if not chunk_ids or len(chunk_ids) != len(set(chunk_ids)):
+            raise ValueError("Current lazy-root repeats or omits a chunk dependency")
+        roots.append({"display_mode": mode, "selector": "displayMode query parameter", **capture(expression),
+                      "chunk_ids": chunk_ids, "module_id": javascript_integer_literal(arguments(module)[1].text.decode())})
+    return {"mounted_entry": owner, "mount": capture(mount), "selection": capture(selected),
+            "query_binding": capture(declaration), "roots": roots,
+            "absent_display_modes": sorted({"macro", "chromaApp", "default"} - branches.keys())}
+
+
+def registry_default_navigation_contract(raw, tree, factory, modules):
+    """Resolve the exported setup gate, live navs source and its actual renderer."""
+    import typed_tables
+    ast = RegistrySourceAst(raw, tree)
+    walk, unwrap, member, arguments = ast.walk, ast.unwrap, ast.member, ast.arguments
+    fields, jsx, capture = ast.fields, ast.jsx, ast.capture
+    exported_value, require_name = ast.exported_value(factory, "default")
+    connected_class, callable_member = ast.connected_class, ast.callable_member
+
+    def view_is_rendered(owner):
+        rendered = callable_member(owner, b"render")
+        if not any(node.type == "call_expression" and node.child_by_field_name("function").text == b"this.renderView"
+                   and not arguments(node) for node in walk(rendered.child_by_field_name("body"))):
+            raise ValueError("Current navigation renderView is not called by render")
+
+    gate, gate_chain = connected_class(exported_value)
+    view_is_rendered(gate)
+    ready = []
+    for node in walk(callable_member(gate, b"renderView").child_by_field_name("body")):
+        if node.type != "ternary_expression":
+            continue
+        condition = node.child_by_field_name("condition")
+        if condition.type != "binary_expression" or not any(child.type == "===" for child in condition.children):
+            continue
+        left, right = condition.child_by_field_name("left"), condition.child_by_field_name("right")
+        if left.text == b"this.props.setupStatus" and member(right, b"READY") or right.text == b"this.props.setupStatus" and member(left, b"READY"):
+            ready.append(node)
+    if len(ready) != 1:
+        raise ValueError("Current navigation has no unique setup READY branch")
+    selected = ready[0].child_by_field_name("consequence")
+    component, props = jsx(selected)
+    while member(component, b"Fragment"):
+        if set(props) != {"children"}:
+            raise ValueError("Current navigation READY fragment has additional unresolved branches")
+        component, props = jsx(props["children"])
+    navigation, navigation_chain = connected_class(component)
+    view_is_rendered(navigation)
+    name = navigation.child_by_field_name("name")
+    if name is None:
+        raise ValueError("Current navigation class has no declared identity")
+    state_sources = []
+    for node in walk(navigation.child_by_field_name("body")):
+        if node.type == "assignment_expression" and node.child_by_field_name("left").text == b"this.state":
+            state = node.child_by_field_name("right")
+            if state.type == "object" and "navs" in fields(state):
+                state_sources.append(fields(state)["navs"])
+        if node.type == "assignment_expression" and node.child_by_field_name("left").text == b"this.state.navs":
+            raise ValueError("Current navigation replaces navs outside its owned initialization")
+        if node.type == "call_expression" and node.child_by_field_name("function").text == b"this.setState":
+            values = arguments(node)
+            if values and values[0].type == "object" and "navs" in fields(values[0]):
+                raise ValueError("Current navigation has an additional navs publication requiring analysis")
+    if len(state_sources) != 1:
+        raise ValueError("Current navigation has no unique owned navs initialization")
+    source_expression = state_sources[0]
+    renderer = callable_member(navigation, b"renderView")
+    renderer_body = renderer.child_by_field_name("body")
+    finds = [node for node in walk(renderer_body) if node.type == "call_expression"
+             and member(node.child_by_field_name("function"), b"find")
+             and node.child_by_field_name("function").child_by_field_name("object").text == b"this.state.navs"]
+    if len(finds) != 1 or len(arguments(finds[0])) != 1:
+        raise ValueError("Current navigation renderer has no unique active-view lookup")
+    predicate = arguments(finds[0])[0]
+    if predicate.type not in {"arrow_function", "function_expression"}:
+        raise ValueError("Current navigation lookup predicate is dynamic")
+    parameter = predicate.child_by_field_name("parameter")
+    parameters = predicate.child_by_field_name("parameters")
+    params = [parameter] if parameter else parameters.named_children if parameters else []
+    condition = predicate.child_by_field_name("body")
+    if (len(params) != 1 or params[0].type != "identifier" or condition.type != "binary_expression"
+            or not any(child.type == "===" for child in condition.children)):
+        raise ValueError("Current navigation lookup predicate is not strict name equality")
+    compared = {condition.child_by_field_name("left").text, condition.child_by_field_name("right").text}
+    if compared != {params[0].text + b".name", b"this.state.active_view"}:
+        raise ValueError("Current navigation lookup reads another state field")
+    projected = renderer_body
+    if projected.type == "statement_block":
+        returns = [node for node in projected.named_children if node.type == "return_statement"]
+        if len(returns) != 1 or len(returns[0].named_children) != 1:
+            raise ValueError("Current navigation renderer has an unresolved return")
+        projected = returns[0].named_children[0]
+    fallback = None
+    if projected.type == "sequence_expression":
+        values = projected.named_children
+        if len(values) != 2:
+            raise ValueError("Current navigation return sequence is unresolved")
+        fallback, projected = values
+    projected = unwrap(projected)
+    invoked = projected.type == "call_expression"
+    access = projected.child_by_field_name("function") if invoked else projected
+    if access.type != "member_expression" or (invoked and arguments(projected)):
+        raise ValueError("Current navigation return is not the selected component")
+    field = access.child_by_field_name("property").text.decode()
+    if (field, invoked) not in {("component", False), ("renderComponent", True)}:
+        raise ValueError("Current navigation renderer does not match a supported component declaration")
+    selected_row = access.child_by_field_name("object")
+    if selected_row.type == "identifier":
+        resolved = ast.resolve(selected_row)
+        if resolved.start_byte != finds[0].start_byte or resolved.end_byte != finds[0].end_byte:
+            raise ValueError("Current navigation returns another selected row")
+    elif selected_row.start_byte != finds[0].start_byte or selected_row.end_byte != finds[0].end_byte:
+        raise ValueError("Current navigation return is not linked to its active-view lookup")
+    if fallback is not None:
+        if (selected_row.type != "identifier" or fallback.type != "binary_expression"
+                or not any(child.type == "||" for child in fallback.children)
+                or fallback.child_by_field_name("left").text != selected_row.text):
+            raise ValueError("Current navigation missing-view fallback is unresolved")
+        assignment = unwrap(fallback.child_by_field_name("right"))
+        if (assignment.type != "assignment_expression" or assignment.child_by_field_name("left").text != selected_row.text
+                or assignment.child_by_field_name("right").text != b"this.state.navs[0]"):
+            raise ValueError("Current navigation missing-view fallback differs from the first row")
+    locales, groups = {}, []
+    fixed_modules = {module_id: values[0][1] for module_id, values in modules.items() if len(values) == 1}
+
+    def localized_key(node):
+        node = ast.resolve(node)
+        if node.type == "string":
+            import json5
+            value = json5.loads(node.text.decode())
+        elif node.type == "member_expression":
+            imported = ast.resolve(node.child_by_field_name("object"))
+            if (imported.type != "call_expression" or imported.child_by_field_name("function").text != require_name
+                    or len(arguments(imported)) != 1 or arguments(imported)[0].type != "number"
+                    or node.child_by_field_name("property").type != "property_identifier"):
+                raise ValueError("Current navigation name has an unresolved localization import")
+            module_id = javascript_integer_literal(arguments(imported)[0].text.decode())
+            providers = modules.get(module_id, [])
+            if len(providers) != 1:
+                raise ValueError("Current navigation localization module is absent or ambiguous")
+            original, provider = providers[0]
+            export = node.child_by_field_name("property").text.decode()
+            value, proof = typed_tables._profile_transfer_static_fields(provider["body"], export, None, fixed_modules)
+            locales.setdefault((original["path"], provider["byte_start"]), {"original": original, "owner": provider, "exports": {}})["exports"][export] = proof
+        else:
+            raise ValueError("Current navigation name is not a fixed localization key")
+        if type(value) is not str or not value:
+            raise ValueError("Current navigation localization key is empty or not a string")
+        return value
+
+    def array_branch(value, condition, primary):
+        value = unwrap(value)
+        binding_name = value.text.decode() if value.type == "identifier" else "primary"
+        array = ast.resolve(value)
+        if array.type != "array" or not array.named_children:
+            raise ValueError("Current navigation branch is not a nonempty literal array")
+        pages = []
+        for entry in ast.array_items(array):
+            row = fields(entry)
+            if set(row) != {"id", "name", field} or row["id"].type != "number":
+                raise ValueError("Current navigation row fields are not completely resolved")
+            rendered = row[field]
+            if field == "renderComponent":
+                if rendered.type not in {"arrow_function", "function_expression"}:
+                    raise ValueError("Current navigation renderComponent is not callable")
+                rendered = rendered.child_by_field_name("body")
+            component, _ = jsx(rendered)
+            pages.append({"source_id": javascript_integer_literal(row["id"].text.decode()),
+                          "kind": localized_key(row["name"]), "component": rendered.text.decode(),
+                          "component_reference": ast.component_reference(component, require_name),
+                          "mounted_alias": component.text.decode(), "offset": len(raw[:entry.start_byte].decode()),
+                          "body": entry.text.decode()})
+        if not pages or len({page["source_id"] for page in pages}) != len(pages) or len({page["kind"] for page in pages}) != len(pages):
+            raise ValueError("Current navigation repeats a page identity")
+        groups.append({"binding": binding_name, "condition": condition, "primary": primary,
+                       **capture(array), "pages": pages})
+
+    selection = ast.resolve(source_expression)
+    if selection.type == "ternary_expression":
+        condition = selection.child_by_field_name("condition")
+        if condition.text != b"this.props.isBle":
+            raise ValueError("Current navigation has an unresolved connection selection")
+        array_branch(selection.child_by_field_name("alternative"), "!this.props.isBle", True)
+        array_branch(selection.child_by_field_name("consequence"), "this.props.isBle", False)
+    else:
+        array_branch(source_expression, "all_connections", True)
+    return {"owner_name": name.text.decode(), "owner": capture(navigation), "setup_gate": capture(gate),
+            "gate_alias_chain": gate_chain, "navigation_alias_chain": navigation_chain,
+            "mounted_alias_chain": {"default_export": exported_value.text.decode(),
+                "setup_gate": gate.child_by_field_name("name").text.decode(),
+                "ready_branch": ready[0].child_by_field_name("consequence").text.decode(),
+                "connected_alias": component.text.decode(), "navigation_owner": name.text.decode(),
+                "export_wrapper": gate_chain[0]["expression"], "owner_wrapper": navigation_chain[0]["expression"]},
+            "ready_branch": capture(ready[0]), "navs_initialization": capture(source_expression),
+            "renderer": capture(renderer), "renderer_field": field,
+            "missing_active_view": "first_navigation" if fallback is not None else "required_match",
+            "localization": list(locales.values()), "groups": groups}
+
+
+def registry_standalone_navigation_contract(raw, tree, factory, default_groups):
+    """Match actual standalone JSX consumers to the same declared product pages."""
+    ast = RegistrySourceAst(raw, tree)
+    exported, require_name = ast.exported_value(factory, "default")
+    owner, aliases = ast.connected_class(exported)
+    rendered = ast.callable_member(owner, b"render")
+    declared = {}
+    for group in default_groups:
+        for page in group["pages"]:
+            key = json.dumps(page["component_reference"], sort_keys=True)
+            candidates = declared.setdefault(key, {})
+            candidates[page["kind"]] = page
+    pages, other_mounts = [], []
+    for node in ast.walk(rendered.child_by_field_name("body")):
+        if node.type != "call_expression":
+            continue
+        function = ast.unwrap(node.child_by_field_name("function"))
+        if not (ast.member(function, b"jsx") or ast.member(function, b"jsxs")):
+            continue
+        component, props = ast.jsx(node)
+        if component.type == "string":
+            continue
+        reference = ast.component_reference(component, require_name)
+        matches = declared.get(json.dumps(reference, sort_keys=True), {})
+        captured = {"component": node.text.decode(), "component_reference": reference,
+                    "mounted_alias": component.text.decode(), "offset": len(raw[:node.start_byte].decode()),
+                    "props": {key: value.text.decode() for key, value in props.items()}}
+        if not matches:
+            other_mounts.append(captured)
+            continue
+        if len(matches) != 1:
+            raise ValueError("Current standalone component addresses multiple declared page identities")
+        page = next(iter(matches.values()))
+        pages.append({"source_id": None, "kind": page["kind"], **captured, "standalone": True,
+                      "declared_page_reference": {"offset": page["offset"], "component": page["component"]}})
+    if not pages or len({page["kind"] for page in pages}) != len(pages):
+        raise ValueError("Current standalone product page references are absent or repeated")
+    return {"owner_name": owner.child_by_field_name("name").text.decode(), "owner": ast.capture(owner),
+            "aliases": aliases, "render": ast.capture(rendered), "pages": pages, "other_mounts": other_mounts,
+            "scope": "Standalone mounts matched by exact shared component declarations; wrapper behavior is retained separately"}
+
+
 def missing_registry_navigation(pid, acquired, main):
     """Recover explicit lazy roots and connection-specific navigation from originals."""
     import importlib.metadata
@@ -21740,119 +22261,62 @@ def missing_registry_navigation(pid, acquired, main):
         return item
 
     main_row, text, raw, tree = source(main)
-    root_nodes = [owner for key, found in modules.items() if isinstance(key, str) and key.startswith("concatenated-entry@")
-                  for row, owner in found if 'createRoot(document.getElementById("root"))' in owner["body"]]
-    if not root_nodes:
-        raise ValueError("Current product root mount is unresolved")
-    retain(main_row, min(root_nodes, key=lambda node: node["byte_end"] - node["byte_start"]), "mounted_entry")
-    root_pattern = re.compile(r'(macro|chromaApp|default):(?P<mount>\(0,[\w$.]+\.jsx\)\([\w$.]+,\{(?:macro:[\w$]+,)?lazy:\(\)=>Promise\.all\((?P<chunks>\[[^\]]+\])\)\.then\((?P<require>[\w$]+)\.bind\((?P=require),(?P<module>\d+)\)\)\}\))')
-    for match in root_pattern.finditer(text):
-        chunk_ids = [int(value) for value in re.findall(r'\.e\((\d+)\)', match["chunks"])]
-        for chunk_id in chunk_ids:
-            found = [row for row in acquired["files"] if Path(row.get("path", "")).name.startswith(str(chunk_id) + ".")
-                     and row.get("path", "").endswith(".js")]
+    contract = registry_display_root_contract(raw, tree, [owner for found in modules.values() for _, owner in found])
+    retain(main_row, contract["mounted_entry"], "mounted_entry")
+    evidence["root_contract"] = {key: value for key, value in contract.items() if key != "mounted_entry"}
+    for root in contract["roots"]:
+        for chunk_id in root["chunk_ids"]:
+            found = [row for row in acquired["files"] if row.get("path")
+                     and Path(urllib.parse.urlsplit(row.get("url", "")).path).name.startswith(str(chunk_id) + ".")
+                     and urllib.parse.urlsplit(row.get("url", "")).path.endswith(".js")]
             if len(found) != 1:
                 raise ValueError("Current display-root chunk is absent or ambiguous: " + str(chunk_id))
             source(found[0])
-        found = modules.get(int(match["module"]), [])
+        found = modules.get(root["module_id"], [])
         if len(found) != 1:
             raise ValueError("Current display-root module is absent or ambiguous")
         row, owner = found[0]
-        evidence["display_roots"].append({"display_mode": match[1], "selector": "displayMode query parameter",
-            "original": main_row, "character_start": match.start(), "character_end": match.end(),
-            "expression": match["mount"], "chunk_ids": chunk_ids, "module_id": int(match["module"]),
-            "complete_owner": retain(row, owner, match[1] + "_root")})
+        evidence["display_roots"].append({**root, "original": main_row,
+            "complete_owner": retain(row, owner, root["display_mode"] + "_root")})
     roots = {row["display_mode"]: row for row in evidence["display_roots"]}
-    if set(roots) != {"macro", "chromaApp", "default"}:
-        raise ValueError("Current display-mode branches are not completely resolved")
     default = roots["default"]["complete_owner"]
     original, text, raw, tree = source(default["original"])
-    nav_pattern = re.compile(r'\{id:(\d+),name:([\w$]+)\.([\w$]+),renderComponent:\(\)=>(\(0,[\w$.]+\.jsx\)\(([\w$.]+),)')
-    matches = list(nav_pattern.finditer(text, default["character_start"], default["character_end"]))
-    if not matches:
-        raise ValueError("Current mounted default navigation is absent")
-    owners, unresolved = source_component_regions(text, {"navigation_owner": [matches[0][0]]})
-    if unresolved or len(owners) != 1:
-        raise ValueError("Current complete navigation class is unresolved")
-    owner = retain(original, owners[0], "navigation_owner")
-    owner_name = re.match(r'class ([\w$]+)', owner["body"])[1]
-    exported = re.search(r'default:\(\)=>([\w$]+)', default["body"])
-    if exported is None:
-        raise ValueError("Current default-root export is unresolved")
-    root_binding = re.search(re.escape(exported[1]) + r'=\(0,[\w$.]+\.connect\)\(.*?\)\(([\w$]+)\)', default["body"])
-    if root_binding is None:
-        raise ValueError("Current root export wrapper is unresolved")
-    gate, unresolved = source_component_regions(text, {"setup_gate": ["class " + root_binding[1] + " extends "]})
-    if unresolved or len(gate) != 1:
-        raise ValueError("Current setup-state wrapper is unresolved")
-    gate = retain(original, gate[0], "setup_gate")
-    branch = re.search(r'setupStatus===[\w$.]+\.READY\?(\(0,[\w$.]+\.jsx\)\(([\w$]+),\{\}\)):', gate["body"])
-    if branch is None:
-        raise ValueError("Current ready-state page mount is unresolved")
-    connected = re.search(re.escape(branch[2]) + r'=\(0,[\w$.]+\.connect\)\(.*?\)\(' + re.escape(owner_name) + r'\)', default["body"])
-    if connected is None:
-        raise ValueError("Current navigation owner is not mounted by the ready-state root")
-    evidence["mounted_alias_chain"] = {"default_export": exported[1], "setup_gate": root_binding[1],
-        "ready_branch": branch[1], "connected_alias": branch[2], "navigation_owner": owner_name,
-        "export_wrapper": root_binding[0], "owner_wrapper": connected[0]}
-    locale_aliases = {match[2] for match in matches}
-    if len(locale_aliases) != 1:
-        raise ValueError("Current navigation localization imports are ambiguous")
-    locale_alias = next(iter(locale_aliases))
-    locale_import = re.search(r'(?<![\w$])' + re.escape(locale_alias) + r'=[\w$]+\((\d+)\)', default["body"])
-    found = modules.get(int(locale_import[1]), []) if locale_import else []
-    if len(found) != 1:
-        raise ValueError("Current navigation localization provider is unresolved")
-    locale = retain(*found[0], "navigation_localization")
-    groups = {}
-    for match in matches:
-        if not owner["character_start"] < match.start() < owner["character_end"]:
-            raise ValueError("Current navigation entry has another owner")
-        byte_start = len(text[:match.start()].encode("utf-8"))
-        node = tree.root_node.descendant_for_byte_range(byte_start, byte_start + 1)
-        while node is not None and node.type != "array":
-            node = node.parent
-        if node is None or node.parent.type != "variable_declarator":
-            raise ValueError("Current navigation branch is not a retained literal array")
-        name_node = node.parent.child_by_field_name("name")
-        name = raw[name_node.start_byte:name_node.end_byte].decode("utf-8")
-        group = groups.setdefault(name, {"byte_start": node.start_byte, "byte_end": node.end_byte,
-                                        "body": raw[node.start_byte:node.end_byte].decode("utf-8"), "pages": []})
-        locale_export = re.search(re.escape(match[3]) + r':\(\)=>([\w$]+)', locale["body"])
-        label = re.search(r'(?<![\w$])' + re.escape(locale_export[1]) + r'="([^"]+)"', locale["body"]) if locale_export else None
-        if label is None:
-            raise ValueError("Current navigation localization key is unresolved")
-        end = javascript_delimited(text, match.start())
-        body = text[match.start():end]
-        component = body[body.index("renderComponent:()=>") + len("renderComponent:()=>"):-1]
-        group["pages"].append({"source_id": int(match[1]), "kind": label[1], "component": component,
-                               "mounted_alias": match[5], "offset": match.start(), "body": body})
-    selection = re.search(r'navs:(this\.props\.isBle)\?([\w$]+):([\w$]+)', owner["body"])
-    if selection is None or set(groups) != {selection[2], selection[3]}:
-        raise ValueError("Current connection-specific navigation selection is unresolved")
+    navigation_contract = registry_default_navigation_contract(raw, tree, default, modules)
+    evidence["navigation_contract"] = navigation_contract
+    evidence["mounted_alias_chain"] = navigation_contract["mounted_alias_chain"]
+    for role, captured in (("navigation_owner", navigation_contract["owner"]), ("setup_gate", navigation_contract["setup_gate"])):
+        retain(original, {**captured, "body": captured["expression"]}, role)
+    for locale in navigation_contract["localization"]:
+        retain(locale["original"], locale["owner"], "navigation_localization")
     navigations = []
-    for name, condition, primary in ((selection[3], "!" + selection[1], True), (selection[2], selection[1], False)):
-        group = groups[name]
-        group.update({"binding": name, "condition": condition})
+    for group in navigation_contract["groups"]:
         evidence["navigation_branches"].append(group)
-        navigations.append({"owner": owner_name, "display_mode": "default", "source": original,
-            "offset": group["pages"][0]["offset"], "primary": primary, "branch": name,
+        navigations.append({"owner": navigation_contract["owner_name"], "display_mode": "default", "source": original,
+            "offset": group["pages"][0]["offset"], "primary": group["primary"], "branch": group["binding"],
             "reachability": {"kind": "current_lazy_root_and_connection_branch", "root": roots["default"]["expression"],
-                             "mounted_alias_chain": evidence["mounted_alias_chain"], "condition": condition},
+                             "mounted_alias_chain": evidence["mounted_alias_chain"], "condition": group["condition"]},
             "pages": group["pages"]})
-    chroma = roots["chromaApp"]["complete_owner"]
-    chroma_match = re.search(r'children:\[\s*(\(0,[\w$.]+\.jsx\)\(([\w$]+)\.([\w$]+),\{\}\))', chroma["body"])
-    imported = re.search(r'(?<![\w$])' + re.escape(chroma_match[2]) + r'=[\w$]+\((\d+)\)', chroma["body"]) if chroma_match else None
-    found = modules.get(int(imported[1]), []) if imported else []
-    if len(found) != 1 or 'lightingEffectsReducer' not in found[0][1]["body"]:
-        raise ValueError("Current standalone ChromaApp lighting owner is unresolved")
-    retain(*found[0], "chroma_lighting_owner")
-    navigations.append({"owner": "ChromaAppRoot", "display_mode": "chromaApp", "source": chroma["original"],
-        "offset": chroma["character_start"], "primary": False, "branch": "chromaApp",
-        "reachability": {"kind": "current_lazy_root", "root": roots["chromaApp"]["expression"]},
-        "pages": [{"source_id": None, "kind": "TAB_LIGHTING", "component": chroma_match[1],
-                   "offset": chroma["character_start"], "standalone": True}]})
-    evidence["shared_macro_mode"] = "Captured separately above; shared macro UI is owned by the module registry"
+    if "chromaApp" in roots:
+        chroma = roots["chromaApp"]["complete_owner"]
+        chroma_original, _, chroma_raw, chroma_tree = source(chroma["original"])
+        standalone = registry_standalone_navigation_contract(
+            chroma_raw, chroma_tree, chroma, navigation_contract["groups"])
+        evidence["standalone_navigation_contract"] = standalone
+        for page in standalone["pages"]:
+            reference = page["component_reference"]
+            if reference["kind"] == "webpack_export":
+                found = modules.get(reference["module_id"], [])
+                if len(found) != 1:
+                    raise ValueError("Current standalone page provider is absent or ambiguous")
+                provider_original, _, provider_raw, provider_tree = source(found[0][0])
+                RegistrySourceAst(provider_raw, provider_tree).exported_value(found[0][1], reference["export"])
+                retain(provider_original, found[0][1], "standalone_page_provider")
+        navigations.append({"owner": standalone["owner_name"], "display_mode": "chromaApp", "source": chroma_original,
+            "offset": standalone["pages"][0]["offset"], "primary": False, "branch": "chromaApp",
+            "reachability": {"kind": "current_lazy_root", "root": roots["chromaApp"]["expression"]},
+            "pages": standalone["pages"]})
+    evidence["shared_macro_mode"] = ("Captured separately above; shared macro UI is owned by the module registry"
+                                     if "macro" in roots else "Absent from the current mounted display-mode object")
     return navigations, evidence
 
 
@@ -21904,6 +22368,106 @@ def registry_source_identity(pid, role, *, candidates, observations=None):
               "inputs": list(audit.artifacts.values()),
               "scope": "Declared source identity and explicit presentation metadata; device state is separate"}
     return report, source
+
+
+def registry_ui_edition_contract(raw):
+    """Verify the registered UI reducer accepts the middleware edition payload."""
+    import sys
+    import json5
+    sys.path.insert(0, str(a.ROOT / "tools/analyzers/python-static"))
+    from tree_sitter import Language, Parser
+    import tree_sitter_javascript
+    tree = Parser(Language(tree_sitter_javascript.language())).parse(raw)
+    if tree.root_node.has_error:
+        raise ValueError("Current UI edition consumer has an AST error")
+    ast = RegistrySourceAst(raw, tree)
+    nodes = list(ast.walk(tree.root_node))
+    setters = []
+    for case in (node for node in nodes if node.type == "switch_case"):
+        key = case.child_by_field_name("value")
+        if key is None or key.type not in {"identifier", "string"}:
+            continue
+        try:
+            action = ast.resolve(key)
+        except ValueError:
+            continue
+        if action.type != "string" or json5.loads(action.text.decode()) != "device/editionLayoutId":
+            continue
+        statements = [node for node in case.named_children if node != key and node.type != "comment"]
+        if (len(statements) != 1 or statements[0].type != "return_statement"
+                or len(statements[0].named_children) != 1):
+            raise ValueError("Current UI edition action has an unresolved return path")
+        result = ast.unwrap(statements[0].named_children[0])
+        fields = [node for node in result.named_children if node.type != "comment"]
+        if result.type != "object" or len(fields) < 2:
+            raise ValueError("Current UI edition action has no fixed result fields")
+        tail = fields[-2:]
+        if (any(node.type != "pair" or node.child_by_field_name("key").type != "property_identifier" for node in tail)
+                or {node.child_by_field_name("key").text for node in tail} != {b"editionId", b"layoutId"}):
+            raise ValueError("Current UI edition/layout payload is filtered or overwritten")
+        if any(node.type == "pair" and node.child_by_field_name("key").text in {b"editionId", b"layoutId"}
+               for node in fields[:-2]):
+            raise ValueError("Current UI edition/layout result repeats a field")
+        owner = case.parent
+        while owner is not None and owner.type not in {"arrow_function", "function_expression", "function_declaration"}:
+            owner = owner.parent
+        parameters = owner.child_by_field_name("parameters") if owner is not None else None
+        if (parameters is None or len(parameters.named_children) != 2
+                or any(node.type != "identifier" for node in parameters.named_children)):
+            raise ValueError("Current UI edition reducer has unresolved state/action parameters")
+        state, payload_action = parameters.named_children
+        switch = case.parent.parent
+        switch_value = switch.child_by_field_name("value") if switch.type == "switch_statement" else None
+        selector = switch_value
+        while selector is not None and selector.type in {"parenthesized_expression", "sequence_expression"}:
+            selector = selector.named_children[-1] if selector.named_children else None
+        if (not ast.member(selector, b"type") or selector.child_by_field_name("object").text != payload_action.text
+                or not fields[:-2] or fields[0].type != "spread_element" or fields[0].named_children[0].text != state.text):
+            raise ValueError("Current UI edition action is not the registered state transition")
+        for assignment in (node for node in ast.walk(switch_value) if node.type == "assignment_expression"):
+            target = assignment.child_by_field_name("left")
+            while target.type in {"member_expression", "subscript_expression"}:
+                target = target.child_by_field_name("object")
+            if target.text == payload_action.text:
+                raise ValueError("Current UI edition selector changes its action payload")
+        for pair in tail:
+            key, value = pair.child_by_field_name("key"), pair.child_by_field_name("value")
+            if (not ast.member(value, key.text) or not ast.member(value.child_by_field_name("object"), b"payload")
+                    or value.child_by_field_name("object").child_by_field_name("object").text != payload_action.text):
+                raise ValueError("Current UI edition/layout fields do not preserve the action payload")
+        registrations = []
+        for pair in (node for node in nodes if node.type == "pair" and node.parent.type == "object"
+                     and node.child_by_field_name("key").text == b"deviceReducer"):
+            try:
+                registered = ast.resolve(pair.child_by_field_name("value"))
+            except ValueError:
+                continue
+            if registered == owner and pair.parent.parent.type == "arguments":
+                registrations.append(pair)
+        if len(registrations) != 1:
+            raise ValueError("Current UI edition reducer is absent or ambiguous in the reducer composition")
+        setters.append({"action": json5.loads(action.text.decode()), "action_declaration": ast.capture(action),
+                        "reducer": ast.capture(owner), "registration": ast.capture(registrations[0]),
+                        "switch_evaluation": ast.capture(switch_value), "transition": ast.capture(case),
+                        "payload_fields": ["editionId", "layoutId"]})
+    if len(setters) != 1:
+        raise ValueError("Current UI has no unique registered edition/layout payload consumer")
+    return {**setters[0], "scope": "Registered reducer preserves edition/layout payloads; no physical-device observation or runtime acceptance"}
+
+
+def registry_edition_metadata(ui_report, peer, *, ui_main):
+    """Keep UI and MW declarations separate when choosing registry variants."""
+    ui_editions = ui_report["definition"]["edition_ids"]
+    mw_editions = peer["definition"]["edition_ids"] if peer["status"] == "verified" else None
+    evidence = {"ui_declared_edition_ids": ui_editions, "middleware_declared_edition_ids": mw_editions,
+                "scope": "Source-declared presentation variants; not a live device edition"}
+    if ui_editions is not None:
+        return ui_editions, {**evidence, "selected_source_role": "ui"}
+    if mw_editions is not None:
+        return mw_editions, {**evidence, "selected_source_role": "middleware",
+                             "source_export": "AVAILABLE_EDITION_ID",
+                             "ui_reducer_contract": registry_ui_edition_contract(ui_main)}
+    return None, {**evidence, "selected_source_role": None}
 
 
 def current_registry_peer(pid, ui_definition, *, candidates, observations=None):
@@ -22026,8 +22590,11 @@ def audit_registry_identity(prepare=False, products=None):
                 if header:
                     edits[pid] = None
                 continue
+            edition_ids, row["edition_metadata"] = registry_edition_metadata(
+                source_report, peer, ui_main=source["audit"].read(source["main"]) if edition_ids is None else None)
+            row["edition_ids"] = edition_ids
             if edition_ids is None:
-                raise ValueError("Current registry UI edition declarations are unobserved")
+                raise ValueError("Current registry edition declarations are unobserved in both source roles")
             row["endpoint_semantics"] = "catalog_route_with_declared_alias" if declared_pid != pid else "self_declared_product"
             if header and pid not in mounted_candidates:
                 row["disposition"] = "verify_declared_identity_preserve_separately_owned_navigation"

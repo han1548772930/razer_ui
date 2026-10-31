@@ -1,4 +1,4 @@
-//! 58190.va / MacroItem_control_action: source SVGs, slots and CSS tooltips.
+//! 7003.bi / MacroItem_control_action: source SVGs, slots and CSS tooltips.
 use super::*;
 
 impl MacroPage {
@@ -25,6 +25,15 @@ impl MacroPage {
             .child(
                 h_flex()
                     .opacity(alpha)
+                    .when(
+                        self.actions()
+                            .get(index)
+                            .is_some_and(|action| action.kind == ActionKind::Command),
+                        |controls| {
+                            controls
+                                .child(super::tooltip::command_warning(index, disabled, window, cx))
+                        },
+                    )
                     .child(
                         row_button(
                             ("macro-row-duplicate", index),

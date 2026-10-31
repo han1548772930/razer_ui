@@ -66,7 +66,71 @@ impl Owner {
 
     pub(super) fn attempted(&self) -> bool {
         self.attempted
-            && self.request.as_ref().is_some_and(|request| !request.is_cancelled())
+            && self
+                .request
+                .as_ref()
+                .is_some_and(|request| !request.is_cancelled())
+    }
+
+    fn ensure_connection(
+        &mut self,
+        owner: EntityId,
+        generation: u64,
+        device: &Device,
+        exiting: bool,
+    ) -> Option<CameraIdentityRequested> {
+        if exiting
+            || !matches!(device.product_id, 3594..=3596)
+            || !matches!(
+                device.dashboard.connection_observation,
+                Some(
+                    DeviceConnectionObservation::UsbPresent
+                        | DeviceConnectionObservation::HidPresent
+                )
+            )
+            || device
+                .serial_number
+                .to_ascii_uppercase()
+                .starts_with("PREVIEW-")
+            || device
+                .serial_number
+                .to_ascii_uppercase()
+                .starts_with("DEMO-")
+        {
+            self.invalidate();
+            return None;
+        }
+        if self.request.as_ref().is_some_and(|request| {
+            request.owner == owner && request.matches_device(device, generation)
+        }) {
+            return None;
+        }
+        self.invalidate();
+        let request = CameraIdentityRequested {
+            owner,
+            generation,
+            real_product_id: device.real_product_id,
+            scope: CameraScope {
+                product_id: device.product_id,
+                container_id: device.device_container_id.clone(),
+            },
+            cancelled: Arc::new(AtomicBool::new(false)),
+        };
+        self.request = Some(request.clone());
+        Some(request)
+    }
+
+    fn complete(&mut self, request: &CameraIdentityRequested) -> bool {
+        if request.is_cancelled()
+            || !self
+                .request
+                .as_ref()
+                .is_some_and(|current| current.same_connection(request))
+        {
+            return false;
+        }
+        self.attempted = true;
+        true
     }
 }
 
@@ -78,35 +142,14 @@ impl Drop for Owner {
 
 impl SourceProductWorkspace {
     pub(super) fn ensure_camera_identity(&mut self, cx: &mut Context<Self>) {
-        if self.exiting
-            || !matches!(self.device.product_id, 3594..=3596)
-            || !matches!(
-                self.device.dashboard.connection_observation,
-                Some(DeviceConnectionObservation::UsbPresent | DeviceConnectionObservation::HidPresent)
-            )
-            || self.device.serial_number.to_ascii_uppercase().starts_with("PREVIEW-")
-            || self.device.serial_number.to_ascii_uppercase().starts_with("DEMO-")
-        {
-            self.camera_identity.invalidate();
+        let Some(request) = self.camera_identity.ensure_connection(
+            cx.entity_id(),
+            self.mapping_connection_generation,
+            &self.device,
+            self.exiting,
+        ) else {
             return;
-        }
-        if self.camera_identity.request.as_ref().is_some_and(|request| {
-            request.matches_device(&self.device, self.mapping_connection_generation)
-        }) {
-            return;
-        }
-        self.camera_identity.invalidate();
-        let request = CameraIdentityRequested {
-            owner: cx.entity_id(),
-            generation: self.mapping_connection_generation,
-            real_product_id: self.device.real_product_id,
-            scope: CameraScope {
-                product_id: self.device.product_id,
-                container_id: self.device.device_container_id.clone(),
-            },
-            cancelled: Arc::new(AtomicBool::new(false)),
         };
-        self.camera_identity.request = Some(request.clone());
         self.publish_camera_serial(CameraSerialObservation::Reading, cx);
         cx.emit(WorkspaceEvent::CameraIdentityRequested(request));
     }
@@ -118,7 +161,10 @@ impl SourceProductWorkspace {
         })
     }
 
-    pub(in crate::features) fn accepts_camera_identity(&self, request: &CameraIdentityRequested) -> bool {
+    pub(in crate::features) fn accepts_camera_identity(
+        &self,
+        request: &CameraIdentityRequested,
+    ) -> bool {
         self.camera_identity_request()
             .is_some_and(|current| current.same_connection(request))
     }
@@ -130,7 +176,9 @@ impl SourceProductWorkspace {
         cx: &mut Context<Self>,
     ) -> bool {
         if !self.accepts_camera_identity(request)
-            || result.as_ref().is_ok_and(|progress| progress.product_id() != self.device.product_id)
+            || result
+                .as_ref()
+                .is_ok_and(|progress| progress.product_id() != self.device.product_id)
         {
             return false;
         }
@@ -138,7 +186,9 @@ impl SourceProductWorkspace {
             Ok(progress) => CameraSerialObservation::Read(progress),
             Err(error) => CameraSerialObservation::Failed(error),
         };
-        self.camera_identity.attempted = true;
+        if !self.camera_identity.complete(request) {
+            return false;
+        }
         self.publish_camera_serial(observation, cx);
         // setupDevice awaits the identity producer before camera settings.
         // A failed read is retained as failure and does not supply defaults.
@@ -154,7 +204,8 @@ impl SourceProductWorkspace {
         self.device.observe_camera_serial(observation.clone());
         self.saved.observe_camera_serial(observation);
         let device = self.device.clone();
-        self.help.update(cx, |help, cx| help.set_device(&device, cx));
+        self.help
+            .update(cx, |help, cx| help.set_device(&device, cx));
         cx.notify();
     }
 }

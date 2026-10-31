@@ -1,6 +1,7 @@
 use super::super::artwork::pairing_device_image as device_image;
 use super::*;
-use gpui_kit::base::{Button as BaseButton, Radio as BaseRadio};
+use razer_widgets::keyboard_navigation::Button as BaseButton;
+use gpui_kit::base::{Radio as BaseRadio};
 use razer_widgets::scroll::SourceScrollable as _;
 use razer_widgets::theme::HyperfluxColors as Colors;
 

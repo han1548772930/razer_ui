@@ -1,6 +1,6 @@
 //! Product 167 OS / scrollOptionsReducer. Source defaults are not device reads.
 use super::*;
-use gpui_kit::base::Button as BaseButton;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 
 const LOCAL: &str = "_scrollOptionsLocalV1";
 

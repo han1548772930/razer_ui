@@ -52,7 +52,7 @@ impl SourceControls {
                         surface::select(&self.selects["691:oled-language"]).disabled(self.is_ble),
                     )
                     .child(
-                        gpui_kit::base::Button::new("oled-language-apply")
+                        razer_widgets::keyboard_navigation::Button::new("oled-language-apply")
                             .accessibility_label(t("APPLY"))
                             .disabled(
                                 self.is_ble || staged.as_ref() == self.value(language_control),
@@ -132,7 +132,7 @@ impl SourceControls {
             .children(control.options.iter().map(|option| {
                 let value = option.value.clone();
                 let selected = self.value(control) == Some(&value);
-                gpui_kit::base::Button::new(SharedString::from(format!("{key}-{value}")))
+                razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!("{key}-{value}")))
                     .accessibility_label(t(&option.label))
                     .disabled(disabled)
                     .w(surface::css(48.))
@@ -177,7 +177,7 @@ impl SourceControls {
             .children(control.options.iter().map(|option| {
                 let value = option.value.clone();
                 let selected = self.value(control) == Some(&value);
-                gpui_kit::base::Button::new(SharedString::from(format!("oled-screensaver-{value}")))
+                razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!("oled-screensaver-{value}")))
                     .accessibility_label(t(&option.label))
                     .disabled(selected)
                     .w(surface::css(260.))

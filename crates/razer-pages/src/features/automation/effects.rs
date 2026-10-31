@@ -1,6 +1,7 @@
 //! Mounted 3946 quick-effect branches: LP → NP/uP, Jl/Ql, dI/AI.
 use super::*;
-use gpui_kit::base::{Button as BaseButton, Slider, SliderIndicator, SliderThumb, SliderTrack};
+use razer_widgets::keyboard_navigation::Button as BaseButton;
+use gpui_kit::base::{Slider, SliderIndicator, SliderThumb, SliderTrack};
 
 impl AutomationEditor {
     pub(super) fn selected_effect(&self, down: bool) -> u64 {

@@ -699,7 +699,7 @@ impl AudioProductWorkspace {
 
     fn render_effect_preset_confirmation(&self, reset: bool, cx: &mut Context<Self>) -> AnyElement {
         use super::audio_mixer_theme::Colors as C;
-        use gpui_kit::base::Button as BaseButton;
+        use razer_widgets::keyboard_navigation::Button as BaseButton;
         // useBU/nR: an anchored source popup, one destructive button and
         // outside-click dismissal. No modal backdrop or extra Cancel action.
         razer_assets::deferred_resource(

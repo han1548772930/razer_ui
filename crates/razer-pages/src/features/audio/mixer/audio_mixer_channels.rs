@@ -5,7 +5,7 @@ use super::audio_mixer_knob::MixerKnob;
 use super::audio_mixer_number::{Number, Props};
 use super::audio_mixer_theme::Colors as C;
 use super::*;
-use gpui_kit::base::Button as BaseButton;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::source_slider::SourceSlider;
 
 pub(super) const CHANNELS: [(&str, &str); 7] = [

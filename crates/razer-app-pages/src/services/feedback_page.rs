@@ -3,7 +3,7 @@
 //! The current application mounts a 500px guest form and footer. Submission
 //! and log collection remain service boundaries: either log choice preserves
 //! the local draft and reports unavailable without network or process calls.
-use gpui_kit::base::Button as BaseButton;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::component::{
     checkbox::Checkbox,
     input::{Input, InputEvent, InputState, Textarea, TextareaState},

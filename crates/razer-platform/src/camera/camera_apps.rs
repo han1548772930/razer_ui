@@ -23,13 +23,17 @@ impl CameraApp {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CamoStudio {
     Absent,
-    Installed { version: std::result::Result<Option<String>, String> },
+    Installed {
+        version: std::result::Result<Option<String>, String>,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CamoDriver {
     Absent,
-    Installed { enabled: std::result::Result<bool, String> },
+    Installed {
+        enabled: std::result::Result<bool, String>,
+    },
 }
 
 /// Independent local observations. A failed status query cannot become an
@@ -98,7 +102,9 @@ pub fn launch_camo_from_help(validate: &impl Fn() -> Result<()>) -> Result<()> {
     validate()?;
     let observed = observe_camo();
     anyhow::ensure!(
-        observed.help_launch_available().map_err(anyhow::Error::msg)?,
+        observed
+            .help_launch_available()
+            .map_err(anyhow::Error::msg)?,
         "Camo Studio and its driver are not installed"
     );
     validate()?;
@@ -157,22 +163,41 @@ mod tests {
         );
         assert_eq!(vcam_executable(r"C:\VCam\uninstall.exe"), None);
         assert!(CameraApp::from_source_name("untrusted.exe").is_err());
-        assert_eq!(package_version("ReincubateLtd.CamoStudio_1.2.3.4_x64__publisher"), Some("1.2.3.4".into()));
+        assert_eq!(
+            package_version("ReincubateLtd.CamoStudio_1.2.3.4_x64__publisher"),
+            Some("1.2.3.4".into())
+        );
         assert_eq!(package_version("ReincubateLtd.CamoStudio__publisher"), None);
     }
 
     #[test]
     fn help_and_generic_camera_commands_preserve_distinct_source_gates() {
         for (studio, driver, enabled) in [
-            (false, false, false), (true, false, false),
-            (false, true, false), (false, true, true),
-            (true, true, false), (true, true, true),
+            (false, false, false),
+            (true, false, false),
+            (false, true, false),
+            (false, true, true),
+            (true, true, false),
+            (true, true, true),
         ] {
             let observation = CamoInstallation {
-                studio: Ok(if studio { CamoStudio::Installed { version: Ok(None) } } else { CamoStudio::Absent }),
-                driver: Ok(if driver { CamoDriver::Installed { enabled: Ok(enabled) } } else { CamoDriver::Absent }),
+                studio: Ok(if studio {
+                    CamoStudio::Installed { version: Ok(None) }
+                } else {
+                    CamoStudio::Absent
+                }),
+                driver: Ok(if driver {
+                    CamoDriver::Installed {
+                        enabled: Ok(enabled),
+                    }
+                } else {
+                    CamoDriver::Absent
+                }),
             };
-            assert_eq!(observation.camera_available(), Ok(studio && driver && enabled));
+            assert_eq!(
+                observation.camera_available(),
+                Ok(studio && driver && enabled)
+            );
             assert_eq!(observation.help_launch_available(), Ok(studio || driver));
         }
     }
@@ -181,16 +206,24 @@ mod tests {
     fn failed_queries_remain_independent_of_proven_registration() {
         let observation = CamoInstallation {
             studio: Ok(CamoStudio::Installed { version: Ok(None) }),
-            driver: Ok(CamoDriver::Installed { enabled: Err("CM status failed".into()) }),
+            driver: Ok(CamoDriver::Installed {
+                enabled: Err("CM status failed".into()),
+            }),
         };
-        assert_eq!(observation.camera_available(), Err("CM status failed".into()));
+        assert_eq!(
+            observation.camera_available(),
+            Err("CM status failed".into())
+        );
         assert_eq!(observation.help_launch_available(), Ok(true));
         let observation = CamoInstallation {
             studio: Err("registry access denied".into()),
             driver: Ok(CamoDriver::Absent),
         };
         assert_eq!(observation.camera_available(), Ok(false));
-        assert_eq!(observation.help_launch_available(), Err("registry access denied".into()));
+        assert_eq!(
+            observation.help_launch_available(),
+            Err("registry access denied".into())
+        );
         assert!(observation.studio().is_err());
     }
 }

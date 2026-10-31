@@ -545,6 +545,61 @@ class CurrentFrontendRefreshTests(unittest.TestCase):
             resource.download(row["url"], self.root / "unused")
         fetch.assert_not_called()
 
+    def test_middleware_refresh_keeps_host_manifest_root_and_its_two_observations(self):
+        base = "https://apps.razer.com/synapse/products/1/mw/"
+        acquisition, _ = self.fixture("middleware", base)
+        path, _, _ = self.observation([acquisition])
+        self.responses[base + "manifest.json"] = b'{"productId":1,"resources":[]}'
+        result = self.invoke(path)
+        self.assertTrue(result["passed"], result["jobs"])
+        receipt = self.root / result["jobs"][0]["refreshed_acquisition"]["path"]
+        acquired = json.loads(receipt.read_bytes())
+        manifest = next(row for row in acquired["files"] if row["url"] == base + "manifest.json")
+        checked = next(row for row in acquired["stability"] if row["url"] == manifest["url"])
+        self.assertEqual(checked["before_sha256"], manifest["sha256"])
+        self.assertEqual(checked["after_sha256"], manifest["sha256"])
+        self.assertTrue(checked["unchanged"])
+        self.assertIn({"from": base + "index.html", "to": manifest["url"],
+                       "literal": manifest["url"], "kind": "explicit-retained-manifest"}, acquired["edges"])
+        del acquired["stability"][acquired["stability"].index(checked)]
+        snapshot = self.root / ".analysis/inputs/frontend/incomplete/acquisition.json"
+        snapshot.parent.mkdir()
+        snapshot.write_text(json.dumps(acquired), encoding="utf-8")
+        resource = mock.Mock()
+        checked = workspace._frontend_refresh_result(snapshot, resource, [manifest["url"]])
+        self.assertEqual(checked["status"], "failed")
+        self.assertTrue(any(row["kind"] == "required_manifest_stability_unverified" for row in checked["failures"]))
+
+    def test_explicit_html_and_versioned_manifest_roots_require_stable_bytes(self):
+        for name, base, root, body in (
+                ("background", "https://apps.razer.com/background-manager/", "sw.html", b"<html></html>"),
+                ("installation", "https://apps.razer.com/chroma-app/dashboard/engine/", "manifests/manifest-4.0.827.json", b'{"version":"4.0.827"}')):
+            with self.subTest(name=name):
+                acquisition, _ = self.fixture(name, base)
+                proof = self.root / acquisition
+                acquired = json.loads(proof.read_bytes())
+                url = base + root
+                acquired["edges"].append({"from": acquired["entry_url"], "literal": url,
+                                           "to": url, "kind": "explicit-retained-manifest"})
+                proof.write_text(json.dumps(acquired), encoding="utf-8")
+                path, _, _ = self.observation([acquisition])
+                self.responses[url] = body
+                result = self.invoke(path)
+                self.assertTrue(result["passed"], result["jobs"])
+                receipt = self.root / result["jobs"][0]["refreshed_acquisition"]["path"]
+                acquired = json.loads(receipt.read_bytes())
+                root_row = next(row for row in acquired["files"] if row["url"] == url)
+                checked = next(row for row in acquired["stability"] if row["url"] == url)
+                self.assertTrue(checked["unchanged"])
+                self.assertEqual(checked["before_sha256"], root_row["sha256"])
+                self.assertEqual(checked["after_sha256"], root_row["sha256"])
+
+    def test_explicit_roots_reject_a_different_source_origin(self):
+        acquired = {"entry_url": "https://apps.razer.com/background-manager/",
+                    "edges": [{"kind": "explicit-retained-manifest", "to": "https://other.example/sw.html"}]}
+        with self.assertRaisesRegex(ValueError, "source origin"):
+            workspace.frontend_refresh_manifest_roots(acquired)
+
     def test_missing_or_unstable_observations_are_not_promoted_to_originals(self):
         acquisition, _ = self.fixture()
         _, report, proof = self.observation([acquisition])
@@ -805,6 +860,107 @@ class LocalizationCatalogTests(unittest.TestCase):
                     workspace.rust_inputs()
 
 
+class CurrentLocaleUpdateTests(unittest.TestCase):
+    def test_exact_source_absence_removes_only_the_obsolete_language_value(self):
+        original = {"schema_version": 1, "locales": [
+            {"locale": "en", "messages": {"KEEP": "retained"}},
+            {"locale": "zh-CN", "messages": {"KEEP": "保留", "GUIDE.NEW": "obsolete"}}]}
+        def source(acquisition, path):
+            exports = 'NEW:()=>title' if path == 'en' else 'UNCHANGED:()=>title'
+            raw = ('(self.webpackChunk=self.webpackChunk||[]).push([[1],{123:(m,e,r)=>{'
+                   'r.d(e,{' + exports + '});const title="New title";}}]);').encode()
+            return raw, {"source": {"url": "https://apps.razer.com/settings/trans-" + path + ".abc.chunk.js"}, "inputs": []}
+        update = {"acquisition": "current", "bindings": {"en": "en", "zh-CN": "zh-CN"},
+                  "namespace": "GUIDE", "keys": ["NEW"], "absent_keys": {"zh-CN": ["NEW"]}}
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(workspace, "ROOT", Path(directory)), \
+                mock.patch.object(workspace, "locale_preparation_catalog", side_effect=lambda: (copy.deepcopy(original), [], [])), \
+                mock.patch.object(workspace, "locale_preparation_source", side_effect=source), \
+                mock.patch.object(workspace, "publish_locale_preparation", return_value={"passed": True}) as publish:
+            workspace.prepare_locale_updates([update])
+            document, _, _, prepared = publish.call_args.args
+            self.assertEqual(document['locales'][0]['messages'], {'KEEP': 'retained', 'GUIDE.NEW': 'New title'})
+            self.assertEqual(document['locales'][1]['messages'], {'KEEP': '保留'})
+            self.assertEqual(prepared[0]['absent_keys'], {'zh-CN': ['NEW']})
+            self.assertEqual(prepared[0]['changes']['zh-CN']['GUIDE.NEW'], {'previous': 'obsolete', 'current': None})
+            publish.reset_mock()
+            for absent in ({}, {'en': ['NEW']}, {'zh-CN': ['UNKNOWN']}, {'xx': ['NEW']}):
+                with self.subTest(absent=absent), self.assertRaises(ValueError):
+                    workspace.prepare_locale_updates([{**update, 'absent_keys': absent}])
+            publish.assert_not_called()
+
+    def test_partial_publication_keeps_other_keys_from_the_original_owner(self):
+        baseline = {"kind": "complete_export_dictionaries", "dictionary": "baseline"}
+        first = {"kind": "current_routed_exports", "namespace": "GUIDE", "keys": ["TITLE", "CLOSE"],
+                 "provenance": {"source": "first"}, "changes": {"en": {
+                     "GUIDE.TITLE": {"current": "Title"}, "GUIDE.CLOSE": {"current": "Close"}}}}
+        second = {"kind": "current_chunk_exports", "namespace": "GUIDE", "keys": ["TITLE"],
+                  "provenance": {"source": "second"}}
+        merged = workspace.merge_locale_preparation_entries([baseline, first], [second])
+        self.assertEqual(merged, [baseline, {**first, "keys": ["CLOSE"],
+            "changes": {"en": {"GUIDE.CLOSE": {"current": "Close"}}}}, second])
+        self.assertEqual(first["keys"], ["TITLE", "CLOSE"])
+        self.assertEqual(workspace.merge_locale_preparation_entries(merged, [second]), merged)
+
+    def test_chunk_languages_use_declared_url_and_verify_the_whole_batch(self):
+        original = {"schema_version": 1, "locales": [
+            {"locale": "en", "messages": {"KEEP": "retained"}},
+            {"locale": "zh-CN", "messages": {"KEEP": "保留"}}]}
+        def source(acquisition, path):
+            locale = {"english-blob": "en", "chinese-blob": "zh-CN"}[path]
+            value = {"en": "New title", "zh-CN": "新标题"}[locale]
+            raw = ('(self.webpackChunk=self.webpackChunk||[]).push([[1],{123:(m,e,r)=>{'
+                   'r.d(e,{TITLE:()=>title});const title=' + json.dumps(value) + ';}}]);').encode()
+            return raw, {"source": {"url": "https://apps.razer.com/settings/static/js/trans-" + locale + ".abc.chunk.js"}, "inputs": []}
+        update = {"acquisition": "current", "bindings": {"en": "english-blob", "zh-CN": "chinese-blob"},
+                  "namespace": "GUIDE", "keys": ["TITLE"]}
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(workspace, "ROOT", Path(directory)), \
+                mock.patch.object(workspace, "locale_preparation_catalog", side_effect=lambda: (copy.deepcopy(original), [], [])), \
+                mock.patch.object(workspace, "locale_preparation_source", side_effect=source), \
+                mock.patch.object(workspace, "publish_locale_preparation", return_value={"passed": True}) as publish:
+            workspace.prepare_locale_updates([update])
+            document = publish.call_args.args[0]
+            self.assertEqual(document["locales"][1]["messages"]["GUIDE.TITLE"], "新标题")
+            publish.reset_mock()
+            with self.assertRaisesRegex(ValueError, "differs from its language"):
+                workspace.prepare_locale_updates([update, {**update, "namespace": "OTHER",
+                    "bindings": {"en": "chinese-blob", "zh-CN": "english-blob"}}])
+            publish.assert_not_called()
+            with self.assertRaisesRegex(ValueError, "repeats a destination"):
+                workspace.prepare_locale_updates([update, update])
+            publish.assert_not_called()
+
+    def test_batch_replaces_only_owned_keys_after_every_language_verifies(self):
+        import analysis
+        source = ("(()=>{var en={},zh={};const a='new value',b='新值';"
+                  "w.d(en,{TITLE:()=>a});w.d(zh,{TITLE:()=>b});const words={en:en,'zh-CN':zh}})()").encode()
+        original = {"schema_version": 1, "locales": [
+            {"locale": "en", "messages": {"GUIDE.TITLE": "old", "KEEP": "retained"}},
+            {"locale": "zh-CN", "messages": {"GUIDE.TITLE": "旧值", "KEEP": "保留"}}]}
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(workspace, "ROOT", Path(directory)), \
+                mock.patch.object(workspace, "locale_preparation_catalog", return_value=(copy.deepcopy(original), [], [])), \
+                mock.patch.object(workspace, "locale_preparation_source", return_value=(source, {"inputs": []})), \
+                mock.patch.object(workspace, "publish_locale_preparation", return_value={"passed": True}) as publish:
+            result = workspace.prepare_locale_updates([{"acquisition": "current/acquisition.json",
+                "source": "current.js", "namespace": "GUIDE", "keys": ["TITLE"]}])
+            self.assertTrue(result["passed"])
+            self.assertEqual(publish.call_count, 1)
+            document, _, _, prepared = publish.call_args.args
+            self.assertEqual(document["locales"][0]["messages"], {"GUIDE.TITLE": "new value", "KEEP": "retained"})
+            self.assertEqual(prepared[0]["changes"]["zh-CN"]["GUIDE.TITLE"], {"previous": "旧值", "current": "新值"})
+
+    def test_incomplete_or_conflicting_batches_never_publish_partial_translations(self):
+        original = {"schema_version": 1, "locales": [
+            {"locale": "en", "messages": {"KEEP": "retained"}},
+            {"locale": "zh-CN", "messages": {"KEEP": "保留"}}]}
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(workspace, "ROOT", Path(directory)), \
+                mock.patch.object(workspace, "locale_preparation_catalog", return_value=(original, [], [])), \
+                mock.patch.object(workspace, "publish_locale_preparation") as publish:
+            with self.assertRaisesRegex(ValueError, "every installed language"):
+                workspace.prepare_locale_updates([{"acquisition": "current", "bindings": {"en": "en.js"}}])
+            publish.assert_not_called()
+            self.assertEqual(original["locales"][0]["messages"], {"KEEP": "retained"})
+
+
 class HardwareInstallationInputTests(unittest.TestCase):
     def test_cargo_config_and_toolchain_creation_changes_and_removal_change_the_input_closure(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -931,6 +1087,33 @@ class ArchitectureBoundaryTests(unittest.TestCase):
 
     def inspect(self, source, owner):
         return workspace.inspect_architecture_source(source.encode(), owner=owner, rust_parser=self.rust_parser)
+
+    def test_source_buttons_use_navigation_owner_and_keep_native_number_input_types(self):
+        caller = 'crates/razer-pages/src/features/chroma/chroma_studio_playback.rs'
+        owner = 'crates/razer-widgets/src/keyboard_navigation/button.rs'
+        for source in (
+                'fn render() { gpui_kit::base::Button::new("action"); }',
+                'use gpui_kit::base::Button as Native; fn render() { Native::new("action"); }',
+                'use gpui_kit::base as kit; fn render() { let create = kit::Button::new; }',
+                'type Raw = gpui_kit::base::button::Button; type Alias = Raw; fn render() { Alias::new("action"); }'):
+            self.assertIn('source_button_bypasses_window_navigation', [row['kind'] for row in self.inspect(source, caller)])
+            self.assertFalse(self.inspect(source, owner))
+            self.assertFalse(self.inspect('#[cfg(test)] mod tests { ' + source + ' }', caller))
+        for source in (
+                'use razer_widgets::keyboard_navigation::Button; fn render() { Button::new("action"); }',
+                'use gpui_kit::base::Button; fn decorate(button: Button) -> Button { button }',
+                'fn render() { unrelated::Button::new("action"); }'):
+            self.assertFalse(self.inspect(source, caller))
+        self.assertFalse(workspace.inspect_architecture_source((workspace.ROOT / caller).read_bytes(), owner=caller, rust_parser=self.rust_parser))
+
+    def test_navigation_root_owns_full_frame_geometry_without_automatic_replay(self):
+        owner = 'crates/razer-widgets/src/keyboard_navigation.rs'
+        for body in ('', 'window.set_view_retention(true);', 'window.set_view_retention(false); window.set_view_retention(true);'):
+            source = 'impl KeyboardNavigation { fn new() { ' + body + ' } }'
+            self.assertIn('keyboard_navigation_replays_stale_focus_geometry', [row['kind'] for row in self.inspect(source, owner)])
+        self.assertFalse(self.inspect('impl KeyboardNavigation { fn new() { window.set_view_retention(false); } }', owner))
+        self.assertFalse(self.inspect('impl OtherState { fn new() {} }', owner))
+        self.assertFalse(workspace.inspect_architecture_source((workspace.ROOT / owner).read_bytes(), owner=owner, rust_parser=self.rust_parser))
 
     def test_source_profile_names_share_one_owner_across_device_and_storage(self):
         canonical = 'crates/razer-device/src/source_string.rs'
@@ -2295,22 +2478,40 @@ class ArchitectureBoundaryTests(unittest.TestCase):
         self.assertFalse(self.inspect('pub struct Decoder;', "crates/razer-model/src/macro_library/recording.rs"))
         self.assertEqual(self.inspect('fn parse_delay() {}', page + "/record_options.rs")[0]["kind"], "page_owns_macro_delay_semantics")
         self.assertFalse(self.inspect('impl Other { fn parse_delay() {} }', page + "/record_options.rs"))
-        fields = 'command: Session, countdown_task: Task<()>, updates_task: Task<()>, generation: u64, document: u64, cancelled: bool'
+        fields = 'command: Session, countdown_task: Task<()>, updates_task: Task<()>, generation: u64, cancelled: bool'
         self.assertFalse(self.inspect('struct RecordingUi {' + fields + '}', page + "/recording.rs"))
         self.assertEqual(self.inspect('struct RecordingUi { command: Session }', page + "/recording.rs")[0]["kind"], "macro_recording_has_no_page_session_owner")
-        good = 'fn start_recording() { self.recording.command = Some(session); self.recording.updates_task = Some(cx.spawn(work)); if self.generation == generation && self.document == self.current && !self.cancelled { commit(); } }'
+        good = 'fn start_recording() { self.recording.command = Some(session); self.recording.updates_task = Some(cx.spawn(work)); let generation = self.recording.generation; self.receive_recording_update(generation, update, cx); }'
         self.assertFalse(self.inspect(good, page + "/recording.rs"))
         self.assertEqual(self.inspect(good.replace('self.recording.updates_task = Some(cx.spawn(work));', 'cx.spawn(work).detach();'), page + "/recording.rs")[0]["kind"], "macro_recording_accepts_unowned_completion")
         for source in ('fn start() { ServiceClient::spawn(); }', 'use razer_ipc::ServiceClient as Transport; fn start() { Transport::spawn(); }',
                        'use std::thread as native; fn start() { native::Builder::new(); }'):
             self.assertEqual(self.inspect(source, page + "/recording.rs")[0]["kind"], "page_owns_macro_recording_worker")
         service = "crates/razer-service/src/mapping/recorder.rs"
-        good = 'use super::WorkerGuard as Guard; use razer_ipc::KEY_CAPTURE_LIFECYCLE as Lifecycle; fn spawn_with() { let guard = Guard::start(); let capture = Lifecycle.lock(); let result = shutdown(&mut client); drop(client); }'
+        good = 'use super::WorkerGuard as Guard; use razer_ipc::KEY_CAPTURE_LIFECYCLE as Lifecycle; fn spawn_with_geometry() { let guard = Guard::start(); let capture = Lifecycle.lock(); let result = shutdown(&mut client); drop(client); }'
         self.assertFalse(self.inspect(good, service))
         self.assertEqual(self.inspect(good.replace('Guard::start()', '()'), service)[0]["kind"], "mapping_worker_bypasses_cleanup_accounting")
         self.assertEqual(self.inspect(good.replace('shutdown(&mut client)', '()'), service)[0]["kind"], "macro_recorder_skips_transport_cleanup")
         self.assertEqual(self.inspect(good.replace('Lifecycle.lock()', 'OTHER.lock()'), service)[0]["kind"], "macro_recorder_bypasses_shared_capture_lifecycle")
         self.assertFalse(self.inspect('fn unrelated() { drop(client); }', service))
+
+    def test_macro_recording_delivery_and_commit_follow_current_owned_session(self):
+        owner = 'crates/razer-app-pages/src/macros/macro_page/recording.rs'
+        source = (workspace.ROOT / owner).read_text(encoding='utf-8')
+        self.assertFalse(self.inspect(source, owner))
+        for old, new, expected in (
+                ('self.recording.generation != generation', 'self.recording.generation == generation', 'macro_recording_accepts_stale_session'),
+                ('this.receive_recording_update(generation, update, cx)', 'this.accept_recording_update(update, cx)', 'macro_recording_accepts_unowned_completion'),
+                ('Some(entry.id) == self.current', 'Some(entry.id) == self.start_document', 'macro_recording_commit_ignores_current_profile'),
+                ('if self.recording.cancelled {\n            return Err', 'if false {\n            return Err', 'macro_recording_commit_ignores_current_profile')):
+            self.assertIn(old, source)
+            self.assertIn(expected, [row['kind'] for row in self.inspect(source.replace(old, new), owner)])
+        service = 'crates/razer-service/src/mapping/recorder.rs'
+        source = 'fn spawn_with_registry() { spawn_with_geometry(options, factory, registry, geometry) }'
+        self.assertFalse(self.inspect(source, service))
+        for changed in (source.replace('spawn_with_geometry(', 'other('), source.replace('factory, registry', 'other_factory, registry'), 'fn spawn_with_registry() {}'):
+            self.assertIn('macro_recorder_bypasses_capture_worker', [row['kind'] for row in self.inspect(changed, service)])
+        self.assertFalse(self.inspect((workspace.ROOT / service).read_text(encoding='utf-8'), service))
 
     def test_recorder_mode_and_factory_share_the_actual_input_owner(self):
         recorder = "crates/razer-service/src/mapping/recorder.rs"
@@ -2407,7 +2608,7 @@ class ArchitectureBoundaryTests(unittest.TestCase):
                         source.replace('super::control::apply(client,&registered);', ''), source.replace('registered.finish();', '')):
             self.assertEqual(self.inspect(changed, device)[0]["kind"], "mapping_actor_bypasses_registered_control_owner")
         recorder = "crates/razer-service/src/mapping/recorder.rs"
-        source = ('use super::WorkerGuard; fn spawn_with_registry() { WorkerGuard::start(); '
+        source = ('use super::WorkerGuard; fn spawn_with_geometry() { WorkerGuard::start(); '
                   'super::lock_lifecycle(&cancel); shutdown(client); drop(client); }')
         self.assertFalse(self.inspect(source, recorder))
         self.assertEqual(self.inspect(source.replace('super::lock_lifecycle(&cancel)', 'other::lock_lifecycle(&cancel)'), recorder)[0]["kind"], "macro_recorder_bypasses_shared_capture_lifecycle")

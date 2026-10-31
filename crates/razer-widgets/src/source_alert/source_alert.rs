@@ -171,7 +171,7 @@ impl Render for SourceAlert {
                     })),
             )
             .child(
-                gpui_kit::base::Button::new(self.close_id)
+                crate::keyboard_navigation::Button::new(self.close_id)
                     .absolute()
                     .top(surface::css(8.))
                     .right(surface::css(8.))

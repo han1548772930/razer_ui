@@ -5,7 +5,7 @@ use crate::features::mouse_polling::{
 };
 use crate::features::mouse_polling::{RuntimeState, SourceSpec, source_spec};
 use crate::features::mouse_products::{MousePowerSavingRead, PowerSavingValue};
-use gpui_kit::base::Button as BaseButton;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use std::sync::{
     Arc,
     atomic::{AtomicBool, Ordering},

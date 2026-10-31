@@ -3,7 +3,7 @@
 #[path = "pairing_state.rs"]
 mod state;
 
-use gpui_kit::base::Button as BaseButton;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::base::FocusTrapElement as _;
 use gpui_kit::component::{
     button::{Button, ButtonCustomVariant, ButtonVariants},

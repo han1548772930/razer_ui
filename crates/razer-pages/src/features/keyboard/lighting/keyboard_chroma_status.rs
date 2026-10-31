@@ -1,6 +1,6 @@
 //! Current Effects footer for the application controlling Chroma lighting.
 use super::*;
-use gpui_kit::base::Button as BaseButton;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::{source_tooltip::SourceTooltip, theme::KeyboardRgbEffectColors as Colors};
 
 fn source_app_name(name: &str) -> String {

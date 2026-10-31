@@ -15,7 +15,7 @@ impl Render for Fixture {
         v_flex()
             .w(px(620.))
             .child(
-                gpui_kit::base::Button::new("group-toggle")
+                razer_widgets::keyboard_navigation::Button::new("group-toggle")
                     .h(px(30.))
                     .child("Toggle")
                     .on_click(cx.listener(|this, _, _, cx| {

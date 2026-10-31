@@ -2,7 +2,7 @@
 //! UI intent and observations are separate; a submitted command is never a
 //! successful measurement or persistent write. See calibration_v2_data.json.
 use super::*;
-use gpui_kit::base::Button as BaseButton;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use std::{
     collections::BTreeSet,
     time::{Duration, Instant},

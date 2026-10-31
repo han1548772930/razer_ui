@@ -2,7 +2,8 @@
 //! The source mounts an 11-button top-view block, rather than the generic
 //! product card. Mapping edits remain local profile drafts.
 use super::*;
-use gpui_kit::base::{Button as BaseButton, ElementExt as _};
+use razer_widgets::keyboard_navigation::Button as BaseButton;
+use gpui_kit::base::{ElementExt as _};
 use razer_widgets::theme::MouseCustomizeColors as Colors;
 
 #[derive(Default)]

@@ -663,7 +663,7 @@ impl MouseProductWorkspace {
                 razer_i18n::t_value("SEC", i64::from(seconds))
             };
             let selected = self.power_saving_value() == Some(f32::from(seconds));
-            gpui_kit::base::Button::new(("mouse-power-saving-seconds", u64::from(seconds)))
+            razer_widgets::keyboard_navigation::Button::new(("mouse-power-saving-seconds", u64::from(seconds)))
                 .accessibility_label(label.clone())
                 .selected(selected)
                 .flex_shrink_0()

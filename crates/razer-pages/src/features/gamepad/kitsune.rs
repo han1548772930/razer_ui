@@ -1,7 +1,8 @@
 //! Current 4115 hP/PP/CP/OP. Evidence: kitsune-current-evidence.json.
 use super::*;
 use gpui_kit::base::motion::{self, Easing, Transition};
-use gpui_kit::base::{Button as BaseButton, Radio};
+use razer_widgets::keyboard_navigation::Button as BaseButton;
+use gpui_kit::base::{Radio};
 use std::time::Duration;
 
 #[derive(Deserialize)]

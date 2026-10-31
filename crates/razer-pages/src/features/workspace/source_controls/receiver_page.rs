@@ -1,7 +1,7 @@
 //! Current 179 Te parent widget: empty, temporary and confirmed binding rows.
 use super::pairing_view::t;
 use super::*;
-use gpui_kit::base::Button as BaseButton;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::theme::DockPairingColors as Colors;
 use razer_widgets::theme::SliderColors;
 

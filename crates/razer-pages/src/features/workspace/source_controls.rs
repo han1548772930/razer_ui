@@ -1745,7 +1745,7 @@ impl SourceControls {
                             let selected = self.value(control) == Some(&option.value);
                             let value = option.value.clone();
                             let key = key.clone();
-                            gpui_kit::base::Button::new(SharedString::from(format!(
+                            razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!(
                                 "{}:{}",
                                 key, value
                             )))
@@ -1864,7 +1864,7 @@ impl SourceControls {
                         let selected = self.value(control) == Some(&option.value);
                         let value = option.value.clone();
                         let key = key.clone();
-                        gpui_kit::base::Button::new(SharedString::from(format!("{key}:{value}")))
+                        razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!("{key}:{value}")))
                             .accessibility_label(razer_i18n::t(&option.label))
                             .disabled(disabled)
                             .w(surface::css(260.))
@@ -1915,7 +1915,7 @@ impl SourceControls {
                         let selected = self.value(control) == Some(&option.value);
                         let value = option.value.clone();
                         let key = key.clone();
-                        gpui_kit::base::Button::new(SharedString::from(format!(
+                        razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!(
                             "{}:{}",
                             key, value
                         )))

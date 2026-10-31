@@ -2,8 +2,9 @@
 //!
 //! Preview records and callbacks are entity-local; this view does not publish
 //! them as imported device profiles.
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::base::{
-    Button as BaseButton, Checkbox as BaseCheckbox, CheckboxState, Progress, ProgressIndicator,
+    Checkbox as BaseCheckbox, CheckboxState, Progress, ProgressIndicator,
     ProgressTrack,
 };
 use gpui_kit::component::{

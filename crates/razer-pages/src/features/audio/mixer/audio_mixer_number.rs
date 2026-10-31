@@ -1,7 +1,7 @@
 //! Current 1342 EU/sU input, including its inverted regex, JS string + 1,
 //! live update, blur commit, and Enter/Escape blur behavior.
 use super::audio_mixer_theme::Colors as C;
-use gpui_kit::base::Button;
+use razer_widgets::keyboard_navigation::Button;
 use gpui_kit::component::input::{Input, InputEvent, InputState};
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use razer_widgets::surface;

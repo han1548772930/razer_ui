@@ -768,7 +768,7 @@ impl SettingsPage {
                                 .line_height(surface::css(17.))
                                 .child(before.to_owned())
                                 .child(
-                                    gpui_kit::base::Button::new("settings-release-notes")
+                                    razer_widgets::keyboard_navigation::Button::new("settings-release-notes")
                                         .child("Release Notes")
                                         .text_decoration_1()
                                         .hover(|button| button.text_color(cx.theme().primary))
@@ -866,7 +866,7 @@ fn settings_check(
     disabled: bool,
     window: &mut Window,
     cx: &mut App,
-) -> gpui_kit::base::Button {
+) -> razer_widgets::keyboard_navigation::Button {
     let label = label.into();
     let mut characters = label.chars();
     let label = match characters.next() {
@@ -908,8 +908,8 @@ fn settings_check(
     .role(Role::CheckBox)
     .aria_toggled(if checked { Toggled::True } else { Toggled::False })
 }
-fn settings_help(id: &'static str, label: String, text: String) -> gpui_kit::base::Button {
-    gpui_kit::base::Button::new(id)
+fn settings_help(id: &'static str, label: String, text: String) -> razer_widgets::keyboard_navigation::Button {
+    razer_widgets::keyboard_navigation::Button::new(id)
         .accessibility_label(label)
         .size(surface::css(14.))
         .p_0()

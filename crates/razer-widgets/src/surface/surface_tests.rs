@@ -1,11 +1,11 @@
-use super::SynapseSwitch;
+use super::{SwitchArrow, SynapseSwitch};
 use gpui_kit::base::TestSupportExt as _;
-use gpui_kit::component::{Root, Theme, h_flex, v_flex};
+use gpui_kit::component::{Disableable, Root, Theme, h_flex, v_flex};
 use gpui_kit::test::TestWindowExt as _;
 use gpui_kit::{
-    AppContext, Context, Hsla, InputEvent as _, InteractiveElement, IntoElement, MouseButton,
-    MouseDownEvent, MouseUpEvent, ParentElement, Render, Styled, TestAppContext, Window, div, px,
-    size,
+    AppContext, Context, Hsla, InputEvent as _, InteractiveElement, IntoElement, KeyDownEvent,
+    MouseButton, MouseDownEvent, MouseUpEvent, ParentElement, Render, Styled, TestAppContext,
+    Window, div, px, size,
 };
 use std::{cell::Cell, rc::Rc, time::Duration};
 
@@ -27,7 +27,36 @@ fn source_check_text_preserves_max_content_width_outside_the_checkbox() {
 
 struct Switches {
     checked: bool,
+    disabled: bool,
     changes: usize,
+    bubbled_arrows: usize,
+}
+
+#[test]
+fn source_switch_arrows_consume_equal_values_and_request_only_a_change() {
+    for (key, target) in [
+        ("right", true),
+        ("down", true),
+        ("left", false),
+        ("up", false),
+    ] {
+        assert_eq!(
+            SwitchArrow::for_key(key, target, false),
+            SwitchArrow::Consume
+        );
+        assert_eq!(
+            SwitchArrow::for_key(key, !target, false),
+            SwitchArrow::Change(target),
+        );
+        assert_eq!(SwitchArrow::for_key(key, target, true), SwitchArrow::Ignore);
+        assert_eq!(
+            SwitchArrow::for_key(key, !target, true),
+            SwitchArrow::Ignore
+        );
+    }
+    for key in ["enter", "space", "tab", "escape", "home", "end"] {
+        assert_eq!(SwitchArrow::for_key(key, false, false), SwitchArrow::Ignore);
+    }
 }
 
 struct CloseControls {
@@ -146,10 +175,19 @@ fn keymap_close_preserves_hover_press_timing_and_cancels_release_outside(cx: &mu
 impl Render for Switches {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         v_flex()
+            .on_key_down(cx.listener(|this, event: &KeyDownEvent, _, _| {
+                if matches!(
+                    event.keystroke.key.as_str(),
+                    "up" | "down" | "left" | "right"
+                ) {
+                    this.bubbled_arrows += 1;
+                }
+            }))
             .child(
                 SynapseSwitch::new("first")
                     .label("First")
                     .checked(self.checked)
+                    .disabled(self.disabled)
                     .on_change(cx.listener(|this, checked, _, cx| {
                         this.checked = *checked;
                         this.changes += 1;
@@ -172,7 +210,9 @@ fn switch_updates_immediately_but_moves_smoothly_and_reverses_without_affecting_
     let handle = cx.open_window(size(px(320.), px(200.)), |window, cx| {
         let view = cx.new(|_| Switches {
             checked: false,
+            disabled: false,
             changes: 0,
+            bubbled_arrows: 0,
         });
         switches = Some(view.clone());
         Root::new(view, window, cx)
@@ -220,6 +260,64 @@ fn switch_updates_immediately_but_moves_smoothly_and_reverses_without_affecting_
             start.left() + px(14.)
         );
         assert_eq!(switches.read(cx).changes, 3);
+    })
+    .unwrap();
+}
+
+#[gpui_kit::test]
+fn switch_arrows_share_the_owner_callback_and_consume_repeated_values(cx: &mut TestAppContext) {
+    cx.update(gpui_kit::init);
+    let mut switches = None;
+    let handle = cx.open_window(size(px(320.), px(200.)), |window, cx| {
+        let view = cx.new(|_| Switches {
+            checked: false,
+            disabled: false,
+            changes: 0,
+            bubbled_arrows: 0,
+        });
+        switches = Some(view.clone());
+        Root::new(view, window, cx)
+    });
+    let switches = switches.unwrap();
+    cx.update_window(handle.into(), |_, window, cx| {
+        window.render_frame(cx);
+        window.click("first", cx);
+        assert!(switches.read(cx).checked);
+        assert_eq!(switches.read(cx).changes, 1);
+        for key in ["right", "down"] {
+            window.press(key, cx);
+        }
+        assert_eq!(switches.read(cx).changes, 1);
+        window.press("left", cx);
+        assert!(!switches.read(cx).checked);
+        assert_eq!(switches.read(cx).changes, 2);
+        window.press("up", cx);
+        assert_eq!(switches.read(cx).changes, 2);
+        window.press("down", cx);
+        assert!(switches.read(cx).checked);
+        assert_eq!(switches.read(cx).changes, 3);
+        window.press("right", cx);
+        assert_eq!(switches.read(cx).changes, 3);
+        assert_eq!(switches.read(cx).bubbled_arrows, 0);
+        assert_eq!(window.find("first").focused(), Some(true));
+
+        window.press("enter", cx);
+        assert!(!switches.read(cx).checked);
+        window.press("space", cx);
+        assert!(switches.read(cx).checked);
+        assert_eq!(switches.read(cx).changes, 5);
+
+        switches.update(cx, |switches, cx| {
+            switches.disabled = true;
+            cx.notify();
+        });
+        window.render_frame(cx);
+        window.click("first", cx);
+        for key in ["left", "up", "enter", "space"] {
+            window.press(key, cx);
+        }
+        assert!(switches.read(cx).checked);
+        assert_eq!(switches.read(cx).changes, 5);
     })
     .unwrap();
 }

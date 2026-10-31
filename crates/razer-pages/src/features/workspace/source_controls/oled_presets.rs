@@ -280,7 +280,7 @@ impl Render for OledMediaEditor {
                             OLED_MEDIA_VISUALIZERS.into_iter().enumerate().map(
                                 |(index, source)| {
                                     let selected = selected_visualizer == index;
-                                    gpui_kit::base::Button::new(SharedString::from(format!(
+                                    razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!(
                                         "oled-media-visualizer-{index}"
                                     )))
                                     .accessibility_label(format!(
@@ -1161,8 +1161,8 @@ fn preset_icon_button(
     id: String,
     label: &'static str,
     asset: &'static str,
-) -> gpui_kit::base::Button {
-    gpui_kit::base::Button::new(SharedString::from(id))
+) -> razer_widgets::keyboard_navigation::Button {
+    razer_widgets::keyboard_navigation::Button::new(SharedString::from(id))
         .accessibility_label(t(label))
         .tooltip(move |window, cx| tooltip::Tooltip::new(t(label)).build(window, cx))
         .w(surface::css(28.))

@@ -1,6 +1,6 @@
 //! One retained UI preference owner serializes local I/O across page lifetimes.
-use gpui_kit::{App, AppContext as _, Context, Entity, EventEmitter, Global, Task};
-pub use razer_storage::ui_preferences::{Flag, Observation, Origin};
+use gpui_kit::{App, AppContext as _, Context, Entity, EntityId, EventEmitter, Global, Task};
+pub use razer_storage::ui_preferences::{Flag, InitialTabObservation, Observation, Origin};
 use std::{
     collections::{BTreeMap, VecDeque},
     sync::atomic::{AtomicUsize, Ordering},
@@ -63,6 +63,31 @@ impl PersistenceFinished {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct InitialTabRequest {
+    owner: EntityId,
+    sequence: u64,
+}
+impl InitialTabRequest {
+    pub fn new(owner: EntityId, sequence: u64) -> Self {
+        Self { owner, sequence }
+    }
+}
+
+#[derive(Clone)]
+pub struct InitialTabFinished {
+    request: InitialTabRequest,
+    result: Result<InitialTabObservation, String>,
+}
+impl InitialTabFinished {
+    pub fn request(&self) -> InitialTabRequest {
+        self.request
+    }
+    pub fn result(&self) -> &Result<InitialTabObservation, String> {
+        &self.result
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Snapshot {
     /// Source default is presentation while the stored value is unobserved.
@@ -106,6 +131,7 @@ impl Snapshot {
 
 #[derive(Clone, Copy)]
 enum Operation {
+    InitialTab { request: InitialTabRequest },
     PollNotifications {
         generation: u64,
     },
@@ -125,6 +151,13 @@ impl Operation {
         // A storage panic must release the accepted request and leave the
         // worker able to drain subsequent writes and report the failure.
         match self {
+            Self::InitialTab { request } => Completed::InitialTab(InitialTabFinished {
+                request,
+                result: guarded(|| {
+                    razer_storage::ui_preferences::record_initial_tab()
+                        .map_err(|error| format!("{error:#}"))
+                }),
+            }),
             Self::PollNotifications { generation } => Completed::PollNotifications {
                 generation,
                 result: guarded(|| {
@@ -171,6 +204,7 @@ struct Work {
     accepted: AcceptedIo,
 }
 enum Completed {
+    InitialTab(InitialTabFinished),
     PollNotifications {
         generation: u64,
         result: Result<Option<String>, String>,
@@ -189,14 +223,19 @@ enum Completed {
     },
 }
 impl Completed {
-    fn flag(&self) -> Flag {
+    fn flag(&self) -> Option<Flag> {
         match self {
-            Self::PollNotifications { .. } => Flag::DisplayNotifications,
-            Self::Read { flag, .. } | Self::Write { flag, .. } => *flag,
+            Self::InitialTab(_) => None,
+            Self::PollNotifications { .. } => Some(Flag::DisplayNotifications),
+            Self::Read { flag, .. } | Self::Write { flag, .. } => Some(*flag),
         }
     }
     fn error(&self) -> Option<&str> {
         match self {
+            Self::InitialTab(finished) => match &finished.result {
+                Err(error) | Ok(InitialTabObservation::First { persistence: Err(error) }) => Some(error),
+                _ => None,
+            },
             Self::PollNotifications { result, .. } => result.as_ref().err().map(String::as_str),
             Self::Read { result, .. } => result.as_ref().err().map(String::as_str),
             Self::Write { result, .. } => result.as_ref().err().map(String::as_str),
@@ -238,6 +277,17 @@ impl Default for Core {
     }
 }
 impl Core {
+    fn record_initial_tab(&mut self, request: InitialTabRequest) -> bool {
+        if self.closing {
+            return false;
+        }
+        self.pending_writes += 1;
+        self.queue.push_back(Work {
+            operation: Operation::InitialTab { request },
+            accepted: AcceptedIo::new(),
+        });
+        true
+    }
     fn observe_notifications(&mut self) {
         if self.closing || self.notification_watch.active {
             return;
@@ -306,6 +356,10 @@ impl Core {
     }
     fn complete(&mut self, completion: Completed) -> Option<PersistenceFinished> {
         match completion {
+            Completed::InitialTab(_) => {
+                self.pending_writes -= 1;
+                None
+            }
             Completed::PollNotifications { generation, result } => {
                 let watch = &mut self.notification_watch;
                 if self.closing || !watch.active || generation != watch.generation {
@@ -435,7 +489,7 @@ impl Core {
         self.notification_watch.generation = self.notification_watch.generation.wrapping_add(1);
         self.notification_watch.pending = false;
         self.queue
-            .retain(|work| matches!(work.operation, Operation::Write { .. }));
+            .retain(|work| matches!(work.operation, Operation::Write { .. } | Operation::InitialTab { .. }));
         for state in self.flags.values_mut() {
             state.read_generation = state.read_generation.wrapping_add(1);
             if matches!(state.load, LoadStatus::Loading) {
@@ -492,6 +546,7 @@ pub struct UiPreferences {
     notification_watcher: Option<Task<()>>,
 }
 impl EventEmitter<PersistenceFinished> for UiPreferences {}
+impl EventEmitter<InitialTabFinished> for UiPreferences {}
 impl UiPreferences {
     pub fn shared(cx: &mut App) -> Entity<Self> {
         if !cx.has_global::<Shared>() {
@@ -565,6 +620,13 @@ impl UiPreferences {
         self.start_worker(cx);
         cx.notify();
     }
+    /// Accepted Tab work shares the same queue and exit drain as local writes.
+    /// The window owner validates the request before opening its guide.
+    pub fn record_initial_tab(&mut self, request: InitialTabRequest, cx: &mut Context<Self>) -> bool {
+        let accepted = self.core.record_initial_tab(request);
+        self.start_worker(cx);
+        accepted
+    }
     fn start_worker(&mut self, cx: &mut Context<Self>) {
         if self.worker.is_some() || self.core.queue.is_empty() {
             return;
@@ -592,12 +654,22 @@ impl UiPreferences {
                     let failure = completed
                         .error()
                         .map(|error| (completed.flag(), error.to_owned()));
+                    let initial_tab = match &completed {
+                        Completed::InitialTab(finished) => Some(finished.clone()),
+                        _ => None,
+                    };
                     if let Some(finished) = this.core.complete(completed) {
                         cx.emit(finished);
                     }
+                    if !this.core.closing {
+                        if let Some(finished) = initial_tab {
+                            cx.emit(finished);
+                        }
+                    }
                     if previous.as_ref() != Some(&this.core.flags[&Flag::DisplayNotifications]) {
                         if let Some((flag, error)) = failure {
-                            eprintln!("UI preference {flag:?}: {error}");
+                            let label = flag.map_or_else(|| "isInitialTabKeyHit".to_owned(), |flag| format!("{flag:?}"));
+                            eprintln!("UI preference {label}: {error}");
                         }
                         cx.notify();
                     }

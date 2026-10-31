@@ -1,6 +1,6 @@
 use super::*;
-use crate::features::{HelpCamoObservation, HelpCamoRequested};
 use crate::features::CameraIdentityRequested;
+use crate::features::{HelpCamoObservation, HelpCamoRequested};
 
 impl ProductWorkspace {
     pub fn camera_identity_request(&self, cx: &App) -> Option<CameraIdentityRequested> {

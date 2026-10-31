@@ -1,6 +1,6 @@
 //! Mounted current RequireSynapse card and its outer MapFunction gate.
 use super::*;
-use gpui_kit::base::Button as BaseButton;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::{
     source_tooltip::SourceTooltip,
     theme::{MouseCustomizeColors, MouseMappingColors},

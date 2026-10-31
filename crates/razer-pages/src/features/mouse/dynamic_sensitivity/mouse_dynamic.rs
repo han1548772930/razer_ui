@@ -2,7 +2,8 @@
 //! Local drafts and requests are distinct from device observations.
 use super::super::Choice;
 use super::*;
-use gpui_kit::base::{Button as BaseButton, Dialog};
+use razer_widgets::keyboard_navigation::Button as BaseButton;
+use gpui_kit::base::{Dialog};
 use gpui_kit::component::select::{SelectEvent, SelectState};
 use std::{
     cell::Cell,

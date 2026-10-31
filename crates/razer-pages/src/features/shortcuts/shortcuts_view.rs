@@ -32,7 +32,7 @@ impl Shortcuts {
             .border_color(if selected { rgb(0x44d62c) } else { rgba(0) })
             .hover(|s| s.bg(rgba(0xffffff1a)))
             .child(
-                gpui_kit::base::Button::new(SharedString::from(format!(
+                razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!(
                     "shortcut-edit-{}",
                     item.id
                 )))
@@ -195,7 +195,7 @@ impl Shortcuts {
                 .flex_shrink_0()
                 .child(record)
                 .child(
-                    gpui_kit::base::Button::new(SharedString::from(format!(
+                    razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!(
                         "shortcut-more-{}",
                         item.id
                     )))
@@ -317,8 +317,8 @@ impl Shortcuts {
     }
 }
 
-fn shortcut_menu_action(id: String, key: &str) -> gpui_kit::base::Button {
-    gpui_kit::base::Button::new(SharedString::from(id))
+fn shortcut_menu_action(id: String, key: &str) -> razer_widgets::keyboard_navigation::Button {
+    razer_widgets::keyboard_navigation::Button::new(SharedString::from(id))
         .w_full()
         .h(surface::css(27.))
         .px(surface::css(6.))
@@ -378,7 +378,7 @@ impl Render for Shortcuts {
                             .child(i18n::t("SHORTCUTS_HEADER").to_uppercase()),
                     )
                     .child(
-                        gpui_kit::base::Button::new("shortcut-add-icon")
+                        razer_widgets::keyboard_navigation::Button::new("shortcut-add-icon")
                             .group("shortcut-add-icon")
                             .accessibility_label(i18n::t("ADD_SHORTCUT"))
                             .absolute()
@@ -415,7 +415,7 @@ impl Render for Shortcuts {
                     .children(rows)
                     .children(placeholder)
                     .child(
-                        gpui_kit::base::Button::new("shortcut-add-card")
+                        razer_widgets::keyboard_navigation::Button::new("shortcut-add-card")
                             .accessibility_label(i18n::t("ADD_SHORTCUT"))
                             .relative()
                             .top(surface::css(17.))

@@ -1,6 +1,7 @@
 //! Original `/release-patch-note/`: Ie renders firstPost as hr/h2 sections.
 //! Content is read from the owning host's process-local MemoryStorage.
-use gpui_kit::base::{Button as BaseButton, Dialog as BaseDialog, Link, TextView, TextViewStyle};
+use razer_widgets::keyboard_navigation::Button as BaseButton;
+use gpui_kit::base::{Dialog as BaseDialog, Link, TextView, TextViewStyle};
 use gpui_kit::component::*;
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use razer_i18n as i18n;

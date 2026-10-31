@@ -1,8 +1,8 @@
 //! Current 9388 / 19388 Gamer Room marketing, grouped devices and tutorial.
 //! Device observations enter only through explicit source subDevices payloads.
 use crate::iot_popup;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::base::{
-    Button as BaseButton,
     motion::{self, Easing, Transition},
 };
 use gpui_kit::component::*;
@@ -627,7 +627,7 @@ impl GamerRoomPage {
                     }),
             )
             .child(
-                gpui_kit::base::Button::new("gr-tour-skip")
+                razer_widgets::keyboard_navigation::Button::new("gr-tour-skip")
                     .accessibility_label(i18n::t("TUTORIAL_SKIP"))
                     .absolute()
                     .top(surface::css(15.))

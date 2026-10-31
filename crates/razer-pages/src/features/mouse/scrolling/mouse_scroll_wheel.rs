@@ -1,5 +1,6 @@
 //! Current source scroll wheel controls and independent runtime observations.
-use gpui_kit::base::{Button as BaseButton, Positioner, Tooltip};
+use razer_widgets::keyboard_navigation::Button as BaseButton;
+use gpui_kit::base::{Positioner, Tooltip};
 use gpui_kit::component::{
     Disableable, h_flex,
     slider::{SliderEvent, SliderState},

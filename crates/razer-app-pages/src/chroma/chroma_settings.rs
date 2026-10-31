@@ -1,7 +1,8 @@
 //! Current /chroma-app/settings/ 1743: Zo -> mi/vi; source receipts are generated.
 //! This entity owns local Chroma intent, not host autostart or device ownership.
 use crate::release_notes;
-use gpui_kit::base::{Button, Checkbox, CheckboxState};
+use razer_widgets::keyboard_navigation::Button;
+use gpui_kit::base::{Checkbox, CheckboxState};
 use gpui_kit::component::{
     select::{SelectEvent, SelectState},
     tooltip::Tooltip,
@@ -660,6 +661,10 @@ impl ChromaSettings {
         let (before, after) = whats_new
             .split_once("{{releasePatchNote}}")
             .unwrap_or((&whats_new, ""));
+        let right = v_flex()
+            .child(self.keyboard_navigation(window, cx))
+            .child(self.about(cx))
+            .into_any_element();
         columns(
             window,
             v_flex()
@@ -694,8 +699,19 @@ impl ChromaSettings {
                     ),
                 )
                 .into_any_element(),
-            self.about(cx),
+            right,
         )
+    }
+    fn keyboard_navigation(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        // Current General owner ga mounts Sa in its right column before About.
+        panel_title(i18n::t("CHROMA_SETTINGS.KEYBOARD_NAVIGATION"))
+            .child(h_flex().items_center().gap(css(20.))
+                .child(source_button::settings_button(
+                    "chroma-settings-keyboard-navigation",
+                    i18n::t("CHROMA_SETTINGS.VIEW_ALL_SHORTCUTS"), false, window, cx,
+                ).on_click(|_, window, cx| razer_widgets::keyboard_navigation::open_guide(window, cx)))
+                .child(div().flex_1().child(i18n::t("CHROMA_SETTINGS.KEYBOARD_NAVIGATION_CHROMA_MSG"))))
+            .into_any_element()
     }
     fn about(&self, _cx: &mut Context<Self>) -> AnyElement {
         panel("ABOUT")
@@ -741,6 +757,9 @@ impl ChromaSettings {
     }
 }
 fn panel(title: &str) -> Div {
+    panel_title(text(title))
+}
+fn panel_title(title: String) -> Div {
     v_flex()
         .w(css(600.))
         .my(css(10.))
@@ -757,7 +776,7 @@ fn panel(title: &str) -> Div {
                 .font_family("RazerF5")
                 .text_size(css(18.))
                 .text_color(Colors::selected())
-                .child(text(title).to_uppercase()),
+                .child(title.to_uppercase()),
         )
 }
 fn columns(_window: &Window, left: AnyElement, right: AnyElement) -> AnyElement {

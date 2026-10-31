@@ -515,7 +515,7 @@ fn widget(title: &str, tip: Option<&str>, control: impl IntoElement, cx: &App) -
     if let Some(tip) = tip {
         let label = text(tip);
         card = card.child(
-            gpui_kit::base::Button::new(SharedString::from(format!("hue-help-{title}")))
+            razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!("hue-help-{title}")))
                 .absolute()
                 .top(surface::css(12.))
                 .right(surface::css(12.))
@@ -538,8 +538,8 @@ fn command(
     primary: bool,
     disabled: bool,
     cx: &App,
-) -> gpui_kit::base::Button {
-    gpui_kit::base::Button::new(id)
+) -> razer_widgets::keyboard_navigation::Button {
+    razer_widgets::keyboard_navigation::Button::new(id)
         .accessibility_label(text(key))
         .disabled(disabled)
         .h(surface::css(27.))

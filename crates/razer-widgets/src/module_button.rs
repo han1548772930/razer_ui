@@ -1,7 +1,7 @@
 //! Current module-card actions, shared by dashboard and module views.
 use crate::{surface, theme::MainPageColors};
+use crate::keyboard_navigation::Button as BaseButton;
 use gpui_kit::base::{
-    Button as BaseButton,
     motion::{self, Easing, Transition},
 };
 use gpui_kit::{component::*, prelude::FluentBuilder as _, *};

@@ -59,6 +59,7 @@ pub enum HelpRuntimeVersionStatus {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct HelpRuntimeVersionsStatus {
     pub middleware: HelpRuntimeVersionStatus,
     pub application: HelpRuntimeVersionStatus,

@@ -122,7 +122,7 @@ impl Render for ChromeFixture {
                                 super::scroll_tabs(&scroll, event, window);
                             })
                             .child(
-                                gpui_kit::base::Button::new(id)
+                                razer_widgets::keyboard_navigation::Button::new(id)
                                     .size_full()
                                     .child("Tab")
                                     .on_click(move |_, _, _| {

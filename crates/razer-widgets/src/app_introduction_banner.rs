@@ -3,8 +3,8 @@
 //! URL roots. See app-introduction-banner-current-evidence.json. Both local
 //! applications have a tour, so their compiled capability selects Start Tour.
 use crate::surface::css;
+use crate::keyboard_navigation::Button;
 use gpui_kit::base::{
-    Button,
     motion::{self, Easing, Transition},
 };
 use gpui_kit::*;

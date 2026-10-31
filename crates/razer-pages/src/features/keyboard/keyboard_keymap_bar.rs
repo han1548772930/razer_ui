@@ -551,7 +551,7 @@ impl KeyboardProductWorkspace {
                         )
                         .child(div().mb(surface::css(10.)).child(t("DELETE_KEYMAP_MSG")))
                         .child(
-                            gpui_kit::base::Button::new("keyboard-keymap-confirm-delete")
+                            razer_widgets::keyboard_navigation::Button::new("keyboard-keymap-confirm-delete")
                                 .accessibility_label(t("DELETE"))
                                 .min_w(surface::css(90.))
                                 .h(surface::css(27.))

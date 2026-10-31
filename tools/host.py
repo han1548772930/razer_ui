@@ -2921,8 +2921,9 @@ def extract_asar(selected=None):
 
 def add_commands(parsers):
     local = parsers.add_parser("audit-host-local", help="Trace current local host UI, storage, service and native source chains without executing targets")
-    local.add_argument("--query", required=True, choices=["dynamic-lighting", "macro-recorder", "screen-color", "help-system-info", "product-chroma-observation", "window-lifecycle", "profiles", "keypad-mapping", "mapping-descriptors"])
+    local.add_argument("--query", required=True, choices=["dynamic-lighting", "macro-recorder", "screen-color", "help-system-info", "help-runtime-versions", "keyboard-navigation", "product-chroma-observation", "window-lifecycle", "profiles", "keypad-mapping", "mapping-descriptors"])
     local.add_argument("--verify-only", action="store_true", help="Independently verify the retained profiles source receipt without collecting or publishing it")
+    local.add_argument("--product", type=int, action="append", help="Limit the current Help runtime-version source query to these product routes")
     installed = parsers.add_parser("acquire-installed", help="Read-only snapshot of installed Razer files and public official Service Worker resources")
     installed.add_argument("--app-engine-root", required=True)
     installed.add_argument("--user-data-root", required=True)
@@ -6488,6 +6489,751 @@ def help_system_report_constants(raw, native):
     return retained
 
 
+def _help_nodes(root):
+    pending = [root]
+    while pending:
+        node = pending.pop()
+        yield node
+        pending.extend(reversed(node.named_children))
+
+
+def _help_factory(node):
+    while node is not None:
+        if node.type in {"pair", "method_definition"}:
+            key = node.child_by_field_name("key" if node.type == "pair" else "name")
+            value = node.child_by_field_name("value") if node.type == "pair" else node
+            if (key is not None and key.type == "number" and value is not None
+                    and value.type in {"arrow_function", "function_expression", "method_definition"}):
+                parameters = value.child_by_field_name("parameters")
+                if parameters is not None and len(parameters.named_children) == 3:
+                    return {"module_id": int(key.text), "require": parameters.named_children[2],
+                            "exports": parameters.named_children[1]}
+        node = node.parent
+    return None
+
+
+def _help_factory_parameter(audit, source, reference, factory, parameter):
+    expected = factory[parameter]
+    if reference.type != "identifier" or expected.type != "identifier" or reference.text != expected.text:
+        return False
+    binding = audit.binding("help_webpack_" + parameter, source, reference.text.decode(), reference.start_byte)
+    return (binding["resolution"] == "parameter_requires_caller_analysis"
+            and binding["start_byte"] == expected.start_byte and binding["end_byte"] == expected.end_byte)
+
+
+def _help_binding_node(audit, original, binding):
+    if binding["resolution"] != "declaration":
+        raise ValueError("Help source has an unresolved lexical binding")
+    node = audit.tree(original).root_node.descendant_for_byte_range(binding["start_byte"], binding["end_byte"] - 1)
+    while node is not None and (node.start_byte != binding["start_byte"] or node.end_byte != binding["end_byte"]):
+        node = node.parent
+    if node is None:
+        raise ValueError("Help lexical binding is not a complete AST owner")
+    return node
+
+
+def help_runtime_shape(parser, declaration):
+    """Compare complete helper syntax while retaining operators and property names."""
+    import evidence
+    raw = ("const " + declaration + ";").encode("utf-8")
+    tree = parser.parse(raw)
+    if tree.root_node.has_error or len(tree.root_node.named_children) != 1:
+        raise ValueError("Help helper declaration is not complete JavaScript")
+    root = tree.root_node.named_children[0].named_children[0]
+    bindings = evidence.JavascriptBindings(raw, tree)
+    identifiers = {}
+
+    def shape(node):
+        if node.type == "identifier":
+            name = node.text.decode("utf-8")
+            if name in {"Array", "URL", "String", "Boolean", "JSON", "localStorage", "console", "document", "window", "URLSearchParams",
+                        "Promise", "Object", "RegExp", "Set", "Map", "Error", "Date", "Math", "setTimeout", "clearTimeout", "navigator", "fetch"}:
+                return [node.type, name]
+            binding = bindings.resolve(name, node.start_byte)
+            key = (binding.get("start_byte"), binding.get("end_byte"), name)
+            return [node.type, identifiers.setdefault(key, len(identifiers))]
+        if node.child_count:
+            return [node.type, [shape(child) for child in node.children]]
+        return [node.type, node.text.decode("utf-8")]
+
+    return shape(root)
+
+
+_HELP_SCOPED_SELECTOR = (
+    'select=(e,{containerId:E,productIds:_})=>{var a;if(!Array.isArray(e))return;'
+    'const t=normalize(E),i=_.filter(e=>void 0!==e&&null!==e).map(String),'
+    'o=t&&e.find(e=>(e=>{try{return normalize(new URL(e).searchParams.get("containerId"))}'
+    'catch(E){return""}})(null===e||void 0===e?void 0:e.windowName)===t),'
+    'n=e.find(e=>i.includes((e=>{try{const E=new URL(e).pathname.split("/").filter(Boolean),'
+    '_=E.findIndex(e=>"products"===e.toLowerCase()),a=_>=0?E[_+1]:"";'
+    'return/^\\d+$/.test(a)?a:""}catch(E){return""}})'
+    '(null===e||void 0===e?void 0:e.windowName)));'
+    'return null===(a=o||n)||void 0===a?void 0:a.value}'
+)
+_HELP_CONTAINER_NORMALIZER = (
+    'normalize=e=>(null!==e&&void 0!==e?e:"").replace(/[{}]/g,"").toLowerCase()'
+)
+_HELP_SCOPED_SELECTOR_BODY_ARGUMENT = (
+    'select=(e,t)=>{var s;let{containerId:i,productIds:a}=t;if(!Array.isArray(e))return;'
+    'const n=normalize(i),o=a.filter(e=>void 0!==e&&null!==e).map(String),'
+    'r=n&&e.find(e=>(e=>{try{return normalize(new URL(e).searchParams.get("containerId"))}'
+    'catch(t){return""}})(null===e||void 0===e?void 0:e.windowName)===n),'
+    'l=e.find(e=>o.includes((e=>{try{const t=new URL(e).pathname.split("/").filter(Boolean),'
+    's=t.findIndex(e=>"products"===e.toLowerCase()),i=s>=0?t[s+1]:"";'
+    'return/^\\d+$/.test(i)?i:""}catch(t){return""}})'
+    '(null===e||void 0===e?void 0:e.windowName)));return null===(s=r||l)||void 0===s?void 0:s.value}'
+)
+_HELP_APP_GETTER = (
+    'getAppVersion(){try{const e=localStorage.getItem("apps");if(e){'
+    'const E=JSON.parse(e).find(e=>"synapse"===e.name);if(E&&E.version){'
+    'let e="4.0.0";e=["4",...E.version.split(".").slice(1)].join("."),'
+    'console.log("Found synapse version:",e),this.setState({synapseVersion:e})}}}'
+    'catch(e){console.error("Error reading version from local storage:",e)}}'
+)
+_HELP_UI_GETTER = (
+    'getDeviceUIVersionFromUIElement(){const e=document.querySelector("noscript#version");'
+    'if(console.log("device UI buildInfo:",e),e)try{const E=e.innerHTML;'
+    'if(console.log("device UI html:",E),E.indexOf("VERSION_PLACEHOLDER")>=0)return;'
+    'const _=JSON.parse(E);console.log("device UI:",_);let a=_.version,t=_.buildVersion;'
+    'console.log("device UI version:",a),console.log("device UI buildVersion:",t),'
+    'this.setState({uiVersion:`${a}.${t}`})}'
+    'catch(E){console.error("Failed to parse device ui version data from noscript:",E)}}'
+)
+_HELP_MW_GETTER = (
+    'getDeviceMWVersionFromWindowsStorage(){var e,E;'
+    'null===(e=storage.getWindowStorageItem(storageKey))||void 0===e||'
+    'null===(E=e.then(e=>{if(!e)return;const E=select(JSON.parse(e),'
+    '{containerId:new URLSearchParams(window.location.search).get("containerId"),'
+    'productIds:[device.DeviceInfo.productId,device.DeviceInfo.dongleId]});'
+    'E&&this.setState({mwVersion:E})}))||void 0===E||'
+    'E.catch(e=>{console.error("Failed to read mwVersion from window storage:",e)})}'
+)
+_HELP_MW_DIRECT_PROMISE_GETTER = (
+    'getDeviceMWVersionFromWindowsStorage(){var e;'
+    'null===(e=storage.getWindowStorageItem(storageKey))||void 0===e||'
+    'e.then(e=>{if(!e)return;const t=select(JSON.parse(e),'
+    '{containerId:new URLSearchParams(window.location.search).get("containerId"),'
+    'productIds:[device.DeviceInfo.productId,device.DeviceInfo.dongleId]});'
+    't&&this.setState({mwVersion:t})}).catch(e=>{'
+    'console.error("Failed to read mwVersion from window storage:",e)})}'
+)
+_HELP_MW_FIRST_GETTER = (
+    'getDeviceMWVersionFromWindowsStorage(){storage.getWindowStorageItem(storageKey).then(e=>{'
+    'var t;const s=JSON.parse(e);0!==s.length&&this.setState('
+    '{mwVersion:null===(t=s[0])||void 0===t?void 0:t.value})})}'
+)
+
+
+def help_runtime_getter_shape(parser, body):
+    return help_runtime_shape(parser, "owner={" + body + "}")
+
+
+_JAVASCRIPT_BOOTSTRAP_REQUIRES = {
+    "module_state_call": (
+        'function require(id){var cached=cache[id];if(void 0!==cached)return cached.exports;'
+        'var module=cache[id]={id:id,loaded:!1,exports:{}};'
+        'return modules[id].call(module.exports,module,module.exports,require),module.loaded=!0,module.exports}'
+    ),
+    "minimal_call": (
+        'function require(id){var cached=cache[id];if(void 0!==cached)return cached.exports;'
+        'var module=cache[id]={exports:{}};'
+        'return modules[id].call(module.exports,module,module.exports,require),module.exports}'
+    ),
+    "module_state_direct": (
+        'function require(id){var cached=cache[id];if(void 0!==cached)return cached.exports;'
+        'var module=cache[id]={id:id,loaded:!1,exports:{}};'
+        'return modules[id](module,module.exports,require),module.loaded=!0,module.exports}'
+    ),
+}
+
+
+def javascript_require_binding(audit, source, function):
+    if function.type != "identifier":
+        raise ValueError("Source module request has no lexical require")
+    factory = _help_factory(function)
+    if factory is not None:
+        if not _help_factory_parameter(audit, source, function, factory, "require"):
+            raise ValueError("Source import does not use its actual webpack require")
+        return {**audit.binding("source_require_parameter", source, function.text.decode(), function.start_byte),
+                "implementation_variant": "module_factory_parameter"}
+    require = audit.binding("source_bootstrap_require", source, function.text.decode(), function.start_byte)
+    node = _help_binding_node(audit, source, require)
+    if node.type != "function_declaration":
+        raise ValueError("Source import has no complete bootstrap require function")
+    shape = help_runtime_shape(audit.parser, "loader=" + node.text.decode())
+    variant = next((name for name, expected in _JAVASCRIPT_BOOTSTRAP_REQUIRES.items()
+                    if shape == help_runtime_shape(audit.parser, "loader=" + expected)), None)
+    if variant is None:
+        raise ValueError("Source import has an unverified bootstrap require")
+    return {**require, "implementation_variant": variant}
+
+
+def javascript_import_namespace(audit, originals, source, namespace, *, role="source_import"):
+    """Resolve the actual lexical require and its complete module factory."""
+    if namespace.type != "identifier":
+        raise ValueError("Source import has no stable namespace binding")
+    binding = audit.binding(role, source, namespace.text.decode(), namespace.start_byte)
+    declaration = _help_binding_node(audit, source, binding)
+    value = declaration.child_by_field_name("value") if declaration.type == "variable_declarator" else None
+    if value is None or value.type != "call_expression":
+        raise ValueError("Source import is not a literal module request")
+    function = value.child_by_field_name("function")
+    arguments = value.child_by_field_name("arguments").named_children
+    if function.type != "identifier" or len(arguments) != 1 or arguments[0].type != "number":
+        raise ValueError("Source module request is dynamic")
+    javascript_require_binding(audit, source, function)
+    matches = audit.webpack_factories(originals, int(arguments[0].text))
+    if len(matches) != 1:
+        raise ValueError("Source import has no unique complete module factory")
+    original, node, factory = matches[0]
+    return original, factory, audit.retain_range(role + "_factory", original,
+                                                node.start_byte, node.end_byte, node.type)
+
+
+_JAVASCRIPT_LAZY_COMPONENT = (
+    'E=({lazy:e,LoadingComponent:t,ErrorComponent:n,...o})=>{'
+    'const[r,E]=(0,i.useState)(null),[_,s]=(0,i.useState)(null);'
+    'return(0,i.useEffect)(()=>((async()=>{try{const t=await e();E(()=>t.default)}'
+    'catch(t){console.error("Asynchronous component loading failed",t),'
+    's(t instanceof Error?t:new Error("AsyncComponent loading failed."))}})(),'
+    '()=>{E(null),s(null)}),[e]),_?n||null:r?(0,a.jsx)(r,{...o}):t||null}'
+)
+
+
+def javascript_lazy_component_mount(audit, originals, source, bound, module_id, export_name, *, role):
+    """Follow a literal lazy request through the actual default-export renderer."""
+    if export_name != b"default":
+        return None
+    then_args = bound.parent
+    if then_args.type != "arguments" or then_args.named_children != [bound]:
+        return None
+    then_call = then_args.parent
+    if then_call.type != "call_expression":
+        return None
+    then_member = then_call.child_by_field_name("function")
+    if then_member.type != "member_expression" or then_member.child_by_field_name("property").text != b"then":
+        return None
+    lazy = then_call.parent
+    if lazy.type != "arrow_function" or lazy.child_by_field_name("body") != then_call:
+        return None
+    pair = lazy.parent
+    if pair.type != "pair" or pair.child_by_field_name("key").text != b"lazy" or pair.parent.type != "object":
+        return None
+    props = pair.parent
+    args = props.parent
+    if args.type != "arguments" or args.parent.type != "call_expression":
+        return None
+    mounted = args.parent
+    arguments = args.named_children
+    if (len(arguments) != 2 or arguments[1] != props
+            or not re.search(rb"\.(?:jsx|jsxs|createElement)\)?$", mounted.child_by_field_name("function").text)):
+        return None
+    function = bound.child_by_field_name("function")
+    binding_args = bound.child_by_field_name("arguments").named_children
+    if (function.type != "member_expression" or function.child_by_field_name("property").text != b"bind"
+            or len(binding_args) != 2 or binding_args[1].type != "number" or int(binding_args[1].text) != module_id):
+        raise ValueError("Lazy component has no fixed target module binding")
+    require = function.child_by_field_name("object")
+    javascript_require_binding(audit, source, require)
+    if binding_args[0].type != "identifier" or binding_args[0].text != require.text:
+        raise ValueError("Lazy component binds a different require receiver")
+    loading = then_member.child_by_field_name("object")
+    if loading.type == "call_expression" and loading.child_by_field_name("function").text == b"Promise.all":
+        dependencies = loading.child_by_field_name("arguments").named_children
+        if len(dependencies) != 1 or dependencies[0].type != "array":
+            raise ValueError("Lazy component has dynamic chunk dependencies")
+        chunks = dependencies[0].named_children
+    else:
+        chunks = [loading]
+    chunk_ids = []
+    for chunk in chunks:
+        call = chunk.child_by_field_name("function") if chunk.type == "call_expression" else None
+        dependency = chunk.child_by_field_name("arguments").named_children if call is not None else []
+        if (call is None or call.type != "member_expression" or call.child_by_field_name("property").text != b"e"
+                or call.child_by_field_name("object").text != require.text or len(dependency) != 1 or dependency[0].type != "number"):
+            raise ValueError("Lazy component has an unverified chunk request")
+        chunk_ids.append(int(dependency[0].text))
+    if not chunk_ids or len(chunk_ids) != len(set(chunk_ids)):
+        raise ValueError("Lazy component has empty or duplicate chunk requests")
+    factories = audit.webpack_factories(originals, module_id)
+    if len(factories) != 1:
+        raise ValueError("Lazy component target module is absent or ambiguous")
+    target, module, _ = factories[0]
+    registration = module.parent.parent
+    if (registration is None or registration.type != "array" or len(registration.named_children) < 2
+            or registration.named_children[1] != module.parent or registration.named_children[0].type != "array"
+            or any(value.type != "number" for value in registration.named_children[0].named_children)):
+        raise ValueError("Lazy component target has no explicit chunk registration")
+    registered_chunks = [int(value.text) for value in registration.named_children[0].named_children]
+    publication_args = registration.parent
+    publication = publication_args.parent if publication_args is not None else None
+    publication_member = publication.child_by_field_name("function") if publication is not None and publication.type == "call_expression" else None
+    if (publication_args is None or publication_args.type != "arguments" or publication_args.named_children != [registration]
+            or publication_member is None or publication_member.type != "member_expression"
+            or publication_member.child_by_field_name("property").text != b"push"):
+        raise ValueError("Lazy component target chunk is not published")
+    if not set(registered_chunks).intersection(chunk_ids):
+        raise ValueError("Lazy component does not request its target's registered chunk")
+    wrapper = arguments[0]
+    if wrapper.type != "member_expression" or wrapper.child_by_field_name("property").type != "property_identifier":
+        raise ValueError("Lazy component wrapper is not an explicit exported renderer")
+    _, factory, namespace_owner = javascript_import_namespace(audit, originals, source,
+        wrapper.child_by_field_name("object"), role=role + "_lazy_wrapper_import")
+    exported = audit.webpack_export(role + "_lazy_wrapper", originals, _help_factory(factory)["module_id"],
+                                   wrapper.child_by_field_name("property").text.decode())
+    if help_runtime_shape(audit.parser, exported["binding"]["body"]) != help_runtime_shape(audit.parser, _JAVASCRIPT_LAZY_COMPONENT):
+        raise ValueError("Lazy component renderer differs from its complete default-export, props and cleanup contract")
+    forwarded = {}
+    for prop in props.named_children:
+        if prop.type != "pair":
+            raise ValueError("Lazy component has unresolved spread props")
+        name = prop.child_by_field_name("key").text.decode()
+        if name in forwarded:
+            raise ValueError("Lazy component repeats a property")
+        forwarded[name] = prop.child_by_field_name("value").text.decode()
+    for name in ("lazy", "LoadingComponent", "ErrorComponent"):
+        forwarded.pop(name, None)
+    links = [namespace_owner, exported["binding"]["owner_id"],
+             audit.retain_range(role + "_lazy_request", source, lazy.start_byte, lazy.end_byte, lazy.type),
+             audit.retain_range(role + "_lazy_chunk_registration", target,
+                                registration.start_byte, registration.end_byte, registration.type)]
+    owner = audit.retain_range(role + "_actual_mount", source, mounted.start_byte, mounted.end_byte, mounted.type)
+    return {"owner": owner, "props": forwarded, "original": audit.sources[source["path"]],
+            "lazy_import": {"module_id": module_id, "export": "default", "chunk_ids": chunk_ids,
+                            "registered_chunk_ids": registered_chunks, "wrapper": exported["binding"]["owner_id"],
+                            "effect_dependencies": ["lazy"], "cleanup_cancels_import": False},
+            "binding_links": links}
+
+
+def _help_runtime_value(audit, originals, original, node, active=()):
+    """Resolve Help's lexical constants and exact webpack object exports."""
+    key = (original["path"], node.start_byte, node.end_byte)
+    if key in active:
+        raise ValueError("Help constant has a circular lexical dependency")
+    active = (*active, key)
+    if node.type == "identifier":
+        binding = audit.binding("help_constant", original, node.text.decode(), node.start_byte)
+        declaration = _help_binding_node(audit, original, binding)
+        if declaration.type != "variable_declarator" or declaration.child_by_field_name("value") is None:
+            raise ValueError("Help constant has no static variable initializer")
+        return _help_runtime_value(audit, originals, original, declaration.child_by_field_name("value"), active)
+    if node.type != "member_expression":
+        return original, node
+    prop = node.child_by_field_name("property")
+    if prop.type != "property_identifier":
+        raise ValueError("Help constant has a dynamic property name")
+    source, value = _help_runtime_value(audit, originals, original, node.child_by_field_name("object"), active)
+    if value.type == "object":
+        pairs = [pair for pair in value.named_children if pair.type == "pair"
+                 and pair.child_by_field_name("key").text == prop.text]
+        if len(pairs) != 1 or any(pair.type != "pair" for pair in value.named_children):
+            raise ValueError("Help constant object property is absent, repeated or dynamic")
+        return _help_runtime_value(audit, originals, source, pairs[0].child_by_field_name("value"), active)
+    if value.type != "call_expression":
+        raise ValueError("Help constant property is not an audited object or webpack import")
+    function = value.child_by_field_name("function")
+    arguments = value.child_by_field_name("arguments").named_children
+    if function.type != "identifier" or len(arguments) != 1 or arguments[0].type != "number":
+        raise ValueError("Help constant import is not a literal webpack request")
+    javascript_require_binding(audit, source, function)
+    imported = audit.webpack_export("help_constant_import", originals, int(arguments[0].text), prop.text.decode())
+    imported_source = next(item for item in originals if item["path"] == imported["original"]["path"])
+    declaration = _help_binding_node(audit, imported_source, imported["binding"])
+    if declaration.type != "variable_declarator":
+        raise ValueError("Help imported constant has no variable initializer")
+    return _help_runtime_value(audit, originals, imported_source, declaration.child_by_field_name("value"), active)
+
+
+def help_runtime_selector(audit, originals, original, method):
+    reads = [node for node in _help_nodes(method) if node.type == "call_expression"
+             and node.child_by_field_name("function").type == "member_expression"
+             and node.child_by_field_name("function").child_by_field_name("property").text == b"getWindowStorageItem"]
+    if len(reads) != 1 or reads[0].child_by_field_name("arguments").named_child_count != 1:
+        raise ValueError("Help MW getter has no unique WindowStorage read")
+    read = reads[0]
+    storage = read.child_by_field_name("function").child_by_field_name("object")
+    storage_key = read.child_by_field_name("arguments").named_children[0]
+    key_original, key_value = _help_runtime_value(audit, originals, original, storage_key)
+    if key_value.type != "string" or json.loads(key_value.text) != "mwVersion":
+        raise ValueError("Help MW getter does not consume the current mwVersion storage key")
+    body = method.text
+    for node, replacement in sorted(((storage, b"storage"), (storage_key, b"storageKey")),
+                                    key=lambda item: item[0].start_byte, reverse=True):
+        body = body[:node.start_byte - method.start_byte] + replacement + body[node.end_byte - method.start_byte:]
+    getter_shape = help_runtime_getter_shape(audit.parser, body.decode())
+    consumer = {"storage_key": "mwVersion", "storage_key_source": audit.sources[key_original["path"]],
+                "storage_reader": storage.text.decode()}
+    if getter_shape == help_runtime_getter_shape(audit.parser, _HELP_MW_FIRST_GETTER):
+        return {**consumer, "mode": "first", "promise_failure_handler": False,
+                "empty_array": "unobserved", "selected_missing_value": "unobserved_without_fallthrough"}
+    variants = {"optional_then_result": _HELP_MW_GETTER, "direct_then_result": _HELP_MW_DIRECT_PROMISE_GETTER}
+    variant = next((name for name, expected in variants.items()
+                    if getter_shape == help_runtime_getter_shape(audit.parser, expected)), None)
+    if variant is None:
+        raise ValueError("Help MW getter differs from the complete audited read/parse/select/update/failure consumer")
+    pairs = [node for node in _help_nodes(method) if node.type == "pair"
+             and node.child_by_field_name("key").text == b"productIds"]
+    if len(pairs) != 1:
+        raise ValueError("Current Help MW getter has no unique scoped product selector")
+    array = pairs[0].child_by_field_name("value")
+    if array.type != "array" or len(array.named_children) != 2:
+        raise ValueError("Current Help MW product candidates are not the complete declared pair")
+    for value, field in zip(array.named_children, (b"productId", b"dongleId")):
+        if value.type != "member_expression" or value.child_by_field_name("property").text != field:
+            raise ValueError("Help MW selection does not consume UI productId and dongleId")
+        owner = value.child_by_field_name("object")
+        if owner.type != "member_expression" or owner.child_by_field_name("property").text != b"DeviceInfo":
+            raise ValueError("Help MW selection has an unverified product identity owner")
+    if array.named_children[0].child_by_field_name("object").text != array.named_children[1].child_by_field_name("object").text:
+        raise ValueError("Help MW selection mixes different identity owners")
+    arguments = pairs[0].parent.parent
+    if arguments.type != "arguments" or arguments.parent.type != "call_expression":
+        raise ValueError("Help scoped options are not passed to an actual selector")
+    callee = arguments.parent.child_by_field_name("function")
+    if callee.type != "identifier":
+        raise ValueError("Help MW selector requires imported-call resolution")
+    binding = audit.binding("help_middleware_selector", original, callee.text.decode(), callee.start_byte)
+    selector = _help_binding_node(audit, original, binding)
+    if (selector.type != "variable_declarator"
+            or help_runtime_shape(audit.parser, binding["body"]) not in (
+                help_runtime_shape(audit.parser, reference) for reference in (
+                    _HELP_SCOPED_SELECTOR, _HELP_SCOPED_SELECTOR_BODY_ARGUMENT))):
+        raise ValueError("Help MW selector differs from the audited container/product/first-match semantics")
+    calls = [node for node in _help_nodes(selector) if node.type == "call_expression"
+             and node.child_by_field_name("function").type == "identifier"]
+    names = {node.child_by_field_name("function").text for node in calls}
+    if len(names) != 1:
+        raise ValueError("Help MW container normalization dependencies are ambiguous")
+    normalizer_call = calls[0].child_by_field_name("function")
+    normalizer = audit.binding("help_container_normalizer", original, normalizer_call.text.decode(), normalizer_call.start_byte)
+    if (normalizer["resolution"] != "declaration"
+            or help_runtime_shape(audit.parser, normalizer["body"]) != help_runtime_shape(audit.parser, _HELP_CONTAINER_NORMALIZER)):
+        raise ValueError("Help MW container normalization differs from the audited source")
+    return {"mode": "scoped", "selector": binding["owner_id"], "normalizer": normalizer["owner_id"],
+            **consumer, "promise_variant": variant, "promise_failure_handler": True,
+            "non_array": "unobserved", "container_precedes_product": True,
+            "product_fields": ["productId", "dongleId"], "selected_missing_value": "unobserved_without_fallthrough"}
+
+
+def javascript_component_mounts(audit, originals, original, component, *, role="help", terminal_exports=()):
+    """Follow retained lexical aliases and actual webpack exports to JSX calls."""
+    name = component.child_by_field_name("name")
+    if name is None:
+        raise ValueError("Help component has no retained lexical identity")
+    first = audit.binding(role + "_component_binding", original, name.text.decode(), component.end_byte)
+    if first["resolution"] != "declaration":
+        raise ValueError("Help component declaration cannot be resolved")
+    pending = [(original, name.text, first, None)]
+    seen, mounts, links, terminals = set(), {}, [], []
+
+    def add_declaration(source, declaration, member=None):
+        if declaration is None or declaration.type != "variable_declarator":
+            raise ValueError("Help wrapper/import does not have a stable lexical owner")
+        identifier = declaration.child_by_field_name("name")
+        if identifier is None or identifier.type != "identifier":
+            raise ValueError("Help wrapper/import destructuring requires explicit analysis")
+        binding = audit.binding(role + "_component_alias", source, identifier.text.decode(), declaration.end_byte)
+        pending.append((source, identifier.text, binding, member))
+
+    def import_export(module_id, export_name):
+        for source in originals:
+            raw = audit.read(source)
+            for hit in re.finditer(rb"(?<![\w$])" + str(module_id).encode() + rb"(?![\w$])", raw):
+                node = audit.tree(source).root_node.descendant_for_byte_range(hit.start(), hit.end() - 1)
+                if node.type != "number" or node.parent.type != "arguments":
+                    continue
+                args = node.parent
+                call = args.parent
+                if call.type != "call_expression":
+                    continue
+                if len(args.named_children) == 2:
+                    mounted = javascript_lazy_component_mount(audit, originals, source, call, module_id, export_name, role=role)
+                    if mounted is not None:
+                        links.extend(mounted.pop("binding_links"))
+                        mounts[mounted["owner"]] = mounted
+                    continue
+                if len(args.named_children) != 1:
+                    continue
+                try:
+                    javascript_require_binding(audit, source, call.child_by_field_name("function"))
+                except ValueError:
+                    continue
+                if call.parent.type == "variable_declarator" and call.parent.child_by_field_name("value") == call:
+                    add_declaration(source, call.parent, export_name)
+
+    while pending:
+        source, identifier, binding, member = pending.pop()
+        key = (source["path"], binding.get("start_byte"), binding.get("end_byte"), member)
+        if key in seen:
+            continue
+        seen.add(key)
+        if binding["resolution"] != "declaration":
+            raise ValueError("Help component alias has no unique declaration")
+        for hit in re.finditer(rb"(?<![\w$])" + re.escape(identifier) + rb"(?![\w$])", audit.read(source)):
+            reference = audit.tree(source).root_node.descendant_for_byte_range(hit.start(), hit.end() - 1)
+            if reference.type != "identifier":
+                continue
+            resolved = audit.binding(role + "_component_reference", source, identifier.decode(), reference.start_byte)
+            if resolved.get("start_byte") != binding["start_byte"] or resolved.get("end_byte") != binding["end_byte"]:
+                continue
+            if member is not None:
+                parent = reference.parent
+                if (parent.type != "member_expression" or parent.child_by_field_name("object") != reference
+                        or parent.child_by_field_name("property").text != member):
+                    continue
+                reference = parent
+            parent = reference.parent
+            if parent.type == "variable_declarator" and parent.child_by_field_name("value") == reference:
+                add_declaration(source, parent)
+            if parent.type == "arguments" and parent.parent.type == "call_expression":
+                call = parent.parent
+                args = parent.named_children
+                function = call.child_by_field_name("function")
+                function_text = function.text.decode("utf-8")
+                if args and args[0] == reference and re.search(r"\.(?:jsx|jsxs|createElement)\)?$", function_text):
+                    if len(args) < 2 or args[1].type != "object":
+                        raise ValueError("Mounted Help props require dynamic expression analysis")
+                    props = {}
+                    for pair in args[1].named_children:
+                        if pair.type != "pair":
+                            raise ValueError("Mounted Help spread props require complete branch resolution")
+                        prop = pair.child_by_field_name("key").text.decode()
+                        if prop in props:
+                            raise ValueError("Mounted Help repeats a property")
+                        props[prop] = pair.child_by_field_name("value").text.decode()
+                    owner = audit.retain_range(role + "_actual_mount", source, call.start_byte, call.end_byte, call.type)
+                    mounts[owner] = {"owner": owner, "props": props, "original": audit.sources[source["path"]]}
+                elif len(args) == 1 and args[0] == reference and function.type == "call_expression":
+                    if call.parent.type == "variable_declarator" and call.parent.child_by_field_name("value") == call:
+                        declaration = call.parent
+                        links.append(audit.retain_range(role + "_connected_props_and_actions", source,
+                            declaration.start_byte, declaration.end_byte, declaration.type))
+                        add_declaration(source, declaration)
+            if parent.type == "arrow_function" and parent.child_by_field_name("body") == reference:
+                pair = parent.parent
+                if pair.type != "pair" or pair.child_by_field_name("value") != parent or pair.parent.type != "object":
+                    continue
+                args = pair.parent.parent
+                if args.type != "arguments" or args.parent.type != "call_expression":
+                    continue
+                export_call = args.parent
+                factory = _help_factory(export_call)
+                function = export_call.child_by_field_name("function")
+                if (factory is None or function.type != "member_expression"
+                        or not _help_factory_parameter(audit, source, function.child_by_field_name("object"), factory, "require")
+                        or function.child_by_field_name("property").text != b"d"
+                        or args.named_child_count != 2
+                        or not _help_factory_parameter(audit, source, args.named_children[0], factory, "exports")):
+                    continue
+                export_name = pair.child_by_field_name("key").text
+                if pair.child_by_field_name("key").type == "string":
+                    export_name = export_name[1:-1]
+                export_owner = audit.retain_range(role + "_component_export", source,
+                    export_call.start_byte, export_call.end_byte, export_call.type)
+                links.append(export_owner)
+                if (factory["module_id"], export_name.decode()) in terminal_exports:
+                    terminals.append({"module_id": factory["module_id"], "export": export_name.decode(),
+                                      "owner": export_owner})
+                import_export(factory["module_id"], export_name)
+    if not mounts and not terminals:
+        raise ValueError("Help component has no statically resolved mounted JSX consumer")
+    return {"mounts": list(mounts.values()), "binding_links": list(dict.fromkeys(links)), "terminal_exports": terminals}
+
+
+def help_runtime_components(audit, originals):
+    components = {}
+    for original in originals:
+        raw = audit.read(original)
+        for hit in re.finditer(rb"getDeviceMWVersionFromWindowsStorage", raw):
+            node = audit.tree(original).root_node.descendant_for_byte_range(hit.start(), hit.end() - 1)
+            while node is not None and node.type not in {"class", "class_declaration"}:
+                node = node.parent
+            if node is not None:
+                components[(original["path"], node.start_byte, node.end_byte)] = (original, node)
+    if not components:
+        raise ValueError("Current Help runtime version component is absent from the verified deployment")
+    results = []
+    for original, component in components.values():
+        methods, nodes = {}, {}
+        for name in ("constructor", "componentDidMount", "componentDidUpdate",
+                     "getDeviceUIVersionFromUIElement", "getDeviceMWVersionFromWindowsStorage", "getAppVersion", "render"):
+            node, owner = audit.callable_member("help_" + name, original, component, name)
+            methods[name], nodes[name] = owner, node
+        mounted_calls = []
+        pending = list(reversed(nodes["componentDidMount"].child_by_field_name("body").named_children))
+        while pending:
+            node = pending.pop()
+            if node.type in {"expression_statement", "sequence_expression"}:
+                pending.extend(reversed(node.named_children))
+            else:
+                mounted_calls.append(node)
+        expected_mounts = (b"this.getDeviceUIVersionFromUIElement", b"this.getDeviceMWVersionFromWindowsStorage", b"this.getAppVersion")
+        if (len(mounted_calls) < len(expected_mounts)
+                or any(node.type != "call_expression" or node.child_by_field_name("function").text != name
+                       or node.child_by_field_name("arguments").named_child_count
+                       for node, name in zip(mounted_calls, expected_mounts))):
+            raise ValueError("Help runtime getters are not called directly in the audited mount order")
+        for name, expected in (("getAppVersion", _HELP_APP_GETTER),
+                               ("getDeviceUIVersionFromUIElement", _HELP_UI_GETTER)):
+            if (help_runtime_getter_shape(audit.parser, nodes[name].text.decode("utf-8"))
+                    != help_runtime_getter_shape(audit.parser, expected)):
+                raise ValueError("Help runtime getter differs from its complete audited consumer: " + name)
+        state = [node.child_by_field_name("right") for node in _help_nodes(nodes["constructor"])
+                 if node.type == "assignment_expression" and node.child_by_field_name("left").text == b"this.state"]
+        if len(state) != 1 or state[0].type != "object":
+            raise ValueError("Help runtime state has no unique constructor owner")
+        fields = {pair.child_by_field_name("key").text: pair.child_by_field_name("value")
+                  for pair in state[0].named_children if pair.type == "pair"}
+        if len(fields) != state[0].named_child_count:
+            raise ValueError("Help constructor state contains unresolved or repeated fields")
+        if not {b"uiVersion", b"mwVersion", b"synapseVersion"} <= fields.keys():
+            raise ValueError("Help runtime version state fields are incomplete")
+        if any(fields[name].text != b"void 0" for name in (b"uiVersion", b"mwVersion", b"synapseVersion")):
+            raise ValueError("Help runtime versions contain an unaudited initial value")
+        serial = fields.get(b"serialNumber")
+        if serial is not None and (serial.type != "member_expression"
+                                  or serial.child_by_field_name("property").text != b"serialNumber"):
+            raise ValueError("Help mounted serial initial value requires explicit analysis")
+        parameters = nodes["constructor"].child_by_field_name("parameters").named_children
+        if serial is not None and (len(parameters) != 1 or parameters[0].type != "identifier"
+                                   or serial.child_by_field_name("object").text != parameters[0].text):
+            raise ValueError("Help mounted serial does not consume its constructor props")
+        flow = javascript_component_mounts(audit, originals, original, component)
+        results.append({"original": audit.sources[original["path"]], "class_start": component.start_byte,
+                        "class_end": component.end_byte, "methods": methods,
+                        "middleware": help_runtime_selector(audit, originals, original, nodes["getDeviceMWVersionFromWindowsStorage"]),
+                        "retains_serial": serial is not None, **flow})
+    return results
+
+
+def help_runtime_ui_version(raw):
+    from html.parser import HTMLParser
+
+    class VersionElement(HTMLParser):
+        def __init__(self):
+            super().__init__(convert_charrefs=False)
+            self.values, self.current = [], None
+
+        def handle_starttag(self, tag, attrs):
+            if self.current is not None:
+                raise ValueError("Nested content in Help UI version element")
+            if tag == "noscript" and ("id", "version") in attrs:
+                self.current = []
+
+        def handle_startendtag(self, tag, attrs):
+            if self.current is not None or (tag == "noscript" and ("id", "version") in attrs):
+                raise ValueError("Self-closing content in Help UI version element")
+
+        def handle_data(self, data):
+            if self.current is not None:
+                self.current.append(data)
+
+        def handle_entityref(self, name):
+            self.handle_data("&" + name + ";")
+
+        def handle_charref(self, name):
+            self.handle_data("&#" + name + ";")
+
+        def handle_comment(self, data):
+            self.handle_data("<!--" + data + "-->")
+
+        def handle_endtag(self, tag):
+            if tag == "noscript" and self.current is not None:
+                self.values.append("".join(self.current))
+                self.current = None
+
+    parser = VersionElement()
+    parser.feed(raw.decode("utf-8"))
+    if parser.current is not None or len(parser.values) > 1:
+        raise ValueError("Help UI version element is ambiguous or incomplete")
+    if not parser.values:
+        return None
+    if "VERSION_PLACEHOLDER" in parser.values[0]:
+        return None
+    value = json.loads(parser.values[0])
+    build = value.get("buildVersion") if type(value) is dict else None
+    if (type(value) is not dict or type(value.get("version")) is not str or not value["version"]
+            or not ((type(build) is int and build >= 0) or (type(build) is str and bool(build)))):
+        raise ValueError("Help UI version element fields do not match the source contract")
+    return {"version": value["version"], "build_version": value["buildVersion"]}
+
+
+def audit_host_help_runtime_versions(args):
+    import analysis as a
+    import frontend
+    import resource_database
+    routes = frontend.current_acquisition_routes()
+    observation_audit = HostLocalAudit()
+    observations = frontend.latest_deployment_observations(observation_audit)
+    help_path = a.ROOT / resource_database.PRODUCT_HELP
+    help_rows = json.loads(help_path.read_bytes())
+    local_products = {row["product_id"] for row in help_rows if any(page["view_more"] for page in row["pages"])}
+    products = set(args.product or local_products)
+    if not products or any(type(pid) is not int or not 1 <= pid <= 0xffff for pid in products):
+        raise ValueError("Help runtime audit has invalid product routes")
+    for path in (Path(__file__), a.ROOT / "tools/frontend.py", a.ROOT / "tools/evidence.py"):
+        observation_audit.artifact(path)
+    report = {"recorded_at_utc": a.stamp(), "target_execution": False, "products": [],
+              "tool": observation_audit.families.identity(Path(__file__)), "parser": observation_audit.parser_versions,
+              "help_catalog": observation_audit.families.identity(help_path),
+              "requested_products": sorted(products), "all_local_help_products": sorted(local_products),
+              "coverage_complete": False, "mounted_consumers_complete": False,
+              "complete_source_owners": [], "verified_artifacts": [], "failures": [],
+              "source_chain_complete": False, "query_writes_product_code": False,
+              "runtime_acceptance": "unverified",
+              "scope": "Current mounted Help runtime-version consumers, exact scoped selector, and UI build element; no device or DLL execution"}
+    for pid in sorted(products):
+        route = f"https://apps.razer.com/synapse/products/{pid}/ui/"
+        row = {"product_id": pid, "route": route, "failures": [], "source_semantics_complete": False}
+        report["products"].append(row)
+        audit = None
+        try:
+            source = frontend.current_product_source(pid, "ui", candidates=routes.get(route, []), observations=observations)
+            audit = source.get("audit")
+            row.update({field: source[field] for field in ("status", "acquisition", "selection", "entry", "freshness")
+                        if field in source})
+            if source["status"] != "verified":
+                raise ValueError("Current Help UI source is officially unavailable")
+            originals = list({entry["path"]: entry for entry in source["selection"]["originals"]
+                              if entry["path"].endswith(".js")}.values())
+            row["ui_version"] = help_runtime_ui_version(audit.read(source["entry"]))
+            row["components"] = help_runtime_components(audit, originals)
+            row["freshness"] = frontend.verify_latest_deployment_observations(
+                source["acquired"], [entry for entry in source["files"].values() if entry.get("path") in audit.parsed],
+                audit, observations=observations)
+            row["stable_help_selectors"] = [page["offset"] for current in help_rows if current["product_id"] == pid
+                                           for page in current["pages"] if page["view_more"]]
+            row["changed_during_query"] = audit.final_snapshot()
+            if row["changed_during_query"]:
+                raise ValueError("Help source artifacts changed during this query")
+            row["source_semantics_complete"] = True
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            row["failures"].append(str(error))
+            report["failures"].append({"product_id": pid, "error": str(error)})
+        finally:
+            if audit is not None:
+                report["complete_source_owners"].extend(audit.owners.values())
+                report["verified_artifacts"].extend(audit.artifacts.values())
+        print(json.dumps({"query": args.query, "product_id": pid, "failures": row["failures"]}), flush=True)
+    report["changed_query_inputs"] = observation_audit.final_snapshot()
+    if observation_audit.families.identity(help_path) != report["help_catalog"]:
+        report["changed_query_inputs"].append(a.rel(help_path))
+    if report["changed_query_inputs"]:
+        report["failures"].append({"error": "Help query inputs changed", "paths": report["changed_query_inputs"]})
+    report["verified_artifacts"].extend(observation_audit.artifacts.values())
+    report["mounted_consumers_complete"] = not report["failures"]
+    report["coverage_complete"] = products == local_products and report["mounted_consumers_complete"]
+    report["verified_artifacts"] = list({row["path"]: row for row in report["verified_artifacts"]}.values())
+    report["complete_source_owners"] = list({row["id"]: row for row in report["complete_source_owners"]}.values())
+    report["verification_boundary"] = (
+        "Static source selection and complete consumer functions are distinct from actual WindowStorage/SDK publishers, "
+        "other Help interactions, pixel/focus acceptance and native/real-device comparisons.")
+    destination = a.ROOT / ".analysis/results/host-current/local-audit.json"
+    publish_host_static_query(report, destination, a, "help_runtime_versions")
+    if report["failures"]:
+        raise ValueError("Current Help runtime-version source query remains unresolved")
+
+
 def audit_host_help_system_info(args):
     audit = HostLocalAudit()
     a, families = audit.a, audit.families
@@ -8181,6 +8927,11 @@ def lighting_frontend_abi(audit, source_set_record, originals):
 
 
 def audit_host_local(args):
+    if args.query == "help-runtime-versions":
+        return audit_host_help_runtime_versions(args)
+    if args.query == "keyboard-navigation":
+        import evidence
+        return evidence.audit_keyboard_navigation(args)
     if getattr(args, "verify_only", False) and args.query != "profiles":
         raise ValueError("Host-local --verify-only currently applies only to the profiles query")
     if args.query == "profiles":

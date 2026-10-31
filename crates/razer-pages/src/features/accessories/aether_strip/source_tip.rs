@@ -127,7 +127,7 @@ impl RenderOnce for TipCommand {
             ),
         };
         let help = matches!(self.kind, Kind::Help);
-        let mut button = gpui_kit::base::Button::new(self.id.clone())
+        let mut button = razer_widgets::keyboard_navigation::Button::new(self.id.clone())
             .disabled(self.disabled)
             .accessibility_label(self.label.clone())
             .size_full()
@@ -259,7 +259,7 @@ impl RenderOnce for SourceTipItem {
         //  background-repeat:no-repeat;border-radius:50%;height:24px;width:24px}` +
         //  `:hover{background-image:url(close-hovered-btn)}`；
         //  `.device--cta-find:hover,.device--cta-power:hover{border-color:#44d62c}`。
-        let mut button = gpui_kit::base::Button::new(self.id.clone())
+        let mut button = razer_widgets::keyboard_navigation::Button::new(self.id.clone())
             .group(self.name)
             .accessibility_label(self.label.clone())
             .disabled(self.disabled)

@@ -49,6 +49,181 @@ fn key() -> ActionItem {
 }
 
 #[test]
+fn language_refresh_rebuilds_the_live_list_from_the_first_changed_macro() {
+    let first = document(MacroType::Standard);
+    let mut translated = document(MacroType::Standard);
+    translated["guid"] = json!("f44b9998-40cb-4227-91b1-e409d3f7cf7a");
+    translated["macroEvents"][1] = json!({
+        "Type":4,"Text":"Original prompt","translationKey":"TEXT_AI_REPHRASE_PROMPT"
+    });
+    let mut following = document(MacroType::Standard);
+    following["guid"] = json!("5e4f35a2-cab3-47de-8d4d-ec4e9832f738");
+    let mut file = MacroLibraryFile::default();
+    file.append_source_documents(&[first.clone(), translated, following])
+        .unwrap();
+    assert!(
+        file.translate_text_actions(|key| {
+            assert_eq!(key, "TEXT_AI_REPHRASE_PROMPT");
+            Some("Translated prompt".into())
+        })
+        .unwrap()
+    );
+    let output = file.source_macro_documents().unwrap();
+    assert_eq!(output[0]["appEngine"], first["appEngine"]);
+    assert_eq!(output[0]["macroEvents"], first["macroEvents"]);
+    assert_eq!(output[1]["macroEvents"][1]["Text"], "Translated prompt");
+    assert_eq!(
+        output[1]["macroEvents"][1]["translationKey"],
+        "TEXT_AI_REPHRASE_PROMPT"
+    );
+    assert_eq!(output[1]["appEngine"]["events"][0]["type"], "clipboard");
+    assert_eq!(
+        output[1]["appEngine"]["events"][0]["text"],
+        "Translated prompt"
+    );
+    assert_eq!(
+        output[2]["appEngine"]["events"],
+        json!([{"type":"keyboard","scancode":30,"flag":0}])
+    );
+    for document in &output[1..] {
+        assert_eq!(document["appEngine"]["mouseMoveType"], "absolute");
+        assert_eq!(document["macroEvents"][0]["recordProfile"]["mmtSetting"], 1);
+        assert!(document["appEngine"].get("externalEngine").is_none());
+        assert!(document["appEngine"].get("pressEvents").is_none());
+        assert!(document["appEngine"].get("holdEvents").is_none());
+        assert!(document["appEngine"].get("releaseEvents").is_none());
+    }
+    let unchanged = file.clone();
+    assert!(
+        !file
+            .translate_text_actions(|_| Some("Translated prompt".into()))
+            .unwrap()
+    );
+    assert_eq!(file, unchanged);
+    assert!(
+        !file
+            .translate_text_actions(|_| Some(String::new()))
+            .unwrap()
+    );
+    assert_eq!(file, unchanged);
+    assert!(!file.translate_text_actions(|_| None).unwrap());
+    assert_eq!(file, unchanged);
+}
+
+#[test]
+fn translated_phased_engine_preserves_absent_ordinary_events_and_filters_unphased_rows() {
+    let mut source = document(MacroType::Phased);
+    source["appEngine"]
+        .as_object_mut()
+        .unwrap()
+        .remove("events");
+    source["macroEvents"] = json!([
+        {"Type":"actionBar","recordProfile":{"mmtSetting":0}},
+        {"Type":4,"Text":"Original","translationKey":"TEXT_AI_REPHRASE_PROMPT","phase":0},
+        {"Type":4,"Text":"Unassigned"},
+        {"Type":4,"Text":"Release","phase":2}
+    ]);
+    let mut file = MacroLibraryFile::default();
+    file.append_source_documents(&[source]).unwrap();
+    assert!(
+        file.entries[0]
+            .editor_execution()
+            .unwrap()
+            .engine()
+            .ordinary_events()
+            .is_err()
+    );
+    file.translate_text_actions(|_| Some("Translated".into()))
+        .unwrap();
+    let entry = &file.entries[0];
+    let engine = serde_json::to_value(entry.execution.as_ref().unwrap().engine()).unwrap();
+    assert!(engine.get("events").is_none());
+    assert_eq!(engine["mouseMoveType"], "none");
+    assert_eq!(engine["pressEvents"].as_array().unwrap().len(), 1);
+    assert_eq!(engine["pressEvents"][0]["text"], "Translated");
+    assert_eq!(engine["holdEvents"], json!([]));
+    assert_eq!(engine["releaseEvents"].as_array().unwrap().len(), 1);
+    assert_eq!(engine["releaseEvents"][0]["text"], "Release");
+    let mut invalidated = entry.execution.clone().unwrap();
+    invalidated.invalidate();
+    let edited = file
+        .execution_for_actions(entry, &entry.actions, Some(&invalidated), 0)
+        .unwrap();
+    assert_eq!(serde_json::to_value(edited.engine()).unwrap(), engine);
+    assert!(
+        file.source_macro_documents().unwrap()[0]["appEngine"]
+            .get("events")
+            .is_none()
+    );
+    let error = file
+        .append_recorded_actions(
+            entry,
+            &entry.actions,
+            entry.execution.as_ref(),
+            vec![],
+            &options(MacroType::Phased, 0),
+        )
+        .err()
+        .unwrap();
+    assert!(error.contains("ordinary events are absent"));
+}
+
+#[test]
+fn translation_failure_keeps_all_prior_actions_and_engines_unchanged() {
+    let mut file = library(MacroType::Standard);
+    let mut row = ActionItem::new(ActionKind::Text);
+    row.value = "Original".into();
+    row.translation_key = Some("TEXT_AI_REPHRASE_PROMPT".into());
+    file.entries[0].actions = vec![row];
+    let mut following = file.entries[0].clone();
+    following.id = 2;
+    following.xml_guid = Some("8b394257-b69c-46ea-b7e0-97d13106e53e".into());
+    let mut missing_physical_key = ActionItem::new(ActionKind::Keyboard);
+    missing_physical_key.value = "A".into();
+    following.actions = vec![missing_physical_key];
+    file.entries.push(following);
+    file.next_id = 3;
+    let unchanged = file.clone();
+    let error = file
+        .translate_text_actions(|_| Some("Translated".into()))
+        .unwrap_err();
+    assert!(error.contains("physical key metadata"));
+    assert_eq!(file, unchanged);
+}
+
+#[test]
+fn text_translation_identity_roundtrips_locally_and_invalid_external_types_fail() {
+    let mut source = document(MacroType::Standard);
+    source["macroEvents"][1] =
+        json!({"Type":4,"Text":"Prompt","translationKey":"TEXT_AI_REPHRASE_PROMPT"});
+    let mut file = MacroLibraryFile::default();
+    file.append_source_documents(&[source.clone()]).unwrap();
+    let decoded: MacroLibraryFile =
+        serde_json::from_slice(&serde_json::to_vec(&file).unwrap()).unwrap();
+    assert_eq!(
+        decoded.entries[0].actions[0].translation_key.as_deref(),
+        Some("TEXT_AI_REPHRASE_PROMPT")
+    );
+    assert_eq!(
+        decoded.source_macro_documents().unwrap()[0]["macroEvents"][1]["translationKey"],
+        "TEXT_AI_REPHRASE_PROMPT"
+    );
+    let encoded = xml::encode(&decoded.entries[0], &decoded.entries).unwrap();
+    assert!(encoded.contains("<translationKey>TEXT_AI_REPHRASE_PROMPT</translationKey>"));
+    assert!(
+        xml::decode(&encoded).unwrap().actions[0]
+            .translation_key
+            .is_none()
+    );
+    source["macroEvents"][1]["translationKey"] = json!(7);
+    assert!(
+        MacroLibraryFile::default()
+            .append_source_documents(&[source])
+            .is_err()
+    );
+}
+
+#[test]
 fn recording_appends_to_current_engine_phase_without_rewriting_payload_or_old_lanes() {
     let mut file = library(MacroType::Phased);
     let entry = &file.entries[0];

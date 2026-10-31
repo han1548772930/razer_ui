@@ -5,7 +5,7 @@
 //! See docs/re/armory-product-roots-current-evidence.json and
 //! docs/re/armory-audio-roots-current-evidence.json and
 //! docs/re/armory-audio-next-roots-current-evidence.json.
-use gpui_kit::base::Button as BaseButton;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::component::*;
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use razer_assets as resources;

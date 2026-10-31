@@ -485,7 +485,7 @@ impl AudioProductWorkspace {
                 .border_1().border_color(Colors::border()).rounded_t(surface::css(5.))
                 .child(div().max_w(surface::css(200.)).text_ellipsis()
                     .child(message(row,button["counter"].as_str().unwrap_or_default())))
-                .child(gpui_kit::base::Button::new("sound-mapping-close")
+                .child(razer_widgets::keyboard_navigation::Button::new("sound-mapping-close")
                     .absolute().right_0().top_0().size(surface::css(36.))
                     .flex().justify_center().items_center()
                     .hover(|style| style.bg(Colors::mapping_control_hover()))
@@ -539,7 +539,7 @@ impl AudioProductWorkspace {
                         let name=name.to_string();
                         let current=function==name;
                         let disabled=firmware_disabled(row,&name,&self.draft["sound"]["currentFWVersion"]);
-                        gpui_kit::base::Button::new(SharedString::from(format!("sound-mapping-function-{name}")))
+                        razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!("sound-mapping-function-{name}")))
                             .relative().w_full().h(surface::css(40.)).flex_none()
                             .text_size(surface::css(12.)).pl(surface::css(50.)).py(surface::css(13.))
                             .bg(if current {Colors::background()} else {Colors::mapping_panel()})
@@ -585,7 +585,7 @@ impl AudioProductWorkspace {
                         .border_color(Colors::selected())
                         .rounded(surface::css(5.))
                         .child(
-                            gpui_kit::base::Button::new("sound-mapping-alert-close")
+                            razer_widgets::keyboard_navigation::Button::new("sound-mapping-alert-close")
                                 .absolute()
                                 .top(surface::css(10.))
                                 .right(surface::css(10.))
@@ -665,8 +665,8 @@ fn mapping_icon(function: &str, active: bool) -> &'static str {
     }
 }
 
-fn mapping_action(id: &'static str, label: String, primary: bool) -> gpui_kit::base::Button {
-    gpui_kit::base::Button::new(id)
+fn mapping_action(id: &'static str, label: String, primary: bool) -> razer_widgets::keyboard_navigation::Button {
+    razer_widgets::keyboard_navigation::Button::new(id)
         .min_w(surface::css(100.))
         .h(surface::css(27.))
         .px(surface::css(10.))

@@ -2,8 +2,8 @@
 //! Current UI/data boundaries are maintained in docs/re/architecture.md.
 //! Device workspaces provide local profiles and links; the global game catalog
 //! still requires a real service publisher. Empty observations stay empty.
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::base::{
-    Button as BaseButton,
     motion::{self, Easing, Presence, Transition},
 };
 use gpui_kit::component::{

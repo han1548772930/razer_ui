@@ -1,6 +1,6 @@
 //! Current Armory 29770 root / 20540 navigation / 77989 feature hook.
 //! Current frontend originals are indexed in the analysis input manifest.
-use gpui_kit::base::Button as BaseButton;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::base::motion::{Easing, Presence, Transition};
 use gpui_kit::component::{
     input::{Input, InputEvent, InputState},

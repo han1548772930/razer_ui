@@ -376,7 +376,7 @@ impl PortEditor {
                 v_flex()
                     .w(surface::css(17.))
                     .children([true, false].map(|increase| {
-                        gpui_kit::base::Button::new(SharedString::from(format!(
+                        razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!(
                             "argb-step-{}-{id}-{increase}",
                             self.fact.id
                         )))
@@ -594,7 +594,7 @@ impl Render for PortEditor {
             );
         } else {
             title = title.child(
-                gpui_kit::base::Button::new(("argb-rename", self.fact.id))
+                razer_widgets::keyboard_navigation::Button::new(("argb-rename", self.fact.id))
                     .accessibility_label(format!(
                         "{} {}",
                         self.spec.text("RENAME"),

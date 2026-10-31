@@ -1,10 +1,12 @@
 //! Shared semantic presentation primitives.
 mod window_resources;
+pub mod keyboard_navigation;
 
 /// Register presentation facilities after GPUI Kit initialization and before
 /// opening windows. Every Base Root then owns the same resource-loading policy.
 pub fn init(cx: &mut gpui_kit::App) {
     window_resources::init(cx);
+    keyboard_navigation::init(cx);
 }
 
 #[path = "app_introduction_banner.rs"]

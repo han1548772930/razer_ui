@@ -1,6 +1,7 @@
 //! Current Seiren module4230 numeric behavior, with 684's property/mic CSS.
 use super::colors::Colors as C;
-use gpui_kit::base::{Button as BaseButton, NumberInput, StepAction};
+use gpui_kit::base::Button as BaseButton;
+use gpui_kit::base::{NumberInput, StepAction};
 use gpui_kit::component::input::{Input, InputEvent, InputState, MaskPattern};
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use razer_widgets::surface::css;

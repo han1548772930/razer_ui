@@ -116,7 +116,7 @@ impl AudioProductWorkspace {
         let (raw, staged, selected) = self.oled_language_values();
         let unchanged = staged == raw && staged == selected;
         let disabled = self.oled_is_ble() || self.oled_is_loading();
-        let apply_button = gpui_kit::base::Button::new("kraken-oled-language-apply")
+        let apply_button = razer_widgets::keyboard_navigation::Button::new("kraken-oled-language-apply")
             .accessibility_label(t(label))
             .disabled(unchanged)
             .styles(|style| style.disabled(|style| style.opacity(0.3)))
@@ -180,7 +180,7 @@ impl AudioProductWorkspace {
                 ));
                 let click = value.clone();
                 let click_path = path.clone();
-                gpui_kit::base::Button::new(id)
+                razer_widgets::keyboard_navigation::Button::new(id)
                     .accessibility_label(t(&option.label))
                     // 源里这一行没有 disabled 类：禁用只由上层底衬表达，按钮本身不额外变暗。
                     .w(surface::css(48.))
@@ -248,7 +248,7 @@ impl AudioProductWorkspace {
                 let active = selected.as_ref() == Some(&value);
                 let click = value.clone();
                 let click_path = path.clone();
-                gpui_kit::base::Button::new(SharedString::from(format!(
+                razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!(
                     "kraken-oled-screensaver-{value}"
                 )))
                 .accessibility_label(t(&option.label))

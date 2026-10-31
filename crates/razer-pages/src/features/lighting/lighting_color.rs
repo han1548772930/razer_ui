@@ -1,8 +1,9 @@
 //! Source 653 `JM` / 777 `Ah` palette and their `BM` / `Oh` custom picker.
 //! The palette is shared product data; a custom-color editor owns an uncommitted draft.
 use super::screen_color::{ScreenColorCapture, ScreenColorUpdate, ScreenColorUpdateKind};
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::base::{
-    Button as BaseButton, ColorPicker as ColorPickerRoot, Popover, Slider as BaseSlider,
+    ColorPicker as ColorPickerRoot, Popover, Slider as BaseSlider,
     SliderIndicator, SliderThumb, SliderTrack,
 };
 use gpui_kit::component::{

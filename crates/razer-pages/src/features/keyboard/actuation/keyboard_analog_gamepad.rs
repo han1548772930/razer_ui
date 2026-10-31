@@ -1,7 +1,7 @@
 //! Independently audited 678/679/688 Analog Gamepad Customize and Lighting callers.
 //! Product differences remain in statically extracted source metadata.
 use super::*;
-use gpui_kit::base::Button as BaseButton;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::theme::KeyboardAnalogControlColors as Colors;
 
 #[path = "../mapping/keyboard_mapping_drawer.rs"]

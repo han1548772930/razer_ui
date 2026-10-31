@@ -1,7 +1,7 @@
 //! Retained MapText editor shared by independently audited current consumers.
 //! Mouse policies supply their own literals and Windows-version branch.
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::base::{
-    Button as BaseButton,
     motion::{self, Easing, Transition},
 };
 use gpui_kit::component::input::{Input, InputEvent, InputState, Textarea, TextareaState};

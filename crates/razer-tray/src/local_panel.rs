@@ -5,7 +5,7 @@
 //! Removing the excluded identity header subtracts 60px from measured bounds.
 use super::widgets::widget_list_with_click;
 use super::*;
-use gpui_kit::base::Button as BaseButton;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 
 impl TrayPopup {
     // 2554:de mounts immediately, adds `show` after 100ms and retains the

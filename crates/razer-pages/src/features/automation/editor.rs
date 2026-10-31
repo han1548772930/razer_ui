@@ -768,7 +768,7 @@ impl AutomationEditor {
         let (title, detail) = self.option_text(&value);
         let category = self.draft.id;
         let icon_name = if category <= 2 { Some(category) } else { None };
-        gpui_kit::base::Button::new(SharedString::from(format!(
+        razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!(
             "automation-choice-{down}-{}",
             Self::identity(&value)
         )))
@@ -838,8 +838,8 @@ fn command(
     label: String,
     primary: bool,
     disabled: bool,
-) -> gpui_kit::base::Button {
-    gpui_kit::base::Button::new(id)
+) -> razer_widgets::keyboard_navigation::Button {
+    razer_widgets::keyboard_navigation::Button::new(id)
         .accessibility_label(label.clone())
         .disabled(disabled)
         .h(surface::css(27.))

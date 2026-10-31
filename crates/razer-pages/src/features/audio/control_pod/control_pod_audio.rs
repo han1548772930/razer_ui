@@ -750,7 +750,7 @@ impl Render for AudioEditor {
                     .text_color(Colors::selected())
                     .child(t("AUDIO_FUNCTION"))
                     .child(
-                        gpui_kit::base::Button::new("pod-audio-close")
+                        razer_widgets::keyboard_navigation::Button::new("pod-audio-close")
                             .accessibility_label(t("CLOSE"))
                             .size(surface::css(20.))
                             .child(img("synapse/mapping-close.svg").size(surface::css(20.)))

@@ -85,6 +85,8 @@ mod header_status;
 mod help_owner;
 #[path = "shell/host/help_runtime_versions.rs"]
 mod help_runtime_versions;
+#[path = "shell/host/help_camo.rs"]
+mod help_camo;
 #[path = "shell/host/help_system_info.rs"]
 mod help_system_info;
 #[path = "shell/host/host_tabs.rs"]
@@ -378,6 +380,7 @@ pub struct AppShell {
     host_storage: razer_storage::host::HostStorage,
     macro_recorder: macro_recorder::State,
     help_runtime_versions: help_runtime_versions::Runtime,
+    help_camo: help_camo::Runtime,
     help_system_info: help_system_info::Runtime,
     game_observer: game_monitor::State,
     keyboard_indicator: keyboard_indicator::State,
@@ -659,6 +662,7 @@ impl AppShell {
             host_storage: razer_storage::host::HostStorage::default(),
             macro_recorder: macro_recorder::State::default(),
             help_runtime_versions: help_runtime_versions::Runtime::default(),
+            help_camo: help_camo::Runtime::default(),
             help_system_info: help_system_info::Runtime::default(),
             game_observer: game_monitor::State::default(),
             keyboard_indicator: keyboard_indicator::State::default(),
@@ -1339,6 +1343,7 @@ impl AppShell {
         this.install_standalone_pairing_transport(window, cx);
         this.install_receiver_reset_cleanup(cx);
         this.install_help_runtime_versions_cleanup(cx);
+        this.install_help_camo_cleanup(cx);
         this.install_help_system_info_cleanup(cx);
         this.install_receiver_brightness_cleanup(cx);
         this.install_receiver_lighting_cleanup();
@@ -1465,9 +1470,10 @@ impl AppShell {
                     this.request_controller_chroma(entity.clone(), request, window, cx);
                 }
                 WorkspaceEvent::HelpCamoRequested(request) => {
-                    if entity.read(cx).accepts_help_camo(request, cx) {
-                        log::warn!("[help-camo] {:?}: current Camo host/storage/serial submission adapter is not implemented", request.command());
-                    }
+                    this.request_help_camo(entity.clone(), request.clone(), window, cx);
+                }
+                WorkspaceEvent::CameraIdentityRequested(request) => {
+                    this.request_camera_identity(entity.clone(), request.clone(), window, cx);
                 }
                 WorkspaceEvent::HelpSystemInfoRequested(request) => {
                     this.request_help_system_info(entity.clone(), request.clone(), window, cx);
@@ -3160,6 +3166,7 @@ impl AppShell {
         }
         self.help_system_info.cancel_all();
         self.help_runtime_versions.cancel_all();
+        self.help_camo.cancel_all();
         self.prepare_mapping_observation_exit();
         self.prepare_controller_chroma_exit();
         razer_state::ui_preferences::begin_exit(cx);

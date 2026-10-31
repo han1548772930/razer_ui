@@ -47,7 +47,7 @@ impl Automation {
                 .justify_between()
                 .mt(surface::css(20.))
                 .child(
-                    gpui_kit::base::Button::new("automation-launch-audio")
+                    razer_widgets::keyboard_navigation::Button::new("automation-launch-audio")
                         .accessibility_label(text(action))
                         .flex()
                         .items_center()

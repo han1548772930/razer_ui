@@ -280,7 +280,7 @@ impl AudioDemo {
                     .h(surface::css(FLOATING_HEIGHT))
                     .child(self.media.clone())
                     .child(
-                        gpui_kit::base::Button::new("audio-demo-drag")
+                        razer_widgets::keyboard_navigation::Button::new("audio-demo-drag")
                             .group("audio-demo-drag")
                             .absolute()
                             .top_0()
@@ -326,7 +326,7 @@ impl AudioDemo {
                             ),
                     )
                     .child(
-                        gpui_kit::base::Button::new("audio-demo-floating-close")
+                        razer_widgets::keyboard_navigation::Button::new("audio-demo-floating-close")
                             .absolute()
                             .right(surface::css(-26.))
                             .top(surface::css(-26.))

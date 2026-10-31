@@ -1,7 +1,8 @@
 //! 55 CSS's tutorial controls and indicator.b7ce7af4.svg's SMIL timeline.
 use super::{surface::css, theme::MainPageColors};
+use crate::keyboard_navigation::Button;
 use gpui_kit::base::{
-    Button, TestSupportExt as _,
+    TestSupportExt as _,
     motion::{self, Easing, Transition},
 };
 use gpui_kit::component::ActiveTheme as _;
