@@ -352,7 +352,7 @@ impl PortEditor {
             .w(surface::css(62.))
             .border_1()
             .border_color(cx.theme().border)
-            .child(
+            .child(razer_widgets::keyboard_navigation::focus_input(
                 Input::new(&controls.input)
                     .id(SharedString::from(format!(
                         "argb-led-{}-{id}",
@@ -371,15 +371,16 @@ impl PortEditor {
                     .px(surface::css(6.))
                     .text_size(surface::css(14.))
                     .disabled(!self.editable()),
-            )
+                &controls.input,
+                cx,
+            ))
             .child(
                 v_flex()
                     .w(surface::css(17.))
                     .children([true, false].map(|increase| {
-                        razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!(
-                            "argb-step-{}-{id}-{increase}",
-                            self.fact.id
-                        )))
+                        razer_widgets::keyboard_navigation::Button::new(SharedString::from(
+                            format!("argb-step-{}-{id}-{increase}", self.fact.id),
+                        ))
                         .accessibility_label(format!(
                             "{} {}",
                             if increase { "+1" } else { "−1" },
@@ -582,7 +583,7 @@ impl Render for PortEditor {
                         let value = this.name.read(cx).value().to_string();
                         this.commit_name(value, NameSubmit::OutsideClick, window, cx);
                     }))
-                    .child(
+                    .child(razer_widgets::keyboard_navigation::focus_input(
                         Input::new(&self.name)
                             .source_max_length(&self.name, 32)
                             .aria_label(self.spec.text("RENAME"))
@@ -590,7 +591,9 @@ impl Render for PortEditor {
                             .w_full()
                             .font_family("RazerF5")
                             .text_size(surface::css(16.)),
-                    ),
+                        &self.name,
+                        cx,
+                    )),
             );
         } else {
             title = title.child(

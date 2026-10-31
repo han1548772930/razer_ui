@@ -1,9 +1,9 @@
 //! Verified module 7734/7278 pointer presentations. Mouse 190/229/239 retain
 //! viewport-overflow placement; audio 1422 opts into its wrapper/edge branch.
 use super::*;
-use crate::scroll::SourceScrollable as _;
 use crate::keyboard_navigation::Button as BaseButton;
-use gpui_kit::base::{Positioner};
+use crate::scroll::SourceScrollable as _;
+use gpui_kit::base::Positioner;
 use gpui_kit::component::v_flex;
 
 impl<I: SelectItem<Value = String> + 'static> SynapseSelectView<I> {

@@ -1,6 +1,5 @@
 //! `/rz-app-menu/`: source three-column picker, with explicit installation facts.
 //! The shell owns opening pages and services; this view only emits requests.
-use razer_widgets::keyboard_navigation::Button;
 use gpui_kit::base::{PopoverState, Positioner};
 use gpui_kit::component::{
     select::{Select, SelectEvent, SelectState},
@@ -10,6 +9,7 @@ use gpui_kit::component::{
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use razer_i18n as i18n;
 use razer_pages::features::Choice;
+use razer_widgets::keyboard_navigation::Button;
 use razer_widgets::scroll::SourceScrollable as _;
 use razer_widgets::surface::css;
 use razer_widgets::theme::AppPickerColors;

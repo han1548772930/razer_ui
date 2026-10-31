@@ -1,8 +1,7 @@
 //! Current mounted Performance Matcher panels and popups. Local view state and
 //! observed service state stay separate; emitted actions are never fake replies.
-use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::{
-    base::{ElementExt as _},
+    base::ElementExt as _,
     component::{
         Disableable, IndexPath, h_flex,
         input::{Input, InputEvent, InputState},
@@ -15,6 +14,7 @@ use gpui_kit::{
 use razer_device::dpi_matcher::{Phase, Product};
 use razer_device::{dpi_matcher_storage::Library, mouse_current_dpi::SourceStage};
 use razer_i18n::t;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::{scroll::SourceScrollable as _, surface};
 use std::{cell::Cell, rc::Rc, time::Duration};
 #[path = "mouse_dpi_matcher_state.rs"]
@@ -227,7 +227,7 @@ impl MouseDpiMatcher {
                 .ml(surface::css(15.))
                 .mt(surface::css(1.))
                 .w(surface::css(230.))
-                .child(
+                .child(razer_widgets::keyboard_navigation::focus_input(
                     Input::new(&self.rename_input)
                         .appearance(false)
                         .h(surface::css(27.))
@@ -240,7 +240,9 @@ impl MouseDpiMatcher {
                         .font_family("Roboto")
                         .text_size(surface::css(14.))
                         .line_height(surface::css(17.)),
-                )
+                    &self.rename_input,
+                    cx,
+                ))
                 .on_key_down(cx.listener(|this, event: &KeyDownEvent, _, cx| {
                     if event.keystroke.key == "escape" && this.state.rename().is_some() {
                         cx.stop_propagation();

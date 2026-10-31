@@ -292,7 +292,7 @@ impl Render for Number {
                                         .update(cx, |input, cx| input.select_all(window, cx));
                                 }
                             }))
-                            .child(
+                            .child(razer_widgets::keyboard_navigation::focus_input(
                                 Input::new(&self.input)
                                     .appearance(false)
                                     .bordered(false)
@@ -305,7 +305,9 @@ impl Render for Number {
                                     .text_size(css(14.))
                                     .line_height(css(14.))
                                     .text_color(C::text()),
-                            ),
+                                &self.input,
+                                cx,
+                            )),
                     )
                     .increment_button(move |_| up)
                     .decrement_button(move |_| down)

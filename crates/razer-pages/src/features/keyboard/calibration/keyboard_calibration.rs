@@ -522,7 +522,11 @@ struct CloseInteraction {
     pressed: bool,
 }
 
-fn modal_close_button(label: &str, window: &mut Window, cx: &mut App) -> razer_widgets::keyboard_navigation::Button {
+fn modal_close_button(
+    label: &str,
+    window: &mut Window,
+    cx: &mut App,
+) -> razer_widgets::keyboard_navigation::Button {
     let state = window.use_keyed_state(
         (ElementId::from("keyboard-calibration-close"), "state"),
         cx,
@@ -584,7 +588,11 @@ fn modal_close_button(label: &str, window: &mut Window, cx: &mut App) -> razer_w
         .child(img("synapse/mapping-close.svg").size(surface::css(20.)))
 }
 
-fn close_button(id: &'static str, label: &str, cx: &App) -> razer_widgets::keyboard_navigation::Button {
+fn close_button(
+    id: &'static str,
+    label: &str,
+    cx: &App,
+) -> razer_widgets::keyboard_navigation::Button {
     razer_widgets::keyboard_navigation::Button::new(id)
         .absolute()
         .top(surface::css(10.))

@@ -1,8 +1,8 @@
 //! Current GameMode.useQ, its nine mounted products and fixed two-row recorder.
 //! A local edit is independent of the ON_SET_GAME_MODE_COMBINATION_KEYS result.
 use super::*;
-use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::keyboard_capture::Capture;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::theme::KeyboardAnalogControlColors as Colors;
 use serde::Serialize;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};

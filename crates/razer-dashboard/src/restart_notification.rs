@@ -1,9 +1,9 @@
 //! Current notification-manager 2724 / Root.useV / 4411.useP.
 //! The caller list is process-local; dismissing the window does not clear it.
-use razer_widgets::keyboard_navigation::Button;
 use gpui_kit::component::*;
 use gpui_kit::*;
 use razer_i18n as i18n;
+use razer_widgets::keyboard_navigation::Button;
 use razer_widgets::{surface, theme::RestartNotificationColors as Colors};
 use serde_json::Value;
 use std::time::{Duration, Instant};

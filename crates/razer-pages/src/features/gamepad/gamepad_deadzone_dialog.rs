@@ -1,9 +1,9 @@
 //! The current low-deadzone warning owns UI draft decisions. Recalibrate opens
 //! the source page or popup for the selected side.
 use super::*;
+use gpui_kit::base::Dialog;
 use gpui_kit::base::motion::{self, Easing, Transition};
 use razer_widgets::keyboard_navigation::Button as BaseButton;
-use gpui_kit::base::{Dialog};
 use razer_widgets::theme::GamepadDialogColors as Colors;
 use std::time::Duration;
 

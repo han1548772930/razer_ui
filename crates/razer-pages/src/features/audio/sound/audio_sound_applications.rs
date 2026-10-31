@@ -230,9 +230,9 @@ impl AudioProductWorkspace {
                     .h(surface::css(40.))
                     .gap(surface::css(10.))
                     .child(
-                        razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!(
-                            "current-app-remove-{index}"
-                        )))
+                        razer_widgets::keyboard_navigation::Button::new(SharedString::from(
+                            format!("current-app-remove-{index}"),
+                        ))
                         .size(surface::css(30.))
                         .p_0()
                         .on_hover(cx.listener(move |this, hovered: &bool, _, cx| {
@@ -293,9 +293,9 @@ impl AudioProductWorkspace {
                             })),
                     )
                     .child(
-                        razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!(
-                            "current-app-output-{index}"
-                        )))
+                        razer_widgets::keyboard_navigation::Button::new(SharedString::from(
+                            format!("current-app-output-{index}"),
+                        ))
                         .w(surface::css(180.))
                         .disabled(js_truthy(&app["disabled"]))
                         .child(
@@ -338,9 +338,9 @@ impl AudioProductWorkspace {
                         .children(outputs.iter().enumerate().map(|(option_index, output)| {
                             let selecting = app.clone();
                             let option = output.clone();
-                            razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!(
-                                "current-app-option-{index}-{option_index}"
-                            )))
+                            razer_widgets::keyboard_navigation::Button::new(SharedString::from(
+                                format!("current-app-option-{index}-{option_index}"),
+                            ))
                             .disabled(output["name"] == json!("divider"))
                             .child(message(row, output["name"].as_str().unwrap_or_default()))
                             .on_click(cx.listener(
@@ -439,19 +439,25 @@ impl AudioProductWorkspace {
                         h_flex()
                             .gap(surface::css(10.))
                             .child(
-                                razer_widgets::keyboard_navigation::Button::new("current-app-remove-cancel")
-                                    .child(message(row, "CANCEL"))
-                                    .on_click(cx.listener(|this, _, _, cx| {
+                                razer_widgets::keyboard_navigation::Button::new(
+                                    "current-app-remove-cancel",
+                                )
+                                .child(message(row, "CANCEL"))
+                                .on_click(cx.listener(
+                                    |this, _, _, cx| {
                                         this.sound.apps_remove_shown = false;
                                         cx.notify();
-                                    })),
+                                    },
+                                )),
                             )
                             .child(
-                                razer_widgets::keyboard_navigation::Button::new("current-app-remove-confirm")
-                                    .child(message(row, "CONFIRM"))
-                                    .on_click(cx.listener(|this, _, _, cx| {
-                                        this.confirm_remove_sound_app(cx)
-                                    })),
+                                razer_widgets::keyboard_navigation::Button::new(
+                                    "current-app-remove-confirm",
+                                )
+                                .child(message(row, "CONFIRM"))
+                                .on_click(
+                                    cx.listener(|this, _, _, cx| this.confirm_remove_sound_app(cx)),
+                                ),
                             ),
                     ),
             )
@@ -460,35 +466,37 @@ impl AudioProductWorkspace {
     }
     fn current_sound_apps_search(&self, row: &Product, cx: &Context<Self>) -> AnyElement {
         if !self.sound.apps_searching {
-            return razer_widgets::keyboard_navigation::Button::new("current-installed-apps-search")
-                .size(surface::css(26.))
-                .p_0()
-                .active(|style| style.opacity(0.7))
-                .child(
-                    img(row
-                        .media
-                        .css
-                        .get(if self.sound.apps_search_hovered {
-                            "icon_search.green"
-                        } else {
-                            "icon_search"
-                        })
-                        .cloned()
-                        .unwrap_or_default())
-                    .size(surface::css(20.)),
-                )
-                .on_hover(cx.listener(|this, hovered: &bool, _, cx| {
-                    this.sound.apps_search_hovered = *hovered;
-                    cx.notify();
-                }))
-                .on_click(cx.listener(|this, _, window, cx| {
-                    this.sound.apps_searching = true;
-                    if let Some(input) = &this.sound.apps_search {
-                        input.update(cx, |state, cx| state.focus(window, cx));
-                    }
-                    cx.notify();
-                }))
-                .into_any_element();
+            return razer_widgets::keyboard_navigation::Button::new(
+                "current-installed-apps-search",
+            )
+            .size(surface::css(26.))
+            .p_0()
+            .active(|style| style.opacity(0.7))
+            .child(
+                img(row
+                    .media
+                    .css
+                    .get(if self.sound.apps_search_hovered {
+                        "icon_search.green"
+                    } else {
+                        "icon_search"
+                    })
+                    .cloned()
+                    .unwrap_or_default())
+                .size(surface::css(20.)),
+            )
+            .on_hover(cx.listener(|this, hovered: &bool, _, cx| {
+                this.sound.apps_search_hovered = *hovered;
+                cx.notify();
+            }))
+            .on_click(cx.listener(|this, _, window, cx| {
+                this.sound.apps_searching = true;
+                if let Some(input) = &this.sound.apps_search {
+                    input.update(cx, |state, cx| state.focus(window, cx));
+                }
+                cx.notify();
+            }))
+            .into_any_element();
         }
         let text = self
             .sound
@@ -502,7 +510,11 @@ impl AudioProductWorkspace {
             .w(surface::css(133.))
             .h(surface::css(26.))
             .when_some(self.sound.apps_search.as_ref(), |body, input| {
-                body.child(Input::new(input).w_full())
+                body.child(razer_widgets::keyboard_navigation::focus_input(
+                    Input::new(input).w_full(),
+                    input,
+                    cx,
+                ))
             })
             .child(
                 img(row
@@ -518,34 +530,36 @@ impl AudioProductWorkspace {
             )
             .when(!text.is_empty(), |body| {
                 body.child(
-                    razer_widgets::keyboard_navigation::Button::new("current-installed-apps-clear-search")
-                        .absolute()
-                        .right_0()
-                        .top_0()
-                        .p_0()
-                        .size(surface::css(25.))
-                        .child(
-                            img(row
-                                .media
-                                .css
-                                .get(if self.sound.apps_clear_hovered {
-                                    "icon_close_enclosed_a"
-                                } else {
-                                    "icon_close_enclosed"
-                                })
-                                .cloned()
-                                .unwrap_or_default())
-                            .size(surface::css(20.)),
-                        )
-                        .on_hover(cx.listener(|this, hovered: &bool, _, cx| {
-                            this.sound.apps_clear_hovered = *hovered;
-                            cx.notify();
-                        }))
-                        .on_click(cx.listener(|this, _, window, cx| {
-                            if let Some(input) = &this.sound.apps_search {
-                                input.update(cx, |state, cx| state.set_value("", window, cx));
-                            }
-                        })),
+                    razer_widgets::keyboard_navigation::Button::new(
+                        "current-installed-apps-clear-search",
+                    )
+                    .absolute()
+                    .right_0()
+                    .top_0()
+                    .p_0()
+                    .size(surface::css(25.))
+                    .child(
+                        img(row
+                            .media
+                            .css
+                            .get(if self.sound.apps_clear_hovered {
+                                "icon_close_enclosed_a"
+                            } else {
+                                "icon_close_enclosed"
+                            })
+                            .cloned()
+                            .unwrap_or_default())
+                        .size(surface::css(20.)),
+                    )
+                    .on_hover(cx.listener(|this, hovered: &bool, _, cx| {
+                        this.sound.apps_clear_hovered = *hovered;
+                        cx.notify();
+                    }))
+                    .on_click(cx.listener(|this, _, window, cx| {
+                        if let Some(input) = &this.sound.apps_search {
+                            input.update(cx, |state, cx| state.set_value("", window, cx));
+                        }
+                    })),
                 )
             })
             .into_any_element()

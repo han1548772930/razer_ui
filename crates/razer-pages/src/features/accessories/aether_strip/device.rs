@@ -223,13 +223,15 @@ impl AetherStrip {
                                 cx.stop_propagation();
                             },
                         ))
-                        .child(
+                        .child(razer_widgets::keyboard_navigation::focus_input(
                             Input::new(&self.rename_input)
                                 .source_max_length(&self.rename_input, 32)
                                 .w_full()
                                 .h_full()
                                 .small(),
-                        ),
+                            &self.rename_input,
+                            cx,
+                        )),
                 );
             } else {
                 let name = if self.peers.len() == 1 && locked {

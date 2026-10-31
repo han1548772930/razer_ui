@@ -2,9 +2,9 @@
 //! Each supported cycle branch retains its own source coordinates and artwork.
 use super::*;
 use crate::keyboard_geometry::KeyboardKeyExt as _;
-use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::base::ElementExt as _;
 use gpui_kit::base::motion::Easing;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::theme::MouseCustomizeColors as Colors;
 use std::time::{Duration, Instant};
 use std::{cell::Cell, rc::Rc};

@@ -1,10 +1,8 @@
 // Current ie → ee/M + dt/Map* tree. The source's list and mapping container
 // are siblings; the .custom-global-shortcuts .key-config selector does not match.
-use razer_widgets::keyboard_navigation::Button as ShortcutButton;
-use gpui_kit::base::{
-    motion::{self, Easing, Transition},
-};
+use gpui_kit::base::motion::{self, Easing, Transition};
 use gpui_kit::component::radio::Radio;
+use razer_widgets::keyboard_navigation::Button as ShortcutButton;
 
 fn shortcut_category_asset(category: &str, selected: bool) -> SharedString {
     let stem = match category {
@@ -101,7 +99,7 @@ impl Shortcuts {
                             .mb(surface::css(10.))
                             .w(surface::css(170.))
                             .when(program, |s| s.opacity(0.3))
-                            .child(
+                            .child(razer_widgets::keyboard_navigation::focus_input(
                                 Input::new(&self.target)
                                     .id("shortcut-target")
                                     .appearance(false)
@@ -117,7 +115,9 @@ impl Shortcuts {
                                     .text_color(rgb(0xcccccc))
                                     .text_size(surface::css(14.))
                                     .disabled(program),
-                            ),
+                                &self.target,
+                                cx,
+                            )),
                     )
                     .into_any_element()
             }
@@ -220,11 +220,7 @@ impl Shortcuts {
     fn editor(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let rail_width = motion::transition(
             "shortcuts-mapping-rail-width",
-            if self.mapping_expanded {
-                250_f32
-            } else {
-                40_f32
-            },
+            if self.mapping_expanded { 250_f32 } else { 40_f32 },
             Transition::new(Duration::from_millis(200)).easing(Easing::Ease),
             window,
             cx,
@@ -305,11 +301,7 @@ impl Shortcuts {
                     .line_height(surface::css(14.))
                     .whitespace_nowrap()
                     .overflow_hidden()
-                    .text_color(if selected {
-                        rgb(0x44d62c)
-                    } else {
-                        rgb(0xcccccc)
-                    })
+                    .text_color(if selected { rgb(0x44d62c) } else { rgb(0xcccccc) })
                     .when(selected, |s| s.bg(rgb(0x111111)))
                     .hover(|s| s.bg(rgb(0x393939)))
                     .active(|s| s.bg(rgb(0x111111)))

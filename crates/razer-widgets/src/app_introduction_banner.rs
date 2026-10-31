@@ -2,11 +2,9 @@
 //! Their selectors, declarations and language keys match after resolving asset
 //! URL roots. See app-introduction-banner-current-evidence.json. Both local
 //! applications have a tour, so their compiled capability selects Start Tour.
-use crate::surface::css;
 use crate::keyboard_navigation::Button;
-use gpui_kit::base::{
-    motion::{self, Easing, Transition},
-};
+use crate::surface::css;
+use gpui_kit::base::motion::{self, Easing, Transition};
 use gpui_kit::*;
 use razer_i18n as i18n;
 use std::{rc::Rc, time::Duration};

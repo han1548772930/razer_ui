@@ -1,11 +1,11 @@
 //! Original `/release-patch-note/`: Ie renders firstPost as hr/h2 sections.
 //! Content is read from the owning host's process-local MemoryStorage.
-use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::base::{Dialog as BaseDialog, Link, TextView, TextViewStyle};
 use gpui_kit::component::*;
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use razer_i18n as i18n;
 use razer_storage::host::{HostStorage, HostStorageCall, HostStorageView, HostStoreKind};
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::scroll::SourceScrollable as _;
 use razer_widgets::surface;
 use serde_json::{Value, json};

@@ -1,7 +1,6 @@
 //! Local profile commands. The source bundles share naming, inline rename and
 //! delete rules; only the workspace store is written, never the device service.
 use super::*;
-use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::base::{Popover, PopoverState};
 use gpui_kit::component::{
     button::ButtonCustomVariant,
@@ -9,6 +8,7 @@ use gpui_kit::component::{
     list::{List, ListDelegate, ListState},
     tooltip::Tooltip,
 };
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::source_input::SourceInputExt as _;
 use razer_widgets::theme::DropdownColors;
 use razer_widgets::theme::ProfileAlertColors;
@@ -552,7 +552,7 @@ impl DeviceWorkspace {
                                     .update(cx, |state, cx| state.focus(window, cx));
                                 cx.notify();
                             }))
-                            .child(
+                            .child(razer_widgets::keyboard_navigation::focus_input(
                                 Input::new(&self.profile_name)
                                     .source_max_length(&self.profile_name, 32)
                                     .id("profile-name-input")
@@ -569,7 +569,9 @@ impl DeviceWorkspace {
                                     .py(surface::css(5.))
                                     .text_size(surface::css(14.))
                                     .line_height(surface::css(17.)),
-                            )
+                                &self.profile_name,
+                                cx,
+                            ))
                             .into_any_element()
                     } else {
                         surface::select(&self.controls.profile)

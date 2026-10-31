@@ -2,10 +2,8 @@
 //! Current main.2623357c.js and main.07a2c4ed.css, not generic audio EQ layout.
 use super::audio_mixer_theme::Colors as C;
 use super::*;
+use gpui_kit::base::{Slider as BaseSlider, SliderIndicator, SliderThumb, SliderTrack};
 use razer_widgets::keyboard_navigation::Button as BaseButton;
-use gpui_kit::base::{
-    Slider as BaseSlider, SliderIndicator, SliderThumb, SliderTrack,
-};
 
 #[derive(IntoElement)]
 struct Band {

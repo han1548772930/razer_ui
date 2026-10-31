@@ -227,22 +227,26 @@ impl MacroPage {
             return self.numeric_value_editor(index, kind, cx);
         }
         if editable && kind != ActionKind::Text && self.editing_action == Some(index) {
-            return Input::new(&self.action_editor)
-                .id(("macro-action-value", index))
-                .appearance(false)
-                .w(css(match kind {
-                    ActionKind::Delay | ActionKind::Loop => 88.,
-                    ActionKind::Command => 200.,
-                    ActionKind::Keyboard => 210.,
-                    _ => 180.,
-                }))
-                .h(css(27.))
-                .px(css(5.))
-                .bg(rgb(0x111111))
-                .border_1()
-                .border_color(rgb(0x44d62c))
-                .text_size(css(13.))
-                .into_any_element();
+            return razer_widgets::keyboard_navigation::focus_input(
+                Input::new(&self.action_editor)
+                    .id(("macro-action-value", index))
+                    .appearance(false)
+                    .w(css(match kind {
+                        ActionKind::Delay | ActionKind::Loop => 88.,
+                        ActionKind::Command => 200.,
+                        ActionKind::Keyboard => 210.,
+                        _ => 180.,
+                    }))
+                    .h(css(27.))
+                    .px(css(5.))
+                    .bg(rgb(0x111111))
+                    .border_1()
+                    .border_color(rgb(0x44d62c))
+                    .text_size(css(13.)),
+                &self.action_editor,
+                cx,
+            )
+            .into_any_element();
         }
         if kind == ActionKind::Delay {
             return self.delay_value_editor(index, item, cx);

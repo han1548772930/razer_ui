@@ -202,12 +202,14 @@ impl Render for ImportDialog {
             })
             .when(self.loaded.is_some(), |body| {
                 body.child(div().child("新配置名称"))
-                    .child(
+                    .child(razer_widgets::keyboard_navigation::focus_input(
                         Input::new(&self.name)
                             .id("profile-import-name")
                             .aria_label("新配置名称")
                             .h(surface::css(27.)),
-                    )
+                        &self.name,
+                        cx,
+                    ))
                     .child(surface::note(
                         "同名配置已自动添加编号；导入后仍需保存设备配置。",
                         cx,

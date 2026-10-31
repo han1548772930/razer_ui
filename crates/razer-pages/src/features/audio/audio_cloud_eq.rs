@@ -978,9 +978,9 @@ impl AudioProductWorkspace {
                     .child(preset_name(preset))
                     .when_some(ordinal, |body, number| body.child(number.to_string()))
                     .child(
-                        razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!(
-                            "current-eq-store-{stored}-{target}"
-                        )))
+                        razer_widgets::keyboard_navigation::Button::new(SharedString::from(
+                            format!("current-eq-store-{stored}-{target}"),
+                        ))
                         .disabled(last_standard || full)
                         .child(if stored { "−" } else { "+" })
                         .on_click(cx.listener(move |this, _, _, cx| {
@@ -1092,7 +1092,11 @@ impl AudioProductWorkspace {
                                 },
                             ))
                             .when_some(self.sound.eq_search.as_ref(), |body, input| {
-                                body.child(Input::new(input).w(surface::css(180.)))
+                                body.child(razer_widgets::keyboard_navigation::focus_input(
+                                    Input::new(input).w(surface::css(180.)),
+                                    input,
+                                    cx,
+                                ))
                             }),
                     )
                     .child(
@@ -1128,12 +1132,16 @@ impl AudioProductWorkspace {
                         h_flex()
                             .gap(surface::css(10.))
                             .child(
-                                razer_widgets::keyboard_navigation::Button::new("current-eq-cancel")
-                                    .child(message(row, "CANCEL"))
-                                    .on_click(cx.listener(|this, _, _, cx| {
+                                razer_widgets::keyboard_navigation::Button::new(
+                                    "current-eq-cancel",
+                                )
+                                .child(message(row, "CANCEL"))
+                                .on_click(cx.listener(
+                                    |this, _, _, cx| {
                                         this.sound.edit_eq_shown = false;
                                         cx.notify();
-                                    })),
+                                    },
+                                )),
                             )
                             .child(
                                 razer_widgets::keyboard_navigation::Button::new("current-eq-save")
@@ -1164,19 +1172,25 @@ impl AudioProductWorkspace {
                             h_flex()
                                 .gap(surface::css(10.))
                                 .child(
-                                    razer_widgets::keyboard_navigation::Button::new("current-eq-reset-cancel")
-                                        .child(message(row, "CANCEL"))
-                                        .on_click(cx.listener(|this, _, _, cx| {
+                                    razer_widgets::keyboard_navigation::Button::new(
+                                        "current-eq-reset-cancel",
+                                    )
+                                    .child(message(row, "CANCEL"))
+                                    .on_click(cx.listener(
+                                        |this, _, _, cx| {
                                             this.sound.eq_reset = false;
                                             cx.notify();
-                                        })),
+                                        },
+                                    )),
                                 )
                                 .child(
-                                    razer_widgets::keyboard_navigation::Button::new("current-eq-reset-confirm")
-                                        .child(message(row, "CONFIRM"))
-                                        .on_click(
-                                            cx.listener(|this, _, _, cx| this.reset_cloud_oobe(cx)),
-                                        ),
+                                    razer_widgets::keyboard_navigation::Button::new(
+                                        "current-eq-reset-confirm",
+                                    )
+                                    .child(message(row, "CONFIRM"))
+                                    .on_click(
+                                        cx.listener(|this, _, _, cx| this.reset_cloud_oobe(cx)),
+                                    ),
                                 ),
                         ),
                 )
@@ -1192,17 +1206,24 @@ impl AudioProductWorkspace {
                             h_flex()
                                 .gap(surface::css(10.))
                                 .child(
-                                    razer_widgets::keyboard_navigation::Button::new("current-eq-remove-cancel")
-                                        .child(message(row, "CANCEL"))
-                                        .on_click(cx.listener(|this, _, _, cx| {
+                                    razer_widgets::keyboard_navigation::Button::new(
+                                        "current-eq-remove-cancel",
+                                    )
+                                    .child(message(row, "CANCEL"))
+                                    .on_click(cx.listener(
+                                        |this, _, _, cx| {
                                             this.sound.eq_remove = None;
                                             cx.notify();
-                                        })),
+                                        },
+                                    )),
                                 )
                                 .child(
-                                    razer_widgets::keyboard_navigation::Button::new("current-eq-remove-confirm")
-                                        .child(message(row, "REMOVE_EQ"))
-                                        .on_click(cx.listener(move |this, _, _, cx| {
+                                    razer_widgets::keyboard_navigation::Button::new(
+                                        "current-eq-remove-confirm",
+                                    )
+                                    .child(message(row, "REMOVE_EQ"))
+                                    .on_click(cx.listener(
+                                        move |this, _, _, cx| {
                                             let mut enabled =
                                                 list(this.cloud(), "tempEnabledPresets");
                                             enabled.retain(|p| id(p) != id(&removing));
@@ -1217,7 +1238,8 @@ impl AudioProductWorkspace {
                                                 list(this.cloud(), "tempDisabledPresets");
                                             this.sound.eq_remove = None;
                                             this.publish_temp_cloud(enabled, disabled, active, cx);
-                                        })),
+                                        },
+                                    )),
                                 ),
                         ),
                 )

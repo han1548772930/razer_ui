@@ -3,10 +3,9 @@
 use super::super::audio_seiren_eq::colors::Colors as C;
 use super::*;
 use gpui_kit::base::motion::{self, Easing, Transition};
-use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::base::{
-    Checkbox as BaseCheckbox, Dialog, ElementExt as _, Positioner,
-    Slider as BaseSlider, SliderIndicator, SliderThumb, SliderTrack,
+    Checkbox as BaseCheckbox, Dialog, ElementExt as _, Positioner, Slider as BaseSlider,
+    SliderIndicator, SliderThumb, SliderTrack,
 };
 use gpui_kit::component::{
     IconName, Size, StyleSized,
@@ -14,6 +13,7 @@ use gpui_kit::component::{
     menu::{DropdownMenu, PopupMenuItem},
     select::Caret,
 };
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::source_input::SourceInputExt as _;
 use razer_widgets::{surface::css, synapse_select};
 
@@ -643,12 +643,14 @@ impl AudioProductWorkspace {
                             this.cancel_seiren_stream_mixer_rename(window, cx);
                         },
                     ))
-                    .child(
+                    .child(razer_widgets::keyboard_navigation::focus_input(
                         Input::new(&state.rename)
                             .source_max_length(&state.rename, 32)
                             .h(css(27.))
                             .w_full(),
-                    )
+                        &state.rename,
+                        cx,
+                    ))
                     .into_any_element()
             } else {
                 synapse_select::select_pointer(&state.presets)

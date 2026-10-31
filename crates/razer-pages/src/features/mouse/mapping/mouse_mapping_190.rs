@@ -2271,7 +2271,7 @@ impl MouseProductWorkspace {
                                         }
                                     },
                                 ))
-                                .child(
+                                .child(razer_widgets::keyboard_navigation::focus_input(
                                     Input::new(number)
                                         .appearance(false)
                                         .bordered(false)
@@ -2281,7 +2281,9 @@ impl MouseProductWorkspace {
                                         .p_0()
                                         .pl(surface::css(5.))
                                         .pr(surface::css(18.)),
-                                )
+                                    number,
+                                    cx,
+                                ))
                                 .child(
                                     v_flex()
                                         .absolute()

@@ -811,7 +811,7 @@ impl DeviceGamesDialog {
                         cx.notify();
                     },
                 ))
-                .child(
+                .child(razer_widgets::keyboard_navigation::focus_input(
                     Input::new(&self.name)
                         .id("profiles-device-rename-input")
                         .source_max_length(&self.name, 32)
@@ -825,7 +825,9 @@ impl DeviceGamesDialog {
                         .rounded_none()
                         .text_size(css(14.))
                         .line_height(css(17.)),
-                )
+                    &self.name,
+                    cx,
+                ))
                 .into_any_element()
         } else {
             surface::select(&self.profile)

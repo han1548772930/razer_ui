@@ -658,13 +658,15 @@ impl WirelessArgb {
                     let value = this.names[&id].read(cx).value().to_string();
                     this.rename(id, value, NameSubmit::OutsideClick, window, cx);
                 }))
-                .child(
+                .child(razer_widgets::keyboard_navigation::focus_input(
                     Input::new(&self.names[&id])
                         .when(self.spec.product_id == 3884, |input| {
                             input.source_max_length(&self.names[&id], 32)
                         })
                         .w_full(),
-                )
+                    &self.names[&id],
+                    cx,
+                ))
                 .into_any_element()
         } else {
             Button::new(("argb-rename", id))
@@ -748,7 +750,7 @@ impl WirelessArgb {
                         NumberInput::new(&self.counts[&(id, sid)])
                             .size_full()
                             .controls_right()
-                            .input(
+                            .input(razer_widgets::keyboard_navigation::focus_input(
                                 Input::new(&self.counts[&(id, sid)])
                                     .appearance(false)
                                     .bordered(false)
@@ -756,7 +758,9 @@ impl WirelessArgb {
                                     .h_full()
                                     .pl_1()
                                     .text_sm(),
-                            )
+                                &self.counts[&(id, sid)],
+                                cx,
+                            ))
                             .on_step(move |action, window, cx| {
                                 let _ = owner.update(cx, |this, cx| {
                                     this.step_leds(id, sid, action, window, cx)

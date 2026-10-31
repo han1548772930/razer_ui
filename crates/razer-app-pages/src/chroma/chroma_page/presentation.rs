@@ -1,9 +1,7 @@
 //! 332.720c66b0 CSS: independent Chroma navigation and collapse timelines.
-use razer_widgets::keyboard_navigation::Button as BaseButton;
-use gpui_kit::base::{
-    motion::{self, Easing, Transition},
-};
+use gpui_kit::base::motion::{self, Easing, Transition};
 use gpui_kit::{prelude::FluentBuilder as _, *};
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::surface;
 use razer_widgets::surface::css;
 use std::time::{Duration, Instant};

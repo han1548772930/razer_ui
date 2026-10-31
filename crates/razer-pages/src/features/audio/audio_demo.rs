@@ -326,16 +326,18 @@ impl AudioDemo {
                             ),
                     )
                     .child(
-                        razer_widgets::keyboard_navigation::Button::new("audio-demo-floating-close")
-                            .absolute()
-                            .right(surface::css(-26.))
-                            .top(surface::css(-26.))
-                            .p(surface::css(5.))
-                            .accessibility_label("Close video")
-                            .on_click(
-                                cx.listener(|this, _, window, cx| this.close_floating(window, cx)),
-                            )
-                            .child(img("synapse/audio-demo-close.svg")),
+                        razer_widgets::keyboard_navigation::Button::new(
+                            "audio-demo-floating-close",
+                        )
+                        .absolute()
+                        .right(surface::css(-26.))
+                        .top(surface::css(-26.))
+                        .p(surface::css(5.))
+                        .accessibility_label("Close video")
+                        .on_click(
+                            cx.listener(|this, _, window, cx| this.close_floating(window, cx)),
+                        )
+                        .child(img("synapse/audio-demo-close.svg")),
                     ),
             )
             .into_any_element()

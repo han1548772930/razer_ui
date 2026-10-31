@@ -358,7 +358,7 @@ impl Shortcuts {
                             cx.stop_propagation();
                         }
                     })
-                    .child(
+                    .child(razer_widgets::keyboard_navigation::focus_input(
                         Textarea::new(&self.paragraph)
                             .appearance(false)
                             .bordered(false)
@@ -371,7 +371,9 @@ impl Shortcuts {
                             .bg(rgb(0x111111))
                             .text_size(surface::css(14.))
                             .line_height(surface::css(17.)),
-                    )
+                        &self.paragraph,
+                        cx,
+                    ))
                     .child(
                         canvas(
                             move |bounds, _, cx| {
@@ -730,7 +732,7 @@ impl Shortcuts {
                                 img("synapse/shortcuts-emoji-search.svg").size(surface::css(18.)),
                             ),
                     )
-                    .child(
+                    .child(razer_widgets::keyboard_navigation::focus_input(
                         Input::new(&self.emoji_search)
                             .id("shortcut-emoji-search")
                             .appearance(false)
@@ -743,7 +745,9 @@ impl Shortcuts {
                             .text_color(rgb(0xcccccc))
                             .text_size(surface::css(14.))
                             .rounded_none(),
-                    )
+                        &self.emoji_search,
+                        cx,
+                    ))
                     .when(search_active, |view| {
                         view.child(
                             text_toolbar_button(

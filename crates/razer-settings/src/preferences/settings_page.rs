@@ -768,16 +768,16 @@ impl SettingsPage {
                                 .line_height(surface::css(17.))
                                 .child(before.to_owned())
                                 .child(
-                                    razer_widgets::keyboard_navigation::Button::new("settings-release-notes")
-                                        .child("Release Notes")
-                                        .text_decoration_1()
-                                        .hover(|button| button.text_color(cx.theme().primary))
-                                        .focus_visible(|button| {
-                                            button.text_color(cx.theme().primary)
-                                        })
-                                        .on_click(cx.listener(|_, _, _, cx| {
-                                            cx.emit(SettingsEvent::ReleaseNotes)
-                                        })),
+                                    razer_widgets::keyboard_navigation::Button::new(
+                                        "settings-release-notes",
+                                    )
+                                    .child("Release Notes")
+                                    .text_decoration_1()
+                                    .hover(|button| button.text_color(cx.theme().primary))
+                                    .focus_visible(|button| button.text_color(cx.theme().primary))
+                                    .on_click(cx.listener(
+                                        |_, _, _, cx| cx.emit(SettingsEvent::ReleaseNotes),
+                                    )),
                                 )
                                 .child(after.to_owned()),
                         ),
@@ -908,7 +908,11 @@ fn settings_check(
     .role(Role::CheckBox)
     .aria_toggled(if checked { Toggled::True } else { Toggled::False })
 }
-fn settings_help(id: &'static str, label: String, text: String) -> razer_widgets::keyboard_navigation::Button {
+fn settings_help(
+    id: &'static str,
+    label: String,
+    text: String,
+) -> razer_widgets::keyboard_navigation::Button {
     razer_widgets::keyboard_navigation::Button::new(id)
         .accessibility_label(label)
         .size(surface::css(14.))

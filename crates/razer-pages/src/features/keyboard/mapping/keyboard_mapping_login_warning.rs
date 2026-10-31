@@ -121,26 +121,30 @@ impl RenderOnce for Warning {
                             )
                             .child(
                                 h_flex().justify_center().mt(surface::css(17.)).child(
-                                    razer_widgets::keyboard_navigation::Button::new("keyboard-mapping-login-ok")
-                                        .accessibility_label(t("OK"))
-                                        .w(surface::css(90.))
-                                        .h(surface::css(27.))
-                                        .rounded(surface::css(3.))
-                                        .bg(rgb(0x707070))
-                                        .text_size(surface::css(12.))
-                                        .text_color(rgb(0xcccccc))
-                                        .flex()
-                                        .items_center()
-                                        .justify_center()
-                                        .child(t("OK").to_uppercase())
-                                        .on_click(move |_, _, cx| {
+                                    razer_widgets::keyboard_navigation::Button::new(
+                                        "keyboard-mapping-login-ok",
+                                    )
+                                    .accessibility_label(t("OK"))
+                                    .w(surface::css(90.))
+                                    .h(surface::css(27.))
+                                    .rounded(surface::css(3.))
+                                    .bg(rgb(0x707070))
+                                    .text_size(surface::css(12.))
+                                    .text_color(rgb(0xcccccc))
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .child(t("OK").to_uppercase())
+                                    .on_click(
+                                        move |_, _, cx| {
                                             owner.update(cx, |this, cx| {
                                                 this.mapping_login_warning.shown = false;
                                                 this.mapping_login_warning.hidden = true;
                                                 cx.emit(KeyboardMappingLoginWarningHidden);
                                                 cx.notify();
                                             });
-                                        }),
+                                        },
+                                    ),
                                 ),
                             ),
                     ),

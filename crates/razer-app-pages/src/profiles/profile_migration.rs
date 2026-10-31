@@ -2,10 +2,8 @@
 //!
 //! Preview records and callbacks are entity-local; this view does not publish
 //! them as imported device profiles.
-use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::base::{
-    Checkbox as BaseCheckbox, CheckboxState, Progress, ProgressIndicator,
-    ProgressTrack,
+    Checkbox as BaseCheckbox, CheckboxState, Progress, ProgressIndicator, ProgressTrack,
 };
 use gpui_kit::component::{
     button::{Button, ButtonCustomVariant, ButtonRounded, ButtonVariants},
@@ -17,6 +15,7 @@ use gpui_kit::component::{
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use razer_i18n as i18n;
 use razer_pages::features::Choice;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::scroll::SourceScrollable as _;
 use razer_widgets::surface;
 use razer_widgets::theme::MainPageColors;

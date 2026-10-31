@@ -27,8 +27,8 @@
 //!   `.game-footer .name{color:#ccc;font-size:14px;line-height:19px;margin-bottom:3px;
 //!    text-align:center;text-overflow:ellipsis;text-transform:…}`、
 //!   `.plus-icon{left:50%;margin:auto;position:absolute;top:50%;transform:translate(-50%,-50%)}`。
-use crate::surface;
 use crate::keyboard_navigation::Button as BaseButton;
+use crate::surface;
 use gpui_kit::component::*;
 use gpui_kit::*;
 use razer_i18n as i18n;

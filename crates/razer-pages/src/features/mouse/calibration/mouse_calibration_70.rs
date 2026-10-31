@@ -2,9 +2,9 @@
 //! Only calibration profiles are rendered; DEVICE_SUPPORTED_MATS is the add
 //! dialog catalog, not a list of saved calibrations. Edits are local drafts.
 use super::*;
-use razer_widgets::keyboard_navigation::Button as BaseButton;
-use gpui_kit::base::{Dialog};
+use gpui_kit::base::Dialog;
 use gpui_kit::component::menu::{DropdownMenu, PopupMenuItem};
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::source_slider::SourceSlider;
 use razer_widgets::theme::DrawerColors;
 #[path = "mouse_calibration_motion.rs"]

@@ -279,21 +279,34 @@ def current_deployment_source(entry_url, *, candidates, observations=None):
             errors = {"HTTP Error 404: Not Found": 404, "HTTP Error 410: Gone": 410}
             if (document.get("target_execution") is not False
                     or canonical_frontend_entry(document.get("entry_url")) != route
-                    or len(rows) != 1 or len(claims) != 1
-                    or rows[0].get("url") != document["entry_url"] or rows[0].get("path") is not None
-                    or claims[0].get("url") != document["entry_url"] or claims[0].get("unchanged") is not False
-                    or claims[0].get("before_sha256") is not None or claims[0].get("after_sha256") is not None
-                    or rows[0].get("error") not in errors or claims[0].get("error") != rows[0]["error"]):
+                    or not isinstance(rows, list) or not isinstance(claims, list) or not rows
+                    or any(not isinstance(row, dict) or not isinstance(row.get("url"), str)
+                           for row in [*rows, *claims])):
                 raise ValueError("Latest frontend acquisition failed without proven official absence: " + route)
-            for observation in observations.get(document["entry_url"], []):
-                if datetime.fromisoformat(observation["recorded_at_utc"]) > newest_time:
-                    rounds = observation["observation"].get("rounds", [])
-                    if len(rounds) != 2 or any(row.get("http_status") != errors[rows[0]["error"]] for row in rounds):
-                        raise ValueError("Official frontend absence has a later unresolved HTTP observation: " + route)
+            by_url = {row["url"]: row for row in rows}
+            claims_by_url = {row["url"]: row for row in claims}
+            if (len(by_url) != len(rows) or len(claims_by_url) != len(claims)
+                    or set(by_url) != set(claims_by_url) or document["entry_url"] not in by_url):
+                raise ValueError("Latest frontend acquisition failed without proven official absence: " + route)
+            for url, row in by_url.items():
+                claim = claims_by_url[url]
+                if (not canonical_frontend_entry(url).startswith(route) or row.get("path") is not None
+                        or claim.get("unchanged") is not False or claim.get("before_sha256") is not None
+                        or claim.get("after_sha256") is not None or row.get("error") not in errors
+                        or claim.get("error") != row["error"]
+                        or "http_status" in claim and claim["http_status"] != errors[row["error"]]
+                        or "final_url" in claim and canonical_frontend_entry(claim["final_url"]) != canonical_frontend_entry(url)):
+                    raise ValueError("Latest frontend acquisition failed without proven official absence: " + route)
+                for observation in observations.get(url, []):
+                    if datetime.fromisoformat(observation["recorded_at_utc"]) > newest_time:
+                        rounds = observation["observation"].get("rounds", [])
+                        if len(rounds) != 2 or any(item.get("http_status") != errors[row["error"]] for item in rounds):
+                            raise ValueError("Official frontend absence has a later unresolved HTTP observation: " + route)
         path, document = min(missing, key=lambda row: str(row[0]))
+        entry = next(row for row in document["files"] if row["url"] == document["entry_url"])
         return {"status": "official_source_unavailable", "route": route,
                 "acquisition": audit.artifacts[path.relative_to(a.ROOT).as_posix()],
-                "http_status": errors[document["files"][0]["error"]], "acquired": document,
+                "http_status": errors[entry["error"]], "acquired": document,
                 "inputs": list(audit.artifacts.values()), "audit": audit}
     selected = current_source_selection(route, audit, candidates=[path for path, _ in documents], verify_capture=False)
     path = a.resolve(selected["acquisition"]["path"], ".analysis/inputs/frontend")

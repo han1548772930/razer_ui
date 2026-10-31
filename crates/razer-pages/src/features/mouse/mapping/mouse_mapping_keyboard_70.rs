@@ -3,11 +3,11 @@
 use super::super::Choice;
 use super::*;
 use crate::features::source_key::SourceKey;
-use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::component::{
     IndexPath,
     select::{SelectEvent, SelectState},
 };
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::{
     keyboard_capture::{Capture, RawKey},
     source_slider::SourceSlider,

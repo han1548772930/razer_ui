@@ -1,7 +1,6 @@
 //! 182 IM -> jm -> Vm: five retained DPI slots, per-slot XY and visibility.
 //! Native GPUI drag/drop owns capture; slot IDs preserve controls across reorder.
 use super::{settings::Sensitivity, workspace::DeviceWorkspace};
-use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::base::{NumberInput, StepAction};
 use gpui_kit::component::{
     ActiveTheme, Disableable,
@@ -9,6 +8,7 @@ use gpui_kit::component::{
     slider::{Slider, SliderEvent, SliderState},
 };
 use gpui_kit::{prelude::FluentBuilder as _, *};
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::surface;
 use razer_widgets::surface::SynapseSwitch;
 use std::{collections::BTreeMap, time::Duration};
@@ -379,7 +379,7 @@ impl RenderOnce for DpiNumberInput {
                                     });
                                 }
                             })
-                            .child(
+                            .child(razer_widgets::keyboard_navigation::focus_input(
                                 Input::new(&self.input)
                                     .id(SharedString::from(format!("dpi-slot-{id}-input-{axis}")))
                                     .aria_label(self.label.clone())
@@ -393,7 +393,9 @@ impl RenderOnce for DpiNumberInput {
                                     .pl(surface::css(5.))
                                     .text_size(surface::css(14.))
                                     .line_height(surface::css(14.)),
-                            ),
+                                &self.input,
+                                cx,
+                            )),
                     )
                     .increment_button(move |button| {
                         increment_arrow(

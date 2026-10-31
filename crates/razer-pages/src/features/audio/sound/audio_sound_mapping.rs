@@ -585,17 +585,19 @@ impl AudioProductWorkspace {
                         .border_color(Colors::selected())
                         .rounded(surface::css(5.))
                         .child(
-                            razer_widgets::keyboard_navigation::Button::new("sound-mapping-alert-close")
-                                .absolute()
-                                .top(surface::css(10.))
-                                .right(surface::css(10.))
-                                .child("×")
-                                .on_click(cx.listener(|this, _, _, cx| {
-                                    this.sound.mapping.alert = false;
-                                    this.sound.mapping.can_save = true;
-                                    this.sound.mapping.local_changed = false;
-                                    cx.notify();
-                                })),
+                            razer_widgets::keyboard_navigation::Button::new(
+                                "sound-mapping-alert-close",
+                            )
+                            .absolute()
+                            .top(surface::css(10.))
+                            .right(surface::css(10.))
+                            .child("×")
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                this.sound.mapping.alert = false;
+                                this.sound.mapping.can_save = true;
+                                this.sound.mapping.local_changed = false;
+                                cx.notify();
+                            })),
                         )
                         .child(
                             div()
@@ -665,7 +667,11 @@ fn mapping_icon(function: &str, active: bool) -> &'static str {
     }
 }
 
-fn mapping_action(id: &'static str, label: String, primary: bool) -> razer_widgets::keyboard_navigation::Button {
+fn mapping_action(
+    id: &'static str,
+    label: String,
+    primary: bool,
+) -> razer_widgets::keyboard_navigation::Button {
     razer_widgets::keyboard_navigation::Button::new(id)
         .min_w(surface::css(100.))
         .h(surface::css(27.))

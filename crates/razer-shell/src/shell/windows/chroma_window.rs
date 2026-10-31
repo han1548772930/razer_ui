@@ -397,26 +397,29 @@ impl ChromaWindow {
             );
         if tab != ChromaTab::Dashboard {
             frame = frame.child(
-                razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!("close-{}-tab", tab.id())))
-                    .accessibility_label(razer_i18n::t("CLOSE"))
-                    .absolute()
-                    .right(css(5.))
-                    .top(css(5.))
-                    .size(css(24.))
-                    .opacity(0.)
-                    .group_hover(SharedString::from(id), |s| s.opacity(1.))
-                    .focus_visible(|s| s.opacity(1.).border_1().border_color(cx.theme().primary))
-                    .child(
-                        img(if active {
-                            "synapse/host-close_active_tab.svg"
-                        } else {
-                            "synapse/host-close-original.svg"
-                        })
-                        .size_full(),
-                    )
-                    .on_click(cx.listener(move |this, _, window, cx| {
-                        this.close_tab(tab, window, cx);
-                    })),
+                razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!(
+                    "close-{}-tab",
+                    tab.id()
+                )))
+                .accessibility_label(razer_i18n::t("CLOSE"))
+                .absolute()
+                .right(css(5.))
+                .top(css(5.))
+                .size(css(24.))
+                .opacity(0.)
+                .group_hover(SharedString::from(id), |s| s.opacity(1.))
+                .focus_visible(|s| s.opacity(1.).border_1().border_color(cx.theme().primary))
+                .child(
+                    img(if active {
+                        "synapse/host-close_active_tab.svg"
+                    } else {
+                        "synapse/host-close-original.svg"
+                    })
+                    .size_full(),
+                )
+                .on_click(cx.listener(move |this, _, window, cx| {
+                    this.close_tab(tab, window, cx);
+                })),
             );
         }
         frame.into_any_element()

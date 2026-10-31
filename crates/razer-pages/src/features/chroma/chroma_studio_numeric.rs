@@ -659,7 +659,7 @@ impl Render for StudioNumeric {
                                             .disabled(!self.enabled)
                                             .controls_right()
                                             .size_full()
-                                            .input(
+                                            .input(razer_widgets::keyboard_navigation::focus_input(
                                                 Input::new(&self.input)
                                                     .aria_label(title.clone())
                                                     .appearance(false)
@@ -669,7 +669,9 @@ impl Render for StudioNumeric {
                                                     .px(surface::css(6.))
                                                     .py(surface::css(2.))
                                                     .text_size(surface::css(14.)),
-                                            )
+                                                &self.input,
+                                                cx,
+                                            ))
                                             .increment_button(move |_| increment)
                                             .decrement_button(move |_| decrement)
                                             .on_step(move |action, window, cx| {

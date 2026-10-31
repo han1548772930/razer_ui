@@ -1,4 +1,7 @@
-use super::{CameraApp, CamoDriver, CamoInstallation, CamoStudio, package_app_id, package_version, vcam_executable};
+use super::{
+    CameraApp, CamoDriver, CamoInstallation, CamoStudio, package_app_id, package_version,
+    vcam_executable,
+};
 use anyhow::{Context, Result, ensure};
 use std::{
     ffi::OsString,
@@ -108,7 +111,10 @@ fn value(key: &Key, name: &str) -> Result<Option<String>> {
         status == ERROR_SUCCESS && count <= 65536 && count % 2 == 0,
         "camera application registry value is invalid ({status}, type {kind}, bytes {count})"
     );
-    ensure!(kind == REG_SZ, "camera application registry value has unexpected type {kind}");
+    ensure!(
+        kind == REG_SZ,
+        "camera application registry value has unexpected type {kind}"
+    );
     let mut data = vec![0u16; count as usize / 2];
     let status = unsafe {
         RegQueryValueExW(
@@ -168,15 +174,21 @@ fn package() -> Result<Option<String>> {
 }
 fn camo_studio() -> Result<CamoStudio> {
     if let Some(name) = package()? {
-        return Ok(CamoStudio::Installed { version: Ok(package_version(&name)) });
+        return Ok(CamoStudio::Installed {
+            version: Ok(package_version(&name)),
+        });
     }
     for path in [
         r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall",
         r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall",
     ] {
-        let Some(parent) = open(HKEY_LOCAL_MACHINE, path)? else { continue };
+        let Some(parent) = open(HKEY_LOCAL_MACHINE, path)? else {
+            continue;
+        };
         for child in children(&parent)? {
-            let Some(key) = open(parent.0, &child)? else { continue };
+            let Some(key) = open(parent.0, &child)? else {
+                continue;
+            };
             if value(&key, "DisplayName")?.as_deref() == Some("Camo Studio") {
                 return Ok(CamoStudio::Installed {
                     version: value(&key, "DisplayVersion").map_err(|error| format!("{error:#}")),
@@ -240,8 +252,15 @@ fn camo_driver() -> Result<CamoDriver> {
                 &mut needed,
             )
         };
-        ensure!(success != 0, "Camo class device description read failed: {}", std::io::Error::last_os_error());
-        ensure!(kind == REG_SZ && needed <= 512 && needed % 2 == 0, "invalid Camo class device description");
+        ensure!(
+            success != 0,
+            "Camo class device description read failed: {}",
+            std::io::Error::last_os_error()
+        );
+        ensure!(
+            kind == REG_SZ && needed <= 512 && needed % 2 == 0,
+            "invalid Camo class device description"
+        );
         let end = description
             .iter()
             .position(|c| *c == 0)
@@ -343,8 +362,12 @@ fn launch_path(path: PathBuf) -> Result<()> {
 }
 pub(super) fn launch(app: CameraApp) -> Result<()> {
     if app == CameraApp::Camo {
-        ensure!(observe_camo().camera_available().map_err(anyhow::Error::msg)?,
-            "Camo Studio or its enabled camera driver is unavailable");
+        ensure!(
+            observe_camo()
+                .camera_available()
+                .map_err(anyhow::Error::msg)?,
+            "Camo Studio or its enabled camera driver is unavailable"
+        );
         return launch_camo(&|| Ok(()));
     }
     let keys = uninstall_keys()?;

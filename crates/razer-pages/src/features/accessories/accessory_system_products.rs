@@ -1,7 +1,6 @@
 //! Current Raptor, Hanbo, PWM controller and cooling-pad native local settings.
 //! Hardware observations and capability lists are never restored from a profile.
 use crate::features::Choice;
-use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::component::{
     ActiveTheme, Disableable, Selectable,
     button::Button,
@@ -17,6 +16,7 @@ use gpui_kit::*;
 use razer_i18n::t;
 use razer_i18n::t_or;
 use razer_platform::system;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::source_slider::SourceSlider;
 use razer_widgets::surface;
 use serde::Deserialize;
@@ -1736,7 +1736,7 @@ impl AccessorySystemProductWorkspace {
                 .line_height(surface::css(17.))
                 .text_color(rgb(0xcccccc));
             if let Some(input) = input {
-                field = field.child(
+                field = field.child(razer_widgets::keyboard_navigation::focus_input(
                     Input::new(input)
                         .appearance(false)
                         .bordered(false)
@@ -1745,7 +1745,9 @@ impl AccessorySystemProductWorkspace {
                         .h(surface::css(17.))
                         .w_full()
                         .p_0(),
-                );
+                    input,
+                    cx,
+                ));
             }
             header = header.child(field);
         }

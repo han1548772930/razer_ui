@@ -1,7 +1,7 @@
 //! 167/231 current RS/uS haptic graph and custom popup, statically re-audited.
 use super::*;
+use gpui_kit::base::Dialog;
 use razer_widgets::keyboard_navigation::Button as BaseButton;
-use gpui_kit::base::{Dialog};
 use razer_widgets::source_slider::SourceSlider;
 use razer_widgets::theme::{DrawerColors, ScrollWheelColors as Colors};
 use std::{cell::Cell, rc::Rc};
@@ -555,11 +555,13 @@ impl MouseProductWorkspace {
                                         ),
                                     )),
                             )
-                            .child(
+                            .child(razer_widgets::keyboard_navigation::focus_input(
                                 Input::new(&self.inputs[&path])
                                     .w_full()
                                     .mb(surface::css(15.)),
-                            )
+                                &self.inputs[&path],
+                                cx,
+                            ))
                             .child(
                                 div()
                                     .relative()

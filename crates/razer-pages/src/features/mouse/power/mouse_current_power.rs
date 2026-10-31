@@ -663,33 +663,36 @@ impl MouseProductWorkspace {
                 razer_i18n::t_value("SEC", i64::from(seconds))
             };
             let selected = self.power_saving_value() == Some(f32::from(seconds));
-            razer_widgets::keyboard_navigation::Button::new(("mouse-power-saving-seconds", u64::from(seconds)))
-                .accessibility_label(label.clone())
-                .selected(selected)
-                .flex_shrink_0()
-                .min_w(surface::css(78.))
-                .px(surface::css(16.))
-                .py(surface::css(7.))
-                .rounded(surface::css(3.))
-                .border_1()
-                .border_color(if selected {
-                    Colors::accent()
-                } else {
-                    Colors::border()
-                })
-                .bg(if selected {
-                    Colors::selected_surface()
-                } else {
-                    Colors::surface()
-                })
-                .text_color(Colors::text())
-                .text_size(surface::css(12.))
-                .line_height(surface::css(14.))
-                .hover(|style| style.border_color(Colors::accent()))
-                .child(label)
-                .on_click(cx.listener(move |this, _, _, cx| {
-                    this.write("/powerSavingValue", json!(seconds), cx)
-                }))
+            razer_widgets::keyboard_navigation::Button::new((
+                "mouse-power-saving-seconds",
+                u64::from(seconds),
+            ))
+            .accessibility_label(label.clone())
+            .selected(selected)
+            .flex_shrink_0()
+            .min_w(surface::css(78.))
+            .px(surface::css(16.))
+            .py(surface::css(7.))
+            .rounded(surface::css(3.))
+            .border_1()
+            .border_color(if selected {
+                Colors::accent()
+            } else {
+                Colors::border()
+            })
+            .bg(if selected {
+                Colors::selected_surface()
+            } else {
+                Colors::surface()
+            })
+            .text_color(Colors::text())
+            .text_size(surface::css(12.))
+            .line_height(surface::css(14.))
+            .hover(|style| style.border_color(Colors::accent()))
+            .child(label)
+            .on_click(cx.listener(move |this, _, _, cx| {
+                this.write("/powerSavingValue", json!(seconds), cx)
+            }))
         });
         panel
             .child(surface::h1_body(t("POWER_SAVING_DESC_V4"), cx))

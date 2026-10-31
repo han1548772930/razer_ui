@@ -132,22 +132,26 @@ impl SourceControls {
             .children(control.options.iter().map(|option| {
                 let value = option.value.clone();
                 let selected = self.value(control) == Some(&value);
-                razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!("{key}-{value}")))
-                    .accessibility_label(t(&option.label))
-                    .disabled(disabled)
-                    .w(surface::css(48.))
-                    .h(surface::css(27.))
-                    .rounded(surface::css(3.))
-                    .border_1()
-                    .border_color(if selected { rgb(0x44d62c) } else { rgb(0x5d5d5d) })
-                    .bg(rgb(0x222222))
-                    .text_color(rgb(0xcccccc))
-                    .text_size(surface::css(14.))
-                    .hover(|s| s.border_color(rgb(0x44d62c)))
-                    .child(t(&option.label))
-                    .on_click(cx.listener(move |this, _, window, cx| {
+                razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!(
+                    "{key}-{value}"
+                )))
+                .accessibility_label(t(&option.label))
+                .disabled(disabled)
+                .w(surface::css(48.))
+                .h(surface::css(27.))
+                .rounded(surface::css(3.))
+                .border_1()
+                .border_color(if selected { rgb(0x44d62c) } else { rgb(0x5d5d5d) })
+                .bg(rgb(0x222222))
+                .text_color(rgb(0xcccccc))
+                .text_size(surface::css(14.))
+                .hover(|s| s.border_color(rgb(0x44d62c)))
+                .child(t(&option.label))
+                .on_click(
+                    cx.listener(move |this, _, window, cx| {
                         this.edit(key, value.clone(), window, cx)
-                    }))
+                    }),
+                )
             }))
             .when(disabled, |row| {
                 row.child(
@@ -177,33 +181,35 @@ impl SourceControls {
             .children(control.options.iter().map(|option| {
                 let value = option.value.clone();
                 let selected = self.value(control) == Some(&value);
-                razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!("oled-screensaver-{value}")))
-                    .accessibility_label(t(&option.label))
-                    .disabled(selected)
-                    .w(surface::css(260.))
-                    .h(surface::css(68.))
-                    .flex_shrink_0()
-                    .border_1()
-                    .bg(rgb(0))
-                    .text_color(rgb(0x999999))
-                    .text_size(surface::css(14.))
-                    .border_color(rgb(0x5d5d5d))
-                    .when(selected, |button| {
-                        button.border_2().border_color(rgb(0x44d62c))
-                    })
-                    .hover(|button| button.border_2().border_color(rgb(0x166809)))
-                    .child(match &option.image {
-                        Some(source) => img(SharedString::from(source.clone()))
-                            .w(surface::css(256.))
-                            .h(surface::css(64.))
-                            .into_any_element(),
-                        None => div()
-                            .child(format!("({})", t(&option.label)))
-                            .into_any_element(),
-                    })
-                    .on_click(cx.listener(move |this, _, window, cx| {
-                        this.edit("691:oled-screensaver", value.clone(), window, cx)
-                    }))
+                razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!(
+                    "oled-screensaver-{value}"
+                )))
+                .accessibility_label(t(&option.label))
+                .disabled(selected)
+                .w(surface::css(260.))
+                .h(surface::css(68.))
+                .flex_shrink_0()
+                .border_1()
+                .bg(rgb(0))
+                .text_color(rgb(0x999999))
+                .text_size(surface::css(14.))
+                .border_color(rgb(0x5d5d5d))
+                .when(selected, |button| {
+                    button.border_2().border_color(rgb(0x44d62c))
+                })
+                .hover(|button| button.border_2().border_color(rgb(0x166809)))
+                .child(match &option.image {
+                    Some(source) => img(SharedString::from(source.clone()))
+                        .w(surface::css(256.))
+                        .h(surface::css(64.))
+                        .into_any_element(),
+                    None => div()
+                        .child(format!("({})", t(&option.label)))
+                        .into_any_element(),
+                })
+                .on_click(cx.listener(move |this, _, window, cx| {
+                    this.edit("691:oled-screensaver", value.clone(), window, cx)
+                }))
             }))
             .into_any_element()
     }

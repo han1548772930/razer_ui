@@ -141,7 +141,7 @@ impl RenderOnce for ColorBoostInput {
                 NumberInput::new(&self.input)
                     .size_full()
                     .controls_right()
-                    .input(
+                    .input(razer_widgets::keyboard_navigation::focus_input(
                         Input::new(&self.input)
                             .id("color-boost-input")
                             .appearance(false)
@@ -152,7 +152,9 @@ impl RenderOnce for ColorBoostInput {
                             .p_0()
                             .pl(surface::css(5.))
                             .text_size(surface::css(14.)),
-                    )
+                        &self.input,
+                        cx,
+                    ))
                     .increment_button(move |b| arrow(b, "synapse/stepper-up.svg", value >= 4.))
                     .decrement_button(move |b| arrow(b, "synapse/stepper-down.svg", value <= 0.25))
                     .on_step(move |action, window, cx| {

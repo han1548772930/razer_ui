@@ -2,7 +2,6 @@
 //! Independent of the device-product color picker; emits only completed edits.
 use super::theme::Colors;
 use crate::features::screen_color::{ScreenColorCapture, ScreenColorUpdate, ScreenColorUpdateKind};
-use razer_widgets::keyboard_navigation::Button;
 use gpui_kit::base::{Slider, SliderIndicator, SliderThumb, SliderTrack};
 use gpui_kit::component::{
     input::{Input, InputEvent, InputState},
@@ -10,6 +9,7 @@ use gpui_kit::component::{
     slider::{SliderEvent, SliderState},
 };
 use gpui_kit::{prelude::FluentBuilder as _, *};
+use razer_widgets::keyboard_navigation::Button;
 use razer_widgets::source_tooltip::{SourceTooltip, SourceTooltipKind};
 use razer_widgets::surface;
 use std::{cell::Cell, rc::Rc};
@@ -826,7 +826,7 @@ impl Render for StudioColor {
                                 },
                             ))
                             .on_key_down(|_, _, cx| cx.stop_propagation())
-                            .child(
+                            .child(razer_widgets::keyboard_navigation::focus_input(
                                 Input::new(field)
                                     .appearance(false)
                                     .bordered(false)
@@ -839,7 +839,9 @@ impl Render for StudioColor {
                                     .text_center()
                                     .rounded(px(0.))
                                     .text_color(Colors::text()),
-                            ),
+                                field,
+                                cx,
+                            )),
                     )
                     .child(
                         div()

@@ -2,11 +2,11 @@
 //! isAdvancedMapLighting: this mounted form chooses one local Chroma profile.
 use super::super::Choice;
 use super::*;
-use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::component::{
     IndexPath,
     select::{SelectEvent, SelectState},
 };
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::theme::MouseCustomizeColors;
 
 #[derive(Default)]

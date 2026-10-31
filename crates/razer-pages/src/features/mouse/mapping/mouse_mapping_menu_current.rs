@@ -1,8 +1,8 @@
 //! Actual main mapping menu consumers and popup shell. Native observations are
 //! distinguished from local drafts; missing service state never grants AI access.
 use super::*;
+use gpui_kit::base::ElementExt as _;
 use razer_widgets::keyboard_navigation::Button as BaseButton;
-use gpui_kit::base::{ElementExt as _};
 use razer_widgets::theme::{MouseCustomizeColors as Colors, MouseMappingMenuColors as MenuColors};
 use std::time::Duration;
 use std::{

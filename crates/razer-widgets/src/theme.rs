@@ -4,17 +4,39 @@ use gpui_kit::{Hsla, rgb, rgba};
 /// Shared `rz-a11y-guide` CSS, independent of device and OS theme surfaces.
 pub struct KeyboardGuideColors;
 impl KeyboardGuideColors {
-    pub fn backdrop() -> Hsla { Hsla::from(rgb(0x000000)).opacity(0.7) }
-    pub fn surface() -> Hsla { rgb(0x111111).into() }
-    pub fn accent() -> Hsla { rgb(0x44d62c).into() }
-    pub fn border() -> Hsla { rgb(0x444444).into() }
-    pub fn action() -> Hsla { rgb(0x999999).into() }
-    pub fn keys() -> Hsla { rgb(0xcccccc).into() }
-    pub fn button_text() -> Hsla { rgb(0x222222).into() }
-    pub fn button_border() -> Hsla { Hsla::from(rgb(0x000000)).opacity(0.3) }
-    pub fn shadow() -> Hsla { rgba(0x00000033).into() }
-    pub fn focus_inner() -> Hsla { rgb(0x000000).into() }
-    pub fn focus_outer() -> Hsla { rgb(0xffffff).into() }
+    pub fn backdrop() -> Hsla {
+        Hsla::from(rgb(0x000000)).opacity(0.7)
+    }
+    pub fn surface() -> Hsla {
+        rgb(0x111111).into()
+    }
+    pub fn accent() -> Hsla {
+        rgb(0x44d62c).into()
+    }
+    pub fn border() -> Hsla {
+        rgb(0x444444).into()
+    }
+    pub fn action() -> Hsla {
+        rgb(0x999999).into()
+    }
+    pub fn keys() -> Hsla {
+        rgb(0xcccccc).into()
+    }
+    pub fn button_text() -> Hsla {
+        rgb(0x222222).into()
+    }
+    pub fn button_border() -> Hsla {
+        Hsla::from(rgb(0x000000)).opacity(0.3)
+    }
+    pub fn shadow() -> Hsla {
+        rgba(0x00000033).into()
+    }
+    pub fn focus_inner() -> Hsla {
+        rgb(0x000000).into()
+    }
+    pub fn focus_outer() -> Hsla {
+        rgb(0xffffff).into()
+    }
 }
 
 /// Current notification-manager Root.ece81d56.chunk.css ordinary cards.

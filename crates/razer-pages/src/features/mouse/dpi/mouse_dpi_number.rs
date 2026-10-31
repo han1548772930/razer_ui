@@ -292,7 +292,7 @@ impl RenderOnce for DpiNumber {
                                     }
                                 });
                             })
-                            .child(
+                            .child(razer_widgets::keyboard_navigation::focus_input(
                                 Input::new(&self.input)
                                     .appearance(false)
                                     .bordered(false)
@@ -304,7 +304,9 @@ impl RenderOnce for DpiNumber {
                                     .pl(surface::css(5.))
                                     .text_size(surface::css(14.))
                                     .line_height(surface::css(14.)),
-                            ),
+                                &self.input,
+                                cx,
+                            )),
                     )
                     .increment_button(move |button| {
                         increment(

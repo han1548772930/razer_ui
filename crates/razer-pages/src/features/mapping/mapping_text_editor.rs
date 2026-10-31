@@ -1,15 +1,13 @@
 //! Retained MapText editor shared by independently audited current consumers.
 //! Mouse policies supply their own literals and Windows-version branch.
-use razer_widgets::keyboard_navigation::Button as BaseButton;
-use gpui_kit::base::{
-    motion::{self, Easing, Transition},
-};
+use gpui_kit::base::motion::{self, Easing, Transition};
 use gpui_kit::component::input::{Input, InputEvent, InputState, Textarea, TextareaState};
 use gpui_kit::component::*;
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 use razer_catalog::emoji::EmojiSearchTable;
 use razer_i18n::t;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::scroll::SourceScrollable as _;
 use razer_widgets::surface;
 use serde::Deserialize;
@@ -548,7 +546,7 @@ impl MappingTextEditor {
                             cx.stop_propagation();
                         }
                     })
-                    .child(
+                    .child(razer_widgets::keyboard_navigation::focus_input(
                         Textarea::new(&self.paragraph)
                             .appearance(false)
                             .bordered(false)
@@ -561,7 +559,9 @@ impl MappingTextEditor {
                             .bg(rgb(0x111111))
                             .text_size(surface::css(14.))
                             .line_height(surface::css(17.)),
-                    )
+                        &self.paragraph,
+                        cx,
+                    ))
                     .child(
                         canvas(
                             move |bounds, _, cx| {
@@ -915,7 +915,7 @@ impl MappingTextEditor {
                                 img("synapse/shortcuts-emoji-search.svg").size(surface::css(18.)),
                             ),
                     )
-                    .child(
+                    .child(razer_widgets::keyboard_navigation::focus_input(
                         Input::new(&self.emoji_search)
                             .id("analog-text-emoji-search")
                             .appearance(false)
@@ -928,7 +928,9 @@ impl MappingTextEditor {
                             .text_color(rgb(0xcccccc))
                             .text_size(surface::css(14.))
                             .rounded_none(),
-                    )
+                        &self.emoji_search,
+                        cx,
+                    ))
                     .when(search_active, |view| {
                         view.child(
                             text_toolbar_button(

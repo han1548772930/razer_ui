@@ -1,9 +1,9 @@
 //! Current 1342 EU/sU input, including its inverted regex, JS string + 1,
 //! live update, blur commit, and Enter/Escape blur behavior.
 use super::audio_mixer_theme::Colors as C;
-use razer_widgets::keyboard_navigation::Button;
 use gpui_kit::component::input::{Input, InputEvent, InputState};
 use gpui_kit::{prelude::FluentBuilder as _, *};
+use razer_widgets::keyboard_navigation::Button;
 use razer_widgets::surface;
 
 #[derive(Clone, Copy, PartialEq)]
@@ -201,7 +201,7 @@ impl Render for Number {
                         .top_0()
                         .w_full()
                         .h(surface::css(24.))
-                        .child(
+                        .child(razer_widgets::keyboard_navigation::focus_input(
                             Input::new(&self.input)
                                 .appearance(false)
                                 .bordered(false)
@@ -210,7 +210,9 @@ impl Render for Number {
                                 .px(surface::css(10.))
                                 .text_size(surface::css(14.))
                                 .text_color(C::transparent()),
-                        )
+                            &self.input,
+                            cx,
+                        ))
                         .on_click(cx.listener(|this, _, window, cx| {
                             this.input.update(cx, |input, cx| {
                                 input.focus(window, cx);

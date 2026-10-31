@@ -209,43 +209,44 @@ impl HueWorkspace {
         if self.advanced {
             card = card.child(self.advanced_effects(cx));
         } else {
-            card =
-                card.child(
-                    v_flex()
-                        .pt(surface::css(20.))
-                        .child(
-                            div()
-                                .mb(surface::css(20.))
-                                .line_height(surface::css(17.))
-                                .child(i18n::t("QUICK_EFFECTS_MSG")),
-                        )
-                        .child(
-                            h_flex()
-                                .child(div().w(surface::css(150.)).mr(surface::css(20.)).child(
+            card = card.child(
+                v_flex()
+                    .pt(surface::css(20.))
+                    .child(
+                        div()
+                            .mb(surface::css(20.))
+                            .line_height(surface::css(17.))
+                            .child(i18n::t("QUICK_EFFECTS_MSG")),
+                    )
+                    .child(
+                        h_flex()
+                            .child(
+                                div().w(surface::css(150.)).mr(surface::css(20.)).child(
                                     surface::select(&self.effect).disabled(!enabled).w_full(),
-                                ))
-                                .child(
-                                    razer_widgets::keyboard_navigation::Button::new("hue-sync-effects")
-                                        .disabled(true)
-                                        .p_0()
-                                        .flex()
-                                        .gap(surface::css(10.))
-                                        .accessibility_label(i18n::t("ONLY_ONE_CHROMA_DEVICE"))
-                                        .child(
-                                            img("synapse/chroma-sync.svg")
-                                                .size(surface::css(30.))
-                                                .opacity(0.3),
-                                        )
-                                        .child(
-                                            div()
-                                                .w(surface::css(310.))
-                                                .underline()
-                                                .child(i18n::t("ONLY_ONE_CHROMA_DEVICE")),
-                                        ),
                                 ),
-                        )
-                        .child(self.effect_parameters(enabled, cx)),
-                );
+                            )
+                            .child(
+                                razer_widgets::keyboard_navigation::Button::new("hue-sync-effects")
+                                    .disabled(true)
+                                    .p_0()
+                                    .flex()
+                                    .gap(surface::css(10.))
+                                    .accessibility_label(i18n::t("ONLY_ONE_CHROMA_DEVICE"))
+                                    .child(
+                                        img("synapse/chroma-sync.svg")
+                                            .size(surface::css(30.))
+                                            .opacity(0.3),
+                                    )
+                                    .child(
+                                        div()
+                                            .w(surface::css(310.))
+                                            .underline()
+                                            .child(i18n::t("ONLY_ONE_CHROMA_DEVICE")),
+                                    ),
+                            ),
+                    )
+                    .child(self.effect_parameters(enabled, cx)),
+            );
         }
         // `pA` mounts this helper into the advanced-effects tab in the
         // current Hue bundle. Keep the same 36px animated indicator and the
@@ -261,20 +262,22 @@ impl HueWorkspace {
                     .top(surface::css(5.))
                     .h(surface::css(36.))
                     .child(
-                        razer_widgets::keyboard_navigation::Button::new("hue-advanced-tutorial-dot")
-                            .p_0()
-                            .size(surface::css(36.))
-                            .accessibility_label(i18n::t("ADVANCED_EFFECT_DETAILS"))
-                            .child(img("synapse/hue-indicator_animated.svg").size_full())
-                            .on_click(cx.listener(|this, _, _, cx| {
-                                // 源里点击处理器 `T()` 同时 `setVisible(!1)` 与
-                                // `k.A.set(u_, !1)`，即关闭并持久化。
-                                this.tutorial_visible = false;
-                                this.ui_preferences.update(cx, |owner, cx| {
-                                    owner.set(UiPreference::HueTutorial, false, cx);
-                                });
-                                cx.notify();
-                            })),
+                        razer_widgets::keyboard_navigation::Button::new(
+                            "hue-advanced-tutorial-dot",
+                        )
+                        .p_0()
+                        .size(surface::css(36.))
+                        .accessibility_label(i18n::t("ADVANCED_EFFECT_DETAILS"))
+                        .child(img("synapse/hue-indicator_animated.svg").size_full())
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            // 源里点击处理器 `T()` 同时 `setVisible(!1)` 与
+                            // `k.A.set(u_, !1)`，即关闭并持久化。
+                            this.tutorial_visible = false;
+                            this.ui_preferences.update(cx, |owner, cx| {
+                                owner.set(UiPreference::HueTutorial, false, cx);
+                            });
+                            cx.notify();
+                        })),
                     )
                     .child(
                         div()
@@ -427,7 +430,7 @@ impl HueWorkspace {
                                 .disabled(!enabled)
                                 .size_full()
                                 .controls_right()
-                                .input(
+                                .input(razer_widgets::keyboard_navigation::focus_input(
                                     Input::new(&self.color_boost)
                                         .appearance(false)
                                         .bordered(false)
@@ -436,7 +439,9 @@ impl HueWorkspace {
                                         .pl(surface::css(5.))
                                         .h(surface::css(25.))
                                         .text_size(surface::css(14.)),
-                                )
+                                    &self.color_boost,
+                                    cx,
+                                ))
                                 .on_step(move |action, window, cx| step(&action, window, cx)),
                         ),
                 )

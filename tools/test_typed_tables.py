@@ -1354,6 +1354,59 @@ class TypedTableTests(unittest.TestCase):
                         frontend.current_deployment_source(
                             url.removesuffix("index.html"), candidates=[path], observations={})
 
+    def test_identity_official_absence_verifies_each_explicit_manifest_probe(self):
+        import analysis
+        import frontend
+        entry = "https://apps.razer.com/synapse/products/680/mw/index.html"
+        manifest = entry.removesuffix("index.html") + "manifest.json"
+        urls = [manifest, entry]
+        document = {"entry_url": entry, "recorded_at_utc": "2026-10-30T10:00:00+00:00",
+                    "target_execution": False, "source_current_during_acquisition": False,
+                    "files": [{"url": url, "error": "HTTP Error 404: Not Found"} for url in urls],
+                    "stability": [{"url": url, "unchanged": False, "before_sha256": None,
+                                   "after_sha256": None, "http_status": 404, "final_url": url,
+                                   "error": "HTTP Error 404: Not Found"} for url in urls]}
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / ".analysis/inputs/frontend/missing/acquisition.json"
+            path.parent.mkdir(parents=True)
+            path.write_text(json.dumps(document), encoding="utf-8")
+            route = entry.removesuffix("index.html")
+            with patch.object(typed_tables, "ROOT", root), patch.object(analysis, "ROOT", root):
+                result = frontend.current_deployment_source(route, candidates=[path], observations={})
+                self.assertEqual((result["status"], result["http_status"]), ("official_source_unavailable", 404))
+                for mutation in ("missing_entry", "duplicate_file", "duplicate_claim", "missing_claim",
+                                 "failed_round", "retained_probe", "other_route", "wrong_status", "redirect"):
+                    candidate = copy.deepcopy(document)
+                    if mutation == "missing_entry":
+                        candidate["files"].pop()
+                        candidate["stability"].pop()
+                    elif mutation == "duplicate_file":
+                        candidate["files"].append(copy.deepcopy(candidate["files"][0]))
+                    elif mutation == "duplicate_claim":
+                        candidate["stability"].append(copy.deepcopy(candidate["stability"][0]))
+                    elif mutation == "missing_claim":
+                        candidate["stability"].pop(0)
+                    elif mutation == "failed_round":
+                        candidate["stability"][0]["error"] = "HTTP Error 503: Service Unavailable"
+                    elif mutation == "retained_probe":
+                        candidate["files"][0]["path"] = ".analysis/inputs/frontend/missing/main.js"
+                    elif mutation == "other_route":
+                        for collection in (candidate["files"], candidate["stability"]):
+                            collection[0]["url"] = manifest.replace("/680/", "/681/")
+                    elif mutation == "wrong_status":
+                        candidate["stability"][0]["http_status"] = 200
+                    elif mutation == "redirect":
+                        candidate["stability"][0]["final_url"] = entry
+                    path.write_text(json.dumps(candidate), encoding="utf-8")
+                    with self.subTest(mutation=mutation), self.assertRaises(ValueError):
+                        frontend.current_deployment_source(route, candidates=[path], observations={})
+                path.write_text(json.dumps(document), encoding="utf-8")
+                later = {manifest: [{"recorded_at_utc": "2026-10-30T11:00:00+00:00",
+                                     "observation": {"rounds": [{"http_status": 200}, {"http_status": 200}]}}]}
+                with self.assertRaisesRegex(ValueError, "later unresolved"):
+                    frontend.current_deployment_source(route, candidates=[path], observations=later)
+
     def identity_generation_fixture(self, root):
         _, receipts = self.identity_acquisition_fixture(root)
         for name in ("analysis.py", "evidence.py", "host.py"):

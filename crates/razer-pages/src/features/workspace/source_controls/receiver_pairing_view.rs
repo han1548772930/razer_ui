@@ -1,8 +1,8 @@
 //! Current 179/6677 Re -> ie/oe/ne/ae/_e, with local-only operation intents.
 use super::pairing_state::{ReceiverCategory as Category, Status};
 use super::*;
+use gpui_kit::base::Radio as BaseRadio;
 use razer_widgets::keyboard_navigation::Button as BaseButton;
-use gpui_kit::base::{Radio as BaseRadio};
 use razer_widgets::theme::DockPairingColors as Colors;
 
 #[derive(Deserialize)]

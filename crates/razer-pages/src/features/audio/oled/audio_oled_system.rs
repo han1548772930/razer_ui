@@ -3,8 +3,8 @@
 use super::dialog::{self, DialogState};
 use super::*;
 use gpui_kit::base::motion::{self, Easing, Transition};
-use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::base::{ElementExt as _, PopoverState};
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::scroll::SourceScrollable as _;
 use razer_widgets::source_tooltip::SourceTooltip;
 use std::{cell::Cell, rc::Rc, time::Duration};

@@ -130,7 +130,7 @@ impl RenderOnce for LedInput {
                     .disabled(!self.enabled)
                     .controls_right()
                     .size_full()
-                    .input(
+                    .input(razer_widgets::keyboard_navigation::focus_input(
                         Input::new(&self.input)
                             .id(("aether-led-text", id))
                             .disabled(!self.enabled)
@@ -141,7 +141,9 @@ impl RenderOnce for LedInput {
                             .pl(surface::css(5.))
                             .h(surface::css(24.))
                             .text_size(surface::css(14.)),
-                    )
+                        &self.input,
+                        cx,
+                    ))
                     .increment_button(move |b| {
                         arrow(b, "synapse/stepper-up.svg", self.value >= self.max)
                     })

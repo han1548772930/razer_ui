@@ -325,13 +325,15 @@ impl MouseProductWorkspace {
                     .text_size(surface::css(14.))
                     .line_height(surface::css(19.))
                     .hover(|style| style.border_color(MouseCustomizeColors::selected()))
-                    .child(
+                    .child(razer_widgets::keyboard_navigation::focus_input(
                         Input::new(&controls.inputs[axis])
                             .appearance(false)
                             .w_full()
                             .h_full()
                             .text_center(),
-                    )
+                        &controls.inputs[axis],
+                        cx,
+                    ))
                     .on_key_down(|event, window, cx| {
                         if matches!(event.keystroke.key.as_str(), "escape" | "enter") {
                             window.blur(cx);
@@ -433,15 +435,19 @@ impl MouseProductWorkspace {
                             }),
                     )
                     .child(
-                        razer_widgets::keyboard_navigation::Button::new("mouse-current-sensitivity-configure")
-                            .p_0()
-                            .mt(surface::css(10.))
-                            .mb(surface::css(20.))
-                            .text_color(MouseCustomizeColors::text())
-                            .child(div().underline().child(t(&policy.labels["configure"])))
-                            .on_click(cx.listener(move |this, _, window, cx| {
+                        razer_widgets::keyboard_navigation::Button::new(
+                            "mouse-current-sensitivity-configure",
+                        )
+                        .p_0()
+                        .mt(surface::css(10.))
+                        .mb(surface::css(20.))
+                        .text_color(MouseCustomizeColors::text())
+                        .child(div().underline().child(t(&policy.labels["configure"])))
+                        .on_click(cx.listener(
+                            move |this, _, window, cx| {
                                 this.request_current_mapping_page(&target, window, cx);
-                            })),
+                            },
+                        )),
                     ),
             );
         }

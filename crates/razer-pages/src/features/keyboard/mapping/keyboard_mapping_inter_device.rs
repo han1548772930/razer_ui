@@ -767,7 +767,7 @@ impl KeyboardProductWorkspace {
             .as_ref()
             .map(|input| {
                 div()
-                    .child(
+                    .child(razer_widgets::keyboard_navigation::focus_input(
                         Input::new(input)
                             .w(surface::css(60.))
                             .h(surface::css(26.))
@@ -778,7 +778,9 @@ impl KeyboardProductWorkspace {
                             .border_1()
                             .border_color(cx.theme().border)
                             .disabled(disabled),
-                    )
+                        input,
+                        cx,
+                    ))
                     .on_key_down(|event, window, cx| {
                         if event.keystroke.key == "escape" {
                             window.blur(cx);

@@ -1,10 +1,7 @@
 //! Current Profiles 1255 embedded root: fixed profile, game tiles and program browser.
 //! Local executable metadata never starts, scans or monitors a program.
 use crate::features::Choice;
-use razer_widgets::keyboard_navigation::Button as BaseButton;
-use gpui_kit::base::{
-    motion::{Easing, Presence, Transition},
-};
+use gpui_kit::base::motion::{Easing, Presence, Transition};
 use gpui_kit::component::{
     input::{Input, InputState},
     select::SelectState,
@@ -15,6 +12,7 @@ use gpui_kit::{prelude::FluentBuilder as _, *};
 use razer_i18n as i18n;
 use razer_model::model::Device;
 use razer_storage::file_transfer::{Operation, Transfer};
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::scroll::SourceScrollable as _;
 use razer_widgets::surface;
 use std::{path::PathBuf, time::Duration};
@@ -274,7 +272,7 @@ impl ProfileLinkedGames {
             .border_color(rgb(0x5d5d5d))
             .bg(rgb(0x111111))
             .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-            .child(
+            .child(razer_widgets::keyboard_navigation::focus_input(
                 Input::new(&self.search)
                     .appearance(false)
                     .w_full()
@@ -286,7 +284,9 @@ impl ProfileLinkedGames {
                     .border_0()
                     .text_size(css(14.))
                     .line_height(css(17.)),
-            )
+                &self.search,
+                cx,
+            ))
             .child(
                 img("synapse/profiles-search-grey.svg")
                     .absolute()

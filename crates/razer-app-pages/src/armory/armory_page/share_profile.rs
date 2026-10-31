@@ -1,6 +1,5 @@
 //! Current Armory 24988 / 13784 PROFILE form, opened with an actual local
 //! device snapshot. No contribution UUID, author, download or success is made up.
-use razer_widgets::keyboard_navigation::Button;
 use gpui_kit::base::{Dialog, DialogPopup};
 use gpui_kit::component::{
     input::{Input, InputEvent, InputState, Textarea, TextareaState},
@@ -13,6 +12,7 @@ use razer_model::model::Device;
 use razer_model::model::DeviceCategory;
 use razer_model::model::Profile;
 use razer_pages::features::Choice;
+use razer_widgets::keyboard_navigation::Button;
 use razer_widgets::surface;
 use std::path::PathBuf;
 
@@ -366,32 +366,40 @@ impl Render for ShareProfileDialog {
             .iter()
             .map(|profile| Choice::new(&profile.id, &profile.name))
             .collect();
-        let title = Input::new(&self.title)
-            .appearance(false)
-            .aria_label(text("TITLE"))
-            .h(surface::css(23.))
-            .w_full()
-            .px(surface::css(5.))
-            .border_1()
-            .border_color(if self.title.focus_handle(cx).is_focused(window) {
-                cx.theme().primary
-            } else {
-                cx.theme().border
-            })
-            .bg(cx.theme().input);
-        let description = Textarea::new(&self.description)
-            .appearance(false)
-            .aria_label(text("DESCRIPTION_OPTIONAL"))
-            .h(surface::css(91.))
-            .w_full()
-            .px(surface::css(5.))
-            .border_1()
-            .border_color(if self.description.focus_handle(cx).is_focused(window) {
-                cx.theme().primary
-            } else {
-                cx.theme().border
-            })
-            .bg(cx.theme().input);
+        let title = razer_widgets::keyboard_navigation::focus_input(
+            Input::new(&self.title)
+                .appearance(false)
+                .aria_label(text("TITLE"))
+                .h(surface::css(23.))
+                .w_full()
+                .px(surface::css(5.))
+                .border_1()
+                .border_color(if self.title.focus_handle(cx).is_focused(window) {
+                    cx.theme().primary
+                } else {
+                    cx.theme().border
+                })
+                .bg(cx.theme().input),
+            &self.title,
+            cx,
+        );
+        let description = razer_widgets::keyboard_navigation::focus_input(
+            Textarea::new(&self.description)
+                .appearance(false)
+                .aria_label(text("DESCRIPTION_OPTIONAL"))
+                .h(surface::css(91.))
+                .w_full()
+                .px(surface::css(5.))
+                .border_1()
+                .border_color(if self.description.focus_handle(cx).is_focused(window) {
+                    cx.theme().primary
+                } else {
+                    cx.theme().border
+                })
+                .bg(cx.theme().input),
+            &self.description,
+            cx,
+        );
         let form = v_flex()
             .id("armory-share-form")
             .w(surface::css(800.))
@@ -578,6 +586,8 @@ impl Render for ShareProfileDialog {
                     .occlude()
                     .bg(cx.theme().background.opacity(0.8)),
             )
-            .popup(razer_assets::resource_scope(DialogPopup::new().max_w_full().child(panel)))
+            .popup(razer_assets::resource_scope(
+                DialogPopup::new().max_w_full().child(panel),
+            ))
     }
 }

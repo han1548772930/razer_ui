@@ -285,7 +285,7 @@ impl MacroPage {
                     cx.stop_propagation();
                 },
             ))
-            .child(
+            .child(razer_widgets::keyboard_navigation::focus_input(
                 Input::new(&self.name)
                     .id("macro-rename-input")
                     .source_max_length(&self.name, 32)
@@ -300,7 +300,9 @@ impl MacroPage {
                     .rounded_none()
                     .text_size(css(14.))
                     .line_height(css(17.)),
-            )
+                &self.name,
+                cx,
+            ))
             .into_any_element()
     }
 
@@ -316,7 +318,7 @@ impl MacroPage {
             .border_1()
             .border_color(rgb(0x515151))
             .hover(|s| s.border_color(rgb(0x44d62c)))
-            .child(
+            .child(razer_widgets::keyboard_navigation::focus_input(
                 Input::new(&self.search)
                     .appearance(false)
                     .w_full()
@@ -327,7 +329,9 @@ impl MacroPage {
                     .pr(css(24.))
                     .text_size(css(14.))
                     .line_height(css(17.)),
-            )
+                &self.search,
+                cx,
+            ))
             .child(
                 img("synapse/profiles-search.svg")
                     .absolute()

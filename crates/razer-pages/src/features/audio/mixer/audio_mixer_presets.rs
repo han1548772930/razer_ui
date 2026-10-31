@@ -829,10 +829,12 @@ impl AudioProductWorkspace {
                                             this.cancel_effect_preset_rename(window, cx);
                                         },
                                     ))
-                                    .child(
+                                    .child(razer_widgets::keyboard_navigation::focus_input(
                                         Input::new(&state.rename)
                                             .source_max_length(&state.rename, 32),
-                                    )
+                                        &state.rename,
+                                        cx,
+                                    ))
                                     .into_any_element()
                             } else {
                                 Select::new(&state.choices)

@@ -1,7 +1,6 @@
 //! IotPopupRoot 28256: gt -> GENERAL / dt (Gamer Room) / rt (Key Light).
 //! Network/device results below exist only in explicitly selected preview scenes.
 //! No native discovery, Wi-Fi configuration, localStorage or identify call is made.
-use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::component::{
     button::{Button, ButtonCustomVariant, ButtonVariants},
     input::{Input, InputState},
@@ -13,6 +12,7 @@ use gpui_kit::component::{
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use razer_i18n as i18n;
 use razer_pages::features::Choice;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::scroll::SourceScrollable as _;
 use razer_widgets::source_link::source_link;
 use razer_widgets::surface;
@@ -978,9 +978,9 @@ impl IotPopup {
                 .child(surface::select(&self.networks).items(network_choices()).w(surface::css(285.)).bg(cx.theme().popover).accessibility_label("Choose network"))
                 .child(div().ml(surface::css(10.)).mt(surface::css(20.)).mb(surface::css(5.)).child("WIFI PASSWORD"))
                 .child(h_flex().relative().ml(surface::css(10.)).w(surface::css(279.))
-                    .child(Input::new(&self.password).id("iot-password").aria_label("WIFI PASSWORD").h(surface::css(23.)).w_full()
+                    .child(razer_widgets::keyboard_navigation::focus_input(Input::new(&self.password).id("iot-password").aria_label("WIFI PASSWORD").h(surface::css(23.)).w_full()
                         .appearance(false).bordered(false).focus_bordered(false).px(surface::css(4.)).pr(surface::css(28.)).py_0()
-                        .border_1().border_color(PaletteColors.border()).bg(cx.theme().popover).rounded(px(0.)).text_size(surface::css(14.)))
+                        .border_1().border_color(PaletteColors.border()).bg(cx.theme().popover).rounded(px(0.)).text_size(surface::css(14.)), &self.password, cx))
                     .child(Button::new("iot-password-visible").ghost().absolute().right(surface::css(5.)).top(surface::css(3.)).p_0().size(surface::css(17.)).border_0()
                         .accessibility_label(if self.password_visible{"隐藏密码"}else{"显示密码"}).child(img("synapse/iot-see-password.svg").size_full())
                         .on_click(cx.listener(|this,_,window,cx|{this.password_visible=!this.password_visible;this.password.update(cx,|state,cx|state.toggle_masked(window,cx));cx.notify();})))))

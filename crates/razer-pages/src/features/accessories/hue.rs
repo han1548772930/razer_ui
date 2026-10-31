@@ -515,19 +515,21 @@ fn widget(title: &str, tip: Option<&str>, control: impl IntoElement, cx: &App) -
     if let Some(tip) = tip {
         let label = text(tip);
         card = card.child(
-            razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!("hue-help-{title}")))
-                .absolute()
-                .top(surface::css(12.))
-                .right(surface::css(12.))
-                .size(surface::css(16.))
-                .p_0()
-                .accessibility_label(label.clone())
-                .child(img("synapse/onboard-help.svg").size_full())
-                .tooltip(move |window, cx| {
-                    tooltip::Tooltip::new(label.clone())
-                        .max_w(surface::css(350.))
-                        .build(window, cx)
-                }),
+            razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!(
+                "hue-help-{title}"
+            )))
+            .absolute()
+            .top(surface::css(12.))
+            .right(surface::css(12.))
+            .size(surface::css(16.))
+            .p_0()
+            .accessibility_label(label.clone())
+            .child(img("synapse/onboard-help.svg").size_full())
+            .tooltip(move |window, cx| {
+                tooltip::Tooltip::new(label.clone())
+                    .max_w(surface::css(350.))
+                    .build(window, cx)
+            }),
         );
     }
     card

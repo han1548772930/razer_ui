@@ -1,7 +1,7 @@
 //! Current 1382 mapping-root renderSaveAlert and 913 closeMapping/saveMapping.
 use super::*;
+use gpui_kit::base::Dialog;
 use razer_widgets::keyboard_navigation::Button as BaseButton;
-use gpui_kit::base::{Dialog};
 use std::time::Instant;
 
 pub(super) struct WarningState {

@@ -2,9 +2,9 @@
 use super::*;
 use crate::features::controls::Choice;
 use crate::features::lighting_color::LightingColorPicker;
-use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::component::color_picker::{ColorPickerEvent, ColorPickerState};
 use gpui_kit::component::select::{SelectEvent, SelectState};
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::source_slider::SourceSlider;
 use razer_widgets::stepper::{Stepper, StepperEvent};
 use razer_widgets::theme::{KeyboardEffectColors, KeyboardRgbEffectColors as Colors};

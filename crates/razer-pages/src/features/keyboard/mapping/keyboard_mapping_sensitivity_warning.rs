@@ -231,7 +231,11 @@ fn js_truthy(value: &Value) -> bool {
         _ => true,
     }
 }
-fn warning_button(id: &'static str, label: String, confirm: bool) -> razer_widgets::keyboard_navigation::Button {
+fn warning_button(
+    id: &'static str,
+    label: String,
+    confirm: bool,
+) -> razer_widgets::keyboard_navigation::Button {
     BaseButton::new(id)
         .min_w(surface::css(90.))
         .h(surface::css(27.))

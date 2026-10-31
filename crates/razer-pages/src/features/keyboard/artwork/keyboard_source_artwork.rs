@@ -2,12 +2,12 @@
 //! The caller supplies observed edition/layout/wrist state; unavailable source
 //! assets are absent rather than substituted with a guessed layout or color.
 use super::KeyboardProductWorkspace;
-use razer_widgets::keyboard_navigation::Button as BaseButton;
-use gpui_kit::base::{ElementExt as _};
+use gpui_kit::base::ElementExt as _;
 use gpui_kit::component::{h_flex, v_flex};
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use razer_assets::KeyboardKey;
 use razer_i18n::t;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::surface;
 use serde::Deserialize;
 use std::sync::OnceLock;

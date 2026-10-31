@@ -1636,10 +1636,12 @@ impl MouseProductWorkspace {
             }
             .into_any_element()
         } else {
-            Input::new(&self.inputs[path])
-                .w_20()
-                .disabled(!enabled)
-                .into_any_element()
+            razer_widgets::keyboard_navigation::focus_input(
+                Input::new(&self.inputs[path]).w_20().disabled(!enabled),
+                &self.inputs[path],
+                cx,
+            )
+            .into_any_element()
         };
         v_flex()
             .group(group)

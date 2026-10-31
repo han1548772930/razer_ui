@@ -116,17 +116,18 @@ impl AudioProductWorkspace {
         let (raw, staged, selected) = self.oled_language_values();
         let unchanged = staged == raw && staged == selected;
         let disabled = self.oled_is_ble() || self.oled_is_loading();
-        let apply_button = razer_widgets::keyboard_navigation::Button::new("kraken-oled-language-apply")
-            .accessibility_label(t(label))
-            .disabled(unchanged)
-            .styles(|style| style.disabled(|style| style.opacity(0.3)))
-            .h(surface::css(27.))
-            .px(surface::css(15.))
-            .rounded(surface::css(3.))
-            .bg(rgb(0x44d62c))
-            .text_color(rgb(0))
-            .text_size(surface::css(14.))
-            .child(t(label).to_uppercase());
+        let apply_button =
+            razer_widgets::keyboard_navigation::Button::new("kraken-oled-language-apply")
+                .accessibility_label(t(label))
+                .disabled(unchanged)
+                .styles(|style| style.disabled(|style| style.opacity(0.3)))
+                .h(surface::css(27.))
+                .px(surface::css(15.))
+                .rounded(surface::css(3.))
+                .bg(rgb(0x44d62c))
+                .text_color(rgb(0))
+                .text_size(surface::css(14.))
+                .child(t(label).to_uppercase());
         let apply_button = apply_button.on_click(cx.listener(move |this, _, window, cx| {
             this.apply_oled_language(window, cx);
         }));

@@ -1,7 +1,6 @@
 //! Current Macro business IIFE and 58190/21700/1519; current contract:
 //! docs/products/shared/macros.md. Local drafts remain separate from observed
 //! recorder events and device metadata. CSS px scale with the shared rem unit.
-use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::base::{
     TestSupportExt as _,
     motion::{self, Easing, Presence, Transition},
@@ -12,6 +11,7 @@ use gpui_kit::component::{
 };
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use razer_i18n as i18n;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::scroll::SourceScrollable as _;
 use razer_widgets::source_input;
 use razer_widgets::surface::css;

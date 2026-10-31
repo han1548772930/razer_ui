@@ -302,7 +302,7 @@ impl MacroPage {
                     .justify_center()
                     .child(img("synapse/shortcuts-emoji-search.svg").size(css(18.))),
             )
-            .child(
+            .child(razer_widgets::keyboard_navigation::focus_input(
                 Input::new(&self.text_ui.search)
                     .id(("macro-text-search", index))
                     .appearance(false)
@@ -314,7 +314,9 @@ impl MacroPage {
                     .text_size(css(14.))
                     .text_color(rgb(0xcccccc))
                     .rounded_none(),
-            )
+                &self.text_ui.search,
+                cx,
+            ))
             .when(!row.borrow().query.is_empty(), |view| {
                 view.child(
                     surface::track_pointer(BaseButton::new(clear_id), &clear_pointer, window)

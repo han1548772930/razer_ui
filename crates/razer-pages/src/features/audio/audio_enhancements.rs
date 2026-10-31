@@ -537,9 +537,9 @@ impl AudioProductWorkspace {
                                 .map(|value| {
                                     let value = *value;
                                     let selected = level == Some(u64::from(value));
-                                    razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!(
-                                        "audio-anc-level-{value}"
-                                    )))
+                                    razer_widgets::keyboard_navigation::Button::new(
+                                        SharedString::from(format!("audio-anc-level-{value}")),
+                                    )
                                     .accessibility_label(value.to_string())
                                     .disabled(!enabled || selected)
                                     .mt(surface::css(20.))
@@ -566,9 +566,11 @@ impl AudioProductWorkspace {
                                         button.hover(|style| style.border_color(Colors::text()))
                                     })
                                     .child(value.to_string())
-                                    .on_click(cx.listener(move |this, _, _, cx| {
-                                        this.set_noise_cancellation(json!({"level":value}), cx)
-                                    }))
+                                    .on_click(cx.listener(
+                                        move |this, _, _, cx| {
+                                            this.set_noise_cancellation(json!({"level":value}), cx)
+                                        },
+                                    ))
                                 }),
                         ),
                     ),
@@ -614,9 +616,9 @@ impl AudioProductWorkspace {
                         .children(setting.options.iter().map(|tab| {
                             let key = tab.key.clone();
                             let selected = self.enhancements.current == key;
-                            razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!(
-                                "audio-enhancement-tab-{key}"
-                            )))
+                            razer_widgets::keyboard_navigation::Button::new(SharedString::from(
+                                format!("audio-enhancement-tab-{key}"),
+                            ))
                             .accessibility_label(message(row, &tab.name))
                             .disabled(!enabled)
                             .flex_1()

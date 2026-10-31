@@ -7,7 +7,6 @@ use super::{
     workspace::{Continue, DeviceWorkspace},
 };
 use crate::nav::Tab;
-use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::base::{Popover, PopoverState, TestSupportExt as _};
 use gpui_kit::component::{
     button::{Button, ButtonCustomVariant, ButtonVariants},
@@ -22,6 +21,7 @@ use gpui_kit::{prelude::FluentBuilder as _, *};
 use razer_i18n as i18n;
 use razer_widgets::hover_tip::SourceTipPlacement;
 use razer_widgets::hover_tip::source_hover_tip_element;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::surface;
 use razer_widgets::surface::SynapseSwitch;
 use razer_widgets::theme::ProfileAlertColors;
@@ -1058,12 +1058,16 @@ impl DeviceWorkspace {
                     })
                     .child(
                         if highlighted && self.keyboard_controls.dial_renaming && mode.is_custom {
-                            Input::new(&self.keyboard_controls.name)
-                                .id("dial-name")
-                                .w(surface::css(221.))
-                                .h(surface::css(27.))
-                                .disabled(!mode.enabled)
-                                .into_any_element()
+                            razer_widgets::keyboard_navigation::focus_input(
+                                Input::new(&self.keyboard_controls.name)
+                                    .id("dial-name")
+                                    .w(surface::css(221.))
+                                    .h(surface::css(27.))
+                                    .disabled(!mode.enabled),
+                                &self.keyboard_controls.name,
+                                cx,
+                            )
+                            .into_any_element()
                         } else {
                             Button::new(SharedString::from(format!("dial-mode-{uid}")))
                                 .ghost()
@@ -1136,27 +1140,29 @@ impl DeviceWorkspace {
                             })),
                     )
                     .child(
-                        razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!("dial-drag-{uid}")))
-                            .accessibility_label("拖动排序模式，或按上、下方向键调整顺序")
-                            .w(surface::css(8.))
-                            .h(surface::css(20.))
-                            .p_0()
-                            .child(img("synapse/dpi-draggable.svg").size_full())
-                            .on_key_down(cx.listener({
-                                let uid = uid.clone();
-                                move |this, event: &KeyDownEvent, window, cx| {
-                                    let offset = match event.keystroke.key.as_str() {
-                                        "up" => -1,
-                                        "down" => 1,
-                                        _ => return,
-                                    };
-                                    cx.stop_propagation();
-                                    this.edit(window, cx, |settings| {
-                                        settings.keyboard.move_dial(&uid, offset)
-                                    });
-                                }
-                            }))
-                            .on_drag(drag, |drag, _, _, cx| cx.new(|_| drag.clone())),
+                        razer_widgets::keyboard_navigation::Button::new(SharedString::from(
+                            format!("dial-drag-{uid}"),
+                        ))
+                        .accessibility_label("拖动排序模式，或按上、下方向键调整顺序")
+                        .w(surface::css(8.))
+                        .h(surface::css(20.))
+                        .p_0()
+                        .child(img("synapse/dpi-draggable.svg").size_full())
+                        .on_key_down(cx.listener({
+                            let uid = uid.clone();
+                            move |this, event: &KeyDownEvent, window, cx| {
+                                let offset = match event.keystroke.key.as_str() {
+                                    "up" => -1,
+                                    "down" => 1,
+                                    _ => return,
+                                };
+                                cx.stop_propagation();
+                                this.edit(window, cx, |settings| {
+                                    settings.keyboard.move_dial(&uid, offset)
+                                });
+                            }
+                        }))
+                        .on_drag(drag, |drag, _, _, cx| cx.new(|_| drag.clone())),
                     ),
             );
         if blocked {

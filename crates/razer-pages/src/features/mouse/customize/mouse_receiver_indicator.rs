@@ -2,17 +2,17 @@
 //! Complete source owners/resources: mouse-receiver-indicator unified query.
 use super::*;
 use crate::features::controls::Choice;
-use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::base::{
-    DialogBackdrop, DialogPopup, InlineElement, InlineRenderContext,
-    MarkdownExtensions, MarkdownNode, MarkdownParseContext, MarkdownPlugin,
-    TextView as BaseTextView, TextViewStyle as BaseTextViewStyle, markdown_ast,
+    DialogBackdrop, DialogPopup, InlineElement, InlineRenderContext, MarkdownExtensions,
+    MarkdownNode, MarkdownParseContext, MarkdownPlugin, TextView as BaseTextView,
+    TextViewStyle as BaseTextViewStyle, markdown_ast,
 };
 use gpui_kit::component::{
     IndexPath,
     select::{SelectEvent, SelectState},
 };
 use razer_device::mouse_indicator_led::{Configuration, Mode, Quality, Report};
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::theme::MouseReceiverColors as Colors;
 use std::{
     cell::Cell,

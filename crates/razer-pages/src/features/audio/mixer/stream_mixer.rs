@@ -2,9 +2,9 @@
 //! Middleware observations never come from product/profile catalogues. Local
 //! choices stay separate from observations and do not acknowledge device writes.
 use super::*;
-use razer_widgets::keyboard_navigation::Button as BaseButton;
-use gpui_kit::base::{Dialog};
+use gpui_kit::base::Dialog;
 use gpui_kit::component::{select::SelectItem, tooltip::Tooltip};
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::theme::StreamMixerColors as Colors;
 use std::time::Instant;
 

@@ -1,9 +1,9 @@
 //! Current product profile commands. The product-specific table is extracted
 //! independently from each mounted profile bar and its menu consumer.
 use super::*;
-use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::base::{Popover, PopoverState, motion};
 use gpui_kit::component::list::{ListDelegate, ListState};
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::theme::DropdownColors;
 use serde::Deserialize;
 use std::sync::OnceLock;

@@ -1,7 +1,7 @@
 //! Current 190 CO / gO surface, not the generic product card.
 use super::*;
-use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::base::ElementExt as _;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 #[path = "../mapping/mouse_mapping_190.rs"]
 pub(super) mod source_mapping;
 use razer_widgets::scroll::SourceScrollable as _;

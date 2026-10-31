@@ -465,15 +465,19 @@ impl SourceControls {
                                         )
                                         .child(razer_i18n::t("PAIRING_UTILITY").to_uppercase())
                                         .child(
-                                            razer_widgets::keyboard_navigation::Button::new("receiver-close-pairing")
-                                                .accessibility_label(razer_i18n::t("CLOSE"))
-                                                .absolute()
-                                                .right(surface::css(5.))
-                                                .size(surface::css(20.))
-                                                .child(img("synapse/mapping-close.svg").size_full())
-                                                .on_click(cx.listener(|this, _, window, cx| {
+                                            razer_widgets::keyboard_navigation::Button::new(
+                                                "receiver-close-pairing",
+                                            )
+                                            .accessibility_label(razer_i18n::t("CLOSE"))
+                                            .absolute()
+                                            .right(surface::css(5.))
+                                            .size(surface::css(20.))
+                                            .child(img("synapse/mapping-close.svg").size_full())
+                                            .on_click(
+                                                cx.listener(|this, _, window, cx| {
                                                     this.close_receiver_pairing(window, cx);
-                                                })),
+                                                }),
+                                            ),
                                         ),
                                 )
                                 .child(self.receiver_pairing_body(cx))

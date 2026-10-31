@@ -63,25 +63,28 @@ pub(super) fn help(id: SharedString, text: String, warning: bool) -> AnyElement 
                 window,
                 cx,
             );
-            razer_widgets::keyboard_navigation::Button::new((ElementId::from(animation_id.clone()), "icon"))
-                .accessibility_label(text.clone())
-                .w(surface::css(size))
-                .h(surface::css(size))
-                .p_0()
-                .cursor_pointer()
-                .when(!warning, |button| {
-                    button.rounded(surface::css(7.)).bg(background)
+            razer_widgets::keyboard_navigation::Button::new((
+                ElementId::from(animation_id.clone()),
+                "icon",
+            ))
+            .accessibility_label(text.clone())
+            .w(surface::css(size))
+            .h(surface::css(size))
+            .p_0()
+            .cursor_pointer()
+            .when(!warning, |button| {
+                button.rounded(surface::css(7.)).bg(background)
+            })
+            .focus_visible(|button| button.border_1().border_color(cx.theme().primary))
+            .child(
+                img(if warning {
+                    "synapse/camera-section-warning.svg"
+                } else {
+                    "synapse/camera-section-help.svg"
                 })
-                .focus_visible(|button| button.border_1().border_color(cx.theme().primary))
-                .child(
-                    img(if warning {
-                        "synapse/camera-section-warning.svg"
-                    } else {
-                        "synapse/camera-section-help.svg"
-                    })
-                    .size_full(),
-                )
-                .into_any_element()
+                .size_full(),
+            )
+            .into_any_element()
         })
         .into_any_element()
 }
@@ -139,54 +142,54 @@ impl SourceControls {
             let first = self.value(control) == Some(&control.options[0].value);
             let next = control.options[usize::from(first)].value.clone();
             let key = control.key.clone();
-            return razer_widgets::keyboard_navigation::Button::new(SharedString::from(key.clone()))
-                .accessibility_label(razer_i18n::t(&control.label))
-                .disabled(disabled)
-                .self_start()
-                .h(surface::css(36.))
-                .p(surface::css(5.))
-                .rounded(surface::css(18.))
-                .border_1()
-                .border_color(Colors::border())
-                .bg(Colors::background())
-                .when(disabled, |button| button.opacity(0.3))
-                .when(!disabled, |button| {
-                    button
-                        .cursor_pointer()
-                        .hover(|button| button.border_color(Colors::focus()))
-                })
-                .focus_visible(|button| button.border_color(Colors::focus()))
-                .child(
-                    h_flex()
-                        .items_center()
-                        .children(control.options.iter().enumerate().map(|(index, option)| {
-                            let active = (index == 0) == first;
-                            div()
-                                .h(surface::css(26.))
-                                .px(surface::css(10.))
-                                .py(surface::css(5.))
-                                .rounded(surface::css(13.))
-                                .text_size(surface::css(14.))
-                                .line_height(surface::css(17.))
-                                .bg(if active {
-                                    Colors::focus()
-                                } else {
-                                    Colors::background()
-                                })
-                                .text_color(if active {
-                                    Colors::background()
-                                } else {
-                                    Colors::text()
-                                })
-                                .child(razer_i18n::t(&option.label))
-                        })),
-                )
-                .on_click(
-                    cx.listener(move |this, _, window, cx| {
-                        this.edit(&key, next.clone(), window, cx)
-                    }),
-                )
-                .into_any_element();
+            return razer_widgets::keyboard_navigation::Button::new(SharedString::from(
+                key.clone(),
+            ))
+            .accessibility_label(razer_i18n::t(&control.label))
+            .disabled(disabled)
+            .self_start()
+            .h(surface::css(36.))
+            .p(surface::css(5.))
+            .rounded(surface::css(18.))
+            .border_1()
+            .border_color(Colors::border())
+            .bg(Colors::background())
+            .when(disabled, |button| button.opacity(0.3))
+            .when(!disabled, |button| {
+                button
+                    .cursor_pointer()
+                    .hover(|button| button.border_color(Colors::focus()))
+            })
+            .focus_visible(|button| button.border_color(Colors::focus()))
+            .child(
+                h_flex()
+                    .items_center()
+                    .children(control.options.iter().enumerate().map(|(index, option)| {
+                        let active = (index == 0) == first;
+                        div()
+                            .h(surface::css(26.))
+                            .px(surface::css(10.))
+                            .py(surface::css(5.))
+                            .rounded(surface::css(13.))
+                            .text_size(surface::css(14.))
+                            .line_height(surface::css(17.))
+                            .bg(if active {
+                                Colors::focus()
+                            } else {
+                                Colors::background()
+                            })
+                            .text_color(if active {
+                                Colors::background()
+                            } else {
+                                Colors::text()
+                            })
+                            .child(razer_i18n::t(&option.label))
+                    })),
+            )
+            .on_click(
+                cx.listener(move |this, _, window, cx| this.edit(&key, next.clone(), window, cx)),
+            )
+            .into_any_element();
         }
         let title = h_flex()
             .items_center()
@@ -210,38 +213,40 @@ impl SourceControls {
                     let selected = self.value(control) == Some(&option.value);
                     let key = control.key.clone();
                     let value = option.value.clone();
-                    razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!("{key}:{value}")))
-                        .accessibility_label(razer_i18n::t(&option.label))
-                        .disabled(disabled)
-                        .min_w(surface::css(if key.ends_with(":iso") { 75. } else { 90. }))
-                        .px(surface::css(16.))
-                        .pt(surface::css(7.))
-                        .pb(surface::css(6.))
-                        .text_size(surface::css(12.))
-                        .line_height(surface::css(14.))
-                        .text_color(Colors::text())
-                        .rounded(surface::css(3.))
-                        .border_1()
-                        .border_color(if selected {
-                            Colors::focus()
-                        } else {
-                            Colors::border()
-                        })
-                        .when(selected, |button| button.bg(Colors::selected()))
-                        .when(disabled, |button| button.opacity(0.3))
-                        .when(!disabled, |button| {
-                            button
-                                .cursor_pointer()
-                                .hover(|button| {
-                                    button.bg(Colors::hover()).border_color(Colors::focus())
-                                })
-                                .active(|button| button.bg(Colors::pressed()))
-                        })
-                        .focus_visible(|button| button.border_color(Colors::focus()))
-                        .child(razer_i18n::t(&option.label))
-                        .on_click(cx.listener(move |this, _, window, cx| {
-                            this.edit(&key, value.clone(), window, cx)
-                        }))
+                    razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!(
+                        "{key}:{value}"
+                    )))
+                    .accessibility_label(razer_i18n::t(&option.label))
+                    .disabled(disabled)
+                    .min_w(surface::css(if key.ends_with(":iso") { 75. } else { 90. }))
+                    .px(surface::css(16.))
+                    .pt(surface::css(7.))
+                    .pb(surface::css(6.))
+                    .text_size(surface::css(12.))
+                    .line_height(surface::css(14.))
+                    .text_color(Colors::text())
+                    .rounded(surface::css(3.))
+                    .border_1()
+                    .border_color(if selected {
+                        Colors::focus()
+                    } else {
+                        Colors::border()
+                    })
+                    .when(selected, |button| button.bg(Colors::selected()))
+                    .when(disabled, |button| button.opacity(0.3))
+                    .when(!disabled, |button| {
+                        button
+                            .cursor_pointer()
+                            .hover(|button| {
+                                button.bg(Colors::hover()).border_color(Colors::focus())
+                            })
+                            .active(|button| button.bg(Colors::pressed()))
+                    })
+                    .focus_visible(|button| button.border_color(Colors::focus()))
+                    .child(razer_i18n::t(&option.label))
+                    .on_click(cx.listener(move |this, _, window, cx| {
+                        this.edit(&key, value.clone(), window, cx)
+                    }))
                 }),
             ))
             .into_any_element()
@@ -378,20 +383,23 @@ impl SourceControls {
             .text_size(surface::css(14.))
             .line_height(surface::css(16.))
             .child(if group.collapsible {
-                razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!("{}:toggle", group.key)))
-                    .accessibility_label(title)
-                    .disabled(inherited_disabled)
-                    .p_0()
-                    .cursor_pointer()
-                    .focus_visible(|button| button.border_1().border_color(cx.theme().primary))
-                    .child(header_label)
-                    .on_click(cx.listener(move |this, _, _, cx| {
-                        if !this.collapsed_camera_groups.remove(&collapse_key) {
-                            this.collapsed_camera_groups.insert(collapse_key.clone());
-                        }
-                        cx.notify();
-                    }))
-                    .into_any_element()
+                razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!(
+                    "{}:toggle",
+                    group.key
+                )))
+                .accessibility_label(title)
+                .disabled(inherited_disabled)
+                .p_0()
+                .cursor_pointer()
+                .focus_visible(|button| button.border_1().border_color(cx.theme().primary))
+                .child(header_label)
+                .on_click(cx.listener(move |this, _, _, cx| {
+                    if !this.collapsed_camera_groups.remove(&collapse_key) {
+                        this.collapsed_camera_groups.insert(collapse_key.clone());
+                    }
+                    cx.notify();
+                }))
+                .into_any_element()
             } else {
                 header_label.into_any_element()
             });
@@ -423,8 +431,11 @@ impl SourceControls {
             .and_then(|key| self.control(key))
         {
             let key = control.key.clone();
-            header = header.child(
-                razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!("{key}:header")))
+            header =
+                header.child(
+                    razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!(
+                        "{key}:header"
+                    )))
                     .accessibility_label(razer_i18n::t(&control.label))
                     .ml(surface::css(10.))
                     .w(surface::css(20.))
@@ -438,7 +449,7 @@ impl SourceControls {
                     .on_click(cx.listener(move |this, _, window, cx| {
                         this.edit(&key, Value::Null, window, cx)
                     })),
-            );
+                );
         }
         if let Some(text) = &group.tooltip {
             header = header.child(

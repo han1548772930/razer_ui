@@ -345,7 +345,9 @@ fn finish_read(core: &mut Core, work: &Work, result: Result<Observation, String>
 }
 
 #[gpui_kit::test]
-fn initial_tab_work_is_serialized_and_remains_owned_through_exit(cx: &mut gpui_kit::TestAppContext) {
+fn initial_tab_work_is_serialized_and_remains_owned_through_exit(
+    cx: &mut gpui_kit::TestAppContext,
+) {
     cx.update(|cx| {
         let window_owner = cx.new(|_| ());
         let request = InitialTabRequest::new(window_owner.entity_id(), 1);
@@ -356,18 +358,31 @@ fn initial_tab_work_is_serialized_and_remains_owned_through_exit(cx: &mut gpui_k
         core.begin_exit();
         assert!(!core.record_initial_tab(InitialTabRequest::new(window_owner.entity_id(), 2)));
         let first = core.queue.pop_front().unwrap();
-        assert!(matches!(first.operation, Operation::Write { flag: Flag::HueTutorial, .. }));
+        assert!(matches!(
+            first.operation,
+            Operation::Write {
+                flag: Flag::HueTutorial,
+                ..
+            }
+        ));
         finish_write(&mut core, &first, Ok(()));
         let tab = core.queue.pop_front().unwrap();
-        assert!(matches!(tab.operation, Operation::InitialTab { request: found } if found == request));
+        assert!(
+            matches!(tab.operation, Operation::InitialTab { request: found } if found == request)
+        );
         assert_eq!(core.pending_writes, 1);
         core.complete(Completed::InitialTab(InitialTabFinished {
             request,
-            result: Ok(InitialTabObservation::First { persistence: Err("disk full".into()) }),
+            result: Ok(InitialTabObservation::First {
+                persistence: Err("disk full".into()),
+            }),
         }));
         assert_eq!(core.pending_writes, 0);
         assert!(core.queue.is_empty());
-        assert!(core.save_error().is_none(), "the guide's caught marker failure is not an unsaved settings draft");
+        assert!(
+            core.save_error().is_none(),
+            "the guide's caught marker failure is not an unsaved settings draft"
+        );
     });
 }
 

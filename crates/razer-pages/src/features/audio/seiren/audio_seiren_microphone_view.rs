@@ -2,11 +2,11 @@
 //! through the product scale; Base owns buttons, dialog focus and dismissal.
 use super::super::audio_seiren_eq::colors::Colors as C;
 use super::*;
-use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::base::{
     Dialog, Slider as BaseSlider, SliderIndicator, SliderThumb, SliderTrack,
     motion::{self, Easing, IterationCount, Keyframe, Keyframes, Timing, Transition},
 };
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::source_text::SourceText;
 
 #[derive(IntoElement)]

@@ -1,8 +1,8 @@
 //! Current 3946 AutomationModal → EH: footer-anchored deletion confirmation.
 use super::*;
-use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::base::{Dialog, DialogPopup, motion};
 use gpui_kit::component::tooltip::Tooltip;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use std::time::Duration;
 
 pub(super) struct DeleteDecision(pub(super) bool);

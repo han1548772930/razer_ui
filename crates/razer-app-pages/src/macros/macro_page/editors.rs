@@ -272,7 +272,7 @@ impl MacroPage {
                 NumberInput::new(&self.action_editor)
                     .size_full()
                     .controls_right()
-                    .input(
+                    .input(razer_widgets::keyboard_navigation::focus_input(
                         Input::new(&self.action_editor)
                             .id(("macro-numeric-input", index))
                             .appearance(false)
@@ -282,7 +282,9 @@ impl MacroPage {
                             .p_0()
                             .pl(css(6.))
                             .text_size(css(14.)),
-                    )
+                        &self.action_editor,
+                        cx,
+                    ))
                     .increment_button(move |button| arrow(button, "synapse/stepper-up.svg"))
                     .decrement_button(move |button| arrow(button, "synapse/stepper-down.svg"))
                     .on_step(move |action, window, cx| {
@@ -332,7 +334,7 @@ impl MacroPage {
                 NumberInput::new(input)
                     .size_full()
                     .controls_right()
-                    .input(
+                    .input(razer_widgets::keyboard_navigation::focus_input(
                         Input::new(input)
                             .id((name, index))
                             .appearance(false)
@@ -342,7 +344,9 @@ impl MacroPage {
                             .p_0()
                             .pl(css(6.))
                             .text_size(css(14.)),
-                    )
+                        input,
+                        cx,
+                    ))
                     .increment_button(move |button| arrow(button, "synapse/stepper-up.svg"))
                     .decrement_button(move |button| arrow(button, "synapse/stepper-down.svg"))
                     .on_step(move |action, window, cx| {

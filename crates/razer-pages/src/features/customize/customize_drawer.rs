@@ -5,7 +5,6 @@ use super::{
     controls::{Choice, Choices},
     workspace::{Continue, DeviceWorkspace},
 };
-use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::component::{
     ActiveTheme, IndexPath,
     button::{Button, ButtonCustomVariant, ButtonVariants},
@@ -13,6 +12,7 @@ use gpui_kit::component::{
 };
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use razer_model::model::Device;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::scroll::SourceScrollable as _;
 use razer_widgets::surface;
 use razer_widgets::theme::DrawerColors;

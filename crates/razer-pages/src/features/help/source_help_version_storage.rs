@@ -85,9 +85,8 @@ enum Selection {
 }
 fn selection(product_id: u32) -> Selection {
     match product_id {
-        658 | 708 | 747 | 752 | 1442 | 1453 | 2660 | 2664 | 2668 | 2689 | 3594 | 4144 | 45066 => {
-            Selection::First
-        }
+        658 | 708 | 747 | 752 | 1442 | 1451 | 1453 | 2660 | 2664 | 2668 | 2689 | 3594 | 4144
+        | 45066 => Selection::First,
         _ => Selection::Scoped,
     }
 }

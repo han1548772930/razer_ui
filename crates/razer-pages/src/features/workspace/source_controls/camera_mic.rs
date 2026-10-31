@@ -339,21 +339,25 @@ impl SourceControls {
                                 .line_height(surface::css(16.))
                                 .child(razer_i18n::t("DEVICE_REBOOT_DESCRIPTION"))
                                 .child(
-                                    razer_widgets::keyboard_navigation::Button::new("3595:microphone-reboot")
-                                        .accessibility_label(razer_i18n::t("DEVICE_REBOOT"))
-                                        .disabled(disabled)
-                                        .self_start()
-                                        .p_0()
-                                        .text_color(Colors::focus())
-                                        .underline()
-                                        .when(!disabled, |button| button.cursor_pointer())
-                                        .focus_visible(|button| {
-                                            button.border_1().border_color(Colors::focus())
-                                        })
-                                        .child(razer_i18n::t("DEVICE_REBOOT"))
-                                        .on_click(cx.listener(|this, _, window, cx| {
+                                    razer_widgets::keyboard_navigation::Button::new(
+                                        "3595:microphone-reboot",
+                                    )
+                                    .accessibility_label(razer_i18n::t("DEVICE_REBOOT"))
+                                    .disabled(disabled)
+                                    .self_start()
+                                    .p_0()
+                                    .text_color(Colors::focus())
+                                    .underline()
+                                    .when(!disabled, |button| button.cursor_pointer())
+                                    .focus_visible(|button| {
+                                        button.border_1().border_color(Colors::focus())
+                                    })
+                                    .child(razer_i18n::t("DEVICE_REBOOT"))
+                                    .on_click(cx.listener(
+                                        |this, _, window, cx| {
                                             this.reboot_camera_microphone(window, cx)
-                                        })),
+                                        },
+                                    )),
                                 ),
                         ),
                 )

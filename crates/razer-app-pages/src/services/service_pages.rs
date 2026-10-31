@@ -2,10 +2,7 @@
 //! Browsing and navigation are local. Native discovery/install results are never
 //! synthesized from clicks, timers, or the catalogue of supported products.
 use super::app_picker::PickerModule;
-use razer_widgets::keyboard_navigation::Button as BaseButton;
-use gpui_kit::base::{
-    motion::{self, Easing, Transition},
-};
+use gpui_kit::base::motion::{self, Easing, Transition};
 use gpui_kit::component::*;
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use razer_i18n as i18n;
@@ -13,6 +10,7 @@ use razer_model::model::Device;
 use razer_pages::features::module_service as service;
 use razer_pages::features::module_service::ModuleServiceSnapshot;
 use razer_pages::features::module_service::Record;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::surface;
 use razer_widgets::theme::MainPageColors;
 use std::{

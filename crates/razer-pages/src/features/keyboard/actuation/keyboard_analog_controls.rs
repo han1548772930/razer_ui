@@ -2,8 +2,8 @@
 //! UI intents are the original BroadcastChannel messages; observations enter
 //! through the corresponding MW reducer actions, never through synthetic ACKs.
 use super::*;
-use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::keyboard_capture::{Capture, RawKey};
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::theme::KeyboardAnalogControlColors as Colors;
 use serde::Serialize;
 use std::time::Duration;

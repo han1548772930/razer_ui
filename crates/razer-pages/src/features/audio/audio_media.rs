@@ -842,34 +842,38 @@ impl AudioMedia {
                                 ),
                         )
                         .child(
-                            razer_widgets::keyboard_navigation::Button::new("audible-demo-fullscreen")
-                                .w(surface::css(self.button_width))
-                                .h_full()
-                                .p_0()
-                                .accessibility_label(if self.fullscreen {
-                                    "Exit fullscreen"
-                                } else {
-                                    "Fullscreen"
-                                })
-                                .on_click(cx.listener(|this, _, window, cx| {
+                            razer_widgets::keyboard_navigation::Button::new(
+                                "audible-demo-fullscreen",
+                            )
+                            .w(surface::css(self.button_width))
+                            .h_full()
+                            .p_0()
+                            .accessibility_label(if self.fullscreen {
+                                "Exit fullscreen"
+                            } else {
+                                "Fullscreen"
+                            })
+                            .on_click(
+                                cx.listener(|this, _, window, cx| {
                                     this.toggle_fullscreen(window, cx)
-                                }))
-                                .child(
-                                    img(if !custom && !self.fullscreen {
-                                        "synapse/audio-1352-fullscreen.svg"
-                                    } else if self.fullscreen {
-                                        "synapse/audio-demo-control-fullscreen-exit.svg"
+                                }),
+                            )
+                            .child(
+                                img(if !custom && !self.fullscreen {
+                                    "synapse/audio-1352-fullscreen.svg"
+                                } else if self.fullscreen {
+                                    "synapse/audio-demo-control-fullscreen-exit.svg"
+                                } else {
+                                    "synapse/audio-demo-control-fullscreen.svg"
+                                })
+                                .size(surface::css(
+                                    if !custom && !self.fullscreen {
+                                        14.
                                     } else {
-                                        "synapse/audio-demo-control-fullscreen.svg"
-                                    })
-                                    .size(surface::css(
-                                        if !custom && !self.fullscreen {
-                                            14.
-                                        } else {
-                                            self.glyph_size
-                                        },
-                                    )),
-                                ),
+                                        self.glyph_size
+                                    },
+                                )),
+                            ),
                         ),
                 )
             })

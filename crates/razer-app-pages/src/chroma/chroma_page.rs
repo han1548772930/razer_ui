@@ -2,8 +2,7 @@
 //! This owns local view preferences; it does not invent SDK applications,
 //! firmware releases, installed modules, or immersive-engine capabilities.
 use super::{app_picker::PickerModule, introduction_tour::TourKind};
-use razer_widgets::keyboard_navigation::Button as BaseButton;
-use gpui_kit::base::{Switch};
+use gpui_kit::base::Switch;
 use gpui_kit::component::{
     checkbox::Checkbox,
     input::{Input, InputState},
@@ -22,6 +21,7 @@ use razer_pages::features::chroma_product::ChromaProduct;
 use razer_pages::features::{Choice, ProductWorkspace};
 use razer_state::chroma_settings::{AppFilter, Change, ChromaSettings, DashboardGroup};
 use razer_widgets::app_introduction_banner::AppIntroductionBanner;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::scroll::SourceScrollable as _;
 use razer_widgets::surface::css;
 
@@ -765,12 +765,14 @@ impl ChromaPage {
                     .child(
                         h_flex()
                             .gap(css(20.))
-                            .child(
+                            .child(razer_widgets::keyboard_navigation::focus_input(
                                 Input::new(&self.search)
                                     .w(css(200.))
                                     .h(css(27.))
                                     .cleanable(true),
-                            )
+                                &self.search,
+                                cx,
+                            ))
                             .child(
                                 h_flex()
                                     .gap(css(6.))

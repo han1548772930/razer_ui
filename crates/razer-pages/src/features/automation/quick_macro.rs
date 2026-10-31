@@ -302,29 +302,32 @@ impl QuickMacroEditor {
                     }
                 }))
                 .children(choices.into_iter().enumerate().map(|(index, item)| {
-                    razer_widgets::keyboard_navigation::Button::new(("quick-macro-type-option", index))
-                        .track_focus(&self.type_option_focus[index])
-                        .accessibility_label(item.label)
-                        .aria_selected(self.kind == item.value)
-                        .w_full()
-                        .min_h(surface::css(30.))
-                        .flex_shrink_0()
-                        .px(surface::css(12.))
-                        .py(surface::css(8.))
-                        .flex()
-                        .items_center()
-                        .gap(surface::css(10.))
-                        .font_family("Roboto")
-                        .text_size(surface::css(14.))
-                        .line_height(surface::css(17.))
-                        .hover(|style| style.bg(Colors::close_hover()))
-                        .child(item.content(self.kind == item.value))
-                        .on_click(cx.listener(move |this, _, window, cx| {
-                            // Source resets the action even when reselecting
-                            // the already-selected type; it has no no-op guard.
-                            this.set_kind(item.value, window, cx);
-                            this.type_focus.focus(window, cx);
-                        }))
+                    razer_widgets::keyboard_navigation::Button::new((
+                        "quick-macro-type-option",
+                        index,
+                    ))
+                    .track_focus(&self.type_option_focus[index])
+                    .accessibility_label(item.label)
+                    .aria_selected(self.kind == item.value)
+                    .w_full()
+                    .min_h(surface::css(30.))
+                    .flex_shrink_0()
+                    .px(surface::css(12.))
+                    .py(surface::css(8.))
+                    .flex()
+                    .items_center()
+                    .gap(surface::css(10.))
+                    .font_family("Roboto")
+                    .text_size(surface::css(14.))
+                    .line_height(surface::css(17.))
+                    .hover(|style| style.bg(Colors::close_hover()))
+                    .child(item.content(self.kind == item.value))
+                    .on_click(cx.listener(move |this, _, window, cx| {
+                        // Source resets the action even when reselecting
+                        // the already-selected type; it has no no-op guard.
+                        this.set_kind(item.value, window, cx);
+                        this.type_focus.focus(window, cx);
+                    }))
                 }));
             selector = selector.child(razer_assets::deferred_resource(menu).priority(3));
         }
@@ -604,38 +607,36 @@ impl QuickMacroEditor {
                             })),
                     )
                     .child(
-                        razer_widgets::keyboard_navigation::Button::new("quick-macro-program-browse")
-                            .accessibility_label(format!(
-                                "{}: {}",
-                                text("PROGRAM"),
-                                self.program_path
-                            ))
-                            .ml(surface::css(30.))
-                            .h(surface::css(27.))
-                            .flex()
-                            .items_center()
-                            .px(surface::css(5.))
-                            .gap(surface::css(5.))
-                            .border_1()
-                            .border_color(Colors::input_border())
-                            .hover(|style| style.border_color(Colors::primary()))
-                            .focus_visible(|style| style.border_color(Colors::primary()))
-                            .disabled(!program || self.picker_pending)
-                            .styles(|styles| styles.disabled(|style| style.opacity(0.3)))
-                            .child(
-                                div()
-                                    .flex_1()
-                                    .min_w_0()
-                                    .truncate()
-                                    .text_left()
-                                    .child(self.program_path.clone()),
-                            )
-                            .child(
-                                img("synapse/automation-icon_folder.svg")
-                                    .size(surface::css(16.67))
-                                    .flex_shrink_0(),
-                            )
-                            .on_click(cx.listener(|this, _, _, cx| this.browse_program(cx))),
+                        razer_widgets::keyboard_navigation::Button::new(
+                            "quick-macro-program-browse",
+                        )
+                        .accessibility_label(format!("{}: {}", text("PROGRAM"), self.program_path))
+                        .ml(surface::css(30.))
+                        .h(surface::css(27.))
+                        .flex()
+                        .items_center()
+                        .px(surface::css(5.))
+                        .gap(surface::css(5.))
+                        .border_1()
+                        .border_color(Colors::input_border())
+                        .hover(|style| style.border_color(Colors::primary()))
+                        .focus_visible(|style| style.border_color(Colors::primary()))
+                        .disabled(!program || self.picker_pending)
+                        .styles(|styles| styles.disabled(|style| style.opacity(0.3)))
+                        .child(
+                            div()
+                                .flex_1()
+                                .min_w_0()
+                                .truncate()
+                                .text_left()
+                                .child(self.program_path.clone()),
+                        )
+                        .child(
+                            img("synapse/automation-icon_folder.svg")
+                                .size(surface::css(16.67))
+                                .flex_shrink_0(),
+                        )
+                        .on_click(cx.listener(|this, _, _, cx| this.browse_program(cx))),
                     ),
             )
             .child(
@@ -654,7 +655,7 @@ impl QuickMacroEditor {
                         div()
                             .ml(surface::css(30.))
                             .when(program, |view| view.opacity(0.3))
-                            .child(
+                            .child(razer_widgets::keyboard_navigation::focus_input(
                                 Input::new(&self.website)
                                     .appearance(false)
                                     .aria_label(text("WEBSITE"))
@@ -664,7 +665,9 @@ impl QuickMacroEditor {
                                     .px(surface::css(5.))
                                     .border_1()
                                     .border_color(Colors::input_border()),
-                            ),
+                                &self.website,
+                                cx,
+                            )),
                     ),
             )
             .when_some(self.picker_error.clone(), |view, error| {
@@ -711,13 +714,15 @@ impl QuickMacroEditor {
                     })),
             );
         } else if self.keys.is_empty() {
-            field = field.child(
+            field = field.child(razer_widgets::keyboard_navigation::focus_input(
                 Input::new(&self.capture_input)
                     .appearance(false)
                     .w_full()
                     .h(surface::css(28.))
                     .p_0(),
-            );
+                &self.capture_input,
+                cx,
+            ));
         }
         for (index, key) in self.keys.iter().enumerate() {
             if index > 0 {
@@ -770,68 +775,70 @@ impl QuickMacroEditor {
             let press_key = key.clone();
             let remove_key = key.clone();
             field = field.child(
-                razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!("quick-macro-key-{key}")))
-                    .accessibility_label(format!("Remove {key}"))
-                    .relative()
-                    .px(surface::css(10.))
-                    .py(surface::css(8.))
-                    .min_w(surface::css(34.))
-                    .min_h(surface::css(34.))
-                    .text_size(surface::css(13.))
-                    .line_height(surface::css(16.))
-                    .border_1()
-                    .rounded(surface::css(4.))
-                    .border_color(border)
-                    .child(div().opacity(1. - delete_opacity).child(key.clone()))
-                    .child(
-                        div()
-                            .absolute()
-                            .inset_0()
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .opacity(delete_opacity)
-                            .child(
-                                razer_assets::resource_svg()
-                                    .path("synapse/automation-quick-macro-delete.svg")
-                                    .size(surface::css(24.))
-                                    .text_color(delete_color),
-                            ),
-                    )
-                    .on_hover(cx.listener(move |this, hovered: &bool, _, cx| {
-                        this.hovered_key = hovered.then(|| hover_key.clone());
-                        if !hovered {
-                            this.pressed_key = None;
-                        }
+                razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!(
+                    "quick-macro-key-{key}"
+                )))
+                .accessibility_label(format!("Remove {key}"))
+                .relative()
+                .px(surface::css(10.))
+                .py(surface::css(8.))
+                .min_w(surface::css(34.))
+                .min_h(surface::css(34.))
+                .text_size(surface::css(13.))
+                .line_height(surface::css(16.))
+                .border_1()
+                .rounded(surface::css(4.))
+                .border_color(border)
+                .child(div().opacity(1. - delete_opacity).child(key.clone()))
+                .child(
+                    div()
+                        .absolute()
+                        .inset_0()
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .opacity(delete_opacity)
+                        .child(
+                            razer_assets::resource_svg()
+                                .path("synapse/automation-quick-macro-delete.svg")
+                                .size(surface::css(24.))
+                                .text_color(delete_color),
+                        ),
+                )
+                .on_hover(cx.listener(move |this, hovered: &bool, _, cx| {
+                    this.hovered_key = hovered.then(|| hover_key.clone());
+                    if !hovered {
+                        this.pressed_key = None;
+                    }
+                    cx.notify();
+                }))
+                .on_mouse_down(
+                    MouseButton::Left,
+                    cx.listener(move |this, _, _, cx| {
+                        this.pressed_key = Some(press_key.clone());
                         cx.notify();
-                    }))
-                    .on_mouse_down(
-                        MouseButton::Left,
-                        cx.listener(move |this, _, _, cx| {
-                            this.pressed_key = Some(press_key.clone());
-                            cx.notify();
-                        }),
-                    )
-                    .on_mouse_up(
-                        MouseButton::Left,
-                        cx.listener(|this, _, _, cx| {
-                            this.pressed_key = None;
-                            cx.notify();
-                        }),
-                    )
-                    .on_mouse_up_out(
-                        MouseButton::Left,
-                        cx.listener(|this, _, _, cx| {
-                            this.pressed_key = None;
-                            cx.notify();
-                        }),
-                    )
-                    .on_click(cx.listener(move |this, _, _, cx| {
-                        this.keys.retain(|key| key != &remove_key);
-                        this.hovered_key = None;
+                    }),
+                )
+                .on_mouse_up(
+                    MouseButton::Left,
+                    cx.listener(|this, _, _, cx| {
                         this.pressed_key = None;
                         cx.notify();
-                    })),
+                    }),
+                )
+                .on_mouse_up_out(
+                    MouseButton::Left,
+                    cx.listener(|this, _, _, cx| {
+                        this.pressed_key = None;
+                        cx.notify();
+                    }),
+                )
+                .on_click(cx.listener(move |this, _, _, cx| {
+                    this.keys.retain(|key| key != &remove_key);
+                    this.hovered_key = None;
+                    this.pressed_key = None;
+                    cx.notify();
+                })),
             );
         }
         field.into_any_element()
@@ -841,24 +848,32 @@ impl QuickMacroEditor {
         match self.kind.as_str() {
             "launch" => self.launch_field(cx),
             "keyboard" | "" => self.keyboard_field(window, cx),
-            "text" => Textarea::new(&self.text)
-                .appearance(false)
-                .w_full()
-                .h(surface::css(54.))
-                .p(surface::css(5.))
-                .bg(Colors::panel())
-                .border_1()
-                .border_color(Colors::input_border())
-                .into_any_element(),
-            _ => Input::new(&self.value)
-                .appearance(false)
-                .w_full()
-                .h(surface::css(27.))
-                .p(surface::css(5.))
-                .bg(Colors::panel())
-                .border_1()
-                .border_color(Colors::input_border())
-                .into_any_element(),
+            "text" => razer_widgets::keyboard_navigation::focus_input(
+                Textarea::new(&self.text)
+                    .appearance(false)
+                    .w_full()
+                    .h(surface::css(54.))
+                    .p(surface::css(5.))
+                    .bg(Colors::panel())
+                    .border_1()
+                    .border_color(Colors::input_border()),
+                &self.text,
+                cx,
+            )
+            .into_any_element(),
+            _ => razer_widgets::keyboard_navigation::focus_input(
+                Input::new(&self.value)
+                    .appearance(false)
+                    .w_full()
+                    .h(surface::css(27.))
+                    .p(surface::css(5.))
+                    .bg(Colors::panel())
+                    .border_1()
+                    .border_color(Colors::input_border()),
+                &self.value,
+                cx,
+            )
+            .into_any_element(),
         }
     }
 
@@ -948,7 +963,7 @@ impl Render for QuickMacroEditor {
                                     .text_color(Colors::muted())
                                     .child(text("NAME").to_uppercase()),
                             )
-                            .child(
+                            .child(razer_widgets::keyboard_navigation::focus_input(
                                 Input::new(&self.name)
                                     .appearance(false)
                                     .w_full()
@@ -957,7 +972,9 @@ impl Render for QuickMacroEditor {
                                     .bg(Colors::panel())
                                     .border_1()
                                     .border_color(Colors::input_border()),
-                            ),
+                                &self.name,
+                                cx,
+                            )),
                     )
                     .child(
                         v_flex()

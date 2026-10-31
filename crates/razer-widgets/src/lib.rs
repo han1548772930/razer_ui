@@ -1,6 +1,6 @@
 //! Shared semantic presentation primitives.
-mod window_resources;
 pub mod keyboard_navigation;
+mod window_resources;
 
 /// Register presentation facilities after GPUI Kit initialization and before
 /// opening windows. Every Base Root then owns the same resource-loading policy.

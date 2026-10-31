@@ -747,24 +747,27 @@ impl AudioProductWorkspace {
             .gap(surface::css(5.))
             .children(
                 [(false, "SOUNDBAR"), (true, "HEADSET")].map(|(headset, label)| {
-                    razer_widgets::keyboard_navigation::Button::new(("leviathan-output", u64::from(headset)))
-                        .px(surface::css(10.))
-                        .py(surface::css(5.))
-                        .rounded(surface::css(13.))
-                        .text_size(surface::css(14.))
-                        .child(t(label))
-                        .when(current == label, |button| {
-                            button.bg(cx.theme().primary).text_color(rgb(0x111111))
-                        })
-                        .on_click(cx.listener(move |this, _, window, cx| {
-                            if this.leviathan.visible.headset_connected {
-                                this.request_leviathan(
-                                    LeviathanOperation::Output { headset },
-                                    window,
-                                    cx,
-                                );
-                            }
-                        }))
+                    razer_widgets::keyboard_navigation::Button::new((
+                        "leviathan-output",
+                        u64::from(headset),
+                    ))
+                    .px(surface::css(10.))
+                    .py(surface::css(5.))
+                    .rounded(surface::css(13.))
+                    .text_size(surface::css(14.))
+                    .child(t(label))
+                    .when(current == label, |button| {
+                        button.bg(cx.theme().primary).text_color(rgb(0x111111))
+                    })
+                    .on_click(cx.listener(move |this, _, window, cx| {
+                        if this.leviathan.visible.headset_connected {
+                            this.request_leviathan(
+                                LeviathanOperation::Output { headset },
+                                window,
+                                cx,
+                            );
+                        }
+                    }))
                 }),
             );
         let panel = condition_panel(
@@ -1183,42 +1186,42 @@ impl AudioProductWorkspace {
                     .mr(surface::css(20.)),
                 )
                 .child(
-                    razer_widgets::keyboard_navigation::Button::new("leviathan-open-sound-properties")
-                        .group("leviathan-properties-link")
-                        .h(surface::css(44.))
-                        .line_height(surface::css(44.))
-                        .flex()
-                        .items_center()
-                        .text_size(surface::css(14.))
-                        .underline()
-                        .hover(|style| style.text_color(rgb(0x44d62c)))
-                        .child(t("OPEN_WINDOW_PROPERTIES_SOUND"))
-                        .child(
-                            div()
-                                .relative()
-                                .size(surface::css(20.))
-                                .ml(surface::css(4.))
-                                .child(
-                                    img("synapse/audio-1352-properties-external.svg").size_full(),
-                                )
-                                .child(
-                                    img("synapse/audio-1352-properties-external-active.svg")
-                                        .absolute()
-                                        .inset_0()
-                                        .size_full()
-                                        .opacity(0.)
-                                        .group_hover("leviathan-properties-link", |style| {
-                                            style.opacity(1.)
-                                        }),
-                                ),
-                        )
-                        .on_click(|_, window, cx| {
-                            if let Err(error) = razer_platform::system::open(
-                                razer_platform::system::Properties::Sound,
-                            ) {
-                                window.push_notification(format!("无法打开声音属性：{error}"), cx);
-                            }
-                        }),
+                    razer_widgets::keyboard_navigation::Button::new(
+                        "leviathan-open-sound-properties",
+                    )
+                    .group("leviathan-properties-link")
+                    .h(surface::css(44.))
+                    .line_height(surface::css(44.))
+                    .flex()
+                    .items_center()
+                    .text_size(surface::css(14.))
+                    .underline()
+                    .hover(|style| style.text_color(rgb(0x44d62c)))
+                    .child(t("OPEN_WINDOW_PROPERTIES_SOUND"))
+                    .child(
+                        div()
+                            .relative()
+                            .size(surface::css(20.))
+                            .ml(surface::css(4.))
+                            .child(img("synapse/audio-1352-properties-external.svg").size_full())
+                            .child(
+                                img("synapse/audio-1352-properties-external-active.svg")
+                                    .absolute()
+                                    .inset_0()
+                                    .size_full()
+                                    .opacity(0.)
+                                    .group_hover("leviathan-properties-link", |style| {
+                                        style.opacity(1.)
+                                    }),
+                            ),
+                    )
+                    .on_click(|_, window, cx| {
+                        if let Err(error) =
+                            razer_platform::system::open(razer_platform::system::Properties::Sound)
+                        {
+                            window.push_notification(format!("无法打开声音属性：{error}"), cx);
+                        }
+                    }),
                 ),
         )
         .into_any_element()

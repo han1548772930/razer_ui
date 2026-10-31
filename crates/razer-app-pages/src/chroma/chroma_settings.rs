@@ -1,7 +1,6 @@
 //! Current /chroma-app/settings/ 1743: Zo -> mi/vi; source receipts are generated.
 //! This entity owns local Chroma intent, not host autostart or device ownership.
 use crate::release_notes;
-use razer_widgets::keyboard_navigation::Button;
 use gpui_kit::base::{Checkbox, CheckboxState};
 use gpui_kit::component::{
     select::{SelectEvent, SelectState},
@@ -14,6 +13,7 @@ use razer_model::chroma_settings::SettingsDraft;
 use razer_pages::features::Choice;
 use razer_settings::settings_page::{SettingsEvent, SettingsPage};
 use razer_state::chroma_settings::{Change, ChromaSettings as SettingsOwner};
+use razer_widgets::keyboard_navigation::Button;
 use razer_widgets::scroll::SourceScrollable as _;
 use razer_widgets::settings_button as source_button;
 use razer_widgets::surface::css;
@@ -705,12 +705,28 @@ impl ChromaSettings {
     fn keyboard_navigation(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         // Current General owner ga mounts Sa in its right column before About.
         panel_title(i18n::t("CHROMA_SETTINGS.KEYBOARD_NAVIGATION"))
-            .child(h_flex().items_center().gap(css(20.))
-                .child(source_button::settings_button(
-                    "chroma-settings-keyboard-navigation",
-                    i18n::t("CHROMA_SETTINGS.VIEW_ALL_SHORTCUTS"), false, window, cx,
-                ).on_click(|_, window, cx| razer_widgets::keyboard_navigation::open_guide(window, cx)))
-                .child(div().flex_1().child(i18n::t("CHROMA_SETTINGS.KEYBOARD_NAVIGATION_CHROMA_MSG"))))
+            .child(
+                h_flex()
+                    .items_center()
+                    .gap(css(20.))
+                    .child(
+                        source_button::settings_button(
+                            "chroma-settings-keyboard-navigation",
+                            i18n::t("CHROMA_SETTINGS.VIEW_ALL_SHORTCUTS"),
+                            false,
+                            window,
+                            cx,
+                        )
+                        .on_click(|_, window, cx| {
+                            razer_widgets::keyboard_navigation::open_guide(window, cx)
+                        }),
+                    )
+                    .child(
+                        div()
+                            .flex_1()
+                            .child(i18n::t("CHROMA_SETTINGS.KEYBOARD_NAVIGATION_CHROMA_MSG")),
+                    ),
+            )
             .into_any_element()
     }
     fn about(&self, _cx: &mut Context<Self>) -> AnyElement {

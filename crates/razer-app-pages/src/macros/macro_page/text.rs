@@ -409,7 +409,7 @@ impl MacroPage {
                     .mb(css(20.))
                     .child(tr("TEXT_TEXT_FUNCTION").to_uppercase()),
             )
-            .child(
+            .child(razer_widgets::keyboard_navigation::focus_input(
                 Textarea::new(&self.text_editor)
                     .appearance(false)
                     .bordered(false)
@@ -423,7 +423,9 @@ impl MacroPage {
                     .rounded_none()
                     .text_size(css(14.))
                     .line_height(css(17.)),
-            )
+                &self.text_editor,
+                cx,
+            ))
             .child(
                 h_flex()
                     .w_full()

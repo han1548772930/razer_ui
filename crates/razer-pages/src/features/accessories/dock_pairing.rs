@@ -428,9 +428,9 @@ impl DockPairing {
                         peer.name.clone()
                     });
                     let link = |name: SharedString, product_id: u32, edition_id: u32| {
-                        razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!(
-                            "dock-device-link-{product_id}-{edition_id}"
-                        )))
+                        razer_widgets::keyboard_navigation::Button::new(SharedString::from(
+                            format!("dock-device-link-{product_id}-{edition_id}"),
+                        ))
                         .accessibility_label(name.clone())
                         .cursor_pointer()
                         .underline()
@@ -483,22 +483,21 @@ impl DockPairing {
                         } else {
                             !any_connected
                         };
-                        let name_button =
-                            razer_widgets::keyboard_navigation::Button::new("dock-paired-name-open-pairing")
-                                .disabled(disabled)
-                                .underline()
-                                .text_color(if !disabled {
-                                    cx.theme().foreground
-                                } else {
-                                    Colors::warning_text()
-                                })
-                                .hover(|style| style.text_color(cx.theme().primary))
-                                .accessibility_label(name.clone())
-                                .focus_visible(|style| {
-                                    style.border_1().border_color(cx.theme().primary)
-                                })
-                                .child(name.clone())
-                                .on_click(cx.listener(|this, _, window, cx| this.open(window, cx)));
+                        let name_button = razer_widgets::keyboard_navigation::Button::new(
+                            "dock-paired-name-open-pairing",
+                        )
+                        .disabled(disabled)
+                        .underline()
+                        .text_color(if !disabled {
+                            cx.theme().foreground
+                        } else {
+                            Colors::warning_text()
+                        })
+                        .hover(|style| style.text_color(cx.theme().primary))
+                        .accessibility_label(name.clone())
+                        .focus_visible(|style| style.border_1().border_color(cx.theme().primary))
+                        .child(name.clone())
+                        .on_click(cx.listener(|this, _, window, cx| this.open(window, cx)));
                         h_flex()
                             .when(self.multi_pairing, |row| {
                                 row.child(format!("{}\u{a0}", self.spec.text("PAIRED_WITH")))
@@ -522,21 +521,25 @@ impl DockPairing {
                                 .find(|(pid, _)| *pid == peer.product_id)
                         });
                         view.child(
-                            razer_widgets::keyboard_navigation::Button::new("dock-polling-navigation")
-                                .mt(surface::css(10.))
-                                .text_size(surface::css(12.))
-                                .text_color(Colors::dialog_warning_text())
-                                .hover(|style| style.text_color(cx.theme().primary))
-                                .disabled(target.is_none())
-                                .child(self.spec.text("CONFIGURE_4000_POLLING_RATE"))
-                                .on_click(cx.listener(move |_, _, _, cx| {
+                            razer_widgets::keyboard_navigation::Button::new(
+                                "dock-polling-navigation",
+                            )
+                            .mt(surface::css(10.))
+                            .text_size(surface::css(12.))
+                            .text_color(Colors::dialog_warning_text())
+                            .hover(|style| style.text_color(cx.theme().primary))
+                            .disabled(target.is_none())
+                            .child(self.spec.text("CONFIGURE_4000_POLLING_RATE"))
+                            .on_click(cx.listener(
+                                move |_, _, _, cx| {
                                     if let Some((product_id, edition_id)) = target {
                                         cx.emit(DeviceLinkRequested {
                                             product_id,
                                             edition_id,
                                         });
                                     }
-                                })),
+                                },
+                            )),
                         )
                     } else {
                         view.child(

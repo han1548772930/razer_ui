@@ -1,7 +1,7 @@
 use super::artwork::paired_mouse_image;
 use super::*;
-use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::base::{Slider as BaseSlider, SliderTrack};
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::source_slider::source_thumb;
 use razer_widgets::theme::HyperfluxColors as Colors;
 

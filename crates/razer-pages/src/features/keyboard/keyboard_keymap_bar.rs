@@ -453,7 +453,7 @@ impl KeyboardProductWorkspace {
                             }
                         }))
                         .w(surface::css(250.))
-                        .child(
+                        .child(razer_widgets::keyboard_navigation::focus_input(
                             Input::new(name)
                                 .ml(surface::css(10.))
                                 .w(surface::css(230.))
@@ -464,7 +464,9 @@ impl KeyboardProductWorkspace {
                                 .font_family("Roboto")
                                 .text_size(surface::css(14.))
                                 .text_color(rgb(0xcccccc)),
-                        ),
+                            name,
+                            cx,
+                        )),
                 );
             }
         } else {
@@ -551,28 +553,32 @@ impl KeyboardProductWorkspace {
                         )
                         .child(div().mb(surface::css(10.)).child(t("DELETE_KEYMAP_MSG")))
                         .child(
-                            razer_widgets::keyboard_navigation::Button::new("keyboard-keymap-confirm-delete")
-                                .accessibility_label(t("DELETE"))
-                                .min_w(surface::css(90.))
-                                .h(surface::css(27.))
-                                .px(surface::css(5.))
-                                .bg(rgb(0xfd4949))
-                                .border_1()
-                                .border_color(rgba(0x0000004d))
-                                .text_color(rgb(0x111111))
-                                .text_size(surface::css(12.))
-                                .flex()
-                                .items_center()
-                                .justify_center()
-                                .child(t("DELETE"))
-                                .on_click(cx.listener(move |this, _, window, cx| {
+                            razer_widgets::keyboard_navigation::Button::new(
+                                "keyboard-keymap-confirm-delete",
+                            )
+                            .accessibility_label(t("DELETE"))
+                            .min_w(surface::css(90.))
+                            .h(surface::css(27.))
+                            .px(surface::css(5.))
+                            .bg(rgb(0xfd4949))
+                            .border_1()
+                            .border_color(rgba(0x0000004d))
+                            .text_color(rgb(0x111111))
+                            .text_size(surface::css(12.))
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .child(t("DELETE"))
+                            .on_click(cx.listener(
+                                move |this, _, window, cx| {
                                     this.keymap_bar.pending_delete = None;
                                     if this.draft["guid"] == profile {
                                         this.delete_keymap(&guid, window, cx);
                                     }
                                     cx.stop_propagation();
                                     cx.notify();
-                                })),
+                                },
+                            )),
                         ),
                 )
                 .with_priority(104),

@@ -21,7 +21,7 @@ fn scoped(rows: Value, container: &str) -> Result<Option<String>, String> {
 #[test]
 fn every_current_help_page_selects_the_source_storage_branch() {
     let first_entry_products = [
-        658, 708, 747, 752, 1442, 1453, 2660, 2664, 2668, 2689, 3594, 4144, 45066,
+        658, 708, 747, 752, 1442, 1451, 1453, 2660, 2664, 2668, 2689, 3594, 4144, 45066,
     ];
     let mut pages = 0;
     for help in super::super::super::records() {
@@ -50,6 +50,25 @@ fn every_current_help_page_selects_the_source_storage_branch() {
         }
     }
     assert_eq!(pages, 330);
+}
+
+#[test]
+fn new_product_pages_keep_their_distinct_source_publishers() {
+    let rows = json!([
+        {"windowName":"https://host.example/products/999/mw/", "value":"first-publisher"},
+        {"windowName":"https://host.example/products/888/mw/?containerId=mounted-container", "value":"mounted-publisher"}
+    ]);
+    for (product, expected) in [
+        (1451, "first-publisher"),
+        (45061, "mounted-publisher"),
+        (45063, "mounted-publisher"),
+    ] {
+        assert_eq!(
+            middleware(product, "{Mounted-Container}", rows.clone()),
+            observed(expected),
+            "{product}"
+        );
+    }
 }
 
 #[test]
@@ -243,7 +262,13 @@ fn absent_failed_and_invalid_storage_never_become_default_versions() {
 #[test]
 fn scoped_window_storage_non_array_documents_are_missing_without_a_parse_failure() {
     for raw in ["null", "{}", "true", "42", "\"version\""] {
-        assert_eq!(middleware_version(3595, "", Ok(Some(raw.into()))), HelpRuntimeVersionStatus::Missing);
+        assert_eq!(
+            middleware_version(3595, "", Ok(Some(raw.into()))),
+            HelpRuntimeVersionStatus::Missing
+        );
     }
-    assert!(matches!(middleware_version(3595, "", Ok(Some("{".into()))), HelpRuntimeVersionStatus::Failed(_)));
+    assert!(matches!(
+        middleware_version(3595, "", Ok(Some("{".into()))),
+        HelpRuntimeVersionStatus::Failed(_)
+    ));
 }

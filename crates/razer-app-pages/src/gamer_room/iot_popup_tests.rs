@@ -1,6 +1,5 @@
 use super::{DeviceKind, open};
-use razer_widgets::keyboard_navigation::Button;
-use gpui_kit::base::{Popover};
+use gpui_kit::base::Popover;
 use gpui_kit::component::v_flex;
 use gpui_kit::component::{Root, Theme};
 use gpui_kit::test::TestWindowExt as _;
@@ -9,6 +8,7 @@ use gpui_kit::{
     Context, DismissEvent, Entity, FocusHandle, Focusable, InteractiveElement, IntoElement,
     ParentElement, Render, ScrollDelta, Styled, Subscription, Window, div,
 };
+use razer_widgets::keyboard_navigation::Button;
 use std::{cell::Cell, rc::Rc, time::Duration};
 
 struct ModalFocus {

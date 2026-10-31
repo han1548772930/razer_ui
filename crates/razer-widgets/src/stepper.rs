@@ -1,8 +1,8 @@
 //! Current product numeric editor; Kiyo and automation module 44230 share behavior.
 use crate::surface;
 use crate::theme::CameraProductColors as Colors;
-use gpui_kit::base::motion::{self, Easing, Transition};
 use gpui_kit::base::Button as BaseButton;
+use gpui_kit::base::motion::{self, Easing, Transition};
 use gpui_kit::base::{NumberInput, StepAction};
 use gpui_kit::component::input::{Input, InputEvent, InputState, MaskPattern};
 use gpui_kit::prelude::FluentBuilder as _;
@@ -617,7 +617,7 @@ impl Render for Stepper {
                                     .update(cx, |input, cx| input.select_all(window, cx));
                             }
                         }))
-                        .child(
+                        .child(crate::keyboard_navigation::focus_input(
                             Input::new(&self.input)
                                 .appearance(false)
                                 .bordered(false)
@@ -627,7 +627,9 @@ impl Render for Stepper {
                                 .text_size(surface::css(14.))
                                 .line_height(surface::css(14.))
                                 .text_color(Colors::text()),
-                        ),
+                            &self.input,
+                            cx,
+                        )),
                 )
                 .child(
                     increment
@@ -662,7 +664,7 @@ impl Render for Stepper {
                                     .update(cx, |input, cx| input.select_all(window, cx));
                             }
                         }))
-                        .child(
+                        .child(crate::keyboard_navigation::focus_input(
                             Input::new(&self.input)
                                 .appearance(false)
                                 .bordered(false)
@@ -674,7 +676,9 @@ impl Render for Stepper {
                                 .text_size(surface::css(14.))
                                 .line_height(surface::css(if self.modes_area { 17. } else { 14. }))
                                 .text_color(Colors::text()),
-                        ),
+                            &self.input,
+                            cx,
+                        )),
                 )
                 .increment_button(move |_| increment)
                 .decrement_button(move |_| decrement)

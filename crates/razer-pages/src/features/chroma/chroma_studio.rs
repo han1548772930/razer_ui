@@ -1,7 +1,6 @@
 //! Independent current Studio root (xt → 4264), separate from Chroma Dashboard.
 //! Device/LED state intentionally starts empty: a product catalogue is not a
 //! device enumeration. Layer edits are retained locally and never call a DLL.
-use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::{
     component::{
         button::Button,
@@ -12,6 +11,7 @@ use gpui_kit::{
     *,
 };
 use razer_model::chroma_studio::{Document, Layer};
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::scroll::SourceScrollable as _;
 use razer_widgets::source_input::{self, SourceInputExt as _};
 use razer_widgets::surface;
@@ -659,12 +659,14 @@ impl ChromaStudio {
                                         cx.stop_propagation();
                                     },
                                 ))
-                                .child(
+                                .child(razer_widgets::keyboard_navigation::focus_input(
                                     Input::new(input)
                                         .id(("studio-layer-rename-input", id))
                                         .source_max_length(input, 32)
                                         .appearance(false),
-                                )
+                                    input,
+                                    cx,
+                                ))
                                 .into_any_element()
                         } else {
                             button(("studio-layer", id), "EFFECTS_LAYERS")

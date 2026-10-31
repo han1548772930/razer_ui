@@ -1,9 +1,7 @@
 //! Current module-card actions, shared by dashboard and module views.
-use crate::{surface, theme::MainPageColors};
 use crate::keyboard_navigation::Button as BaseButton;
-use gpui_kit::base::{
-    motion::{self, Easing, Transition},
-};
+use crate::{surface, theme::MainPageColors};
+use gpui_kit::base::motion::{self, Easing, Transition};
 use gpui_kit::{component::*, prelude::FluentBuilder as _, *};
 use std::time::Duration;
 /// 6505's `.item-action.btn`: max-content width, 90px minimum, 27px border box.

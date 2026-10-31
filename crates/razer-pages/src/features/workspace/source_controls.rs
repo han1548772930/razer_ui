@@ -1745,10 +1745,9 @@ impl SourceControls {
                             let selected = self.value(control) == Some(&option.value);
                             let value = option.value.clone();
                             let key = key.clone();
-                            razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!(
-                                "{}:{}",
-                                key, value
-                            )))
+                            razer_widgets::keyboard_navigation::Button::new(SharedString::from(
+                                format!("{}:{}", key, value),
+                            ))
                             .accessibility_label(razer_i18n::t(&option.label))
                             .disabled(disabled)
                             .w(surface::css(50.))
@@ -1864,44 +1863,46 @@ impl SourceControls {
                         let selected = self.value(control) == Some(&option.value);
                         let value = option.value.clone();
                         let key = key.clone();
-                        razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!("{key}:{value}")))
-                            .accessibility_label(razer_i18n::t(&option.label))
-                            .disabled(disabled)
-                            .w(surface::css(260.))
-                            .h(surface::css(68.))
-                            .flex_shrink_0()
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .bg(OledColors::screen())
-                            .text_color(OledColors::muted())
-                            .text_size(surface::css(14.))
-                            .border_color(if selected {
-                                cx.theme().primary
-                            } else {
-                                OledColors::border()
+                        razer_widgets::keyboard_navigation::Button::new(SharedString::from(
+                            format!("{key}:{value}"),
+                        ))
+                        .accessibility_label(razer_i18n::t(&option.label))
+                        .disabled(disabled)
+                        .w(surface::css(260.))
+                        .h(surface::css(68.))
+                        .flex_shrink_0()
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .bg(OledColors::screen())
+                        .text_color(OledColors::muted())
+                        .text_size(surface::css(14.))
+                        .border_color(if selected {
+                            cx.theme().primary
+                        } else {
+                            OledColors::border()
+                        })
+                        .when(selected, |button| button.border_2())
+                        .when(!selected, |button| {
+                            button.border_1().hover(|button| {
+                                button.border_2().border_color(OledColors::hover_border())
                             })
-                            .when(selected, |button| button.border_2())
-                            .when(!selected, |button| {
-                                button.border_1().hover(|button| {
-                                    button.border_2().border_color(OledColors::hover_border())
-                                })
-                            })
-                            .focus_visible(|button| button.border_color(cx.theme().primary))
-                            .child(if let Some(image) = &option.image {
-                                img(SharedString::from(image.clone()))
-                                    .w(surface::css(256.))
-                                    .h(surface::css(64.))
-                                    .object_fit(ObjectFit::Contain)
-                                    .into_any_element()
-                            } else {
-                                div()
-                                    .child(format!("({})", razer_i18n::t(&option.label)))
-                                    .into_any_element()
-                            })
-                            .on_click(cx.listener(move |this, _, window, cx| {
-                                this.edit(&key, value.clone(), window, cx)
-                            }))
+                        })
+                        .focus_visible(|button| button.border_color(cx.theme().primary))
+                        .child(if let Some(image) = &option.image {
+                            img(SharedString::from(image.clone()))
+                                .w(surface::css(256.))
+                                .h(surface::css(64.))
+                                .object_fit(ObjectFit::Contain)
+                                .into_any_element()
+                        } else {
+                            div()
+                                .child(format!("({})", razer_i18n::t(&option.label)))
+                                .into_any_element()
+                        })
+                        .on_click(cx.listener(
+                            move |this, _, window, cx| this.edit(&key, value.clone(), window, cx),
+                        ))
                     }))
                     .into_any_element()
             }
@@ -1915,10 +1916,9 @@ impl SourceControls {
                         let selected = self.value(control) == Some(&option.value);
                         let value = option.value.clone();
                         let key = key.clone();
-                        razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!(
-                            "{}:{}",
-                            key, value
-                        )))
+                        razer_widgets::keyboard_navigation::Button::new(SharedString::from(
+                            format!("{}:{}", key, value),
+                        ))
                         .accessibility_label(razer_i18n::t(&option.label))
                         .disabled(disabled)
                         .min_w(surface::css(90.))

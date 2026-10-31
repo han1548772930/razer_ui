@@ -2,10 +2,7 @@
 //! Current UI/data boundaries are maintained in docs/re/architecture.md.
 //! Device workspaces provide local profiles and links; the global game catalog
 //! still requires a real service publisher. Empty observations stay empty.
-use razer_widgets::keyboard_navigation::Button as BaseButton;
-use gpui_kit::base::{
-    motion::{self, Easing, Presence, Transition},
-};
+use gpui_kit::base::motion::{self, Easing, Presence, Transition};
 use gpui_kit::component::{
     input::{Input, InputState},
     select::SelectState,
@@ -16,6 +13,7 @@ use gpui_kit::{prelude::FluentBuilder as _, *};
 use razer_i18n as i18n;
 use razer_pages::features::Choice;
 use razer_pages::features::ProductWorkspace;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::scroll::SourceScrollable as _;
 use razer_widgets::surface;
 use std::time::Duration;
@@ -552,7 +550,7 @@ fn search_field(
         .hover(|s| s.border_color(cx.theme().primary))
         .active(|s| s.border_color(cx.theme().primary))
         .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-        .child(
+        .child(razer_widgets::keyboard_navigation::focus_input(
             Input::new(state)
                 .appearance(false)
                 .disabled(disabled)
@@ -564,7 +562,9 @@ fn search_field(
                 .line_height(surface::css(17.))
                 .bg(cx.theme().primary_foreground)
                 .border_0(),
-        )
+            state,
+            cx,
+        ))
         .child(
             img("synapse/profiles-search-grey.svg")
                 .absolute()

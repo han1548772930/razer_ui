@@ -156,7 +156,7 @@ impl MouseProductWorkspace {
         if state.open {
             let input = state.input.as_ref()?;
             search = search
-                .child(
+                .child(razer_widgets::keyboard_navigation::focus_input(
                     Input::new(input)
                         .appearance(false)
                         .w(surface::css(241.))
@@ -169,7 +169,9 @@ impl MouseProductWorkspace {
                         .text_color(Colors::text())
                         .text_size(surface::css(14.))
                         .line_height(surface::css(17.)),
-                )
+                    input,
+                    cx,
+                ))
                 .child(
                     BaseButton::new("mouse-current-remap-back")
                         .absolute()

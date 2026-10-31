@@ -2,10 +2,10 @@
 //! State here is a local draft; no connected device or Chroma service is invented.
 use super::*;
 use crate::features::lighting_color::LightingColorPicker;
+use gpui_kit::base::Tabs;
 use gpui_kit::base::motion::{self, Easing, Transition};
-use razer_widgets::keyboard_navigation::Button as BaseButton;
-use gpui_kit::base::{Tabs};
 use gpui_kit::component::color_picker::{ColorPickerEvent, ColorPickerState};
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::stepper::Stepper;
 use razer_widgets::stepper::StepperEvent;
 use std::time::Duration;

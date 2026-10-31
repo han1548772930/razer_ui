@@ -1,7 +1,6 @@
 //! Current product 784's device layout and IoT card. Local edits are independent
 //! of the unavailable device transport; only the explicit preview supplies observations.
 use crate::features::Choice;
-use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::base::TestSupportExt as _;
 use gpui_kit::component::{
     button::Button,
@@ -13,6 +12,7 @@ use gpui_kit::component::{
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use razer_i18n as i18n;
 use razer_model::model::Device;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::source_input::{self, SourceInputExt as _};
 use razer_widgets::surface;
 use razer_widgets::theme::AetherStripColors as Colors;

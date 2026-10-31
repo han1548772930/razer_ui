@@ -1,12 +1,12 @@
 //! Current Settings 9762:fe and 6584 dropdown in the empty app-catalogue state.
 use super::{settings_page::SettingsPage, settings_window::text};
-use razer_widgets::keyboard_navigation::Button;
 use gpui_kit::base::{
     Popover,
     motion::{self, Easing, Transition},
 };
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use razer_state::TrayDoubleClickAction;
+use razer_widgets::keyboard_navigation::Button;
 use razer_widgets::surface::css;
 use std::time::Duration;
 

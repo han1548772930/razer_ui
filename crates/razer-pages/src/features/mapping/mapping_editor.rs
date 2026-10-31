@@ -1,10 +1,7 @@
 //! Source: 182 QP → 5107 and Map* chunks; 653 → 3241/2667.
 //! These are local profile assignments, never a native Synapse wire format.
 use super::*;
-use razer_widgets::keyboard_navigation::Button as BaseButton;
-use gpui_kit::base::{
-    motion::{self, Easing, Transition},
-};
+use gpui_kit::base::motion::{self, Easing, Transition};
 use gpui_kit::component::{
     checkbox::Checkbox,
     input::{Input, Textarea},
@@ -15,6 +12,7 @@ use razer_model::mapping::{KEYS, SHIFTED_SYMBOLS, valid_key};
 pub(in crate::features) use razer_model::mapping::{
     MEDIA, WINDOWS, canonical_key, key_label, normalized_website,
 };
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use serde::{Deserialize, Serialize};
 
 const PREFIX: &str = "local-mapping:v1:";
@@ -1655,10 +1653,14 @@ impl DeviceWorkspace {
                 body = body
                     .child(
                         div().id("mapping-text").test_support().child(
-                            Textarea::new(&self.controls.mapping_paragraph)
-                                .accessibility_id("mapping-text-input")
-                                .aria_label("输入文本")
-                                .h(surface::css(96.)),
+                            razer_widgets::keyboard_navigation::focus_input(
+                                Textarea::new(&self.controls.mapping_paragraph)
+                                    .accessibility_id("mapping-text-input")
+                                    .aria_label("输入文本")
+                                    .h(surface::css(96.)),
+                                &self.controls.mapping_paragraph,
+                                cx,
+                            ),
                         ),
                     )
                     .child(
@@ -1691,11 +1693,13 @@ impl DeviceWorkspace {
                                     }))
                             }),
                     )
-                    .child(
+                    .child(razer_widgets::keyboard_navigation::focus_input(
                         Input::new(&self.controls.mapping_text)
                             .id("mapping-launch-target")
                             .aria_label("程序路径或网站地址"),
-                    );
+                        &self.controls.mapping_text,
+                        cx,
+                    ));
                 if mode == "program" {
                     body = body.child(
                         Button::new("mapping-launch-browse")
@@ -1775,23 +1779,27 @@ impl DeviceWorkspace {
                                     this.sync_mapping_controls(window, cx);
                                 })),
                         )
-                        .child(
+                        .child(razer_widgets::keyboard_navigation::focus_input(
                             Input::new(&self.controls.mapping_x)
                                 .id("mapping-dpi-x")
                                 .aria_label("X DPI")
                                 .h(surface::css(27.)),
-                        )
+                            &self.controls.mapping_x,
+                            cx,
+                        ))
                         .child(
                             Slider::new(&self.controls.mapping_sliders[0]).w(surface::css(210.)),
                         );
                     if *independent {
                         body = body
-                            .child(
+                            .child(razer_widgets::keyboard_navigation::focus_input(
                                 Input::new(&self.controls.mapping_y)
                                     .id("mapping-dpi-y")
                                     .aria_label("Y DPI")
                                     .h(surface::css(27.)),
-                            )
+                                &self.controls.mapping_y,
+                                cx,
+                            ))
                             .child(
                                 Slider::new(&self.controls.mapping_sliders[1])
                                     .w(surface::css(210.)),

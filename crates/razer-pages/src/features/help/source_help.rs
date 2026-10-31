@@ -1,12 +1,12 @@
 //! Retained Help UI from each product's mounted current source component.
-use razer_widgets::keyboard_navigation::Button as BaseButton;
-use gpui_kit::base::{ElementExt as _};
+use gpui_kit::base::ElementExt as _;
 use gpui_kit::component::button::Button;
 use gpui_kit::component::spinner::Spinner;
 use gpui_kit::component::*;
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use razer_i18n as i18n;
 use razer_model::model::Device;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::surface;
 use serde::Deserialize;
 use std::{

@@ -1,14 +1,12 @@
 //! Current 9388 / 19388 Gamer Room marketing, grouped devices and tutorial.
 //! Device observations enter only through explicit source subDevices payloads.
 use crate::iot_popup;
-use razer_widgets::keyboard_navigation::Button as BaseButton;
-use gpui_kit::base::{
-    motion::{self, Easing, Transition},
-};
+use gpui_kit::base::motion::{self, Easing, Transition};
 use gpui_kit::component::*;
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use razer_i18n as i18n;
 use razer_model::model::Device;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::surface;
 use razer_widgets::theme::MainPageColors;
 use razer_widgets::tutorial::TutorialIndicator;

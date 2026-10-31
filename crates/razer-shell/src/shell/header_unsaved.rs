@@ -1,6 +1,5 @@
 //! Current App/96776/R and w: profile list, conditional trigger and dropdown lifecycle.
 use gpui_kit::base::motion::{Easing, Presence, Transition};
-use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::base::{PopoverState, Positioner};
 use gpui_kit::component::{
     button::{Button, ButtonRounded, ButtonVariants},
@@ -8,6 +7,7 @@ use gpui_kit::component::{
 };
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use razer_i18n as i18n;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::surface;
 use razer_widgets::theme::AccountMenuColors;
 use razer_widgets::theme::HeaderStatusColors;

@@ -250,9 +250,9 @@ PID1398 的 Help 恢复默认值先准备真实默认配置，经同一保存队
 
 本地 named pipe、loopback 和 socket 属于本地通信。兼容性使用已核实的契约与协议版本，不使用开发路径或分析证据 SHA 作为设备可用条件。本地 DLL 替换、固件文件传输及其取消／释放／写回仍在范围内；账户、云同步、在线目录和远程更新不因架构调整进入产品。
 
-共享键盘导航由 [keyboard_navigation](../../crates/razer-widgets/src/keyboard_navigation.rs) 的窗口 Root 插件持有。输入方式、首次 Tab 请求、指南弹层及延迟焦点请求均属于实际窗口；偏好读写仍由 `UiPreferences` 的保留 worker 完成。按钮使用 Kit 的原生激活行为，在产品共享所有者中接入当前源码规定的方向键候选和焦点外观。选择框、开关的专用方向键先由各自控件消费。
+共享键盘导航由 [keyboard_navigation](../../crates/razer-widgets/src/keyboard_navigation.rs) 的窗口 Root 插件持有。输入方式、首次 Tab 请求、指南弹层及延迟焦点请求均属于实际窗口；偏好读写仍由 `UiPreferences` 的保留 worker 完成。按钮使用 Kit 的原生激活行为，在产品共享所有者中接入当前源码规定的方向键候选和焦点外观。文本及数字输入登记实际输入实体持有的焦点，保留编辑方向键；禁用输入不参与候选，只读输入仍可聚焦。选择框、开关的专用方向键先由各自控件消费。
 
-[focus](../../crates/razer-widgets/src/keyboard_navigation/focus.rs) 在每帧实际布局和绘制时登记真实 `FocusHandle`、边界及可用状态，以同一 handle 合并复合控件；旧帧几何不能继续参与导航。窗口关闭自动 view retention，确保每帧完成登记；显式视图缓存也必须保持这项几何契约。下拉框关闭后使用已完成帧的 Tab 顺序，首尾边界保留触发器。纯状态和几何测试不替代受执行限制的窗口焦点、视觉及交互验收。
+[focus](../../crates/razer-widgets/src/keyboard_navigation/focus.rs) 在每帧实际布局和绘制时登记真实 `FocusHandle`、边界及可用状态，以同一 handle 合并复合控件；旧帧几何不能继续参与导航。窗口禁用自动视图复用（view retention），确保每帧完成登记；显式视图缓存也必须保持这项几何契约。下拉框关闭后使用已完成帧的 Tab 顺序，首尾边界或触发器不在当前有效 Tab 目标中时保留触发器。纯状态和几何测试不替代受执行限制的窗口焦点、视觉及交互验收。
 
 ## 固定数据与资源
 

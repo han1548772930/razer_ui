@@ -167,9 +167,9 @@ impl KeyboardProductWorkspace {
                         || selection.disabled_in_ble
                         || selection.max_rate_hz.is_some_and(|max| rate > max);
                     Some(
-                        razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!(
-                            "keyboard-polling-{rate}"
-                        )))
+                        razer_widgets::keyboard_navigation::Button::new(SharedString::from(
+                            format!("keyboard-polling-{rate}"),
+                        ))
                         .accessibility_label(rate.to_string())
                         .disabled(disabled)
                         .when(disabled, |button| button.opacity(0.4))

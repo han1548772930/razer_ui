@@ -3,7 +3,6 @@
 #[path = "pairing_state.rs"]
 mod state;
 
-use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::base::FocusTrapElement as _;
 use gpui_kit::component::{
     button::{Button, ButtonCustomVariant, ButtonVariants},
@@ -12,6 +11,7 @@ use gpui_kit::component::{
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use razer_assets as resources;
 use razer_i18n as i18n;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::surface;
 use razer_widgets::theme::PairingColors;
 use serde_json::Value;

@@ -930,17 +930,21 @@ fn record_input(
                 .child(state.read(cx).value().to_string())
                 .into_any_element()
         } else {
-            Input::new(state)
-                .id(id)
-                .appearance(false)
-                .bordered(false)
-                .focus_bordered(false)
-                .w(css(68.))
-                .h(css(25.))
-                .p(css(5.))
-                .text_size(css(14.))
-                .line_height(css(17.))
-                .into_any_element()
+            razer_widgets::keyboard_navigation::focus_input(
+                Input::new(state)
+                    .id(id)
+                    .appearance(false)
+                    .bordered(false)
+                    .focus_bordered(false)
+                    .w(css(68.))
+                    .h(css(25.))
+                    .p(css(5.))
+                    .text_size(css(14.))
+                    .line_height(css(17.)),
+                state,
+                cx,
+            )
+            .into_any_element()
         })
         .into_any_element()
 }

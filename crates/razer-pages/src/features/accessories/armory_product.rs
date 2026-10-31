@@ -5,12 +5,12 @@
 //! See docs/re/armory-product-roots-current-evidence.json and
 //! docs/re/armory-audio-roots-current-evidence.json and
 //! docs/re/armory-audio-next-roots-current-evidence.json.
-use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::component::*;
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use razer_assets as resources;
 use razer_i18n as i18n;
 use razer_model::model::Device;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::surface;
 use razer_widgets::surface::css;
 use razer_widgets::theme::{HanboCoolerColors as Colors, ProductSurfaceColors};

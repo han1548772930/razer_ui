@@ -56,7 +56,9 @@ mod source_controls;
 mod source_help;
 #[path = "help/source_help_owner.rs"]
 mod source_help_owner;
-pub use source_help::{HelpCamoCommand, HelpCamoInstallationStatus, HelpCamoObservation, HelpCamoRequested};
+pub use source_help::{
+    HelpCamoCommand, HelpCamoInstallationStatus, HelpCamoObservation, HelpCamoRequested,
+};
 pub use source_help::{HelpResetOutcome, HelpResetRequest};
 pub use source_help::{
     HelpRuntimeVersionStatus, HelpRuntimeVersionsObservation, HelpRuntimeVersionsRequest,
@@ -74,8 +76,8 @@ pub use source_controls::{
     ReceiverPairingIntent, ReceiverPairingObservation, ReceiverPeer, ReceiverProgress,
     RipsawMonitoringRequested,
 };
-pub use source_workspace::ControllerInitializationRequested;
 pub use source_workspace::CameraIdentityRequested;
+pub use source_workspace::ControllerInitializationRequested;
 pub use source_workspace::ControllerSocdRequested;
 pub use source_workspace::ReceiverProfileSelectionRequested;
 #[path = "gamepad/mod.rs"]

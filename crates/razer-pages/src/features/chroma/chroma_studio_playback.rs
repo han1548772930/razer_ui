@@ -466,7 +466,7 @@ impl Render for StudioPlayback {
                             .disabled(!self.enabled)
                             .controls_right()
                             .size_full()
-                            .input(
+                            .input(razer_widgets::keyboard_navigation::focus_input(
                                 Input::new(&self.input)
                                     .appearance(false)
                                     .bordered(false)
@@ -475,7 +475,9 @@ impl Render for StudioPlayback {
                                     .px(surface::css(6.))
                                     .py(surface::css(2.))
                                     .text_size(surface::css(14.)),
-                            )
+                                &self.input,
+                                cx,
+                            ))
                             .increment_button(increment)
                             .decrement_button(decrement)
                             .on_step(move |action, window, cx| {

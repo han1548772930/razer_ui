@@ -313,7 +313,7 @@ impl HueWorkspace {
                             this.ip[target].focus_handle(cx).focus(window, cx);
                         }
                     }))
-                    .child(
+                    .child(razer_widgets::keyboard_navigation::focus_input(
                         Input::new(input)
                             .id(("hue-ip-input", octet))
                             .aria_label(format!(
@@ -329,7 +329,9 @@ impl HueWorkspace {
                             .p_0()
                             .text_center()
                             .text_size(surface::css(14.)),
-                    )
+                        input,
+                        cx,
+                    ))
                     .into_any_element();
                 let mut children = vec![editor];
                 if octet < 3 {

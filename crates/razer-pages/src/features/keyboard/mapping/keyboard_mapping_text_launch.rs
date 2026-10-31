@@ -327,13 +327,15 @@ pub(super) fn element(
                 h_flex()
                     .ml(surface::css(30.))
                     .mb(surface::css(20.))
-                    .child(
+                    .child(razer_widgets::keyboard_navigation::focus_input(
                         Input::new(path)
                             .readonly(true)
                             .disabled(!program)
                             .w(surface::css(170.))
                             .h(surface::css(25.)),
-                    )
+                        path,
+                        cx,
+                    ))
                     .child(
                         BaseButton::new(SharedString::from(format!("analog-launch-browse-{slot}")))
                             .disabled(!program)
@@ -358,13 +360,15 @@ pub(super) fn element(
                         this.stage_mapping_launch_value(slot, cx);
                     })),
             )
-            .child(
+            .child(razer_widgets::keyboard_navigation::focus_input(
                 Input::new(url)
                     .disabled(!website)
                     .ml(surface::css(30.))
                     .w(surface::css(170.))
                     .h(surface::css(25.)),
-            )
+                url,
+                cx,
+            ))
             .into_any_element(),
     )
 }

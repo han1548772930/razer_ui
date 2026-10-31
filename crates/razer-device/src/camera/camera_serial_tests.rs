@@ -16,9 +16,15 @@ struct Wire {
 impl Wire {
     fn new(replies: &[[u8; 8]]) -> Self {
         Self {
-            replies: replies.iter().copied().collect(), commands: Vec::new(),
-            waits: Vec::new(), nodes: 0, releases: 0, topology_releases: 0,
-            cancelled: Rc::new(Cell::new(false)), cancel_after_get: false, fail_wait: false,
+            replies: replies.iter().copied().collect(),
+            commands: Vec::new(),
+            waits: Vec::new(),
+            nodes: 0,
+            releases: 0,
+            topology_releases: 0,
+            cancelled: Rc::new(Cell::new(false)),
+            cancel_after_get: false,
+            fail_wait: false,
         }
     }
     fn property(&mut self, header: &[u8; 32], data: &mut [u8; 8]) -> Result<CameraKsCallOutcome> {
@@ -28,9 +34,14 @@ impl Wire {
         } else {
             assert_eq!(flags, 0x1000_0001);
             *data = self.replies.pop_front().unwrap_or([0xff; 8]);
-            if self.cancel_after_get { self.cancelled.set(true); }
+            if self.cancel_after_get {
+                self.cancelled.set(true);
+            }
         }
-        Ok(CameraKsCallOutcome { hresult: 0, bytes_returned: 8 })
+        Ok(CameraKsCallOutcome {
+            hresult: 0,
+            bytes_returned: 8,
+        })
     }
     fn wait(&mut self, milliseconds: u32) -> Result<()> {
         self.waits.push(milliseconds);
@@ -39,18 +50,50 @@ impl Wire {
     }
 }
 impl CameraExtensionTransport for Wire {
-    fn begin_node(&mut self, node: u32) -> Result<()> { assert_eq!(node, 3); self.nodes += 1; Ok(()) }
-    fn end_node(&mut self) { self.releases += 1; }
-    fn ks_property(&mut self, header: &[u8; 32], data: &mut [u8; 8]) -> Result<CameraKsCallOutcome> { self.property(header, data) }
-    fn wait_ms(&mut self, milliseconds: u32) -> Result<()> { self.wait(milliseconds) }
+    fn begin_node(&mut self, node: u32) -> Result<()> {
+        assert_eq!(node, 3);
+        self.nodes += 1;
+        Ok(())
+    }
+    fn end_node(&mut self) {
+        self.releases += 1;
+    }
+    fn ks_property(
+        &mut self,
+        header: &[u8; 32],
+        data: &mut [u8; 8],
+    ) -> Result<CameraKsCallOutcome> {
+        self.property(header, data)
+    }
+    fn wait_ms(&mut self, milliseconds: u32) -> Result<()> {
+        self.wait(milliseconds)
+    }
 }
 impl CameraFamilyFocusTransport for Wire {
-    fn begin_topology(&mut self) -> Result<u32> { Ok(1) }
-    fn begin_node(&mut self, node: u32) -> Result<()> { assert_eq!(node, 0); self.nodes += 1; Ok(()) }
-    fn end_node(&mut self) { self.releases += 1; }
-    fn end_topology(&mut self) { self.topology_releases += 1; }
-    fn ks_property(&mut self, header: &[u8; 32], data: &mut [u8; 8]) -> Result<CameraKsCallOutcome> { self.property(header, data) }
-    fn wait_ms(&mut self, milliseconds: u32) -> Result<()> { self.wait(milliseconds) }
+    fn begin_topology(&mut self) -> Result<u32> {
+        Ok(1)
+    }
+    fn begin_node(&mut self, node: u32) -> Result<()> {
+        assert_eq!(node, 0);
+        self.nodes += 1;
+        Ok(())
+    }
+    fn end_node(&mut self) {
+        self.releases += 1;
+    }
+    fn end_topology(&mut self) {
+        self.topology_releases += 1;
+    }
+    fn ks_property(
+        &mut self,
+        header: &[u8; 32],
+        data: &mut [u8; 8],
+    ) -> Result<CameraKsCallOutcome> {
+        self.property(header, data)
+    }
+    fn wait_ms(&mut self, milliseconds: u32) -> Result<()> {
+        self.wait(milliseconds)
+    }
 }
 
 const REPLIES: [[u8; 8]; 4] = [
@@ -62,7 +105,10 @@ const REPLIES: [[u8; 8]; 4] = [
 
 fn read(state: &mut CameraSerialState, wire: &mut Wire) -> CameraSerialProgress {
     let cancelled = wire.cancelled.clone();
-    let validate = || { ensure!(!cancelled.get(), "connection cancelled"); Ok(()) };
+    let validate = || {
+        ensure!(!cancelled.get(), "connection cancelled");
+        Ok(())
+    };
     match state.product_id {
         3594 => state.read_pro(wire, &validate),
         _ => state.read_family(wire, &validate),
@@ -72,9 +118,31 @@ fn read(state: &mut CameraSerialState, wire: &mut Wire) -> CameraSerialProgress 
 #[test]
 fn all_camera_serial_branches_use_their_source_chunk_order_and_cleanup() {
     for (pid, expected) in [
-        (3594, vec![[0xa0, 2, 0, 0, 0, 0, 0, 0], [0xa0, 2, 1, 0, 0, 0, 0, 0], [0xa0, 2, 2, 0, 0, 0, 0, 0]]),
-        (3595, vec![[0xc0, 1, 1, 0, 0, 0, 0, 0], [0xc0, 1, 2, 0, 0, 0, 0, 0], [0xc0, 1, 3, 0, 0, 0, 0, 0]]),
-        (3596, vec![[2, 0, 1, 0, 0, 0, 0, 0], [2, 0, 2, 0, 0, 0, 0, 0], [2, 0, 3, 0, 0, 0, 0, 0], [2, 0, 4, 0, 0, 0, 0, 0]]),
+        (
+            3594,
+            vec![
+                [0xa0, 2, 0, 0, 0, 0, 0, 0],
+                [0xa0, 2, 1, 0, 0, 0, 0, 0],
+                [0xa0, 2, 2, 0, 0, 0, 0, 0],
+            ],
+        ),
+        (
+            3595,
+            vec![
+                [0xc0, 1, 1, 0, 0, 0, 0, 0],
+                [0xc0, 1, 2, 0, 0, 0, 0, 0],
+                [0xc0, 1, 3, 0, 0, 0, 0, 0],
+            ],
+        ),
+        (
+            3596,
+            vec![
+                [2, 0, 1, 0, 0, 0, 0, 0],
+                [2, 0, 2, 0, 0, 0, 0, 0],
+                [2, 0, 3, 0, 0, 0, 0, 0],
+                [2, 0, 4, 0, 0, 0, 0, 0],
+            ],
+        ),
     ] {
         let mut state = CameraSerialState::new(pid).unwrap();
         let mut wire = Wire::new(&REPLIES);
@@ -84,7 +152,10 @@ fn all_camera_serial_branches_use_their_source_chunk_order_and_cleanup() {
         assert_eq!(wire.commands, expected);
         assert_eq!(wire.waits, vec![10; expected.len() * 2]);
         assert_eq!(wire.nodes, wire.releases);
-        assert_eq!(wire.topology_releases, if pid == 3594 { 0 } else { expected.len() });
+        assert_eq!(
+            wire.topology_releases,
+            if pid == 3594 { 0 } else { expected.len() }
+        );
         assert_eq!(result.chunks().len(), expected.len());
         assert!(!result.reused_observation());
         let before = wire.commands.len();
@@ -135,7 +206,9 @@ fn cancellation_after_get_retains_diagnostic_bytes_and_releases_without_cache_or
         assert!(state.observed_bytes.is_none());
         match result.chunks()[0].exchange() {
             SerialExchange::Pro { exchange, .. } => assert_eq!(exchange.response, Some(REPLIES[0])),
-            SerialExchange::Family { attempts, .. } => assert_eq!(attempts[0].response, Some(REPLIES[0])),
+            SerialExchange::Family { attempts, .. } => {
+                assert_eq!(attempts[0].response, Some(REPLIES[0]))
+            }
         }
     }
 }
@@ -153,8 +226,20 @@ fn interrupted_wait_and_wrong_transport_do_not_retry_or_publish_a_serial() {
         assert_eq!(wire.nodes, wire.releases);
     }
     let mut wire = Wire::new(&REPLIES);
-    assert!(CameraSerialState::new(3595).unwrap().read_pro(&mut wire, &|| Ok(())).error().is_some());
-    assert!(CameraSerialState::new(3594).unwrap().read_family(&mut wire, &|| Ok(())).error().is_some());
+    assert!(
+        CameraSerialState::new(3595)
+            .unwrap()
+            .read_pro(&mut wire, &|| Ok(()))
+            .error()
+            .is_some()
+    );
+    assert!(
+        CameraSerialState::new(3594)
+            .unwrap()
+            .read_family(&mut wire, &|| Ok(()))
+            .error()
+            .is_some()
+    );
     assert!(wire.commands.is_empty());
 }
 

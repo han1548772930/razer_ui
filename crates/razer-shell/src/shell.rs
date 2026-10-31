@@ -81,12 +81,12 @@ mod global_shortcuts;
 mod hanbo_cooler;
 #[path = "shell/header_status.rs"]
 mod header_status;
+#[path = "shell/host/help_camo.rs"]
+mod help_camo;
 #[path = "shell/help_owner.rs"]
 mod help_owner;
 #[path = "shell/host/help_runtime_versions.rs"]
 mod help_runtime_versions;
-#[path = "shell/host/help_camo.rs"]
-mod help_camo;
 #[path = "shell/host/help_system_info.rs"]
 mod help_system_info;
 #[path = "shell/host/host_tabs.rs"]

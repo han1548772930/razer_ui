@@ -3,7 +3,6 @@
 //! The current application mounts a 500px guest form and footer. Submission
 //! and log collection remain service boundaries: either log choice preserves
 //! the local draft and reports unavailable without network or process calls.
-use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::component::{
     checkbox::Checkbox,
     input::{Input, InputEvent, InputState, Textarea, TextareaState},
@@ -15,6 +14,7 @@ use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 use razer_i18n as i18n;
 use razer_pages::features::Choice;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::surface;
 use razer_widgets::theme::FeedbackColors;
 
@@ -124,11 +124,7 @@ fn has_content(value: &str) -> bool {
 }
 
 fn email_placeholder(required: bool) -> String {
-    let qualifier = tr(if required {
-        "TEXT_REQUIRE"
-    } else {
-        "TEXT_OPTIONAL"
-    });
+    let qualifier = tr(if required { "TEXT_REQUIRE" } else { "TEXT_OPTIONAL" });
     let mut chars = qualifier.chars();
     let qualifier = chars
         .next()
@@ -367,35 +363,47 @@ impl FeedbackPage {
         let apps = self.apps.clone();
         let category_state = self.category.clone();
         let device = self.device.clone();
-        let title = Input::new(&self.title)
-            .appearance(false)
-            .id("feedback-title")
-            .aria_label(tr("TEXT_SUBJECT"))
-            .w_full()
-            .h_full()
-            .px(surface::css(6.))
-            .bg(FeedbackColors::input())
-            .border_0()
-            .into_any_element();
-        let email = Input::new(&self.email)
-            .appearance(false)
-            .id("feedback-email")
-            .aria_label(tr("TEXT_EMAIL"))
-            .w_full()
-            .h_full()
-            .px(surface::css(6.))
-            .bg(FeedbackColors::input())
-            .border_0()
-            .into_any_element();
-        let description = Textarea::new(&self.description)
-            .appearance(false)
-            .aria_label(tr("TEXT_DETAIL_YOUR_FEEDBACK"))
-            .w_full()
-            .h_full()
-            .p(surface::css(6.))
-            .bg(FeedbackColors::input())
-            .border_0()
-            .into_any_element();
+        let title = razer_widgets::keyboard_navigation::focus_input(
+            Input::new(&self.title)
+                .appearance(false)
+                .id("feedback-title")
+                .aria_label(tr("TEXT_SUBJECT"))
+                .w_full()
+                .h_full()
+                .px(surface::css(6.))
+                .bg(FeedbackColors::input())
+                .border_0(),
+            &self.title,
+            cx,
+        )
+        .into_any_element();
+        let email = razer_widgets::keyboard_navigation::focus_input(
+            Input::new(&self.email)
+                .appearance(false)
+                .id("feedback-email")
+                .aria_label(tr("TEXT_EMAIL"))
+                .w_full()
+                .h_full()
+                .px(surface::css(6.))
+                .bg(FeedbackColors::input())
+                .border_0(),
+            &self.email,
+            cx,
+        )
+        .into_any_element();
+        let description = razer_widgets::keyboard_navigation::focus_input(
+            Textarea::new(&self.description)
+                .appearance(false)
+                .aria_label(tr("TEXT_DETAIL_YOUR_FEEDBACK"))
+                .w_full()
+                .h_full()
+                .p(surface::css(6.))
+                .bg(FeedbackColors::input())
+                .border_0(),
+            &self.description,
+            cx,
+        )
+        .into_any_element();
         let title = input_frame(
             title,
             27.,
@@ -667,16 +675,16 @@ impl FeedbackPage {
             )
             // The popup owns hit testing; a press on its explanatory text
             // must not reach the dismissing backdrop beneath it.
-            .popup(
-                razer_assets::resource_scope(div()
+            .popup(razer_assets::resource_scope(
+                div()
                     .absolute()
                     .inset_0()
                     .flex()
                     .justify_center()
                     .items_end()
                     .pb(surface::css(98.))
-                    .child(gpui_kit::base::DialogPopup::new().child(panel))),
-            )
+                    .child(gpui_kit::base::DialogPopup::new().child(panel)),
+            ))
             .into_any_element()
     }
 }

@@ -2,12 +2,12 @@
 use super::super::Choice;
 use super::mapping_sensitivity_slider_current::SensitivitySlider;
 use super::*;
-use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::component::{
     IndexPath,
     radio::Radio,
     select::{SelectEvent, SelectState},
 };
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::theme::MouseCustomizeColors as Colors;
 
 const PROFILES: &[(&str, &str)] = &[
@@ -652,14 +652,16 @@ impl MouseProductWorkspace {
                             .text_size(surface::css(14.))
                             .line_height(surface::css(19.))
                             .hover(|style| style.border_color(Colors::selected()))
-                            .child(
+                            .child(razer_widgets::keyboard_navigation::focus_input(
                                 Input::new(&state.inputs[axis])
                                     .appearance(false)
                                     .w_full()
                                     .h_full()
                                     .text_center()
                                     .disabled(disabled),
-                            )
+                                &state.inputs[axis],
+                                cx,
+                            ))
                             .on_key_down(|event, window, cx| {
                                 if matches!(event.keystroke.key.as_str(), "escape" | "enter") {
                                     window.blur(cx);

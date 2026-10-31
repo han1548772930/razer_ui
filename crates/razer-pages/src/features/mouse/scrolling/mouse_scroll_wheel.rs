@@ -1,5 +1,4 @@
 //! Current source scroll wheel controls and independent runtime observations.
-use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::base::{Positioner, Tooltip};
 use gpui_kit::component::{
     Disableable, h_flex,
@@ -11,6 +10,7 @@ use razer_device::mouse_scroll::{
     ScrollMode, ScrollReadKind, ScrollReadOutcome, ScrollSnapshot, ScrollValue,
 };
 use razer_i18n::t;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::source_slider::SourceSlider;
 use razer_widgets::surface;
 use razer_widgets::theme::ScrollWheelColors as Colors;

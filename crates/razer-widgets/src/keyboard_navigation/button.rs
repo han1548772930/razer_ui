@@ -143,6 +143,7 @@ impl RenderOnce for Button {
         let style = self.base.style();
         let visible =
             style.visibility != Some(Visibility::Hidden) && style.display != Some(Display::None);
+        let opacity = style.opacity.unwrap_or(1.);
         let resolve = |radius: Option<gpui_kit::AbsoluteLength>| {
             radius.map_or(px(0.), |radius| radius.to_pixels(window.rem_size()))
         };
@@ -160,6 +161,7 @@ impl RenderOnce for Button {
         )
         .ring(self.focus_ring)
         .radii(radii)
+        .opacity(opacity)
     }
 }
 

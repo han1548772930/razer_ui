@@ -280,9 +280,11 @@ impl Render for OledMediaEditor {
                             OLED_MEDIA_VISUALIZERS.into_iter().enumerate().map(
                                 |(index, source)| {
                                     let selected = selected_visualizer == index;
-                                    razer_widgets::keyboard_navigation::Button::new(SharedString::from(format!(
-                                        "oled-media-visualizer-{index}"
-                                    )))
+                                    razer_widgets::keyboard_navigation::Button::new(
+                                        SharedString::from(format!(
+                                            "oled-media-visualizer-{index}"
+                                        )),
+                                    )
                                     .accessibility_label(format!(
                                         "{} {}",
                                         t("CUSTOMIZE_MEDIA_VISUALIZER_LABEL"),
@@ -325,12 +327,14 @@ impl Render for OledMediaEditor {
                                                 .opacity(0.3),
                                         )
                                     })
-                                    .on_click(cx.listener(move |this, _, _, cx| {
-                                        if this.draft.visualizer_enabled {
-                                            this.draft.visualizer_index = index;
-                                            cx.notify();
-                                        }
-                                    }))
+                                    .on_click(cx.listener(
+                                        move |this, _, _, cx| {
+                                            if this.draft.visualizer_enabled {
+                                                this.draft.visualizer_index = index;
+                                                cx.notify();
+                                            }
+                                        },
+                                    ))
                                 },
                             ),
                         ),

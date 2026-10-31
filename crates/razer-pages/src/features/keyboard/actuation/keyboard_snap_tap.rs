@@ -1,8 +1,8 @@
 //! Current 515 ordinary Customize → $l → Jl/ql. Local drafts only.
 //! Reducer, input tables, labels and CSS receipts: snap-tap-current-evidence.json.
 use super::*;
+use gpui_kit::base::Dialog;
 use razer_widgets::keyboard_navigation::Button as BaseButton;
-use gpui_kit::base::{Dialog};
 use razer_widgets::theme::SnapTapColors as Colors;
 use serde::Serialize;
 use std::{cell::Cell, rc::Rc, time::Duration};

@@ -1079,7 +1079,9 @@ def prepare_current_identity_table(*, check=False, workers=4):
                 completed[pid] = definition
                 inputs.extend(original_inputs)
             except (ValueError, OSError, KeyError, TypeError) as error:
-                failures.append({"mounted_product_id": pid, "error": str(error)})
+                failure = {"mounted_product_id": pid, "error": str(error)}
+                failures.append(failure)
+                print("Current identity source failed: " + json.dumps(failure), file=sys.stderr, flush=True)
             if count % 32 == 0 or count == len(futures):
                 print(f"Current identity sources: {count}/{len(futures)}; failed: {len(failures)}", file=sys.stderr, flush=True)
     definitions = [completed[pid] for pid in sorted(completed)]

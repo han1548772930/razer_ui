@@ -1,9 +1,9 @@
 //! Current owner-mounted PID 1453 Power tutorial and PID 1398 THX instructions.
 //! This entity outlives Help tab changes, matching the original product owner.
-use razer_widgets::keyboard_navigation::Button;
 use gpui_kit::component::{h_flex, v_flex};
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use razer_i18n as i18n;
+use razer_widgets::keyboard_navigation::Button;
 use razer_widgets::{surface, theme::HelpOwnerColors as Colors};
 use serde_json::Value;
 use std::{collections::BTreeMap, sync::OnceLock, time::Duration};

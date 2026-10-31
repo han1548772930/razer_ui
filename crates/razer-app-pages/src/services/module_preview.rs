@@ -4,7 +4,6 @@ use super::{
     MODULES, Module, ModuleAction, ModuleCatalog, ModuleCatalogEvent, module_action,
     module_description, module_detail_action, module_group_heading,
 };
-use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::base::{Popover, Progress, ProgressIndicator, ProgressTrack};
 use gpui_kit::component::{
     button::{Button, ButtonVariants},
@@ -17,6 +16,7 @@ use gpui_kit::component::{
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use razer_i18n as i18n;
 use razer_pages::features::Choice;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::scroll::SourceScrollable as _;
 use razer_widgets::surface;
 use razer_widgets::theme::MainPageColors;

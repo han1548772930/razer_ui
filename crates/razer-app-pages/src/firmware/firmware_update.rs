@@ -1,7 +1,6 @@
 //! Current /synapse/update-fw/ (1.0.0 / 2604010417), verified by fresh HTTP.
 //! Real firmware metadata/SDK transport is absent. Only an explicit local preview
 //! can enter the updater's state machine, and its callbacks never write storage.
-use razer_widgets::keyboard_navigation::Button;
 use gpui_kit::base::{
     Dialog,
     motion::{self, Easing, Transition},
@@ -15,6 +14,7 @@ use razer_assets as resources;
 use razer_i18n as i18n;
 use razer_model::model::Device;
 use razer_pages::features::Choice;
+use razer_widgets::keyboard_navigation::Button;
 use razer_widgets::scroll::SourceScrollable as _;
 use razer_widgets::surface;
 use razer_widgets::surface::css;

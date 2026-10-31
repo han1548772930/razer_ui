@@ -1,6 +1,5 @@
 //! Current Armory 29770 root / 20540 navigation / 77989 feature hook.
 //! Current frontend originals are indexed in the analysis input manifest.
-use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::base::motion::{Easing, Presence, Transition};
 use gpui_kit::component::{
     input::{Input, InputEvent, InputState},
@@ -10,6 +9,7 @@ use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 use razer_i18n as i18n;
 use razer_state::ui_preferences::{Flag as UiPreference, UiPreferences};
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::scroll::SourceScrollable as _;
 use razer_widgets::surface;
 use std::time::Duration;
@@ -350,7 +350,7 @@ impl ArmoryPage {
                 .border_color(cx.theme().border)
                 .hover(|style| style.border_color(cx.theme().primary))
                 .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-                .child(
+                .child(razer_widgets::keyboard_navigation::focus_input(
                     Input::new(&self.search)
                         .appearance(false)
                         .w_full()
@@ -362,7 +362,9 @@ impl ArmoryPage {
                         .line_height(surface::css(17.))
                         .bg(cx.theme().primary_foreground)
                         .border_0(),
-                )
+                    &self.search,
+                    cx,
+                ))
                 .child(
                     img("synapse/profiles-search-grey.svg")
                         .absolute()

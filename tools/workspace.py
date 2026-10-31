@@ -13457,6 +13457,7 @@ def rust_validation_commands():
     return [
         ("keyboard-navigation", ["cargo", "test", "--locked", "--offline", "-p", "razer-widgets", "--lib", "keyboard_navigation", "--",
                                  "--skip", "keyboard_navigation::button::tests::button_navigation_preserves_focus_and_activation_requires_window",
+                                 "--skip", "keyboard_navigation::focus::tests::input_destinations_keep_editing_arrows_and_track_disabled_state_requires_window",
                                  "--skip", "keyboard_navigation::tests::guide_closes_through_keyboard_and_pointer_with_window_owned_focus"]),
         ("source-select-keyboard", ["cargo", "test", "--locked", "--offline", "-p", "razer-widgets", "--lib", "synapse_select::keyboard_tests"]),
         ("source-switch-keyboard", ["cargo", "test", "--locked", "--offline", "-p", "razer-widgets", "--lib", "source_switch_arrows"]),
@@ -13484,6 +13485,10 @@ def rust_validation_commands():
         ("help-camo-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "source_help::camo"]),
         ("help-camo-shell", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "help_camo", "--",
                              "--skip", "shell::help_camo::tests::camera_delivery_retains_a_worker_joined_after_the_current_reply_drain"]),
+        ("help-runtime-versions-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "source_help::runtime_versions", "--",
+                                        "--skip", "features::source_help::runtime_versions::tests::help_runtime_reconnect_and_exit_resume_refresh_the_mounted_request"]),
+        ("help-runtime-versions-shell", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "shell::help_runtime_versions", "--",
+                                        "--skip", "shell::help_runtime_versions::tests::help_worker_panic_is_a_failed_observation_for_the_current_owner"]),
         ("ipc-client", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "client_tests"]),
         ("ipc-failure-diagnostics", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "failure_diagnostics::tests"]),
         ("hid-broker", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "runtime::hid_broker"]),

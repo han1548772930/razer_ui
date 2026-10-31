@@ -12,7 +12,8 @@ use std::time::Duration;
 
 mod focus;
 pub use focus::{
-    FocusBehavior, FocusRing, FocusTarget, focus_adjacent_to, focus_input, focus_target, using_keyboard,
+    FocusBehavior, FocusRing, FocusTarget, focus_adjacent_to, focus_input, focus_target,
+    using_keyboard,
 };
 mod button;
 pub use button::Button;

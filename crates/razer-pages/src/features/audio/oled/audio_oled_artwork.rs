@@ -582,7 +582,7 @@ impl ArtworkEditor {
                     .border_1()
                     .border_color(ArtworkColors::emote_border())
                     .bg(ArtworkColors::search())
-                    .child(
+                    .child(razer_widgets::keyboard_navigation::focus_input(
                         Input::new(&self.search)
                             .appearance(false)
                             .h(surface::css(20.))
@@ -593,7 +593,9 @@ impl ArtworkEditor {
                             .border_0()
                             .bg(ArtworkColors::search())
                             .text_color(ArtworkColors::white()),
-                    )
+                        &self.search,
+                        cx,
+                    ))
                     .child(img("synapse/audio-oled-artwork-search.svg").size(surface::css(20.))),
             )
             .child(tiles.scrollable_y())

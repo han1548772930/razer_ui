@@ -263,7 +263,7 @@ impl AudioProductWorkspace {
                     h_flex()
                         .mb(surface::css(20.))
                         .child(t(label))
-                        .child(
+                        .child(razer_widgets::keyboard_navigation::focus_input(
                             Input::new(input)
                                 .appearance(false)
                                 .bordered(false)
@@ -283,7 +283,9 @@ impl AudioProductWorkspace {
                                 .rounded_none()
                                 .text_color(C::value())
                                 .text_size(surface::css(14.)),
-                        )
+                            input,
+                            cx,
+                        ))
                         .child("dB"),
                 );
             }

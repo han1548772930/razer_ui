@@ -3,9 +3,9 @@
 //! update the local profile draft and never acknowledge a device write.
 use super::super::Choice;
 use super::*;
-use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::component::IndexPath;
 use gpui_kit::component::select::{SelectEvent, SelectState};
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::{
     source_slider::SourceSlider,
     stepper::{Stepper, StepperEvent},

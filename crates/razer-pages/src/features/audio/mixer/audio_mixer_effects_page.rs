@@ -2,8 +2,8 @@
 use super::audio_mixer_knob::MixerKnob;
 use super::audio_mixer_theme::Colors as C;
 use super::*;
-use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::component::input::{Input, InputEvent, InputState};
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::source_slider::SourceSlider;
 
 const ROOM_PATH: &str = "/device/echoReverb/modeValues/0";
@@ -255,7 +255,7 @@ impl AudioProductWorkspace {
                         .items_start()
                         .child(div().line_height(surface::css(27.)).child(t("ROOM_SIZE")))
                         .when_some(self.mixer_room_input.as_ref(), |row, input| {
-                            row.child(
+                            row.child(razer_widgets::keyboard_navigation::focus_input(
                                 Input::new(input)
                                     .appearance(false)
                                     .bordered(false)
@@ -272,7 +272,9 @@ impl AudioProductWorkspace {
                                     .rounded_none()
                                     .text_size(surface::css(14.))
                                     .text_color(C::value()),
-                            )
+                                input,
+                                cx,
+                            ))
                         }),
                 );
                 body = body.child(

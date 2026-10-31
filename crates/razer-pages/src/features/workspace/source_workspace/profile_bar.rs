@@ -102,7 +102,7 @@ impl SourceProductWorkspace {
                                     cx.notify();
                                 },
                             ))
-                            .child(
+                            .child(razer_widgets::keyboard_navigation::focus_input(
                                 gpui_kit::component::input::Input::new(&self.profile_name)
                                     .when_some(
                                         profile_menu::spec(self.device.product_id),
@@ -127,7 +127,9 @@ impl SourceProductWorkspace {
                                     .py(surface::css(5.))
                                     .text_size(surface::css(14.))
                                     .line_height(surface::css(17.)),
-                            )
+                                &self.profile_name,
+                                cx,
+                            ))
                             .into_any_element()
                     } else {
                         surface::select(&self.profile)

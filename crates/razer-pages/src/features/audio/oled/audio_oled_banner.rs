@@ -848,28 +848,32 @@ impl Render for BannerEditor {
         let style = &self.draft["text"]["style"];
         let measured = geometry(&self.draft, window);
         let focused = self.text.read(cx).focus_handle(cx).is_focused(window);
-        let text = Textarea::new(&self.text)
-            .appearance(false)
-            .bordered(false)
-            .aria_label(label("gc6"))
-            .w(surface::css(spec().textarea.outer_width))
-            .h(surface::css(spec().textarea.outer_height))
-            .p(surface::css(spec().textarea.padding))
-            .rounded_none()
-            .border_1()
-            .border_color(if focused {
-                Colors::selected()
-            } else {
-                Colors::border()
-            })
-            .bg(Colors::input())
-            .text_color(Colors::text())
-            .font_family(measured.font.family.clone())
-            .font_weight(measured.font.weight)
-            .text_size(surface::css(measured.size))
-            .line_height(surface::css(measured.line_height))
-            .when(measured.font.style == FontStyle::Italic, |e| e.italic())
-            .when(style["textDecoration"] == "underline", |e| e.underline());
+        let text = razer_widgets::keyboard_navigation::focus_input(
+            Textarea::new(&self.text)
+                .appearance(false)
+                .bordered(false)
+                .aria_label(label("gc6"))
+                .w(surface::css(spec().textarea.outer_width))
+                .h(surface::css(spec().textarea.outer_height))
+                .p(surface::css(spec().textarea.padding))
+                .rounded_none()
+                .border_1()
+                .border_color(if focused {
+                    Colors::selected()
+                } else {
+                    Colors::border()
+                })
+                .bg(Colors::input())
+                .text_color(Colors::text())
+                .font_family(measured.font.family.clone())
+                .font_weight(measured.font.weight)
+                .text_size(surface::css(measured.size))
+                .line_height(surface::css(measured.line_height))
+                .when(measured.font.style == FontStyle::Italic, |e| e.italic())
+                .when(style["textDecoration"] == "underline", |e| e.underline()),
+            &self.text,
+            cx,
+        );
         let text_block = v_flex()
             .flex_shrink_0()
             .w(surface::css(spec().textarea.outer_width))

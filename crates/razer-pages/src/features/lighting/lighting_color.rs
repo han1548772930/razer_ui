@@ -1,10 +1,9 @@
 //! Source 653 `JM` / 777 `Ah` palette and their `BM` / `Oh` custom picker.
 //! The palette is shared product data; a custom-color editor owns an uncommitted draft.
 use super::screen_color::{ScreenColorCapture, ScreenColorUpdate, ScreenColorUpdateKind};
-use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::base::{
-    ColorPicker as ColorPickerRoot, Popover, Slider as BaseSlider,
-    SliderIndicator, SliderThumb, SliderTrack,
+    ColorPicker as ColorPickerRoot, Popover, Slider as BaseSlider, SliderIndicator, SliderThumb,
+    SliderTrack,
 };
 use gpui_kit::component::{
     button::{Button, ButtonCustomVariant, ButtonVariants},
@@ -16,6 +15,7 @@ use gpui_kit::component::{
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use razer_model::preferences::CustomColorEdit;
 use razer_state::{CustomColorSlots, CustomColors};
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::surface;
 use razer_widgets::theme::PaletteColors;
 use std::{cell::Cell, rc::Rc};
@@ -1064,7 +1064,7 @@ impl LightingColorView {
                                 v_flex()
                                     .w(surface::css(if index == 0 { 70. } else { 45. }))
                                     .h_full()
-                                    .child(
+                                    .child(razer_widgets::keyboard_navigation::focus_input(
                                         Input::new(field)
                                             .appearance(false)
                                             .w(surface::css(if index == 0 { 65. } else { 40. }))
@@ -1077,7 +1077,9 @@ impl LightingColorView {
                                             .border_1()
                                             .border_color(palette.picker_border())
                                             .bg(palette.surface()),
-                                    )
+                                        field,
+                                        cx,
+                                    ))
                                     .child(
                                         div()
                                             .mt_auto()

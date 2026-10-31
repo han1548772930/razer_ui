@@ -236,11 +236,13 @@ impl ChromaStudio {
                         cx.stop_propagation();
                     },
                 ))
-                .child(
+                .child(razer_widgets::keyboard_navigation::focus_input(
                     Input::new(input)
                         .id("studio-profile-rename-input")
                         .source_max_length(input, 32),
-                )
+                    input,
+                    cx,
+                ))
                 .into_any_element()
         } else {
             StudioDropdown::new(

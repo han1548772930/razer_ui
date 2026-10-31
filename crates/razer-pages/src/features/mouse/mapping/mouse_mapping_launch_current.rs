@@ -1,8 +1,8 @@
 //! Per-product mounted MapLaunch drafts. Current source evidence is under
 //! docs/re/mouse-launch-current/. Native submission remains a separate gap.
 use super::*;
-use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::component::radio::Radio;
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 
 #[derive(Deserialize)]
 struct Policy {
@@ -196,13 +196,15 @@ impl MouseProductWorkspace {
                     h_flex()
                         .ml(surface::css(30.))
                         .mb(surface::css(20.))
-                        .child(
+                        .child(razer_widgets::keyboard_navigation::focus_input(
                             Input::new(path)
                                 .readonly(true)
                                 .disabled(!program)
                                 .w(surface::css(178.))
                                 .h(surface::css(29.)),
-                        )
+                            path,
+                            cx,
+                        ))
                         .child(
                             BaseButton::new("mouse-current-launch-folder")
                                 .disabled(!program)

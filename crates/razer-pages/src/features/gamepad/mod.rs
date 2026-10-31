@@ -1,7 +1,6 @@
 //! Native controller pages from each current product's mounted components.
 //! `profile` and the independent Redux controller states remain separate.
 //! Optimistic source state and actual service acknowledgements have separate owners.
-use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::component::{
     Disableable, Selectable, StyledExt,
     button::Button,
@@ -10,6 +9,7 @@ use gpui_kit::component::{
     v_flex,
 };
 use gpui_kit::{prelude::FluentBuilder as _, *};
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use serde::Deserialize;
 use serde_json::{Value, json};
 use std::{cell::Cell, collections::BTreeMap, rc::Rc, sync::OnceLock};
@@ -357,7 +357,8 @@ impl GamepadProductWorkspace {
             // once on entry. Continue does not replace these rollback values.
             if key == "THUMBSTICKS" {
                 self.sensitivity = false;
-                self.deadzone.enter(self.deadzone_values(), self.trigger_runtime.guard());
+                self.deadzone
+                    .enter(self.deadzone_values(), self.trigger_runtime.guard());
             }
             self.page = key.into();
             if key == "TAB_POWER" {

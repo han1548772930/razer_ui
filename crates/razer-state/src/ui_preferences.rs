@@ -131,7 +131,9 @@ impl Snapshot {
 
 #[derive(Clone, Copy)]
 enum Operation {
-    InitialTab { request: InitialTabRequest },
+    InitialTab {
+        request: InitialTabRequest,
+    },
     PollNotifications {
         generation: u64,
     },
@@ -233,7 +235,10 @@ impl Completed {
     fn error(&self) -> Option<&str> {
         match self {
             Self::InitialTab(finished) => match &finished.result {
-                Err(error) | Ok(InitialTabObservation::First { persistence: Err(error) }) => Some(error),
+                Err(error)
+                | Ok(InitialTabObservation::First {
+                    persistence: Err(error),
+                }) => Some(error),
                 _ => None,
             },
             Self::PollNotifications { result, .. } => result.as_ref().err().map(String::as_str),
@@ -488,8 +493,12 @@ impl Core {
         self.closing = true;
         self.notification_watch.generation = self.notification_watch.generation.wrapping_add(1);
         self.notification_watch.pending = false;
-        self.queue
-            .retain(|work| matches!(work.operation, Operation::Write { .. } | Operation::InitialTab { .. }));
+        self.queue.retain(|work| {
+            matches!(
+                work.operation,
+                Operation::Write { .. } | Operation::InitialTab { .. }
+            )
+        });
         for state in self.flags.values_mut() {
             state.read_generation = state.read_generation.wrapping_add(1);
             if matches!(state.load, LoadStatus::Loading) {
@@ -622,7 +631,11 @@ impl UiPreferences {
     }
     /// Accepted Tab work shares the same queue and exit drain as local writes.
     /// The window owner validates the request before opening its guide.
-    pub fn record_initial_tab(&mut self, request: InitialTabRequest, cx: &mut Context<Self>) -> bool {
+    pub fn record_initial_tab(
+        &mut self,
+        request: InitialTabRequest,
+        cx: &mut Context<Self>,
+    ) -> bool {
         let accepted = self.core.record_initial_tab(request);
         self.start_worker(cx);
         accepted
@@ -668,7 +681,10 @@ impl UiPreferences {
                     }
                     if previous.as_ref() != Some(&this.core.flags[&Flag::DisplayNotifications]) {
                         if let Some((flag, error)) = failure {
-                            let label = flag.map_or_else(|| "isInitialTabKeyHit".to_owned(), |flag| format!("{flag:?}"));
+                            let label = flag.map_or_else(
+                                || "isInitialTabKeyHit".to_owned(),
+                                |flag| format!("{flag:?}"),
+                            );
                             eprintln!("UI preference {label}: {error}");
                         }
                         cx.notify();

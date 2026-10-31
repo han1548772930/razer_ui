@@ -1,7 +1,7 @@
 //! PID 3331 `D` / `S`: one monitoring widget with four vertical volume rows.
 use super::*;
-use razer_widgets::keyboard_navigation::Button as BaseButton;
 use gpui_kit::base::{Slider as BaseSlider, SliderIndicator, SliderTrack};
+use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::source_slider::source_thumb;
 use razer_widgets::source_tooltip::{SourceTooltip, SourceTooltipKind};
 use std::collections::BTreeSet;
