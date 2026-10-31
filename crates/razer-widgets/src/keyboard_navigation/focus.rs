@@ -1,4 +1,5 @@
 use super::KeyboardNavigation;
+use super::document::{Document, MountedDocument};
 use crate::theme::KeyboardGuideColors as Colors;
 use gpui_kit::base::Root;
 use gpui_kit::base::input::{InputBaseState, InputModeKind};
@@ -57,11 +58,14 @@ struct Target {
     bounds: Bounds<Pixels>,
     behavior: FocusBehavior,
     painted: bool,
+    document: Document,
 }
 
 #[derive(Default)]
 pub(super) struct FocusFrame {
     targets: Vec<Target>,
+    pub(super) documents: Vec<MountedDocument>,
+    pub(super) current_document: Option<Document>,
 }
 
 pub(super) type SharedFrame = Rc<RefCell<FocusFrame>>;
@@ -94,10 +98,12 @@ pub(super) fn register_target(
     bounds: Bounds<Pixels>,
     behavior: FocusBehavior,
     enabled: bool,
+    document: Option<Document>,
     window: &Window,
     cx: &App,
 ) -> Option<Registration> {
     let frame = frame(window, cx).filter(|_| enabled)?;
+    let document = document?;
     let mut state = frame.borrow_mut();
     let previous = state
         .targets
@@ -110,6 +116,7 @@ pub(super) fn register_target(
             bounds,
             behavior,
             painted: false,
+            document,
         });
     }
     drop(state);
@@ -120,18 +127,86 @@ pub(super) fn register_target(
     })
 }
 
-fn frame(window: &Window, cx: &App) -> Option<SharedFrame> {
+pub(super) fn frame(window: &Window, cx: &App) -> Option<SharedFrame> {
     let root = window.root::<Root>().flatten()?;
     let owner = root.read(cx).plugin::<KeyboardNavigation>()?;
     Some(owner.read(cx).focus_frame.clone())
 }
 
 pub fn using_keyboard(window: &Window, cx: &App) -> bool {
-    window
-        .root::<Root>()
-        .flatten()
-        .and_then(|root| root.read(cx).plugin::<KeyboardNavigation>())
-        .is_some_and(|owner| owner.read(cx).keyboard)
+    let Some(document) =
+        frame(window, cx).and_then(|frame| frame.borrow().current_document.clone())
+    else {
+        return false;
+    };
+    using_keyboard_in(&document, window, cx)
+}
+
+fn using_keyboard_in(document: &Document, window: &Window, cx: &App) -> bool {
+    document.page.navigation().installed()
+        && window
+            .root::<Root>()
+            .flatten()
+            .and_then(|root| root.read(cx).plugin::<KeyboardNavigation>())
+            .is_some_and(|owner| owner.read(cx).keyboard.contains(&document.id))
+}
+
+pub(super) fn active_document(window: &Window, cx: &App) -> Option<Document> {
+    let frame = frame(window, cx)?;
+    active_document_in(&frame, window, cx)
+}
+
+pub(super) fn active_document_in(
+    frame: &SharedFrame,
+    window: &Window,
+    cx: &App,
+) -> Option<Document> {
+    let state = frame.borrow();
+    if let Some(focus) = window.focused(cx) {
+        state
+            .targets
+            .iter()
+            .find(|target| {
+                target.painted && (target.focus == focus || target.focus.contains(&focus, window))
+            })
+            .map(|target| target.document.clone())
+    } else {
+        state
+            .documents
+            .last()
+            .map(|mounted| mounted.document.clone())
+    }
+}
+
+pub(super) fn document_at(position: Point<Pixels>, window: &Window, cx: &App) -> Option<Document> {
+    let frame = frame(window, cx)?;
+    let state = frame.borrow();
+    state
+        .targets
+        .iter()
+        .rev()
+        .find(|target| target.painted && target.bounds.contains(&position))
+        .map(|target| target.document.clone())
+        .or_else(|| {
+            state
+                .documents
+                .iter()
+                .rev()
+                .find(|mounted| {
+                    mounted
+                        .bounds
+                        .is_some_and(|bounds| bounds.contains(&position))
+                })
+                .map(|mounted| mounted.document.clone())
+        })
+}
+
+pub(super) fn document_is_mounted_in(document: &Document, frame: &SharedFrame) -> bool {
+    frame
+        .borrow()
+        .documents
+        .iter()
+        .any(|mounted| mounted.document == *document)
 }
 
 /// Register the actual control handle and its resolved frame geometry.
@@ -149,7 +224,7 @@ pub fn focus_target(
         enabled,
         enabled_when: None,
         ring: FocusRing::Standard,
-        radii: AbsoluteLength::from(px(0.)).into(),
+        radii: Corners::default(),
         opacity: 1.,
         registration: None,
     }
@@ -167,6 +242,10 @@ pub struct FocusTarget {
     registration: Option<Registration>,
 }
 
+pub struct FocusTargetLayout {
+    document: Option<Document>,
+}
+
 impl FocusTarget {
     pub fn ring(mut self, ring: FocusRing) -> Self {
         self.ring = ring;
@@ -174,7 +253,12 @@ impl FocusTarget {
     }
 
     pub fn radius(mut self, radius: Pixels) -> Self {
-        self.radii = AbsoluteLength::from(radius).into();
+        self.radii = Corners {
+            top_left: radius.into(),
+            top_right: radius.into(),
+            bottom_left: radius.into(),
+            bottom_right: radius.into(),
+        };
         self
     }
 
@@ -199,9 +283,13 @@ pub fn focus_input<M: InputModeKind>(
     let style = element.style();
     let visible =
         style.visibility != Some(Visibility::Hidden) && style.display != Some(Display::None);
-    let radii = style
-        .corner_radii
-        .map(|radius| radius.unwrap_or(px(0.).into()));
+    let radius = |radius: Option<AbsoluteLength>| radius.unwrap_or(px(0.).into());
+    let radii = Corners {
+        top_left: radius(style.corner_radii.top_left),
+        top_right: radius(style.corner_radii.top_right),
+        bottom_left: radius(style.corner_radii.bottom_left),
+        bottom_right: radius(style.corner_radii.bottom_right),
+    };
     let opacity = style.opacity.unwrap_or(1.);
     let focus = input.focus_handle(cx);
     let input = input.clone();
@@ -222,7 +310,7 @@ impl IntoElement for FocusTarget {
 }
 
 impl Element for FocusTarget {
-    type RequestLayoutState = ();
+    type RequestLayoutState = FocusTargetLayout;
     type PrepaintState = ();
 
     fn id(&self) -> Option<ElementId> {
@@ -238,8 +326,12 @@ impl Element for FocusTarget {
         _: Option<&InspectorElementId>,
         window: &mut Window,
         cx: &mut App,
-    ) -> (LayoutId, ()) {
-        (self.child.request_layout(window, cx), ())
+    ) -> (LayoutId, Self::RequestLayoutState) {
+        let document = frame(window, cx).and_then(|frame| frame.borrow().current_document.clone());
+        (
+            self.child.request_layout(window, cx),
+            FocusTargetLayout { document },
+        )
     }
 
     fn prepaint(
@@ -247,13 +339,20 @@ impl Element for FocusTarget {
         _: Option<&GlobalElementId>,
         _: Option<&InspectorElementId>,
         bounds: Bounds<Pixels>,
-        _: &mut (),
+        document: &mut Self::RequestLayoutState,
         window: &mut Window,
         cx: &mut App,
     ) {
         let enabled = self.enabled && self.enabled_when.as_ref().is_none_or(|enabled| enabled(cx));
-        self.registration =
-            register_target(&self.focus, bounds, self.behavior, enabled, window, cx);
+        self.registration = register_target(
+            &self.focus,
+            bounds,
+            self.behavior,
+            enabled,
+            document.document.clone(),
+            window,
+            cx,
+        );
         self.child.prepaint(window, cx);
     }
 
@@ -262,7 +361,7 @@ impl Element for FocusTarget {
         _: Option<&GlobalElementId>,
         _: Option<&InspectorElementId>,
         bounds: Bounds<Pixels>,
-        _: &mut (),
+        document: &mut Self::RequestLayoutState,
         _: &mut (),
         window: &mut Window,
         cx: &mut App,
@@ -276,7 +375,10 @@ impl Element for FocusTarget {
             .as_ref()
             .is_some_and(Registration::paints_ring)
             && self.focus.is_focused(window)
-            && using_keyboard(window, cx)
+            && document
+                .document
+                .as_ref()
+                .is_some_and(|document| using_keyboard_in(document, window, cx))
         {
             let radii = self.radii.map(|radius| radius.to_pixels(window.rem_size()));
             paint_ring(self.ring, bounds, radii, self.opacity, window);
@@ -400,11 +502,18 @@ pub(super) fn navigate(event: &KeyDownEvent, window: &mut Window, cx: &mut App) 
     else {
         return;
     };
+    if !current.document.page.navigation().installed() {
+        return;
+    }
     if current.behavior.handles(direction) {
         return;
     }
     let mut selected = None;
-    for candidate in state.targets.iter().filter(|target| target.painted) {
+    for candidate in state
+        .targets
+        .iter()
+        .filter(|target| target.painted && target.document == current.document)
+    {
         if current.focus.contains(&candidate.focus, window)
             || candidate.focus.contains(&current.focus, window)
         {
@@ -499,7 +608,20 @@ impl Element for FrameScope {
         window: &mut Window,
         cx: &mut App,
     ) -> (LayoutId, ()) {
-        (self.child.request_layout(window, cx), ())
+        {
+            let mut frame = self.frame.borrow_mut();
+            frame.documents.clear();
+            frame.current_document = None;
+        }
+        let layout = self.child.request_layout(window, cx);
+        if let Some(owner) = window
+            .root::<Root>()
+            .flatten()
+            .and_then(|root| root.read(cx).plugin::<KeyboardNavigation>())
+        {
+            owner.update(cx, |owner, cx| owner.prune_documents(window, cx));
+        }
+        (layout, ())
     }
     fn prepaint(
         &mut self,

@@ -1106,6 +1106,32 @@ class ArchitectureBoundaryTests(unittest.TestCase):
             self.assertFalse(self.inspect(source, caller))
         self.assertFalse(workspace.inspect_architecture_source((workspace.ROOT / caller).read_bytes(), owner=caller, rust_parser=self.rust_parser))
 
+    def test_native_number_spinners_require_the_real_owner_and_number_input_consumers(self):
+        owners = (
+            'crates/razer-pages/src/features/audio/seiren/audio_seiren_eq_number.rs',
+            'crates/razer-widgets/src/stepper.rs',
+            'crates/razer-pages/src/features/chroma/chroma_studio_numeric.rs',
+        )
+        kind = 'source_button_bypasses_window_navigation'
+        for owner in owners:
+            source = (workspace.ROOT / owner).read_text(encoding='utf-8')
+            self.assertFalse(self.inspect(source, owner))
+            for before, after in (
+                    ('NumberInput::new', 'Unrelated::new'),
+                    ('self.spinner(', 'self.unrelated('),
+                    ('.increment_button(move |_|', '.unrelated(move |_|'),
+                    ('impl Render for ', 'impl Unrelated for '),
+                    (') -> BaseButton {', ') -> Unrelated {')):
+                with self.subTest(owner=owner, mutation=(before, after)):
+                    self.assertIn(before, source)
+                    self.assertIn(kind, [row['kind'] for row in self.inspect(source.replace(before, after), owner)])
+            unrelated = source + '\nfn unrelated() { BaseButton::new("action"); }'
+            self.assertIn(kind, [row['kind'] for row in self.inspect(unrelated, owner)])
+            wrong_owner = 'crates/razer-pages/src/features/unrelated.rs'
+            self.assertIn(kind, [row['kind'] for row in self.inspect(source, wrong_owner)])
+        stepper = (workspace.ROOT / owners[1]).read_text(encoding='utf-8')
+        self.assertIn(kind, [row['kind'] for row in self.inspect(stepper.replace('.focusable(false)', '.focusable(true)'), owners[1])])
+
     def test_navigation_root_owns_full_frame_geometry_without_automatic_replay(self):
         owner = 'crates/razer-widgets/src/keyboard_navigation.rs'
         for body in ('', 'window.set_view_retention(true);', 'window.set_view_retention(false); window.set_view_retention(true);'):

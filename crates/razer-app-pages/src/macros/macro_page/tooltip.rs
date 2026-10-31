@@ -1,5 +1,6 @@
 //! 7003.fi/gi portals for command warnings and overflowing settings headings.
 use super::*;
+use gpui_kit::Size;
 use gpui_kit::base::Tooltip;
 use razer_widgets::surface;
 use std::{cell::Cell, rc::Rc};

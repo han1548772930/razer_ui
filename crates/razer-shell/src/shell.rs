@@ -3694,6 +3694,66 @@ impl AppShell {
 }
 impl Render for AppShell {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        use razer_widgets::keyboard_navigation::{HostPage, ProductId, SourcePage, document_scope};
+        let (document_id, document_page): (SharedString, SourcePage) = match &self.location {
+            Location::Device(key) => (
+                format!("device-document-{key}").into(),
+                self.devices
+                    .iter()
+                    .find(|device| device.read(cx).identity(cx) == *key)
+                    .map(|device| {
+                        SourcePage::Product(ProductId(device.read(cx).device(cx).product_id))
+                    })
+                    .unwrap_or(SourcePage::Host(HostPage::SynapseRoot)),
+            ),
+            Location::Main(Tab::Setting) => (
+                "settings-synapse".into(),
+                SourcePage::Host(HostPage::SynapseSettings),
+            ),
+            Location::Main(_) => (
+                "synapse-dashboard".into(),
+                SourcePage::Host(HostPage::SynapseDashboard),
+            ),
+            Location::Pairing(name) => (name.clone().into(), SourcePage::Host(HostPage::Pairing)),
+            Location::Tour(kind) => (
+                kind.id().into(),
+                SourcePage::Host(match kind {
+                    TourKind::Synapse => HostPage::SynapseTour,
+                    TourKind::Chroma => HostPage::ChromaTour,
+                }),
+            ),
+            Location::FirmwareUpdate => (
+                "host-firmware-update".into(),
+                SourcePage::Host(HostPage::FirmwareUpdate),
+            ),
+            Location::ProfileMigration => (
+                "syn3-profile-migration".into(),
+                SourcePage::Host(HostPage::ProfileMigration),
+            ),
+            Location::ProductSettings(chroma) => (
+                if *chroma {
+                    "settings-chroma"
+                } else {
+                    "settings-synapse"
+                }
+                .into(),
+                SourcePage::Host(if *chroma {
+                    HostPage::ChromaSettings
+                } else {
+                    HostPage::SynapseSettings
+                }),
+            ),
+            Location::ProductSettingsMigration => (
+                "chroma-app-syn3-profile-migration".into(),
+                SourcePage::Host(HostPage::ProfileMigration),
+            ),
+            Location::Macro => ("macro".into(), SourcePage::Host(HostPage::Macro)),
+            Location::Chroma => (
+                "chroma-studio".into(),
+                SourcePage::Host(HostPage::ChromaStudio),
+            ),
+            Location::Profiles => ("profiles".into(), SourcePage::Host(HostPage::Profiles)),
+        };
         let mut resource_errors = razer_assets::resource_errors(cx);
         if let Location::Device(key) = &self.location
             && let Some(workspace) = self
@@ -3802,7 +3862,9 @@ impl Render for AppShell {
             .bg(cx.theme().background)
             .text_color(cx.theme().foreground)
             .child(self.title_bar(window, cx))
-            .child(
+            .child(document_scope(
+                document_id.clone(),
+                document_page,
                 v_flex()
                     .id("source-application-frame")
                     .flex_1()
@@ -3824,10 +3886,20 @@ impl Render for AppShell {
                             .min_w_0()
                             .child(div().absolute().inset_0().child(content)),
                     ),
-            )
-            .when_some(self.source_alert.clone(), |view, alert| view.child(alert))
-            .when_some(self.release_notes.clone(), |view, notes| view.child(notes))
-            .when_some(self.iot_popup.clone(), |view, popup| view.child(popup))
+            ))
+            .when_some(self.source_alert.clone(), |view, alert| {
+                view.child(document_scope(document_id.clone(), document_page, alert))
+            })
+            .when_some(self.release_notes.clone(), |view, notes| {
+                view.child(document_scope(
+                    "release-patch-note",
+                    SourcePage::Host(HostPage::ReleaseNotes),
+                    notes,
+                ))
+            })
+            .when_some(self.iot_popup.clone(), |view, popup| {
+                view.child(document_scope(document_id.clone(), document_page, popup))
+            })
             .child(
                 div()
                     .h(surface::css(24.))

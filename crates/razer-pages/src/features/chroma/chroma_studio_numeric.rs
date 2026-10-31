@@ -1,7 +1,7 @@
 //! Current 768/2245 number + range composition, including Audio's fractional fields.
 //! Change updates only working paint parameters; no device preview is invented.
 use super::*;
-use gpui_kit::base::{NumberInput, StepAction};
+use gpui_kit::base::{Button as BaseButton, NumberInput, StepAction};
 use gpui_kit::component::{input::MaskPattern, slider::SliderEvent};
 use std::time::Duration;
 
@@ -409,7 +409,12 @@ impl StudioNumeric {
             });
         });
     }
-    fn spinner(&self, action: StepAction, cx: &mut Context<Self>) -> BaseButton {
+    fn spinner(
+        &self,
+        button: BaseButton,
+        action: StepAction,
+        cx: &mut Context<Self>,
+    ) -> BaseButton {
         let (min, max, _) = self.field.limits();
         let disabled = !self.enabled
             || if action == StepAction::Increment {
@@ -417,59 +422,63 @@ impl StudioNumeric {
             } else {
                 self.value == min
             };
-        BaseButton::new(if action == StepAction::Increment {
-            format!("studio-{}-increase", self.field.id())
-        } else {
-            format!("studio-{}-decrease", self.field.id())
-        })
-        .accessibility_label(if action == StepAction::Increment {
-            "Increase Value"
-        } else {
-            "Decrease Value"
-        })
-        .disabled(disabled)
-        .p_0()
-        .w(surface::css(16.))
-        .relative()
-        .bg(transparent_black())
-        .styles(|style| style.disabled(|style| style.opacity(0.3)))
-        .when(!disabled, |view| {
-            view.hover(|style| style.bg(Colors::spinner_hover()))
-                .active(|style| style.bg(Colors::spinner_pressed()))
-        })
-        .on_mouse_down(
-            MouseButton::Left,
-            cx.listener(move |this, _, window, cx| this.press(action, window, cx)),
-        )
-        .on_mouse_up(
-            MouseButton::Left,
-            cx.listener(move |this, _, window, cx| this.release(action, window, cx)),
-        )
-        .on_hover(cx.listener(move |this, hovered, window, cx| {
-            if !hovered && this.held {
-                this.release(action, window, cx);
-            }
-        }))
-        .child(
-            razer_assets::resource_svg()
-                .path("synapse/chroma-studio-brightness-pointer.svg")
-                .w(surface::css(8.))
-                .h(surface::css(4.))
-                .text_color(Colors::dropdown_arrow())
-                .with_transformation(Transformation::rotate(radians(
-                    if action == StepAction::Increment {
-                        std::f32::consts::PI
-                    } else {
-                        0.
-                    },
-                ))),
-        )
+        button
+            .accessibility_label(if action == StepAction::Increment {
+                "Increase Value"
+            } else {
+                "Decrease Value"
+            })
+            .disabled(disabled)
+            .p_0()
+            .w(surface::css(16.))
+            .relative()
+            .bg(transparent_black())
+            .styles(|style| style.disabled(|style| style.opacity(0.3)))
+            .when(!disabled, |view| {
+                view.hover(|style| style.bg(Colors::spinner_hover()))
+                    .active(|style| style.bg(Colors::spinner_pressed()))
+            })
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(move |this, _, window, cx| this.press(action, window, cx)),
+            )
+            .on_mouse_up(
+                MouseButton::Left,
+                cx.listener(move |this, _, window, cx| this.release(action, window, cx)),
+            )
+            .on_hover(cx.listener(move |this, hovered, window, cx| {
+                if !hovered && this.held {
+                    this.release(action, window, cx);
+                }
+            }))
+            .child(
+                razer_assets::resource_svg()
+                    .path("synapse/chroma-studio-brightness-pointer.svg")
+                    .w(surface::css(8.))
+                    .h(surface::css(4.))
+                    .text_color(Colors::dropdown_arrow())
+                    .with_transformation(Transformation::rotate(radians(
+                        if action == StepAction::Increment {
+                            std::f32::consts::PI
+                        } else {
+                            0.
+                        },
+                    ))),
+            )
     }
 }
 impl Render for StudioNumeric {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let increment = self.spinner(StepAction::Increment, cx);
-        let decrement = self.spinner(StepAction::Decrement, cx);
+        let increment = self.spinner(
+            BaseButton::new(format!("studio-{}-increase", self.field.id())),
+            StepAction::Increment,
+            cx,
+        );
+        let decrement = self.spinner(
+            BaseButton::new(format!("studio-{}-decrease", self.field.id())),
+            StepAction::Decrement,
+            cx,
+        );
         let owner = cx.weak_entity();
         let (min, max, _) = self.field.limits();
         let title = self.field.title();

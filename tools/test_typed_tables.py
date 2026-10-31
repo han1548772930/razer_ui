@@ -672,6 +672,9 @@ class TypedTableTests(unittest.TestCase):
         named, _ = typed_tables.registry_identity_projection(self.transfer_factory(
             "...base", export="DeviceInfo:()=>info,DEVICE_NAME:()=>deviceName"))
         self.assertEqual(named["manufacturer_name"], 'A "quoted" keyboard')
+        empty, empty_evidence = typed_tables.registry_identity_projection(factory.replace("[3,0,1]", "[]"))
+        self.assertEqual(empty["edition_ids"], [])
+        self.assertTrue(empty_evidence["edition_ids"]["export_observed"])
         with self.assertRaises(ValueError):
             typed_tables.registry_identity_projection(factory.replace("return editions", "return lookup()"))
 
@@ -826,6 +829,11 @@ class TypedTableTests(unittest.TestCase):
         self.assertIsNone(evidence["ui_declared_edition_ids"])
         self.assertEqual(evidence["selected_source_role"], "middleware")
         self.assertEqual(evidence["ui_reducer_contract"]["action"], "device/editionLayoutId")
+        ui["definition"]["edition_ids"] = []
+        result, evidence = families.registry_edition_metadata(ui, peer, ui_main=self.registry_edition_fixture())
+        self.assertEqual(result, [0, 128, 130, 131])
+        self.assertEqual(evidence["ui_declared_edition_ids"], [])
+        self.assertEqual(evidence["selected_source_role"], "middleware")
         initialized = self.registry_edition_fixture().replace(
             b'switch(event.type)', b'switch(state||(state=defaults),observe(event,state),event.type)')
         self.assertEqual(families.registry_ui_edition_contract(initialized)["payload_fields"], ["editionId", "layoutId"])
@@ -1515,6 +1523,23 @@ class TypedTableTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "remains unresolved"):
                     families.audit_registry_identity(products=[756])
 
+    def test_registry_audit_resolves_an_empty_ui_edition_export_through_the_real_reducer(self):
+        import analysis
+        import families
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            _, selected = self.registry_identity_fixture(root)
+            receipt, document = selected[0]
+            raw = (root / document["files"][2]["path"]).read_bytes()
+            raw = raw.replace(b"const editions=[3,0]", b"const editions=[]") + self.registry_edition_fixture()
+            self.update_identity_original(root, receipt, document, 2, raw)
+            with patch.object(typed_tables, "ROOT", root), patch.object(analysis, "ROOT", root):
+                report = families.audit_registry_identity(products=[756])
+            row = report["products"][0]
+            self.assertEqual(row["ui_identity"]["definition"]["edition_ids"], [])
+            self.assertEqual(row["edition_metadata"]["selected_source_role"], "middleware")
+            self.assertEqual(row["runtime_directory_projection"]["edition_ids"], [3, 0])
+
     def test_registry_peer_rejects_latest_failure_and_cross_role_product_mismatch(self):
         import analysis
         import families
@@ -1537,6 +1562,58 @@ class TypedTableTests(unittest.TestCase):
                     with self.assertRaises(ValueError):
                         families.current_registry_peer(756, ui["definition"], candidates=routes[
                             "https://apps.razer.com/synapse/products/756/mw/"], observations={})
+
+    def test_registry_peer_retains_independent_ui_and_middleware_categories(self):
+        import analysis
+        import families
+        import frontend
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            _, selected = self.registry_identity_fixture(root)
+            receipt, document = selected[1]
+            raw = (root / document["files"][2]["path"]).read_bytes().replace(b'category:"KEYBOARD"', b'category:"CHAIR"')
+            self.update_identity_original(root, receipt, document, 2, raw)
+            with patch.object(typed_tables, "ROOT", root), patch.object(analysis, "ROOT", root):
+                routes = frontend.current_acquisition_routes()
+                ui, _ = families.registry_source_identity(756, "ui", candidates=routes[
+                    "https://apps.razer.com/synapse/products/756/ui/"], observations={})
+                peer = families.current_registry_peer(756, ui["definition"], candidates=routes[
+                    "https://apps.razer.com/synapse/products/756/mw/"], observations={})
+                self.assertEqual(peer["declared_categories"], {
+                    "ui": "KEYBOARD", "middleware": "CHAIR", "status": "different_source_roles"})
+                self.assertEqual(peer["definition"]["device_info"]["category"], "CHAIR")
+                self.assertEqual(ui["definition"]["device_info"]["category"], "KEYBOARD")
+
+    def test_registry_partial_refresh_retains_other_products_failures_and_source_receipts(self):
+        import families
+        def report(pids, failures=(), unavailable=(), prepared=False, sha="a"):
+            return {"schema_version": 1, "recorded_at_utc": sha, "requested_products": pids,
+                    "products": [{"endpoint_product_id": pid, "source": sha} for pid in pids],
+                    "failures": [{"product_id": pid, "error": "retained source failure"} for pid in failures],
+                    "unavailable_sources": [{"endpoint_product_id": pid, "role": "ui"} for pid in unavailable],
+                    "inputs": [{"path": "tools/families.py", "bytes": 1, "sha256": sha}],
+                    "tool_inputs": [{"path": "tools/families.py", "bytes": 1, "sha256": sha}],
+                    "all_product_sources_complete": not failures and not unavailable, "prepared": prepared}
+        previous = report([778, 3942, 756], failures=[778, 3942], unavailable=[778])
+        selected = report([778], prepared=True, sha="b")
+        merged = families.merge_registry_identity_report(previous, selected)
+        self.assertEqual([row["endpoint_product_id"] for row in merged["products"]], [756, 778, 3942])
+        self.assertEqual(merged["failures"], [{"product_id": 3942, "error": "retained source failure"}])
+        self.assertEqual(merged["unavailable_sources"], [])
+        self.assertEqual([row["sha256"] for row in merged["inputs"]], ["a", "b"])
+        self.assertEqual(merged["products"][0]["source_audit"]["tool_inputs"], previous["tool_inputs"])
+        self.assertEqual(merged["products"][1]["source_audit"]["tool_inputs"], selected["tool_inputs"])
+        self.assertFalse(merged["all_product_sources_complete"])
+        self.assertTrue(merged["selected_refresh"]["prepared"])
+        self.assertEqual(merged["selected_refresh"]["retained_product_ids_not_revalidated"], [756, 3942])
+        complete = families.merge_registry_identity_report(merged, report([756, 778, 3942], sha="c"))
+        self.assertTrue(complete["all_product_sources_complete"])
+        self.assertEqual(complete["failures"], [])
+        self.assertEqual([row["sha256"] for row in complete["inputs"]], ["c"])
+        for malformed in ({**selected, "requested_products": [778, 3942]},
+                          {**selected, "products": selected["products"] * 2}):
+            with self.subTest(malformed=malformed), self.assertRaises(ValueError):
+                families.merge_registry_identity_report(previous, malformed)
 
     def test_current_identity_generation_checks_the_same_source_owned_artifact(self):
         import analysis

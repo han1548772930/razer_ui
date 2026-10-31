@@ -844,6 +844,86 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
         function = next(parent for parent in ancestors(value) if parent.type == "function_item")
         return not any(child.type == "assignment_expression" and text(child.child_by_field_name("left")) == text(value)
             and declaration.end_byte <= child.start_byte < value.start_byte for child in walk(function))
+    def native_number_spinner(node):
+        number_owner = {
+            "crates/razer-pages/src/features/audio/seiren/audio_seiren_eq_number.rs": "Number",
+            "crates/razer-pages/src/features/chroma/chroma_studio_numeric.rs": "StudioNumeric",
+            "crates/razer-widgets/src/stepper.rs": "Stepper",
+        }.get(owner)
+        if number_owner is None or node.parent.type != "call_expression" \
+                or node.parent.child_by_field_name("function") != node:
+            return False
+        function = next((parent for parent in ancestors(node) if parent.type == "function_item"), None)
+        implementation = next((parent for parent in ancestors(node) if parent.type == "impl_item"), None)
+        if function is None or implementation is None or text(function.child_by_field_name("name")) != "render" \
+                or text(implementation.child_by_field_name("type")) != number_owner \
+                or resolved_call(text(implementation.child_by_field_name("trait")).split("::")) not in {
+                    ("Render",), ("gpui_kit", "Render")}:
+            return False
+        constructors = node.parent.parent
+        decorator = constructors.parent
+        if constructors.type != "arguments" or decorator.type != "call_expression" \
+                or text(decorator.child_by_field_name("function")) != "self.spinner" \
+                or constructors.named_children[0] != node.parent:
+            return False
+        spinner_methods = [item for item in declarations if item.type == "function_item"
+            and text(item.child_by_field_name("name")) == "spinner"
+            and item.parent.parent.type == "impl_item"
+            and text(item.parent.parent.child_by_field_name("type")) == number_owner]
+        def native_button_type(value):
+            path = resolved_call(text(value).split("::"))
+            return path in native_button_types or len(path) == 1 and path[0] in button_aliases
+        if len(spinner_methods) != 1 or not native_button_type(spinner_methods[0].child_by_field_name("return_type")):
+            return False
+        parameters = [item for item in spinner_methods[0].child_by_field_name("parameters").named_children
+            if item.type == "parameter"]
+        if not parameters or not native_button_type(parameters[0].child_by_field_name("type")):
+            return False
+        binding = decorator.parent
+        if binding.type != "let_declaration" or binding.child_by_field_name("value") != decorator \
+                or binding.child_by_field_name("pattern").type != "identifier" \
+                or any(child.type == "mutable_specifier" for child in binding.children):
+            return False
+        name = text(binding.child_by_field_name("pattern"))
+        usages = [item for item in walk(function.child_by_field_name("body")) if item.type == "identifier"
+            and text(item) == name and item.start_byte >= binding.end_byte]
+        has_number_callback = False
+        for usage in usages:
+            closure = usage.parent
+            if closure.type == "closure_expression" and closure.child_by_field_name("body") == usage \
+                    and closure.parent.type == "arguments":
+                callback = closure.parent.parent
+                target = callback.child_by_field_name("function")
+                if callback.type != "call_expression" or target.type != "field_expression" \
+                        or text(target.child_by_field_name("field")) not in {"increment_button", "decrement_button"}:
+                    return False
+                receiver = target.child_by_field_name("value")
+                while receiver.type == "call_expression" \
+                        and receiver.child_by_field_name("function").type == "field_expression":
+                    receiver = receiver.child_by_field_name("function").child_by_field_name("value")
+                if receiver.type != "call_expression" or resolved_call(text(receiver.child_by_field_name("function")).split("::")) not in {
+                        ("gpui_kit", "base", "NumberInput", "new"),
+                        ("gpui_kit", "base", "number_input", "NumberInput", "new")}:
+                    return False
+                has_number_callback = True
+                continue
+            # The custom Stepper renders the same native spinners without tab stops.
+            current, unfocusable = usage, False
+            while current.parent is not None and current.parent.type == "field_expression" \
+                    and current.parent.child_by_field_name("value") == current \
+                    and current.parent.parent.type == "call_expression":
+                target = current.parent
+                current = target.parent
+                if text(target.child_by_field_name("field")) == "focusable" \
+                        and [text(arg) for arg in current.child_by_field_name("arguments").named_children] == ["false"]:
+                    unfocusable = True
+            parent_call = current.parent.parent if current.parent is not None and current.parent.type == "arguments" else None
+            if number_owner != "Stepper" or not unfocusable or parent_call is None \
+                    or parent_call.type != "call_expression" \
+                    or parent_call.child_by_field_name("function").type != "field_expression" \
+                    or text(parent_call.child_by_field_name("function").child_by_field_name("field")) != "child":
+                return False
+        return has_number_callback
     def source_clock_value(value, seen=frozenset()):
         value = unwrapped_expression(value)
         if value is None or value.id in seen:
@@ -1055,7 +1135,7 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
         if gui_source and owner != keyboard_button_owner and node.type == "scoped_identifier":
             path = resolved_call(text(node).split("::"))
             if path[-1:] == ("new",) and (path[:-1] in native_button_types
-                    or len(path) == 2 and path[0] in button_aliases):
+                    or len(path) == 2 and path[0] in button_aliases) and not native_number_spinner(node):
                 fail(node, "source_button_bypasses_window_navigation", keyboard_button_owner + "::Button")
         if owner == keyboard_navigation_owner and node.type == "function_item" \
                 and text(node.child_by_field_name("name")) == "new":

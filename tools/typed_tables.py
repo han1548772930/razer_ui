@@ -3131,7 +3131,7 @@ def registry_identity_projection(body, *, modules=None):
     editions, edition_evidence = _profile_transfer_static_fields(
         body, "AVAILABLE_EDITION_ID", None, modules, allow_absent=True)
     if edition_evidence["export_observed"]:
-        source_list(editions, "current registry edition IDs", True)
+        source_list(editions, "current registry edition IDs")
         for edition in editions:
             bounded(edition, 0xFFFFFFFF, "current registry edition ID")
         if len(set(editions)) != len(editions):

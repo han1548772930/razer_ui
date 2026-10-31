@@ -49,7 +49,7 @@ fn every_current_help_page_selects_the_source_storage_branch() {
             pages += 1;
         }
     }
-    assert_eq!(pages, 330);
+    assert_eq!(pages, 332);
 }
 
 #[test]

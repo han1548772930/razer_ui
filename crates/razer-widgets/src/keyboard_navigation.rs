@@ -1,14 +1,19 @@
 //! Window-owned keyboard guide from the shared `rz-accessibility` runtime.
 use crate::{surface::css, theme::KeyboardGuideColors as Colors};
 use gpui_kit::base::{
-    Root, RootPlugin, StyledExt as _, TestSupportExt as _,
+    Root, RootPlugin, TestSupportExt as _,
     motion::{self, Easing, Transition},
 };
 use gpui_kit::*;
 use razer_state::ui_preferences::{
     InitialTabFinished, InitialTabObservation, InitialTabRequest, UiPreferences,
 };
-use std::time::Duration;
+use std::{collections::HashSet, time::Duration};
+
+mod source;
+pub use source::{DocumentNavigation, HostPage, ProductId, SourcePage};
+mod document;
+pub use document::{DocumentScope, document_scope};
 
 mod focus;
 pub use focus::{
@@ -142,7 +147,9 @@ struct KeyboardNavigation {
     close_focus: FocusHandle,
     preferences: Entity<UiPreferences>,
     next_tab: u64,
-    keyboard: bool,
+    keyboard: HashSet<ElementId>,
+    pending_document: Option<document::Document>,
+    guide_document: Option<document::Document>,
     close_hovered: bool,
     focus_frame: focus::SharedFrame,
     _subscriptions: Vec<Subscription>,
@@ -154,18 +161,20 @@ pub(crate) fn init(cx: &mut App) {
 
 /// Open the same guide in any registered product, settings or independent window.
 pub fn open_guide(window: &mut Window, cx: &mut App) {
+    let document = focus::active_document(window, cx)
+        .filter(|document| document.page.navigation().installed());
     let owner = Root::read(window, cx)
         .plugin::<KeyboardNavigation>()
         .expect("Keyboard navigation must be initialized before opening windows");
-    owner.update(cx, |owner, cx| owner.open(window, cx));
+    owner.update(cx, |owner, cx| {
+        if let Some(document) = document {
+            owner.open(document, window, cx);
+        }
+    });
 }
 
 impl KeyboardNavigation {
     fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
-        // Directional navigation consumes every currently drawn control's bounds.
-        // Automatic view replay would skip those registrations; this window owns
-        // a complete layout/paint pass for its source-defined focus order.
-        window.set_view_retention(false);
         let preferences = UiPreferences::shared(cx);
         let window_id = window.window_handle().window_id();
         let weak = cx.weak_entity();
@@ -182,7 +191,13 @@ impl KeyboardNavigation {
             window,
             |owner, _, event: &InitialTabFinished, window, cx| {
                 if owner.guide.observe_tab(event.request(), event.result()) {
-                    owner.open(window, cx);
+                    if let Some(document) = owner.pending_document.take().filter(|document| {
+                        focus::document_is_mounted_in(document, &owner.focus_frame)
+                    }) {
+                        owner.open(document, window, cx);
+                    }
+                } else if owner.guide.pending_tab.is_none() {
+                    owner.pending_document = None;
                 }
             },
         );
@@ -192,7 +207,9 @@ impl KeyboardNavigation {
             close_focus: cx.focus_handle().tab_stop(true),
             preferences,
             next_tab: 0,
-            keyboard: false,
+            keyboard: HashSet::new(),
+            pending_document: None,
+            guide_document: None,
             close_hovered: false,
             focus_frame: Default::default(),
             _subscriptions: vec![keys, initial],
@@ -200,21 +217,28 @@ impl KeyboardNavigation {
     }
 
     fn keystroke(&mut self, key: &Keystroke, window: &mut Window, cx: &mut Context<Self>) {
-        if matches!(
-            key.key.as_str(),
-            "tab" | "up" | "down" | "left" | "right" | "home" | "end" | "enter" | "space"
-        ) && !self.keyboard
-        {
-            self.keyboard = true;
-            cx.notify();
-            window.refresh();
-        }
         if key.key == "escape" && self.guide.open {
             self.close(window, cx);
             cx.stop_propagation();
             return;
         }
-        if key.key == "tab" && self.guide.pending_tab.is_none() {
+        let Some(document) = focus::active_document_in(&self.focus_frame, window, cx)
+            .filter(|document| document.page.navigation().installed())
+        else {
+            return;
+        };
+        if matches!(
+            key.key.as_str(),
+            "tab" | "up" | "down" | "left" | "right" | "home" | "end" | "enter" | "space"
+        ) && self.keyboard.insert(document.id.clone())
+        {
+            cx.notify();
+            window.refresh();
+        }
+        if key.key == "tab"
+            && document.page.navigation().initial_guide()
+            && self.guide.pending_tab.is_none()
+        {
             self.next_tab = self
                 .next_tab
                 .checked_add(1)
@@ -224,14 +248,16 @@ impl KeyboardNavigation {
                 preferences.record_initial_tab(request, cx)
             }) {
                 self.guide.pending_tab = Some(request);
+                self.pending_document = Some(document);
             }
         }
     }
 
-    fn open(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    fn open(&mut self, document: document::Document, window: &mut Window, cx: &mut Context<Self>) {
         let Some(generation) = self.guide.open() else {
             return;
         };
+        self.guide_document = Some(document);
         self.close_hovered = false;
         let weak = cx.weak_entity();
         window.on_next_frame(move |window, cx| {
@@ -246,6 +272,8 @@ impl KeyboardNavigation {
 
     fn close(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.guide.close();
+        self.guide_document = None;
+        self.pending_document = None;
         self.close_hovered = false;
         // Source St removes the focused dialog; it neither traps Tab nor
         // restores the trigger. Base Dialog's different focus policy is not used.
@@ -253,6 +281,23 @@ impl KeyboardNavigation {
             window.blur(cx);
         }
         cx.notify();
+    }
+
+    fn prune_documents(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self
+            .guide_document
+            .as_ref()
+            .is_some_and(|document| !focus::document_is_mounted_in(document, &self.focus_frame))
+        {
+            self.close(window, cx);
+        } else if self
+            .pending_document
+            .as_ref()
+            .is_some_and(|document| !focus::document_is_mounted_in(document, &self.focus_frame))
+        {
+            self.guide.pending_tab = None;
+            self.pending_document = None;
+        }
     }
 }
 
@@ -270,10 +315,12 @@ impl RootPlugin for KeyboardNavigation {
         focus::scope(
             div()
                 .size_full()
-                .capture_any_mouse_down(move |_, window, cx| {
+                .capture_any_mouse_down(move |event, window, cx| {
+                    let document = focus::document_at(event.position, window, cx);
                     owner.update(cx, |owner, cx| {
-                        if owner.keyboard {
-                            owner.keyboard = false;
+                        if let Some(document) = document
+                            && owner.keyboard.remove(&document.id)
+                        {
                             cx.notify();
                             window.refresh();
                         }
@@ -291,6 +338,9 @@ impl Render for KeyboardNavigation {
         if !self.guide.open {
             return Empty.into_any_element();
         }
+        let Some(document) = self.guide_document.clone() else {
+            return Empty.into_any_element();
+        };
         let opacity = motion::transition(
             "keyboard-guide-close-opacity",
             if self.close_hovered { 0.8 } else { 1. },
@@ -349,6 +399,7 @@ impl Render for KeyboardNavigation {
                 offset: point(px(0.), window.rem_size() * (6. / 16.)),
                 blur_radius: window.rem_size() * (10. / 16.),
                 spread_radius: px(0.),
+                inset: false,
             }])
             .on_click(|_, _, cx| cx.stop_propagation())
             .child(
@@ -405,24 +456,27 @@ impl Render for KeyboardNavigation {
                     })),
             )
             .child(close);
-        razer_assets::deferred_resource(
-            anchored().position(point(px(0.), px(0.))).child(
-                div()
-                    .id("keyboard-guide-backdrop")
-                    .test_support()
-                    .absolute()
-                    .w(window.viewport_size().width)
-                    .h(window.viewport_size().height)
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .occlude()
-                    .bg(Colors::backdrop())
-                    .on_click(cx.listener(|owner, _, window, cx| owner.close(window, cx)))
-                    .child(panel),
-            ),
+        document::overlay(
+            document,
+            razer_assets::deferred_resource(
+                anchored().position(point(px(0.), px(0.))).child(
+                    div()
+                        .id("keyboard-guide-backdrop")
+                        .test_support()
+                        .absolute()
+                        .w(window.viewport_size().width)
+                        .h(window.viewport_size().height)
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .occlude()
+                        .bg(Colors::backdrop())
+                        .on_click(cx.listener(|owner, _, window, cx| owner.close(window, cx)))
+                        .child(panel),
+                ),
+            )
+            .with_priority(9999),
         )
-        .with_priority(9999)
         .into_any_element()
     }
 }

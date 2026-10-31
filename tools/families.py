@@ -22461,7 +22461,7 @@ def registry_edition_metadata(ui_report, peer, *, ui_main):
     mw_editions = peer["definition"]["edition_ids"] if peer["status"] == "verified" else None
     evidence = {"ui_declared_edition_ids": ui_editions, "middleware_declared_edition_ids": mw_editions,
                 "scope": "Source-declared presentation variants; not a live device edition"}
-    if ui_editions is not None:
+    if ui_editions:
         return ui_editions, {**evidence, "selected_source_role": "ui"}
     if mw_editions is not None:
         return mw_editions, {**evidence, "selected_source_role": "middleware",
@@ -22475,12 +22475,15 @@ def current_registry_peer(pid, ui_definition, *, candidates, observations=None):
     if report["status"] != "verified":
         return report
     middleware = report["definition"]
-    comparisons = {field: {"ui": ui_definition["device_info"][field], "middleware": middleware["device_info"][field]}
-                   for field in ("productId", "category")}
+    comparisons = {"productId": {"ui": ui_definition["device_info"]["productId"],
+                                 "middleware": middleware["device_info"]["productId"]}}
     if any(row["ui"] != row["middleware"] for row in comparisons.values()):
         raise ValueError("Current UI and middleware declared identities disagree: " + json.dumps(comparisons))
     ui_name, middleware_name = ui_definition["manufacturer_name"], middleware["manufacturer_name"]
     report["declared_identity_agreement"] = comparisons
+    ui_category, middleware_category = ui_definition["device_info"]["category"], middleware["device_info"]["category"]
+    report["declared_categories"] = {"ui": ui_category, "middleware": middleware_category,
+        "status": "equal" if ui_category == middleware_category else "different_source_roles"}
     report["manufacturer_names"] = {"ui": ui_name, "middleware": middleware_name,
         "status": "unobserved_in_one_or_both_roles" if ui_name is None or middleware_name is None else
                   "equal" if ui_name == middleware_name else "different_source_spellings"}
@@ -22505,6 +22508,58 @@ def registry_product_record(pid, name, category, editions, navigations, previous
             nav["pages"].append({"key": page_key, "kind": page["kind"], "role": role, "help_selector": selector})
         product["navigations"].append(nav)
     return product
+
+
+def merge_registry_identity_report(previous, selected):
+    """Replace selected products while retaining other source results and failures."""
+    def product_rows(report):
+        rows = report.get("products", [])
+        if not isinstance(rows, list):
+            raise ValueError("Registry identity report has no product list")
+        result = {}
+        for row in rows:
+            pid = row.get("endpoint_product_id") if isinstance(row, dict) else None
+            if type(pid) is not int or not 1 <= pid <= 0xFFFF or pid in result:
+                raise ValueError("Registry identity report repeats or loses an endpoint identity")
+            result[pid] = row
+        return result
+
+    old, refreshed = product_rows(previous), product_rows(selected)
+    requested = selected["requested_products"]
+    if sorted(refreshed) != sorted(requested) or len(set(requested)) != len(requested):
+        raise ValueError("Registry identity refresh does not cover each requested product once")
+    retained = sorted(old.keys() - refreshed.keys())
+
+    def annotated(row, report):
+        if "source_audit" in row:
+            return row
+        return {**row, "source_audit": {
+            "recorded_at_utc": report.get("recorded_at_utc"),
+            "tool_inputs": report.get("tool_inputs", [report["tool"]] if "tool" in report else []),
+            "catalog_entry": report.get("catalog", {}).get("entry"),
+            "registry_before": report.get("registry_before"),
+            "runtime_acceptance": report.get("runtime_acceptance", "unverified")}}
+
+    rows = {pid: annotated(old[pid], previous) for pid in retained}
+    rows.update({pid: annotated(row, selected) for pid, row in refreshed.items()})
+    failures = [row for row in previous.get("failures", []) if row["product_id"] in retained]
+    failures.extend(selected["failures"])
+    unavailable = [row for row in previous.get("unavailable_sources", [])
+                   if row["endpoint_product_id"] in retained]
+    unavailable.extend(selected.get("unavailable_sources", []))
+    inputs = {}
+    for row in [*(previous.get("inputs", []) if retained else []), *selected.get("inputs", [])]:
+        key = row["path"], row["bytes"], row["sha256"]
+        inputs[key] = row
+    return {**selected, "products": [rows[pid] for pid in sorted(rows)],
+            "failures": sorted(failures, key=lambda row: row["product_id"]),
+            "unavailable_sources": sorted(unavailable, key=lambda row: (row["endpoint_product_id"], row["role"])),
+            "inputs": [inputs[key] for key in sorted(inputs)],
+            "all_product_sources_complete": selected["all_product_sources_complete"] and not retained,
+            "selected_refresh": {"requested_products": requested, "failures": selected["failures"],
+                "prepared": selected["prepared"], "recorded_at_utc": selected["recorded_at_utc"],
+                "retained_product_ids_not_revalidated": retained,
+                "scope": "Publication and current verification apply only to requested products; other source results remain retained"}}
 
 
 def audit_registry_identity(prepare=False, products=None):
@@ -22591,9 +22646,9 @@ def audit_registry_identity(prepare=False, products=None):
                     edits[pid] = None
                 continue
             edition_ids, row["edition_metadata"] = registry_edition_metadata(
-                source_report, peer, ui_main=source["audit"].read(source["main"]) if edition_ids is None else None)
+                source_report, peer, ui_main=source["audit"].read(source["main"]) if not edition_ids else None)
             row["edition_ids"] = edition_ids
-            if edition_ids is None:
+            if not edition_ids:
                 raise ValueError("Current registry edition declarations are unobserved in both source roles")
             row["endpoint_semantics"] = "catalog_route_with_declared_alias" if declared_pid != pid else "self_declared_product"
             if header and pid not in mounted_candidates:
@@ -22649,10 +22704,16 @@ def audit_registry_identity(prepare=False, products=None):
         report["prepared_catalog"] = {key: catalog[key] for key in ("output", "bytes", "sha256", "product_registry", "passed")}
     report["prepared"] = prepare and not report["failures"]
     report["registry_after"] = identity(registry)
-    a.save(destination, report)
+    selected_failures, selected_count = report["failures"], len(report["products"])
+    with a.index_lock(a.ROOT / ".work/registry-identity-report.lock"):
+        previous = json.loads(destination.read_bytes()) if destination.exists() else {}
+        report = merge_registry_identity_report(previous, report)
+        a.save(destination, report)
     print(json.dumps({"report": a.rel(destination), "products": len(report["products"]),
-                      "failures": report["failures"], "prepared": report["prepared"]}), flush=True)
-    if report["failures"]:
+                      "selected_products": selected_count, "failures": selected_failures,
+                      "retained_failures": len(report["failures"]) - len(selected_failures),
+                      "prepared": report["prepared"]}), flush=True)
+    if selected_failures:
         raise ValueError("Current registry identity audit remains unresolved")
     return report
 

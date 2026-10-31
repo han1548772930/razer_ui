@@ -1,4 +1,4 @@
-//! Current owner-mounted PID 1453 Power tutorial and PID 1398 THX instructions.
+//! Current owner-mounted Power tutorials and THX instructions.
 //! This entity outlives Help tab changes, matching the original product owner.
 use gpui_kit::component::{h_flex, v_flex};
 use gpui_kit::{prelude::FluentBuilder as _, *};
@@ -50,7 +50,10 @@ pub(super) fn supports_product_names(product_id: u32) -> bool {
     )
 }
 pub(super) fn supports_tutorial(product_id: u32) -> bool {
-    product_id == 1453 || analog::supports(product_id)
+    supports_power_tutorial(product_id) || analog::supports(product_id)
+}
+fn supports_power_tutorial(product_id: u32) -> bool {
+    matches!(product_id, 1451 | 1453)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -124,7 +127,7 @@ impl HelpOwnerRequested {
     pub fn tutorial_storage_key(&self) -> Option<String> {
         if matches!(self.product_id, 1392 | 1442) {
             Some("showOnboardingTutorialCarol".into())
-        } else if self.product_id == 1453 {
+        } else if supports_power_tutorial(self.product_id) {
             Some(format!("{}_OnboardingTutorialDismissed", self.product_id))
         } else {
             analog::storage_key(self.product_id)
@@ -149,12 +152,13 @@ impl HelpOwnerRequested {
         }
     }
     pub fn host_focus_actions(&self) -> Option<[Value; 2]> {
-        (self.product_id == 1453 && self.command == HelpOwnerCommand::Observe).then(|| {
-            [
-                serde_json::json!({"action":"getFocusTab", "windowName":"synapse"}),
-                serde_json::json!({"action":"getWindowStatus"}),
-            ]
-        })
+        (supports_power_tutorial(self.product_id) && self.command == HelpOwnerCommand::Observe)
+            .then(|| {
+                [
+                    serde_json::json!({"action":"getFocusTab", "windowName":"synapse"}),
+                    serde_json::json!({"action":"getWindowStatus"}),
+                ]
+            })
     }
     /// Original QT.gv caller invokes the parameterized host msSettings adapter.
     pub fn ms_settings_section(&self) -> Option<&'static str> {
@@ -215,7 +219,7 @@ impl SourceHelpOwner {
     }
     pub(super) fn mount(&mut self, cx: &mut Context<Self>) {
         if self.mounted
-            || !(self.product_id == 1453
+            || !(supports_power_tutorial(self.product_id)
                 || supports_thx(self.product_id)
                 || supports_product_names(self.product_id))
         {
@@ -365,7 +369,7 @@ impl SourceHelpOwner {
         cx: &mut Context<Self>,
     ) -> bool {
         if !self.accepts(request)
-            || self.product_id != 1453
+            || !supports_power_tutorial(self.product_id)
             || request.command != HelpOwnerCommand::Observe
         {
             return false;
@@ -384,7 +388,7 @@ impl SourceHelpOwner {
         cx: &mut Context<Self>,
     ) -> bool {
         if !self.accepts(request)
-            || self.product_id != 1453
+            || !supports_power_tutorial(self.product_id)
             || request.command != HelpOwnerCommand::Observe
         {
             return false;
@@ -402,7 +406,7 @@ impl SourceHelpOwner {
         cx: &mut Context<Self>,
     ) -> bool {
         if !self.accepts(request)
-            || self.product_id != 1453
+            || !supports_power_tutorial(self.product_id)
             || request.command != HelpOwnerCommand::Observe
         {
             return false;
@@ -429,7 +433,7 @@ impl SourceHelpOwner {
         }));
     }
     fn auto_open(&mut self, cx: &mut Context<Self>) {
-        if self.product_id == 1453
+        if supports_power_tutorial(self.product_id)
             && self.tutorial_dismissed == Some(false)
             && self.host_active == Some(true)
             && !self.tutorial_shown
@@ -819,6 +823,55 @@ impl Element for CenteredAt {
         cx: &mut App,
     ) {
         self.child.paint(window, cx);
+    }
+}
+
+#[cfg(test)]
+mod power_tutorial_tests {
+    use super::*;
+
+    fn request(product_id: u32, command: HelpOwnerCommand) -> HelpOwnerRequested {
+        HelpOwnerRequested {
+            owner: EntityId::from(1),
+            generation: 0,
+            product_id,
+            command,
+            simultaneous_mode: None,
+            audio_messages: Vec::new(),
+            audio_revision: 0,
+        }
+    }
+
+    #[test]
+    fn source_power_tutorials_observe_without_persisting_until_dismissal() {
+        for product_id in [1451, 1453] {
+            let storage_key = format!("{product_id}_OnboardingTutorialDismissed");
+            let observation = request(product_id, HelpOwnerCommand::Observe);
+            assert!(supports_tutorial(product_id));
+            assert_eq!(
+                observation.tutorial_storage_key(),
+                Some(storage_key.clone())
+            );
+            assert!(observation.tutorial_storage_writes().is_empty());
+            assert_eq!(
+                observation.host_focus_actions(),
+                Some([
+                    serde_json::json!({"action":"getFocusTab", "windowName":"synapse"}),
+                    serde_json::json!({"action":"getWindowStatus"}),
+                ])
+            );
+
+            let dismissal = request(product_id, HelpOwnerCommand::DismissTutorial);
+            assert_eq!(
+                dismissal.tutorial_storage_writes(),
+                vec![(storage_key, Value::Bool(true))]
+            );
+            assert!(dismissal.host_focus_actions().is_none());
+        }
+        let unrelated = request(1450, HelpOwnerCommand::Observe);
+        assert!(!supports_tutorial(1450));
+        assert!(unrelated.tutorial_storage_key().is_none());
+        assert!(unrelated.host_focus_actions().is_none());
     }
 }
 

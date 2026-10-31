@@ -231,7 +231,7 @@ impl AppShell {
             let Some(request) = workspace
                 .read(cx)
                 .help_owner_observation_request(cx)
-                .filter(|r| r.product_id() == 1453)
+                .filter(|r| matches!(r.product_id(), 1451 | 1453))
             else {
                 continue;
             };
@@ -264,7 +264,7 @@ impl AppShell {
             let Some(request) = workspace
                 .read(cx)
                 .help_owner_observation_request(cx)
-                .filter(|r| r.product_id() == 1453)
+                .filter(|r| matches!(r.product_id(), 1451 | 1453))
             else {
                 continue;
             };
