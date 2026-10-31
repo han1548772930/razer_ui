@@ -138,6 +138,69 @@ fn different_raw_seconds_fail_even_when_rounded_ui_minutes_match() {
 }
 
 #[test]
+fn both_power_products_stop_after_release_failure_and_retain_the_actual_reply() {
+    use crate::feature_exchange::tests::{ExchangeProbe, LeaseEvent};
+
+    for (product_id, selector, payload) in [(2636, 4, [0x2c, 0x01]), (2676, 10, [0x01, 0x2c])] {
+        for failed_exchange in [1, 2] {
+            for status in [2, 5] {
+                let io = Transport::new([
+                    reply(
+                        selector,
+                        0,
+                        3,
+                        if failed_exchange == 1 { status } else { 2 },
+                        &[],
+                    ),
+                    reply(selector, 1, 0x83, status, &payload),
+                ]);
+                let finished = Cell::new(0);
+                let check = || {
+                    finished.set(finished.get() + 1);
+                    ensure!(
+                        finished.get() != failed_exchange,
+                        "scripted release failure"
+                    );
+                    Ok(())
+                };
+                let probe = ExchangeProbe::with_finish_check(&io, &check);
+                let error = SleepProtocol::new(&probe, capability(product_id).unwrap(), |_| Ok(()))
+                    .execute(&set(5, true))
+                    .unwrap_err();
+                assert!(crate::backend::exchange_finalization_failed(&error));
+                let completed = crate::CompletedFeatureExchange::from_error(&error);
+                assert_eq!(completed.is_some(), status == 2);
+                if let Some(completed) = completed {
+                    assert_eq!(
+                        completed.command(),
+                        [2, 7, if failed_exchange == 1 { 3 } else { 0x83 }]
+                    );
+                    assert_eq!(
+                        completed.data(),
+                        if failed_exchange == 1 {
+                            &[][..]
+                        } else {
+                            &payload[..]
+                        }
+                    );
+                }
+                assert_eq!(io.sent.borrow().len(), failed_exchange);
+                assert_eq!(io.replies.borrow().len(), 2 - failed_exchange);
+                assert_eq!(
+                    probe
+                        .events()
+                        .iter()
+                        .filter(|event| **event == LeaseEvent::Finish)
+                        .count(),
+                    failed_exchange
+                );
+                assert!(!probe.events().contains(&LeaseEvent::ForcedDrop));
+            }
+        }
+    }
+}
+
+#[test]
 fn failed_initial_get_does_not_write_defaults_or_invent_an_observation() {
     let io = Transport::new([reply(4, 0, 0x83, 5, &[])]);
     let result = SleepProtocol::new(&io, capability(2636).unwrap(), |_| Ok(()))

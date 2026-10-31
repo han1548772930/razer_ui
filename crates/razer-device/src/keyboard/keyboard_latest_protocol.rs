@@ -221,7 +221,7 @@ fn retain_chunk(
         error: result.as_ref().err().map(|error| format!("{error:#}")),
     });
     let operation_error = match result {
-        Err(error) if crate::backend::exchange_finalization_failed(&error) => {
+        Err(error) if crate::backend::exchange_interrupted(&error) => {
             return Err(write_failure(error, chunks));
         }
         Err(error) => Some(error),
@@ -235,7 +235,13 @@ fn retain_chunk(
             None => validation,
         };
         chunks.last_mut().unwrap().error = Some(format!("{error:#}"));
-        return Err(write_failure(error, chunks));
+        return Err(write_failure(
+            crate::backend::interrupt_exchange(
+                error,
+                crate::backend::ExchangeInterruption::Validation,
+            ),
+            chunks,
+        ));
     }
     Ok(())
 }

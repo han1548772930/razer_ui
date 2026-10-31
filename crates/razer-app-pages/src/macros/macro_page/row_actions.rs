@@ -71,6 +71,7 @@ impl MacroPage {
         if self.recording_busy()
             || self.record_ui.open
             || kind == ActionKind::Delay && self.current_macro_type() != MacroType::Standard
+            || kind == ActionKind::Macro && self.current_macro_type() == MacroType::Phased
         {
             return None;
         }
@@ -184,7 +185,7 @@ impl MacroPage {
             }
             _ => vec![item],
         };
-        self.undo.push(self.actions.clone());
+        self.checkpoint_actions();
         for selected in &mut self.selected_actions {
             if *selected > index {
                 *selected += copies.len();
@@ -193,6 +194,7 @@ impl MacroPage {
         self.actions.splice(index + 1..index + 1, copies);
         self.clear_action_editors();
         self.redo.clear();
+        self.rebuild_action_execution();
         cx.notify();
     }
 
@@ -230,7 +232,9 @@ impl MacroPage {
             .collect();
         self.undo
             .push(std::mem::replace(&mut self.actions, actions));
+        self.invalidate_execution();
         self.redo.clear();
+        self.rebuild_action_execution();
         self.clear_action_editors();
         cx.notify();
     }
@@ -346,7 +350,9 @@ impl MacroPage {
             self.normalize_phased_rows();
         }
         self.undo.push(before);
+        self.invalidate_execution();
         self.redo.clear();
+        self.rebuild_action_execution();
         self.clear_action_editors();
         cx.notify();
     }
@@ -395,7 +401,7 @@ impl MacroPage {
             } else {
                 old.mouse.as_ref().and_then(|mouse| mouse.pair_id)
             };
-        self.undo.push(self.actions.clone());
+        self.checkpoint_actions();
         // Legacy display-only mouse rows stay unpaired; choosing an option is
         // an explicit local edit, not evidence that a matching row was recorded.
         let mouse = self.actions[index].mouse.get_or_insert(MouseEvent {
@@ -443,6 +449,7 @@ impl MacroPage {
         }
         self.clear_action_editors();
         self.redo.clear();
+        self.rebuild_action_execution();
         cx.notify();
     }
 }

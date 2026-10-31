@@ -2,6 +2,10 @@
 use super::editors::{source_float, source_number};
 use super::*;
 use gpui_kit::component::select::SelectState;
+use razer_model::macro_library::{
+    MovementMode,
+    recording::{DelayMode, Preferences, Seconds},
+};
 use razer_pages::features::macro_library::MacroType;
 use razer_widgets::surface;
 use serde::Deserialize;
@@ -45,18 +49,17 @@ pub struct RecordUi {
     pub fixed: Entity<InputState>,
     pub min: Entity<InputState>,
     pub max: Entity<InputState>,
-    delay_time: f64,
-    random: [f64; 2],
-    mouse: usize,
+    profile: Preferences,
     generation: [u64; 2],
     ignored_drafts: [Option<String>; 3],
-    number_tasks: Vec<Task<()>>,
+    number_tasks: [Option<Task<()>>; 2],
     help: Option<usize>,
     help_bounds: Vec<Rc<Cell<Bounds<Pixels>>>>,
     pub trigger_bounds: Rc<Cell<Bounds<Pixels>>>,
 }
 impl RecordUi {
     pub fn new(window: &mut Window, cx: &mut Context<MacroPage>) -> Self {
+        let profile = Preferences::default();
         Self {
             open: false,
             shortcut: super::record_shortcut::ShortcutUi::new(cx.focus_handle()),
@@ -64,25 +67,23 @@ impl RecordUi {
                 .new(|cx| SelectState::new(start_options(), Some(IndexPath::new(0)), window, cx)),
             fixed: cx.new(|cx| {
                 InputState::new(window, cx)
-                    .default_value("0")
+                    .default_value(profile.fixed.value().to_string())
                     .validate(|value, _| normalized_number(value, false).is_some())
             }),
             min: cx.new(|cx| {
                 InputState::new(window, cx)
-                    .default_value("0")
+                    .default_value(profile.random[0].value().to_string())
                     .validate(|value, _| normalized_number(value, true).is_some())
             }),
             max: cx.new(|cx| {
                 InputState::new(window, cx)
-                    .default_value("0")
+                    .default_value(profile.random[1].value().to_string())
                     .validate(|value, _| normalized_number(value, true).is_some())
             }),
-            delay_time: 0.,
-            random: [0., 0.],
-            mouse: 0,
+            profile,
             generation: [0, 0],
             ignored_drafts: [None, None, None],
-            number_tasks: Vec::new(),
+            number_tasks: [None, None],
             help: None,
             help_bounds: (0..5).map(|_| Default::default()).collect(),
             trigger_bounds: Default::default(),
@@ -93,29 +94,42 @@ impl RecordUi {
         self.help = None;
         self.shortcut.stop();
     }
+
+    fn delay_time(&self) -> f64 {
+        self.profile.fixed.value()
+    }
+
+    fn random(&self) -> [f64; 2] {
+        self.profile.random.map(Seconds::value)
+    }
+
+    fn mouse(&self) -> usize {
+        usize::from(self.profile.movement.setting())
+    }
 }
 fn start_options() -> Vec<String> {
     (0..=5).map(|i| format!("{i}s")).collect()
 }
 
-// vr truncates the text before parseFloat. The decimal fixed-delay path does
-// not limit the integer part. Reject non-finite values at the native boundary.
+// As keeps the current input text distinct from its accepted delay. Both
+// integer and fractional segments are truncated before parsing.
 fn normalized_number(raw: &str, random: bool) -> Option<String> {
     if raw.is_empty() {
         return Some(String::new());
     }
-    let n = source_number(raw)?;
-    if !n.is_finite() {
+    if random {
+        if !source_number(raw)?.is_finite() {
+            return None;
+        }
+    } else if raw.chars().filter(|c| *c == '.').count() > 1
+        || raw.chars().any(|c| !c.is_ascii_digit() && c != '.')
+    {
         return None;
     }
     let (integer, fraction) = raw
         .split_once('.')
         .map_or((raw, None), |(i, f)| (i, Some(f)));
-    let integer: String = if random || fraction.is_none() {
-        integer.chars().take(3).collect()
-    } else {
-        integer.into()
-    };
+    let integer: String = integer.chars().take(3).collect();
     let value = match fraction {
         Some(f) => format!("{integer}.{}", f.chars().take(3).collect::<String>()),
         None => integer,
@@ -127,6 +141,61 @@ fn normalized_number(raw: &str, random: bool) -> Option<String> {
 }
 
 impl MacroPage {
+    pub(super) fn record_preferences(&self) -> Preferences {
+        self.record_ui.profile.clone()
+    }
+
+    pub(super) fn adopt_record_preferences(
+        &mut self,
+        profile: Option<Preferences>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let profile = profile.unwrap_or_else(|| {
+            // Migration of local files that did not yet store recordProfile.
+            // Co supplies numeric defaults; existing document metadata stays.
+            let mut profile = Preferences::default();
+            if let Some(entry) = self
+                .entries
+                .iter()
+                .find(|entry| Some(entry.id) == self.current)
+            {
+                profile.macro_type = entry.macro_type;
+                if let Ok(mode) = DelayMode::from_setting(entry.record_delay) {
+                    profile.delay_mode = mode;
+                }
+                if let Ok(execution) = entry.editor_execution() {
+                    profile.movement = execution.engine().movement;
+                }
+            }
+            profile
+        });
+        if let Err(error) = profile.validate() {
+            self.recording.error = Some(error);
+            return;
+        }
+        self.record_ui.profile = profile;
+        self.reset_record_number_drafts(window, cx);
+        let selected = usize::from(self.record_ui.profile.start_delay);
+        self.record_ui.start.update(cx, |state, cx| {
+            state.set_selected_index(Some(IndexPath::new(selected)), window, cx);
+        });
+    }
+
+    pub(super) fn set_record_start_delay(&mut self, value: &str, cx: &mut Context<Self>) {
+        let Some(delay) = value
+            .strip_suffix('s')
+            .and_then(|value| value.parse::<u8>().ok())
+            .filter(|delay| *delay <= 5)
+        else {
+            return;
+        };
+        if self.record_ui.profile.start_delay != delay {
+            self.record_ui.profile.start_delay = delay;
+            self.publish_library(cx);
+        }
+    }
+
     pub fn current_macro_type(&self) -> MacroType {
         self.entries
             .iter()
@@ -152,8 +221,8 @@ impl MacroPage {
             self.reset_record_number_drafts(window, cx);
             self.record_ui.open = true;
             if self.current_macro_type() != MacroType::Standard {
+                self.record_ui.profile.movement = MovementMode::None;
                 self.set_record_delay(0, window, cx);
-                self.record_ui.mouse = 0;
             }
         }
         cx.notify();
@@ -164,9 +233,11 @@ impl MacroPage {
         }
         if let Some(entry) = self.entries.iter_mut().find(|e| Some(e.id) == self.current) {
             entry.macro_type = kind;
+            self.record_ui.profile.macro_type = kind;
             if kind != MacroType::Standard {
                 entry.record_delay = 0;
-                self.record_ui.mouse = 0;
+                self.record_ui.profile.delay_mode = DelayMode::Recorded;
+                self.record_ui.profile.movement = MovementMode::None;
             }
             if kind == MacroType::Standard {
                 self.reset_record_number_drafts(window, cx);
@@ -196,27 +267,31 @@ impl MacroPage {
     fn reset_record_number_drafts(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.write_record_draft(
             NumberField::Fixed,
-            self.record_ui.delay_time.to_string(),
+            self.record_ui.delay_time().to_string(),
             window,
             cx,
         );
         self.write_record_draft(
             NumberField::Min,
-            self.record_ui.random[0].to_string(),
+            self.record_ui.random()[0].to_string(),
             window,
             cx,
         );
         self.write_record_draft(
             NumberField::Max,
-            self.record_ui.random[1].to_string(),
+            self.record_ui.random()[1].to_string(),
             window,
             cx,
         );
     }
     fn set_record_delay(&mut self, value: u8, window: &mut Window, cx: &mut Context<Self>) {
+        let Ok(mode) = DelayMode::from_setting(value) else {
+            return;
+        };
         self.finish_randomized_range(false, window, cx);
         if let Some(entry) = self.entries.iter_mut().find(|e| Some(e.id) == self.current) {
             entry.record_delay = value;
+            self.record_ui.profile.delay_mode = mode;
             self.publish_library(cx);
             if value == 1 {
                 self.record_ui.fixed.update(cx, |s, cx| s.focus(window, cx));
@@ -257,48 +332,91 @@ impl MacroPage {
         let Some(number) = source_float(&value) else {
             return;
         };
-        let (slot, pair) = if field == NumberField::Fixed {
-            (0, [number, 0.])
-        } else {
-            let min = if field == NumberField::Min {
-                number.max(0.)
-            } else {
-                source_number(&self.record_ui.min.read(cx).value()).unwrap_or(0.)
-            };
-            let mut max = if field == NumberField::Max {
-                number
-            } else {
-                source_number(&self.record_ui.max.read(cx).value()).unwrap_or(0.)
-            };
-            if (field == NumberField::Min && min >= max) || (field == NumberField::Max && max < min)
-            {
+        if field != NumberField::Fixed || value.ends_with('.') {
+            cx.notify();
+            return;
+        }
+        self.schedule_record_number(0, [number, 0.], window, cx);
+    }
+
+    pub(super) fn record_number_blurred(
+        &mut self,
+        field: NumberField,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if field == NumberField::Fixed {
+            return;
+        }
+        let mut min = source_float(&self.record_ui.min.read(cx).value()).unwrap_or(0.);
+        let mut max = source_float(&self.record_ui.max.read(cx).value()).unwrap_or(0.);
+        if field == NumberField::Min {
+            min = min.max(0.);
+            if min >= max {
                 max = (min + 1.).min(5.);
                 self.write_record_draft(NumberField::Max, max.to_string(), window, cx);
             }
-            (1, [min, max])
-        };
+            self.write_record_draft(NumberField::Min, min.to_string(), window, cx);
+        } else {
+            if max < min {
+                max = (min + 1.).min(5.);
+            }
+            self.write_record_draft(NumberField::Max, max.to_string(), window, cx);
+        }
+        self.schedule_record_number(1, [min, max], window, cx);
+    }
+
+    fn schedule_record_number(
+        &mut self,
+        slot: usize,
+        pair: [f64; 2],
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         self.record_ui.generation[slot] = self.record_ui.generation[slot].wrapping_add(1);
         let generation = self.record_ui.generation[slot];
-        self.record_ui.number_tasks.retain(|task| !task.is_ready());
         let task = cx.spawn_in(window, async move |this, cx| {
             cx.background_executor()
                 .timer(Duration::from_millis(100))
                 .await;
-            let _ = this.update(cx, |this, cx| {
-                // vr keeps only the randomized debounce in a useRef. Fixed
-                // input renders create separate delayed callbacks.
-                if slot == 1 && this.record_ui.generation[slot] != generation {
+            let _ = this.update_in(cx, |this, window, cx| {
+                if this.record_ui.generation[slot] != generation {
                     return;
                 }
                 if slot == 0 {
-                    this.record_ui.delay_time = pair[0];
+                    match Seconds::new(pair[0]) {
+                        Ok(value) => {
+                            if this.record_ui.profile.fixed != value {
+                                this.record_ui.profile.fixed = value;
+                                this.write_record_draft(NumberField::Fixed, pair[0].to_string(), window, cx);
+                            }
+                        }
+                        Err(error) => {
+                            this.recording.error = Some(error);
+                            cx.notify();
+                            return;
+                        }
+                    }
                 } else {
-                    this.record_ui.random = pair;
+                    match (Seconds::new(pair[0]), Seconds::new(pair[1])) {
+                        (Ok(min), Ok(max)) => {
+                            this.record_ui.profile.random = [min, max];
+                            this.write_record_draft(NumberField::Min, pair[0].to_string(), window, cx);
+                            this.write_record_draft(NumberField::Max, pair[1].to_string(), window, cx);
+                        }
+                        (Err(error), _) | (_, Err(error)) => {
+                            this.recording.error = Some(error);
+                            cx.notify();
+                            return;
+                        }
+                    }
                 }
+                this.publish_library(cx);
+                this.update_recording_preview_options(cx);
                 cx.notify();
             });
         });
-        self.record_ui.number_tasks.push(task);
+        self.record_ui.number_tasks[slot] = Some(task);
         cx.notify();
     }
     pub fn macro_type_status(&self) -> String {
@@ -307,7 +425,8 @@ impl MacroPage {
             MacroType::Phased => tr("TEXT_PHASED_MACRO"),
             MacroType::Standard if self.record_delay() == 2 => format!(
                 "{}s - {}s",
-                self.record_ui.random[0], self.record_ui.random[1]
+                self.record_ui.random()[0],
+                self.record_ui.random()[1]
             ),
             MacroType::Standard => format!(
                 "{:.3}s",
@@ -330,12 +449,13 @@ impl MacroPage {
             MacroType::Phased => tr("TEXT_PHASED_MACRO"),
             MacroType::Standard => match self.record_delay() {
                 1 => tr("TEXT_SECOND_DELAY")
-                    .replace("{{times}}", &self.record_ui.delay_time.to_string()),
+                    .replace("{{times}}", &self.record_ui.delay_time().to_string()),
                 2 => tr("TEXT_RANDOMIZE_DELAY").replace(
                     "{{times}}",
                     &format!(
                         "{}s - {}s",
-                        self.record_ui.random[0], self.record_ui.random[1]
+                        self.record_ui.random()[0],
+                        self.record_ui.random()[1]
                     ),
                 ),
                 3 => tr("TEXT_NO_DELAY"),
@@ -347,8 +467,8 @@ impl MacroPage {
             .text_size(css(12.))
             .text_right()
             .child(label)
-            .when(self.record_ui.mouse > 0, |column| {
-                column.child(tr(match self.record_ui.mouse {
+            .when(self.record_ui.mouse() > 0, |column| {
+                column.child(tr(match self.record_ui.mouse() {
                     1 => "TEXT_ABSOLUTE_POSITION_MOUSE",
                     2 => "TEXT_RELATIVE_POSITION_MOUSE",
                     _ => "TEXT_MOUSE_TRACKING",
@@ -505,7 +625,7 @@ impl MacroPage {
                                                                 cx,
                                                             ),
                                                         ))
-                                                        .child(tr("secs")),
+                                                        .child(tr("SECS")),
                                                 )
                                                 .into_any_element()
                                         } else {
@@ -520,14 +640,19 @@ impl MacroPage {
                                         self.record_radio(
                                             ("macro-record-mouse", i),
                                             &tr(&item.name),
-                                            self.record_ui.mouse == i,
+                                            self.record_ui.mouse() == i,
                                             false,
                                             window,
                                             cx,
                                         )
                                         .on_click(
                                             cx.listener(move |this, _, _, cx| {
-                                                this.record_ui.mouse = i;
+                                                let Ok(mode) = MovementMode::from_setting(i as u8)
+                                                else {
+                                                    return;
+                                                };
+                                                this.record_ui.profile.movement = mode;
+                                                this.publish_library(cx);
                                                 cx.notify();
                                             }),
                                         )
@@ -738,15 +863,46 @@ fn record_input(
 }
 
 impl MacroPage {
+    pub(super) fn recording_movement_setting(&self) -> u8 {
+        self.record_ui.profile.movement.setting()
+    }
+
     pub fn recording_options(&self, cx: &App) -> Result<super::recording_decode::Options, String> {
-        // Read accepted editor values too: the source 100ms debounce may
-        // still be pending when Record is pressed immediately after input.
-        let fixed = source_float(&self.record_ui.fixed.read(cx).value())
-            .unwrap_or(self.record_ui.delay_time);
-        let random = [
-            source_float(&self.record_ui.min.read(cx).value()).unwrap_or(self.record_ui.random[0]),
-            source_float(&self.record_ui.max.read(cx).value()).unwrap_or(self.record_ui.random[1]),
-        ];
+        let mut options = self.recording_commit_options(cx)?;
+        let entry = self
+            .entries
+            .iter()
+            .find(|entry| Some(entry.id) == self.current)
+            .ok_or("当前宏文档不存在，无法处理录制结果")?;
+        let execution = self.library_snapshot.execution_for_actions(
+            entry,
+            &self.actions,
+            self.execution.as_ref(),
+            options.movement_mode,
+        )?;
+        if !execution.engine().ordinary_events()?.is_empty() {
+            options.movement_mode = execution.engine().movement.setting();
+        }
+        Ok(options)
+    }
+
+    pub(super) fn recording_commit_options(
+        &self,
+        _cx: &App,
+    ) -> Result<super::recording_decode::Options, String> {
+        if self.current.is_none()
+            || self.actions_for != self.current
+            || !self
+                .entries
+                .iter()
+                .any(|entry| Some(entry.id) == self.current && entry.kind == EntryKind::Macro)
+        {
+            return Err("当前宏文档不存在，无法处理录制结果".into());
+        }
+        // Nr reads accepted Redux values; a pending numeric debounce remains
+        // an input draft until its own dispatch has occurred.
+        let fixed = self.record_ui.delay_time();
+        let random = self.record_ui.random();
         let delay_mode = self.record_delay();
         if self.current_macro_type() == MacroType::Standard {
             if delay_mode == 1 && (!fixed.is_finite() || fixed < 0.) {
@@ -756,25 +912,26 @@ impl MacroPage {
                 && (!random
                     .iter()
                     .all(|value| value.is_finite() && (0. ..=5.).contains(value))
-                    || random[0] > random[1])
+                    )
             {
-                return Err("随机录制延迟必须在 0–5 秒内，且最小值不能大于最大值".into());
+                return Err("随机录制延迟必须在 0–5 秒内".into());
             }
         }
         Ok(super::recording_decode::Options {
             macro_type: self.current_macro_type(),
-            phase: (self.current_macro_type() == MacroType::Phased)
-                .then(|| self.active_phase().unwrap_or(0)),
+            phase: if self.current_macro_type() == MacroType::Phased {
+                self.active_phase()
+            } else {
+                None
+            },
             delay_mode,
-            movement_mode: self
-                .actions
-                .iter()
-                .find_map(|item| item.mouse_movement.as_ref().map(|movement| movement.mode))
-                .unwrap_or(self.record_ui.mouse as u8),
+            movement_mode: self.recording_movement_setting(),
             fixed,
             random,
             next_pair: self.next_event_pair_id().ok_or("本地宏事件标识已耗尽")?,
             shortcut: self.record_ui.shortcut.recording_keys()?,
+            finalization_macro_type: self.record_ui.profile.macro_type,
+            finalization_delay_mode: self.record_ui.profile.delay_mode.setting(),
         })
     }
 }

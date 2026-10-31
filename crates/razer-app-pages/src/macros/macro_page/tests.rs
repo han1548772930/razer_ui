@@ -9,6 +9,9 @@ use razer_pages::features::macro_library::MacroLibraryFile;
 use razer_pages::features::macro_library::MacroType;
 use std::time::Duration;
 
+#[path = "tests/library_lifecycle.rs"]
+mod library_lifecycle;
+
 fn open(
     cx: &mut TestAppContext,
     file: MacroLibraryFile,
@@ -43,10 +46,12 @@ fn existing_file(kind: MacroType, tutorial: Tutorial) -> MacroLibraryFile {
             xml_guid: Some("d1ee0ca7-e747-42cc-929a-282c8cde55f2".into()),
             xml_mouse_mode: 0,
             source_document: None,
+            execution: None,
         }],
         current: Some(1),
         tutorial,
         record_shortcut: Vec::new(),
+        recording_preferences: None,
     }
 }
 

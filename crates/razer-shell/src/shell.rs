@@ -83,6 +83,8 @@ mod hanbo_cooler;
 mod header_status;
 #[path = "shell/help_owner.rs"]
 mod help_owner;
+#[path = "shell/host/help_runtime_versions.rs"]
+mod help_runtime_versions;
 #[path = "shell/host/help_system_info.rs"]
 mod help_system_info;
 #[path = "shell/host/host_tabs.rs"]
@@ -375,6 +377,7 @@ pub struct AppShell {
     host_tabs: host_tabs::HostTabs,
     host_storage: razer_storage::host::HostStorage,
     macro_recorder: macro_recorder::State,
+    help_runtime_versions: help_runtime_versions::Runtime,
     help_system_info: help_system_info::Runtime,
     game_observer: game_monitor::State,
     keyboard_indicator: keyboard_indicator::State,
@@ -655,6 +658,7 @@ impl AppShell {
             host_tabs: host_tabs::HostTabs::new(cx),
             host_storage: razer_storage::host::HostStorage::default(),
             macro_recorder: macro_recorder::State::default(),
+            help_runtime_versions: help_runtime_versions::Runtime::default(),
             help_system_info: help_system_info::Runtime::default(),
             game_observer: game_monitor::State::default(),
             keyboard_indicator: keyboard_indicator::State::default(),
@@ -825,6 +829,9 @@ impl AppShell {
                             device.update(cx, |device, cx| device.refresh_locale(window, cx));
                         }
                         if let Some(page) = &this.profiles_page {
+                            page.update(cx, |page, cx| page.refresh_locale(window, cx));
+                        }
+                        if let Some(page) = &this.macro_page {
                             page.update(cx, |page, cx| page.refresh_locale(window, cx));
                         }
                         this.chroma_page
@@ -1331,6 +1338,7 @@ impl AppShell {
         this.install_hyperpolling_cleanup();
         this.install_standalone_pairing_transport(window, cx);
         this.install_receiver_reset_cleanup(cx);
+        this.install_help_runtime_versions_cleanup(cx);
         this.install_help_system_info_cleanup(cx);
         this.install_receiver_brightness_cleanup(cx);
         this.install_receiver_lighting_cleanup();
@@ -1463,6 +1471,9 @@ impl AppShell {
                 }
                 WorkspaceEvent::HelpSystemInfoRequested(request) => {
                     this.request_help_system_info(entity.clone(), request.clone(), window, cx);
+                }
+                WorkspaceEvent::HelpRuntimeVersionsRequested(request) => {
+                    this.request_help_runtime_versions(entity.clone(), request.clone(), window, cx);
                 }
                 WorkspaceEvent::HelpOwnerRequested(request) => {
                     this.request_help_owner(&entity, request, window, cx);
@@ -3148,6 +3159,7 @@ impl AppShell {
             return;
         }
         self.help_system_info.cancel_all();
+        self.help_runtime_versions.cancel_all();
         self.prepare_mapping_observation_exit();
         self.prepare_controller_chroma_exit();
         razer_state::ui_preferences::begin_exit(cx);
@@ -3263,6 +3275,7 @@ impl AppShell {
             || razer_service::seiren_audio::active_workers() > 0
             || audio_mixer::active_local_workers() > 0
             || help_system_info::active_workers() > 0
+            || help_runtime_versions::active_workers() > 0
             || razer_platform::file_dialog::active_dialogs() > 0
             || razer_pages::features::screen_color::exit_pending()
             || razer_storage::file_transfer::active_io() > 0

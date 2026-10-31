@@ -168,6 +168,7 @@ impl MacroPage {
             xml_guid: (kind == EntryKind::Macro).then(|| uuid::Uuid::new_v4().to_string()),
             xml_mouse_mode: 0,
             source_document: None,
+            execution: None,
         });
         if kind == EntryKind::Macro {
             self.stash_current_draft();
@@ -178,6 +179,8 @@ impl MacroPage {
             self.selected_actions.clear();
             self.saved_actions_for = Some(id);
             self.saved_actions.clear();
+            self.actions_dirty = false;
+            self.load_current_execution();
             self.undo.clear();
             self.redo.clear();
             self.tree_selection = Some(id);
@@ -334,8 +337,10 @@ impl MacroPage {
             if entry.kind == EntryKind::Macro {
                 if self.actions_for == Some(old) {
                     entry.actions = self.actions.clone();
+                    entry.execution = self.execution.clone();
                 } else if let Some(draft) = self.inactive_drafts.get(&old) {
                     entry.actions = draft.actions.clone();
+                    entry.execution = draft.execution.clone();
                 }
             }
             entry.id = self.next_id;

@@ -202,6 +202,173 @@ struct ImportedProfiles {
     mappings: std::collections::BTreeMap<u8, razer_device::controller_mapping::MappingProjection>,
 }
 
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AudioHapticIntensity {
+    is_enabled: bool,
+    value: u8,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    enable_audio_to_haptics: Option<bool>,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AudioHapticPolicy {
+    enable_audio_to_haptics: Option<bool>,
+}
+
+#[derive(serde::Serialize)]
+struct ControllerModeSetting {
+    mode: razer_device::controller_initialization::ControllerMode,
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct MiddlewareRoot {
+    version: u8,
+    vendor_id: u16,
+    product_id: u32,
+    category: &'static str,
+    #[serde(rename = "reportIDs")]
+    report_ids: std::collections::BTreeMap<u8, &'static str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    audio_haptic_intensity: Option<AudioHapticIntensity>,
+    power_saving: razer_device::controller_sleep::PowerSaving,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    controller_mode: Option<ControllerModeSetting>,
+}
+
+fn new_source_root(product_id: u32) -> anyhow::Result<Value> {
+    ensure!(
+        matches!(product_id, 2636 | 2676),
+        "No verified controller middleware root for {product_id}"
+    );
+    // Module 69427 constructs these local records before any getters when
+    // the whole source document is absent. Observations remain on the owner.
+    Ok(serde_json::to_value(MiddlewareRoot {
+        version: 1,
+        vendor_id: 5426,
+        product_id,
+        category: "GAMEPAD",
+        report_ids: [(4, "razerKeyReportID"), (5, "hardwareEventReportID")].into(),
+        audio_haptic_intensity: (product_id == 2636).then_some(AudioHapticIntensity {
+            is_enabled: true,
+            value: 4,
+            enable_audio_to_haptics: Some(true),
+        }),
+        power_saving: razer_device::controller_sleep::PowerSaving::new(5, true)?,
+        controller_mode: (product_id == 2676).then_some(ControllerModeSetting {
+            mode: razer_device::controller_initialization::ControllerMode::Xinput,
+        }),
+    })?)
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DeviceProfileMetadata {
+    active_profile_guid: Option<String>,
+}
+
+fn loaded_source_profile_guid(device: &Device) -> anyhow::Result<Option<String>> {
+    let Some(root) = device.source_device_settings.as_ref() else {
+        return Ok(None);
+    };
+    ensure!(root.is_object(), "Controller local root is not an object");
+    if device.serial_number.is_empty() {
+        return Ok(None);
+    }
+    if let Some(metadata) = root.get("deviceMetadatas").filter(|value| !value.is_null()) {
+        let metadata = metadata
+            .as_object()
+            .context("Controller serial metadata is not an object")?;
+        if let Some(current) = metadata
+            .get(&device.serial_number)
+            .filter(|value| !value.is_null())
+        {
+            let current: DeviceProfileMetadata = serde_json::from_value(current.clone())?;
+            return Ok(current.active_profile_guid);
+        }
+    }
+    // The injected storage handler mirrors the previously selected local GUID
+    // into root.activeProfile at load. Module 52448 subsequently changes only
+    // profileData[serial].activeProfile during hardware import; 47442 still
+    // consumes the captured mirror, not the newly observed directory choice.
+    let mut profiles = device
+        .profiles
+        .iter()
+        .filter(|profile| profile.id == device.active_profile);
+    let selected = profiles.next();
+    ensure!(
+        profiles.next().is_none(),
+        "Ambiguous local controller selection"
+    );
+    Ok(selected
+        .filter(|profile| !profile.guid.is_empty())
+        .map(|profile| profile.guid.clone()))
+}
+
+fn import_root_settings(
+    device: &Device,
+    imported: &ImportedProfiles,
+    result: &InitializationResult,
+) -> anyhow::Result<Value> {
+    let loaded_guid = loaded_source_profile_guid(device)?;
+    let mut root = match &device.source_device_settings {
+        Some(root) => root.clone(),
+        None => new_source_root(device.product_id)?,
+    };
+    let root_fields = root
+        .as_object_mut()
+        .context("Controller local root is not an object")?;
+    if let Some(power) = result.power_saving.value() {
+        root_fields.insert(
+            "powerSaving".into(),
+            serde_json::to_value(power.power_saving())?,
+        );
+    }
+    if let Some(mode) = result.controller_mode.value() {
+        root_fields.insert(
+            "controllerMode".into(),
+            serde_json::to_value(ControllerModeSetting { mode: *mode })?,
+        );
+    }
+    for (profile, observed) in imported.profiles.iter().zip(&result.profiles) {
+        if loaded_guid.as_ref() != Some(&profile.guid)
+            || !observed.fields.iter().any(|read| {
+                matches!(
+                    read.result,
+                    Read::Observed {
+                        value: razer_device::controller_initialization::ProfileValue::Haptic { .. }
+                    }
+                )
+            })
+        {
+            continue;
+        }
+        let mut haptic: AudioHapticIntensity = serde_json::from_value(
+            profile
+                .source_settings
+                .as_ref()
+                .and_then(|settings| settings.pointer("/profile/hapticIntensity"))
+                .context("Imported controller profile omits its observed haptic intensity")?
+                .clone(),
+        )?;
+        let policy = root_fields
+            .get("audioHapticIntensity")
+            .filter(|value| !value.is_null())
+            .map(|value| serde_json::from_value::<AudioHapticPolicy>(value.clone()))
+            .transpose()?;
+        let enabled = policy.and_then(|policy| policy.enable_audio_to_haptics);
+        haptic.enable_audio_to_haptics = if device.product_id == 2636 {
+            Some(enabled.unwrap_or(false))
+        } else {
+            enabled
+        };
+        root_fields.insert("audioHapticIntensity".into(), serde_json::to_value(haptic)?);
+    }
+    Ok(root)
+}
+
 struct SlotProfileIdentity<'a> {
     owner_id: &'a str,
     slot: u8,
@@ -584,23 +751,7 @@ impl SourceProductWorkspace {
         result: &InitializationResult,
     ) -> anyhow::Result<()> {
         let imported = import_profiles(self.device.product_id, &self.device.profiles, result)?;
-        let mut root = self
-            .device
-            .source_device_settings
-            .clone()
-            .unwrap_or_else(|| serde_json::json!({}));
-        let root_fields = root
-            .as_object_mut()
-            .context("Controller local root is not an object")?;
-        if let Some(power) = result.power_saving.value() {
-            root_fields.insert(
-                "powerSaving".into(),
-                serde_json::to_value(power.power_saving())?,
-            );
-        }
-        if let Some(mode) = result.controller_mode.value() {
-            root_fields.insert("controllerMode".into(), serde_json::json!({"mode":mode}));
-        }
+        let root = import_root_settings(&self.device, &imported, result)?;
         self.device.profiles = imported.profiles;
         self.device.active_profile = imported.active;
         self.device.source_device_settings = Some(root);
@@ -726,6 +877,153 @@ mod tests {
                 .collect(),
             canceled: false,
             connection_features: None,
+        }
+    }
+
+    fn haptic_import_device(product: u32) -> Device {
+        let mut device = razer_model::product_preview::registered_preview(product).unwrap();
+        device.serial_number = "current-serial".into();
+        device.profiles = vec![saved_profile("three", &[3]), saved_profile("one", &[1])];
+        device.active_profile = "three".into();
+        device.source_device_settings = Some(serde_json::json!({
+            "audioHapticIntensity":{"isEnabled":true,"value":6},
+            "futureExtension":{"retained":true}
+        }));
+        device
+    }
+
+    fn haptic_directory_result() -> InitializationResult {
+        use razer_device::controller_initialization::{ProfileRead, ProfileValue};
+        let mut result = directory_result(&[3, 1], 1);
+        for (profile, scaling) in result.profiles.iter_mut().zip([0, 83]) {
+            profile.fields.push(ProfileRead {
+                field: ProfileField::HapticIntensity,
+                result: Read::Observed {
+                    value: ProfileValue::Haptic { scaling },
+                },
+            });
+        }
+        result
+    }
+
+    #[test]
+    fn controller_initialization_root_haptics_keep_the_loaded_local_guid_and_product_audio_policy()
+    {
+        // Injected storage ge mirrors the local GUID at load; 52448's later
+        // directory selection does not replace that 47442 consumer identity.
+        for product in [2636, 2676] {
+            for policy in [None, Some(false), Some(true)] {
+                let mut device = haptic_import_device(product);
+                if let Some(policy) = policy {
+                    device.source_device_settings.as_mut().unwrap()["audioHapticIntensity"]["enableAudioToHaptics"] =
+                        serde_json::json!(policy);
+                }
+                let result = haptic_directory_result();
+                let imported = import_profiles(product, &device.profiles, &result).unwrap();
+                assert_eq!(imported.active, "one");
+                let root = import_root_settings(&device, &imported, &result).unwrap();
+                assert_eq!(root["audioHapticIntensity"]["isEnabled"], false);
+                assert_eq!(root["audioHapticIntensity"]["value"], 4);
+                let expected_policy = if product == 2636 {
+                    Some(policy.unwrap_or(false))
+                } else {
+                    policy
+                };
+                assert_eq!(
+                    root["audioHapticIntensity"]
+                        .get("enableAudioToHaptics")
+                        .and_then(Value::as_bool),
+                    expected_policy
+                );
+                assert_eq!(
+                    root["futureExtension"],
+                    serde_json::json!({"retained":true})
+                );
+                assert_eq!(device.active_profile, "three");
+            }
+        }
+    }
+
+    #[test]
+    fn controller_initialization_root_haptic_identity_matches_the_injected_serial_metadata_rules() {
+        for product in [2636, 2676] {
+            let result = haptic_directory_result();
+            let mut device = haptic_import_device(product);
+            let imported = import_profiles(product, &device.profiles, &result).unwrap();
+            device.source_device_settings.as_mut().unwrap()["deviceMetadatas"] = serde_json::json!({
+                "other-serial":{"activeProfileGuid":"guid-one"}
+            });
+            assert_eq!(
+                loaded_source_profile_guid(&device).unwrap().as_deref(),
+                Some("guid-three")
+            );
+            device.source_device_settings.as_mut().unwrap()["deviceMetadatas"]["current-serial"] =
+                serde_json::json!({"activeProfileGuid":"guid-one"});
+            assert_eq!(
+                loaded_source_profile_guid(&device).unwrap().as_deref(),
+                Some("guid-one")
+            );
+            let root = import_root_settings(&device, &imported, &result).unwrap();
+            assert_eq!(root["audioHapticIntensity"]["isEnabled"], true);
+            assert_eq!(root["audioHapticIntensity"]["value"], 5);
+            device.source_device_settings.as_mut().unwrap()["deviceMetadatas"]["current-serial"] =
+                serde_json::json!({});
+            assert!(loaded_source_profile_guid(&device).unwrap().is_none());
+            let root = import_root_settings(&device, &imported, &result).unwrap();
+            assert_eq!(root["audioHapticIntensity"]["value"], 6);
+            device.source_device_settings.as_mut().unwrap()["deviceMetadatas"]["current-serial"] =
+                serde_json::json!({"activeProfileGuid":123});
+            assert!(import_root_settings(&device, &imported, &result).is_err());
+            device.serial_number.clear();
+            assert!(loaded_source_profile_guid(&device).unwrap().is_none());
+        }
+    }
+
+    #[test]
+    fn controller_initialization_failed_or_unobserved_haptics_do_not_promote_the_other_profile_or_local_defaults()
+     {
+        for product in [2636, 2676] {
+            for state in [
+                Read::Unobserved,
+                Read::Failed {
+                    error: "actual haptic getter failed".into(),
+                },
+            ] {
+                let device = haptic_import_device(product);
+                let mut result = haptic_directory_result();
+                result.profiles[0].fields[0].result = state.clone();
+                let imported = import_profiles(product, &device.profiles, &result).unwrap();
+                let root = import_root_settings(&device, &imported, &result).unwrap();
+                assert_eq!(root, *device.source_device_settings.as_ref().unwrap());
+                assert_eq!(result.profiles[0].fields[0].result, state);
+            }
+            let mut device = haptic_import_device(product);
+            let result = haptic_directory_result();
+            let imported = import_profiles(product, &device.profiles, &result).unwrap();
+            device.active_profile = "missing-local-profile".into();
+            assert!(loaded_source_profile_guid(&device).unwrap().is_none());
+            assert_eq!(
+                import_root_settings(&device, &imported, &result).unwrap(),
+                *device.source_device_settings.as_ref().unwrap()
+            );
+            device.source_device_settings = None;
+            let root = import_root_settings(&device, &imported, &result).unwrap();
+            assert_eq!(
+                root["powerSaving"],
+                serde_json::json!({"isEnabled":true,"value":5})
+            );
+            assert!(matches!(result.power_saving, Read::Unobserved));
+            if product == 2636 {
+                assert_eq!(
+                    root["audioHapticIntensity"],
+                    serde_json::json!({"isEnabled":true,"value":4,"enableAudioToHaptics":true})
+                );
+                assert!(root.get("controllerMode").is_none());
+            } else {
+                assert!(root.get("audioHapticIntensity").is_none());
+                assert_eq!(root["controllerMode"], serde_json::json!({"mode":"Xinput"}));
+                assert!(matches!(result.controller_mode, Read::Unobserved));
+            }
         }
     }
     #[test]

@@ -146,6 +146,29 @@ impl std::fmt::Display for ExecutionFailure {
 
 impl std::error::Error for ExecutionFailure {}
 
+fn retain_failed_reply(error: anyhow::Error, command: [u8; 3], transaction: u8) -> anyhow::Error {
+    let data = crate::backend::native_read_bytes(&error).and_then(|bytes| {
+        if bytes.len() != 65
+            || bytes[1] != 2
+            || bytes[2] != transaction
+            || bytes[7..9] != command[1..]
+            || bytes[6] > 54
+        {
+            return None;
+        }
+        Some(bytes[9..9 + usize::from(bytes[6])].to_vec())
+    });
+    match data {
+        Some(data) => crate::feature_exchange::CompletedFeatureExchange::retain(
+            error,
+            command,
+            transaction,
+            data,
+        ),
+        None => error,
+    }
+}
+
 fn exchange(
     device: &dyn FeatureTransport,
     cap: &DeviceReadCapability,
@@ -155,6 +178,14 @@ fn exchange(
     validate: &impl Fn() -> anyhow::Result<()>,
     sent: &mut bool,
 ) -> anyhow::Result<Vec<u8>> {
+    let validate = &|| {
+        validate().map_err(|error| {
+            crate::backend::interrupt_exchange(
+                error,
+                crate::backend::ExchangeInterruption::Validation,
+            )
+        })
+    };
     ensure!(
         cap.report_bytes == 65
             && cap.report_id == 8
@@ -181,11 +212,27 @@ fn exchange(
             let mut last = "No Noa response".to_owned();
             for _ in 0..cap.max_retry_out {
                 validate()?;
-                if let Err(error) = device.send_feature_at_collection_max(&outgoing) {
+                let transfer = device.send_feature_at_collection_max_counted(&outgoing);
+                *sent |= match &transfer {
+                    Ok(count) => *count == outgoing.len(),
+                    Err(error) => matches!(
+                        crate::backend::native_io_outcome(error),
+                        Some(crate::backend::NativeIoOutcome::Returned { byte_count })
+                            if byte_count == outgoing.len()
+                    ),
+                };
+                if let Err(validation) = validate() {
+                    return Err(crate::backend::complete_native_io(transfer, validation));
+                }
+                if let Err(error) = transfer
+                    .and_then(|count| crate::backend::require_complete_send(count, outgoing.len()))
+                {
+                    if crate::backend::exchange_interrupted(&error) {
+                        return Err(error);
+                    }
                     last = format!("{error:#}");
                     continue;
                 }
-                *sent = true;
                 std::thread::sleep(Duration::from_millis(cap.sleep_between_out_in_ms));
                 for attempt in 0..cap.max_retry_in {
                     if attempt > 0 {
@@ -194,10 +241,16 @@ fn exchange(
                     validate()?;
                     let mut incoming = [0; 65];
                     incoming[0] = 8;
-                    let count = device
-                        .get_feature_at_collection_max(&mut incoming)
+                    let received = device.get_feature_at_collection_max(&mut incoming);
+                    let received = match validate() {
+                        Ok(()) => received,
+                        Err(validation) => Err(crate::backend::complete_native_read(
+                            received, &incoming, validation,
+                        )),
+                    };
+                    let count = received
+                        .map_err(|error| retain_failed_reply(error, command, transaction))
                         .context("Noa GET failed after SET; device state is not confirmed")?;
-                    validate()?;
                     ensure!(count == 65, "Noa response length differs");
                     if incoming[2] != transaction || incoming[7..9] != command[1..] {
                         last = "Noa transaction/command mismatch".into();

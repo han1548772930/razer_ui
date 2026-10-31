@@ -33,9 +33,17 @@ impl FeatureTransport for Simulated {
         self.sent.borrow_mut().push(report.to_vec());
         if self.fail_sends.get() > 0 {
             self.fail_sends.set(self.fail_sends.get() - 1);
-            anyhow::bail!("simulated transient host send failure");
+            return Err(crate::backend::native_io_failure(
+                crate::backend::NativeIoOutcome::Rejected,
+                anyhow::anyhow!("simulated transient host send failure"),
+            ));
         }
-        ensure!(!self.fail_send, "simulated send failure");
+        if self.fail_send {
+            return Err(crate::backend::native_io_failure(
+                crate::backend::NativeIoOutcome::Rejected,
+                anyhow::anyhow!("simulated send failure"),
+            ));
+        }
         Ok(())
     }
     fn get_feature(&self, report: &mut [u8]) -> anyhow::Result<usize> {
@@ -86,6 +94,58 @@ fn next() -> impl FnMut() -> anyhow::Result<u8> {
         let result = value;
         value += 1;
         Ok(result)
+    }
+}
+
+#[test]
+fn interrupted_receiver_led_calls_never_retry_or_zero_the_actual_reply() {
+    use crate::backend::{NativeIoOutcome, native_io_outcome};
+    use crate::keyboard_control_test_transport::{Mock, reply};
+    for pid in [190, 229, 239] {
+        let cap = cap(pid);
+        for outcome in [
+            NativeIoOutcome::NotCalled,
+            NativeIoOutcome::Returned { byte_count: 90 },
+            NativeIoOutcome::Returned { byte_count: 91 },
+        ] {
+            let device = Mock::new([]).fail_next_send(outcome);
+            let mut progress = (false, false);
+            let error = exchange(
+                &device,
+                &cap,
+                [1, 0, 184],
+                &[],
+                0,
+                &|| Ok(()),
+                &mut progress,
+            )
+            .unwrap_err();
+            assert_eq!(native_io_outcome(&error), Some(outcome));
+            assert_eq!(device.sent().len(), 1);
+            assert_eq!(progress.0, outcome != NativeIoOutcome::NotCalled);
+            assert_eq!(
+                progress.1,
+                outcome == NativeIoOutcome::Returned { byte_count: 91 }
+            );
+        }
+        let device = Mock::new([reply(&[1])]).interrupt_next_read();
+        let mut progress = (false, false);
+        let error = exchange(
+            &device,
+            &cap,
+            [1, 0, 184],
+            &[],
+            0,
+            &|| Ok(()),
+            &mut progress,
+        )
+        .unwrap_err();
+        assert_eq!(
+            crate::feature_exchange::acknowledged_error(&error),
+            Some(&[1][..])
+        );
+        assert_eq!(device.sent().len(), 1);
+        assert_eq!(progress, (true, true));
     }
 }
 

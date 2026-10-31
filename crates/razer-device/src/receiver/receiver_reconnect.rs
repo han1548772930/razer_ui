@@ -112,6 +112,9 @@ pub fn run_with_remaining_delay(
                         adapter.wait(Duration::from_millis(500))?;
                     }
                     Err(error) => {
+                        if crate::backend::exchange_interrupted(&error) {
+                            return Err(error);
+                        }
                         outcome.last_error = Some(format!("{error:#}"));
                         break;
                     }
@@ -129,7 +132,12 @@ pub fn run_with_remaining_delay(
                             outcome.feature_send_complete = true;
                             outcome.last_error = None;
                         }
-                        Err(error) => outcome.last_error = Some(format!("{error:#}")),
+                        Err(error) => {
+                            if crate::backend::exchange_interrupted(&error) {
+                                return Err(error);
+                            }
+                            outcome.last_error = Some(format!("{error:#}"));
+                        }
                     }
                 }
             }
@@ -164,6 +172,7 @@ mod tests {
         reset: bool,
         canceled: Cell<bool>,
         cancel_on_wait: Option<Duration>,
+        native_failure: Option<crate::backend::NativeIoOutcome>,
     }
     impl Adapter for Simulation {
         type Target = ();
@@ -192,8 +201,34 @@ mod tests {
         fn open_and_send(&mut self, _: &(), report: &[u8]) -> anyhow::Result<()> {
             assert!(self.reset);
             self.writes.push(report.to_vec());
+            if let Some(outcome) = self.native_failure.take() {
+                return Err(crate::backend::native_io_failure(
+                    outcome,
+                    anyhow::anyhow!("one-shot receiver reconnect interruption"),
+                ));
+            }
             ensure!(!self.fail_writes, "simulated Feature send failure");
             Ok(())
+        }
+    }
+
+    #[test]
+    fn native_interruption_stops_both_source_reconnect_continuations() {
+        use crate::backend::{NativeIoOutcome, native_io_outcome};
+        for continuation in [Continuation::ResultField, Continuation::ReturnedObject] {
+            for outcome in [
+                NativeIoOutcome::NotCalled,
+                NativeIoOutcome::Returned { byte_count: 91 },
+            ] {
+                let mut simulated = Simulation {
+                    native_failure: Some(outcome),
+                    ..Default::default()
+                };
+                let error = run(&mut simulated, continuation).unwrap_err();
+                assert_eq!(native_io_outcome(&error), Some(outcome));
+                assert_eq!(simulated.writes.len(), 1);
+                assert_eq!(simulated.waits, [Duration::from_millis(500)]);
+            }
         }
     }
 

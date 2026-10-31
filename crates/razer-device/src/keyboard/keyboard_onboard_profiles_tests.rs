@@ -116,6 +116,40 @@ fn read_small(device: &Mock, ids: &[u8]) -> Result<Snapshot> {
 }
 
 #[test]
+fn one_shot_brightness_admission_failure_stops_the_remaining_obm_snapshot() {
+    use crate::feature_exchange::tests::ExchangeProbe;
+    use std::cell::Cell;
+    let replies = initial_replies(&[2, 5]);
+    let completed_initial_commands = replies.len();
+    let device = Mock::new(replies);
+    let admissions = Cell::new(0);
+    let admit = || {
+        let current = admissions.replace(admissions.get() + 1);
+        ensure!(
+            current != completed_initial_commands,
+            "one-shot OBM brightness admission failure"
+        );
+        Ok(())
+    };
+    let probe = ExchangeProbe::with_admission_check(&device, &admit);
+    let cap = capability();
+    let settings = settings_capability(&cap).unwrap();
+    let error = read_selected(
+        &probe,
+        &cap,
+        &settings,
+        1,
+        keys(&[4, 8]),
+        &mut sequence(),
+        &|| Ok(()),
+    )
+    .unwrap_err();
+    assert!(crate::backend::exchange_interrupted(&error));
+    assert_eq!(admissions.get(), completed_initial_commands + 1);
+    assert_eq!(device.sent().len(), completed_initial_commands);
+}
+
+#[test]
 fn keyboard_onboard_profiles_reads_source_order_and_actual_unknown_flags() {
     let mut replies = initial_replies(&[2, 5]);
     replies.extend(brightness(2, 51));

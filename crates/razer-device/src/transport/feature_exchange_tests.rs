@@ -20,6 +20,7 @@ pub(crate) struct ExchangeProbe<'a> {
     events: RefCell<Vec<LeaseEvent>>,
     fail_finish: bool,
     finish_check: Option<&'a dyn Fn() -> anyhow::Result<()>>,
+    admission_check: Option<&'a dyn Fn() -> anyhow::Result<()>>,
     on_finish: Option<&'a dyn Fn()>,
 }
 
@@ -30,6 +31,7 @@ impl<'a> ExchangeProbe<'a> {
             events: RefCell::new(Vec::new()),
             fail_finish: false,
             finish_check: None,
+            admission_check: None,
             on_finish: None,
         }
     }
@@ -54,6 +56,16 @@ impl<'a> ExchangeProbe<'a> {
     ) -> Self {
         Self {
             finish_check: Some(finish_check),
+            ..Self::new(inner)
+        }
+    }
+
+    pub(crate) fn with_admission_check(
+        inner: &'a dyn FeatureTransport,
+        admission_check: &'a dyn Fn() -> anyhow::Result<()>,
+    ) -> Self {
+        Self {
+            admission_check: Some(admission_check),
             ..Self::new(inner)
         }
     }
@@ -83,6 +95,9 @@ impl FeatureTransport for ExchangeProbe<'_> {
         self.events
             .borrow_mut()
             .push(LeaseEvent::Begin(options.timing));
+        if let Some(check) = self.admission_check {
+            check()?;
+        }
         Ok(Box::new(ProbeLease {
             owner: self,
             finished: false,
@@ -278,6 +293,131 @@ fn capability() -> DeviceReadCapability {
     cap
 }
 
+#[derive(Clone, Copy, Debug)]
+enum ExchangeEntry {
+    Plain,
+    Validated,
+    Reply,
+    ValidatedReply,
+}
+
+impl ExchangeEntry {
+    fn run(
+        self,
+        transport: &dyn FeatureTransport,
+        validate: &dyn Fn() -> anyhow::Result<()>,
+        calls: &Cell<usize>,
+    ) -> anyhow::Result<Vec<u8>> {
+        let operation = |_: &dyn FeatureTransport, _: &dyn ExchangeLease| {
+            calls.set(calls.get() + 1);
+            Ok(vec![23, 42])
+        };
+        match self {
+            Self::Plain => with_exchange(transport, ExchangeOptions::plain(), operation),
+            Self::Validated => {
+                with_validated_exchange(transport, ExchangeOptions::plain(), validate, operation)
+            }
+            Self::Reply => {
+                with_feature_reply(transport, ExchangeOptions::plain(), [2, 0, 1], 7, operation)
+            }
+            Self::ValidatedReply => with_validated_feature_reply(
+                transport,
+                ExchangeOptions::plain(),
+                [2, 0, 1],
+                7,
+                validate,
+                operation,
+            ),
+        }
+    }
+}
+
+#[test]
+fn all_exchange_entries_stop_on_transient_admission_failure_without_claiming_release() {
+    use crate::backend::{
+        ExchangeInterruption, exchange_finalization_failed, exchange_interrupted,
+        exchange_release_completed, native_io_outcome,
+    };
+
+    for entry in [
+        ExchangeEntry::Plain,
+        ExchangeEntry::Validated,
+        ExchangeEntry::Reply,
+        ExchangeEntry::ValidatedReply,
+    ] {
+        let raw = ProtocolIo::new([]);
+        let reject = Cell::new(true);
+        let admission = || {
+            ensure!(!reject.replace(false), "source admission unavailable");
+            Ok(())
+        };
+        let probe = ExchangeProbe::with_admission_check(&raw, &admission);
+        let calls = Cell::new(0);
+        let error = entry.run(&probe, &|| Ok(()), &calls).unwrap_err();
+        assert!(exchange_interrupted(&error), "{entry:?}");
+        assert!(matches!(
+            error.downcast_ref::<ExchangeInterruption>(),
+            Some(ExchangeInterruption::Admission)
+        ));
+        assert!(format!("{error:#}").contains("source admission unavailable"));
+        assert!(!exchange_finalization_failed(&error));
+        assert!(!exchange_release_completed(&error));
+        assert_eq!(native_io_outcome(&error), None);
+        assert!(CompletedFeatureExchange::from_error(&error).is_none());
+        assert_eq!(calls.get(), 0);
+        assert_eq!(probe.events(), [LeaseEvent::Begin(ExchangeTiming::Plain)]);
+
+        assert_eq!(entry.run(&probe, &|| Ok(()), &calls).unwrap(), [23, 42]);
+        assert_eq!(calls.get(), 1);
+        assert_eq!(
+            probe.events(),
+            [
+                LeaseEvent::Begin(ExchangeTiming::Plain),
+                LeaseEvent::Begin(ExchangeTiming::Plain),
+                LeaseEvent::Finish,
+            ]
+        );
+    }
+}
+
+#[test]
+fn validated_entries_reject_transient_preflight_failure_before_admission() {
+    use crate::backend::{
+        ExchangeInterruption, exchange_finalization_failed, exchange_interrupted,
+        exchange_release_completed, native_io_outcome,
+    };
+
+    for entry in [ExchangeEntry::Validated, ExchangeEntry::ValidatedReply] {
+        let raw = ProtocolIo::new([]);
+        let probe = ExchangeProbe::new(&raw);
+        let reject = Cell::new(true);
+        let validate = || {
+            ensure!(!reject.replace(false), "connection owner changed");
+            Ok(())
+        };
+        let calls = Cell::new(0);
+        let error = entry.run(&probe, &validate, &calls).unwrap_err();
+        assert!(exchange_interrupted(&error), "{entry:?}");
+        assert!(matches!(
+            error.downcast_ref::<ExchangeInterruption>(),
+            Some(ExchangeInterruption::Validation)
+        ));
+        assert!(!exchange_finalization_failed(&error));
+        assert!(!exchange_release_completed(&error));
+        assert_eq!(native_io_outcome(&error), None);
+        assert!(CompletedFeatureExchange::from_error(&error).is_none());
+        assert!(probe.events().is_empty());
+        assert_eq!(calls.get(), 0);
+
+        assert_eq!(entry.run(&probe, &validate, &calls).unwrap(), [23, 42]);
+        assert_eq!(calls.get(), 1);
+        assert_eq!(
+            probe.events(),
+            [LeaseEvent::Begin(ExchangeTiming::Plain), LeaseEvent::Finish]
+        );
+    }
+}
+
 struct ObservedIo<'a> {
     protocol: ProtocolIo,
     returns: RefCell<std::collections::VecDeque<anyhow::Result<usize>>>,
@@ -343,30 +483,33 @@ fn observed_send_failure(outcome: Option<crate::backend::NativeIoOutcome>) -> an
 #[test]
 fn send_observers_reconcile_terminal_outcomes_in_source_retry_order() {
     use crate::backend::NativeIoOutcome;
-    for (first, expected_attempts) in [
-        (Err(observed_send_failure(None)), 1),
+    for (first, expected_attempts, terminal_outcome) in [
+        (Err(observed_send_failure(None)), 1, None),
         (
             Err(observed_send_failure(Some(NativeIoOutcome::NotCalled))),
-            1,
+            0,
+            Some(NativeIoOutcome::NotCalled),
         ),
         (
             Err(observed_send_failure(Some(NativeIoOutcome::Rejected))),
             2,
+            None,
         ),
         (
             Err(observed_send_failure(Some(NativeIoOutcome::Returned {
                 byte_count: 90,
             }))),
-            2,
+            1,
+            Some(NativeIoOutcome::Returned { byte_count: 90 }),
         ),
-        (Ok(0), 2),
-        (Ok(90), 2),
+        (Ok(0), 2, None),
+        (Ok(90), 2, None),
     ] {
         let events = RefCell::new(Vec::new());
         let io = ObservedIo::new(&events, [first, Ok(91)]);
         let probe = ExchangeProbe::new(&io);
         let attempts = Cell::new(0usize);
-        let reply = exchange_with_report_data_size_observing_send(
+        let result = exchange_with_report_data_size_observing_send(
             &probe,
             &capability(),
             [2, 7, 128],
@@ -378,10 +521,35 @@ fn send_observers_reconcile_terminal_outcomes_in_source_retry_order() {
                 attempts.set(attempts.get() + 1);
                 events.borrow_mut().push("send observed");
             },
-        )
-        .unwrap();
-        assert_eq!(reply, [23, 42]);
+        );
         assert_eq!(attempts.get(), expected_attempts);
+        if let Some(outcome) = terminal_outcome {
+            let error = result.unwrap_err();
+            assert_eq!(crate::backend::native_io_outcome(&error), Some(outcome));
+            assert!(crate::backend::exchange_interrupted(&error));
+            assert!(!crate::backend::exchange_finalization_failed(&error));
+            assert!(crate::backend::exchange_release_completed(&error));
+            assert!(error.downcast_ref::<std::io::Error>().is_some());
+            assert!(CompletedFeatureExchange::from_error(&error).is_none());
+            let expected = if expected_attempts == 0 {
+                vec!["send returned"]
+            } else {
+                vec!["send returned", "send observed"]
+            };
+            assert_eq!(*events.borrow(), expected);
+            assert_eq!(
+                probe.events(),
+                [
+                    LeaseEvent::Begin(ExchangeTiming::MutexOut {
+                        interval: Duration::ZERO,
+                    }),
+                    LeaseEvent::Send,
+                    LeaseEvent::Finish,
+                ]
+            );
+            continue;
+        }
+        assert_eq!(result.unwrap(), [23, 42]);
         let expected = if expected_attempts == 2 {
             vec![
                 "send returned",

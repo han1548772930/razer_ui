@@ -5,12 +5,13 @@ use super::{
     GamepadProductSpec, chroma_runtime::ChromaRuntime, lighting_runtime::LightingRuntime,
     trigger_runtime::TriggerRuntime,
 };
-use anyhow::ensure;
+use anyhow::{Context as _, ensure};
+use razer_device::controller_mapping::SourceMapping;
 use razer_device::controller_triggers::{AnalogTrigger, DigitalTrigger, ThumbstickValue};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct AnalogActuation {
     controller_id: u8,
@@ -19,13 +20,13 @@ struct AnalogActuation {
     is_active: bool,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct AnalogActuations {
     analog_actuations: Vec<AnalogActuation>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct DigitalActuation {
     controller_id: u8,
@@ -34,20 +35,20 @@ struct DigitalActuation {
     is_active: bool,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct DigitalActuations {
     digital_actuations: Vec<DigitalActuation>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct StickValue {
     controller_id: u8,
     value: u16,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct Deadzone {
     deadzones: Vec<StickValue>,
@@ -55,17 +56,238 @@ struct Deadzone {
     _prevent_double_deadzone: bool,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct Sensitivity {
     sensitivity_values: Vec<StickValue>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
 enum Circularity {
     Standard,
     Circular,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SwitchOffLighting {
+    is_display_on: bool,
+    is_idle_enabled: bool,
+    idle_minutes: u16,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Brightness {
+    is_enabled: bool,
+    value: u8,
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct HapticIntensity {
+    is_enabled: bool,
+    value: u8,
+    enable_audio_to_haptics: Option<bool>,
+}
+
+/// Module 69427's middleware profile is independent of the UI reducer's
+/// initial profile. These local values never establish a device observation.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct MiddlewareProfile {
+    guid: String,
+    name: String,
+    obm_slot_id: Vec<u8>,
+    switch_off_lighting: Option<SwitchOffLighting>,
+    brightness: Option<Brightness>,
+    controller_lighting_effects: Option<super::lighting_state::ControllerLightingSettings>,
+    polling_rate: u32,
+    polling_rate_wireless: Option<u32>,
+    mappings: Vec<SourceMapping>,
+    #[serde(rename = "controllerDPadSOCD")]
+    controller_dpad_socd: Option<razer_device::controller_initialization::SocdMode>,
+    controller_digital_actuation: DigitalActuations,
+    controller_analog_actuation: AnalogActuations,
+    controller_analog_circularity: Circularity,
+    controller_deadzone: Deadzone,
+    #[serde(rename = "controllerDPadIgnoreDiagonals")]
+    controller_dpad_ignore_diagonals: bool,
+    controller_sensitivity: Sensitivity,
+    haptic_intensity: HapticIntensity,
+}
+
+impl MiddlewareProfile {
+    fn new(product_id: u32, slot: u8) -> anyhow::Result<Self> {
+        ensure!(
+            matches!(product_id, 2636 | 2676),
+            "No verified controller middleware import profile for {product_id}"
+        );
+        Ok(Self {
+            guid: String::new(),
+            name: String::new(),
+            obm_slot_id: vec![slot],
+            switch_off_lighting: (product_id == 2636).then_some(SwitchOffLighting {
+                is_display_on: false,
+                is_idle_enabled: false,
+                idle_minutes: 1,
+            }),
+            brightness: (product_id == 2636).then_some(Brightness {
+                is_enabled: true,
+                value: 100,
+            }),
+            controller_lighting_effects: (product_id == 2636)
+                .then(super::lighting_state::ControllerLightingSettings::default),
+            polling_rate: 1000,
+            polling_rate_wireless: (product_id == 2636).then_some(250),
+            mappings: Vec::new(),
+            controller_dpad_socd: (product_id == 2676)
+                .then_some(razer_device::controller_initialization::SocdMode::Neutral),
+            controller_digital_actuation: DigitalActuations {
+                digital_actuations: [1, 2]
+                    .map(|controller_id| DigitalActuation {
+                        controller_id,
+                        actuation_point: 0,
+                        is_rapid_trigger: false,
+                        is_active: false,
+                    })
+                    .into(),
+            },
+            controller_analog_actuation: AnalogActuations {
+                analog_actuations: [1, 2]
+                    .map(|controller_id| AnalogActuation {
+                        controller_id,
+                        start_range: 0,
+                        end_range: 100,
+                        is_active: true,
+                    })
+                    .into(),
+            },
+            controller_analog_circularity: Circularity::Standard,
+            controller_deadzone: Deadzone {
+                deadzones: [1, 2]
+                    .map(|controller_id| StickValue {
+                        controller_id,
+                        value: 7,
+                    })
+                    .into(),
+                _prevent_double_deadzone: true,
+            },
+            controller_dpad_ignore_diagonals: false,
+            controller_sensitivity: Sensitivity {
+                sensitivity_values: [1, 2]
+                    .map(|controller_id| StickValue {
+                        controller_id,
+                        value: 50,
+                    })
+                    .into(),
+            },
+            haptic_intensity: HapticIntensity {
+                is_enabled: true,
+                value: 4,
+                enable_audio_to_haptics: (product_id == 2636).then_some(true),
+            },
+        })
+    }
+}
+
+// This operates only on a freshly serialized typed template. Optional source
+// fields supply its complete key schema, then disappear when not applicable.
+fn omit_unset_template_fields(template: &mut Value) {
+    if let Some(fields) = template.as_object_mut() {
+        fields.retain(|_, value| !value.is_null());
+        for value in fields.values_mut() {
+            omit_unset_template_fields(value);
+        }
+    }
+}
+
+fn preserve_file_extensions(target: &mut Value, previous: &Value, schemas: &[&Value]) {
+    let (Some(target), Some(previous)) = (target.as_object_mut(), previous.as_object()) else {
+        return;
+    };
+    for (key, value) in previous {
+        if matches!(
+            key.as_str(),
+            "actionsFromUI" | "device_write_acknowledged" | "audioHapticIntensity"
+        ) {
+            continue;
+        }
+        let known = schemas
+            .iter()
+            .filter_map(|schema| schema.get(key))
+            .collect::<Vec<_>>();
+        if known.is_empty() {
+            target.insert(key.clone(), value.clone());
+        } else if let Some(target) = target.get_mut(key) {
+            // Lists contain source settings with domain identities. Their old
+            // rows are never copied as extensions of a reconstructed profile.
+            preserve_file_extensions(target, value, &known);
+        }
+    }
+}
+
+pub(super) fn new_import_settings(
+    spec: &GamepadProductSpec,
+    slot: u8,
+    previous: Option<&Value>,
+) -> anyhow::Result<Value> {
+    let schema = serde_json::to_value(MiddlewareProfile::new(spec.product_id, slot)?)?;
+    let mut profile = schema.clone();
+    omit_unset_template_fields(&mut profile);
+    let mut controller = spec.controller.clone();
+    if let Some(previous) = previous {
+        let saved = previous
+            .get("profile")
+            .filter(|value| value.is_object())
+            .context("Saved controller workspace omits its profile")?;
+        let controls = previous
+            .get("controller")
+            .filter(|value| value.is_object())
+            .context("Saved controller workspace omits its controls")?;
+        preserve_file_extensions(&mut profile, saved, &[&schema, &spec.profile]);
+        preserve_file_extensions(&mut controller, controls, &[&spec.controller]);
+        if let Some(guid) = saved.get("guid") {
+            profile["guid"] = serde_json::to_value(
+                guid.as_str()
+                    .context("Saved controller GUID is not a string")?,
+            )?;
+        }
+        // Module 11365.z copies the whole local-only object, including an
+        // absent property, after rebuilding each slot in module 31759.eL.
+        let fields = profile.as_object_mut().context("Invalid import profile")?;
+        if let Some(policy) = saved.get("switchOffLighting") {
+            ensure!(policy.is_object(), "Saved lighting policy is not an object");
+            fields.insert("switchOffLighting".into(), policy.clone());
+        } else {
+            fields.remove("switchOffLighting");
+        }
+    }
+    Ok(serde_json::json!({"profile": profile, "controller": controller}))
+}
+
+pub(super) fn observe_imported_haptic(profile: &mut Value, scaling: u8) -> anyhow::Result<()> {
+    let level = [0, 17, 33, 50, 67, 83, 100]
+        .iter()
+        .position(|raw| *raw == scaling)
+        .context("Unknown controller haptic scaling")? as u8;
+    let initial: HapticIntensity = serde_json::from_value(
+        profile
+            .get("hapticIntensity")
+            .context("Controller middleware profile omits haptic intensity")?
+            .clone(),
+    )?;
+    // Module 47442 replaces the profile record after a successful GET. Zero
+    // retains the rebuilt profile's level; audio policy belongs to the root.
+    let mut observed = serde_json::to_value(HapticIntensity {
+        is_enabled: level > 0,
+        value: if level > 0 { level } else { initial.value },
+        enable_audio_to_haptics: None,
+    })?;
+    omit_unset_template_fields(&mut observed);
+    profile["hapticIntensity"] = observed;
+    Ok(())
 }
 
 #[derive(Default, Deserialize)]
@@ -80,6 +302,10 @@ struct Features {
     controller_lighting_effects: Option<super::lighting_state::ControllerLightingSettings>,
     #[serde(rename = "controllerDPadSOCD")]
     controller_dpad_socd: Option<razer_device::controller_initialization::SocdMode>,
+    #[serde(rename = "controllerDPadIgnoreDiagonals")]
+    controller_dpad_ignore_diagonals: Option<bool>,
+    polling_rate_wireless: Option<u32>,
+    haptic_intensity: Option<HapticIntensity>,
     quick_effects: Option<super::quick_lighting_state::QuickLightingSettings>,
 }
 
@@ -153,6 +379,12 @@ impl Features {
                 ThumbstickValue::new(s.controller_id, s.value)?;
             }
         }
+        if let Some(haptic) = &self.haptic_intensity {
+            ensure!(
+                (1..=6).contains(&haptic.value),
+                "Saved controller haptic intensity exceeds the source limits"
+            );
+        }
         Ok(())
     }
 }
@@ -195,6 +427,15 @@ pub(super) fn restore_features(
             "controllerDPadSOCD",
             features.controller_dpad_socd.is_some(),
         ),
+        (
+            "controllerDPadIgnoreDiagonals",
+            features.controller_dpad_ignore_diagonals.is_some(),
+        ),
+        (
+            "pollingRateWireless",
+            features.polling_rate_wireless.is_some(),
+        ),
+        ("hapticIntensity", features.haptic_intensity.is_some()),
     ] {
         if present {
             // Keep file extension fields and list order at this boundary.
@@ -238,8 +479,219 @@ mod tests {
     use super::super::lighting_runtime::LightingRuntime;
     use super::super::trigger_runtime::TriggerRuntime;
     use super::super::{merge_known, source_product};
-    use super::{restore_features, restore_local_profile};
+    use super::{new_import_settings, restore_features, restore_local_profile};
     use serde_json::json;
+
+    #[test]
+    fn middleware_import_profiles_use_the_complete_current_source_defaults() {
+        // Current 2636/2676 module 69427 DEFAULTPROFILE, before 11365 getters.
+        for product in [2636, 2676] {
+            let spec = source_product(product).unwrap();
+            let imported = new_import_settings(spec, 3, None).unwrap();
+            let profile = &imported["profile"];
+            assert_eq!(profile["guid"], "");
+            assert_eq!(profile["name"], "");
+            assert_eq!(profile["obmSlotId"], json!([3]));
+            assert_eq!(profile["pollingRate"], 1000);
+            assert_eq!(profile["mappings"], json!([]));
+            assert_eq!(
+                profile["controllerDigitalActuation"],
+                json!({
+                    "digitalActuations": [
+                        {"controllerId":1,"actuationPoint":0,"isRapidTrigger":false,"isActive":false},
+                        {"controllerId":2,"actuationPoint":0,"isRapidTrigger":false,"isActive":false}
+                    ]
+                })
+            );
+            assert_eq!(
+                profile["controllerAnalogActuation"],
+                json!({
+                    "analogActuations": [
+                        {"controllerId":1,"startRange":0,"endRange":100,"isActive":true},
+                        {"controllerId":2,"startRange":0,"endRange":100,"isActive":true}
+                    ]
+                })
+            );
+            assert_eq!(profile["controllerAnalogCircularity"], "standard");
+            assert_eq!(
+                profile["controllerDeadzone"],
+                json!({
+                    "preventDoubleDeadzone":true,
+                    "deadzones":[{"controllerId":1,"value":7},{"controllerId":2,"value":7}]
+                })
+            );
+            assert_eq!(profile["controllerDPadIgnoreDiagonals"], false);
+            assert_eq!(
+                profile["controllerSensitivity"],
+                json!({
+                    "sensitivityValues":[{"controllerId":1,"value":50},{"controllerId":2,"value":50}]
+                })
+            );
+            if product == 2636 {
+                assert_eq!(profile["brightness"], json!({"isEnabled":true,"value":100}));
+                assert_eq!(
+                    profile["switchOffLighting"],
+                    json!({
+                        "isDisplayOn":false,"isIdleEnabled":false,"idleMinutes":1
+                    })
+                );
+                assert_eq!(profile["pollingRateWireless"], 250);
+                assert!(profile.get("controllerDPadSOCD").is_none());
+                assert_eq!(
+                    profile["hapticIntensity"],
+                    json!({
+                        "isEnabled":true,"value":4,"enableAudioToHaptics":true
+                    })
+                );
+                assert_eq!(
+                    profile["controllerLightingEffects"],
+                    json!({
+                        "effectId":3,"mode":"preset","index":0,"rate":2,
+                        "colorList":[
+                            {"value":"#00ff00","index":0},{"value":"#44d7b6","index":1},
+                            {"value":"#0019ff","index":2},{"value":"#7f00ff","index":3},
+                            {"value":"#ff0000","index":4},{"value":"#fa6400","index":5},
+                            {"value":"#f7b500","index":6},{"value":"#ffffff","index":7}
+                        ]
+                    })
+                );
+            } else {
+                assert_eq!(profile["controllerDPadSOCD"], "neutral");
+                assert_eq!(
+                    profile["hapticIntensity"],
+                    json!({"isEnabled":true,"value":4})
+                );
+                for field in [
+                    "brightness",
+                    "switchOffLighting",
+                    "controllerLightingEffects",
+                    "pollingRateWireless",
+                ] {
+                    assert!(profile.get(field).is_none(), "{field}");
+                }
+            }
+            assert!(profile.get("quickEffects").is_none());
+            assert!(profile.get("gamingMode").is_none());
+            assert_eq!(imported["controller"], spec.controller);
+            assert_eq!(imported["controller"]["leftTrigger"]["actuationPoint"], 10);
+            assert_eq!(imported["controller"]["leftTrigger"]["startRange"], 50);
+            assert_eq!(imported["controller"]["leftStick"]["sensitivityValue"], 10);
+        }
+        for product in [2629, 2647, 2650, 2684, 4115, 4133, 4144] {
+            assert!(new_import_settings(source_product(product).unwrap(), 3, None).is_err());
+        }
+    }
+
+    #[test]
+    fn middleware_import_retains_only_source_local_metadata_and_file_extensions() {
+        for product in [2636, 2676] {
+            let spec = source_product(product).unwrap();
+            let mut previous = json!({"profile":spec.profile,"controller":spec.controller});
+            previous["profile"]["guid"] = json!("retained-guid");
+            previous["profile"]["name"] = json!("old-name");
+            previous["profile"]["obmSlotId"] = json!([1, 3]);
+            previous["profile"]["brightness"] = json!({"isEnabled":false,"value":73});
+            previous["profile"]["pollingRate"] = json!(125);
+            previous["profile"]["pollingRateWireless"] = json!(500);
+            previous["profile"]["controllerSensitivity"] = json!({
+                "sensitivityValues":[{"controllerId":1,"value":33},{"controllerId":2,"value":72}]
+            });
+            previous["profile"]["controllerDPadIgnoreDiagonals"] = json!(true);
+            previous["profile"]["controllerDPadSOCD"] = json!("last");
+            previous["profile"]["hapticIntensity"] = json!({
+                "isEnabled":false,"value":6,"enableAudioToHaptics":false
+            });
+            previous["profile"]["controllerLightingEffects"] = json!(null);
+            previous["profile"]["switchOffLighting"] = json!({
+                "isDisplayOn":true,"isIdleEnabled":true,"idleMinutes":11,"extra":{"preserved":true}
+            });
+            previous["profile"]["futureExtension"] = json!({"preserved":true});
+            previous["profile"]["futureNull"] = json!(null);
+            previous["profile"]["actionsFromUI"] = json!([{"status":"SUCCESS"}]);
+            previous["profile"]["device_write_acknowledged"] = json!(true);
+            previous["controller"]["leftTrigger"]["actuationPoint"] = json!(41);
+            previous["controller"]["leftTrigger"]["futureExtension"] = json!("retained");
+            let imported = new_import_settings(spec, 3, Some(&previous)).unwrap();
+            let profile = &imported["profile"];
+            assert_eq!(profile["guid"], "retained-guid");
+            assert_eq!(profile["name"], "");
+            assert_eq!(profile["obmSlotId"], json!([3]));
+            assert_eq!(profile["pollingRate"], 1000);
+            assert_eq!(
+                profile["controllerSensitivity"]["sensitivityValues"][0]["value"],
+                50
+            );
+            assert_eq!(profile["controllerDPadIgnoreDiagonals"], false);
+            assert_eq!(profile["hapticIntensity"]["value"], 4);
+            assert_eq!(profile["hapticIntensity"]["isEnabled"], true);
+            assert_eq!(
+                profile["switchOffLighting"],
+                previous["profile"]["switchOffLighting"]
+            );
+            assert_eq!(
+                profile["futureExtension"],
+                previous["profile"]["futureExtension"]
+            );
+            assert_eq!(profile.get("futureNull"), Some(&serde_json::Value::Null));
+            assert_eq!(imported["controller"]["leftTrigger"]["actuationPoint"], 10);
+            assert_eq!(
+                imported["controller"]["leftTrigger"]["futureExtension"],
+                "retained"
+            );
+            for field in [
+                "actionsFromUI",
+                "device_write_acknowledged",
+                "quickEffects",
+                "gamingMode",
+            ] {
+                assert!(profile.get(field).is_none(), "{product}: {field}");
+            }
+            previous["profile"]
+                .as_object_mut()
+                .unwrap()
+                .remove("switchOffLighting");
+            assert!(
+                new_import_settings(spec, 3, Some(&previous)).unwrap()["profile"]
+                    .get("switchOffLighting")
+                    .is_none()
+            );
+        }
+    }
+
+    #[test]
+    fn middleware_import_feature_records_survive_local_page_restoration() {
+        for product in [2636, 2676] {
+            let spec = source_product(product).unwrap();
+            let mut saved = new_import_settings(spec, 3, None).unwrap();
+            super::observe_imported_haptic(&mut saved["profile"], 50).unwrap();
+            saved["profile"]["controllerDPadIgnoreDiagonals"] = json!(true);
+            saved["profile"]["pollingRateWireless"] = json!(500);
+            let mut restored = json!({"profile":spec.profile,"controller":spec.controller});
+            let mut trigger = TriggerRuntime::default();
+            let mut lighting = LightingRuntime::new(product);
+            let mut chroma = ChromaRuntime::default();
+            restore_local_profile(
+                &mut restored,
+                Some(&saved),
+                spec,
+                &mut trigger,
+                &mut lighting,
+                &mut chroma,
+            )
+            .unwrap();
+            assert_eq!(
+                restored["profile"]["hapticIntensity"],
+                json!({"isEnabled":true,"value":3})
+            );
+            assert_eq!(restored["profile"]["controllerDPadIgnoreDiagonals"], true);
+            assert_eq!(restored["profile"]["pollingRateWireless"], 500);
+            assert!(
+                restored["profile"]
+                    .get("device_write_acknowledged")
+                    .is_none()
+            );
+        }
+    }
 
     #[test]
     fn full_profiles_retain_source_quick_effect_metadata_without_enabling_kitsune_runtime() {

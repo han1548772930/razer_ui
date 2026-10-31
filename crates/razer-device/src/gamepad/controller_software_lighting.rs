@@ -217,14 +217,7 @@ impl<'a, T: crate::backend::FeatureTransport + ?Sized> SoftwareHid<'a, T> {
                                 );
                             }
                             Err(error)
-                                if crate::backend::exchange_finalization_failed(&error)
-                                    || matches!(
-                                        crate::backend::native_io_outcome(&error),
-                                        Some(
-                                            crate::backend::NativeIoOutcome::NotCalled
-                                                | crate::backend::NativeIoOutcome::Returned { .. }
-                                        )
-                                    ) =>
+                                if super::controller_feature::terminal_io_failure(&error) =>
                             {
                                 return Err(error);
                             }

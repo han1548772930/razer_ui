@@ -452,6 +452,14 @@ fn exchange_observing(
     progress: &mut (bool, bool),
     acknowledged: &mut dyn FnMut(&Acknowledgement),
 ) -> anyhow::Result<Acknowledgement> {
+    let validate = &|| {
+        validate().map_err(|error| {
+            crate::backend::interrupt_exchange(
+                error,
+                crate::backend::ExchangeInterruption::Validation,
+            )
+        })
+    };
     ensure!(
         cap.report_id == 0
             && cap.report_bytes == 91
@@ -483,15 +491,29 @@ fn exchange_observing(
         |device, lease| {
             for out_attempt in 0..cap.max_retry_out {
                 validate()?;
-                progress.0 = true;
-                if let Err(error) = device.send_feature_at_collection_max(&outgoing) {
-                    validate()?;
+                let sent = device.send_feature_at_collection_max_counted(&outgoing);
+                progress.0 |= crate::backend::native_io_attempted(&sent);
+                progress.1 |= match &sent {
+                    Ok(count) => *count == outgoing.len(),
+                    Err(error) => matches!(
+                        crate::backend::native_io_outcome(error),
+                        Some(crate::backend::NativeIoOutcome::Returned { byte_count })
+                            if byte_count == outgoing.len()
+                    ),
+                };
+                if let Err(validation) = validate() {
+                    return Err(crate::backend::complete_native_io(sent, validation));
+                }
+                if let Err(error) = sent
+                    .and_then(|count| crate::backend::require_complete_send(count, outgoing.len()))
+                {
+                    if crate::backend::exchange_interrupted(&error) {
+                        return Err(error);
+                    }
                     last =
                         format!("Receiver LED send failed; delivery is not confirmed: {error:#}");
                     continue;
                 }
-                progress.1 = true;
-                validate()?;
                 std::thread::sleep(Duration::from_millis(cap.sleep_between_out_in_ms));
                 let mut resend = false;
                 for attempt in 0..cap.max_retry_in {
@@ -508,9 +530,30 @@ fn exchange_observing(
                         cap.claim_interface
                     };
                     let received = device.get_feature_at_collection_max(&mut incoming);
-                    validate()?;
+                    let received = match validate() {
+                        Ok(()) => received,
+                        Err(validation) => Err(crate::backend::complete_native_read(
+                            received, &incoming, validation,
+                        )),
+                    };
                     let count = match received {
                         Ok(count) => count,
+                        Err(error) if crate::backend::exchange_interrupted(&error) => {
+                            let error = crate::receiver_feature_channel::retain_failed_reply(
+                                error,
+                                command,
+                                transaction,
+                            );
+                            if let Some(data) = crate::feature_exchange::acknowledged_error(&error)
+                            {
+                                acknowledged(&Acknowledgement {
+                                    command,
+                                    transaction,
+                                    data: data.to_vec(),
+                                });
+                            }
+                            return Err(error);
+                        }
                         Err(_) => {
                             incoming.fill(0);
                             incoming.len()

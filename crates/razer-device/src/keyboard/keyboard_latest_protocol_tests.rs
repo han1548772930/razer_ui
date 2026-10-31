@@ -2,6 +2,62 @@ use super::*;
 use crate::keyboard_control_test_transport::{Mock, assert_report_integrity_with_id, reply};
 
 #[test]
+fn one_shot_admission_failure_stops_each_current_keyboard_write_owner() {
+    use crate::feature_exchange::tests::ExchangeProbe;
+    use std::cell::Cell;
+    for physical in [756, 757] {
+        let mut cap = capability(physical)
+            .unwrap()
+            .for_physical_product(physical)
+            .unwrap();
+        cap.sleep_between_out_ms = 0;
+        cap.sleep_between_out_in_ms = 0;
+        cap.sleep_between_in_ms = 0;
+        for operation in [
+            Operation::Actuation {
+                slot: 1,
+                points: (1..=16)
+                    .map(|key_id| ActuationPoint {
+                        key_id,
+                        threshold_high: 256,
+                        threshold_low: 19656,
+                    })
+                    .collect(),
+            },
+            Operation::WriteProfileMetadata(ProfileMetadata {
+                slot_id: 1,
+                guid: "af06d371-861f-4b98-8d78-bfaef5cfdebf".into(),
+                name: String::new(),
+                owner: String::new(),
+                key_mapping_hash: [1, 2, 3, 4, 5, 6],
+            }),
+            Operation::Setting(Setting::BottomDeadzone { slot: 1, value: 12 }),
+        ] {
+            let device = Mock::new([]);
+            let admissions = Cell::new(0);
+            let admit = || {
+                let previous = admissions.replace(admissions.get() + 1);
+                ensure!(previous != 0, "one-shot keyboard write admission failure");
+                Ok(())
+            };
+            let probe = ExchangeProbe::with_admission_check(&device, &admit);
+            let error = execute_hid(
+                &probe,
+                &cap,
+                &operation,
+                || Ok(cap.transaction_prefix),
+                &|| Ok(()),
+            )
+            .unwrap_err();
+            assert!(crate::backend::exchange_interrupted(&error));
+            assert_eq!(admissions.get(), 1);
+            assert!(device.sent().is_empty());
+            assert_eq!(failed_write(&error).unwrap().len(), 1);
+        }
+    }
+}
+
+#[test]
 fn release_failure_retains_the_current_chunk_and_stops_all_write_families() {
     let operations = [
         Operation::Actuation {

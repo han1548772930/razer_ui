@@ -77,6 +77,52 @@ fn immediate_support(pid: u16, edition: u8) -> PeerSupport {
 }
 
 #[test]
+fn edition_interruption_stops_all_feature_peer_products_and_editions() {
+    for &(pid, edition) in super::super::peer_identities() {
+        let support = immediate_support(pid, edition);
+        if support.rz_device_name == PeerDeviceFactory::RzDevice30 {
+            continue;
+        }
+        let io = fake(&[8, 129, 7]);
+        let admissions = Cell::new(0);
+        let admit = || {
+            let previous = admissions.replace(admissions.get() + 1);
+            ensure!(previous != 0, "one-shot peer edition admission failure");
+            Ok(())
+        };
+        let probe = ExchangeProbe::with_admission_check(&io, &admit);
+        let error = PeerHid::new(support)
+            .unwrap()
+            .edition(&probe, &|| Ok(()))
+            .unwrap_err();
+        assert!(crate::backend::exchange_interrupted(&error));
+        assert_eq!(admissions.get(), 1, "PID{pid} / edition {edition}");
+        assert!(io.sent.lock().unwrap().is_empty());
+        for outcome in [
+            NativeIoOutcome::NotCalled,
+            NativeIoOutcome::Returned { byte_count: 90 },
+            NativeIoOutcome::Returned { byte_count: 91 },
+        ] {
+            let io = fake(&[8, 129, 7]);
+            io.native_results
+                .lock()
+                .unwrap()
+                .push_back(Err(native_io_failure(
+                    outcome,
+                    anyhow::anyhow!("one-shot native peer interruption"),
+                )));
+            let error = PeerHid::new(immediate_support(pid, edition))
+                .unwrap()
+                .edition(&io, &|| Ok(()))
+                .unwrap_err();
+            assert_eq!(native_io_outcome(&error), Some(outcome));
+            assert_eq!(io.sent.lock().unwrap().len(), 1);
+            assert_eq!(io.reads.get(), 0);
+        }
+    }
+}
+
+#[test]
 fn failed_custom_selection_retains_partial_mode_restoration_until_real_acknowledgements() {
     let mut peer = PeerHid::new(immediate_support(214, 0)).unwrap();
     let io = fake(&[]);

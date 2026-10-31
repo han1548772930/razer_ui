@@ -316,6 +316,14 @@ pub(crate) fn exchange(
     outgoing[6..9].copy_from_slice(&command);
     outgoing[9..9 + payload.len()].copy_from_slice(payload);
     outgoing[89] = outgoing[3..89].iter().fold(0, |sum, byte| sum ^ byte);
+    let validate = &|| {
+        validate().map_err(|error| {
+            crate::backend::interrupt_exchange(
+                error,
+                crate::backend::ExchangeInterruption::Validation,
+            )
+        })
+    };
     let mut last_error = "没有收到键盘亮度响应".to_owned();
     crate::feature_exchange::with_validated_feature_reply(
         device,
@@ -331,9 +339,16 @@ pub(crate) fn exchange(
         |device, lease| {
             for out_attempt in 0..transport.max_retry_out {
                 validate()?;
-                let sent = device.send_feature_at_collection_max(&outgoing);
-                validate()?;
-                if let Err(error) = sent {
+                let sent = device.send_feature_at_collection_max_counted(&outgoing);
+                if let Err(validation) = validate() {
+                    return Err(crate::backend::complete_native_io(sent, validation));
+                }
+                if let Err(error) = sent
+                    .and_then(|count| crate::backend::require_complete_send(count, outgoing.len()))
+                {
+                    if crate::backend::exchange_interrupted(&error) {
+                        return Err(error);
+                    }
                     last_error = format!("{error:#}");
                     continue;
                 }
@@ -346,10 +361,22 @@ pub(crate) fn exchange(
                     let mut incoming = vec![0; transport.report_bytes];
                     incoming[0] = transport.get_report_id_for_transport(device)?;
                     let received = device.get_feature_at_collection_max(&mut incoming);
-                    validate()?;
+                    let received = match validate() {
+                        Ok(()) => received,
+                        Err(validation) => Err(crate::backend::complete_native_read(
+                            received, &incoming, validation,
+                        )),
+                    };
                     let count = match received {
                         Ok(count) => count,
                         Err(error) => {
+                            if crate::backend::exchange_interrupted(&error) {
+                                return Err(crate::feature_exchange::retain_failed_feature_reply(
+                                    error,
+                                    command,
+                                    transaction,
+                                ));
+                            }
                             last_error = format!("{error:#}");
                             break;
                         }
@@ -480,7 +507,7 @@ fn read_at_profile(
         Ok(data) => parse_regions(&data)?
             .first()
             .map_or(cap.all_region, |record| record.region_id),
-        Err(error) if crate::backend::exchange_finalization_failed(&error) => return Err(error),
+        Err(error) if crate::backend::exchange_interrupted(&error) => return Err(error),
         Err(_) => cap.fallback_region,
     };
     let data = exchange(
@@ -683,6 +710,50 @@ mod tests {
             let transaction = prefix | sequence;
             sequence = (sequence + 1) % modulus;
             Ok(transaction)
+        }
+    }
+
+    #[test]
+    fn interruptions_stop_all_brightness_factories_before_fallback_or_retry() {
+        use crate::backend::NativeIoOutcome;
+        use crate::feature_exchange::tests::ExchangeProbe;
+        use crate::keyboard_control_test_transport::{Mock as Script, reply as packet};
+        for descriptor in AUDITED_KEYBOARDS
+            .iter()
+            .chain(CURRENT_AUDITED_KEYBOARDS)
+            .chain(std::iter::once(&BLACKWIDOW_CHROMA))
+        {
+            let cap = cap_for(descriptor.product_id);
+            let device = Script::new([]);
+            let admissions = Cell::new(0);
+            let admit = || {
+                let previous = admissions.replace(admissions.get() + 1);
+                ensure!(previous != 0, "one-shot brightness admission failure");
+                Ok(())
+            };
+            let probe = ExchangeProbe::with_admission_check(&device, &admit);
+            let error = read(&probe, &cap, transactions(&cap), || Ok(())).unwrap_err();
+            assert!(crate::backend::exchange_interrupted(&error));
+            assert_eq!(admissions.get(), 1, "PID{}", cap.product_id);
+            assert!(device.sent().is_empty());
+
+            for outcome in [
+                NativeIoOutcome::NotCalled,
+                NativeIoOutcome::Returned { byte_count: 90 },
+                NativeIoOutcome::Returned { byte_count: 91 },
+            ] {
+                let device = Script::new([]).fail_next_send(outcome);
+                let error = read(&device, &cap, transactions(&cap), || Ok(())).unwrap_err();
+                assert_eq!(crate::backend::native_io_outcome(&error), Some(outcome));
+                assert_eq!(device.sent().len(), 1);
+            }
+            let device = Script::new([packet(&[7, 8])]).interrupt_next_read();
+            let error = read(&device, &cap, transactions(&cap), || Ok(())).unwrap_err();
+            assert_eq!(
+                crate::feature_exchange::acknowledged_error(&error),
+                Some(&[7, 8][..])
+            );
+            assert_eq!(device.sent().len(), 1);
         }
     }
 

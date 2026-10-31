@@ -2,8 +2,8 @@
 //! and local controller-lighting wrappers. The owner supplies cancelable waits
 //! and retains the observed collection for the entire ordered operation.
 use crate::backend::{
-    FeatureTransport, NativeIoOutcome, complete_native_io, complete_native_read,
-    exchange_finalization_failed, native_io_outcome, native_read_bytes, require_complete_send,
+    FeatureTransport, complete_native_io, complete_native_read, native_read_bytes,
+    require_complete_send,
 };
 use anyhow::{Context as _, bail, ensure};
 use std::time::Duration;
@@ -37,12 +37,10 @@ fn decode_reply(response: &[u8], request: &[u8; 91]) -> Reply {
     }
 }
 
-fn terminal_io_failure(error: &anyhow::Error) -> bool {
-    exchange_finalization_failed(error)
-        || matches!(
-            native_io_outcome(error),
-            Some(NativeIoOutcome::NotCalled | NativeIoOutcome::Returned { .. })
-        )
+/// Source best-effort wrappers must preserve admission, native completion and
+/// release failures before converting ordinary command errors into diagnostics.
+pub(crate) fn terminal_io_failure(error: &anyhow::Error) -> bool {
+    crate::backend::exchange_interrupted(error)
 }
 
 fn retain_failed_reply(error: anyhow::Error, request: &[u8; 91]) -> anyhow::Error {
@@ -112,6 +110,11 @@ pub(crate) fn exchange_with_timing<T: FeatureTransport + ?Sized>(
     max_retry_in: u8,
 ) -> anyhow::Result<Vec<u8>> {
     ensure!(max_retry_in > 0, "Controller reply retry count is zero");
+    let mut guarded_wait = |delay| {
+        wait(delay).map_err(|error| {
+            crate::backend::interrupt_exchange(error, crate::backend::ExchangeInterruption::Wait)
+        })
+    };
     crate::feature_exchange::with_feature_reply(
         transport,
         crate::feature_exchange::with_protocol25_scope(
@@ -123,9 +126,9 @@ pub(crate) fn exchange_with_timing<T: FeatureTransport + ?Sized>(
         |transport, lease| {
             let mut error = anyhow::anyhow!("No controller Feature reply");
             for out_attempt in 0..20 {
-                wait(Duration::ZERO)?;
+                guarded_wait(Duration::ZERO)?;
                 let sent = transport.send_feature_at_collection_max_counted(request);
-                if let Err(validation) = wait(Duration::ZERO) {
+                if let Err(validation) = guarded_wait(Duration::ZERO) {
                     return Err(complete_native_io(sent, validation));
                 }
                 match sent {
@@ -146,16 +149,16 @@ pub(crate) fn exchange_with_timing<T: FeatureTransport + ?Sized>(
                         continue;
                     }
                 }
-                wait(out_in_delay)?;
+                guarded_wait(out_in_delay)?;
                 for retry in 0..max_retry_in {
                     if retry != 0 {
-                        wait(in_delay)?;
+                        guarded_wait(in_delay)?;
                     }
-                    wait(Duration::ZERO)?;
+                    guarded_wait(Duration::ZERO)?;
                     let mut response = [0; 91];
                     response[0] = request[0];
                     let received = transport.get_feature_at_collection_max(&mut response);
-                    if let Err(validation) = wait(Duration::ZERO) {
+                    if let Err(validation) = guarded_wait(Duration::ZERO) {
                         return Err(retain_failed_reply(
                             complete_native_read(received, &response, validation),
                             request,
@@ -187,7 +190,7 @@ pub(crate) fn exchange_with_timing<T: FeatureTransport + ?Sized>(
                     }
                 }
                 if out_attempt + 1 < 20 {
-                    wait(Duration::ZERO)?;
+                    guarded_wait(Duration::ZERO)?;
                     lease.retry_release()?;
                 }
             }

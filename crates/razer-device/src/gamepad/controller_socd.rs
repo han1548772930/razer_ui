@@ -111,6 +111,9 @@ impl<'a, T: FeatureTransport + ?Sized, W: FnMut(Duration) -> anyhow::Result<()>>
             &mut self.wait,
         ) {
             Ok(response_payload) => SocdWriteStatus::Acknowledged { response_payload },
+            Err(error) if crate::controller_feature::terminal_io_failure(&error) => {
+                return Err(error);
+            }
             Err(error) => SocdWriteStatus::Failed {
                 error: format!("{error:#}"),
             },

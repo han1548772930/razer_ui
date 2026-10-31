@@ -1,9 +1,13 @@
-//! The warning remembers the mounted control's previous value, independently
-//! of device observations. Its scope is borrowed from the trigger owner.
+//! The warning retains the source UI's previous-value state under the
+//! trigger owner's lifetime.
 use std::sync::{
     Arc,
     atomic::{AtomicBool, Ordering},
 };
+
+pub(super) fn is_low(value: i64) -> bool {
+    value < 7
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Side {
@@ -62,7 +66,7 @@ impl Selection {
 pub(super) struct DeadzoneState {
     previous: Option<[i64; 2]>,
     owner: Option<Arc<AtomicBool>>,
-    warning: Option<Selection>,
+    warning: Option<Side>,
 }
 
 impl DeadzoneState {
@@ -80,6 +84,27 @@ impl DeadzoneState {
         })
     }
 
+    pub(super) fn synchronize(
+        &mut self,
+        displayed: [i64; 2],
+        follows_displayed_values: bool,
+        owner: Arc<AtomicBool>,
+    ) {
+        if !self.matches_owner(&owner) {
+            self.enter(displayed, owner);
+        } else if follows_displayed_values {
+            // The 2676/2684 widget effects update each previous value when
+            // its displayed value becomes nonlow. Legacy classes only update
+            // their previous values from the selection callback.
+            let previous = self.previous.as_mut().expect("mounted deadzone values");
+            for (previous, value) in previous.iter_mut().zip(displayed) {
+                if !is_low(value) {
+                    *previous = value;
+                }
+            }
+        }
+    }
+
     pub(super) fn select(
         &mut self,
         side: Side,
@@ -91,11 +116,8 @@ impl DeadzoneState {
             self.enter(displayed, owner);
         }
         let previous = self.previous.as_mut().expect("mounted deadzone values");
-        if value < 7 {
-            self.warning = Some(Selection {
-                side,
-                value: previous[side.index()],
-            });
+        if is_low(value) {
+            self.warning = Some(side);
             true
         } else {
             previous[side.index()] = value;
@@ -104,7 +126,7 @@ impl DeadzoneState {
     }
 
     pub(super) fn warning_side(&self) -> Option<Side> {
-        self.warning.map(|warning| warning.side)
+        self.warning
     }
 
     pub(super) fn dismiss(
@@ -112,9 +134,12 @@ impl DeadzoneState {
         restore_previous: bool,
         current: &Arc<AtomicBool>,
     ) -> Option<Selection> {
-        let previous = self.warning.take()?;
+        let side = self.warning.take()?;
         // Source onClose always dispatches the previous value, including an
         // equal value. Continue, Recalibrate and unmount never restore it.
-        (restore_previous && self.matches_owner(current)).then_some(previous)
+        (restore_previous && self.matches_owner(current)).then(|| Selection {
+            side,
+            value: self.previous.expect("mounted deadzone values")[side.index()],
+        })
     }
 }

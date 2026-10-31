@@ -217,7 +217,7 @@ impl<'a> MouseButtonInventory<'a> {
                         report.entries[index].observed = Some(completed.observed().clone());
                     }
                     report.entries[index].error = Some(format!("{error:#}"));
-                    if cancelled.get() || crate::backend::exchange_finalization_failed(&error) {
+                    if cancelled.get() || crate::backend::exchange_interrupted(&error) {
                         return Err(ButtonInventoryFailure {
                             phase: if cancelled.get() {
                                 ButtonInventoryFailurePhase::Cancelled

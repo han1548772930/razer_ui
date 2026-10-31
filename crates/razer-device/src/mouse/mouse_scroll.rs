@@ -825,6 +825,14 @@ impl<'a> MouseScroll<'a> {
         mut next: impl FnMut() -> Result<u8>,
         validate: impl Fn() -> Result<()>,
     ) -> Result<SubmissionReport> {
+        let validate = || {
+            validate().map_err(|error| {
+                crate::backend::interrupt_exchange(
+                    error,
+                    crate::backend::ExchangeInterruption::Validation,
+                )
+            })
+        };
         submission.validate(self.transport.product_id)?;
         let mut reports = Vec::new();
         let mut errors = Vec::new();
@@ -844,7 +852,7 @@ impl<'a> MouseScroll<'a> {
                 ) {
                     Ok(profiles) => onboard_profiles = Some(profiles),
                     Err(error) => {
-                        if crate::backend::exchange_finalization_failed(&error) {
+                        if crate::backend::exchange_interrupted(&error) {
                             return Err(error);
                         }
                         errors.push(format!("OBM profile observation: {error:#}"));
@@ -869,7 +877,7 @@ impl<'a> MouseScroll<'a> {
                     Err(failure) => {
                         errors.push(format!("task {index} ({change:?}): {failure:#}"));
                         reports.push(failure.progress);
-                        if crate::backend::exchange_finalization_failed(&failure.error) {
+                        if crate::backend::exchange_interrupted(&failure.error) {
                             return Err(failure.error);
                         }
                         // Source feature tasks are independent. Device rejection
@@ -931,7 +939,7 @@ impl<'a> MouseScroll<'a> {
                     Err(_) => ScrollReadOutcome::Unknown { raw },
                 },
                 Err(error) => {
-                    if crate::backend::exchange_finalization_failed(&error) {
+                    if crate::backend::exchange_interrupted(&error) {
                         return Err(error);
                     }
                     validate()?;

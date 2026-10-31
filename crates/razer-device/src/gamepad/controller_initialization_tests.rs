@@ -4,6 +4,7 @@ use std::{
     collections::VecDeque,
 };
 
+#[derive(Clone)]
 struct Step {
     header: [u8; 3],
     request: Vec<u8>,
@@ -115,6 +116,234 @@ fn inventory(ids: &[u8], active: u8) -> Vec<Step> {
         ));
     }
     result
+}
+
+fn complete_import_steps(product_id: u32) -> Vec<Step> {
+    let power = if product_id == 2636 {
+        [0x2c, 0x01]
+    } else {
+        [0x01, 0x2c]
+    };
+    let mut steps = vec![step([2, 7, 131], &[0, 0], &power)];
+    if product_id == 2676 {
+        steps.push(step([1, 0, 211], &[], &[0]));
+    }
+    steps.extend(inventory(&[3, 1], 1));
+    for slot in [3, 1] {
+        if product_id == 2636 {
+            steps.extend([
+                step([80, 15, 128], &[], &[4]),
+                step([3, 15, 132], &[slot, 4], &[slot, 4, 127]),
+                step([80, 15, 130], &[slot, 0], &[slot, 0, 13, 0, 1, 0]),
+                step(
+                    [5, 15, 130],
+                    &[slot, 0, 13, 0, 1],
+                    &[slot, 0, 13, 9, 1, 1, 18, 52, 86],
+                ),
+                step([2, 0, 142], &[slot], &[slot, 2]),
+                step([2, 0, 142], &[slot], &[slot, 2]),
+            ]);
+        } else {
+            steps.push(step([2, 0, 192], &[slot], &[slot, 2]));
+        }
+        for button in [6, 5] {
+            steps.push(step(
+                [80, 2, 140],
+                &[slot, button, 0],
+                &[slot, button, 0, 16, 1, button, 0, 0, 0, 0],
+            ));
+        }
+        for side in [1, 2] {
+            steps.push(step([4, 12, 150], &[slot, side], &[slot, side, 50, 0]));
+            steps.push(step([3, 12, 149], &[slot, side], &[slot, side, 1]));
+        }
+        for side in [1, 2] {
+            steps.push(step([4, 12, 147], &[slot, side], &[slot, side, 10, 90]));
+            steps.push(step([3, 12, 149], &[slot, side], &[slot, side, 1]));
+        }
+        steps.push(step([3, 12, 146], &[slot, 1], &[slot, 1, 1]));
+        for side in [1, 2] {
+            steps.push(step(
+                [9, 12, 133],
+                &[slot, side],
+                &[slot, side, 0, 6, 0, 100, 0, 0, 1],
+            ));
+        }
+        steps.extend([
+            step([2, 12, 151], &[slot], &[slot, 1]),
+            step([3, 12, 130], &[slot, 1], &[slot, 1, 41]),
+            step([3, 12, 130], &[slot, 2], &[slot, 2, 52]),
+            step([3, 12, 134], &[slot, 5], &[slot, 5, 33]),
+        ]);
+    }
+    steps
+}
+
+#[test]
+fn controller_initialization_stops_at_every_failed_release_across_both_complete_imports() {
+    use crate::feature_exchange::tests::{ExchangeProbe, LeaseEvent};
+
+    for (product_id, selector) in [(2636, 4), (2676, 10)] {
+        let steps = complete_import_steps(product_id);
+        let mut roots = vec![RootField::PowerSaving];
+        if product_id == 2676 {
+            roots.push(RootField::ControllerMode);
+        }
+        let request = plan(roots, InitializationPlan::new_profile_fields(product_id));
+        let expected_count = steps.len() + usize::from(product_id == 2636);
+        for failed_exchange in (1..=expected_count).map(Some).chain([None]) {
+            let io = Transport::new(selector, steps.clone());
+            let expected = io.steps.borrow().iter().cloned().collect::<Vec<_>>();
+            let finished = Cell::new(0);
+            let check = || {
+                finished.set(finished.get() + 1);
+                ensure!(
+                    Some(finished.get()) != failed_exchange,
+                    "scripted release failure"
+                );
+                Ok(())
+            };
+            let probe = ExchangeProbe::with_finish_check(&io, &check);
+            let result = InitializationProtocol::new(&probe, product_id, |_| Ok(()))
+                .unwrap()
+                .execute(&request, || false);
+            if let Some(failed_exchange) = failed_exchange {
+                let error = result.unwrap_err();
+                assert!(crate::backend::exchange_finalization_failed(&error));
+                let completed = crate::CompletedFeatureExchange::from_error(&error).unwrap();
+                let failed = &expected[failed_exchange - 1];
+                assert_eq!(completed.command(), failed.header);
+                assert_eq!(completed.transaction(), ((failed_exchange - 1) % 31) as u8);
+                assert_eq!(completed.data(), failed.response);
+                assert_eq!(io.requests.borrow().len(), failed_exchange);
+                assert_eq!(io.steps.borrow().len(), expected_count - failed_exchange);
+            } else {
+                result.unwrap().validate_for(product_id, &request).unwrap();
+                io.finished();
+                assert_eq!(io.requests.borrow().len(), expected_count);
+            }
+            assert_eq!(
+                probe
+                    .events()
+                    .iter()
+                    .filter(|event| **event == LeaseEvent::Finish)
+                    .count(),
+                failed_exchange.unwrap_or(expected_count)
+            );
+            assert!(!probe.events().contains(&LeaseEvent::ForcedDrop));
+        }
+    }
+}
+
+#[test]
+fn controller_initialization_socd_release_failure_preserves_ack_and_stops_the_slot_batch() {
+    use crate::feature_exchange::tests::ExchangeProbe;
+
+    for retained in [false, true] {
+        let mut steps = if retained {
+            Vec::new()
+        } else {
+            inventory(&[3, 1], 1)
+        };
+        steps.extend([
+            step([2, 12, 155], &[3], &[3, 4]),
+            step([2, 12, 155], &[1], &[1, 2]),
+        ]);
+        let expected_count = steps.len();
+        let request =
+            InitializationPlan::connection_features(retained.then(retained_directory), vec![3, 1]);
+        for failed_exchange in 1..=expected_count {
+            let io = Transport::new(10, steps.clone());
+            let finished = Cell::new(0);
+            let check = || {
+                finished.set(finished.get() + 1);
+                ensure!(
+                    finished.get() != failed_exchange,
+                    "scripted release failure"
+                );
+                Ok(())
+            };
+            let probe = ExchangeProbe::with_finish_check(&io, &check);
+            let error = InitializationProtocol::new(&probe, 2676, |_| Ok(()))
+                .unwrap()
+                .execute(&request, || false)
+                .unwrap_err();
+            assert!(crate::backend::exchange_finalization_failed(&error));
+            let completed = crate::CompletedFeatureExchange::from_error(&error).unwrap();
+            assert_eq!(completed.command(), steps[failed_exchange - 1].header);
+            assert_eq!(completed.data(), steps[failed_exchange - 1].response);
+            assert_eq!(io.requests.borrow().len(), failed_exchange);
+            assert_eq!(io.steps.borrow().len(), expected_count - failed_exchange);
+        }
+    }
+}
+
+#[test]
+fn controller_initialization_does_not_resume_after_a_transient_admission_or_wait_failure() {
+    use crate::backend::{exchange_interrupted, exchange_release_completed};
+    use crate::feature_exchange::tests::{ExchangeProbe, LeaseEvent};
+
+    for (product_id, selector) in [(2636, 4), (2676, 10)] {
+        let request = plan(
+            vec![RootField::PowerSaving],
+            InitializationPlan::new_profile_fields(product_id),
+        );
+        let mut steps = complete_import_steps(product_id);
+        if product_id == 2676 {
+            steps.remove(1);
+        }
+        let io = Transport::new(selector, steps.clone());
+        let attempts = Cell::new(0);
+        let admission = || {
+            let previous = attempts.replace(attempts.get() + 1);
+            ensure!(previous != 0, "one-time admission failure");
+            Ok(())
+        };
+        let probe = ExchangeProbe::with_admission_check(&io, &admission);
+        let error = InitializationProtocol::new(&probe, product_id, |_| Ok(()))
+            .unwrap()
+            .execute(&request, || false)
+            .unwrap_err();
+        assert!(exchange_interrupted(&error));
+        assert!(!crate::backend::exchange_finalization_failed(&error));
+        assert!(!exchange_release_completed(&error));
+        assert_eq!(attempts.get(), 1);
+        assert!(io.requests.borrow().is_empty());
+        assert_eq!(probe.events().len(), 1);
+
+        for failed_wait in 1..=5 {
+            let io = Transport::new(selector, steps.clone());
+            let probe = ExchangeProbe::new(&io);
+            let waits = Cell::new(0);
+            let error = InitializationProtocol::new(&probe, product_id, |_| {
+                waits.set(waits.get() + 1);
+                ensure!(waits.get() != failed_wait, "one-time wait failure");
+                Ok(())
+            })
+            .unwrap()
+            .execute(&request, || false)
+            .unwrap_err();
+            assert!(exchange_interrupted(&error));
+            assert!(!crate::backend::exchange_finalization_failed(&error));
+            assert!(exchange_release_completed(&error));
+            assert_eq!(waits.get(), failed_wait);
+            assert_eq!(io.requests.borrow().len(), usize::from(failed_wait > 1));
+            assert_eq!(probe.timings().len(), 1);
+            assert_eq!(
+                probe
+                    .events()
+                    .iter()
+                    .filter(|event| **event == LeaseEvent::Finish)
+                    .count(),
+                1
+            );
+            assert!(!probe.events().contains(&LeaseEvent::ForcedDrop));
+            assert_eq!(
+                crate::CompletedFeatureExchange::from_error(&error).is_some(),
+                failed_wait == 5
+            );
+        }
+    }
 }
 
 fn retained_directory() -> ProfileDirectory {

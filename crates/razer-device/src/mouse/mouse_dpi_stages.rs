@@ -318,6 +318,14 @@ fn exchange_observing(
     validate: &impl Fn() -> anyhow::Result<()>,
     acknowledged: &mut dyn FnMut(&WireResponse),
 ) -> anyhow::Result<WireResponse> {
+    let validate = &|| {
+        validate().map_err(|error| {
+            crate::backend::interrupt_exchange(
+                error,
+                crate::backend::ExchangeInterruption::Validation,
+            )
+        })
+    };
     let source = super::device_reads::capability(cap.product_id)
         .context("DPI stage product has no current source transport")?;
     let transport = &cap.transport;
@@ -370,9 +378,16 @@ fn exchange_observing(
             let mut last_error = "No DPI stage response received".to_owned();
             for out_attempt in 0..transport.max_retry_out {
                 validate()?;
-                let sent = device.send_feature_at_collection_max(&outgoing);
-                validate()?;
-                if let Err(error) = sent {
+                let sent = device.send_feature_at_collection_max_counted(&outgoing);
+                if let Err(validation) = validate() {
+                    return Err(crate::backend::complete_native_io(sent, validation));
+                }
+                if let Err(error) = sent
+                    .and_then(|count| crate::backend::require_complete_send(count, outgoing.len()))
+                {
+                    if crate::backend::exchange_interrupted(&error) {
+                        return Err(error);
+                    }
                     last_error = format!("{error:#}");
                     continue;
                 }
@@ -385,10 +400,32 @@ fn exchange_observing(
                     let mut incoming = vec![0; transport.report_bytes];
                     incoming[0] = transport.get_report_id_for_transport(device)?;
                     let received = device.get_feature_at_collection_max(&mut incoming);
-                    validate()?;
+                    let received = match validate() {
+                        Ok(()) => received,
+                        Err(validation) => Err(crate::backend::complete_native_read(
+                            received, &incoming, validation,
+                        )),
+                    };
                     let count = match received {
                         Ok(count) => count,
                         Err(error) => {
+                            if crate::backend::exchange_interrupted(&error) {
+                                let error = crate::feature_exchange::retain_failed_feature_reply(
+                                    error,
+                                    command,
+                                    transaction,
+                                );
+                                if let (Some(data), Some(actual)) = (
+                                    crate::feature_exchange::acknowledged_error(&error),
+                                    crate::backend::native_read_bytes(&error),
+                                ) {
+                                    acknowledged(&WireResponse {
+                                        data: actual[9..89].to_vec(),
+                                        response_bytes: data.len(),
+                                    });
+                                }
+                                return Err(error);
+                            }
                             last_error = format!("{error:#}");
                             break;
                         }
@@ -701,25 +738,17 @@ pub(crate) fn synchronize_profile_slots_with<C>(
         .map(|slot| slot.slot_id)
         .collect();
     let progress = synchronize_profile_slot_ids_with(&ids, context, validate, read, same, write);
-    if let Some(error) = progress.finalization {
+    if let Some(error) = progress.interrupted {
         return Err(error.context(DpiSlotSynchronizationFailure {
             writes: progress.writes,
         }));
-    }
-    if let Some(error) = progress.interrupted {
-        return Err(
-            anyhow::anyhow!(error).context(DpiSlotSynchronizationFailure {
-                writes: progress.writes,
-            }),
-        );
     }
     Ok(progress.writes)
 }
 
 pub(crate) struct DpiSlotSynchronization {
     pub writes: Vec<DpiSlotWriteResult>,
-    pub interrupted: Option<String>,
-    finalization: Option<anyhow::Error>,
+    pub interrupted: Option<anyhow::Error>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -746,11 +775,13 @@ pub(crate) fn synchronize_profile_slot_ids_with<C>(
     let mut progress = DpiSlotSynchronization {
         writes: vec![],
         interrupted: None,
-        finalization: None,
     };
     for &slot_id in ids {
         if let Err(error) = validate() {
-            progress.interrupted = Some(format!("{error:#}"));
+            progress.interrupted = Some(crate::backend::interrupt_exchange(
+                error,
+                crate::backend::ExchangeInterruption::Validation,
+            ));
             break;
         }
         let mut result = DpiSlotWriteResult {
@@ -763,9 +794,8 @@ pub(crate) fn synchronize_profile_slot_ids_with<C>(
         match read(context, slot_id) {
             Err(error) => {
                 result.error = Some(format!("{error:#}"));
-                if crate::backend::exchange_finalization_failed(&error) {
-                    progress.interrupted = Some(format!("{error:#}"));
-                    progress.finalization = Some(error);
+                if crate::backend::exchange_interrupted(&error) {
+                    progress.interrupted = Some(error);
                 }
             }
             Ok(before) => {
@@ -779,16 +809,17 @@ pub(crate) fn synchronize_profile_slot_ids_with<C>(
                                 result.acknowledged =
                                     error.downcast_ref::<DpiStagesAcknowledgement>().cloned();
                                 result.error = Some(format!("{error:#}"));
-                                if crate::backend::exchange_finalization_failed(&error) {
-                                    progress.interrupted = Some(format!("{error:#}"));
-                                    progress.finalization = Some(error);
+                                if crate::backend::exchange_interrupted(&error) {
+                                    progress.interrupted = Some(error);
                                 }
                             }
                         },
                         Err(error) => {
-                            let error = format!("{error:#}");
-                            result.error = Some(error.clone());
-                            progress.interrupted = Some(error);
+                            result.error = Some(format!("{error:#}"));
+                            progress.interrupted = Some(crate::backend::interrupt_exchange(
+                                error,
+                                crate::backend::ExchangeInterruption::Validation,
+                            ));
                         }
                     }
                 }
@@ -800,7 +831,10 @@ pub(crate) fn synchronize_profile_slot_ids_with<C>(
             break;
         }
         if let Err(error) = validate() {
-            progress.interrupted = Some(format!("{error:#}"));
+            progress.interrupted = Some(crate::backend::interrupt_exchange(
+                error,
+                crate::backend::ExchangeInterruption::Validation,
+            ));
             break;
         }
     }
@@ -816,6 +850,102 @@ mod tests {
     use std::cell::Cell;
     use std::collections::VecDeque;
     use std::sync::Mutex;
+
+    #[test]
+    fn interrupted_profile_sync_never_continues_to_another_slot_or_write() {
+        use crate::backend::{NativeIoOutcome, native_io_outcome};
+        use crate::feature_exchange::tests::ExchangeProbe;
+        use crate::keyboard_control_test_transport::Mock as Script;
+        let slots = [
+            ObservedProfileSlot {
+                slot_id: 7,
+                guid: "active".into(),
+            },
+            ObservedProfileSlot {
+                slot_id: 2,
+                guid: "active".into(),
+            },
+        ];
+        let draft = DpiStagesDraft {
+            enabled: true,
+            active_stage: 1,
+            stages: vec![
+                DpiStage {
+                    x: 800,
+                    y: 800,
+                    visible: true,
+                    independent: false
+                };
+                2
+            ],
+        };
+        for descriptor in AUDITED_CAPABILITIES {
+            let source = capability(descriptor.product_id).unwrap();
+            for physical in &source.transport.direct_pids {
+                let mut cap = source.for_physical_product(*physical).unwrap();
+                cap.transport.sleep_between_out_ms = 0;
+                cap.transport.sleep_between_out_in_ms = 0;
+                cap.transport.sleep_between_in_ms = 0;
+                let device = Script::new([]);
+                let admissions = Cell::new(0);
+                let admit = || {
+                    let previous = admissions.replace(admissions.get() + 1);
+                    ensure!(previous != 0, "one-shot DPI slot admission failure");
+                    Ok(())
+                };
+                let probe = ExchangeProbe::with_admission_check(&device, &admit);
+                let error = synchronize_profile_slots(
+                    &probe,
+                    &cap,
+                    "active",
+                    &slots,
+                    &draft,
+                    || Ok(cap.transport.transaction_prefix),
+                    || Ok(()),
+                )
+                .unwrap_err();
+                assert!(crate::backend::exchange_interrupted(&error));
+                assert_eq!(admissions.get(), 1);
+                assert!(device.sent().is_empty());
+                assert_eq!(
+                    error
+                        .downcast_ref::<DpiSlotSynchronizationFailure>()
+                        .unwrap()
+                        .writes
+                        .len(),
+                    1
+                );
+                for outcome in [
+                    NativeIoOutcome::NotCalled,
+                    NativeIoOutcome::Returned { byte_count: 90 },
+                    NativeIoOutcome::Returned { byte_count: 91 },
+                ] {
+                    let device = Script::new([]).fail_next_send(outcome);
+                    let error = synchronize_profile_slots(
+                        &device,
+                        &cap,
+                        "active",
+                        &slots,
+                        &draft,
+                        || Ok(cap.transport.transaction_prefix),
+                        || Ok(()),
+                    )
+                    .unwrap_err();
+                    assert_eq!(native_io_outcome(&error), Some(outcome));
+                    assert_eq!(device.sent().len(), 1);
+                    assert_eq!(&device.sent()[0][6..10], &[80, 4, 134, 7]);
+                    assert_eq!(
+                        error
+                            .downcast_ref::<DpiSlotSynchronizationFailure>()
+                            .unwrap()
+                            .writes
+                            .len(),
+                        1
+                    );
+                }
+            }
+        }
+    }
 
     struct Reply {
         status: u8,

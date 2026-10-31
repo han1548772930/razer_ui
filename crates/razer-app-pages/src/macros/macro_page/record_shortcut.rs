@@ -69,8 +69,7 @@ pub struct ShortcutUi {
     capture: Option<Capture>,
     listening: bool,
     pub(super) selected: Vec<String>,
-    // JS Map preserves first insertion order; a sorted map would reorder the
-    // shortcut. Browser keyCodes intentionally select the first matching row.
+    // JS Map preserves the first insertion order of each physical modifier.
     pressed_modifiers: Vec<String>,
     released_modifiers: HashSet<String>,
     combination_key: Option<String>,
@@ -195,21 +194,12 @@ impl ShortcutUi {
         resumed || previous != self.selected
     }
     fn accept(&mut self, event: RawKey) {
-        // Match Rr L/v, including its asymmetric 92 -> 91 keydown coercion.
-        // Rr's browser path does not inspect scanCode or key location.
-        let code = if event.down() && event.code() == 92 {
-            91
-        } else {
-            event.code()
-        };
-        let Some(key) = data()
-            .keys
-            .iter()
-            .find(|key| key.code.parse::<u16>().ok() == Some(code))
-        else {
+        let Some(id) = super::keyboard::shortcut_capture_input(&event) else {
             return;
         };
-        let id = key.input_id.as_str();
+        if !data().keys.iter().any(|key| key.input_id == id) {
+            return;
+        }
         if matches!(id, "KEY_F12" | "KEY_LEFT_GUI") {
             return;
         }
@@ -337,6 +327,21 @@ impl MacroPage {
                     shortcut.registration_error = Some(error);
                 }
             }
+        }
+    }
+    pub(super) fn adopt_record_shortcut(
+        &mut self,
+        selected: Vec<String>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.record_ui.shortcut.selected == selected {
+            return;
+        }
+        self.record_ui.shortcut.selected = selected;
+        self.update_record_shortcut();
+        if self.record_ui.shortcut.watch_active && self.record_ui.shortcut.watch.is_none() {
+            self.activate_record_shortcut(window, cx);
         }
     }
     fn publish_record_shortcut(&mut self, window: &mut Window, cx: &mut Context<Self>) {

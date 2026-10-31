@@ -18,6 +18,108 @@ import host
 sys.path.insert(0, str(analysis.ROOT / "tools/analyzers/python-static"))
 
 
+class DeploymentObservationTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name).resolve()
+        change = patch.object(analysis, "ROOT", self.root)
+        change.start()
+        self.addCleanup(change.stop)
+        self.url = "https://apps.razer.com/synapse/products/756/mw/index.html"
+        self.original = self.write_original("current", b"current source")
+        self.original["url"] = self.url
+        self.acquired = {"recorded_at_utc": "2026-10-30T10:00:00+00:00"}
+
+    def write_original(self, name, raw):
+        path = self.root / ".analysis/inputs/frontend-revalidation/blobs" / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(raw)
+        return {"path": path.relative_to(self.root).as_posix(), "bytes": len(raw),
+                "sha256": hashlib.sha256(raw).hexdigest()}
+
+    def write_report(self, name, time, original, *, status=200, classification="unchanged"):
+        path = self.root / ".analysis/results/frontend-revalidation" / (name + ".json")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        rounds = [{"round": number, "url": self.url, "final_url": self.url,
+                   "status": "ok" if status == 200 else "http_error", "http_status": status,
+                   "bytes": original["bytes"], "sha256": original["sha256"]} for number in (1, 2)]
+        path.write_text(json.dumps({"kind": "immutable_current_frontend_deployment_revalidation",
+            "schema_version": 1, "target_execution": False, "created_at_utc": time,
+            "observations": [{"url": self.url, "classification": classification,
+                              "rounds": rounds, "observed_original": original}]}), encoding="utf-8")
+        return path
+
+    def test_latest_success_supersedes_earlier_failed_observation_without_rewriting_it(self):
+        earlier = self.write_report("earlier", "2026-10-30T11:00:00+00:00", self.original, status=503)
+        unchanged = earlier.read_bytes()
+        self.write_report("latest", "2026-10-30T12:00:00+00:00", self.original,
+                          classification="changed_or_new_deployment")
+        result = frontend.verify_latest_deployment_observations(self.acquired, [self.original], host.HostLocalAudit())
+        self.assertTrue(result["passed"])
+        self.assertEqual(result["comparisons"][0]["status"], "matches_latest_http_bytes")
+        self.assertEqual(earlier.read_bytes(), unchanged)
+
+    def test_later_failure_drift_and_same_time_conflicts_block_selected_old_source(self):
+        changed = self.write_original("changed", b"a changed deployment")
+        for case in ("http_failure", "drift", "same_time"):
+            with self.subTest(case=case):
+                paths = [self.write_report("first", "2026-10-30T12:00:00+00:00",
+                         self.original if case == "http_failure" else changed,
+                         status=503 if case == "http_failure" else 200)]
+                if case == "same_time":
+                    paths.append(self.write_report("second", "2026-10-30T12:00:00+00:00", self.original))
+                audit = host.HostLocalAudit()
+                latest = frontend.latest_deployment_observations(audit, reports=paths)
+                with self.assertRaisesRegex(ValueError, "later unresolved deployment"):
+                    frontend.verify_latest_deployment_observations(
+                        self.acquired, [self.original], audit, observations=latest)
+
+    def test_failed_older_observation_does_not_override_new_verified_acquisition(self):
+        self.write_report("old", "2026-10-30T09:00:00+00:00", self.original, status=404)
+        result = frontend.verify_latest_deployment_observations(self.acquired, [self.original], host.HostLocalAudit())
+        self.assertEqual(result["comparisons"][0]["status"], "no_observation_after_acquisition")
+
+    def test_matching_claim_requires_retained_actual_bytes_and_timezone(self):
+        observed = self.write_original("observation", b"current source")
+        self.write_report("latest", "2026-10-30T12:00:00+00:00", observed)
+        (self.root / observed["path"]).write_bytes(b"tampered")
+        with self.assertRaisesRegex(ValueError, "identity differs"):
+            frontend.verify_latest_deployment_observations(self.acquired, [self.original], host.HostLocalAudit())
+        with self.assertRaisesRegex(ValueError, "timezone"):
+            frontend.verify_latest_deployment_observations(
+                {"recorded_at_utc": "2026-10-30T10:00:00"}, [self.original], host.HostLocalAudit())
+
+    def test_unchanged_reuse_requires_the_exact_retained_path_and_actual_bytes(self):
+        path = self.write_report("reused", "2026-10-30T12:00:00+00:00", self.original,
+                                 classification="unchanged_reused")
+        report = json.loads(path.read_bytes())
+        observation = report["observations"][0]
+        observation.pop("observed_original")
+        observation["retained_original"] = self.original
+        observation["reused_path"] = self.original["path"]
+        path.write_text(json.dumps(report), encoding="utf-8")
+        self.assertTrue(frontend.verify_latest_deployment_observations(
+            self.acquired, [self.original], host.HostLocalAudit())["passed"])
+        observation["reused_path"] = ".analysis/inputs/unrelated.js"
+        path.write_text(json.dumps(report), encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "later unresolved deployment"):
+            frontend.verify_latest_deployment_observations(self.acquired, [self.original], host.HostLocalAudit())
+
+    def test_reference_sidecars_are_separate_from_http_observation_receipts(self):
+        observed = self.write_report("latest", "2026-10-30T12:00:00+00:00", self.original)
+        sidecar = observed.with_name("references.json")
+        sidecar.write_text(json.dumps({"kind":"current_deployment_reference_edges", "schema_version":1,
+                                      "target_execution":False, "edges":[]}), encoding="utf-8")
+        self.assertTrue(frontend.verify_latest_deployment_observations(
+            self.acquired, [self.original], host.HostLocalAudit())["passed"])
+        report = json.loads(observed.read_bytes())
+        report["target_execution"] = True
+        observed.write_text(json.dumps(report), encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "schema or execution boundary"):
+            frontend.verify_latest_deployment_observations(self.acquired, [self.original], host.HostLocalAudit())
+
+
 class IncrementalCaptureTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
@@ -437,6 +539,23 @@ class CurrentSourceSelectionTests(unittest.TestCase):
         with patch.object(audit, "frontend_capture", side_effect=ValueError("changed output")), \
                 self.assertRaisesRegex(ValueError, "changed output"):
             self.select(audit)
+
+    def test_deployment_only_selection_verifies_originals_without_claiming_capture_validation(self):
+        acquired = self.source("latest", "2026-10-26T00:00:00+00:00")
+        capture = self.root / ".analysis/results/frontend/latest/analysis.json"
+        capture.parent.mkdir(parents=True)
+        capture.write_bytes(b"not a valid capture")
+        audit = host.HostLocalAudit()
+        with patch.object(audit, "frontend_capture") as verify:
+            result = frontend.current_source_selection(self.entry, audit, candidates=self.candidates, verify_capture=False)
+        verify.assert_not_called()
+        self.assertIsNone(result["capture"])
+        self.assertEqual(result["capture_failures"], ["capture_not_requested"])
+        self.assertEqual(result["name"], "latest")
+        (self.root / acquired["files"][1]["path"]).write_bytes(b"changed();")
+        with self.assertRaisesRegex(ValueError, "Newest frontend deployment failed"):
+            frontend.current_source_selection(self.entry, host.HostLocalAudit(), candidates=self.candidates,
+                                              verify_capture=False)
 
     def test_route_normalization_does_not_merge_queries_or_neighbors(self):
         self.assertEqual(frontend.canonical_frontend_entry(self.entry.rstrip("/")), self.entry)

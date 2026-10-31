@@ -189,6 +189,8 @@ impl AppShell {
         razer_state::chroma_settings::cancel_exit(cx);
         razer_pages::features::screen_color::cancel_exit(cx);
         self.help_system_info.resume_after_cancelled_exit();
+        self.help_runtime_versions.resume_after_cancelled_exit();
+        self.help_camo.resume_after_cancelled_exit();
         self.runtime
             .update(cx, |runtime, cx| runtime.cancel_exit(cx));
         for workspace in &self.devices {
@@ -214,7 +216,14 @@ impl AppShell {
                         let active = matches!(&shell.location, Location::Device(key)
                             if workspace.read(cx).identity(cx) == *key);
                         workspace.update(cx, |workspace, cx| {
-                            workspace.cancel_exit(active, window, cx)
+                            workspace.cancel_exit(active, window, cx);
+                            if active
+                                && workspace
+                                    .help_runtime_versions_request(cx)
+                                    .is_none_or(|request| request.is_cancelled())
+                            {
+                                workspace.refresh_help_runtime_versions(cx);
+                            }
                         });
                     }
                     shell.initialize_controller_roots(cx);

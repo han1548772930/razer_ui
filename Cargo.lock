@@ -6156,6 +6156,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tiny-skia-path",
+ "url",
  "uuid",
 ]
 

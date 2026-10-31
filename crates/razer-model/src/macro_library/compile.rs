@@ -45,7 +45,7 @@ impl MacroLibraryFile {
             .filter_map(|entry| {
                 if let Ok(Some(document))=entry.retained_source_document(){return Some(document);}
                 let guid = entry.xml_guid.as_ref()?;
-                let mode = entry.actions.iter().find_map(|item| item.mouse_movement.as_ref().map(|m|m.mode)).unwrap_or(entry.xml_mouse_mode);
+                let mode = entry.execution.as_ref().filter(|snapshot|snapshot.matches(&entry.actions)).map(|snapshot|snapshot.engine().movement.setting()).or_else(||entry.actions.iter().find_map(|item| item.mouse_movement.as_ref().map(|m|m.mode))).unwrap_or(entry.xml_mouse_mode);
                 let events:Vec<_> = entry.actions.iter().map(|item| self.source_action(item).unwrap_or_else(|_| {
                     let kind=match item.kind {ActionKind::Delay=>0,ActionKind::Keyboard=>1,ActionKind::Mouse if item.mouse_movement.is_some()=>3,ActionKind::Mouse=>2,ActionKind::Text=>4,ActionKind::Command=>5,ActionKind::Loop=>6,ActionKind::Macro=>7,ActionKind::Launch=>10};
                     json!({"Type":kind,"MouseEvent":{"MouseButton":item.mouse.as_ref().and_then(|mouse|mouse.button)}})
@@ -81,17 +81,18 @@ impl MacroLibraryFile {
             .xml_guid
             .as_deref()
             .ok_or("Macro has no persistent UUID")?;
-        let mut mode = entry.xml_mouse_mode;
-        let mut movement_mode = None;
-        for item in &entry.actions {
-            if let Some(movement) = &item.mouse_movement {
-                if movement_mode.is_some_and(|mode| mode != movement.mode) {
-                    return Err(format!("Macro {} mixes mouse movement modes", entry.name));
-                }
-                movement_mode = Some(movement.mode);
-                mode = movement.mode;
-            }
-        }
+        let mode = entry
+            .execution
+            .as_ref()
+            .map(|snapshot| snapshot.engine().movement.setting())
+            .or_else(|| {
+                entry
+                    .actions
+                    .iter()
+                    .find_map(|item| item.mouse_movement.as_ref().map(|movement| movement.mode))
+            })
+            .unwrap_or(entry.xml_mouse_mode);
+        let execution = self.execution_for_actions(entry, &entry.actions, None, mode)?;
         let kind = match entry.macro_type {
             MacroType::Standard => 0,
             MacroType::Sequence => 1,
@@ -105,53 +106,38 @@ impl MacroLibraryFile {
         let mut source = vec![
             json!({"Type":"actionBar","recordProfile":{"mmtSetting":mode,"macroType":kind},"selected":false}),
         ];
-        let mut events = Vec::new();
-        let mut phases: [Vec<Value>; 3] = Default::default();
-        for item in &entry.actions {
-            let event = self.source_action(item)?;
-            let geometry = item.mouse_movement.as_ref().and_then(|m|m.geometry.as_ref()).map(|g|json!({
-                "monitorInforBefore":g.monitors_before,"monitorInforAfter":g.monitors_after,
-                "virtualScreenInforBefore":g.screen_before,"virtualScreenInforAfter":g.screen_after
-            }));
-            let compiled =
-                razer_device::macro_engine::compile_event(&event, mode, geometry.as_ref())
-                    .map_err(|error| format!("Macro {}: {error:#}", entry.name))?;
-            if entry.macro_type == MacroType::Phased {
-                // The original filters strictly by phase; it never guesses a
-                // phase for unassigned legacy rows.
-                if let Some(phase) = item.phase {
-                    phases[usize::from(phase)].extend(compiled);
-                }
+        let original = entry
+            .source_document
+            .as_ref()
+            .map(|document| import::source_entry(document, entry.id))
+            .transpose()?;
+        let original_events = entry
+            .source_document
+            .as_ref()
+            .and_then(|document| document.get("macroEvents"))
+            .and_then(Value::as_array);
+        if let Some(action_bar) = original_events.and_then(|events| {
+            events
+                .iter()
+                .find(|event| event.get("Type").and_then(Value::as_str) == Some("actionBar"))
+        }) {
+            source[0] = action_bar.clone();
+        }
+        let original_rows: Vec<_> = original_events
+            .into_iter()
+            .flatten()
+            .filter(|event| event.get("Type").and_then(Value::as_str) != Some("actionBar"))
+            .collect();
+        for (index, item) in entry.actions.iter().enumerate() {
+            if original.as_ref().and_then(|entry| entry.actions.get(index)) == Some(item)
+                && let Some(event) = original_rows.get(index)
+            {
+                source.push((*event).clone());
             } else {
-                events.extend(compiled);
+                source.push(self.source_action(item)?);
             }
-            source.push(event);
         }
-        let move_name = match mode {
-            1 => "absolute",
-            2 => "foreground",
-            3 => "relative",
-            _ => "none",
-        };
-        let mut engine = if entry.macro_type == MacroType::Phased {
-            let mut engine =
-                json!({"pressEvents":phases[0],"holdEvents":phases[1],"releaseEvents":phases[2]});
-            engine["hash"] = razer_device::mapping_engine_hash::source_hash(&engine)
-                .map_err(|e| e.to_string())?
-                .into();
-            engine["mouseMoveType"] = move_name.into();
-            // Source retains this empty normal lane across conversion; Js only
-            // adds virtual delays to this lane, never the three phase lanes.
-            engine["events"] = json!([]);
-            engine
-        } else {
-            json!({"events":events,"mouseMoveType":if events.is_empty(){"none"}else{move_name}})
-        };
-        if entry.macro_type != MacroType::Phased {
-            engine["hash"] = razer_device::mapping_engine_hash::source_hash(&engine)
-                .map_err(|e| e.to_string())?
-                .into();
-        }
+        let engine = serde_json::to_value(execution.engine()).map_err(|error| error.to_string())?;
         let compiled = json!({"guid":guid,"name":entry.name,"macroType":kind,"macroPlaybackOption":name,
             "delaySetting":entry.record_delay,"activePhase":entry.active_phase,
             "macroEvents":source,"appEngine":engine});
@@ -163,7 +149,7 @@ impl MacroLibraryFile {
         Ok(document)
     }
 
-    fn source_action(&self, item: &ActionItem) -> Result<Value, String> {
+    pub(super) fn source_action(&self, item: &ActionItem) -> Result<Value, String> {
         fn number(text: &str) -> Result<f64, String> {
             if text.trim().is_empty() {
                 return Ok(0.);
@@ -240,6 +226,9 @@ impl MacroLibraryFile {
         if let Some(phase) = item.phase {
             event["phase"] = phase.into();
         }
+        if let Some(key) = &item.translation_key {
+            event["translationKey"] = key.clone().into();
+        }
         Ok(event)
     }
 }
@@ -261,6 +250,7 @@ mod tests {
             xml_guid: None,
             xml_mouse_mode: 0,
             source_document: None,
+            execution: None,
         }
     }
     fn library(entries: Vec<Entry>) -> MacroLibraryFile {

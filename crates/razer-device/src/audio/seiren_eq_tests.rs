@@ -88,6 +88,53 @@ fn preset() -> Preset {
 }
 
 #[test]
+fn one_shot_admission_and_native_failures_stop_remaining_eq_stages() {
+    use crate::backend::NativeIoOutcome;
+    use crate::feature_exchange::tests::ExchangeProbe;
+    use crate::keyboard_control_test_transport::Mock;
+    use std::cell::Cell;
+    for pid in [1422, 1446] {
+        let device = Mock::new([]);
+        let admissions = Cell::new(0);
+        let admit = || {
+            let previous = admissions.replace(admissions.get() + 1);
+            ensure!(previous != 0, "one-shot Seiren admission failure");
+            Ok(())
+        };
+        let probe = ExchangeProbe::with_admission_check(&device, &admit);
+        let error = execute(
+            pid,
+            &probe,
+            &cap(pid),
+            &Change::Band(band()),
+            next(),
+            || Ok(()),
+        )
+        .unwrap_err();
+        assert!(crate::backend::exchange_interrupted(&error));
+        assert_eq!(admissions.get(), 1);
+        assert!(device.sent().is_empty());
+        for outcome in [
+            NativeIoOutcome::NotCalled,
+            NativeIoOutcome::Returned { byte_count: 91 },
+        ] {
+            let device = Mock::new([]).fail_next_send(outcome);
+            let error = execute(
+                pid,
+                &device,
+                &cap(pid),
+                &Change::Band(band()),
+                next(),
+                || Ok(()),
+            )
+            .unwrap_err();
+            assert_eq!(crate::backend::native_io_outcome(&error), Some(outcome));
+            assert_eq!(device.sent().len(), 1);
+        }
+    }
+}
+
+#[test]
 fn band_queries_actual_preset_before_writing_signed_gain_and_big_endian_frequency() {
     for pid in [1422, 1446] {
         let device = Simulated::new(vec![vec![0, 16], vec![0; 9]]);

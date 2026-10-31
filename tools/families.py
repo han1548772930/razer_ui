@@ -21856,46 +21856,71 @@ def missing_registry_navigation(pid, acquired, main):
     return navigations, evidence
 
 
-def current_registry_peer(pid, ui_receipt, name, category):
-    namespace = ui_receipt.parent.name.removesuffix(f"-{pid}-current")
-    receipt = ui_receipt.parent.parent / f"{namespace}-mw-{pid}-current/acquisition.json"
-    acquired = json.loads(receipt.read_bytes())
-    files = {row.get("url"): row for row in acquired["files"]}
-    prefix = f"https://apps.razer.com/synapse/products/{pid}/mw/"
-    entry, manifest = files.get(prefix + "index.html"), files.get(prefix + "manifest.json")
-    for row in (entry, manifest):
-        stable = next((item for item in acquired.get("stability", []) if row and item["url"] == row["url"]), {})
-        if (not row or not valid(row) or not acquired.get("source_current_during_acquisition")
-                or not stable.get("unchanged") or stable.get("before_sha256") != row["sha256"]
-                or stable.get("after_sha256") != row["sha256"]):
-            raise ValueError("Current middleware identity entry/manifest provenance does not verify")
-    mains = re.findall(r'<script\b[^>]*\bsrc=["\']([^"\']*\bmain\.[\w]+\.js)["\']',
-                       (a.ROOT / entry["path"]).read_text(encoding="utf-8"))
-    main = files.get(urllib.parse.urljoin(entry["url"], mains[0])) if len(mains) == 1 else None
-    if not main or not valid(main):
-        raise ValueError("Current middleware mounted main is unresolved")
-    text = (a.ROOT / main["path"]).read_text(encoding="utf-8")
-    found = [owner for owner in keyboard_source_modules(text)
-             if isinstance(owner["module_id"], int) and "DeviceInfo:()=>" in owner["body"]]
-    if len(found) != 1:
-        raise ValueError("Current middleware DeviceInfo owner is unresolved")
-    owner = found[0]
-    body = owner["body"]
-    exported = re.search(r'DeviceInfo:\(\)=>([\w$]+)', body)
-    declaration = re.search(r'\b' + re.escape(exported[1]) + r'=\{', body)
-    end = javascript_delimited(body, declaration.end() - 1)
-    literal = body[declaration.end() - 1:end]
-    declared_pid = re.search(r'\bproductId:(\d+)\b', literal)
-    declared_category = re.search(r'\bcategory:"([A-Z_]+)"', literal)
-    declared_name = re.search(r'\bdeviceName:([\w$]+)\b', literal)
-    name_value = re.search(r'(?<![\w$])' + re.escape(declared_name[1]) + r'="([^"]+)"', body) if declared_name else None
-    if (not declared_pid or int(declared_pid[1]) != pid or not declared_category or declared_category[1] != category
-            or not name_value or name_value[1] != name):
-        raise ValueError("Current UI and middleware manufacturer identities disagree")
-    return {"acquisition": identity(receipt), "entry": entry, "manifest": manifest, "mounted_main": main,
-            "complete_owner": owner, "declaration": literal,
-            "manufacturer_name": name, "declared_product_id": pid, "category": category,
-            "scope": "Manufacturer identity agreement only; native payload verification is independent"}
+def registry_manifest_editions(manifest, endpoint_pid, declared_pid):
+    """Read explicit localized edition keys without treating PWA icons as identity."""
+    import typed_tables
+    translations = manifest.get("productTranslations")
+    if translations is None:
+        return None, {"source": "manifest.productTranslations", "observed": False}
+    if type(translations) is not dict:
+        raise ValueError("Current productTranslations is not an object")
+    products = {}
+    for key, languages in translations.items():
+        match = re.fullmatch(r"([1-9][0-9]*)_(0|[1-9][0-9]*)", key)
+        if match is None or type(languages) is not dict:
+            raise ValueError("Current productTranslations has an invalid product/edition entry")
+        product, edition = int(match[1]), int(match[2])
+        typed_tables.usb_product(product, "translated product ID")
+        typed_tables.bounded(edition, 0xFFFFFFFF, "translated edition ID")
+        products.setdefault(product, []).append(edition)
+    selected = endpoint_pid if endpoint_pid in products else declared_pid if declared_pid in products else None
+    return products.get(selected), {"source": "manifest.productTranslations", "observed": selected is not None,
+                                    "declared_product_id": selected, "ordered_keys": list(translations),
+                                    "scope": "Localized UI editions; not physical-device capability observations"}
+
+
+def registry_source_identity(pid, role, *, candidates, observations=None):
+    import frontend
+    import typed_tables
+    source = frontend.current_product_source(pid, role, candidates=candidates, observations=observations)
+    audit = source["audit"]
+    if source["status"] != "verified":
+        return {key: value for key, value in source.items() if key not in {"audit", "acquired"}}, source
+    owners, modules = typed_tables.profile_transfer_source_owners(audit.read(source["main"]))
+    if len(owners) != 1:
+        raise ValueError(f"Current registry PID {pid} {role} has no unique complete DeviceInfo owner")
+    definition, evidence = typed_tables.registry_identity_projection(owners[0]["body"], modules=modules)
+    if role == "ui" and definition["edition_ids"] is None:
+        metadata = json.loads(audit.read(source["manifest"]), object_pairs_hook=typed_tables.duplicate_free)
+        if type(metadata) is not dict:
+            raise ValueError("Current product manifest is not an object")
+        definition["edition_ids"], evidence["manifest_editions"] = registry_manifest_editions(
+            metadata, pid, definition["device_info"]["productId"])
+    report = {"status": "verified", "acquisition": source["acquisition"],
+              "selection": source["selection"], "freshness": source["freshness"],
+              "entry": source["entry"], "manifest": source["manifest"], "mounted_main": source["main"],
+              "complete_owner": {key: value for key, value in owners[0].items() if key != "body"},
+              "definition": definition, "projection_evidence": evidence,
+              "inputs": list(audit.artifacts.values()),
+              "scope": "Declared source identity and explicit presentation metadata; device state is separate"}
+    return report, source
+
+
+def current_registry_peer(pid, ui_definition, *, candidates, observations=None):
+    report, _ = registry_source_identity(pid, "mw", candidates=candidates, observations=observations)
+    if report["status"] != "verified":
+        return report
+    middleware = report["definition"]
+    comparisons = {field: {"ui": ui_definition["device_info"][field], "middleware": middleware["device_info"][field]}
+                   for field in ("productId", "category")}
+    if any(row["ui"] != row["middleware"] for row in comparisons.values()):
+        raise ValueError("Current UI and middleware declared identities disagree: " + json.dumps(comparisons))
+    ui_name, middleware_name = ui_definition["manufacturer_name"], middleware["manufacturer_name"]
+    report["declared_identity_agreement"] = comparisons
+    report["manufacturer_names"] = {"ui": ui_name, "middleware": middleware_name,
+        "status": "unobserved_in_one_or_both_roles" if ui_name is None or middleware_name is None else
+                  "equal" if ui_name == middleware_name else "different_source_spellings"}
+    return report
 
 
 def registry_product_record(pid, name, category, editions, navigations, previous=None):
@@ -21919,112 +21944,129 @@ def registry_product_record(pid, name, category, editions, navigations, previous
 
 
 def audit_registry_identity(prepare=False, products=None):
+    import frontend
+    import host
+    import typed_tables
     registry = a.ROOT / resource_database.PRODUCT_REGISTRY
-    headers = {row["id"]: row for row in resource_database.product_registry()}
+    headers = {row["id"]: row for row in resource_database.product_registry(registry)}
     destination = a.ROOT / ".analysis/results/registry-identity-current.json"
     retained = json.loads(destination.read_bytes()).get("products", []) if destination.exists() else []
-    retained_candidates = {row["endpoint_product_id"] for row in retained}
     mounted_candidates = {row["endpoint_product_id"] for row in retained if row.get("mounted_navigation")}
-    report = {"schema_version": 1, "recorded_at_utc": a.stamp(), "tool": identity(Path(__file__)),
+    routes = frontend.current_acquisition_routes()
+    audit = host.HostLocalAudit()
+    observations = frontend.latest_deployment_observations(audit)
+    inputs = list(audit.artifacts.values())
+    catalog_url = typed_tables.IDENTITY_AVAILABLE_URL
+    catalog = frontend.current_deployment_source(
+        catalog_url, candidates=routes.get(catalog_url, []), observations=observations)
+    if catalog["status"] != "verified":
+        raise ValueError("Current host discovery directory is unavailable")
+    catalog["freshness"] = frontend.verify_latest_deployment_observations(
+        catalog["acquired"], [catalog["entry"]], catalog["audit"], observations=observations)
+    catalog_products = typed_tables.validate_identity_catalog(catalog["audit"].read(catalog["entry"]))
+    catalog_ids = {row["product_id"] for row in catalog_products}
+    inputs.extend(catalog["audit"].artifacts.values())
+    candidates = set(headers) | catalog_ids
+    for route in routes:
+        match = re.fullmatch(r"https://apps\.razer\.com/synapse/products/([1-9][0-9]*)/ui/", route)
+        if match:
+            candidates.add(typed_tables.usb_product(int(match[1]), "registry endpoint"))
+    if products is not None:
+        candidates = {typed_tables.usb_product(pid, "requested registry endpoint") for pid in products}
+        if not candidates:
+            raise ValueError("Current registry identity audit has no requested products")
+    tool_inputs = [identity(a.ROOT / "tools" / name) for name in ("families.py", "frontend.py", "typed_tables.py")]
+    inputs.extend(tool_inputs)
+    report = {"schema_version": 1, "recorded_at_utc": a.stamp(), "tool": tool_inputs[0], "tool_inputs": tool_inputs,
               "registry_before": identity(registry), "products": [], "failures": [],
-              "scope": "Repair PWA icon-derived identities and recover omitted products from current DeviceInfo and complete mounted navigation declarations",
+              "catalog": {"acquisition": catalog["acquisition"], "entry": catalog["entry"],
+                          "selection": catalog["selection"], "freshness": catalog["freshness"],
+                          "rows": len(catalog_products), "primary_products": len(catalog_ids)},
+              "scope": "Audit declared product identities by current official route; existing navigation remains independently owned",
+              "requested_products": sorted(candidates), "unavailable_sources": [],
               "target_execution": False, "runtime_acceptance": "unverified"}
     edits = {}
-    for manifest in sorted((a.ROOT / ".analysis/inputs/frontend").glob("*-current/raw/apps.razer.com/synapse/products/*/ui/manifest.json")):
-        data = json.loads(manifest.read_bytes())
-        pid = int(manifest.parts[-3])
-        malformed_header = pid in headers and "productCategoryIcon" in headers[pid]["categories"]
-        placeholder_icon = any(Path(icon.get("src", "")).stem == "productCategoryIcon" for icon in data.get("icons", []))
-        if products is not None and pid not in products:
-            continue
-        if not malformed_header and not placeholder_icon and pid not in retained_candidates and pid in headers:
-            continue
-        row = {"endpoint_product_id": pid, "manifest": identity(manifest),
-               "manifest_role": "web_application_metadata_not_product_identity"}
+    for pid in sorted(candidates):
+        row = {"endpoint_product_id": pid, "present_in_host_catalog": pid in catalog_ids}
         report["products"].append(row)
         try:
-            acquired_path = manifest.parents[6] / "acquisition.json"
-            acquired = json.loads(acquired_path.read_bytes())
-            originals = {item.get("path"): item for item in acquired["files"]}
-            entry = manifest.with_name("index.html")
-            for path in (manifest, entry):
-                original = originals.get(a.rel(path), {})
-                stable = next((item for item in acquired.get("stability", []) if item["url"] == original.get("url")), {})
-                if (not valid(original) or not acquired.get("source_current_during_acquisition")
-                        or not stable.get("unchanged") or stable.get("before_sha256") != a.sha(path)
-                        or stable.get("after_sha256") != a.sha(path)):
-                    raise ValueError("Current entry or manifest provenance does not verify")
-            mains = re.findall(r'<script\b[^>]*\bsrc=["\']([^"\']*\bmain\.[\w]+\.js)["\']', entry.read_text(encoding="utf-8"))
-            if len(mains) != 1:
-                raise ValueError("Current entry must mount one main module")
-            mounted_url = urllib.parse.urljoin(originals[a.rel(entry)]["url"], mains[0])
-            main = next((item for item in originals.values() if item.get("url") == mounted_url), {})
-            if not valid(main):
-                raise ValueError("Mounted original module does not verify")
-            capture_path = a.ROOT / ".analysis/results/frontend" / manifest.parents[6].name / "analysis.json"
-            captured = json.loads(capture_path.read_bytes())
-            modules = source_capture_modules(captured, main)
-            selected = []
-            for module in modules:
-                body = (a.ROOT / module["output"]["path"]).read_text(encoding="utf-8")
-                declaration = re.search(r'export (?:var|const|let) DeviceInfo\s*=\s*\{', body)
-                if declaration:
-                    selected.append((module, body, declaration.end() - 1))
-            if not selected:
-                raw = (a.ROOT / main["path"]).read_text(encoding="utf-8")
-                owner = complete_raw_module(raw, "DeviceInfo:()")
-                body = owner["body"]
-                exported = re.search(r'DeviceInfo:\(\)=>([\w$]+)', body)
-                declaration = re.search(r'\b' + re.escape(exported[1]) + r'=\{', body) if exported else None
-                if declaration:
-                    selected.append(({"original": main, "complete_raw_owner": owner,
-                                      "sha256": hashlib.sha256(body.encode()).hexdigest()}, body, declaration.end() - 1))
-            if len(selected) != 1:
-                raise ValueError("Expected one complete exported DeviceInfo owner")
-            module, body, start = selected[0]
-            end = javascript_delimited(body, start)
-            declaration = body[start:end]
-            product = re.search(r'\bproductId:\s*(\d+)\s*[,}]', declaration)
-            category = re.search(r'\bcategory:\s*"([A-Z_]+)"', declaration)
-            editions = re.search(r'export (?:var|const|let) AVAILABLE_EDITION_ID\s*=\s*(\[[\d\s,]*\])', body)
-            manifest_editions = sorted(int(key.split("_")[1]) for key in data.get("productTranslations", {})
-                                       if re.fullmatch(str(pid) + r'_\d+', key))
-            if not product or not category or (not editions and not manifest_editions):
-                raise ValueError("Product identity/category/edition declarations are unresolved")
-            declared_pid = int(product[1])
-            edition_ids = json.loads(editions[1]) if editions else manifest_editions
-            row.update({"acquisition": identity(acquired_path), "entry": identity(entry), "original_main": main,
-                        "capture": identity(capture_path), "analyzer": captured["tool"], "complete_owner": module,
-                        "declaration": {"start": start, "end": end, "body": declaration,
-                                        "sha256": hashlib.sha256(declaration.encode()).hexdigest()},
-                        "declared_product_id": declared_pid, "category": category[1], "edition_ids": edition_ids})
+            ui_route = f"https://apps.razer.com/synapse/products/{pid}/ui/"
+            source_report, source = registry_source_identity(
+                pid, "ui", candidates=routes.get(ui_route, []), observations=observations)
+            row["ui_identity"] = source_report
+            inputs.extend(source_report["inputs"])
             header = headers.get(pid)
-            if declared_pid != pid:
-                row["disposition"] = "exclude_mismatched_endpoint_from_product_registry_keep_acquisition_locator"
-                row["unresolved"] = "No current source establishes this endpoint ID as an independent product; declared product has its own separate endpoint"
+            if source_report["status"] != "verified":
+                report["unavailable_sources"].append({"endpoint_product_id": pid, "role": "ui", "source": source_report})
+                row["disposition"] = "official_ui_source_unavailable_no_page_invented"
+                if header:
+                    raise ValueError("Registered page has no verified current official UI source")
+                continue
+            definition = source_report["definition"]
+            declared_pid = definition["device_info"]["productId"]
+            category = definition["device_info"]["category"]
+            name, edition_ids = definition["manufacturer_name"], definition["edition_ids"]
+            row.update(declared_product_id=declared_pid, category=category, edition_ids=edition_ids,
+                       manufacturer_name=name)
+            mw_route = f"https://apps.razer.com/synapse/products/{pid}/mw/"
+            peer = current_registry_peer(pid, definition, candidates=routes.get(mw_route, []), observations=observations)
+            row["middleware_identity"] = peer
+            inputs.extend(peer["inputs"])
+            if peer["status"] != "verified":
+                report["unavailable_sources"].append({"endpoint_product_id": pid, "role": "mw", "source": peer})
+            if declared_pid != pid and pid not in catalog_ids:
+                target_route = f"https://apps.razer.com/synapse/products/{declared_pid}/ui/"
+                target, _ = registry_source_identity(
+                    declared_pid, "ui", candidates=routes.get(target_route, []), observations=observations)
+                inputs.extend(target["inputs"])
+                if (target["status"] != "verified" or target["definition"]["device_info"]["productId"] != declared_pid
+                        or declared_pid not in catalog_ids):
+                    raise ValueError("Undiscovered alias has no verified independent catalog target")
+                row.update(disposition="exclude_non_independent_alias_keep_acquisition_locator", alias_target=target)
                 if header:
                     edits[pid] = None
-            elif header and pid not in mounted_candidates:
-                row["disposition"] = "repair_category_and_editions_from_declared_product_owner"
-                edits[pid] = {**header, "categories": [category[1]], "edition_ids": edition_ids}
-            else:
-                name_alias = re.search(r'\bdeviceName:([\w$]+)\b', declaration)
-                name = re.search(r'(?<![\w$])' + re.escape(name_alias[1]) + r'="([^"]+)"', body) if name_alias else None
+                continue
+            if edition_ids is None:
+                raise ValueError("Current registry UI edition declarations are unobserved")
+            row["endpoint_semantics"] = "catalog_route_with_declared_alias" if declared_pid != pid else "self_declared_product"
+            if header and pid not in mounted_candidates:
+                row["disposition"] = "verify_declared_identity_preserve_separately_owned_navigation"
                 if name is None:
-                    raise ValueError("Current missing-product manufacturer name is unresolved")
-                navigations, mounted = missing_registry_navigation(pid, acquired, main)
+                    row["preserved_presentation_name"] = {"value": header["name"],
+                        "scope": "Existing localized title is not revalidated as a DeviceInfo manufacturer name"}
+                edits[pid] = {**header, "name": header["name"] if name is None else name,
+                              "categories": [category], "edition_ids": edition_ids}
+            else:
+                if name is None:
+                    raise ValueError("Current new-product manufacturer name is unobserved")
+                navigations, mounted = missing_registry_navigation(pid, source["acquired"], source["main"])
+                files = {item["path"]: item for item in source["files"].values() if item.get("path")}
+                consumed = {item["url"]: item for item in (source["entry"], source["manifest"], source["main"])}
+                for owner in mounted["complete_original_owners"]:
+                    original = files[owner["original"]["path"]]
+                    consumed[original["url"]] = original
+                mounted["freshness"] = frontend.verify_latest_deployment_observations(
+                    source["acquired"], list(consumed.values()), source["audit"], observations=observations)
                 row.update({"disposition": ("verify_registered_product_current_mounted_navigation" if header else
                                              "register_declared_product_with_current_mounted_navigation"),
-                            "manufacturer_name": name[1], "mounted_navigation": mounted,
-                            "middleware_identity": current_registry_peer(pid, acquired_path, name[1], category[1])})
+                            "mounted_navigation": mounted})
                 previous = header["navigations"] if header else []
                 row["preserved_navigation_ids"] = previous
-                edits[pid] = registry_product_record(pid, name[1], category[1], edition_ids, navigations, previous)
-                row["runtime_directory_projection"] = edits[pid]
-                row["existing_directory_matches_projection"] = edits[pid] == header
-        except (OSError, ValueError, KeyError) as error:
+                edits[pid] = registry_product_record(pid, name, category, edition_ids, navigations, previous)
+            row["runtime_directory_projection"] = edits[pid]
+            row["existing_directory_matches_projection"] = edits[pid] == header
+        except (OSError, ValueError, KeyError, TypeError) as error:
             report["failures"].append({"product_id": pid, "error": str(error)})
+    distinct_inputs = {}
+    for item in inputs:
+        if item["path"] in distinct_inputs and distinct_inputs[item["path"]] != item:
+            raise ValueError("Registry identity audit observed conflicting input bytes: " + item["path"])
+        distinct_inputs[item["path"]] = item
+    report["inputs"] = list(distinct_inputs.values())
+    report["all_product_sources_complete"] = not report["failures"] and not report["unavailable_sources"]
     if prepare and not report["failures"]:
+        if not all(valid(item) for item in [report["registry_before"], *report["inputs"]]):
+            raise ValueError("Current registry identity inputs changed before publication")
         for pid, replacement in edits.items():
             if replacement is None:
                 headers.pop(pid, None)
@@ -22032,6 +22074,8 @@ def audit_registry_identity(prepare=False, products=None):
                 headers[pid] = replacement
         document = {"schema_version": 1, "products": [headers[pid] for pid in sorted(headers)]}
         resource_database.validate_product_registry(document)
+        resource_database.validate_product_help_bindings(
+            document["products"], json.loads((a.ROOT / resource_database.PRODUCT_HELP).read_bytes()))
         a.save(registry, document)
         a.index_files([{**identity(registry), "kind": "product_registry_maintenance_source"}])
         catalog = resource_database.prepare()
@@ -22043,6 +22087,7 @@ def audit_registry_identity(prepare=False, products=None):
                       "failures": report["failures"], "prepared": report["prepared"]}), flush=True)
     if report["failures"]:
         raise ValueError("Current registry identity audit remains unresolved")
+    return report
 
 
 def mouse_idle_initialization_source(audit, files):

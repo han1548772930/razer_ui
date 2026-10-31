@@ -141,6 +141,45 @@ fn controller_socd_rejected_or_truncated_response_never_acknowledges() {
         assert_eq!(probe.events(), expected);
     }
 }
+
+#[test]
+fn controller_socd_release_failure_keeps_typed_completion_for_every_source_mode() {
+    use crate::feature_exchange::tests::{ExchangeProbe, LeaseEvent};
+
+    for mode in [
+        SocdMode::Neutral,
+        SocdMode::Last,
+        SocdMode::First,
+        SocdMode::None,
+        SocdMode::AbsoluteUp,
+    ] {
+        for status in [2, 5] {
+            let io = Transport::new([reply(status, 0, 27, &[7, 4])]);
+            let probe = ExchangeProbe::failing_finish(&io);
+            let error = SocdProtocol::new(&probe, |_| Ok(()))
+                .execute(2676, SocdOperation { slot: 7, mode }, || false)
+                .unwrap_err();
+            assert!(crate::backend::exchange_finalization_failed(&error));
+            let completed = crate::CompletedFeatureExchange::from_error(&error);
+            assert_eq!(completed.is_some(), status == 2);
+            if let Some(completed) = completed {
+                assert_eq!(completed.command(), [2, 12, 27]);
+                assert_eq!(completed.data(), [7, 4]);
+            }
+            assert_eq!(io.sent.borrow().len(), 1);
+            assert!(io.replies.borrow().is_empty());
+            assert_eq!(
+                probe
+                    .events()
+                    .iter()
+                    .filter(|event| **event == LeaseEvent::Finish)
+                    .count(),
+                1
+            );
+            assert!(!probe.events().contains(&LeaseEvent::ForcedDrop));
+        }
+    }
+}
 #[test]
 fn controller_socd_stale_response_cannot_confirm_and_cancel_never_claims_success() {
     for stale in [reply(2, 1, 27, &[]), reply(2, 0, 155, &[])] {

@@ -270,6 +270,19 @@ pub fn execute(
     validate: &dyn Fn() -> anyhow::Result<()>,
     wait: &mut dyn FnMut(Duration) -> anyhow::Result<()>,
 ) -> anyhow::Result<Report> {
+    let validate = &|| {
+        validate().map_err(|error| {
+            crate::backend::interrupt_exchange(
+                error,
+                crate::backend::ExchangeInterruption::Validation,
+            )
+        })
+    };
+    let wait = &mut |duration| {
+        wait(duration).map_err(|error| {
+            crate::backend::interrupt_exchange(error, crate::backend::ExchangeInterruption::Wait)
+        })
+    };
     ensure!(
         capability(cap.product_id).is_some(),
         "Dynamic product has no current factory audit"
@@ -298,7 +311,7 @@ pub fn execute(
             Err(failure) => {
                 report.write_failure = Some(failure.to_string());
                 report.writes = Some(failure.report);
-                if crate::backend::exchange_finalization_failed(&failure.error) {
+                if crate::backend::exchange_interrupted(&failure.error) {
                     let message = failure.error.to_string();
                     return Err(failure
                         .error

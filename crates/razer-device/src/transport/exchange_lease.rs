@@ -96,6 +96,46 @@ pub trait ExchangeLease {
     fn finish(self: Box<Self>) -> anyhow::Result<()>;
 }
 
+/// A lifecycle boundary stopped the operation. This is independent of whether
+/// native I/O already returned and whether the admitted lease was released.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum ExchangeInterruption {
+    Admission,
+    Validation,
+    Wait,
+    Native,
+}
+
+impl std::fmt::Display for ExchangeInterruption {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(match self {
+            Self::Admission => "HID exchange admission failed",
+            Self::Validation => "HID exchange owner validation failed",
+            Self::Wait => "HID exchange wait was interrupted",
+            Self::Native => "HID native I/O owner was interrupted",
+        })
+    }
+}
+
+pub(crate) fn interrupt_exchange(
+    error: anyhow::Error,
+    phase: ExchangeInterruption,
+) -> anyhow::Error {
+    error.context(phase)
+}
+
+/// Only lifecycle and retained native failures stop source best-effort chains.
+/// Ordinary command rejection and unmarked native errors keep their own policy.
+pub(crate) fn exchange_interrupted(error: &anyhow::Error) -> bool {
+    error.downcast_ref::<ExchangeInterruption>().is_some()
+        || exchange_finalization_failed(error)
+        || match super::native_io_outcome(error) {
+            Some(super::NativeIoOutcome::NotCalled) => true,
+            Some(super::NativeIoOutcome::Returned { .. }) => !super::native_send_incomplete(error),
+            _ => false,
+        }
+}
+
 #[derive(Debug)]
 pub struct ExchangeFinalizationFailure {
     detail: String,

@@ -91,6 +91,22 @@ pub(super) fn recording_shortcut_key(input: &str) -> Result<recording_decode::Sh
 }
 
 pub use razer_widgets::keyboard_capture::RawKey;
+
+pub(super) fn shortcut_capture_input(event: &RawKey) -> Option<&'static str> {
+    let code = if event.down() && event.code() == 92 { 91 } else { event.code() };
+    let right_location = match event.code() {
+        16 => event.scan() == 0x36,
+        17 | 18 => event.extended(),
+        92 => true,
+        _ => false,
+    };
+    // Ss selects the flag-2 table row for DOM_KEY_LOCATION_RIGHT on both
+    // keyboard edges; the Windows message retains the required physical bits.
+    data().keys.iter().find(|key| {
+        key.code.parse::<u16>().ok() == Some(code) && (!right_location || key.flag == 2)
+    }).and_then(|key| key.input_id.as_deref())
+}
+
 fn captured_key(event: &RawKey) -> Option<&'static Key> {
     let code = if event.down() && event.code() == 92 {
         91
@@ -344,15 +360,24 @@ impl MacroPage {
             next[partner].value.clear();
         }
         if next != self.actions {
+            self.actions_dirty = true;
+            if let Some(execution) = &mut self.execution {
+                execution.invalidate();
+            }
             self.undo.push(std::mem::replace(&mut self.actions, next));
             self.redo.clear();
         }
         session.baseline = self.actions[session.index].clone();
+        self.rebuild_action_execution();
     }
 
     pub fn finish_keyboard_editor(&mut self) {
         self.poll_keyboard_capture();
         self.commit_keyboard_capture();
+        self.cancel_keyboard_editor();
+    }
+
+    pub(super) fn cancel_keyboard_editor(&mut self) {
         self.keyboard_ui.session = None; // RAII unhooks on every exit path.
         self.keyboard_ui.task = None;
         self.keyboard_ui.generation = self.keyboard_ui.generation.wrapping_add(1);

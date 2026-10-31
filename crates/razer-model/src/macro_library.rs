@@ -8,7 +8,11 @@
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 mod compile;
+mod execution;
 mod import;
+pub use execution::{
+    EngineEvent, EngineState, ExecutionSnapshot, MovementMode, RecordedAppend, ScanCode,
+};
 pub mod recording;
 pub mod xml;
 
@@ -78,6 +82,9 @@ pub struct ActionItem {
     /// Only explicitly created paired Loop rows have this local identity.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub loop_pair_id: Option<u64>,
+    /// Source text rows retain their translation identity until manually edited.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub translation_key: Option<String>,
     pub value: String,
     pub secondary_value: String,
     pub number_min: String,
@@ -173,6 +180,9 @@ pub struct Entry {
     /// and its generated engine until the corresponding editor data changes.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source_document: Option<serde_json::Value>,
+    /// h.nu retains the compiled lanes alongside its exact editor actions.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub execution: Option<ExecutionSnapshot>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -195,6 +205,9 @@ pub struct MacroLibraryFile {
     /// of each macro document. Older local files used the empty source default.
     #[serde(default)]
     pub record_shortcut: Vec<String>,
+    /// Older local files predate the separately persisted recordProfile.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub recording_preferences: Option<recording::Preferences>,
 }
 
 impl Default for MacroLibraryFile {
@@ -205,6 +218,7 @@ impl Default for MacroLibraryFile {
             current: None,
             tutorial: Tutorial::Initial,
             record_shortcut: Vec::new(),
+            recording_preferences: None,
         }
     }
 }
@@ -246,10 +260,17 @@ mod recorder_preference_tests {
 }
 
 impl MacroLibraryFile {
+    pub fn restore_recording_preferences(&mut self) {
+        self.recording_preferences = self.recording_preferences.take().map(|profile| profile.restored());
+    }
+
     /// Validate the entire forest before allowing it into the local workspace.
     /// Walk ancestors iteratively so malformed deep files cannot recurse into
     /// the UI's tree traversal before missing parents and cycles are rejected.
     pub fn validate(&self) -> Result<(), String> {
+        if let Some(preferences) = &self.recording_preferences {
+            preferences.validate()?;
+        }
         let mut shortcuts = HashSet::new();
         let mut ordinary = 0;
         for input in &self.record_shortcut {
@@ -307,6 +328,11 @@ impl MacroLibraryFile {
             let mut mouse_pairs = HashMap::<u64, usize>::new();
             let mut loop_pairs = HashMap::<u64, usize>::new();
             for action in &entry.actions {
+                if action.translation_key.as_ref().is_some_and(|key| {
+                    action.kind != ActionKind::Text || key.is_empty()
+                }) {
+                    return Err(format!("Invalid text translation identity in {}", entry.id));
+                }
                 if action.xml_macro_guid.as_ref().is_some_and(|guid| {
                     action.kind != ActionKind::Macro || uuid::Uuid::parse_str(guid).is_err()
                 }) {
@@ -442,6 +468,7 @@ impl MacroLibraryFile {
             && self.current == other.current
             && self.tutorial == other.tutorial
             && self.record_shortcut == other.record_shortcut
+            && self.recording_preferences == other.recording_preferences
             && self.entries.len() == other.entries.len()
             && self.entries.iter().zip(&other.entries).all(|(a, b)| {
                 a.id == b.id
@@ -455,6 +482,7 @@ impl MacroLibraryFile {
                     && a.xml_guid == b.xml_guid
                     && a.xml_mouse_mode == b.xml_mouse_mode
                     && a.source_document == b.source_document
+                    && a.execution == b.execution
             })
     }
 }
@@ -488,6 +516,7 @@ impl ActionItem {
             mouse_movement: None,
             recorded_input: None,
             loop_pair_id: None,
+            translation_key: None,
             value,
             secondary_value: String::new(),
             number_min: if kind == ActionKind::Delay {

@@ -633,6 +633,60 @@ class TypedTableTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             typed_tables.profile_transfer_source_projection(owners[0]["body"],modules={})
 
+    def test_static_identity_fields_retain_object_branches_and_ordered_arrays(self):
+        factory = self.transfer_factory('...base,claimInterface:{756:3,757:2},ids:[757,758,]')
+        projected, _ = typed_tables._profile_transfer_static_fields(
+            factory, "DeviceInfo", {"claimInterface", "ids"}, {})
+        self.assertEqual(projected, {"claimInterface": {"756": 3, "757": 2}, "ids": [757, 758]})
+        factory = self.transfer_factory('...base,claimInterface:{0x2f4:3,"756":3}')
+        projected, evidence = typed_tables._profile_transfer_static_fields(
+            factory, "DeviceInfo", {"claimInterface"}, {})
+        self.assertEqual(projected, {"claimInterface": {"756": 3}})
+        self.assertEqual(evidence["equal_duplicate_properties"][0]["field"], "756")
+
+    def test_static_identity_fields_reject_nested_conflicts_holes_spreads_and_cycles(self):
+        for value in ('{756:3,756:2}', '{0x2f4:3,"756":2}', '{[756]:3}',
+                      '[,3]', '[3,,4]', '[...values]', '{756:query()}', 'info'):
+            factory = self.transfer_factory('...base,claimInterface:' + value)
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                typed_tables._profile_transfer_static_fields(factory, "DeviceInfo", {"claimInterface"}, {})
+        factory = self.transfer_factory('...base,claimInterface:cyclic').replace(
+            'const deviceName=', 'const cyclic={self:cyclic,self:cyclic};const deviceName=')
+        with self.assertRaisesRegex(ValueError, "Cyclic"):
+            typed_tables._profile_transfer_static_fields(factory, "DeviceInfo", {"claimInterface"}, {})
+
+    def test_registry_projection_resolves_whole_exported_arrays_and_keeps_absence_explicit(self):
+        factory = self.transfer_factory(export="DeviceInfo:function(){return info},AVAILABLE_EDITION_ID:function(){return editions}")
+        factory = factory.replace("const deviceName=", "const original=[3,0,1],editions=original;const deviceName=")
+        projected, evidence = typed_tables.registry_identity_projection(factory)
+        self.assertEqual(projected["edition_ids"], [3, 0, 1])
+        self.assertTrue(evidence["edition_ids"]["export_observed"])
+        self.assertEqual(projected["manufacturer_name"], 'A "quoted" keyboard')
+        for expression in ("[0,0]", "[,0]", "[...ids]", "null", "lookup()"):
+            with self.subTest(expression=expression), self.assertRaises(ValueError):
+                typed_tables.registry_identity_projection(factory.replace("[3,0,1]", expression))
+        absent, absent_evidence = typed_tables.registry_identity_projection(self.transfer_factory("...base"))
+        self.assertIsNone(absent["edition_ids"])
+        self.assertIsNone(absent["manufacturer_name"])
+        self.assertFalse(absent_evidence["edition_ids"]["export_observed"])
+        named, _ = typed_tables.registry_identity_projection(self.transfer_factory(
+            "...base", export="DeviceInfo:()=>info,DEVICE_NAME:()=>deviceName"))
+        self.assertEqual(named["manufacturer_name"], 'A "quoted" keyboard')
+        with self.assertRaises(ValueError):
+            typed_tables.registry_identity_projection(factory.replace("return editions", "return lookup()"))
+
+    def test_registry_manifest_editions_use_explicit_product_keys_without_icon_inference(self):
+        import families
+        values = {"productTranslations": {"104_1": {}, "105_3": {}, "105_0": {}, "104_0": {}},
+                  "icons": [{"src": "productCategoryIcon.svg"}]}
+        editions, evidence = families.registry_manifest_editions(values, 105, 104)
+        self.assertEqual(editions, [3, 0])
+        self.assertEqual(evidence["declared_product_id"], 105)
+        self.assertIsNone(families.registry_manifest_editions({"icons": values["icons"]}, 105, 104)[0])
+        for invalid in ({"105_00": {}}, {"105_0": []}, {"105_-1": {}}, {"105_4294967296": {}}):
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                families.registry_manifest_editions({"productTranslations": invalid}, 105, 104)
+
     def test_transfer_source_owner_is_the_inner_complete_concatenated_entry(self):
         raw = ('(()=>{const nested=()=>{return 1};(()=>{const exports={};require.d(exports,{DeviceInfo:()=>info});'
                'const info={productId:769,category:"HUE"};})();})();').encode()
@@ -871,7 +925,6 @@ class TypedTableTests(unittest.TestCase):
                      ],"alternate_commands":[{"command":[1,0,70]}]})
         samples = {
             "device-read-capabilities.json":{"schema_version":1,"products":[read]},
-            "discovery-catalog.json":[{"product_id":756,"dongle_id":757,"ble_id":758,"middleware":{"category":"KEYBOARD","claim_interface":3,"receipt":{}}}],
             "receiver-query-capabilities.json":{"schema_version":1,"scope":"receiver_queries","capabilities":[transport]},
             "receiver-pairing-capabilities.json":{"schema_version":1,"products":[{
                 "product_id":241,"category":"MOUSE","scan_pair_prefix":0,"unpair_prefix":0,
@@ -888,7 +941,6 @@ class TypedTableTests(unittest.TestCase):
     def test_complete_local_protocol_inputs_render_without_runtime_json(self):
         for name, renderer in (
             ("device-read-capabilities.json", typed_tables.render_read_catalog),
-            ("discovery-catalog.json", typed_tables.render_identity_catalog),
             ("receiver-query-capabilities.json", typed_tables.render_receiver_query_catalog),
             ("receiver-pairing-capabilities.json", typed_tables.render_pairing_capabilities),
             ("receiver-pairing-catalog.json", typed_tables.render_pairing_source_catalog),
@@ -919,18 +971,381 @@ class TypedTableTests(unittest.TestCase):
             with self.assertRaises(ValueError, msg=str(mutation)):
                 typed_tables.render_read_catalog(json.dumps(source).encode())
 
-    def test_fixed_identity_rejects_unknown_categories_ids_and_repeated_source_rows(self):
-        for source in (
-            [{"product_id": 756, "middleware": {"category": "UNKNOWN"}}],
-            [{"product_id": 756, "dongle_id": []}],
-            [{"product_id": 756, "ble_id": 70000}],
-            [{"product_id": 756}, {"product_id": 756}],
-            [{"product_id": 0}],
-        ):
+    def test_current_identity_catalog_preserves_duplicate_rows_and_scalar_array_branches(self):
+        raw = b'[{"productId":691,"dongleId":692,"bleId":[693]}, {"productId":691}]'
+        self.assertEqual(typed_tables.validate_identity_catalog(raw), [
+            {"product_id": 691, "dongle_id": 692, "ble_id": [693]}, {"product_id": 691}])
+        for value in ([{"productId": 756, "dongleId": []}], [{"productId": 756, "bleId": 70000}],
+                      [{"productId": 0}], [{"productId": True}], [{"productId": 756, "middleware": {}}],
+                      [{"productId": 756, "xboxId": 757}], [{"productId": 756, "isNotChromaDevice": 1}]):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                typed_tables.validate_identity_catalog(json.dumps(value))
+        with self.assertRaises(ValueError):
+            typed_tables.validate_identity_catalog('[{"productId":756,"productId":757}]')
+        self.assertEqual(typed_tables.validate_identity_catalog('[]', allow_empty=True), [])
+
+    def identity_projection_fixture(self):
+        catalog = [{"product_id": 105}, {"product_id": 691, "dongle_id": 692, "ble_id": [693]},
+                   {"product_id": 691}, {"product_id": 3884, "dongle_id": 3884, "ble_id": 3885}]
+        definitions = [
+            {"mounted_product_id": 105, "ui": {"productId": 104, "dongleId": 105, "category": "MOUSEPLUSMAT"},
+             "middleware": {"productId": 104, "dongleId": 105, "category": "MOUSEPLUSMAT", "claimInterface": 0}},
+            {"mounted_product_id": 691, "ui": {"productId": 691, "category": "KEYBOARD", "claimInterface": {"691": 3, "692": 2}},
+             "middleware": {"productId": 691, "category": "KEYBOARD", "claimInterface": {"691": 3, "692": 2}}},
+            {"mounted_product_id": 3884, "ui": {"productId": 3884, "category": "ACCESSORY"},
+             "middleware": {"productId": 3884, "category": "ACCESSORY"}},
+            {"mounted_product_id": 3886, "ui": {"productId": 3886, "dongleId": 3884, "bleId": 3885, "category": "ACCESSORY"},
+             "middleware": {"productId": 3886, "dongleId": 3884, "bleId": 3885, "category": "ACCESSORY"}},
+        ]
+        return catalog, definitions, []
+
+    def test_current_identity_constructor_checks_every_field_duplicate_role_and_physical_branch(self):
+        catalog, definitions, development = self.identity_projection_fixture()
+        raw = typed_tables.render_identity_catalog(catalog, definitions, development)
+        self.assertTrue(typed_tables.verify_identity_constructor(raw, catalog, definitions, development)[
+            "all_fields_order_duplicates_and_physical_branches_equal"])
+        for before, after in ((b'physical_product_id: 692', b'physical_product_id: 693'),
+                              (b'interface: 2', b'interface: 3'), (b'ClaimInterface::Uniform(0)', b'ClaimInterface::Uniform(3)'),
+                              (b'dongle_id: Some(105)', b'dongle_id: None'),
+                              (b'Ids::Many(&[693])', b'Ids::One(693)'),
+                              (b'mounted_product_id: 105', b'mounted_product_id: 104'),
+                              (b'product_id: 104', b'product_id: 105'),
+                              (b'DeviceCategory::Mouseplusmat', b'DeviceCategory::Mouse'),
+                              (b'vendor_id: None', b'vendor_id: Some(5426)'),
+                              (b'is_not_chroma_device: false', b'is_not_chroma_device: true'),
+                              (b'ble_id: None', b'ble_id: None, ignored: None'),
+                              (b'IN_DEVELOPMENT: &[u32] = &[]', b'IN_DEVELOPMENT: &[u32] = &[691]')):
+            self.assertIn(before, raw)
+            with self.subTest(before=before), self.assertRaises(ValueError):
+                typed_tables.verify_identity_constructor(raw.replace(before, after, 1), catalog, definitions, development)
+        for changed in (catalog[:2] + catalog[3:], [catalog[1], catalog[0], *catalog[2:]]):
             with self.assertRaises(ValueError):
-                typed_tables.render_identity_catalog(json.dumps(source).encode())
-        shared = [{"product_id": 600, "dongle_id": 625}, {"product_id": 601, "dongle_id": 625}]
-        self.assertEqual(len(typed_tables.validate_identity_catalog(json.dumps(shared))), 2)
+                typed_tables.verify_identity_constructor(
+                    typed_tables.render_identity_catalog(changed, definitions, development), catalog, definitions, development)
+        missing = copy.deepcopy(definitions)
+        missing[0]["ui"] = None
+        with self.assertRaises(ValueError):
+            typed_tables.verify_identity_constructor(
+                typed_tables.render_identity_catalog(catalog, missing, development), catalog, definitions, development)
+        for invalid in (definitions[:-2], list(reversed(definitions)), definitions + definitions):
+            with self.assertRaises(ValueError):
+                typed_tables.render_identity_catalog(catalog, invalid, development)
+
+    def test_identity_definition_validates_all_interface_shapes_and_unobserved_fields(self):
+        source = self.transfer_factory('...base,dongleId:0,claimInterface:{756:3,757:2}')
+        projection, _ = typed_tables.identity_definition_projection(source)
+        self.assertEqual(projection, {"productId":756, "category":"KEYBOARD", "dongleId":0,
+                                     "claimInterface":{"756":3,"757":2}})
+        for field, value in (("productId", 0), ("vendorId", False), ("dongleId", -1),
+                             ("category", "UNKNOWN"), ("claimInterface", {}), ("claimInterface", []),
+                             ("claimInterface", True), ("claimInterface", 256),
+                             ("claimInterface", {"0":3}), ("claimInterface", {"0756":3}),
+                             ("claimInterface", {"756":256}), ("claimInterface", {"756":False})):
+            changed = {**projection, field: value}
+            with self.subTest(field=field, value=value), self.assertRaises(ValueError):
+                typed_tables.validate_identity_definition(changed)
+        absent = typed_tables.identity_definition_semantics({"productId":100,"category":"MOUSE"})
+        self.assertIsNone(absent["claim_interface"])
+        self.assertIsNone(absent["identity"]["dongle_id"])
+
+    @staticmethod
+    def identity_host_fixture():
+        return b'''
+        const directories={AVAILABLE_DEVICE:`${window.location.origin}/synapse/dashboard/AvailableDevices.json`,
+          WINDOW_10_DEVICE:`${window.location.origin}/synapse/dashboard/Windows10Devices.json`,WINDOW_8_DEVICE:null,
+          SYNAPSE_2_DEVICE:`${window.location.origin}/synapse/dashboard/Synapse2Devices.json`,
+          XBOX_HEADSETS:`${window.location.origin}/synapse/dashboard/XboxHeadsets.json`,
+          XBOX_CONTROLLERS:`${window.location.origin}/synapse/dashboard/XboxDevices.json`,
+          IN_DEVELOPMENT_DEVICES:`${window.location.origin}/synapse/dashboard/inDevelopmentDevices.json`};
+        function aliases(ids,raw){return null!=ids&&(Array.isArray(ids)?ids.includes(raw):ids===raw)}
+        class Detector {
+          getLatestDeviceData=async()=>{const tasks=Object.values(directories);
+            const[available,n,r,o,s,i,development]=await Promise.all(tasks);
+            this.available=available.filter(row=>!development.find(other=>other.productId===row.productId));};
+          _checkUSBDetail=async device=>{const {productId:raw}=device;
+            const monitor=this.available.find(row=>row.monitorPortIds&&row.monitorPortIds.includes(device.productId));
+            const matches=this.available.filter(row=>row.productId===raw||aliases(row.dongleId,raw)||aliases(row.bleId,raw)||row.repId===raw||aliases(row.xBoxId,raw)||aliases(row.wiredId,raw)||row.psModeIds?.includes(raw));
+            const result={};result.productId=matches[0].repId||matches[0].productId;
+            result.isDongle=aliases(matches[0].dongleId,result.realProductId);
+            result.isBle=aliases(matches[0].bleId,result.realProductId);
+            result.isXBox=aliases(matches[0].xBoxId,result.realProductId);
+            result.isPlaystation=matches[0].psModeIds?.includes(result.realProductId);
+            return matches.map(({productId:primary,repId:route})=>({productId:route||primary,deviceContainerId:container,type:"available",realProductId:device.productId,baseProductName:name||device.productName,isDongle:!0}));
+          }
+        }
+        '''
+
+    def test_identity_host_contract_checks_alias_matcher_order_filter_and_monitor_find(self):
+        source = self.identity_host_fixture()
+        contract = typed_tables.identity_discovery_contract(source)
+        self.assertTrue(contract["catalog_order_and_duplicates_retained"])
+        self.assertTrue(contract["middleware_aliases_are_not_host_candidates"])
+        for before, after in ((b'ids===raw', b'ids==raw'),
+                              (b'row.wiredId,raw', b'row.middlewareId,raw'),
+                              (b'this.available.find(row=>row.monitorPortIds', b'this.available.filter(row=>row.monitorPortIds'),
+                              (b'other.productId===row.productId', b'other.dongleId===row.productId'),
+                              (b'[available,n,r,o,s,i,development]', b'[development,n,r,o,s,i,available]'),
+                              (b'realProductId:device.productId', b'realProductId:primary'),
+                              (b'result.isBle=aliases(matches[0].bleId', b'result.isBle=aliases(matches[0].dongleId'),
+                              (b'/synapse/dashboard/AvailableDevices.json', b'/synapse/dashboard/OtherDevices.json')):
+            with self.subTest(before=before), self.assertRaises(ValueError):
+                typed_tables.identity_discovery_contract(source.replace(before, after))
+
+    def identity_acquisition_fixture(self, root):
+        receipts = self.transfer_acquisition_fixture(root)
+        (root / "tools/frontend.py").write_text("# test source-selection owner\n", encoding="utf-8")
+        routes = {}
+        for path, document in receipts:
+            document.update(target_execution=False, recorded_at_utc="2026-10-30T10:00:00+00:00")
+            path.write_text(json.dumps(document), encoding="utf-8")
+            routes[document["entry_url"].removesuffix("index.html")] = [path]
+        return routes, receipts
+
+    def test_identity_capture_uses_each_endpoint_role_and_retains_declared_aliases(self):
+        import analysis
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            routes, receipts = self.identity_acquisition_fixture(root)
+            path, document = receipts[1]
+            row = document["files"][2]
+            raw = (root / row["path"]).read_bytes().replace(b"productId:756", b"productId:755")
+            (root / row["path"]).write_bytes(raw)
+            row.update(bytes=len(raw), sha256=hashlib.sha256(raw).hexdigest())
+            path.write_text(json.dumps(document), encoding="utf-8")
+            with patch.object(typed_tables, "ROOT", root), patch.object(analysis, "ROOT", root):
+                result, _ = typed_tables._capture_identity_product((756, routes, {}))
+            self.assertEqual(result["ui"]["productId"], 756)
+            self.assertEqual(result["middleware"]["productId"], 755)
+            self.assertEqual(result["mounted_product_id"], 756)
+
+    def test_identity_capture_rejects_missing_manifest_tampered_main_and_latest_failure(self):
+        import analysis
+        for mutation in ("manifest", "main_bytes", "latest_failure"):
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                routes, receipts = self.identity_acquisition_fixture(root)
+                path, document = receipts[1]
+                if mutation == "manifest":
+                    document["stability"] = document["stability"][:1]
+                elif mutation == "main_bytes":
+                    (root / document["files"][2]["path"]).write_bytes(b"changed")
+                else:
+                    document["source_current_during_acquisition"] = False
+                path.write_text(json.dumps(document), encoding="utf-8")
+                with patch.object(typed_tables, "ROOT", root), patch.object(analysis, "ROOT", root), self.assertRaises(ValueError):
+                    typed_tables._capture_identity_product((756, routes, {}))
+
+    def test_identity_official_absence_requires_two_matching_failures_and_static_acquisition(self):
+        import analysis
+        import frontend
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            directory = root / ".analysis/inputs/frontend/missing"
+            directory.mkdir(parents=True)
+            path = directory / "acquisition.json"
+            url = "https://apps.razer.com/synapse/products/680/ui/index.html"
+            document = {"entry_url":url, "recorded_at_utc":"2026-10-30T10:00:00+00:00",
+                        "target_execution":False, "source_current_during_acquisition":False,
+                        "files":[{"url":url,"error":"HTTP Error 404: Not Found"}],
+                        "stability":[{"url":url,"unchanged":False,"before_sha256":None,"error":"HTTP Error 404: Not Found"}]}
+            path.write_text(json.dumps(document), encoding="utf-8")
+            with patch.object(typed_tables, "ROOT", root), patch.object(analysis, "ROOT", root):
+                result = frontend.current_deployment_source(
+                    url.removesuffix("index.html"), candidates=[path], observations={})
+                self.assertEqual(result["status"], "official_source_unavailable")
+                self.assertEqual(result["http_status"], 404)
+                for key, value in (("target_execution",True), ("stability",[]),
+                                   ("files",[{"url":url,"error":"HTTP Error 503: Service Unavailable"}])):
+                    path.write_text(json.dumps({**document,key:value}), encoding="utf-8")
+                    with self.subTest(key=key), self.assertRaises(ValueError):
+                        frontend.current_deployment_source(
+                            url.removesuffix("index.html"), candidates=[path], observations={})
+
+    def identity_generation_fixture(self, root):
+        _, receipts = self.identity_acquisition_fixture(root)
+        for name in ("analysis.py", "evidence.py", "host.py"):
+            (root / "tools" / name).write_text("# maintained test owner\n", encoding="utf-8")
+
+        def acquire(name, entry, assets):
+            directory = root / ".analysis/inputs/frontend" / name
+            rows = []
+            for index, (url, body) in enumerate(assets):
+                path = directory / "raw" / (str(index) + ".source")
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(body)
+                rows.append({"url":url, "path":path.relative_to(root).as_posix(),
+                             "bytes":len(body), "sha256":hashlib.sha256(body).hexdigest()})
+            document = {"entry_url":entry,"files":rows,"target_execution":False,
+                        "recorded_at_utc":"2026-10-30T10:00:00+00:00","source_current_during_acquisition":True,
+                        "stability":[{"url":row["url"],"unchanged":True,
+                                      "before_sha256":row["sha256"],"after_sha256":row["sha256"]} for row in rows]}
+            (directory / "acquisition.json").write_text(json.dumps(document), encoding="utf-8")
+
+        acquire("available", typed_tables.IDENTITY_AVAILABLE_URL,
+                [(typed_tables.IDENTITY_AVAILABLE_URL, b'[{"productId":756,"dongleId":757,"bleId":758},{"productId":756}]')])
+        acquire("development", typed_tables.IDENTITY_DEVELOPMENT_URL, [(typed_tables.IDENTITY_DEVELOPMENT_URL,b'[]')])
+        acquire("host", typed_tables.IDENTITY_HOST_URL, [
+            (typed_tables.IDENTITY_HOST_URL, b'<script src="assets/index-abc.js"></script>'),
+            (typed_tables.IDENTITY_HOST_URL + "assets/index-abc.js", self.identity_host_fixture())])
+        return receipts
+
+    @staticmethod
+    def update_identity_original(root, receipt, document, index, raw):
+        row = document["files"][index]
+        (root / row["path"]).write_bytes(raw)
+        row.update(bytes=len(raw), sha256=hashlib.sha256(raw).hexdigest())
+        for claim in document["stability"]:
+            if claim["url"] == row["url"]:
+                claim.update(before_sha256=row["sha256"], after_sha256=row["sha256"])
+        receipt.write_text(json.dumps(document), encoding="utf-8")
+
+    def registry_identity_fixture(self, root):
+        receipts = self.identity_generation_fixture(root)
+        registry = root / ".analysis/inputs/typed-tables/razer-catalog/product_registry.json"
+        registry.write_text(json.dumps({"schema_version": 1, "products": [{
+            "id": 756, "name": "Existing title", "categories": ["KEYBOARD"], "edition_ids": [0],
+            "navigations": [{"key": "stable-navigation", "display_mode": "default", "primary": True,
+                "pages": [{"key": "stable-help", "kind": "HELP", "role": "Help", "help_selector": 19}]}]}]}), encoding="utf-8")
+        selected = []
+        for index, (old_receipt, document) in enumerate(receipts):
+            name = "UI Keyboard" if index == 0 else "ui keyboard"
+            factory = self.transfer_factory('...base,deviceName:' + json.dumps(name),
+                export="DeviceInfo:()=>info,AVAILABLE_EDITION_ID:()=>editions")
+            factory = factory.replace("productId:756", "productId:755").replace(
+                "const deviceName=", "const editions=[3,0];const deviceName=")
+            main = ('(self.webpackChunk=self.webpackChunk||[]).push([[1],{' + factory + '}]);').encode()
+            self.update_identity_original(root, old_receipt, document, 2, main)
+            document["recorded_at_utc"] = "2026-10-30T11:00:00+00:00"
+            current = root / ".analysis/inputs/frontend" / ("opaque-updated-owner-" + str(index)) / "acquisition.json"
+            current.parent.mkdir()
+            current.write_text(json.dumps(document), encoding="utf-8")
+            selected.append((current, document))
+        return registry, selected
+
+    def test_registry_audit_uses_actual_routes_and_preserves_a_catalog_declared_alias(self):
+        import analysis
+        import families
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            registry, _ = self.registry_identity_fixture(root)
+            original = registry.read_bytes()
+            with patch.object(typed_tables, "ROOT", root), patch.object(analysis, "ROOT", root):
+                report = families.audit_registry_identity()
+            self.assertEqual([row["endpoint_product_id"] for row in report["products"]], [756])
+            product = report["products"][0]
+            self.assertEqual(product["endpoint_semantics"], "catalog_route_with_declared_alias")
+            self.assertEqual(product["ui_identity"]["selection"]["name"], "opaque-updated-owner-0")
+            self.assertEqual(product["middleware_identity"]["selection"]["name"], "opaque-updated-owner-1")
+            self.assertEqual(product["middleware_identity"]["manufacturer_names"]["status"], "different_source_spellings")
+            projected = product["runtime_directory_projection"]
+            self.assertEqual((projected["id"], projected["edition_ids"]), (756, [3, 0]))
+            page = projected["navigations"][0]["pages"][0]
+            self.assertEqual((projected["navigations"][0]["key"], page["key"], page["help_selector"]),
+                             ("stable-navigation", "stable-help", 19))
+            self.assertEqual(registry.read_bytes(), original)
+
+    def test_registry_alias_exclusion_requires_the_current_independent_catalog_target(self):
+        import analysis
+        import families
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            _, selected = self.registry_identity_fixture(root)
+            _, ui = selected[0]
+            target = copy.deepcopy(ui)
+            target["entry_url"] = target["entry_url"].replace("/756/", "/755/")
+            for row in [*target["files"], *target["stability"]]:
+                row["url"] = row["url"].replace("/756/", "/755/")
+            receipt = root / ".analysis/inputs/frontend/actual-alias-target/acquisition.json"
+            receipt.parent.mkdir()
+            receipt.write_text(json.dumps(target), encoding="utf-8")
+            catalog = root / ".analysis/inputs/frontend/available/acquisition.json"
+            document = json.loads(catalog.read_bytes())
+            self.update_identity_original(root, catalog, document, 0, b'[{"productId":755}]')
+            with patch.object(typed_tables, "ROOT", root), patch.object(analysis, "ROOT", root):
+                report = families.audit_registry_identity(products=[756])
+                self.assertEqual(report["products"][0]["disposition"], "exclude_non_independent_alias_keep_acquisition_locator")
+                target["source_current_during_acquisition"] = False
+                receipt.write_text(json.dumps(target), encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, "remains unresolved"):
+                    families.audit_registry_identity(products=[756])
+
+    def test_registry_peer_rejects_latest_failure_and_cross_role_product_mismatch(self):
+        import analysis
+        import families
+        import frontend
+        for mutation in ("latest_failure", "different_product"):
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                _, selected = self.registry_identity_fixture(root)
+                with patch.object(typed_tables, "ROOT", root), patch.object(analysis, "ROOT", root):
+                    routes = frontend.current_acquisition_routes()
+                    ui, _ = families.registry_source_identity(756, "ui", candidates=routes[
+                        "https://apps.razer.com/synapse/products/756/ui/"], observations={})
+                    receipt, document = selected[1]
+                    if mutation == "latest_failure":
+                        document["source_current_during_acquisition"] = False
+                        receipt.write_text(json.dumps(document), encoding="utf-8")
+                    else:
+                        raw = (root / document["files"][2]["path"]).read_bytes().replace(b"productId:755", b"productId:754")
+                        self.update_identity_original(root, receipt, document, 2, raw)
+                    with self.assertRaises(ValueError):
+                        families.current_registry_peer(756, ui["definition"], candidates=routes[
+                            "https://apps.razer.com/synapse/products/756/mw/"], observations={})
+
+    def test_current_identity_generation_checks_the_same_source_owned_artifact(self):
+        import analysis
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.identity_generation_fixture(root)
+            with patch.object(typed_tables,"ROOT",root), patch.object(analysis,"ROOT",root):
+                generated = typed_tables.prepare_current_identity_table(workers=2)
+                self.assertEqual(generated["catalog_rows"], 2)
+                self.assertTrue(generated["all_product_sources_complete"])
+                output = root / typed_tables.IDENTITY_OUTPUT
+                raw = output.read_bytes()
+                checked = typed_tables.prepare_current_identity_table(check=True, workers=2)
+                self.assertTrue(checked["passed"])
+                self.assertEqual(output.read_bytes(), raw)
+                receipt = json.loads((root / ".analysis/results/typed-data.json").read_bytes())["current_device_identities"]
+                self.assertFalse(receipt["published"])
+                self.assertEqual(receipt["publication_status"], "verified_existing")
+                output.write_bytes(raw.replace(b'ble_id: Some(758)', b'ble_id: None', 1))
+                with self.assertRaisesRegex(ValueError,"identities differ"):
+                    typed_tables.prepare_current_identity_table(check=True,workers=2)
+
+    def test_identity_publication_failure_keeps_old_table_and_releases_its_temporary(self):
+        import analysis
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.identity_generation_fixture(root)
+            with patch.object(typed_tables,"ROOT",root), patch.object(analysis,"ROOT",root):
+                typed_tables.prepare_current_identity_table(workers=2)
+                output = root / typed_tables.IDENTITY_OUTPUT
+                original = output.read_bytes()
+                with patch("os.replace",side_effect=OSError("publication denied")), self.assertRaisesRegex(OSError,"publication denied"):
+                    typed_tables.prepare_current_identity_table(workers=2)
+                self.assertEqual(output.read_bytes(), original)
+                self.assertEqual(list(output.parent.glob(".identity-*.rs")), [])
+
+    def test_identity_source_failure_records_incomplete_status_and_preserves_old_table(self):
+        import analysis
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            receipts = self.identity_generation_fixture(root)
+            with patch.object(typed_tables,"ROOT",root), patch.object(analysis,"ROOT",root):
+                typed_tables.prepare_current_identity_table(workers=2)
+                output = root / typed_tables.IDENTITY_OUTPUT
+                original = output.read_bytes()
+                path, document = receipts[1]
+                document["stability"] = document["stability"][:1]
+                path.write_text(json.dumps(document),encoding="utf-8")
+                with self.assertRaisesRegex(ValueError,"source chains failed"):
+                    typed_tables.prepare_current_identity_table(workers=2)
+                self.assertEqual(output.read_bytes(), original)
+                receipt = json.loads((root / ".analysis/results/typed-data.json").read_bytes())["current_device_identities"]
+                self.assertFalse(receipt["published"])
+                self.assertFalse(receipt["all_product_sources_complete"])
+                self.assertEqual([row["mounted_product_id"] for row in receipt["failures"]], [756])
 
     def test_fixed_receiver_query_rejects_protocol_retry_and_repeated_pid_branches(self):
         for mutation in range(3):

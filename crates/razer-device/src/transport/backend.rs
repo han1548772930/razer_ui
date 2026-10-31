@@ -5,12 +5,12 @@ use std::collections::BTreeMap;
 
 #[path = "native_io.rs"]
 mod native_io;
-pub(crate) use native_io::complete_native_io;
 pub use native_io::{
     NativeIoOutcome, checked_native_io, checked_native_read, complete_native_read,
     native_io_attempted, native_io_failure, native_io_outcome, native_read_bytes,
     require_complete_send,
 };
+pub(crate) use native_io::{complete_native_io, native_send_incomplete};
 
 #[path = "feature_batch.rs"]
 mod feature_batch;
@@ -22,13 +22,15 @@ pub use feature_batch::{
 
 #[path = "exchange_lease.rs"]
 mod exchange_lease;
-pub(crate) use exchange_lease::finalization_failure;
 pub use exchange_lease::{
     ExchangeFinalizationFailure, ExchangeLease, ExchangeOptions, ExchangeTiming,
     ExchangeValidation, Protocol25Topology, SourceCommandScope, checked_exchange,
     checked_exchange_observing_send, checked_exchange_owned, exchange_finalization_failed,
     exchange_release_completed, finish_exchange, reject_exchange_release,
     validate_exchange_release,
+};
+pub(crate) use exchange_lease::{
+    ExchangeInterruption, exchange_interrupted, finalization_failure, interrupt_exchange,
 };
 
 /// Descriptor-observed byte lengths, including the API's Report ID byte.

@@ -720,6 +720,14 @@ fn exchange_observing(
     validate: &impl Fn() -> anyhow::Result<()>,
     acknowledged: &mut dyn FnMut(&Acknowledgement),
 ) -> anyhow::Result<Acknowledgement> {
+    let validate = &|| {
+        validate().map_err(|error| {
+            crate::backend::interrupt_exchange(
+                error,
+                crate::backend::ExchangeInterruption::Validation,
+            )
+        })
+    };
     let (transport, transaction) = cap.transport().for_exchange(device, transaction)?;
     ensure!(
         transaction & 31 < transport.transaction_modulus
@@ -749,9 +757,16 @@ fn exchange_observing(
             let mut last = "No DPI response".to_owned();
             for out_attempt in 0..cap.max_retry_out {
                 validate()?;
-                let sent = device.send_feature_at_collection_max(&outgoing);
-                validate()?;
-                if let Err(error) = sent {
+                let sent = device.send_feature_at_collection_max_counted(&outgoing);
+                if let Err(validation) = validate() {
+                    return Err(crate::backend::complete_native_io(sent, validation));
+                }
+                if let Err(error) = sent
+                    .and_then(|count| crate::backend::require_complete_send(count, outgoing.len()))
+                {
+                    if crate::backend::exchange_interrupted(&error) {
+                        return Err(error);
+                    }
                     last = format!("{error:#}");
                     continue;
                 }
@@ -766,10 +781,34 @@ fn exchange_observing(
                     // retained the explicitly bound master) before framing this call.
                     incoming[0] = cap.get_report_id();
                     let received = device.get_feature_at_collection_max(&mut incoming);
-                    validate()?;
+                    let received = match validate() {
+                        Ok(()) => received,
+                        Err(validation) => Err(crate::backend::complete_native_read(
+                            received, &incoming, validation,
+                        )),
+                    };
                     let received = match received {
                         Ok(value) => value,
                         Err(error) => {
+                            if crate::backend::exchange_interrupted(&error) {
+                                let error = crate::feature_exchange::retain_failed_feature_reply(
+                                    error,
+                                    command,
+                                    transaction,
+                                );
+                                if let Some(data) =
+                                    crate::feature_exchange::acknowledged_error(&error)
+                                {
+                                    acknowledged(&Acknowledgement {
+                                        command,
+                                        transaction,
+                                        profile: None,
+                                        response_bytes: data.len(),
+                                        data: data.to_vec(),
+                                    });
+                                }
+                                return Err(error);
+                            }
                             last = format!("{error:#}");
                             break;
                         }
@@ -1161,6 +1200,14 @@ fn execute_with_capability(
     mut next: impl FnMut() -> anyhow::Result<u8>,
     validate: impl Fn() -> anyhow::Result<()>,
 ) -> anyhow::Result<DpiReport> {
+    let validate = || {
+        validate().map_err(|error| {
+            crate::backend::interrupt_exchange(
+                error,
+                crate::backend::ExchangeInterruption::Validation,
+            )
+        })
+    };
     let product_id = cap.product_id;
     if let Some(change) = change {
         validate_change_for(product_id, change)?;
@@ -1233,7 +1280,7 @@ fn execute_with_capability(
                 Ok(())
             })();
             if let Err(error) = mode {
-                if crate::backend::exchange_finalization_failed(&error) {
+                if crate::backend::exchange_interrupted(&error) {
                     return Err(error);
                 }
                 report.initialization_mode_error = Some(format!("{error:#}"));
@@ -1374,7 +1421,7 @@ fn execute_with_capability(
                 Ok(())
             })();
             if let Err(error) = stage_result {
-                if crate::backend::exchange_finalization_failed(&error) {
+                if crate::backend::exchange_interrupted(&error) {
                     return Err(error);
                 }
                 if change.is_none() {
@@ -1425,7 +1472,7 @@ fn execute_with_capability(
                 Ok(())
             })();
             if let Err(error) = active_result {
-                if crate::backend::exchange_finalization_failed(&error) {
+                if crate::backend::exchange_interrupted(&error) {
                     return Err(error);
                 }
                 if change.is_none() {

@@ -8,8 +8,12 @@ use razer_ipc::macro_recording::{RestoreReceipt, SuspensionReceipt};
 use razer_ipc::mapping_control::{Registry, Suppression, Suspension};
 use razer_model::macro_library::{
     ActionItem, RecordingGeometry,
-    recording::{Decoder, Options, StopCause},
+    recording::{Callback, Capture, Decoder, Options, StopCause},
 };
+
+mod events;
+mod postprocessing;
+pub use postprocessing::{CommitRequest, Completion, PostProcessingRequest};
 use serde_json::Value;
 use std::{
     sync::{
@@ -24,6 +28,7 @@ pub enum Command {
     Stop,
     StopShortcut,
     Cancel,
+    PreviewOptions(Options),
 }
 #[derive(Clone, Copy)]
 pub enum StorageChange {
@@ -40,7 +45,11 @@ pub enum Update {
         first_row: usize,
         rows: Vec<ActionItem>,
     },
-    Finished(Result<Option<Vec<ActionItem>>, String>),
+    PreviewFailed(String),
+    ObservationFailed(String),
+    PostProcessing(PostProcessingRequest),
+    Commit(CommitRequest),
+    Finished(Result<Completion, String>),
 }
 pub struct Session {
     commands: mpsc::Sender<Command>,
@@ -79,13 +88,31 @@ fn spawn_with<T: Transport + 'static>(
     options: Options,
     factory: impl FnOnce() -> anyhow::Result<T> + Send + 'static,
 ) -> Result<(Session, async_channel::Receiver<Update>), String> {
-    spawn_with_registry(options, factory, Registry::default())
+    spawn_with_geometry(options, factory, Registry::default(), || {
+        Ok(razer_platform::macro_geometry::Snapshot {
+            monitors: serde_json::json!([]),
+            screen: serde_json::json!({}),
+        })
+    })
 }
 
 pub(super) fn spawn_with_registry<T: Transport + 'static>(
     options: Options,
     factory: impl FnOnce() -> anyhow::Result<T> + Send + 'static,
     registry: Registry,
+) -> Result<(Session, async_channel::Receiver<Update>), String> {
+    spawn_with_geometry(options, factory, registry, || {
+        razer_platform::macro_geometry::snapshot().map_err(|error| format!("{error:#}"))
+    })
+}
+
+pub(super) fn spawn_with_geometry<T: Transport + 'static>(
+    options: Options,
+    factory: impl FnOnce() -> anyhow::Result<T> + Send + 'static,
+    registry: Registry,
+    mut geometry: impl FnMut() -> Result<razer_platform::macro_geometry::Snapshot, String>
+    + Send
+    + 'static,
 ) -> Result<(Session, async_channel::Receiver<Update>), String> {
     let (commands, input) = mpsc::channel();
     let (output, updates) = async_channel::unbounded();
@@ -102,7 +129,7 @@ pub(super) fn spawn_with_registry<T: Transport + 'static>(
                 Ok(guard) => guard,
                 Err(error) => {
                     let result = if cancellation.load(Ordering::Acquire) {
-                        Ok(None)
+                        Ok(Completion::Cancelled)
                     } else {
                         Err(format!("{error:#}"))
                     };
@@ -111,7 +138,7 @@ pub(super) fn spawn_with_registry<T: Transport + 'static>(
                 }
             };
             if cancellation.load(Ordering::Acquire) {
-                let _ = output.send_blocking(Update::Finished(Ok(None)));
+                let _ = output.send_blocking(Update::Finished(Ok(Completion::Cancelled)));
                 return;
             }
             let result = guarded(factory)
@@ -127,6 +154,7 @@ pub(super) fn spawn_with_registry<T: Transport + 'static>(
                             &registry,
                             &mut suppression,
                             &cancellation,
+                            &mut geometry,
                         )
                         .map_err(anyhow::Error::msg)
                     })
@@ -156,7 +184,9 @@ pub(super) fn spawn_with_registry<T: Transport + 'static>(
                     }
                 });
             let result = match result {
-                Ok(_) if cancellation.load(Ordering::Acquire) => Ok(None),
+                Ok(Completion::Recorded { count }) if cancellation.load(Ordering::Acquire) => {
+                    Ok(Completion::CancelledAfterCommit { count })
+                }
                 result => result,
             };
             let _ = output.send_blocking(Update::Finished(result));
@@ -193,45 +223,45 @@ fn record(
     options: &Options,
     registry: &Registry,
     suppression: &mut Option<Suspension>,
-    cancellation: &AtomicBool,
-) -> Result<Option<Vec<ActionItem>>, String> {
+    cancellation: &Arc<AtomicBool>,
+    geometry: &mut impl FnMut() -> Result<razer_platform::macro_geometry::Snapshot, String>,
+) -> Result<Completion, String> {
     let mut stop_cause = StopCause::Button;
+    let mut preview = Decoder::for_preview(options);
     let mut stop_requested = match input.try_recv() {
-        Ok(Command::Cancel) | Err(mpsc::TryRecvError::Disconnected) => return Ok(None),
+        Ok(Command::Cancel) | Err(mpsc::TryRecvError::Disconnected) => {
+            return Ok(Completion::Cancelled);
+        }
         Ok(Command::Stop) => true,
         Ok(Command::StopShortcut) => {
             stop_cause = StopCause::Shortcut;
             true
         }
         Err(mpsc::TryRecvError::Empty) => false,
+        Ok(Command::PreviewOptions(options)) => {
+            preview.update_preview_options(&options);
+            false
+        }
     };
-    let before = (options.movement_mode != 0)
-        .then(razer_platform::macro_geometry::snapshot)
-        .transpose()
-        .map_err(|error| format!("Monitor observation before recording failed: {error:#}"))?;
     accepted(query(client, ServiceRequest::StartMacroRecording)?)?;
     let mut deadline = Some(Instant::now() + Duration::from_secs(12));
     let mut started = false;
     let mut stopping = false;
     let mut cancelled = false;
-    let mut decoder = Decoder::new(options);
-    let mut preview = Decoder::for_preview(options);
-    if let Some(before) = &before {
-        let geometry = RecordingGeometry {
-            monitors_before: before.monitors.clone(),
-            monitors_after: before.monitors.clone(),
-            screen_before: before.screen.clone(),
-            screen_after: before.screen.clone(),
-        };
-        decoder.set_geometry(geometry.clone());
-        preview.set_geometry(geometry);
-    }
+    let mut capture = Capture::default();
+    let mut before = None;
     let mut preview_at = Instant::now();
     let mut preview_dirty = false;
     let mut item_count = 0usize;
     let mut bytes = 0usize;
     loop {
-        drain_commands(input, &mut stop_requested, &mut stop_cause, &mut cancelled);
+        drain_commands(
+            input,
+            &mut stop_requested,
+            &mut stop_cause,
+            &mut cancelled,
+            &mut preview,
+        );
         if started && stop_requested && !stopping {
             // stoppingRecorder invokes removeWindowStorageItem before dr();
             // it does not wait for the host-storage operation's Promise.
@@ -240,28 +270,31 @@ fn record(
             stopping = true;
             deadline = Some(Instant::now() + Duration::from_secs(12));
         }
-        let batch = query(client, ServiceRequest::MacroRecordingEvents)?;
-        if batch["overflow"].as_bool() != Some(false) {
-            return Err("原生录制队列溢出，未提交不完整录制".into());
+        let updates = events::parse(query(client, ServiceRequest::MacroRecordingEvents)?)?;
+        if let Some(error) = updates.iter().find_map(|event| match event {
+            events::Event::Failed(error) => Some(error),
+            _ => None,
+        }) {
+            return Err(error.clone());
         }
-        let updates = batch["events"]
-            .as_array()
-            .ok_or("原生录制事件响应格式错误")?;
-        if let Some(event) = updates.iter().find(|event| event["kind"] == "error") {
-            return Err(event["error"].as_str().unwrap_or("原生录制回调错误").into());
-        }
-        let already_stopped = updates
-            .iter()
-            .any(|event| event["kind"] == "stopped" && event["mode"] == "kSoftware");
+        let already_stopped = updates.iter().any(|event| {
+            matches!(
+                event,
+                events::Event::Stopped {
+                    mode: razer_platform::macro_recorder::Mode::Software
+                }
+            )
+        });
+        let update_count = updates.len();
         for event in updates {
-            match event["kind"].as_str() {
-                Some("started") => {
-                    if started || event["mode"] != "kSoftware" {
+            match event {
+                events::Event::Started { mode, callback } => {
+                    if started || mode != razer_platform::macro_recorder::Mode::Software {
                         return Err("收到不匹配的录制 started 事件".into());
                     }
                     started = true;
-                    decoder.push(event)?;
-                    preview.push(event)?;
+                    preview.push_callback(&callback)?;
+                    capture.push(callback);
                     // disablingMapping starts only after native RECORDING.
                     // A button press / startingRecorder alone holds no lock.
                     let _ = output
@@ -280,22 +313,39 @@ fn record(
                             return Err("录制映射暂停未被服务确认。".into());
                         }
                     }
+                    let observed = geometry().map_err(|error| {
+                        format!("Monitor observation before recording failed: {error}")
+                    });
+                    match &observed {
+                        Ok(observed) => preview.set_geometry(RecordingGeometry {
+                            monitors_before: observed.monitors.clone(),
+                            monitors_after: observed.monitors.clone(),
+                            screen_before: observed.screen.clone(),
+                            screen_after: observed.screen.clone(),
+                        }),
+                        Err(error) => {
+                            let _ = output.send_blocking(Update::ObservationFailed(error.clone()));
+                        }
+                    }
+                    before = Some(observed);
                     deadline = None;
                     if !already_stopped {
                         let _ = output.send_blocking(Update::Recording);
                     }
                 }
-                Some("item") => {
-                    bytes = bytes.saturating_add(event.to_string().len());
+                events::Event::Items {
+                    bytes: event_bytes,
+                    callback,
+                } => {
+                    bytes = bytes.saturating_add(event_bytes);
                     if bytes > 32 * 1024 * 1024 {
                         return Err("录制原始事件超过 32 MiB，未提交不完整录制".into());
                     }
                     if !started {
                         return Err("原生录制在 started 前返回输入事件".into());
                     }
-                    let items = event["event"].as_array().ok_or("原生录制内容不是数组")?;
                     item_count = item_count
-                        .checked_add(items.len())
+                        .checked_add(callback.input_count())
                         .ok_or("录制事件数量溢出")?;
                     if item_count > 100_000 {
                         return Err("录制超过 100000 个输入事件，未提交不完整录制".into());
@@ -303,62 +353,71 @@ fn record(
                     // Current ON_MACRO_ITEM's first transition is unconditional
                     // recordingHandler. Its later ESC abort guard is unreachable;
                     // preserve the key instead of inventing an abort transition.
-                    decoder.push(event)?;
-                    preview.push(event)?;
+                    if let Err(error) = preview.push_callback(&callback) {
+                        let _ = output.send_blocking(Update::PreviewFailed(error));
+                    }
+                    capture.push(callback);
                     preview_dirty = true;
                 }
-                Some("stopped") => {
-                    if !started || event["mode"] != "kSoftware" {
+                events::Event::Stopped { mode } => {
+                    if !started || mode != razer_platform::macro_recorder::Mode::Software {
                         return Err("收到不匹配的录制 stopped 事件".into());
                     }
                     // Cancel may have arrived while this blocking event
                     // request was in flight, including behind a queued Stop.
-                    drain_commands(input, &mut stop_requested, &mut stop_cause, &mut cancelled);
+                    drain_commands(
+                        input,
+                        &mut stop_requested,
+                        &mut stop_cause,
+                        &mut cancelled,
+                        &mut preview,
+                    );
                     let result = if cancelled {
-                        Ok(None)
+                        Ok(Completion::Cancelled)
                     } else {
-                        if let Some(before) = &before {
-                            let after =
-                                razer_platform::macro_geometry::snapshot().map_err(|error| {
-                                    format!("Monitor observation after recording failed: {error:#}")
-                                })?;
-                            // Nr compares the returned root fields as written;
-                            // retain the complete native MonitorRect envelope.
-                            if ["top", "left", "width", "height"]
-                                .iter()
-                                .any(|key| before.screen.get(key) != after.screen.get(key))
-                            {
-                                return Err("Monitor setting has been changed".into());
-                            }
-                            decoder.set_geometry(RecordingGeometry {
-                                monitors_before: before.monitors.clone(),
-                                monitors_after: after.monitors,
-                                screen_before: before.screen.clone(),
-                                screen_after: after.screen,
-                            });
+                        let before = before.take().ok_or("录制前屏幕状态未观测")?;
+                        let after = geometry().map_err(|error| {
+                            format!("Monitor observation after recording failed: {error}")
+                        });
+                        if let Err(error) = &after {
+                            let _ = output.send_blocking(Update::ObservationFailed(error.clone()));
                         }
-                        decoder
-                            .finish(stop_requested.then_some(stop_cause))
-                            .map(Some)
+                        postprocessing::process(
+                            capture,
+                            postprocessing::Geometry { before, after },
+                            options,
+                            stop_requested.then_some(stop_cause),
+                            input,
+                            output,
+                            cancellation,
+                        )
                     };
-                    let restored: RestoreReceipt =
-                        serde_json::from_value(query(client, ServiceRequest::ResumeMacroMappings)?)
-                            .map_err(|error| format!("录制映射恢复响应格式错误：{error}"))?;
-                    if let Some(suppression) = suppression.as_mut() {
-                        suppression.release()?;
-                    }
-                    if restored.global_shortcuts().result() {
-                        let _ = output.send_blocking(Update::GlobalShortcutsRestored);
-                    }
-                    return result;
+                    let restoration = (|| {
+                        let restored: RestoreReceipt = serde_json::from_value(query(
+                            client,
+                            ServiceRequest::ResumeMacroMappings,
+                        )?)
+                        .map_err(|error| format!("录制映射恢复响应格式错误：{error}"))?;
+                        if let Some(suppression) = suppression.as_mut() {
+                            suppression.release()?;
+                        }
+                        if restored.global_shortcuts().result() {
+                            let _ = output.send_blocking(Update::GlobalShortcutsRestored);
+                        }
+                        Ok::<_, String>(())
+                    })();
+                    return match (result, restoration) {
+                        (Ok(result), Ok(())) => Ok(result),
+                        (Err(error), Ok(())) | (Ok(_), Err(error)) => Err(error),
+                        (Err(error), Err(restore)) => {
+                            Err(format!("{error}；录制恢复失败：{restore}"))
+                        }
+                    };
                 }
-                Some("error") => {
-                    return Err(event["error"].as_str().unwrap_or("原生录制回调错误").into());
-                }
-                _ => return Err("原生录制返回未知事件".into()),
+                events::Event::Failed(error) => return Err(error),
             }
         }
-        if !updates.is_empty() {
+        if update_count != 0 {
             let _ = output.send_blocking(Update::Progress(item_count));
         }
         if preview_dirty && preview_at.elapsed() >= Duration::from_millis(50) && preview.len() > 0 {
@@ -377,7 +436,7 @@ fn record(
             }
             .into());
         }
-        if updates.len() < 512 {
+        if update_count < 512 {
             match input.recv_timeout(Duration::from_millis(25)) {
                 Ok(Command::Stop) => stop_requested = true,
                 Ok(Command::StopShortcut) => {
@@ -388,6 +447,7 @@ fn record(
                     stop_requested = true;
                     cancelled = true;
                 }
+                Ok(Command::PreviewOptions(options)) => preview.update_preview_options(&options),
                 Err(mpsc::RecvTimeoutError::Timeout) => {}
             }
         }
@@ -402,6 +462,7 @@ fn drain_commands(
     stop_requested: &mut bool,
     stop_cause: &mut StopCause,
     cancelled: &mut bool,
+    preview: &mut Decoder,
 ) {
     loop {
         match input.try_recv() {
@@ -414,6 +475,7 @@ fn drain_commands(
                 *stop_requested = true;
                 *cancelled = true;
             }
+            Ok(Command::PreviewOptions(options)) => preview.update_preview_options(&options),
             Err(mpsc::TryRecvError::Disconnected) => {
                 *stop_requested = true;
                 *cancelled = true;

@@ -317,7 +317,7 @@ impl<'a, T: FeatureTransport + ?Sized, W: FnMut(Duration) -> anyhow::Result<()>>
         let region = match self.exchange([80, 15, 128], &[]) {
             Ok(regions) => regions.first().copied().unwrap_or(0),
             Err(error) => {
-                if crate::backend::exchange_finalization_failed(&error) {
+                if controller_feature::terminal_io_failure(&error) {
                     return Err(error);
                 }
                 // getBrightness's wrapper catches a failed region query and
@@ -373,7 +373,7 @@ impl<'a, T: FeatureTransport + ?Sized, W: FnMut(Duration) -> anyhow::Result<()>>
                     })();
                     match attempt {
                         Ok(()) => break,
-                        Err(error) if crate::backend::exchange_finalization_failed(&error) => {
+                        Err(error) if controller_feature::terminal_io_failure(&error) => {
                             return Err(error);
                         }
                         Err(error) => initialized.failures.push(format!("{error:#}")),

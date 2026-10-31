@@ -31,7 +31,9 @@ pub(crate) fn with_exchange<T: FeatureTransport + ?Sized, R>(
     options: ExchangeOptions,
     operation: impl FnOnce(&dyn FeatureTransport, &dyn ExchangeLease) -> anyhow::Result<R>,
 ) -> anyhow::Result<R> {
-    let lease = transport.begin_exchange(options)?;
+    let lease = transport.begin_exchange(options).map_err(|error| {
+        crate::backend::interrupt_exchange(error, crate::backend::ExchangeInterruption::Admission)
+    })?;
     let result = operation(lease.transport(), lease.as_ref());
     crate::backend::finish_exchange(lease, result)
 }
@@ -61,8 +63,17 @@ pub(crate) fn with_validated_exchange<T: FeatureTransport + ?Sized, R>(
     validate: &dyn Fn() -> anyhow::Result<()>,
     operation: impl FnOnce(&dyn FeatureTransport, &dyn ExchangeLease) -> anyhow::Result<R>,
 ) -> anyhow::Result<R> {
-    validate()?;
-    let lease = transport.begin_exchange_validated(options, std::rc::Rc::new(validate))?;
+    validate().map_err(|error| {
+        crate::backend::interrupt_exchange(error, crate::backend::ExchangeInterruption::Validation)
+    })?;
+    let lease = transport
+        .begin_exchange_validated(options, std::rc::Rc::new(validate))
+        .map_err(|error| {
+            crate::backend::interrupt_exchange(
+                error,
+                crate::backend::ExchangeInterruption::Admission,
+            )
+        })?;
     let result = operation(lease.transport(), lease.as_ref());
     finish_if_current(lease, result, validate())
 }
@@ -111,7 +122,7 @@ impl std::fmt::Display for CompletedFeatureExchange {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             formatter,
-            "Feature response decoded for command {:?}, transaction {}; exchange finalization failed",
+            "Feature response decoded for command {:?}, transaction {}; exchange did not complete",
             self.command, self.transaction
         )
     }
@@ -143,8 +154,17 @@ pub(crate) fn with_validated_feature_reply<T: FeatureTransport + ?Sized>(
     validate: &dyn Fn() -> anyhow::Result<()>,
     operation: impl FnOnce(&dyn FeatureTransport, &dyn ExchangeLease) -> anyhow::Result<Vec<u8>>,
 ) -> anyhow::Result<Vec<u8>> {
-    validate()?;
-    let lease = transport.begin_exchange_validated(options, std::rc::Rc::new(validate))?;
+    validate().map_err(|error| {
+        crate::backend::interrupt_exchange(error, crate::backend::ExchangeInterruption::Validation)
+    })?;
+    let lease = transport
+        .begin_exchange_validated(options, std::rc::Rc::new(validate))
+        .map_err(|error| {
+            crate::backend::interrupt_exchange(
+                error,
+                crate::backend::ExchangeInterruption::Admission,
+            )
+        })?;
     let result = operation(lease.transport(), lease.as_ref());
     let current = validate();
     finish_feature_reply(lease, result, current, command, transaction)
@@ -157,7 +177,9 @@ pub(crate) fn with_feature_reply<T: FeatureTransport + ?Sized>(
     transaction: u8,
     operation: impl FnOnce(&dyn FeatureTransport, &dyn ExchangeLease) -> anyhow::Result<Vec<u8>>,
 ) -> anyhow::Result<Vec<u8>> {
-    let lease = transport.begin_exchange(options)?;
+    let lease = transport.begin_exchange(options).map_err(|error| {
+        crate::backend::interrupt_exchange(error, crate::backend::ExchangeInterruption::Admission)
+    })?;
     let result = operation(lease.transport(), lease.as_ref());
     finish_feature_reply(lease, result, Ok(()), command, transaction)
 }
@@ -223,7 +245,7 @@ fn decode_feature_reply(
     ))
 }
 
-fn retain_failed_feature_reply(
+pub(crate) fn retain_failed_feature_reply(
     error: anyhow::Error,
     command: [u8; 3],
     transaction: u8,
@@ -325,6 +347,15 @@ fn exchange_inner(
     validate: &impl Fn() -> anyhow::Result<()>,
     observe_send: &mut impl FnMut(),
 ) -> anyhow::Result<Vec<u8>> {
+    let checked_validate = || {
+        validate().map_err(|error| {
+            crate::backend::interrupt_exchange(
+                error,
+                crate::backend::ExchangeInterruption::Validation,
+            )
+        })
+    };
+    let validate = &checked_validate;
     let (bound, transaction) = cap.for_exchange(device, transaction)?;
     let cap = bound.as_ref();
     let get_report_id = cap.get_report_id_for_transport(device)?;
@@ -377,7 +408,7 @@ fn exchange_inner(
                 {
                     Ok(()) => {}
                     Err(error) => {
-                        if crate::backend::exchange_finalization_failed(&error) {
+                        if crate::backend::exchange_interrupted(&error) {
                             return Err(error);
                         }
                         last_error = error;
@@ -403,9 +434,7 @@ fn exchange_inner(
                     let count = match received {
                         Ok(count) => count,
                         Err(error) => {
-                            if crate::backend::exchange_finalization_failed(&error)
-                                || crate::backend::native_read_bytes(&error).is_some()
-                            {
+                            if crate::backend::exchange_interrupted(&error) {
                                 return Err(retain_failed_feature_reply(
                                     error,
                                     command,

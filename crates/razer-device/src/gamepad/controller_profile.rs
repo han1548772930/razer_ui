@@ -337,6 +337,9 @@ pub fn read_mappings(
             .and_then(|payload| ButtonAssignment::parse(profile_slot, *button_id, &payload))
         {
             Ok(assignment) => AssignmentRead::Observed { assignment },
+            Err(error) if crate::controller_feature::terminal_io_failure(&error) => {
+                return Err(error);
+            }
             Err(error) => AssignmentRead::Failed {
                 error: format!("{error:#}"),
             },

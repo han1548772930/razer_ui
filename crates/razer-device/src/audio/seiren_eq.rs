@@ -463,7 +463,10 @@ impl<N: FnMut() -> anyhow::Result<u8>, V: Fn() -> anyhow::Result<()>> Executor<'
             &mut || sent = true,
         );
         let response = feature_exchange::acknowledged_reply(&reply).map(<[u8]>::to_vec);
-        let finalization_failed = reply.is_err() && response.is_some();
+        let interrupted = reply
+            .as_ref()
+            .err()
+            .is_some_and(crate::backend::exchange_interrupted);
         let reply = reply.and_then(|data| {
             ensure!(
                 data.len() >= min,
@@ -473,14 +476,22 @@ impl<N: FnMut() -> anyhow::Result<u8>, V: Fn() -> anyhow::Result<()>> Executor<'
         });
         // A cancellation/deadline/physical change always stops the task, even
         // when the source feature ignores a particular command's return value.
-        let current = (self.validate)();
-        let halt = finalization_failed || current.is_err();
+        let current = (self.validate)().map_err(|error| {
+            crate::backend::interrupt_exchange(
+                error,
+                crate::backend::ExchangeInterruption::Validation,
+            )
+        });
+        let halt = interrupted || current.is_err();
         let reply = match (reply, current) {
             (reply, Ok(())) => reply,
             (Ok(_), Err(error)) => Err(error),
-            (Err(error), Err(validation)) => Err(error.context(format!(
-                "Seiren EQ owner validation also failed: {validation:#}"
-            ))),
+            (Err(error), Err(validation)) => Err(crate::backend::interrupt_exchange(
+                error.context(format!(
+                    "Seiren EQ owner validation also failed: {validation:#}"
+                )),
+                crate::backend::ExchangeInterruption::Validation,
+            )),
         };
         self.report.stages.push(Stage {
             command,

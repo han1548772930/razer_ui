@@ -122,9 +122,18 @@ pub(crate) fn complete_native_io(
 ) -> anyhow::Error {
     match result {
         Ok(byte_count) => native_io_failure(NativeIoOutcome::Returned { byte_count }, validation),
-        Err(error) => error.context(format!(
-            "HID native I/O validation also failed: {validation:#}"
-        )),
+        Err(error) => {
+            let phase = validation
+                .downcast_ref::<super::ExchangeInterruption>()
+                .copied()
+                .unwrap_or(super::ExchangeInterruption::Validation);
+            super::interrupt_exchange(
+                error.context(format!(
+                    "HID native I/O validation also failed: {validation:#}"
+                )),
+                phase,
+            )
+        }
     }
 }
 
@@ -136,9 +145,31 @@ pub fn require_complete_send(count: usize, expected: usize) -> anyhow::Result<()
     } else {
         Err(native_io_failure(
             NativeIoOutcome::Returned { byte_count: count },
-            anyhow::anyhow!("HID send returned {count} bytes; expected {expected}"),
+            anyhow::Error::new(IncompleteSend { count, expected }),
         ))
     }
+}
+
+#[derive(Debug)]
+struct IncompleteSend {
+    count: usize,
+    expected: usize,
+}
+
+impl std::fmt::Display for IncompleteSend {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            formatter,
+            "HID send returned {} bytes; expected {}",
+            self.count, self.expected
+        )
+    }
+}
+
+impl std::error::Error for IncompleteSend {}
+
+pub(crate) fn native_send_incomplete(error: &anyhow::Error) -> bool {
+    error.downcast_ref::<IncompleteSend>().is_some()
 }
 
 #[cfg(test)]
@@ -180,6 +211,12 @@ mod tests {
                 native_io_outcome(&error),
                 Some(NativeIoOutcome::Returned { byte_count: count })
             );
+            assert!(!super::super::exchange_interrupted(&error));
+            let error = super::super::interrupt_exchange(
+                error,
+                super::super::ExchangeInterruption::Validation,
+            );
+            assert!(super::super::exchange_interrupted(&error));
         }
     }
 
@@ -242,6 +279,32 @@ mod tests {
             assert_eq!(native_io_outcome(&error), outcome);
             assert!(error.downcast_ref::<NativeCause>().is_some());
             assert!(format!("{error:#}").contains("identity changed"));
+            assert!(super::super::exchange_interrupted(&error));
+        }
+    }
+
+    #[test]
+    fn native_rejection_only_stops_a_chain_when_its_owner_was_interrupted() {
+        for outcome in [None, Some(NativeIoOutcome::Rejected)] {
+            let error = match outcome {
+                Some(outcome) => native_io_failure(outcome, NativeCause.into()),
+                None => NativeCause.into(),
+            };
+            assert!(!super::super::exchange_interrupted(&error));
+            let validation = super::super::interrupt_exchange(
+                anyhow::anyhow!("source wait canceled"),
+                super::super::ExchangeInterruption::Wait,
+            );
+            let error = complete_native_io(Err(error), validation);
+            assert!(super::super::exchange_interrupted(&error));
+            assert!(matches!(
+                error.downcast_ref::<super::super::ExchangeInterruption>(),
+                Some(super::super::ExchangeInterruption::Wait)
+            ));
+            assert_eq!(native_io_outcome(&error), outcome);
+            assert!(error.downcast_ref::<NativeCause>().is_some());
+            assert!(format!("{error:#}").contains("source wait canceled"));
+            assert!(!super::super::exchange_finalization_failed(&error));
         }
     }
 

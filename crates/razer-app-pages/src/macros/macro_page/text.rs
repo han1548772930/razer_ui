@@ -185,6 +185,12 @@ impl MacroPage {
         let trigger = row.borrow().trigger.clone();
         let outside = row.clone();
         let opened = self.editing_action == Some(index);
+        let label = if opened {
+            let value = self.text_editor.read(cx).value().to_string();
+            if value.is_empty() { tr("TEXT_TEXT_FUNCTION_PLACEHOLDER") } else { value }
+        } else {
+            label
+        };
         let mut root = div()
             .id(("macro-text-root", index))
             .on_prepaint(move |bounds, _, _| trigger.set(bounds))
@@ -587,10 +593,12 @@ impl MacroPage {
             return;
         };
         let value = self.text_editor.read(cx).value().to_string();
-        if item.value != value {
-            self.undo.push(self.actions.clone());
+        if item.value != value || item.translation_key.is_some() {
+            self.checkpoint_actions();
             self.actions[index].value = value;
+            self.actions[index].translation_key = None;
             self.redo.clear();
+            self.rebuild_action_execution();
         }
         self.cancel_text_editor(window, cx);
     }

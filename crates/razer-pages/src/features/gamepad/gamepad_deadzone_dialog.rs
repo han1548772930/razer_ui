@@ -1,5 +1,5 @@
-//! Current 2636 warning: module 99661 and the mounted thumbstick callbacks.
-//! UI draft decisions only. Recalibrate requests navigation, never a device command.
+//! The current low-deadzone warning owns UI draft decisions. Recalibrate opens
+//! the source page or popup for the selected side.
 use super::*;
 use gpui_kit::base::motion::{self, Easing, Transition};
 use gpui_kit::base::{Button as BaseButton, Dialog};
@@ -32,7 +32,11 @@ impl GamepadProductWorkspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if let Some(previous) = self.deadzone.dismiss(rollback, &self.trigger_runtime.guard()) {
+        self.sync_deadzone_values();
+        if let Some(previous) = self
+            .deadzone
+            .dismiss(rollback, &self.trigger_runtime.guard())
+        {
             self.submit_thumbstick_value(previous.path(), json!(previous.value()), cx);
         }
         if let Some(state) = self.deadzone_dialog.take() {
@@ -219,10 +223,7 @@ impl GamepadProductWorkspace {
                             true,
                         )
                         .on_click(cx.listener(|this, _, window, cx| {
-                            let side = this
-                                .deadzone
-                                .warning_side()
-                                .map(deadzone_state::Side::part);
+                            let side = this.deadzone.warning_side().map(deadzone_state::Side::part);
                             this.dismiss_deadzone(false, window, cx);
                             if matches!(this.spec.product_id, 2676 | 2684) {
                                 if let Some(side) = side {

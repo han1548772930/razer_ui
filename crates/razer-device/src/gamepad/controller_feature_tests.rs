@@ -1,7 +1,7 @@
 use super::*;
 use crate::backend::{
-    ExchangeLease, ExchangeOptions, ExchangeTiming, Protocol25Topology, SourceCommandScope,
-    native_io_failure,
+    ExchangeLease, ExchangeOptions, ExchangeTiming, NativeIoOutcome, Protocol25Topology,
+    SourceCommandScope, exchange_finalization_failed, native_io_failure, native_io_outcome,
 };
 use std::{
     cell::{Cell, RefCell},
@@ -532,10 +532,11 @@ fn source_wait_cancellation_before_io_and_during_busy_prevents_later_packets() {
         Ok(())
     })
     .unwrap_err();
-    assert!(
-        error
-            .to_string()
-            .contains("canceled before the next busy read")
+    assert!(format!("{error:#}").contains("canceled before the next busy read"));
+    assert_eq!(
+        error.downcast_ref::<crate::backend::ExchangeInterruption>(),
+        Some(&crate::backend::ExchangeInterruption::Wait)
     );
+    assert!(!exchange_finalization_failed(&error));
     transport.finish(&[begin(), Event::Send, Event::Get, Event::Finish]);
 }

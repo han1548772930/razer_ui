@@ -13,6 +13,9 @@ impl MacroPage {
     ) -> AnyElement {
         let page = cx.entity_id();
         let action = &baseline[index];
+        let last_in_phase = self.current_macro_type() == MacroType::Phased
+            && action.phase.is_some()
+            && baseline.iter().skip(index + 1).all(|next| next.phase != action.phase);
 
         let selected = self.selected_actions.contains(&index);
         let paired = self.action_pair_highlighted(index);
@@ -213,7 +216,7 @@ impl MacroPage {
             }))
             .on_click(cx.listener(move |this, _, _, cx| this.toggle_action_selection(index, cx)))
             .child(content)
-            .child(self.row_controls(index, hovered, disabled, window, cx))
+            .child(self.row_controls(index, hovered, disabled, last_in_phase, window, cx))
             .into_any_element()
     }
 }

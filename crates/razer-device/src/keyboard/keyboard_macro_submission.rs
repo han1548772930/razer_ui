@@ -329,7 +329,7 @@ pub(super) fn synchronize(
                     }
                     Err(error) => {
                         if error.phase == MacroFailurePhase::Cancelled
-                            || crate::backend::exchange_finalization_failed(error.error())
+                            || crate::backend::exchange_interrupted(error.error())
                         {
                             return Err(error.into());
                         }

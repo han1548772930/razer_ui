@@ -7,6 +7,7 @@ impl MacroPage {
         index: usize,
         hovered: bool,
         disabled: bool,
+        tooltip_above: bool,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> AnyElement {
@@ -30,6 +31,7 @@ impl MacroPage {
                             "duplicate",
                             "TEXT_TOOLTIP_DUPLICATE",
                             disabled,
+                            tooltip_above,
                             window,
                             cx,
                         )
@@ -47,6 +49,7 @@ impl MacroPage {
                             "delete",
                             "TEXT_TOOLTIP_DELETE",
                             disabled,
+                            tooltip_above,
                             window,
                             cx,
                         )
@@ -77,6 +80,7 @@ fn row_button(
     icon: &'static str,
     key: &'static str,
     disabled: bool,
+    tooltip_above: bool,
     window: &mut Window,
     cx: &mut App,
 ) -> BaseButton {
@@ -116,7 +120,8 @@ fn row_button(
                 div()
                     .absolute()
                     .right_0()
-                    .top(css(35.))
+                    .when(tooltip_above, |tip| tip.bottom(css(40.)))
+                    .when(!tooltip_above, |tip| tip.top(css(35.)))
                     .w_auto()
                     .h_auto()
                     .px(css(10.))

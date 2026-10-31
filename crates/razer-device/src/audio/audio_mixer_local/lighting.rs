@@ -56,6 +56,14 @@ pub fn submit_sample(
     device_container_id: String,
     validate: &dyn Fn() -> anyhow::Result<()>,
 ) -> anyhow::Result<Sample> {
+    let validate = &|| {
+        validate().map_err(|error| {
+            crate::backend::interrupt_exchange(
+                error,
+                crate::backend::ExchangeInterruption::Validation,
+            )
+        })
+    };
     ensure!(
         sources.iter().all(|source| *source <= 6),
         "Mixer fader input source outside enum"
@@ -87,10 +95,17 @@ pub fn submit_sample(
     let result = (|| {
         validate()?;
         let lease = crate::backend::checked_exchange(
-            device.begin_exchange_validated(
-                crate::backend::ExchangeOptions::plain(),
-                std::rc::Rc::new(validate),
-            )?,
+            device
+                .begin_exchange_validated(
+                    crate::backend::ExchangeOptions::plain(),
+                    std::rc::Rc::new(validate),
+                )
+                .map_err(|error| {
+                    crate::backend::interrupt_exchange(
+                        error,
+                        crate::backend::ExchangeInterruption::Admission,
+                    )
+                })?,
             validate,
             validate,
             None,
@@ -113,7 +128,7 @@ pub fn submit_sample(
                         return Ok(());
                     }
                     Err(error) => {
-                        if crate::backend::exchange_finalization_failed(&error) {
+                        if crate::backend::exchange_interrupted(&error) {
                             return Err(error);
                         }
                         last = Some(error);

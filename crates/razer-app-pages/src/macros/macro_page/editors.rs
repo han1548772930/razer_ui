@@ -186,7 +186,9 @@ impl MacroPage {
             self.action_edit_tasks.retain(|task| !task.is_ready());
         }
         let value = committed_value(kind, &raw);
-        let draft = if kind == ActionKind::Delay && raw.ends_with('.') {
+        let draft = if kind == ActionKind::Delay
+            && (raw.ends_with('.') || raw.contains('.') && raw != value)
+        {
             raw
         } else {
             value.clone()
@@ -223,7 +225,7 @@ impl MacroPage {
                 {
                     return;
                 }
-                this.undo.push(this.actions.clone());
+                this.checkpoint_actions();
                 if kind == ActionKind::Loop && this.action_editor.read(cx).value().as_ref() != value
                 {
                     // yt's item effect consumes each submitted numeric count.
@@ -237,6 +239,7 @@ impl MacroPage {
                 }
                 this.sync_loop_value(index);
                 this.redo.clear();
+                this.rebuild_action_execution();
                 cx.notify();
             });
         });
@@ -298,7 +301,7 @@ impl MacroPage {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let step = if kind == ActionKind::Loop { 1.0 } else { 0.001 };
+        let step = if kind == ActionKind::Loop { 1.0 } else { 0.1 };
         let sign = if action == StepAction::Increment { 1.0 } else { -1.0 };
         let value = source_float(&self.action_editor.read(cx).value()).unwrap_or(0.);
         let next = if kind == ActionKind::Loop {

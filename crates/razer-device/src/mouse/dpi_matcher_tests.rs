@@ -160,7 +160,10 @@ fn dpi_matcher_nan_reference_tick_does_not_fabricate_stop_or_completion() {
         assert_eq!(session.state, State::Calibrating);
         assert!(session.new_dpi().is_none());
         assert!(session.complete_after_stop().is_err());
-        assert!(session.check_timeout(502));
+        assert!(matches!(
+            session.check_timeout(502),
+            Some(InputTimeout::Failed(_))
+        ));
         assert_eq!(session.state, State::Error);
         assert!(session.new_dpi().is_none());
         session.reset();
@@ -274,7 +277,7 @@ fn stopped_numeric_result(
     assert_eq!(session.state, State::Stopping);
     assert_eq!(session.response().phase(), Phase::Calibrating);
     assert!(session.new_dpi().is_none());
-    assert!(!session.check_timeout(10_000));
+    assert!(session.check_timeout(10_000).is_none());
     session.complete_after_stop().unwrap();
     assert_eq!(session.state, State::Completed);
     assert_eq!(session.response().phase(), Phase::Completed);
@@ -535,7 +538,10 @@ fn dpi_matcher_cancel_publishes_source_idle_before_clearing_movement() {
         assert!(session.source_container().is_empty());
         assert_eq!(session.source_product_id, None);
         assert!(session.new_dpi().is_none());
-        assert!(!session.check_timeout(10_000));
+        assert_eq!(
+            session.check_timeout(10_000),
+            Some(InputTimeout::ResetMovement)
+        );
         assert!(session.cancel_after_stop().is_none());
         session.begin(1600.).unwrap();
         session.acquired_lock().unwrap();
@@ -574,7 +580,10 @@ fn dpi_matcher_cancel_event_is_ignored_outside_the_source_calibrating_state() {
         session
             .ingest(batch("main", product_id, &[(1., 1.)]), true, 1)
             .unwrap();
-        assert!(session.check_timeout(501));
+        assert!(matches!(
+            session.check_timeout(501),
+            Some(InputTimeout::Failed(_))
+        ));
         assert!(session.cancel_after_stop().is_none());
         assert_eq!(session.state, State::Error);
         session.begin(100.).unwrap();
@@ -610,22 +619,33 @@ fn dpi_matcher_timeout_arms_each_stream_on_its_callback_after_both_streams_appea
     session
         .ingest(batch("main", 190, &[(1., 1.)]), true, 0)
         .unwrap();
-    assert!(!session.check_timeout(10_000));
+    assert!(session.check_timeout(10_000).is_none());
     session
         .ingest(batch("source", 123, &[]), false, 10_000)
         .unwrap();
-    assert!(!session.check_timeout(10_499));
+    assert!(session.check_timeout(10_499).is_none());
     session
         .ingest(batch("main", 190, &[]), true, 10_400)
         .unwrap();
-    assert!(session.check_timeout(10_500));
+    assert_eq!(
+        session.check_timeout(10_500),
+        Some(InputTimeout::Failed(Calibration::new(
+            Phase::Error,
+            0.,
+            800.,
+            0.
+        )))
+    );
     assert_eq!(
         session.response(),
         Calibration::new(Phase::Error, 0., 0., 0.)
     );
     assert!(session.new_dpi().is_none());
     session.reset();
-    assert!(!session.check_timeout(20_000));
+    assert_eq!(
+        session.check_timeout(20_000),
+        Some(InputTimeout::ResetMovement)
+    );
 }
 
 #[test]
@@ -667,12 +687,7 @@ fn dpi_matcher_all_mounted_products_wait_for_stop_before_publishing_the_result()
         assert_eq!(session.state, State::Stopping, "product {product_id}");
         assert_eq!(session.new_dpi(), None);
         assert_eq!(session.response().new_dpi(), 0.);
-        assert!(!session.check_timeout(50_000));
-        assert!(
-            session
-                .ingest(batch("late", 123, &[(40., 99999.)]), false, 4)
-                .is_err()
-        );
+        assert!(session.check_timeout(50_000).is_none());
         session.complete_after_stop().unwrap();
         assert_eq!(session.new_dpi(), Some(400.));
         assert!(session.complete_after_stop().is_err());
@@ -700,7 +715,10 @@ fn dpi_matcher_retains_container_partition_through_reset_and_timeout() {
                 session
                     .ingest(batch("different", 123, &[]), false, 2)
                     .unwrap();
-                assert!(session.check_timeout(502));
+                assert!(matches!(
+                    session.check_timeout(502),
+                    Some(InputTimeout::Failed(_))
+                ));
                 assert_eq!(session.state, State::Error);
             }
         }

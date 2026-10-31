@@ -20,6 +20,7 @@ import struct
 import subprocess
 import sys
 import tempfile
+import threading
 import tomllib
 import urllib.error
 import urllib.parse
@@ -6035,15 +6036,60 @@ def _frontend_revalidation_index(report, created_paths):
             "previous_entries_unchanged": preserved, "all_observed_originals_indexed": published}
 
 
-def revalidate_current_frontends(acquisition_names, *, owner_names=(), workers=6):
+def _current_frontend_selection():
+    """Resolve every retained official route without reading derived captures."""
+    import frontend
+    import host
+
+    directory = ROOT / ".analysis/inputs/frontend"
+    paths = sorted(directory.glob("*/acquisition.json"))
+    routes, artifacts, excluded, failures, selected = {}, {}, [], [], []
+    for path in paths:
+        name = relative(path)
+        raw = safe(path).read_bytes()
+        artifacts[name] = {"path": name, "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()}
+        try:
+            acquired = json.loads(raw)
+            entry = acquired.get("entry_url")
+            if entry is None:
+                excluded.append({"acquisition": artifacts[name], "reason": "no_official_deployment_route"})
+                continue
+            route = frontend.canonical_frontend_entry(entry)
+        except (ValueError, TypeError, AttributeError) as error:
+            failures.append({"kind": "current_source_selection_failed", "acquisition": name,
+                             "error": str(error)})
+            continue
+        routes.setdefault(route, []).append(path)
+    for route, candidates in sorted(routes.items()):
+        audit = host.HostLocalAudit()
+        try:
+            result = frontend.current_source_selection(route, audit, candidates=candidates, verify_capture=False)
+            selected.append({key: result[key] for key in (
+                "name", "canonical_entry_url", "acquisition", "candidate_decisions")})
+        except (ValueError, OSError, KeyError, TypeError) as error:
+            failures.append({"kind": "current_source_selection_failed", "route": route,
+                             "candidates": [relative(path) for path in candidates], "error": str(error)})
+    return {"kind": "all_retained_official_deployment_routes", "candidate_count": len(paths),
+            "route_count": len(routes), "selected": selected, "excluded": excluded, "failures": failures,
+            "candidate_artifacts": list(artifacts.values()), "capture_verification": "not_requested",
+            "source_semantics_complete": False}
+
+
+def revalidate_current_frontends(acquisition_names=(), *, owner_names=(), workers=6, all_current=False):
     import analysis
     # The lease includes rollback, so one observer cannot delete a blob reserved
     # by another revalidation between its byte publication and index append.
     with analysis.index_lock(ROOT / ".analysis/frontend-revalidation.lock"):
-        return _revalidate_current_frontends(acquisition_names, owner_names=owner_names, workers=workers)
+        if all_current and acquisition_names:
+            raise ValueError("Select all current routes or explicit acquisitions, not both")
+        selection = _current_frontend_selection() if all_current else None
+        if selection is not None:
+            acquisition_names = [row["acquisition"]["path"] for row in selection["selected"]]
+        return _revalidate_current_frontends(acquisition_names, owner_names=owner_names, workers=workers,
+                                            selection=selection)
 
 
-def _revalidate_current_frontends(acquisition_names, *, owner_names, workers):
+def _revalidate_current_frontends(acquisition_names, *, owner_names, workers, selection=None):
     """Revalidate retained current deployments without mutating acquisition inputs."""
     if not acquisition_names:
         raise ValueError("At least one retained frontend acquisition is required")
@@ -6064,6 +6110,9 @@ def _revalidate_current_frontends(acquisition_names, *, owner_names, workers):
         return identity
 
     protect(safe(ROOT / ".analysis/inputs.json"))
+    if selection is not None:
+        for artifact in selection["candidate_artifacts"]:
+            protect(safe(ROOT / artifact["path"]), artifact)
     requested_owners = {relative(safe(ROOT / name)) for name in owner_names}
     found_owners = set()
     for name in dict.fromkeys(acquisition_names):
@@ -6116,7 +6165,7 @@ def _revalidate_current_frontends(acquisition_names, *, owner_names, workers):
         second = fetch_round(2)
     except BaseException as error:
         interrupted = error
-    observations, failures, created_paths = [], [], {}
+    observations, failures, created_paths = [], list(selection["failures"]) if selection else [], {}
     if interrupted is not None:
         failures.append({"kind": "cancelled" if isinstance(interrupted, KeyboardInterrupt) else "fetch_failed",
                          "error_type": type(interrupted).__name__})
@@ -6178,6 +6227,10 @@ def _revalidate_current_frontends(acquisition_names, *, owner_names, workers):
         if changed:
             input_changes.append(name)
     failures.extend({"kind": "protected_input_changed", "path": name} for name in input_changes)
+    if selection is not None:
+        candidates = sorted(relative(path) for path in (ROOT / ".analysis/inputs/frontend").glob("*/acquisition.json"))
+        if candidates != sorted(row["path"] for row in selection["candidate_artifacts"]):
+            failures.append({"kind": "current_source_candidate_set_changed"})
 
     report = {
         "schema_version": 1,
@@ -6196,6 +6249,8 @@ def _revalidate_current_frontends(acquisition_names, *, owner_names, workers):
         "scope": "Two-round HTTP identity of retained deployment roots, direct JavaScript owners and explicit deployed owners; changed deployments are not promoted",
         "cleanup": {"http_temporary_files": 0, "atomic_publication_temporaries": "removed in finally"},
     }
+    if selection is not None:
+        report["current_source_selection"] = selection
     try:
         report["index_publication"] = _frontend_revalidation_index(report, created_paths)
     except BaseException as error:
@@ -6222,6 +6277,338 @@ def _revalidate_current_frontends(acquisition_names, *, owner_names, workers):
         print(json.dumps({"interrupted_revalidation_receipt": report["receipt"]}), flush=True)
         raise interrupted
     return report
+
+
+class FrontendRefreshResources:
+    """Own bounded HTTP, static parsing and source publication for one batch."""
+
+    def __init__(self, observation, identity, *, network_workers, parse_workers):
+        import analysis
+        self.identity = identity
+        self.cancelled = threading.Event()
+        self.network = threading.BoundedSemaphore(network_workers)
+        self.parsers = threading.BoundedSemaphore(parse_workers)
+        self.lock = threading.Lock()
+        self.downloads, self.enumerations, self.pending_index = {}, {}, {}
+        self.observed = {}
+        for row in observation["observations"]:
+            rounds = row.get("rounds", [])
+            original = row.get("observed_original")
+            if original is None and row.get("classification") == "unchanged_reused":
+                original = row.get("retained_original")
+            if (not isinstance(original, dict) or len(rounds) != 2
+                    or [item.get("round") for item in rounds] != [1, 2]
+                    or any(item.get("status") != "ok" or item.get("http_status") != 200
+                           or item.get("url") != row["url"] or not official_resource_url(item.get("final_url"))
+                           or any(item.get(key) != original.get(key) for key in ("bytes", "sha256"))
+                           for item in rounds)
+                    or rounds[0].get("final_url") != rounds[1].get("final_url")):
+                continue
+            last = rounds[-1]
+            source = {**original, "url": row["url"], "final_url": last["final_url"], "http_status": 200,
+                      "content_type": last.get("headers", {}).get("Content-Type", ""),
+                      "headers": last.get("headers", {}), "acquired_at_utc": last["acquired_at_utc"],
+                      "reused_from_observation": identity}
+            prior = self.observed.setdefault(row["url"], source)
+            if any(prior.get(key) != source.get(key) for key in ("bytes", "sha256", "final_url")):
+                raise ValueError("Batch observation conflicts for one official URL")
+
+    def checkpoint(self):
+        if self.cancelled.is_set():
+            raise InterruptedError("Frontend refresh was cancelled; retained partial evidence is resumable")
+
+    def _once(self, collection, key, operation):
+        self.checkpoint()
+        with self.lock:
+            future = collection.get(key)
+            first = future is None
+            if first:
+                future = concurrent.futures.Future()
+                collection[key] = future
+        if first:
+            try:
+                future.set_result(operation())
+            except BaseException as error:
+                future.set_exception(error)
+        return future.result()
+
+    def download(self, url, output):
+        import analysis
+        def acquire():
+            self.checkpoint()
+            observed = self.observed.get(url)
+            if observed is not None:
+                analysis.verify_source_rows([observed])
+                return observed
+            attempts = []
+            with self.network:
+                for _ in range(3):
+                    self.checkpoint()
+                    result = analysis.download(url, output)
+                    attempts.append({key: value for key, value in result.items() if key != "path"})
+                    if ("path" in result or result.get("http_status") == 404
+                            or result.get("error", "").startswith("HTTP Error 404:")):
+                        break
+            if len(attempts) > 1:
+                result = {**result, "retrieval_attempts": attempts}
+            return result
+        return dict(self._once(self.downloads, url, acquire))
+
+    def revalidate(self, url):
+        self.checkpoint()
+        with self.network:
+            self.checkpoint()
+            result = _frontend_revalidation_fetch(url)
+        result.pop("_raw", None)
+        return result
+
+    def enumerate(self, path, tool, report_dir, identifier, tool_identity):
+        import analysis
+        key = (relative(path), digest(path), tool_identity["sha256"])
+        def parse():
+            directories = []
+            boundary = ROOT / ".analysis/inputs/frontend"
+            if path.is_relative_to(boundary):
+                owner = path.relative_to(boundary).parts[0]
+                directories.append(ROOT / ".analysis/results/frontend" / owner / "chunk-references")
+            with self.parsers:
+                self.checkpoint()
+                return analysis.enumerate_frontend_chunks(path, tool, report_dir, identifier, tool_identity,
+                                                          reuse_directories=directories)
+        return self._once(self.enumerations, key, parse)
+
+    def index(self, rows):
+        with self.lock:
+            for row in rows:
+                previous = self.pending_index.setdefault(row["path"], row)
+                if any(previous.get(key) != row.get(key) for key in ("bytes", "sha256")):
+                    raise ValueError("Batch input publication has conflicting identities")
+
+    def flush(self):
+        import analysis
+        with self.lock:
+            rows = list(self.pending_index.values())
+        if not rows:
+            return None
+        analysis.verify_source_rows(rows)
+        publication = {"schema_version": 1, "kind": "frontend_refresh_source_publication",
+                       "recorded_at_utc": analysis.stamp(), "observation": self.identity,
+                       "inputs": rows, "target_execution": False, "source_semantics_complete": False}
+        encoded = (json.dumps(publication, ensure_ascii=False, sort_keys=True, indent=2) + "\n").encode("utf-8")
+        proof = _publish_immutable_evidence(encoded, directory=".analysis/inputs/frontend-refresh/receipts", suffix=".json")
+        analysis.index_files([*rows, {**proof, "kind": "frontend_refresh_publication_receipt"}],
+            preserve_existing=True, publication={"owner": "tools/workspace.py", "receipt": proof["path"],
+                "reason": "Publish batch-acquired official originals while preserving prior source metadata",
+                "verification": {"actual_bytes_verified": True, "inputs": len(rows),
+                                 "target_execution": False, "source_semantics_complete": False}})
+        with self.lock:
+            for row in rows:
+                if self.pending_index.get(row["path"]) == row:
+                    del self.pending_index[row["path"]]
+        return proof
+
+
+def frontend_refresh_plan(observation_path, *, priority_sources=(), source_names=()):
+    """Derive the complete refresh set from a retained immutable HTTP audit."""
+    import analysis
+    path = analysis.resolve(str(observation_path), ".analysis/results/frontend-revalidation")
+    raw = path.read_bytes()
+    identity = {"path": relative(path), "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()}
+    if path.stem != identity["sha256"] or path.is_symlink():
+        raise ValueError("Frontend refresh requires an unchanged content-addressed observation receipt")
+    observed = json.loads(raw)
+    if (observed.get("schema_version") != 1
+            or observed.get("kind") != "immutable_current_frontend_deployment_revalidation"
+            or observed.get("target_execution") is not False
+            or observed.get("protected_originals_unchanged") is not True):
+        raise ValueError("Frontend refresh observation has an unverified scope or source identity")
+    changed = {}
+    for row in observed["observations"]:
+        if row.get("classification") not in {"unchanged_reused", "optional_missing"}:
+            changed.setdefault(row["source_set"], []).append({"url": row["url"], "classification": row["classification"]})
+    jobs = []
+    for source in observed["source_sets"]:
+        if source["name"] in changed:
+            jobs.append({**source, "reasons": changed[source["name"]], "status": "pending"})
+    for failure in observed.get("current_source_selection", {}).get("failures", []):
+        candidates = failure.get("candidates", [])
+        if not failure.get("route") or not candidates:
+            raise ValueError("Frontend refresh cannot resolve an unselected route without its retained acquisition")
+        path = analysis.resolve(candidates[-1], ".analysis/inputs/frontend")
+        jobs.append({"name": path.parent.name, "route": failure["route"],
+                     "acquisition": {"path": relative(path), "bytes": path.stat().st_size, "sha256": digest(path)},
+                     "reasons": [failure], "status": "pending"})
+    selected_names = {job["name"] for job in jobs}
+    if len(selected_names) != len(jobs) or set(source_names) - selected_names or set(priority_sources) - selected_names:
+        raise ValueError("Frontend refresh source selection is repeated or absent from the observation")
+    priority = {name: index for index, name in enumerate(dict.fromkeys(priority_sources))}
+    jobs = [job for job in jobs if not source_names or job["name"] in source_names]
+    jobs.sort(key=lambda job: (priority.get(job["name"], len(priority)), job["route"]))
+    return {"observation": identity, "observed": observed, "jobs": jobs}
+
+
+def _frontend_refresh_result(path, resource):
+    import analysis
+    import evidence
+    import families
+    acquired = json.loads(path.read_bytes())
+    if acquired.get("target_execution") is not False:
+        raise ValueError("Frontend refresh snapshot does not establish static-only acquisition")
+    originals = [row for row in acquired["files"] if row.get("path")]
+    analysis.verify_source_rows(originals)
+    deployment = evidence.frontend_deployment_sources(acquired)
+    gaps = families.frontend_reference_gaps(acquired)
+    failures = list(deployment["failures"])
+    for kind in ("declared_non_map_missing", "unattributed_non_map_missing"):
+        failures.extend({"kind": kind, "reference": row} for row in gaps.get(kind, []))
+    if acquired.get("source_current_during_acquisition") is not True:
+        failures.append({"kind": "deployment_not_stable", "stability": acquired.get("stability", [])})
+    identity = {"path": relative(path), "bytes": path.stat().st_size, "sha256": digest(path)}
+    indexed = [{**{key: row[key] for key in ("path", "bytes", "sha256", "url", "acquired_at_utc")},
+                "kind": "official_frontend_artifact"} for row in originals]
+    resource.index([*indexed, {**identity, "kind": "acquisition_receipt"}])
+    return {"status": "acquired" if not failures else "failed", "refreshed_acquisition": identity,
+            "files": len(originals), "logical_bytes": sum(row["bytes"] for row in originals),
+            "reference_gaps": gaps, "unresolved": len(acquired.get("unresolved", [])),
+            "failures": failures, "source_semantics_complete": False, "runtime_acceptance": "unverified"}
+
+
+def refresh_current_frontends(observation_path, *, workers=4, network_workers=12, parse_workers=4,
+                              priority_sources=(), source_names=(), reuse_acquisitions=()):
+    """Acquire changed routes in batches, retaining stable snapshots and retry history."""
+    import analysis
+    import frontend
+    from types import SimpleNamespace
+    for name, value, maximum in (("route", workers, 8), ("network", network_workers, 12), ("parse", parse_workers, 8)):
+        if type(value) is not int or not 1 <= value <= maximum:
+            raise ValueError(f"Frontend refresh {name} workers must be between one and {maximum}")
+    plan = frontend_refresh_plan(observation_path, priority_sources=priority_sources, source_names=source_names)
+    identity, observed, jobs = plan["observation"], plan["observed"], plan["jobs"]
+    selection = ("-" + hashlib.sha256(json.dumps(sorted(source_names)).encode()).hexdigest()[:12]
+                 if source_names else "")
+    report_path = ROOT / ".analysis/results/frontend-refresh" / (identity["sha256"] + selection + ".json")
+    with analysis.index_lock(ROOT / ".analysis/frontend-refresh.lock"):
+        resource = FrontendRefreshResources(observed, identity, network_workers=network_workers, parse_workers=parse_workers)
+        report = {"schema_version": 1, "kind": "current_frontend_batch_refresh", "observation": identity,
+                  "started_at_utc": analysis.stamp(), "jobs": jobs, "target_execution": False,
+                  "source_semantics_complete": False, "runtime_acceptance": "unverified", "publications": [],
+                  "concurrency": {"routes": workers, "network": network_workers, "static_parsers": parse_workers},
+                  "cleanup": {"atomic_publication_temporaries": "removed in finally",
+                              "partial_acquisitions": "retained for verified resumption",
+                              "worker_threads": "owned until executor join"}}
+        newer = {}
+        for path in sorted((ROOT / ".analysis/inputs/frontend").glob("*/acquisition.json")):
+            acquired = json.loads(path.read_bytes())
+            if acquired.get("source_current_during_acquisition") is not True:
+                continue
+            if datetime.fromisoformat(acquired["recorded_at_utc"]) <= datetime.fromisoformat(observed["created_at_utc"]):
+                continue
+            route = frontend.canonical_frontend_entry(acquired["entry_url"])
+            newer.setdefault(route, []).append((datetime.fromisoformat(acquired["recorded_at_utc"]), path))
+        prior = json.loads(report_path.read_bytes()) if report_path.is_file() else None
+        if prior is not None:
+            if prior.get("observation") != identity:
+                raise ValueError("Refresh progress belongs to different observation bytes")
+            previous = {job["name"]: job for job in prior["jobs"]}
+            report["publications"] = prior.get("publications", [])
+            for job in jobs:
+                job["prior_attempts"] = previous.get(job["name"], {}).get("attempts", [])
+        write_json(report_path, report)
+
+        def refresh(job):
+            resource.checkpoint()
+            analysis.verify_source_rows([job["acquisition"]])
+            candidates = newer.get(job["route"], [])
+            if candidates:
+                candidate = max(candidates)[1]
+                result = _frontend_refresh_result(candidate, resource)
+                if result["status"] == "acquired":
+                    return {**result, "reused_newer_acquisition": True}
+            baseline = json.loads((ROOT / job["acquisition"]["path"]).read_bytes())
+            reuse = [*reuse_acquisitions]
+            if baseline.get("source_current_during_acquisition") is True:
+                reuse.append(job["acquisition"]["path"])
+            attempts = []
+            stem = job["name"] + "-refresh-" + identity["sha256"][:12]
+            number = 1
+            while True:
+                output = ROOT / ".analysis/inputs/frontend" / (stem if number == 1 else stem + "-" + str(number))
+                receipt = output / "acquisition.json"
+                if not receipt.exists():
+                    break
+                previous = json.loads(receipt.read_bytes())
+                if previous.get("refresh_observation") != identity:
+                    raise ValueError("Refresh snapshot belongs to a different observation")
+                if "source_current_during_acquisition" not in previous:
+                    break
+                result = _frontend_refresh_result(receipt, resource)
+                attempts.append(result)
+                if result["status"] == "acquired":
+                    return {**result, "attempts": attempts, "resumed_verified_snapshot": True}
+                if previous.get("source_current_during_acquisition") is True:
+                    reuse.append(relative(receipt))
+                number += 1
+            analysis.fetch_frontend(SimpleNamespace(url=baseline["entry_url"], output=relative(output),
+                reuse_acquisition=reuse, no_refresh_gaps=True, refresh_observation=identity,
+                download_artifact=resource.download, revalidate_artifact=resource.revalidate,
+                enumerate_artifact=resource.enumerate, index_artifacts=resource.index,
+                checkpoint=resource.checkpoint, progress=lambda _: None), refresh_ledger=False)
+            result = _frontend_refresh_result(receipt, resource)
+            attempts.append(result)
+            return {**result, "attempts": attempts}
+
+        completed = 0
+        interrupted = None
+        pool = concurrent.futures.ThreadPoolExecutor(max_workers=workers)
+        futures = {pool.submit(refresh, job): job for job in jobs}
+        try:
+            for future in concurrent.futures.as_completed(futures):
+                job = futures[future]
+                try:
+                    job.update(future.result())
+                except Exception as error:
+                    job.update(status="failed", failures=[{"kind": type(error).__name__, "error": str(error)}])
+                completed += 1
+                if completed <= len(priority_sources) or completed % 8 == 0:
+                    publication = resource.flush()
+                    if publication is not None:
+                        report["publications"].append(publication)
+                report["updated_at_utc"] = analysis.stamp()
+                write_json(report_path, report)
+                print(json.dumps({"refresh": job["name"], "status": job["status"], "completed": completed,
+                                  "total": len(jobs), "acquisition": job.get("refreshed_acquisition", {}).get("path"),
+                                  "failures": len(job.get("failures", []))}), flush=True)
+        except BaseException as error:
+            interrupted = error
+            resource.cancelled.set()
+            for future in futures:
+                future.cancel()
+        finally:
+            pool.shutdown(wait=True, cancel_futures=True)
+            for future, job in futures.items():
+                if job["status"] != "pending":
+                    continue
+                if future.cancelled():
+                    job["status"] = "cancelled_before_start"
+                elif future.done():
+                    try:
+                        job.update(future.result())
+                    except BaseException as error:
+                        job.update(status="failed", failures=[{"kind": type(error).__name__, "error": str(error)}])
+            try:
+                publication = resource.flush()
+                if publication is not None:
+                    report["publications"].append(publication)
+            except BaseException as error:
+                interrupted = interrupted or error
+                report["publication_failure"] = {"kind": type(error).__name__, "error": str(error)}
+            report.update(finished_at_utc=analysis.stamp(), interrupted=interrupted is not None,
+                          passed=interrupted is None and all(job["status"] == "acquired" for job in jobs))
+            report["cleanup"]["all_worker_threads_joined"] = True
+            write_json(report_path, report)
+        if interrupted is not None:
+            raise interrupted
+        return {**report, "report": relative(report_path)}
 
 
 def keyboard_svg_import_module(producer_body, alias):
@@ -9527,7 +9914,7 @@ def locale_preparation_source(acquisition, source_name):
             or any(row.get("unchanged") is not True for row in stability)):
         raise ValueError("Locale acquisition has no deployment-stability proof")
     source = safe(ROOT / source_name)
-    if not source.is_relative_to(ROOT / ".analysis/inputs") or source.suffix != ".js":
+    if not source.is_relative_to(ROOT / ".analysis/inputs"):
         raise ValueError("Locale source is outside retained JavaScript originals")
     originals = [row for row in receipt.get("files", []) if row.get("path") == relative(source)]
     raw = source.read_bytes()
@@ -9535,6 +9922,8 @@ def locale_preparation_source(acquisition, source_name):
             or originals[0].get("bytes") != len(raw)):
         raise ValueError("Locale original identity does not verify: " + source_name)
     original = originals[0]
+    if not urllib.parse.urlsplit(original.get("url", "")).path.lower().endswith(".js"):
+        raise ValueError("Locale original URL is not a JavaScript source")
     if (not official_resource_url(original.get("url")) or not official_resource_url(receipt.get("entry_url"))
             or not official_resource_url(original.get("final_url", original.get("url")))):
         raise ValueError("Locale source must use current official HTTPS endpoints")
@@ -9701,6 +10090,80 @@ def prepare_locale_exports(acquisition, source_name, *, migrate_legacy=False, ch
         report = publish_locale_preparation(document, snapshots, baseline, prepared, check=check)
         return {**report, "added": {locale: len(values) for locale, values in added.items()},
                 "retained_differences": {locale: len(values) for locale, values in retained_differences.items()}}
+
+
+def prepare_locale_updates(updates, *, check=False):
+    """Verify all source-owned translations before one installed catalog publication."""
+    import analysis
+    import evidence
+    if not isinstance(updates, list) or not updates:
+        raise ValueError("Locale updates must be a nonempty list")
+    with analysis.index_lock(ROOT / ".work/resource-writer.lock"):
+        document, snapshots, baseline = locale_preparation_catalog()
+        by_locale = {row["locale"]: row for row in document["locales"]}
+        prepared, changes, destinations = [], [], set()
+        for update in updates:
+            if (not isinstance(update, dict) or set(update) - {
+                    "acquisition", "source", "bindings", "namespace", "keys"}
+                    or not isinstance(update.get("acquisition"), str)
+                    or ("source" in update) == ("bindings" in update)):
+                raise ValueError("Locale update requires one acquisition and one source or language map")
+            namespace, keys = update.get("namespace"), update.get("keys")
+            if namespace is not None and (not isinstance(namespace, str)
+                    or not re.fullmatch(r"[A-Za-z_][A-Za-z_0-9]*", namespace)):
+                raise ValueError("Invalid locale namespace")
+            if keys is not None and (not isinstance(keys, list) or not keys
+                    or any(not isinstance(key, str) or not key for key in keys) or len(set(keys)) != len(keys)):
+                raise ValueError("Locale update keys must be nonempty unique strings")
+            acquisition = update["acquisition"]
+            if "source" in update:
+                raw, provenance = locale_preparation_source(acquisition, update["source"])
+                selected = evidence.locale_export_dictionaries(raw, list(by_locale))
+                values = selected["values"]
+                kind = "current_routed_exports"
+            else:
+                bindings = update["bindings"]
+                if not isinstance(bindings, dict) or set(bindings) != set(by_locale):
+                    raise ValueError("Locale chunk bindings must cover every installed language exactly")
+                selected, values, provenances = {}, {}, []
+                for locale, path in bindings.items():
+                    raw, original = locale_preparation_source(acquisition, path)
+                    # Logical source identity comes from the acquisition URL;
+                    # refreshed originals may be extensionless addressed blobs.
+                    leaf = Path(urllib.parse.urlsplit(original["source"]["url"]).path).name
+                    if not re.fullmatch(r"trans-" + re.escape(locale) + r"\.[A-Za-z0-9_-]+\.chunk\.js", leaf):
+                        raise ValueError("Locale chunk URL differs from its language: " + locale)
+                    selected[locale] = evidence.locale_chunk_exports(raw, keys)
+                    values[locale] = selected[locale]["values"]
+                    provenances.append(original)
+                provenance = {"sources": provenances,
+                              "inputs": [row for original in provenances for row in original["inputs"]]}
+                kind = "current_chunk_exports"
+            delta = {}
+            for locale, row in by_locale.items():
+                current = values[locale]
+                if keys is not None and not set(keys) <= current.keys():
+                    raise ValueError("Locale source does not provide every requested key: " + locale)
+                current = {key: value for key, value in current.items() if keys is None or key in keys}
+                words, changed = row["messages"], {}
+                for key, value in current.items():
+                    key = namespace + "." + key if namespace else key
+                    identity = (locale, key)
+                    if identity in destinations:
+                        raise ValueError("Locale update repeats a destination: " + locale + "/" + key)
+                    destinations.add(identity)
+                    if key not in words or words[key] != value:
+                        changed[key] = {"previous": words.get(key), "current": value}
+                    words[key] = value
+                row["messages"] = dict(sorted(words.items()))
+                delta[locale] = changed
+            prepared.append({"kind": kind, "namespace": namespace, "provenance": provenance,
+                             "dictionary": selected, "keys": keys,
+                             "merge_policy": "Replace only keys selected from each current source owner",
+                             "changes": delta})
+            changes.append({"namespace": namespace, "keys_changed": {locale: len(rows) for locale, rows in delta.items()}})
+        return {**publish_locale_preparation(document, snapshots, baseline, prepared, check=check),
+                "updates": changes}
 
 
 def prepare_locale_keys(acquisition, namespace, bindings, keys):
@@ -13510,12 +13973,28 @@ def main():
         "revalidate-current-deployment",
         help="Read-only two-round HTTP revalidation of retained current frontend deployment owners",
     )
-    revalidate_frontends.add_argument("--acquisition", action="append", required=True,
-                                      help="Project-relative retained frontend acquisition.json; repeat to select several")
+    revalidate_sources = revalidate_frontends.add_mutually_exclusive_group(required=True)
+    revalidate_sources.add_argument("--acquisition", action="append",
+                                     help="Project-relative retained frontend acquisition.json; repeat to select several")
+    revalidate_sources.add_argument("--all-current", action="store_true",
+                                     help="Select the newest byte-verified acquisition for every retained official route")
     revalidate_frontends.add_argument("--owner", action="append", default=[],
                                       help="Additional project-relative JavaScript original with a verified deployment reference")
     revalidate_frontends.add_argument("--workers", type=int, default=6,
                                       help="Bounded concurrent HTTP requests per round (default: 6)")
+    refresh_frontends = commands.add_parser("refresh-current-deployment",
+        help="Batch-acquire changed official deployment routes from an immutable revalidation receipt")
+    refresh_frontends.add_argument("--revalidation", required=True,
+        help="Project-relative content-addressed revalidation receipt")
+    refresh_frontends.add_argument("--source", action="append", default=[],
+        help="Select named source sets from the observed changes; default includes every changed or unselected route")
+    refresh_frontends.add_argument("--priority-source", action="append", default=[],
+        help="Start these source sets first while preserving complete batch scope")
+    refresh_frontends.add_argument("--reuse-acquisition", action="append", default=[],
+        help="Additional byte-verified immutable acquisition to reuse without copying originals")
+    refresh_frontends.add_argument("--workers", type=int, default=4)
+    refresh_frontends.add_argument("--network-workers", type=int, default=12)
+    refresh_frontends.add_argument("--parse-workers", type=int, default=4)
     resource_verify = commands.add_parser("verify-resources", help="Decode embedded images or the complete typed keyboard artwork atlas without network access")
     resource_verify.add_argument("--scope", choices=("embedded", "keyboard-artwork"), default="embedded")
     resource_verify.add_argument("--product", type=int, action="append", help="Limit keyboard artwork to these typed products; repeat to select several")
@@ -13563,8 +14042,9 @@ def main():
     locale_keys.add_argument("--bindings", required=True, help="JSON locale-to-original-path map; '-' reads stdin")
     locale_keys.add_argument("--key", action="append", required=True)
     locale_exports = commands.add_parser("prepare-locale-exports", help="Statically merge complete current export dictionaries and prepare the installed SQLite catalog")
-    locale_exports.add_argument("--acquisition", required=True)
-    locale_exports.add_argument("--source", required=True)
+    locale_exports.add_argument("--acquisition")
+    locale_exports.add_argument("--source")
+    locale_exports.add_argument("--updates", help="JSON list of verified source/language-map updates for one atomic preparation; '-' reads stdin")
     locale_exports.add_argument("--migrate-legacy", action="store_true", help="Verify all legacy locale semantics, retain original bytes as evidence and remove old production files")
     locale_exports.add_argument("--check", action="store_true")
     commands.add_parser("prepare-host-favicons", help="Verify all current product HTML first favicons and attach existing bytes to resource provenance")
@@ -13699,8 +14179,17 @@ def main():
         bindings = json.loads(sys.stdin.read() if args.bindings == "-" else args.bindings)
         print(json.dumps(prepare_locale_keys(args.acquisition, args.namespace, bindings, args.key), ensure_ascii=False))
     elif args.command == "prepare-locale-exports":
-        print(json.dumps(prepare_locale_exports(args.acquisition, args.source,
-                         migrate_legacy=args.migrate_legacy, check=args.check), ensure_ascii=False), flush=True)
+        if args.updates is not None:
+            if args.acquisition or args.source or args.migrate_legacy:
+                raise ValueError("Locale update batch cannot be combined with a legacy/export source")
+            updates = json.loads(sys.stdin.read() if args.updates == "-" else args.updates)
+            result = prepare_locale_updates(updates, check=args.check)
+        else:
+            if not args.acquisition or not args.source:
+                raise ValueError("Locale exports require an acquisition and source, or an updates batch")
+            result = prepare_locale_exports(args.acquisition, args.source,
+                                           migrate_legacy=args.migrate_legacy, check=args.check)
+        print(json.dumps(result, ensure_ascii=False), flush=True)
     elif args.command == "prepare-host-favicons":
         print(json.dumps(prepare_host_favicons(), ensure_ascii=False))
     elif args.command == "prepare-app-picker":
@@ -13727,10 +14216,22 @@ def main():
     elif args.command == "prepare-keyboard-identity":
         print(json.dumps(prepare_keyboard_identity(), ensure_ascii=False))
     elif args.command == "revalidate-current-deployment":
-        report = revalidate_current_frontends(args.acquisition, owner_names=args.owner, workers=args.workers)
+        report = revalidate_current_frontends(args.acquisition or (), owner_names=args.owner,
+                                              workers=args.workers, all_current=args.all_current)
         print(json.dumps({"receipt": report["receipt"], "passed": report["passed"],
-                          "source_sets": [source["name"] for source in report["source_sets"]],
+                          "source_sets": (len(report["source_sets"]) if args.all_current else
+                                          [source["name"] for source in report["source_sets"]]),
+                          "selection_failures": len(report.get("current_source_selection", {}).get("failures", [])),
                           "failures": len(report["failures"])}, ensure_ascii=False), flush=True)
+        return 0 if report["passed"] else 1
+    elif args.command == "refresh-current-deployment":
+        report = refresh_current_frontends(args.revalidation, workers=args.workers,
+            network_workers=args.network_workers, parse_workers=args.parse_workers,
+            priority_sources=args.priority_source, source_names=args.source,
+            reuse_acquisitions=args.reuse_acquisition)
+        print(json.dumps({"report": report["report"], "passed": report["passed"],
+                          "sources": len(report["jobs"]),
+                          "states": dict(Counter(job["status"] for job in report["jobs"]))}), flush=True)
         return 0 if report["passed"] else 1
     elif args.command == "prepare-dashboard-images":
         if type(args.workers) is not int or not 2 <= args.workers <= 12:

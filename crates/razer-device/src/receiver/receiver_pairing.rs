@@ -571,6 +571,14 @@ impl<'a> Session<'a> {
         payload: &[u8],
         validate: &impl Fn() -> anyhow::Result<()>,
     ) -> anyhow::Result<Vec<u8>> {
+        let validate = &|| {
+            validate().map_err(|error| {
+                crate::backend::interrupt_exchange(
+                    error,
+                    crate::backend::ExchangeInterruption::Validation,
+                )
+            })
+        };
         validate()?;
         ensure!(
             payload.len() <= usize::from(command[0]),
@@ -636,10 +644,13 @@ impl<'a> Session<'a> {
                 let mut last_error = "没有收到设备应答".to_owned();
                 for out_attempt in 0..transport.max_retry_out {
                     validate()?;
-                    if let Err(e) = device.send_feature_at_collection_max(&outgoing) {
-                        return Err(e);
+                    let sent = device.send_feature_at_collection_max_counted(&outgoing);
+                    if let Err(validation) = validate() {
+                        return Err(crate::backend::complete_native_io(sent, validation));
                     }
-                    validate()?;
+                    sent.and_then(|count| {
+                        crate::backend::require_complete_send(count, outgoing.len())
+                    })?;
                     std::thread::sleep(Duration::from_millis(transport.sleep_between_out_in_ms));
                     let mut resend_out_command = false;
                     for attempt in 0..transport.max_retry_in {
@@ -651,15 +662,28 @@ impl<'a> Session<'a> {
                         validate()?;
                         let mut incoming = vec![0; 91];
                         incoming[0] = if report_id == 0 { claim_interface } else { report_id };
-                        let count = match device.get_feature_at_collection_max(&mut incoming) {
+                        let received = device.get_feature_at_collection_max(&mut incoming);
+                        let received = match validate() {
+                            Ok(()) => received,
+                            Err(validation) => Err(crate::backend::complete_native_read(
+                                received, &incoming, validation,
+                            )),
+                        };
+                        let count = match received {
                             Ok(n) => n,
+                            Err(error) if crate::backend::exchange_interrupted(&error) => {
+                                return Err(crate::receiver_feature_channel::retain_failed_reply(
+                                    error,
+                                    command,
+                                    transaction,
+                                ));
+                            }
                             Err(e) if resend_out_command => {
                                 last_error = format!("{e:#}");
                                 break;
                             }
                             Err(e) => return Err(e),
                         };
-                        validate()?;
                         ensure!(
                             (9..=incoming.len()).contains(&count),
                             "配对命令应答长度不匹配"
@@ -709,7 +733,7 @@ impl<'a> Session<'a> {
                         firmware_id: data.get(2).copied(),
                     });
                 }
-                Err(error) if crate::backend::exchange_finalization_failed(&error) => {
+                Err(error) if crate::backend::exchange_interrupted(&error) => {
                     return Err(error);
                 }
                 Err(error) if attempt < 2 => {
@@ -1103,6 +1127,34 @@ mod tests {
         assert_eq!(sent[0][0], 2);
         assert_eq!(sent[0][2], 0);
         assert_eq!(&sent[0][6..9], &[3, 0, 134]);
+    }
+
+    #[test]
+    fn one_shot_edition_admission_failure_stops_all_pairing_factories() {
+        use crate::feature_exchange::tests::ExchangeProbe;
+        use std::cell::Cell;
+        for source in crate::receiver_pairing_capabilities::products() {
+            let pid = source.product_id;
+            let category = source.category.as_str();
+            let cap = cap(pid, category);
+            let device = Mock::new(&[]);
+            let admissions = Cell::new(0);
+            let admit = || {
+                let previous = admissions.replace(admissions.get() + 1);
+                ensure!(previous != 0, "one-shot pairing edition admission failure");
+                Ok(())
+            };
+            let probe = ExchangeProbe::with_admission_check(&device, &admit);
+            let mut events = Events::new(&[]);
+            let error = Session::new(&probe, &mut events, &cap)
+                .unwrap()
+                .get_edition(|| Ok(()))
+                .unwrap_err();
+            assert!(crate::backend::exchange_interrupted(&error));
+            assert_eq!(admissions.get(), 1, "PID{pid} / {category}");
+            assert!(device.sent.lock().unwrap().is_empty());
+            assert!(!events.began && !events.ended);
+        }
     }
 
     #[test]

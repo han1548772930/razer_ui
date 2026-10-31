@@ -7,6 +7,14 @@ use serde::Deserialize;
 use serde_json::Value;
 use std::{collections::HashMap, sync::OnceLock};
 
+#[path = "recording/capture.rs"]
+mod capture;
+#[path = "recording/preferences.rs"]
+mod preferences;
+pub use capture::{Callback, Capture};
+use capture::{CallbackKind, Input, InputKind, MouseAction, NativeKey};
+pub use preferences::{DelayMode, Preferences, Seconds};
+
 #[derive(Clone)]
 pub struct Options {
     pub macro_type: MacroType,
@@ -17,6 +25,10 @@ pub struct Options {
     pub next_pair: u64,
     pub movement_mode: u8,
     pub shortcut: Vec<ShortcutKey>,
+    /// Nr uses recordProfile again for stop trimming and final delay handling;
+    /// Rr's per-row conversion uses the current document fields above.
+    pub finalization_macro_type: MacroType,
+    pub finalization_delay_mode: u8,
 }
 
 /// Source _r uses native VKs for initial releases; Nr uses the recorder
@@ -47,6 +59,8 @@ mod movement_tests {
             next_pair: 1,
             movement_mode: mode,
             shortcut: Vec::new(),
+            finalization_macro_type: MacroType::Standard,
+            finalization_delay_mode: 3,
         }
     }
     fn geometry() -> RecordingGeometry {
@@ -149,10 +163,10 @@ struct RecordedKeyInput {
     flags: u16,
 }
 impl RecordedKeyInput {
-    fn parse(value: &Value) -> Result<Self, String> {
-        let mut virtual_key = word(value, "vkCode")?;
-        let flags = word(value, "flags")?;
-        let mut scan_code = word(value, "scanCode")?;
+    fn from_native(native: NativeKey) -> Self {
+        let mut virtual_key = native.virtual_key;
+        let flags = native.flags;
+        let mut scan_code = native.scan_code;
         if scan_code == 92 {
             scan_code = 91;
         }
@@ -173,11 +187,11 @@ impl RecordedKeyInput {
                 _ => virtual_key,
             };
         }
-        Ok(Self {
+        Self {
             virtual_key,
             scan_code,
             flags,
-        })
+        }
     }
 }
 fn key(input: &RecordedKeyInput, preview: bool) -> Option<&'static Key> {
@@ -216,10 +230,10 @@ pub struct Decoder {
     previous_key: Option<(u16, u8)>,
     pending_key_delay: f64,
     dropped: usize,
-    movement: Vec<Value>,
+    movement: Vec<Input>,
     geometry: Option<RecordingGeometry>,
     initial_release: bool,
-    shortcut_preview: Vec<Value>,
+    shortcut_preview: Vec<Callback>,
 }
 impl Decoder {
     pub fn new(options: &Options) -> Self {
@@ -268,14 +282,15 @@ impl Decoder {
         let mut buffer = Vec::with_capacity(raw.len());
         let mut duration = 0.;
         for point in &raw {
-            let time = number(point, "time")? / 1000.;
+            let time = point.time / 1000.;
             if time < 0. {
                 return Err("Mouse movement delay is negative".into());
             }
             duration += time;
-            buffer.push(
-                serde_json::json!({"x":number(point,"x")?,"y":number(point,"y")?,"time":time}),
-            );
+            let InputKind::Movement { x, y } = point.kind else {
+                return Err("录制鼠标轨迹包含非移动输入".into());
+            };
+            buffer.push(serde_json::json!({"x":x,"y":y,"time":time}));
         }
         let options = &self.options;
         if options.macro_type == MacroType::Standard
@@ -291,7 +306,7 @@ impl Decoder {
                 let seconds = if options.delay_mode == 1 {
                     options.fixed
                 } else {
-                    number(raw.last().unwrap(), "time")? / 1_000_000.
+                    raw.last().unwrap().time / 1_000_000.
                 };
                 delay.value = format!("{seconds:.3}");
             }
@@ -306,108 +321,101 @@ impl Decoder {
             geometry: Some(geometry),
         });
         if !self.preview {
-            item.recorded_input = Some(Value::Array(raw));
+            item.recorded_input = Some(Value::Array(
+                raw.into_iter().map(|point| point.source).collect(),
+            ));
         }
         self.output.push(item);
         Ok(())
     }
     /// Stream source events into isolated temporary rows. No document mutation.
     pub fn push(&mut self, callback: &Value) -> Result<(), String> {
-        if callback["kind"] == "started" {
-            self.started_at = callback["received_at_ms"].as_u64();
+        if let Some(callback) = Callback::parse(callback)? {
+            self.push_callback(&callback)?;
+        }
+        Ok(())
+    }
+
+    pub fn update_preview_options(&mut self, options: &Options) {
+        debug_assert!(self.preview);
+        self.options = options.clone();
+        self.next = self.next.max(options.next_pair);
+    }
+
+    pub fn push_callback(&mut self, callback: &Callback) -> Result<(), String> {
+        if matches!(callback.kind, CallbackKind::Started) {
+            self.started_at = callback.received_at_ms;
             return Ok(());
         }
-        if callback["kind"] != "item" {
+        let CallbackKind::Items { tick, inputs } = &callback.kind else {
+            return Ok(());
+        };
+        self.first_at = self.first_at.or(callback.received_at_ms);
+        if self.last_tick == Some(*tick) {
             return Ok(());
         }
-        self.first_at = self.first_at.or(callback["received_at_ms"].as_u64());
-        let batch = callback["event"]
-            .as_array()
-            .ok_or("录制事件不是原版数组格式")?;
-        if batch.is_empty() {
-            return Err("录制事件数组为空".into());
-        }
-        // _r sends preceding entries as mouse movement before the final input.
-        if batch[..batch.len() - 1]
-            .iter()
-            .any(|v| v["action"] != "mousemove")
-        {
-            return Err("录制事件批次包含非鼠标轨迹前缀".into());
-        }
-        let tick = callback["time_tick"]
-            .as_u64()
-            .ok_or("录制事件缺少 time_tick")?
-            .checked_add(u64::from(batch.len() > 1))
-            .ok_or("录制事件 time_tick 溢出")?;
-        if self.last_tick == Some(tick) {
-            return Ok(());
-        }
-        self.last_tick = Some(tick);
-        let raw = batch.last().unwrap();
-        let action = raw["action"]
-            .as_str()
-            .map(str::to_owned)
-            .or_else(|| raw["action"].as_i64().map(|n| n.to_string()))
-            .ok_or("录制事件缺少 action")?;
+        self.last_tick = Some(*tick);
+        let raw = inputs.last().expect("validated nonempty native callback");
         if self.options.movement_mode != 0 && self.options.macro_type != MacroType::Sequence {
             self.movement
-                .extend(batch[..batch.len() - 1].iter().cloned());
-            if action == "mousemove" {
+                .extend(inputs[..inputs.len() - 1].iter().cloned());
+            if raw.is_movement() {
                 self.movement.push(raw.clone());
             } else {
                 self.flush_movement()?;
             }
         }
-        if action == "mousemove" {
+        if raw.is_movement() {
             // _r clears its initial-release gate on the first accepted item,
             // even when mouse tracking is disabled for the document.
             self.initial_release = false;
             if self.preview && self.shortcut_preview.len() != self.options.shortcut.len() {
                 for held in std::mem::take(&mut self.shortcut_preview) {
-                    self.push_input(&held, &held["event"][0], "keydown")?;
+                    self.push_input(&held, held.final_input().unwrap())?;
                 }
             }
             return Ok(());
         }
-        if let Some(vk) = raw["vkCode"].as_u64() {
-            if matches!(vk, 173 | 176 | 177 | 179 | 175 | 174)
-                || vk == 255 && !matches!(raw["scanCode"].as_u64(), Some(112 | 121))
+        if let Some(key) = raw.key() {
+            if matches!(key.virtual_key, 173 | 176 | 177 | 179 | 175 | 174)
+                || key.virtual_key == 255 && !matches!(key.scan_code, 112 | 121)
             {
                 return Ok(());
             }
         }
-        let shortcut_key = self
-            .options
-            .shortcut
-            .iter()
-            .any(|key| raw["vkCode"].as_u64() == Some(u64::from(key.virtual_key)));
-        if self.initial_release && shortcut_key && action == "keyup" {
+        let shortcut_key = self.options.shortcut.iter().any(|key| {
+            raw.key()
+                .is_some_and(|native| native.virtual_key == key.virtual_key)
+        });
+        let key_down = matches!(raw.kind, InputKind::Key { down: true, .. });
+        let key_up = matches!(raw.kind, InputKind::Key { down: false, .. });
+        if self.initial_release && shortcut_key && key_up {
             return Ok(());
         }
         self.initial_release = false;
         if self.preview && !self.options.shortcut.is_empty() {
             if shortcut_key
-                && action == "keydown"
+                && key_down
                 && self.shortcut_preview.len() != self.options.shortcut.len()
-                && self
-                    .shortcut_preview
-                    .iter()
-                    .all(|held| held["event"][0]["vkCode"] != raw["vkCode"])
+                && self.shortcut_preview.iter().all(|held| {
+                    held.final_input()
+                        .and_then(Input::key)
+                        .map(|key| key.virtual_key)
+                        != raw.key().map(|key| key.virtual_key)
+                })
             {
-                let mut held = callback.clone();
-                held["event"] = Value::Array(vec![raw.clone()]);
-                self.shortcut_preview.push(held);
+                self.shortcut_preview.push(callback.only_final_input());
                 return Ok(());
             }
             if self.shortcut_preview.len() != self.options.shortcut.len() {
                 for held in std::mem::take(&mut self.shortcut_preview) {
-                    self.push_input(&held, &held["event"][0], "keydown")?;
+                    self.push_input(&held, held.final_input().unwrap())?;
                 }
             }
         }
-        self.push_input(callback, raw, &action)
+        self.push_input(callback, raw)
     }
-    fn push_input(&mut self, callback: &Value, raw: &Value, action: &str) -> Result<(), String> {
+    fn push_input(&mut self, callback: &Callback, raw: &Input) -> Result<(), String> {
         let options = &self.options;
         let sequence = options.macro_type == MacroType::Sequence;
         let output = &mut self.output;
@@ -423,12 +431,12 @@ impl Decoder {
         };
         let mut item;
         let mut repeat = false;
-        if matches!(action, "keydown" | "keyup") {
-            let down = action == "keydown";
+        let key_down = matches!(raw.kind, InputKind::Key { down: true, .. });
+        if let InputKind::Key { down, key: native } = raw.kind {
             if sequence && down {
                 return Ok(());
             }
-            let input = RecordedKeyInput::parse(raw)?;
+            let input = RecordedKeyInput::from_native(native);
             // Rr's Sequence branch retains the observed VK without a key-table
             // lookup. le resolves a live label when possible and otherwise
             // keeps that same VK; an unknown name must not reject the recording.
@@ -456,7 +464,7 @@ impl Decoder {
                         // le only folds consecutive state-0 keydowns in its live
                         // view. Post-processing H folds every still-held key.
                         if flag == 0 && self.previous_key == Some((makecode, 0)) {
-                            self.pending_key_delay += number(raw, "time")? / 1_000_000.;
+                            self.pending_key_delay += raw.time / 1_000_000.;
                             return Ok(());
                         }
                         self.previous_key = Some((makecode, flag));
@@ -494,17 +502,19 @@ impl Decoder {
                 key_type: key.map(|key| key.key_type.clone()),
             });
         } else {
-            let data = raw["data"].as_i64().unwrap_or(0);
+            let InputKind::Mouse { action, data } = raw.kind else {
+                return Err("录制输入转换收到未归并的鼠标轨迹".into());
+            };
             let (button, state) = match action {
-                "lbuttondown" => (0, Some(0)),
-                "lbuttonup" => (0, Some(1)),
-                "rbuttondown" => (1, Some(0)),
-                "rbuttonup" => (1, Some(1)),
-                "mbuttondown" => (2, Some(0)),
-                "mbuttonup" => (2, Some(1)),
-                "523" => (if data == 131072 { 4 } else { 3 }, Some(0)),
+                MouseAction::LeftDown => (0, Some(0)),
+                MouseAction::LeftUp => (0, Some(1)),
+                MouseAction::RightDown => (1, Some(0)),
+                MouseAction::RightUp => (1, Some(1)),
+                MouseAction::MiddleDown => (2, Some(0)),
+                MouseAction::MiddleUp => (2, Some(1)),
+                MouseAction::ExtraDown => (if data == 131072 { 4 } else { 3 }, Some(0)),
                 // Rr's live Sequence branch reverses these two source values.
-                "524" => (
+                MouseAction::ExtraUp => (
                     if (data == 131072) ^ (sequence && !self.preview) {
                         4
                     } else {
@@ -512,9 +522,8 @@ impl Decoder {
                     },
                     Some(1),
                 ),
-                "mousewheel" => (if data > 0 { 8 } else { 9 }, None),
-                "mousehwheel" => (if data > 0 { 7 } else { 6 }, None),
-                _ => return Err(format!("不支持的原生录制事件：{action}")),
+                MouseAction::Wheel => (if data > 0 { 8 } else { 9 }, None),
+                MouseAction::HorizontalWheel => (if data > 0 { 7 } else { 6 }, None),
             };
             if sequence && state == Some(0) {
                 return Ok(());
@@ -542,7 +551,7 @@ impl Decoder {
             item.mouse = Some(MouseEvent {
                 pair_id: pair,
                 button: Some(button),
-                state: if sequence && action == "524" {
+                state: if sequence && matches!(action, MouseAction::ExtraUp) {
                     Some(0)
                 } else if sequence {
                     None
@@ -553,7 +562,7 @@ impl Decoder {
         }
         item.phase = options.phase;
         if !self.preview {
-            item.recorded_input = Some(callback.clone());
+            item.recorded_input = Some(callback.source.clone());
         }
         if options.macro_type == MacroType::Standard
             && options.delay_mode != 3
@@ -568,8 +577,7 @@ impl Decoder {
                 let seconds = if options.delay_mode == 1 && options.fixed != 0. {
                     options.fixed
                 } else {
-                    number(raw, "time")? / 1_000_000.
-                        + if self.preview { self.pending_key_delay } else { 0. }
+                    raw.time / 1_000_000. + if self.preview { self.pending_key_delay } else { 0. }
                 };
                 if seconds < 0. {
                     return Err("录制延迟为负数".into());
@@ -590,7 +598,7 @@ impl Decoder {
             } else {
                 output.push(delay);
             }
-            if self.preview && action != "keydown" {
+            if self.preview && !key_down {
                 self.pending_key_delay = 0.;
                 self.previous_key = None;
             }
@@ -625,7 +633,7 @@ impl Decoder {
     pub fn finish(mut self, stop: Option<StopCause>) -> Result<Vec<ActionItem>, String> {
         self.flush_movement()?;
         let options = &self.options;
-        let sequence = options.macro_type == MacroType::Sequence;
+        let sequence = options.finalization_macro_type == MacroType::Sequence;
         let mut output = self.output;
         let first_at = self.first_at;
         let started_at = self.started_at;
@@ -643,14 +651,15 @@ impl Decoder {
             }
             trim_stop_shortcut(&mut output, &options.shortcut);
         }
-        if output.iter().all(|v| v.kind == ActionKind::Delay) {
+        if !sequence && output.iter().all(|v| v.kind == ActionKind::Delay) {
             output.clear();
         }
         // Nr removes the stop row before H merges any newly adjacent delays.
         let mut combined: Vec<ActionItem> = Vec::with_capacity(output.len());
         for item in output {
             if let Some(previous) = combined.last_mut().filter(|v| {
-                v.kind == ActionKind::Delay
+                !sequence
+                    && v.kind == ActionKind::Delay
                     && v.state == "fixed"
                     && item.kind == ActionKind::Delay
                     && item.state == "fixed"
@@ -664,7 +673,7 @@ impl Decoder {
             }
         }
         let mut output = combined;
-        if options.delay_mode == 0 {
+        if options.finalization_delay_mode == 0 {
             if let Some(delay) = output.first_mut().filter(|v| v.kind == ActionKind::Delay) {
                 let first = first_at.ok_or("录制缺少首事件接收时间")?;
                 let start = started_at.ok_or("录制缺少 started 接收时间")?;
@@ -735,6 +744,8 @@ mod shortcut_tests {
                     key_code: 65,
                 },
             ],
+            finalization_macro_type: MacroType::Standard,
+            finalization_delay_mode: 3,
         }
     }
     fn input(tick: u64, vk: u16, scan: u16, down: bool) -> Value {
@@ -811,6 +822,8 @@ mod sequence_tests {
             next_pair: 1,
             movement_mode: 0,
             shortcut: Vec::new(),
+            finalization_macro_type: MacroType::Sequence,
+            finalization_delay_mode: 3,
         }
     }
 

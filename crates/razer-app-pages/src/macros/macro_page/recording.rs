@@ -18,14 +18,15 @@ pub struct RecordingUi {
     pub status: String,
     pub count: usize,
     pub preview: Vec<ActionItem>,
+    preview_rows: Vec<ActionItem>,
     pub preview_offset: usize,
     pub scroll: ScrollHandle,
     generation: u64,
     command: Option<recording_actor::Session>,
     countdown_task: Option<Task<()>>,
     updates_task: Option<Task<()>>,
-    document: Option<u64>,
     cancelled: bool,
+    committed_count: Option<usize>,
 }
 impl MacroPage {
     pub fn recording_busy(&self) -> bool {
@@ -102,9 +103,10 @@ impl MacroPage {
         self.recording.error = None;
         self.recording.count = 0;
         self.recording.preview = self.actions.clone();
+        self.recording.preview_rows.clear();
         self.recording.preview_offset = 0;
-        self.recording.document = self.current;
         self.recording.cancelled = false;
+        self.recording.committed_count = None;
         self.recording.generation = self.recording.generation.wrapping_add(1);
         let generation = self.recording.generation;
         let delay = self
@@ -183,71 +185,7 @@ impl MacroPage {
                 let finished = matches!(&update, Update::Finished(_));
                 if this
                     .update(cx, |this, cx| {
-                        if this.recording.generation != generation {
-                            return;
-                        }
-                        match update {
-                            Update::WindowStorage(change) => cx.emit(change),
-                            Update::GlobalShortcutsRestored => cx.emit(MacroGlobalShortcutsRestored),
-                            Update::Recording => {
-                                if this.recording.stage != Stage::Stopping {
-                                    this.recording.stage = Stage::Recording;
-                                    this.recording.status = "正在全局录制".into();
-                                }
-                            }
-                            Update::Progress(count) => this.recording.count = count,
-                            Update::Preview { first_row, rows } => {
-                                let baseline = this.actions.len();
-                                this.recording.preview.truncate(baseline);
-                                this.recording.preview_offset = first_row;
-                                this.recording.preview.extend(rows);
-                                // le.createMacroItemUI scrolls after appending,
-                                // including when the saved rows are selected.
-                                this.recording.scroll.scroll_to_bottom();
-                            }
-                            Update::Finished(result) => {
-                                this.recording.command = None;
-                                this.recording.stage = Stage::Idle;
-                                this.recording.preview.clear();
-                                match result {
-                                    Ok(_) if this.recording.cancelled => {
-                                        this.recording.status = "录制已取消，未更改草稿".into()
-                                    }
-                                    Ok(Some(actions))
-                                        if this.recording.document == this.current
-                                            && this.actions_for == this.current =>
-                                    {
-                                        let count = actions.len();
-                                        if count > 0 {
-                                            this.undo.push(this.actions.clone());
-                                            this.actions.extend(actions);
-                                            this.redo.clear();
-                                            this.selected_actions.clear();
-                                            if this.current_macro_type()
-                                                == razer_pages::features::macro_library::MacroType::Phased
-                                            {
-                                                this.normalize_phased_rows();
-                                            }
-                                        }
-                                        this.recording.status = format!(
-                                            "录制完成，新增 {count} 行本地草稿；保存仅写入本机"
-                                        );
-                                    }
-                                    Ok(None) => {
-                                        this.recording.status = "录制已取消，未更改草稿".into()
-                                    }
-                                    Ok(Some(_)) => {
-                                        this.recording.error =
-                                            Some("录制期间文档已变化，未提交结果".into())
-                                    }
-                                    Err(error) => {
-                                        this.recording.status = "录制失败，未更改草稿".into();
-                                        this.recording.error = Some(error);
-                                    }
-                                }
-                            }
-                        }
-                        cx.notify();
+                        this.receive_recording_update(generation, update, cx);
                     })
                     .is_err()
                     || finished
@@ -262,13 +200,152 @@ impl MacroPage {
                     this.recording.command = None;
                     this.recording.stage = Stage::Idle;
                     this.recording.preview.clear();
-                    this.recording.status = "录制连接中断，未更改草稿".into();
+                    this.recording.preview_rows.clear();
+                    this.recording.status = if this.recording.committed_count.is_some() {
+                        "录制连接中断，已追加的本地草稿仍然保留".into()
+                    } else {
+                        "录制连接中断，未更改草稿".into()
+                    };
                     this.recording.error =
                         Some("录制线程未返回完成结果；无法确认原生会话清理状态".into());
                     cx.notify();
                 }
             });
         }));
+    }
+    pub(super) fn refresh_recording_preview(&mut self) {
+        if self.recording_busy() {
+            self.recording.preview.clear();
+            if self.current.is_some() && self.actions_for == self.current {
+                self.recording.preview.extend(self.actions.iter().cloned());
+                self.recording
+                    .preview
+                    .extend(self.recording.preview_rows.iter().cloned());
+            }
+        }
+    }
+
+    pub(super) fn update_recording_preview_options(&mut self, cx: &App) {
+        if let Some(sender) = &self.recording.command {
+            match self.recording_options(cx) {
+                Ok(options) => {
+                    if let Err(error) = sender.send(Command::PreviewOptions(options)) {
+                        self.recording.error = Some(error);
+                    }
+                }
+                Err(error) => self.recording.error = Some(error),
+            }
+        }
+    }
+
+    pub(super) fn receive_recording_update(&mut self, generation: u64, update: Update, cx: &mut Context<Self>) {
+        if self.recording.generation != generation {
+            return;
+        }
+        self.accept_recording_update(update, cx);
+        cx.notify();
+    }
+
+    pub(super) fn accept_recording_update(&mut self, update: Update, cx: &mut Context<Self>) {
+        match update {
+            Update::WindowStorage(change) => cx.emit(change),
+            Update::GlobalShortcutsRestored => cx.emit(MacroGlobalShortcutsRestored),
+            Update::Recording => {
+                if self.recording.stage != Stage::Stopping {
+                    self.recording.stage = Stage::Recording;
+                    self.recording.status = "正在全局录制".into();
+                }
+            }
+            Update::Progress(count) => self.recording.count = count,
+            Update::PreviewFailed(error) | Update::ObservationFailed(error) => {
+                self.recording.error = Some(error)
+            }
+            Update::Preview { first_row, rows } => {
+                self.recording.preview_offset = first_row;
+                self.recording.preview_rows = rows;
+                self.refresh_recording_preview();
+                self.recording.scroll.scroll_to_bottom();
+            }
+            Update::PostProcessing(request) => {
+                self.recording.stage = Stage::Stopping;
+                let options = if self.recording.cancelled {
+                    Err("录制已取消".into())
+                } else {
+                    self.recording_options(cx)
+                };
+                if let Err(error) = request.complete(options) {
+                    self.recording.error = Some(error);
+                }
+            }
+            Update::Commit(request) => {
+                if let Err(error) = request.complete(|rows| self.commit_recorded_actions(rows, cx))
+                {
+                    self.recording.error = Some(error);
+                }
+            }
+            Update::Finished(result) => {
+                self.recording.command = None;
+                self.recording.stage = Stage::Idle;
+                self.recording.preview.clear();
+                self.recording.preview_rows.clear();
+                match result {
+                    Ok(recording_actor::Completion::Recorded { count })
+                        if !self.recording.cancelled =>
+                    {
+                        self.recording.status =
+                            format!("录制完成，新增 {count} 行本地草稿；保存仅写入本机");
+                    }
+                    Ok(_) => {
+                        self.recording.status = self.recording.committed_count.map_or_else(
+                            || "录制已取消，未更改草稿".into(),
+                            |count| format!("录制已取消，保留已追加的 {count} 行本地草稿"),
+                        );
+                    }
+                    Err(error) => {
+                        self.recording.status = if self.recording.committed_count.is_some() {
+                            "录制清理失败，已追加的本地草稿仍然保留".into()
+                        } else {
+                            "录制失败，未更改草稿".into()
+                        };
+                        self.recording.error = Some(error);
+                    }
+                }
+            }
+        }
+    }
+
+    pub(super) fn commit_recorded_actions(
+        &mut self,
+        mut rows: Vec<ActionItem>,
+        cx: &App,
+    ) -> Result<usize, String> {
+        if self.recording.cancelled {
+            return Err("录制已取消，未提交动作".into());
+        }
+        // h.nu reads currentProfile again when its locked reducer runs. It
+        // appends to the current events and retains actionLoad and selection.
+        let options = self.recording_commit_options(cx)?;
+        rebase_recorded_pairs(&mut rows, options.next_pair)?;
+        let entry = self
+            .entries
+            .iter()
+            .find(|entry| Some(entry.id) == self.current)
+            .ok_or("当前宏文档不存在，无法提交录制结果")?;
+        let append = self.library_snapshot.append_recorded_actions(
+            entry,
+            &self.actions,
+            self.execution.as_ref(),
+            rows,
+            &options,
+        )?;
+        let count = append.appended;
+        self.actions = append.actions;
+        self.execution = Some(append.execution);
+        self.actions_dirty = true;
+        self.recording.committed_count = Some(count);
+        self.recording.preview_rows.clear();
+        self.refresh_recording_preview();
+        Ok(count)
     }
     /// Called by shell close/navigation. Actor shutdown stays on its thread.
     pub fn cancel_recording(&mut self, cx: &mut Context<Self>) {
@@ -284,6 +361,7 @@ impl MacroPage {
             self.recording.generation = self.recording.generation.wrapping_add(1);
             self.recording.stage = Stage::Idle;
             self.recording.preview.clear();
+            self.recording.preview_rows.clear();
             self.recording.status = "录制已取消，未更改草稿".into();
         }
         cx.notify();
@@ -337,4 +415,28 @@ impl MacroPage {
             )
             .into_any_element()
     }
+}
+
+fn rebase_recorded_pairs(rows: &mut [ActionItem], mut next: u64) -> Result<(), String> {
+    let mut pairs = std::collections::HashMap::new();
+    for row in rows {
+        let pair = row
+            .keyboard
+            .as_mut()
+            .map(|key| &mut key.pair_id)
+            .or_else(|| row.mouse.as_mut().map(|mouse| &mut mouse.pair_id));
+        if let Some(Some(id)) = pair {
+            let mapped = match pairs.get(id) {
+                Some(id) => *id,
+                None => {
+                    let mapped = next;
+                    next = next.checked_add(1).ok_or("本地宏事件标识已耗尽")?;
+                    pairs.insert(*id, mapped);
+                    mapped
+                }
+            };
+            *id = mapped;
+        }
+    }
+    Ok(())
 }

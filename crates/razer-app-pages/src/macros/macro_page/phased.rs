@@ -4,13 +4,15 @@ use razer_pages::features::macro_library::MacroType;
 use std::rc::Rc;
 
 pub struct PhasedUi {
-    mounted: Option<MacroType>,
+    mounted: bool,
+    macro_type: Option<MacroType>,
     pub expanded: [bool; 3],
 }
 impl Default for PhasedUi {
     fn default() -> Self {
         Self {
-            mounted: None,
+            mounted: false,
+            macro_type: None,
             expanded: [true; 3],
         }
     }
@@ -73,20 +75,46 @@ impl MacroPage {
     }
 
     pub fn sync_phased_mount(&mut self, cx: &mut Context<Self>) {
+        if self.update_phased_mount() {
+            self.publish_library(cx);
+            cx.notify();
+        }
+    }
+
+    pub(super) fn reset_phased_mount(&mut self) {
+        self.phased_ui.mounted = false;
+    }
+
+    pub(super) fn update_phased_mount(&mut self) -> bool {
         if self.tab != MacroTab::MyMacros {
             // Ka is only mounted on the My Macros tab. Its effects and local
             // expanded state restart after a tab switch, but remain intact
             // when the selected document changes while Ka stays mounted.
-            self.phased_ui.mounted = None;
-            return;
+            self.phased_ui.mounted = false;
+            return false;
         }
-        let kind = self.current_macro_type();
+        let kind = self
+            .entries
+            .iter()
+            .find(|entry| Some(entry.id) == self.current)
+            .map(|entry| entry.macro_type);
         // Fr's effect depends on macroType, not the current document identity.
-        if self.phased_ui.mounted != Some(kind) {
-            self.phased_ui.mounted = Some(kind);
+        if !self.phased_ui.mounted || self.phased_ui.macro_type != kind {
+            self.phased_ui.mounted = true;
+            self.phased_ui.macro_type = kind;
             self.phased_ui.expanded = [true; 3];
-            self.set_active_phase((kind == MacroType::Phased).then_some(0), cx);
+            let phase = (kind == Some(MacroType::Phased)).then_some(0);
+            if let Some(entry) = self
+                .entries
+                .iter_mut()
+                .find(|entry| Some(entry.id) == self.current)
+                && entry.active_phase != phase
+            {
+                entry.active_phase = phase;
+                return true;
+            }
         }
+        false
     }
 
     fn set_active_phase(&mut self, phase: Option<u8>, cx: &mut Context<Self>) {
@@ -171,10 +199,11 @@ impl MacroPage {
             return;
         }
         self.finish_pending_edits(window, cx);
-        self.undo.push(self.actions.clone());
+        self.checkpoint_actions();
         self.actions.retain(|item| item.phase != Some(phase));
         self.selected_actions.clear();
         self.redo.clear();
+        self.rebuild_action_execution();
         self.clear_action_editors();
         cx.notify();
     }

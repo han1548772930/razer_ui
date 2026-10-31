@@ -408,7 +408,9 @@ def check_receiver_reset_storage():
 
 
 READ_INPUT = ".analysis/inputs/typed-tables/razer-device/device-read-capabilities.json"
-IDENTITY_INPUT = ".analysis/inputs/typed-tables/razer-device/discovery-catalog.json"
+IDENTITY_AVAILABLE_URL = "https://apps.razer.com/synapse/dashboard/AvailableDevices.json"
+IDENTITY_DEVELOPMENT_URL = "https://apps.razer.com/synapse/dashboard/inDevelopmentDevices.json"
+IDENTITY_HOST_URL = "https://apps.razer.com/background-manager/"
 QUERY_INPUT = ".analysis/inputs/typed-tables/razer-device/receiver-query-capabilities.json"
 PAIR_CAP_INPUT = ".analysis/inputs/typed-tables/razer-device/receiver-pairing-capabilities.json"
 RECEIVER_179_PAIRING_NAMESPACES = {
@@ -437,12 +439,7 @@ READ_METHODS = {
 READ_KINDS = {"firmware": "Firmware", "battery": "Battery", "charging": "Charging", **KINDS}
 READ_CLASSES = {"rzDevice25", "rzDevice25DualLinkMouse", "rzDevice25DualLinkKeyboard"}
 RECEIVER_CLASSES = READ_CLASSES | {"rzDevice25Linker", "rzDevice25LinkerUma", "rzDevice25LinkerMultiDevices"}
-IDENTITY_CATEGORIES = {
-    "ACCESSORY": "Accessory", "AUDIO": "Audio", "BROADCASTER": "Broadcaster", "CASE": "Case",
-    "CHAIR": "Chair", "EGPU": "Egpu", "GAMEPAD": "Gamepad", "HUE": "Hue", "IOT": "Iot",
-    "KEYBOARD": "Keyboard", "KEYPAD": "Keypad", "MONITOR": "Monitor", "MOUSE": "Mouse",
-    "MOUSEMAT": "Mousemat", "MOUSEPLUSMAT": "Mouseplusmat", "SYSTEM": "System",
-}
+IDENTITY_CATEGORIES = TRANSFER_CATEGORIES
 PAIRING_CATEGORIES = {"MOUSE": "Mouse", "KEYBOARD": "Keyboard", "ACCESSORY": "Accessory", "MOUSEMAT": "MouseMat"}
 POLLING_HZ = {100, 125, 200, 250, 333, 500, 1000, 2000, 4000, 8000}
 CHARGING_NAMES = {"NoCharge_BatteryFull", "Charging", "ChargingFailed", "ForeignObjectDetection", "FastCharging", "FullCharging", "ReachChargingLimit"}
@@ -647,71 +644,513 @@ def render_read_catalog(raw):
     return "\n".join(lines).encode("utf-8")
 
 
-def validate_identity_catalog(raw):
-    products = source_list(json.loads(raw, object_pairs_hook=duplicate_free), "identity catalog", True)
-    seen = set()
-    optional = {"rep_id", "dongle_id", "ble_id", "xbox_id", "wired_id", "ps_mode_ids", "monitor_port_ids", "is_not_chroma_device", "middleware"}
+IDENTITY_CATALOG_FIELDS = {
+    "productId": "product_id", "repId": "rep_id", "dongleId": "dongle_id", "bleId": "ble_id",
+    "xBoxId": "xbox_id", "wiredId": "wired_id", "psModeIds": "ps_mode_ids",
+    "monitorPortIds": "monitor_port_ids", "isNotChromaDevice": "is_not_chroma_device",
+}
+IDENTITY_DEFINITION_FIELDS = {"productId", "dongleId", "bleId", "vendorId", "category", "claimInterface"}
+
+
+def validate_identity_catalog(raw, *, allow_empty=False):
+    """Decode the actual ordered host JSON; repeated rows remain distinct."""
+    products = source_list(json.loads(raw, object_pairs_hook=duplicate_free), "identity catalog", not allow_empty)
+    result = []
     for product in products:
-        fields_with_optional(product, ("product_id",), optional, "identity product")
-        pid = usb_product(product["product_id"])
-        if pid in seen:
-            raise ValueError("Repeated identity source product")
-        seen.add(pid)
-        if "rep_id" in product:
-            usb_product(product["rep_id"], allow_zero=True)
-        for field in ("dongle_id", "ble_id", "xbox_id", "wired_id"):
+        fields_with_optional(product, ("productId",), IDENTITY_CATALOG_FIELDS.keys() - {"productId"}, "host identity row")
+        usb_product(product["productId"])
+        if "repId" in product:
+            usb_product(product["repId"], allow_zero=True)
+        for field in ("dongleId", "bleId", "xBoxId", "wiredId"):
             if field in product:
                 value = product[field]
                 if isinstance(value, list):
                     product_ids(value, field, True)
                 else:
                     usb_product(value, field)
-        for field in ("ps_mode_ids", "monitor_port_ids"):
+        for field in ("psModeIds", "monitorPortIds"):
             if field in product:
                 product_ids(product[field], field, True)
-        if "is_not_chroma_device" in product:
-            boolean(product["is_not_chroma_device"], "is_not_chroma_device")
-        if "middleware" in product:
-            facts = product["middleware"]
-            fields_with_optional(facts, (), ("dongle_id", "ble_id", "claim_interface", "category", "receipt"), "middleware identity")
-            for field in ("dongle_id", "ble_id"):
-                if field in facts:
-                    usb_product(facts[field], field, True)
-            if "claim_interface" in facts:
-                bounded(facts["claim_interface"], 0xFF, "claim interface")
-            if "category" in facts and facts["category"] not in IDENTITY_CATEGORIES:
-                raise ValueError("Unknown middleware identity category")
-            if "receipt" in facts and not isinstance(facts["receipt"], dict):
-                raise ValueError("Identity maintenance receipt must be an evidence object")
-    return products
+        if "isNotChromaDevice" in product:
+            boolean(product["isNotChromaDevice"], "isNotChromaDevice")
+        result.append({IDENTITY_CATALOG_FIELDS[key]: value for key, value in product.items()})
+    return result
 
 
-def render_identity_catalog(raw):
-    products = validate_identity_catalog(raw)
-    lines = generated_header(raw, "Fixed source product identities; no hardware observations.", [
-        "use crate::device_identity::{CatalogProduct, DeviceCategory, Ids, MiddlewareFacts};",
-    ])
-    lines.extend(["pub(crate) fn products() -> Vec<CatalogProduct> {", "    vec!["])
-    for product in products:
-        lines.extend(["        CatalogProduct {", f"            product_id: {product['product_id']},",
-                      "            rep_id: " + option_expr(product, "rep_id") + ","])
-        for field in ("dongle_id", "ble_id", "xbox_id", "wired_id"):
-            lines.append(f"            {field}: " + option_expr(product, field, lambda ids: "Ids::Many(" + rust_vec(ids) + ")" if isinstance(ids, list) else f"Ids::One({ids})") + ",")
-        for field in ("ps_mode_ids", "monitor_port_ids"):
-            lines.append(f"            {field}: " + option_expr(product, field, rust_vec) + ",")
-        lines.append("            is_not_chroma_device: " + boolean(product.get("is_not_chroma_device", False), "is_not_chroma_device") + ",")
-        if "middleware" in product:
-            facts = product["middleware"]
-            lines.append("            middleware: Some(MiddlewareFacts {")
-            for field in ("dongle_id", "ble_id", "claim_interface"):
-                lines.append(f"                {field}: " + option_expr(facts, field) + ",")
-            lines.extend(["                category: " + option_expr(facts, "category", lambda category: "DeviceCategory::" + IDENTITY_CATEGORIES[category]) + ",",
-                          "                _receipt: None,", "            }),"])
+def validate_identity_definition(projection):
+    fields_with_optional(projection, {"productId", "category"},
+                         IDENTITY_DEFINITION_FIELDS - {"productId", "category"}, "DeviceInfo identity")
+    for field in ("productId", "vendorId", "dongleId", "bleId"):
+        if field in projection:
+            usb_product(projection[field], field, allow_zero=field in {"dongleId", "bleId"})
+    if not isinstance(projection["category"], str) or projection["category"] not in IDENTITY_CATEGORIES:
+        raise ValueError("Unknown DeviceInfo identity category")
+    if "claimInterface" in projection:
+        value = projection["claimInterface"]
+        if isinstance(value, dict):
+            if not value:
+                raise ValueError("DeviceInfo claimInterface has no physical product branches")
+            for physical, interface in value.items():
+                if not isinstance(physical, str) or not re.fullmatch(r"[1-9][0-9]*", physical):
+                    raise ValueError("DeviceInfo claimInterface has an invalid physical product key")
+                usb_product(int(physical), "claimInterface physical product")
+                bounded(interface, 0xFF, "claimInterface physical interface")
         else:
-            lines.append("            middleware: None,")
-        lines.append("        },")
-    lines.extend(["    ]", "}", ""])
+            bounded(value, 0xFF, "claimInterface uniform interface")
+    return projection
+
+
+def identity_definition_projection(body, *, modules=None):
+    projection, evidence = _profile_transfer_static_fields(
+        body, "DeviceInfo", IDENTITY_DEFINITION_FIELDS, modules or {})
+    return validate_identity_definition(projection), evidence
+
+
+def identity_definition_semantics(projection):
+    if projection is None:
+        return None
+    validate_identity_definition(projection)
+    interface = projection.get("claimInterface")
+    return {
+        "identity": {"product_id": projection["productId"], "dongle_id": projection.get("dongleId"),
+                     "ble_id": projection.get("bleId"), "vendor_id": projection.get("vendorId")},
+        "category": IDENTITY_CATEGORIES[projection["category"]],
+        "claim_interface": ({"kind": "ByProduct", "value": [
+            {"physical_product_id": int(pid), "interface": number} for pid, number in interface.items()]}
+            if isinstance(interface, dict) else {"kind": "Uniform", "value": interface} if interface is not None else None),
+    }
+
+
+def identity_catalog_semantics(products):
+    return [{field: product.get(field, False if field == "is_not_chroma_device" else None)
+             for field in IDENTITY_CATALOG_FIELDS.values()} for product in products]
+
+
+def render_identity_catalog(products, definitions, development_products):
+    for row in source_list(definitions, "source identity definitions", True):
+        fields_with_optional(row, {"mounted_product_id", "ui", "middleware"}, {"sources"}, "source identity definitions")
+        usb_product(row["mounted_product_id"], "mounted identity product")
+    source_list(development_products, "in-development identity products")
+    mounted = [row["mounted_product_id"] for row in definitions]
+    if not products or mounted != sorted(set(mounted)) or not {row["product_id"] for row in products} <= set(mounted):
+        raise ValueError("Current identity definitions must cover the catalog once in mounted product order")
+    reverse_fields = {value: key for key, value in IDENTITY_CATALOG_FIELDS.items()}
+    validate_identity_catalog(json.dumps([{reverse_fields[key]: value for key, value in row.items()} for row in products]))
+    for product_id in development_products:
+        usb_product(product_id, "in-development identity")
+    lines = [
+        "//! Current host catalog rows and independently declared UI/MW identities.",
+        "//! Regenerate with workspace.py prepare-local-protocol-tables --current-identities.",
+        "use crate::device_identity::{", "    CatalogProduct, ClaimInterface, DeviceCategory, DeviceInfoDefinition, Ids,",
+        "    PhysicalInterface, ProductDefinitions, SourceProductIdentity,", "};", "",
+        "pub(crate) static PRODUCTS: &[CatalogProduct] = &[",
+    ]
+    for product in products:
+        lines.extend(["    CatalogProduct {", f"        product_id: {product['product_id']},",
+                      "        rep_id: " + option_expr(product, "rep_id") + ","])
+        for field in ("dongle_id", "ble_id", "xbox_id", "wired_id"):
+            lines.append(f"        {field}: " + option_expr(product, field, lambda ids:
+                "Ids::Many(&" + str(ids) + ")" if isinstance(ids, list) else f"Ids::One({ids})") + ",")
+        for field in ("ps_mode_ids", "monitor_port_ids"):
+            lines.append(f"        {field}: " + option_expr(product, field, lambda ids: "&" + str(ids)) + ",")
+        lines.extend(["        is_not_chroma_device: " + boolean(product.get("is_not_chroma_device", False), "is_not_chroma_device") + ",",
+                      "    },"])
+    lines.extend(["];", "", "pub(crate) static IN_DEVELOPMENT: &[u32] = &" + str(development_products) + ";", "",
+                  "pub(crate) static DEFINITIONS: &[ProductDefinitions] = &["])
+    for row in definitions:
+        lines.extend(["    ProductDefinitions {", f"        mounted_product_id: {row['mounted_product_id']},"])
+        for role in ("ui", "middleware"):
+            value = identity_definition_semantics(row[role])
+            if value is None:
+                lines.append(f"        {role}: None,")
+                continue
+            lines.extend([f"        {role}: Some(DeviceInfoDefinition {{", "            identity: SourceProductIdentity {"])
+            lines.append(f"                product_id: {value['identity']['product_id']},")
+            for field in ("dongle_id", "ble_id", "vendor_id"):
+                item = value["identity"][field]
+                lines.append(f"                {field}: " + ("None" if item is None else f"Some({item})") + ",")
+            lines.extend(["            },", f"            category: DeviceCategory::{value['category']},"])
+            interface = value["claim_interface"]
+            if interface is None:
+                lines.append("            claim_interface: None,")
+            elif interface["kind"] == "Uniform":
+                lines.append(f"            claim_interface: Some(ClaimInterface::Uniform({interface['value']})),")
+            else:
+                lines.append("            claim_interface: Some(ClaimInterface::ByProduct(&[")
+                for branch in interface["value"]:
+                    lines.append("                PhysicalInterface { physical_product_id: " +
+                        str(branch["physical_product_id"]) + ", interface: " + str(branch["interface"]) + " },")
+                lines.append("            ])),")
+            lines.append("        }),")
+        lines.append("    },")
+    lines.extend(["];", ""])
     return "\n".join(lines).encode("utf-8")
+
+
+def verify_identity_constructor(content, products, definitions, development_products):
+    """Read every fixed Rust field, source row, duplicate and interface branch back."""
+    tree = receiver_table_tree(content)
+    structs = {"CatalogProduct": set(IDENTITY_CATALOG_FIELDS.values()),
+               "ProductDefinitions": {"mounted_product_id", "ui", "middleware"},
+               "DeviceInfoDefinition": {"identity", "category", "claim_interface"},
+               "SourceProductIdentity": {"product_id", "dongle_id", "ble_id", "vendor_id"},
+               "PhysicalInterface": {"physical_product_id", "interface"}}
+
+    def decode(node):
+        if node.type == "reference_expression" and len(node.named_children) == 1:
+            return decode(node.named_children[0])
+        if node.type == "array_expression":
+            return [decode(child) for child in node.named_children if child.type not in {"line_comment", "block_comment"}]
+        if node.type in {"integer_literal", "boolean_literal"}:
+            return json.loads(node.text)
+        if node.type == "identifier" and node.text == b"None":
+            return None
+        if node.type == "scoped_identifier" and node.text.startswith(b"DeviceCategory::"):
+            category = node.text.decode().removeprefix("DeviceCategory::")
+            if category in IDENTITY_CATEGORIES.values():
+                return category
+        if node.type == "call_expression":
+            function = node.child_by_field_name("function").text.decode()
+            args = node.child_by_field_name("arguments").named_children
+            if len(args) == 1 and function in {"Some", "Ids::One", "Ids::Many"}:
+                value = decode(args[0])
+                if function == "Ids::One" and type(value) is not int or function == "Ids::Many" and not isinstance(value, list):
+                    raise ValueError("Generated identity lost a scalar/array branch")
+                return value
+            if len(args) == 1 and function in {"ClaimInterface::Uniform", "ClaimInterface::ByProduct"}:
+                return {"kind": function.split("::")[1], "value": decode(args[0])}
+        if node.type == "struct_expression":
+            name = node.child_by_field_name("name").text.decode()
+            if name not in structs:
+                raise ValueError("Generated identity has an unrecognized constructor")
+            values = {}
+            for child in node.child_by_field_name("body").named_children:
+                if child.type in {"line_comment", "block_comment"}:
+                    continue
+                if child.type != "field_initializer":
+                    raise ValueError("Generated identity fields must be explicit")
+                field = child.child_by_field_name("field").text.decode()
+                if field in values:
+                    raise ValueError("Generated identity repeats a field")
+                values[field] = decode(child.child_by_field_name("value"))
+            exact_fields(values, structs[name], name)
+            return values
+        raise ValueError("Generated identity has a nonliteral value: " + node.type)
+
+    actual = {}
+    for node in tree.root_node.named_children:
+        if node.type == "static_item":
+            name = node.child_by_field_name("name").text.decode()
+            if name not in {"PRODUCTS", "DEFINITIONS", "IN_DEVELOPMENT"} or name in actual:
+                raise ValueError("Generated identity has an unknown or repeated fixed table")
+            actual[name] = decode(node.child_by_field_name("value"))
+        elif node.type not in {"use_declaration", "line_comment", "block_comment"}:
+            raise ValueError("Generated identity has an unverified top-level owner")
+    expected = {"PRODUCTS": identity_catalog_semantics(products), "IN_DEVELOPMENT": development_products,
+                "DEFINITIONS": [{"mounted_product_id": row["mounted_product_id"],
+                                 **{role: identity_definition_semantics(row[role]) for role in ("ui", "middleware")}}
+                                for row in definitions]}
+    if json.dumps(actual, sort_keys=True) != json.dumps(expected, sort_keys=True):
+        raise ValueError("Generated identity fields, row order, duplicates or physical branches differ from current source")
+    return {"catalog_rows": len(products), "mounted_products": len(definitions),
+            "all_fields_order_duplicates_and_physical_branches_equal": True}
+
+
+def identity_discovery_contract(raw):
+    """Verify the host's catalog projections in their complete owning functions."""
+    import sys
+    sys.path.insert(0, str(ROOT / "tools/analyzers/python-static"))
+    from tree_sitter import Language, Parser
+    import tree_sitter_javascript
+    parser = Parser(Language(tree_sitter_javascript.language()))
+    tree = parser.parse(raw)
+    if tree.root_node.has_error:
+        raise ValueError("Current identity host has a JavaScript AST error")
+
+    def walk(node):
+        yield node
+        for child in node.named_children:
+            yield from walk(child)
+
+    def one(rows, name):
+        values = list(rows)
+        if len(values) != 1:
+            raise ValueError("Current identity host has no unique " + name)
+        return values[0]
+
+    def signature(node):
+        names = {}
+
+        def visit(value):
+            if value.type == "parenthesized_expression":
+                return visit(one(value.named_children, "parenthesized expression"))
+            if value.type == "identifier":
+                return (value.type, names.setdefault(value.text, len(names)))
+            return (value.type, tuple(visit(child) for child in value.children if child.type != "comment")
+                    if value.children else value.text)
+        return visit(node)
+
+    def expected(expression):
+        parsed = parser.parse(("const identity_projection=" + expression + ";").encode())
+        if parsed.root_node.has_error:
+            raise ValueError("Identity contract expression has an AST error")
+        return signature(parsed.root_node.named_children[0].named_children[0].child_by_field_name("value"))
+
+    def member(node, object_name, property_name):
+        return (node is not None and node.type == "member_expression"
+                and node.child_by_field_name("object").text == object_name
+                and node.child_by_field_name("property").text == property_name)
+
+    fields = {}
+    all_nodes = list(walk(tree.root_node))
+    for name in ("getLatestDeviceData", "_checkUSBDetail"):
+        field = one((node for node in all_nodes if node.type == "field_definition"
+                     and node.child_by_field_name("property").text.decode() == name), name)
+        fields[name] = field
+    loader = fields["getLatestDeviceData"]
+    checker = fields["_checkUSBDetail"]
+    checker_nodes = list(walk(checker))
+    projections = {
+        "host_candidates": "this.available.filter(e=>e.productId===a||HD(e.dongleId,a)||HD(e.bleId,a)||e.repId===a||HD(e.xBoxId,a)||HD(e.wiredId,a)||e.psModeIds?.includes(a))",
+        "monitor_first": "this.available.find(t=>t.monitorPortIds&&t.monitorPortIds.includes(e.productId))",
+        "single_route": "r.productId=t[0].repId||t[0].productId",
+        "single_dongle": "r.isDongle=HD(t[0].dongleId,r.realProductId)",
+        "single_ble": "r.isBle=HD(t[0].bleId,r.realProductId)",
+        "single_xbox": "r.isXBox=HD(t[0].xBoxId,r.realProductId)",
+        "single_playstation": "r.isPlaystation=t[0].psModeIds?.includes(r.realProductId)",
+        "multiple_identity": '{productId:a||t,deviceContainerId:n,type:"available",realProductId:e.productId,baseProductName:i||e.productName,isDongle:!0}',
+    }
+    selected = {}
+    for name, expression in projections.items():
+        required = expected(expression)
+        selected[name] = one((node for node in checker_nodes
+                              if node.type != "parenthesized_expression" and signature(node) == required), name)
+    filters = [node for node in checker_nodes if node.type == "call_expression"
+               and member(node.child_by_field_name("function"), b"this.available", b"filter")]
+    if filters != [selected["host_candidates"]]:
+        raise ValueError("Current host has an additional catalog candidate filter")
+    callback = selected["host_candidates"].child_by_field_name("arguments").named_children[0]
+    helpers = {node.child_by_field_name("function").text for node in walk(callback)
+               if node.type == "call_expression" and node.child_by_field_name("function").type == "identifier"}
+    helper_name = one(helpers, "scalar/array alias matcher")
+    helper = one((node for node in all_nodes if node.type == "function_declaration"
+                  and node.child_by_field_name("name").text == helper_name), "alias matcher owner")
+    helper_body = helper.child_by_field_name("body")
+    returned = one((node for node in helper_body.named_children if node.type == "return_statement"), "alias result")
+    if signature(one(returned.named_children, "alias return expression")) != expected("null!=e&&(Array.isArray(e)?e.includes(t):e===t)"):
+        raise ValueError("Current host alias matching no longer has strict scalar/array semantics")
+    assignments = list(walk(loader))
+    available = one((node for node in assignments if node.type == "assignment_expression"
+                     and member(node.child_by_field_name("left"), b"this", b"available")), "available assignment")
+    if signature(available.child_by_field_name("right")) != expected("a.filter(e=>!c.find(t=>t.productId===e.productId))"):
+        raise ValueError("Current host development exclusion differs")
+    filtered = available.child_by_field_name("right")
+    available_name = filtered.child_by_field_name("function").child_by_field_name("object").text
+    development_find = one((node for node in walk(filtered) if node.type == "call_expression"
+                            and node.child_by_field_name("function").type == "member_expression"
+                            and node.child_by_field_name("function").child_by_field_name("property").text == b"find"), "development lookup")
+    development_name = development_find.child_by_field_name("function").child_by_field_name("object").text
+    results = one((node for node in assignments if node.type == "variable_declarator"
+                   and node.child_by_field_name("name").type == "array_pattern"), "ordered catalog fetch results")
+    fetched = results.child_by_field_name("name").named_children
+    if len(fetched) != 7 or fetched[0].text != available_name or fetched[-1].text != development_name:
+        raise ValueError("Host available/development directories no longer use their declared fetch positions")
+    value_call = one((node for node in assignments if node.type == "call_expression"
+                     and member(node.child_by_field_name("function"), b"Object", b"values")), "ordered directory source")
+    directory_name = one(value_call.child_by_field_name("arguments").named_children, "directory table").text
+    directory = one((node for node in all_nodes if node.type == "variable_declarator"
+                     and node.child_by_field_name("name").text == directory_name), "directory table owner")
+    directory_expression = '{AVAILABLE_DEVICE:`${window.location.origin}/synapse/dashboard/AvailableDevices.json`,WINDOW_10_DEVICE:`${window.location.origin}/synapse/dashboard/Windows10Devices.json`,WINDOW_8_DEVICE:null,SYNAPSE_2_DEVICE:`${window.location.origin}/synapse/dashboard/Synapse2Devices.json`,XBOX_HEADSETS:`${window.location.origin}/synapse/dashboard/XboxHeadsets.json`,XBOX_CONTROLLERS:`${window.location.origin}/synapse/dashboard/XboxDevices.json`,IN_DEVELOPMENT_DEVICES:`${window.location.origin}/synapse/dashboard/inDevelopmentDevices.json`}'
+    if signature(directory.child_by_field_name("value")) != expected(directory_expression):
+        raise ValueError("Current host directory fields or ordering differ")
+
+    def capture(node):
+        return {"byte_start": node.start_byte, "byte_end": node.end_byte,
+                "body_sha256": hashlib.sha256(node.text).hexdigest(),
+                "complete_body_retained_in_original": True}
+    return {"owners": {**{key: capture(value) for key, value in fields.items()},
+                       "alias_matcher": capture(helper), "directory_table": capture(directory)},
+            "projections": {key: capture(value) for key, value in selected.items()},
+            "catalog_order_and_duplicates_retained": True, "middleware_aliases_are_not_host_candidates": True,
+            "monitor_first_match": True, "development_exclusion_uses_primary_id": True,
+            "dynamic_aio_additions": "Separate local observations; not folded into the installed fixed table"}
+
+
+
+
+def _capture_identity_product(item):
+    import frontend
+    pid, routes, observations = item
+    definition = {"mounted_product_id": pid, "sources": {}}
+    inputs = []
+    for endpoint_role, role in (("ui", "ui"), ("mw", "middleware")):
+        route = f"https://apps.razer.com/synapse/products/{pid}/{endpoint_role}/"
+        source = frontend.current_product_source(
+            pid, endpoint_role, candidates=routes.get(route, []), observations=observations)
+        audit = source.pop("audit")
+        source.pop("acquired")
+        if source["status"] == "official_source_unavailable":
+            definition[role] = None
+            definition["sources"][role] = source
+            inputs.extend(source["inputs"])
+            continue
+        source.pop("files")
+        entry = source["entry"]
+        manifest, main = source["manifest"], source["main"]
+        owners, modules = profile_transfer_source_owners(audit.read(main))
+        if len(owners) != 1:
+            raise ValueError(f"Current identity PID {pid} {role} has no unique complete DeviceInfo owner")
+        projection, evidence = identity_definition_projection(owners[0]["body"], modules=modules)
+        definition[role] = projection
+        definition["sources"][role] = {"status": "verified", "acquisition": source["acquisition"],
+            "selection": source["selection"], "freshness": source["freshness"],
+            "entry": {key: entry[key] for key in ("path", "bytes", "sha256")},
+            "manifest": {key: manifest[key] for key in ("path", "bytes", "sha256")},
+            "main": {key: main[key] for key in ("path", "bytes", "sha256")},
+            "complete_owner": {key: value for key, value in owners[0].items() if key != "body"},
+            "projection_evidence": evidence}
+        inputs.extend(audit.artifacts.values())
+    return definition, inputs
+
+
+def prepare_current_identity_table(*, check=False, workers=4):
+    import concurrent.futures
+    import subprocess
+    import sys
+    import analysis
+    import families
+    import frontend
+    import host
+    from importlib.metadata import version
+    if type(workers) is not int or not 2 <= workers <= 16:
+        raise ValueError("Current identity workers must be between two and sixteen")
+    inputs = [families.identity(local_path(name)) for name in (
+        "tools/typed_tables.py", "tools/frontend.py", "tools/families.py", "tools/evidence.py",
+        "tools/host.py", "tools/workspace.py", "tools/analysis.py")]
+    routes = frontend.current_acquisition_routes()
+    audit = host.HostLocalAudit()
+    observations = frontend.latest_deployment_observations(audit)
+    inputs.extend(audit.artifacts.values())
+    directories = {}
+    for role, url in (("available", IDENTITY_AVAILABLE_URL), ("development", IDENTITY_DEVELOPMENT_URL)):
+        source = frontend.current_deployment_source(url, candidates=routes.get(url, []), observations=observations)
+        source_audit = source.pop("audit")
+        if source["status"] != "verified":
+            raise ValueError("Current identity directory is unavailable: " + url)
+        acquired = source.pop("acquired")
+        source.pop("files")
+        source["freshness"] = frontend.verify_latest_deployment_observations(
+            acquired, [source["entry"]], source_audit, observations=observations)
+        source["products"] = validate_identity_catalog(source_audit.read(source["entry"]), allow_empty=role == "development")
+        directories[role] = source
+        inputs.extend(source_audit.artifacts.values())
+    host_source = frontend.current_deployment_source(
+        IDENTITY_HOST_URL, candidates=routes.get(IDENTITY_HOST_URL, []), observations=observations)
+    host_audit = host_source.pop("audit")
+    if host_source["status"] != "verified":
+        raise ValueError("Current identity host source is unavailable")
+    host_acquired = host_source.pop("acquired")
+    host_files = host_source.pop("files")
+    host_mains = [row for row in host_source["selection"]["deployment"]["sources"]
+                  if row["identity_verified"] and row["deployment_role"] == "html_include"
+                  and re.fullmatch(re.escape(IDENTITY_HOST_URL) + r"assets/index-[\w]+\.js", row["url"])]
+    if len(host_mains) != 1:
+        raise ValueError("Current identity host has no unique mounted main")
+    host_main = host_files[host_mains[0]["url"]]
+    host_source["freshness"] = frontend.verify_latest_deployment_observations(
+        host_acquired, [host_source["entry"], host_main], host_audit, observations=observations)
+    host_source["contract"] = identity_discovery_contract(host_audit.read(host_main))
+    host_source["main"] = host_main
+    inputs.extend(host_audit.artifacts.values())
+    products = directories["available"]["products"]
+    development = [row["product_id"] for row in directories["development"]["products"]]
+    mounted = {row["product_id"] for row in products}
+    for route in routes:
+        match = re.fullmatch(r"https://apps\.razer\.com/synapse/products/([1-9][0-9]*)/(ui|mw)/", route)
+        if match:
+            mounted.add(usb_product(int(match[1]), "mounted identity endpoint"))
+    completed, failures = {}, []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = {pool.submit(_capture_identity_product, (pid, routes, observations)): pid for pid in sorted(mounted)}
+        for count, future in enumerate(concurrent.futures.as_completed(futures), 1):
+            pid = futures[future]
+            try:
+                definition, original_inputs = future.result()
+                completed[pid] = definition
+                inputs.extend(original_inputs)
+            except (ValueError, OSError, KeyError, TypeError) as error:
+                failures.append({"mounted_product_id": pid, "error": str(error)})
+            if count % 32 == 0 or count == len(futures):
+                print(f"Current identity sources: {count}/{len(futures)}; failed: {len(failures)}", file=sys.stderr, flush=True)
+    definitions = [completed[pid] for pid in sorted(completed)]
+    distinct_inputs = {}
+    for row in inputs:
+        if row["path"] in distinct_inputs and row != distinct_inputs[row["path"]]:
+            raise ValueError("Identity generation observed conflicting input bytes: " + row["path"])
+        distinct_inputs[row["path"]] = row
+    inputs = list(distinct_inputs.values())
+    report = {"directories": directories, "host": host_source, "definitions": definitions, "inputs": inputs,
+              "parsers": {name: version(name) for name in ("tree-sitter", "tree-sitter-javascript", "tree-sitter-rust")},
+              "failures": sorted(failures, key=lambda row: row["mounted_product_id"]),
+              "catalog_rows": len(products), "catalog_primary_products": len({row["product_id"] for row in products}),
+              "mounted_products": len(mounted), "check_only": check,
+              "catalog_repeated_primaries": [{"product_id": pid,
+                  "row_indices": [index for index, row in enumerate(products) if row["product_id"] == pid]}
+                  for pid in sorted({row["product_id"] for row in products})
+                  if sum(row["product_id"] == pid for row in products) > 1],
+              "declared_endpoint_aliases": [{"mounted_product_id": row["mounted_product_id"], "role": role,
+                  "declared_product_id": row[role]["productId"]}
+                  for row in definitions for role in ("ui", "middleware")
+                  if row[role] is not None and row[role]["productId"] != row["mounted_product_id"]],
+              "physical_interface_branch_products": {role: [row["mounted_product_id"] for row in definitions
+                  if row[role] is not None and isinstance(row[role].get("claimInterface"), dict)]
+                  for role in ("ui", "middleware")},
+              "unavailable_sources": [{"mounted_product_id": row["mounted_product_id"], "role": role, "source": row["sources"][role]}
+                                      for row in definitions for role in ("ui", "middleware") if row[role] is None],
+              "all_product_sources_complete": not failures and all(row[role] is not None for row in definitions for role in ("ui", "middleware")),
+              "application_execution": False, "vendor_execution": False, "runtime_acceptance": "unverified"}
+    if not failures:
+        rendered = render_identity_catalog(products, definitions, development)
+        rendered = subprocess.run(["rustfmt", "--edition", "2024", "--emit", "stdout"],
+                                  input=rendered, capture_output=True, check=True).stdout
+        report["constructor_equivalence"] = verify_identity_constructor(rendered, products, definitions, development)
+        if not all(families.valid(row) for row in inputs):
+            raise ValueError("Current identity inputs changed during generation")
+        output = local_path(IDENTITY_OUTPUT)
+        if check:
+            if not output.is_file() or output.read_bytes() != rendered:
+                raise ValueError("Typed current identities differ; regenerate through workspace.py")
+            verify_identity_constructor(output.read_bytes(), products, definitions, development)
+        else:
+            import os
+            import tempfile
+            output.parent.mkdir(parents=True, exist_ok=True)
+            temporary = None
+            try:
+                with tempfile.NamedTemporaryFile(dir=output.parent, prefix=".identity-", suffix=".rs", delete=False) as stream:
+                    temporary = Path(stream.name)
+                    stream.write(rendered)
+                    stream.flush()
+                    os.fsync(stream.fileno())
+                verify_identity_constructor(temporary.read_bytes(), products, definitions, development)
+                os.replace(temporary, output)
+            finally:
+                if temporary is not None and temporary.exists():
+                    temporary.unlink()
+        report.update(output=families.identity(output), inputs_unchanged=True, published=not check,
+                      fixed_table_verified=True, publication_status="verified_existing" if check else "published")
+    else:
+        report["published"] = False
+    destination = ROOT / ".analysis/results/typed-data.json"
+    with analysis.index_lock(ROOT / ".work/typed-data-registry.lock"):
+        previous = json.loads(destination.read_bytes()) if destination.is_file() else {"schema_version": 1}
+        previous["current_device_identities"] = report
+        analysis.save(destination, previous)
+    if failures:
+        raise ValueError("Current identity source chains failed: " + json.dumps(report["failures"]))
+    return {"output": IDENTITY_OUTPUT, "catalog_rows": len(products), "mounted_products": len(definitions),
+            "unavailable_sources": len(report["unavailable_sources"]),
+            "all_product_sources_complete": report["all_product_sources_complete"], "passed": True, "check_only": check}
 
 
 RECEIVER_FIELDS = {"source_product_id", "vendor_id", "product_id", "claim_interface", "report_bytes", "report_id", "protocol", "command",
@@ -930,16 +1369,20 @@ def render_pairing_source_catalog(raw):
     return "\n".join(lines).encode("utf-8")
 
 
-def prepare_local_protocol_tables(reads=READ_INPUT, identity=IDENTITY_INPUT, queries=QUERY_INPUT,
+def prepare_local_protocol_tables(reads=READ_INPUT, queries=QUERY_INPUT,
                                   pairing=PAIR_CAP_INPUT, catalog=PAIR_CATALOG_INPUT, check=False,
-                                  current_reads=False, workers=4):
+                                  current_reads=False, current_identities=False, workers=4):
     import subprocess
     import concurrent.futures
     if type(workers) is not int or not 2 <= workers <= 16:
         raise ValueError("Local protocol table workers must be between two and sixteen")
+    if current_reads and current_identities:
+        raise ValueError("Select one current protocol table projection")
     if current_reads:
         return prepare_current_read_table(check=check)
-    definitions = [(reads, READ_OUTPUT, render_read_catalog), (identity, IDENTITY_OUTPUT, render_identity_catalog),
+    if current_identities:
+        return prepare_current_identity_table(check=check, workers=workers)
+    definitions = [(reads, READ_OUTPUT, render_read_catalog),
                    (queries, QUERY_OUTPUT, render_receiver_query_catalog), (pairing, PAIR_CAP_OUTPUT, render_pairing_capabilities),
                    (catalog, PAIR_CATALOG_OUTPUT, render_pairing_source_catalog)]
 
@@ -954,6 +1397,7 @@ def prepare_local_protocol_tables(reads=READ_INPUT, identity=IDENTITY_INPUT, que
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=max(2, min(workers, len(definitions)))) as pool:
         outputs = list(pool.map(render_one, definitions))
+    identities = prepare_current_identity_table(check=check, workers=workers)
     for name, raw in outputs:
         output = local_path(name)
         if check:
@@ -962,7 +1406,7 @@ def prepare_local_protocol_tables(reads=READ_INPUT, identity=IDENTITY_INPUT, que
         else:
             output.parent.mkdir(parents=True, exist_ok=True)
             output.write_bytes(raw)
-    return {"paths": [name for name, _ in outputs], "passed": True,
+    return {"paths": [name for name, _ in outputs] + [IDENTITY_OUTPUT], "identities": identities, "passed": True,
             "scope": "fixed local protocol data; no runtime JSON, network or device operations"}
 
 
@@ -2424,8 +2868,8 @@ def profile_transfer_source_owners(raw):
     return list(owners.values()), modules
 
 
-def _profile_transfer_static_fields(body, export_name, consumed, modules, import_chain=()):
-    """Resolve one exported static object without evaluating vendor JavaScript."""
+def _profile_transfer_static_fields(body, export_name, consumed, modules, import_chain=(), *, allow_absent=False):
+    """Resolve fixed exported fields or a complete value without executing JavaScript."""
     import sys
     sys.path.insert(0, str(ROOT / "tools/analyzers/python-static"))
     from tree_sitter import Language, Parser
@@ -2502,7 +2946,7 @@ def _profile_transfer_static_fields(body, export_name, consumed, modules, import
                     if result.type != "identifier" or name in exported:
                         raise ValueError("DeviceInfo export is ambiguous or dynamic")
                     exported[name] = source(result)
-                    capture(pair, "DeviceInfo_export")
+                    capture(pair, export_name + "_export")
         if node.type not in ("arrow_function", "function_expression", "function_declaration", "method_definition"):
             for child in node.named_children:
                 find_exports(child)
@@ -2510,6 +2954,10 @@ def _profile_transfer_static_fields(body, export_name, consumed, modules, import
     for statement in statements.named_children:
         if statement.type == "expression_statement":
             find_exports(statement)
+    if not exported and allow_absent:
+        return None, {"export_observed": False, "export_name": export_name,
+                      "complete_factory_sha256": hashlib.sha256(body.encode("utf-8")).hexdigest(),
+                      "scope": "Export is absent from the complete parsed factory"}
     if set(exported) != {export_name}:
         raise ValueError("Current profile transfer factory does not export " + export_name)
 
@@ -2538,12 +2986,33 @@ def _profile_transfer_static_fields(body, export_name, consumed, modules, import
         capture(declaration, name)
         return resolve(value, (*chain, name))
 
-    def value(node):
+    def value(node, value_chain=()):
         node = resolve(node)
+        identity = (node.start_byte, node.end_byte)
+        if identity in value_chain:
+            raise ValueError("Cyclic static source value: " + source(node))
+        value_chain = (*value_chain, identity)
         if node.type in ("string", "number", "true", "false", "null"):
             return json5.loads(source(node))
         if node.type == "unary_expression" and source(node) in ("!0", "!1"):
             return source(node) == "!0"
+        if node.type == "object":
+            return {key: value(field, value_chain) for key, field in properties(node, value_chain=value_chain).items()}
+        if node.type == "array":
+            elements, expect_element = [], True
+            for child in node.children[1:-1]:
+                if child.type == "comment":
+                    continue
+                if child.type == ",":
+                    if expect_element:
+                        raise ValueError("Static source array has an unobserved element")
+                    expect_element = True
+                else:
+                    if not expect_element or child.type == "spread_element":
+                        raise ValueError("Static source array has an unresolved element")
+                    elements.append(value(child, value_chain))
+                    expect_element = False
+            return elements
         if node.type == "member_expression":
             path, root = [], node
             while root.type == "member_expression":
@@ -2569,14 +3038,14 @@ def _profile_transfer_static_fields(body, export_name, consumed, modules, import
                             dependency["body"], path[0], {path[1]}, modules, (*import_chain, marker))
                         dependencies.append({"owner": dependency, "export": path[0], "field": path[1], "evidence": evidence})
                         return fields[path[1]]
-            object_fields = properties(node.child_by_field_name("object"))
             key = source(node.child_by_field_name("property"))
+            object_fields = properties(node.child_by_field_name("object"), observed={key}, value_chain=value_chain)
             if key not in object_fields:
                 raise ValueError("Static transfer object member is absent: " + key)
-            return value(object_fields[key])
+            return value(object_fields[key], value_chain)
         raise ValueError("Nonliteral profile transfer field: " + source(node))
 
-    def properties(node, spread_chain=()):
+    def properties(node, spread_chain=(), *, observed=None, value_chain=()):
         node = resolve(node)
         if node.type != "object" or node.start_byte in spread_chain:
             raise ValueError("DeviceInfo must resolve to one fixed object")
@@ -2588,17 +3057,19 @@ def _profile_transfer_static_fields(body, export_name, consumed, modules, import
                 key = item.child_by_field_name("key")
                 if key.type not in ("property_identifier", "string", "number"):
                     raise ValueError("DeviceInfo has a computed field identity: " + source(key))
-                name = json5.loads(source(key)) if key.type == "string" else source(key)
+                name = (json5.loads(source(key)) if key.type == "string" else
+                        str(families.javascript_integer_literal(source(key))) if key.type == "number" else source(key))
                 incoming = {name: item.child_by_field_name("value")}
             elif item.type == "shorthand_property_identifier":
                 incoming = {source(item): item}
             elif item.type == "spread_element" and len(item.named_children) == 1:
-                incoming = properties(item.named_children[0], (*spread_chain, node.start_byte))
+                incoming = properties(item.named_children[0], (*spread_chain, node.start_byte),
+                                      observed=observed, value_chain=value_chain)
             else:
                 raise ValueError("DeviceInfo has an unresolved object property: " + source(item))
             for key, item_value in incoming.items():
-                if key in output and key in consumed:
-                    if value(output[key]) != value(item_value):
+                if key in output and (observed is None or key in observed):
+                    if value(output[key], value_chain) != value(item_value, value_chain):
                         raise ValueError("Conflicting profile transfer DeviceInfo field: " + key)
                     duplicates.append({"field": key, "previous": source(output[key]), "effective": source(item_value),
                                        "equal_fixed_values": True, "semantics": "last object property wins"})
@@ -2607,31 +3078,64 @@ def _profile_transfer_static_fields(body, export_name, consumed, modules, import
 
     declaration = bindings.get(exported[export_name])
     if declaration is None:
-        raise ValueError("Exported DeviceInfo binding is absent")
+        raise ValueError("Exported static binding is absent: " + export_name)
     capture(declaration, export_name)
-    fields = properties(declaration.child_by_field_name("value"))
-    required = {"productId", "category"} if export_name == "DeviceInfo" else consumed
-    missing = required - fields.keys()
-    if missing:
-        raise ValueError("Required profile transfer DeviceInfo fields are absent: " + ", ".join(sorted(missing)))
-    projection = {}
-    for name in sorted(consumed & fields.keys()):
-        node = fields[name]
-        # Shorthand object keys bind the same top-level identifier.
-        if node.type == "shorthand_property_identifier":
-            if name not in bindings:
-                raise ValueError("Unresolved DeviceInfo shorthand: " + name)
-            node = bindings[name].child_by_field_name("value")
-            capture(bindings[name], name)
-        capture(node, name)
-        projection[name] = value(node)
+    absent_optional_fields = []
+    if consumed is None:
+        projection = value(declaration.child_by_field_name("value"))
+    else:
+        fields = properties(declaration.child_by_field_name("value"), observed=consumed)
+        required = {"productId", "category"} if export_name == "DeviceInfo" else consumed
+        missing = required - fields.keys()
+        if missing:
+            raise ValueError("Required profile transfer DeviceInfo fields are absent: " + ", ".join(sorted(missing)))
+        projection = {}
+        for name in sorted(consumed & fields.keys()):
+            node = fields[name]
+            # Shorthand object keys bind the same top-level identifier.
+            if node.type == "shorthand_property_identifier":
+                if name not in bindings:
+                    raise ValueError("Unresolved DeviceInfo shorthand: " + name)
+                node = bindings[name].child_by_field_name("value")
+                capture(bindings[name], name)
+            capture(node, name)
+            projection[name] = value(node)
+        absent_optional_fields = sorted(consumed - required - fields.keys())
     return projection, {
+        "export_observed": True,
         "exported_binding": exported[export_name],
         "bindings": sorted(retained.values(), key=lambda row: (row["byte_start"], row["byte_end"])),
-        "absent_optional_fields": sorted(consumed - required - fields.keys()),
+        "absent_optional_fields": absent_optional_fields,
         "equal_duplicate_properties": duplicates, "sequence_results": sequences, "imported_fixed_fields": dependencies,
         "scope": "Exact exported fixed fields; unrelated product defaults stay with their product owners",
     }
+
+
+def registry_identity_projection(body, *, modules=None):
+    """Read manufacturer identity and optional presentation exports independently."""
+    modules = modules or {}
+    projection, evidence = _profile_transfer_static_fields(
+        body, "DeviceInfo", IDENTITY_DEFINITION_FIELDS | {"deviceName"}, modules)
+    validate_identity_definition({key: value for key, value in projection.items()
+                                  if key in IDENTITY_DEFINITION_FIELDS})
+    name = projection.get("deviceName")
+    name_evidence = {"source": "DeviceInfo.deviceName", "export_observed": "deviceName" in projection}
+    if "deviceName" not in projection:
+        name, name_evidence = _profile_transfer_static_fields(
+            body, "DEVICE_NAME", None, modules, allow_absent=True)
+        name_evidence["source"] = "DEVICE_NAME"
+    if name_evidence["export_observed"] and (type(name) is not str or not name.strip()):
+        raise ValueError("Current registry manufacturer name is not a nonempty string")
+    editions, edition_evidence = _profile_transfer_static_fields(
+        body, "AVAILABLE_EDITION_ID", None, modules, allow_absent=True)
+    if edition_evidence["export_observed"]:
+        source_list(editions, "current registry edition IDs", True)
+        for edition in editions:
+            bounded(edition, 0xFFFFFFFF, "current registry edition ID")
+        if len(set(editions)) != len(editions):
+            raise ValueError("Current registry repeats an edition ID")
+    return {"device_info": projection, "manufacturer_name": name, "edition_ids": editions}, {
+        "device_info": evidence, "manufacturer_name": name_evidence, "edition_ids": edition_evidence}
 
 
 def profile_transfer_source_projection(body, *, modules=None):
@@ -4139,7 +4643,6 @@ def fixed_tables():
     return {
         ("razer-device", "DEVICE_WRITE_CAPABILITIES"): (WRITE_INPUT, WRITE_OUTPUT, render_write_catalog, False),
         ("razer-device", "DEVICE_READ_CAPABILITIES"): (READ_INPUT, READ_OUTPUT, render_read_catalog, True),
-        ("razer-device", "DEVICE_IDENTITY_CATALOG"): (IDENTITY_INPUT, IDENTITY_OUTPUT, render_identity_catalog, True),
         ("razer-device", "RECEIVER_QUERY_CAPABILITIES"): (QUERY_INPUT, QUERY_OUTPUT, render_receiver_query_catalog, True),
         ("razer-device", "RECEIVER_PAIRING_CAPABILITIES"): (PAIR_CAP_INPUT, PAIR_CAP_OUTPUT, render_pairing_capabilities, True),
         ("razer-device", "RECEIVER_PAIRING_CATALOG"): (PAIR_CATALOG_INPUT, PAIR_CATALOG_OUTPUT, render_pairing_source_catalog, True),
@@ -4184,7 +4687,6 @@ def add_commands(commands):
                    help="bounded worker threads for independent mounted mouse factories")
     p = commands.add_parser("prepare-local-protocol-tables", help="Generate typed local read, identity and receiver tables")
     p.add_argument("--reads-json", default=READ_INPUT)
-    p.add_argument("--identity-json", default=IDENTITY_INPUT)
     p.add_argument("--queries-json", default=QUERY_INPUT)
     p.add_argument("--pairing-json", default=PAIR_CAP_INPUT)
     p.add_argument("--catalog-json", default=PAIR_CATALOG_INPUT)
@@ -4193,6 +4695,8 @@ def add_commands(commands):
                    help="bounded worker threads for independent protocol table renderers")
     p.add_argument("--current-reads", action="store_true",
                    help="Prepare source-verified current observation constructors without retired maintenance JSON")
+    p.add_argument("--current-identities", action="store_true",
+                   help="Prepare current host catalog and independent UI/MW identities from verified official sources")
     p = commands.add_parser("prepare-device-write-table", help="Generate typed Rust capabilities from explicit maintenance JSON")
     p.add_argument("--from-json", default=WRITE_INPUT, help="Source-derived maintenance input; never read by Cargo or runtime")
     p.add_argument("--check", action="store_true", help="Verify generated Rust without rewriting")
@@ -4215,9 +4719,10 @@ def run(args):
     if args.command == "prepare-mapping-capabilities":
         return prepare_mapping_capabilities(check=args.check, workers=args.workers)
     if args.command == "prepare-local-protocol-tables":
-        return prepare_local_protocol_tables(args.reads_json, args.identity_json, args.queries_json,
+        return prepare_local_protocol_tables(args.reads_json, args.queries_json,
                                               args.pairing_json, args.catalog_json, args.check,
-                                              current_reads=args.current_reads, workers=args.workers)
+                                              current_reads=args.current_reads, current_identities=args.current_identities,
+                                              workers=args.workers)
     if args.command == "prepare-device-write-table":
         return prepare_write_table(args.from_json, args.check)
     if args.command == "prepare-storage-tables":

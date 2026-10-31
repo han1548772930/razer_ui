@@ -1,9 +1,9 @@
 //! Retained Matcher worker. GUI owners exchange snapshots and durable-save
 //! receipts; all input capture, service calls and waits stay on this thread.
-use super::{Backend, Controller, Response};
+use super::{Backend, Controller, InputObservation, InputObserver, Response, merge_results};
 use anyhow::{Context as _, ensure};
 use razer_device::{
-    dpi_matcher::{InputBatch, State},
+    dpi_matcher::InputBatch,
     dpi_matcher_storage::{Change, ProfileName, ProfileUpdate, SourceData},
     mouse_current_dpi::SourceStages,
 };
@@ -227,16 +227,6 @@ struct WorkerExit {
     released: anyhow::Result<()>,
 }
 
-fn merge_results(results: impl IntoIterator<Item = anyhow::Result<()>>) -> anyhow::Result<()> {
-    let errors = results
-        .into_iter()
-        .filter_map(Result::err)
-        .map(|error| format!("{error:#}"))
-        .collect::<Vec<_>>();
-    ensure!(errors.is_empty(), "{}", errors.join("; "));
-    Ok(())
-}
-
 #[derive(Clone, Default)]
 pub struct Completion(Arc<CompletedWorker>);
 
@@ -458,6 +448,7 @@ impl Drop for Handle {
 }
 
 struct NativeBackend<'a> {
+    started: Instant,
     options: Option<&'a Options>,
     client: Option<ServiceClient>,
     updates: &'a async_channel::Sender<Update>,
@@ -472,6 +463,11 @@ impl NativeBackend<'_> {
         self.monitor
             .as_ref()
             .is_some_and(InputMonitor::possibly_started)
+    }
+    fn is_capturing(&self) -> bool {
+        self.monitor
+            .as_ref()
+            .is_some_and(InputMonitor::is_capturing)
     }
     fn check(&self) -> anyhow::Result<()> {
         ensure!(
@@ -512,7 +508,7 @@ impl NativeBackend<'_> {
             .context("Matcher native service is absent")
     }
 
-    fn events(&mut self) -> anyhow::Result<Vec<InputBatch>> {
+    fn poll_events(&mut self) -> anyhow::Result<()> {
         self.client()?;
         let client = self
             .client
@@ -521,7 +517,26 @@ impl NativeBackend<'_> {
         self.monitor
             .as_mut()
             .context("Matcher input monitor is absent")?
-            .events(|request| client.request(request))
+            .poll(|request| client.request(request))
+    }
+
+    fn next_event(&mut self) -> anyhow::Result<Option<InputBatch>> {
+        self.monitor
+            .as_mut()
+            .context("Matcher input monitor is absent")?
+            .next_event()
+    }
+
+    fn discard_events(&mut self) -> anyhow::Result<()> {
+        self.client()?;
+        let client = self
+            .client
+            .as_mut()
+            .context("Matcher native service is absent")?;
+        self.monitor
+            .as_mut()
+            .context("Matcher input monitor is absent")?
+            .discard_events(|request| client.request(request))
     }
 
     fn shutdown(&mut self) -> anyhow::Result<()> {
@@ -592,9 +607,11 @@ impl Backend for NativeBackend<'_> {
         );
         // Focused capture, software recording and Matcher share this actual
         // native input lifecycle. An unrelated owner is an immediate conflict.
-        self.lifecycle = Some(razer_ipc::KEY_CAPTURE_LIFECYCLE.try_lock().map_err(|_| {
-            anyhow::anyhow!("MACRO_RECORDING_RUNNING: input capture lifecycle is occupied")
-        })?);
+        if self.lifecycle.is_none() {
+            self.lifecycle = Some(razer_ipc::KEY_CAPTURE_LIFECYCLE.try_lock().map_err(|_| {
+                anyhow::anyhow!("MACRO_RECORDING_RUNNING: input capture lifecycle is occupied")
+            })?);
+        }
         self.client()?;
         let client = self
             .client
@@ -606,17 +623,38 @@ impl Backend for NativeBackend<'_> {
             .start(|request| client.request(request))
     }
 
-    fn stop_input_monitoring(&mut self) -> anyhow::Result<()> {
+    fn stop_input_monitoring(
+        &mut self,
+        observe: Option<&mut InputObserver<'_>>,
+    ) -> anyhow::Result<()> {
         if self.monitor_started() {
             self.client()?;
             let client = self
                 .client
                 .as_mut()
                 .context("Matcher native service is absent")?;
-            self.monitor
+            let monitor = self
+                .monitor
                 .as_mut()
-                .context("Matcher input monitor is absent")?
-                .stop(|request| client.request(request))?;
+                .context("Matcher input monitor is absent")?;
+            if let Some(observe) = observe {
+                let options = self.options.context("Matcher capture options are absent")?;
+                monitor.stop_with(
+                    |request| client.request(request),
+                    |batch| {
+                        observe(InputObservation {
+                            initial_is_main: options.is_initial_main(batch.product_id)?,
+                            batch,
+                            received_ms: elapsed_ms(self.started),
+                        })
+                    },
+                )?;
+            } else {
+                monitor.stop(|request| client.request(request))?;
+            }
+        }
+        if self.device_task.is_none() {
+            self.lifecycle.take();
         }
         Ok(())
     }
@@ -637,12 +675,10 @@ impl Backend for NativeBackend<'_> {
     }
 
     fn release_matcher_locks(&mut self) -> anyhow::Result<()> {
-        ensure!(
-            !self.monitor_started(),
-            "Matcher monitor has not acknowledged stop"
-        );
         self.device_task.take();
-        self.lifecycle.take();
+        if !self.monitor_started() {
+            self.lifecycle.take();
+        }
         Ok(())
     }
 
@@ -716,7 +752,9 @@ fn run(
     canceled: Arc<AtomicBool>,
     closing: Arc<AtomicBool>,
 ) -> WorkerExit {
+    let started = Instant::now();
     let mut backend = NativeBackend {
+        started,
         options: options.as_ref(),
         client: None,
         updates: &updates,
@@ -733,13 +771,12 @@ fn run(
         receiver: commands,
         deferred: VecDeque::new(),
     };
-    let started = Instant::now();
     let run = (|| -> anyhow::Result<()> {
         while !canceled.load(Ordering::Acquire) {
             let draining = closing.load(Ordering::Acquire);
             if draining {
                 controller.cleanup(&mut backend)?;
-                backend.stop_input_monitoring()?;
+                backend.stop_input_monitoring(None)?;
             }
             // Source ordinary tasks wait for the exclusive calibration lock.
             // Keep them queued while continuing input polling and cancellation;
@@ -801,7 +838,7 @@ fn run(
                     backend.emit(Update::Failure(format!("{error:#}")))?;
                     if starting && !controller.monitoring {
                         if backend.monitor_started() {
-                            backend.stop_input_monitoring()?;
+                            backend.stop_input_monitoring(None)?;
                         }
                         backend.release_matcher_locks()?;
                     }
@@ -815,30 +852,45 @@ fn run(
             if profiles_command {
                 break;
             }
-            if !closing.load(Ordering::Acquire) && controller.state() == State::Calibrating {
-                let batches = if controller.listening {
-                    backend.events()?
-                } else {
-                    vec![]
-                };
-                for batch in batches {
+            if !closing.load(Ordering::Acquire) {
+                if backend.is_capturing() {
+                    if controller.is_listening() {
+                        backend.poll_events()?;
+                    } else {
+                        backend.discard_events()?;
+                    }
+                }
+                while backend.is_capturing() && controller.is_listening() {
+                    let Some(batch) = backend.next_event()? else {
+                        break;
+                    };
                     let initial_is_main = options
                         .as_ref()
                         .context("Matcher capture options are absent")?
                         .is_initial_main(batch.product_id)?;
-                    let response = controller.ingest(
+                    let response = match controller.ingest(
                         batch,
                         initial_is_main,
                         elapsed_ms(started),
                         &mut backend,
-                    )?;
+                    ) {
+                        Ok(response) => response,
+                        Err(error) => {
+                            backend.emit(Update::Failure(format!("{error:#}")))?;
+                            break;
+                        }
+                    };
                     backend.emit(Update::Response(Response::Calibration(response)))?;
-                    if controller.state() != State::Calibrating {
+                    if !controller.monitoring || !controller.is_listening() {
                         break;
                     }
                 }
-                if let Some(response) = controller.tick(elapsed_ms(started), &mut backend)? {
-                    backend.emit(Update::Response(Response::Calibration(response)))?;
+                match controller.tick(elapsed_ms(started), &mut backend) {
+                    Ok(Some(response)) => {
+                        backend.emit(Update::Response(Response::Calibration(response)))?;
+                    }
+                    Ok(None) => {}
+                    Err(error) => backend.emit(Update::Failure(format!("{error:#}")))?,
                 }
             }
         }
@@ -850,7 +902,7 @@ fn run(
     // A partially started native monitor is also stopped. Its flags can outlive
     // the portable coordinator's successful-start flag after an ACK failure.
     let cleanup = controller.cleanup(&mut backend);
-    let partial = backend.stop_input_monitoring();
+    let partial = backend.stop_input_monitoring(None);
     let shutdown = backend.shutdown();
     let released = backend.release_transport();
     WorkerExit {

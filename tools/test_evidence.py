@@ -5152,6 +5152,28 @@ class FrontendAcquisitionTests(unittest.TestCase):
                 receipt = json.loads((reports / "source.capture.json").read_bytes())
                 self.assertFalse(receipt["input_bytes_unchanged"])
 
+    def test_chunk_capture_borrows_verified_outputs_without_mutating_provider(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            source, tool = root / "source.js", root / "analyzer.exe"
+            old, new = root / "old-capture", root / "new-capture"
+            source.write_bytes(b"/* inert source */")
+            tool.write_bytes(b"static analyzer fixture")
+            result = argparse.Namespace(returncode=0, stdout=b'{"enumeration":null}', stderr=b"")
+            with patch.object(analysis, "ROOT", root), patch.object(analysis.subprocess, "run", return_value=result) as run:
+                first = analysis.enumerate_frontend_chunks(source, tool, old, "source")
+                retained = {path: path.read_bytes() for path in old.iterdir()}
+                borrowed = analysis.enumerate_frontend_chunks(source, tool, new, "source", reuse_directories=[old])
+                self.assertEqual(borrowed.capture, first.capture)
+                self.assertEqual(run.call_count, 1)
+                self.assertFalse(new.exists())
+                self.assertEqual({path: path.read_bytes() for path in old.iterdir()}, retained)
+                (old / "source.json").write_bytes(b"corrupt output")
+                rebuilt = analysis.enumerate_frontend_chunks(source, tool, new, "source", reuse_directories=[old])
+                self.assertEqual(run.call_count, 2)
+                self.assertNotEqual(rebuilt.capture["path"], first.capture["path"])
+                self.assertEqual((old / "source.json").read_bytes(), b"corrupt output")
+
     def test_app_versions_come_from_actual_manifest_and_missing_maps_do_not_hide_runtime_resources(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()
@@ -6108,6 +6130,71 @@ class LocaleExportDictionaryTests(unittest.TestCase):
         for locales in (["en", "en"], ["zh-CN"], []):
             with self.subTest(locales=locales), self.assertRaises(ValueError):
                 evidence.locale_export_dictionaries(source, locales)
+
+
+class LocaleFrozenDictionaryTests(unittest.TestCase):
+    def source(self):
+        return ("(()=>{const chinese='zh-CN',route={en:()=>Promise.resolve().then(function(){return en}),"
+                "[chinese]:()=>Promise.resolve().then(()=>zh)};"
+                "var en=Object.freeze({__proto__:null,TITLE:'Keyboard Shortcuts',CLOSE:'Close'}),"
+                "zh=Object.freeze({__proto__:null,TITLE:'键盘快捷键',CLOSE:'关闭'});return route})()").encode()
+
+    def test_frozen_lazy_namespaces_keep_language_identity_and_full_owners(self):
+        raw = self.source()
+        selected = evidence.locale_export_dictionaries(raw, ['en', 'zh-CN'])
+        self.assertEqual(selected['values'], {
+            'en': {'TITLE': 'Keyboard Shortcuts', 'CLOSE': 'Close'},
+            'zh-CN': {'TITLE': '键盘快捷键', 'CLOSE': '关闭'}})
+        self.assertEqual(selected['locale_order'], ['en', 'zh-CN'])
+        self.assertFalse(selected['javascript_executed'])
+        for row in selected['dictionaries']:
+            self.assertIn('Promise.resolve()', row['loader']['body'])
+            body = row['export_object']
+            self.assertEqual(raw[body['start_byte']:body['end_byte']].decode(), body['body'])
+
+    def test_dynamic_loaders_shared_namespaces_and_replaced_globals_are_rejected(self):
+        raw = self.source()
+        for changed in (
+                raw.replace(b'Promise.resolve()', b'Promise.resolve(load())'),
+                raw.replace(b'return en', b'sideEffect();return en'),
+                raw.replace(b'()=>zh', b'()=>en'),
+                raw.replace(b'()=>zh', b'()=>({TITLE:"wrong"})'),
+                raw.replace(b'Object.freeze', b'factory.freeze'),
+                raw.replace(b"CLOSE:'Close'", b"CLOSE:'Close',CLOSE:'duplicate'"),
+                raw.replace(b"TITLE:'Keyboard Shortcuts'", b"TITLE:window.words"),
+                raw.replace(b'const chinese', b'const Promise=dynamic;const chinese'),
+                raw.replace(b'const chinese', b'const Object=dynamic;const chinese')):
+            with self.subTest(raw=changed), self.assertRaises(ValueError):
+                evidence.locale_export_dictionaries(changed, ['en', 'zh-CN'])
+
+
+class LocaleChunkExportTests(unittest.TestCase):
+    def source(self):
+        return ("(self.webpackChunk=self.webpackChunk||[]).push([[12],{7927:(module,exports,require)=>{"
+                "require.d(exports,{TITLE:()=>title,SECS:()=>seconds});"
+                "const title='Keyboard Shortcuts',seconds='secs';}}]);").encode()
+
+    def test_exports_resolve_in_actual_factory_and_keep_complete_capture(self):
+        selected = evidence.locale_chunk_exports(self.source(), ['SECS'])
+        self.assertEqual(selected['values'], {'SECS': 'secs'})
+        self.assertIn("TITLE:()=>title", selected['complete_factory']['body'])
+        self.assertEqual(len(selected['resolved_exports']), 1)
+        self.assertFalse(selected['javascript_executed'])
+        self.assertEqual(evidence.locale_chunk_exports(self.source())['values'],
+                         {'TITLE': 'Keyboard Shortcuts', 'SECS': 'secs'})
+
+    def test_decoy_exports_shadowed_values_and_dynamic_getters_are_rejected(self):
+        raw = self.source()
+        for changed in (
+                raw.replace(b'require.d(exports', b'other.d(exports'),
+                raw.replace(b'require.d(exports', b'require.d(other'),
+                raw.replace(b"seconds='secs'", b'seconds=read()'),
+                raw.replace(b'SECS:()=>seconds', b'SECS:(input)=>seconds'),
+                raw.replace(b'SECS:()=>seconds', b'SECS:()=>outside'),
+                raw.replace(b'SECS:()=>seconds', b'SECS:()=>seconds,SECS:()=>seconds'),
+                raw + raw):
+            with self.subTest(raw=changed), self.assertRaises(ValueError):
+                evidence.locale_chunk_exports(changed, ['SECS'])
 
 
 class JavascriptBindingTests(unittest.TestCase):

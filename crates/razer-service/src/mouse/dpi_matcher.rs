@@ -3,7 +3,7 @@
 //! No vendor DLL is loaded by this helper and unsupported input capture errors.
 use anyhow::{Context as _, ensure};
 use razer_device::{
-    dpi_matcher::{Calibration, InputBatch, Product, Session, State},
+    dpi_matcher::{Calibration, InputBatch, InputTimeout, Product, Session, State},
     dpi_matcher_storage::{self, Change, Mutation, ProfileName, ProfileUpdate, SourceData},
     mouse_current_dpi::SourceStages,
 };
@@ -16,10 +16,21 @@ pub mod worker;
 #[path = "dpi_matcher_tests.rs"]
 mod tests;
 
+pub struct InputObservation {
+    pub batch: InputBatch,
+    pub initial_is_main: bool,
+    pub received_ms: u64,
+}
+
+pub type InputObserver<'a> = dyn FnMut(InputObservation) -> anyhow::Result<()> + 'a;
+
 pub trait Backend {
     fn read_source_data(&mut self) -> anyhow::Result<SourceData>;
     fn start_input_monitoring(&mut self) -> anyhow::Result<()>;
-    fn stop_input_monitoring(&mut self) -> anyhow::Result<()>;
+    fn stop_input_monitoring(
+        &mut self,
+        observe: Option<&mut InputObserver<'_>>,
+    ) -> anyhow::Result<()>;
     /// Source uses shared/read and exclusive/write requestAllLocks for dpiMatcher.
     fn acquire_matcher_locks(&mut self) -> anyhow::Result<()>;
     fn release_matcher_locks(&mut self) -> anyhow::Result<()>;
@@ -43,11 +54,21 @@ pub enum Response {
     Profiles(ProfileUpdate),
 }
 
+fn merge_results(results: impl IntoIterator<Item = anyhow::Result<()>>) -> anyhow::Result<()> {
+    let errors = results
+        .into_iter()
+        .filter_map(Result::err)
+        .map(|error| format!("{error:#}"))
+        .collect::<Vec<_>>();
+    ensure!(errors.is_empty(), "{}", errors.join("; "));
+    Ok(())
+}
+
 #[derive(Default)]
 pub struct Controller {
     session: Session,
     monitoring: bool,
-    listening: bool,
+    listeners: usize,
     locked: bool,
 }
 impl Controller {
@@ -55,7 +76,7 @@ impl Controller {
         Self {
             session: Session::new(product),
             monitoring: false,
-            listening: false,
+            listeners: 0,
             locked: false,
         }
     }
@@ -73,16 +94,20 @@ impl Controller {
             "GET_STATE" => Ok(vec![Response::Calibration(self.response())]),
             "START" => {
                 let data = backend.read_source_data()?;
-                self.session.begin(data.baseline()?)?;
-                if let Err(error) = backend.start_input_monitoring() {
-                    self.session.reset();
-                    return Err(error);
-                }
+                let baseline = data.baseline()?;
+                self.session.prepare_start(baseline);
+                self.listeners = self
+                    .listeners
+                    .checked_add(1)
+                    .context("Matcher listener count overflow")?;
+                backend.start_input_monitoring()?;
                 self.monitoring = true;
-                self.listening = true;
+                if !matches!(self.state(), State::Ready | State::Error) {
+                    return Ok(vec![]);
+                }
+                self.session.begin(baseline)?;
                 if let Err(error) = backend.acquire_matcher_locks() {
-                    self.session.reset();
-                    self.cleanup(backend)?;
+                    self.session.lock_failed();
                     return Err(error);
                 }
                 self.locked = true;
@@ -92,10 +117,9 @@ impl Controller {
             "CANCEL" => {
                 // Source removes L before awaiting STOP. A failed STOP neither
                 // sends CANCEL to the state machine nor runs its movement reset.
-                self.listening = false;
+                self.detach_listener();
                 if self.monitoring {
-                    backend.stop_input_monitoring()?;
-                    self.monitoring = false;
+                    self.stop_monitoring(backend)?;
                 }
                 if self.session.state.accepts_cancel() && self.locked {
                     backend.release_matcher_locks()?;
@@ -109,9 +133,8 @@ impl Controller {
                     .collect())
             }
             "RESET" => {
-                self.cleanup(backend)?;
-                self.session.reset();
-                Ok(vec![Response::Calibration(self.response())])
+                self.release_locks(backend)?;
+                Ok(vec![Response::Calibration(self.session.reset())])
             }
             "CONFIRM" => {
                 let measured = self
@@ -134,13 +157,13 @@ impl Controller {
                     .context("DELETE_PROFILE requires GUID payload")?;
                 let data = backend.read_source_data()?;
                 let responses = self.persist(dpi_matcher_storage::delete(&data, guid)?, backend)?;
-                self.session.reset();
+                self.session.reset_movement();
                 Ok(responses)
             }
             "DELETE_ALL_PROFILES" => {
                 let data = backend.read_source_data()?;
                 let responses = self.persist(dpi_matcher_storage::delete_all(&data), backend)?;
-                self.session.reset();
+                self.session.reset_movement();
                 Ok(responses)
             }
             _ => anyhow::bail!("unsupported DPI_MATCHER_UI_COMMAND {command}"),
@@ -192,22 +215,27 @@ impl Controller {
         backend: &mut impl Backend,
     ) -> anyhow::Result<Calibration> {
         ensure!(self.monitoring, "input monitor is unavailable");
-        ensure!(self.listening, "Matcher input listener is detached");
-        match self.session.ingest(batch, initial_is_main, received_ms) {
+        ensure!(self.is_listening(), "Matcher input listener is detached");
+        self.record_input(InputObservation {
+            batch,
+            initial_is_main,
+            received_ms,
+        });
+        match self.session.advance() {
             Ok(true) => {
-                self.listening = false;
-                backend.stop_input_monitoring()?;
-                self.monitoring = false;
+                self.detach_listener();
+                self.stop_monitoring(backend)?;
                 let completion = self.session.complete_after_stop();
-                let cleanup = self.cleanup(backend);
-                completion?;
-                cleanup?;
+                let unlock = self.release_locks(backend);
+                merge_results([completion, unlock])?;
             }
             Ok(false) => {}
             Err(error) => {
                 self.session.fail();
-                self.cleanup(backend)?;
-                return Err(error);
+                return Err(match self.cleanup(backend) {
+                    Ok(()) => error,
+                    Err(cleanup) => error.context(format!("Matcher cleanup failed: {cleanup:#}")),
+                });
             }
         }
         Ok(self.response())
@@ -217,18 +245,62 @@ impl Controller {
         now_ms: u64,
         backend: &mut impl Backend,
     ) -> anyhow::Result<Option<Calibration>> {
-        if self.session.check_timeout(now_ms) {
-            self.cleanup(backend)?;
-            return Ok(Some(self.response()));
+        let mut observation = None;
+        while let Some(timeout) = self.session.check_timeout(now_ms) {
+            let unlock = match timeout {
+                InputTimeout::Failed(calibration) => {
+                    observation = Some(calibration);
+                    self.release_locks(backend)
+                }
+                InputTimeout::ResetMovement => Ok(()),
+            };
+            self.detach_listener();
+            unlock?;
         }
-        Ok(None)
+        Ok(observation)
+    }
+
+    fn is_listening(&self) -> bool {
+        self.listeners != 0
+    }
+
+    fn detach_listener(&mut self) {
+        self.listeners = self.listeners.saturating_sub(1);
+    }
+
+    fn record_input(&mut self, input: InputObservation) {
+        for _ in 0..self.listeners {
+            self.session
+                .record_input(&input.batch, input.initial_is_main, input.received_ms);
+        }
+    }
+
+    fn stop_monitoring(&mut self, backend: &mut impl Backend) -> anyhow::Result<()> {
+        if self.is_listening() {
+            backend.stop_input_monitoring(Some(&mut |input| {
+                self.record_input(input);
+                Ok(())
+            }))?;
+        } else {
+            backend.stop_input_monitoring(None)?;
+        }
+        self.monitoring = false;
+        Ok(())
+    }
+
+    fn release_locks(&mut self, backend: &mut impl Backend) -> anyhow::Result<()> {
+        if self.locked {
+            backend.release_matcher_locks()?;
+            self.locked = false;
+        }
+        Ok(())
     }
     /// Called on owner/device/workspace destruction. Keep flags on failure so a
     /// subsequent cleanup can retry; no successful cancellation is fabricated.
     pub fn cleanup(&mut self, backend: &mut impl Backend) -> anyhow::Result<()> {
-        self.listening = false;
+        self.listeners = 0;
         let stop = if self.monitoring {
-            backend.stop_input_monitoring()
+            backend.stop_input_monitoring(None)
         } else {
             Ok(())
         };
@@ -243,9 +315,7 @@ impl Controller {
         if unlock.is_ok() {
             self.locked = false;
         }
-        stop?;
-        unlock?;
-        Ok(())
+        merge_results([stop, unlock])
     }
     pub fn state(&self) -> State {
         self.session.state

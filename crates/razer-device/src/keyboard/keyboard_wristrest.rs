@@ -163,6 +163,9 @@ pub fn monitor(
                 publish(Update::Observed { observation })?;
             }
             Err(error) => {
+                if crate::backend::exchange_interrupted(&error) {
+                    return Err(error);
+                }
                 validate()?;
                 publish(Update::Diagnostic {
                     message: format!("Hardware module initial query failed: {error:#}"),

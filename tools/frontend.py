@@ -35,7 +35,7 @@ def canonical_frontend_entry(url):
     return urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, path, parsed.query, ""))
 
 
-def current_source_selection(entry_url, audit, *, candidates):
+def current_source_selection(entry_url, audit, *, candidates, verify_capture=True):
     """Select the newest retained stable acquisition for one actual route.
 
     Candidate receipts are explicit, bounded evidence. A newer stable claim
@@ -110,18 +110,229 @@ def current_source_selection(entry_url, audit, *, candidates):
             audit.read(original)
     originals = [row["original"] for row in deployment["sources"] if row["identity_verified"]]
     capture_path = a.ROOT / ".analysis/results/frontend" / path.parent.name / "analysis.json"
-    capture = audit.frontend_capture(path.parent.name, originals) if capture_path.is_file() else None
+    capture = (audit.frontend_capture(path.parent.name, originals)
+               if verify_capture and capture_path.is_file() else None)
+    capture_failures = (capture["capture_failures"] if capture else
+                        ["complete_capture_unavailable" if verify_capture else "capture_not_requested"])
     for old_time, old_path, old_acquired, old_decision in eligible:
         old_decision["status"] = ("selected_latest_stable_acquisition" if old_path == path else
                                   "same_time_identical_entry" if old_time == latest else
                                   "superseded_stable_acquisition")
     return {"name": path.parent.name, "requested_entry_url": entry_url, "canonical_entry_url": route,
             "acquisition": decision["acquisition"], "deployment": deployment, "originals": originals,
-            "capture": capture, "capture_failures": capture["capture_failures"] if capture else ["complete_capture_unavailable"],
+            "capture": capture, "capture_failures": capture_failures,
             "candidate_decisions": decisions,
             "failed_acquisition": [row for row in acquired["files"] if not row.get("path")],
             "unresolved_acquisition": acquired.get("unresolved", []),
             "source_semantics_complete": False, "target_execution": False}
+
+
+def latest_deployment_observations(audit, *, reports=None):
+    """Read the latest retained HTTP observations without promoting changed bytes."""
+    import analysis as a
+    paths = (sorted((a.ROOT / ".analysis/results/frontend-revalidation").glob("*.json"))
+             if reports is None else reports)
+    latest = {}
+    for path in paths:
+        raw = audit.artifact(path)
+        report = json.loads(raw)
+        if report.get("kind") != "immutable_current_frontend_deployment_revalidation":
+            if "observations" in report:
+                raise ValueError("Frontend HTTP observations have an unrecognized receipt kind")
+            continue
+        if (report.get("target_execution") is not False
+                or type(report.get("schema_version")) is not int or report["schema_version"] != 1):
+            raise ValueError("Frontend HTTP observation receipt has an unverified schema or execution boundary")
+        recorded = datetime.fromisoformat(report["created_at_utc"])
+        if recorded.tzinfo is None:
+            raise ValueError("Frontend HTTP observation time has no timezone")
+        identity = audit.artifacts[a.rel(path)]
+        for row in report["observations"]:
+            url = row["url"]
+            canonical_frontend_entry(url)
+            observation = {"receipt": identity, "recorded_at_utc": report["created_at_utc"],
+                           "observation": row}
+            previous = latest.get(url)
+            if previous is None or recorded > previous[0]:
+                latest[url] = (recorded, [observation])
+            elif recorded == previous[0]:
+                previous[1].append(observation)
+    return {url: rows for url, (_, rows) in latest.items()}
+
+
+def verify_latest_deployment_observations(acquired, originals, audit, *, observations=None):
+    """Reject later HTTP failure or drift for the actual consumed deployment URLs.
+
+    A changed-deployment classification belongs to its original baseline. A
+    subsequently acquired source may use those bytes only after its own strict
+    acquisition verification; this function never rewrites either receipt.
+    """
+    observed = latest_deployment_observations(audit) if observations is None else observations
+    acquired_at = datetime.fromisoformat(acquired["recorded_at_utc"])
+    if acquired_at.tzinfo is None:
+        raise ValueError("Frontend acquisition time has no timezone")
+    comparisons, failures, seen = [], [], set()
+    for original in originals:
+        url = original["url"]
+        if url in seen:
+            raise ValueError("Consumed frontend deployment URL is repeated")
+        seen.add(url)
+        audit.read(original)
+        newer = [row for row in observed.get(url, [])
+                 if datetime.fromisoformat(row["recorded_at_utc"]) >= acquired_at]
+        comparison = {"url": url, "original": {key: original[key] for key in ("path", "bytes", "sha256")},
+                      "latest_observations": newer,
+                      "status": "no_observation_after_acquisition" if not newer else "matches_latest_http_bytes"}
+        comparisons.append(comparison)
+        for retained in newer:
+            observation = retained["observation"]
+            rounds = observation.get("rounds", [])
+            if (observation.get("url") != url or len(rounds) != 2
+                    or [row.get("round") for row in rounds] != [1, 2]
+                    or any(row.get("url") != url or row.get("status") != "ok"
+                           or row.get("http_status") != 200
+                           or canonical_frontend_entry(row.get("final_url", "")) != canonical_frontend_entry(url)
+                           for row in rounds)):
+                comparison["status"] = "later_http_observation_failed"
+            elif any(row.get(key) != original[key] for row in rounds for key in ("bytes", "sha256")):
+                comparison["status"] = "later_http_observation_differs"
+            else:
+                captured = observation.get("observed_original")
+                if (captured is None and observation.get("classification") == "unchanged_reused"
+                        and isinstance(observation.get("retained_original"), dict)
+                        and observation.get("reused_path") == observation["retained_original"].get("path")):
+                    captured = observation["retained_original"]
+                if (not isinstance(captured, dict)
+                        or any(captured.get(key) != original[key] for key in ("bytes", "sha256"))):
+                    comparison["status"] = "later_http_original_unverified"
+                else:
+                    audit.read(captured)
+            if comparison["status"] != "matches_latest_http_bytes":
+                failures.append({"url": url, "status": comparison["status"], "receipt": retained["receipt"],
+                                 "observed_classification": observation.get("classification")})
+    if failures:
+        raise ValueError("Current frontend source has later unresolved deployment observations: " +
+                         json.dumps(failures, sort_keys=True))
+    return {"comparisons": comparisons, "passed": True,
+            "scope": "Latest retained HTTP observations for consumed originals; no new network requests",
+            "target_execution": False}
+
+
+
+
+def _strict_receipt_pairs(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("Frontend receipt repeats a JSON field: " + key)
+        result[key] = value
+    return result
+
+
+def current_acquisition_routes():
+    """Discover candidates by official entry URL; selection verifies their bytes."""
+    import analysis as a
+    routes = {}
+    for path in sorted((a.ROOT / ".analysis/inputs/frontend").glob("*/acquisition.json")):
+        document = json.loads(path.read_bytes(), object_pairs_hook=_strict_receipt_pairs)
+        if document.get("entry_url") is not None:
+            route = canonical_frontend_entry(document["entry_url"])
+            routes.setdefault(route, []).append(path)
+    return routes
+
+
+def current_deployment_source(entry_url, *, candidates, observations=None):
+    """Select verified current bytes or a proven unavailable official route."""
+    import analysis as a
+    import host
+    audit = host.HostLocalAudit()
+    route = canonical_frontend_entry(entry_url)
+    if observations is None:
+        observations = latest_deployment_observations(audit)
+    boundary = (a.ROOT / ".analysis/inputs/frontend").resolve()
+    documents, seen = [], set()
+    for candidate in candidates:
+        path = Path(candidate)
+        path = (a.ROOT / path).resolve() if not path.is_absolute() else path.resolve()
+        if path.name != "acquisition.json" or path.parent.parent != boundary or path in seen:
+            raise ValueError("Frontend source candidate boundary is invalid or repeated")
+        seen.add(path)
+        document = json.loads(audit.artifact(path), object_pairs_hook=_strict_receipt_pairs)
+        if canonical_frontend_entry(document.get("entry_url")) != route:
+            raise ValueError("Frontend source candidate belongs to another deployment route")
+        documents.append((path, document))
+    if not documents:
+        raise ValueError("Current frontend route has no acquisition: " + route)
+    dates = [datetime.fromisoformat(document["recorded_at_utc"]) for _, document in documents]
+    if any(recorded.tzinfo is None for recorded in dates):
+        raise ValueError("Current frontend acquisition has no timezone")
+    newest_time = max(dates)
+    newest = [(path, document) for path, document in documents
+              if datetime.fromisoformat(document["recorded_at_utc"]) == newest_time]
+    missing = [row for row in newest if row[1].get("source_current_during_acquisition") is not True]
+    if missing:
+        if len(missing) != len(newest):
+            raise ValueError("Current frontend source has conflicting same-time availability")
+        for path, document in missing:
+            rows = document.get("files", [])
+            claims = document.get("stability", [])
+            errors = {"HTTP Error 404: Not Found": 404, "HTTP Error 410: Gone": 410}
+            if (document.get("target_execution") is not False
+                    or canonical_frontend_entry(document.get("entry_url")) != route
+                    or len(rows) != 1 or len(claims) != 1
+                    or rows[0].get("url") != document["entry_url"] or rows[0].get("path") is not None
+                    or claims[0].get("url") != document["entry_url"] or claims[0].get("unchanged") is not False
+                    or claims[0].get("before_sha256") is not None or claims[0].get("after_sha256") is not None
+                    or rows[0].get("error") not in errors or claims[0].get("error") != rows[0]["error"]):
+                raise ValueError("Latest frontend acquisition failed without proven official absence: " + route)
+            for observation in observations.get(document["entry_url"], []):
+                if datetime.fromisoformat(observation["recorded_at_utc"]) > newest_time:
+                    rounds = observation["observation"].get("rounds", [])
+                    if len(rounds) != 2 or any(row.get("http_status") != errors[rows[0]["error"]] for row in rounds):
+                        raise ValueError("Official frontend absence has a later unresolved HTTP observation: " + route)
+        path, document = min(missing, key=lambda row: str(row[0]))
+        return {"status": "official_source_unavailable", "route": route,
+                "acquisition": audit.artifacts[path.relative_to(a.ROOT).as_posix()],
+                "http_status": errors[document["files"][0]["error"]], "acquired": document,
+                "inputs": list(audit.artifacts.values()), "audit": audit}
+    selected = current_source_selection(route, audit, candidates=[path for path, _ in documents], verify_capture=False)
+    path = a.resolve(selected["acquisition"]["path"], ".analysis/inputs/frontend")
+    acquired = json.loads(audit.artifact(path, selected["acquisition"]), object_pairs_hook=_strict_receipt_pairs)
+    files = {row["url"]: row for row in acquired["files"]}
+    if len(files) != len(acquired["files"]):
+        raise ValueError("Current frontend acquisition repeats a URL")
+    entry = files[acquired["entry_url"]]
+    return {"status": "verified", "route": route, "selection": selected, "acquired": acquired,
+            "files": files, "entry": entry, "audit": audit, "acquisition": selected["acquisition"]}
+
+
+def current_product_source(pid, role, *, candidates, observations=None):
+    """Verify a product route's mounted entry, manifest and main from current bytes."""
+    if type(pid) is not int or not 1 <= pid <= 0xFFFF or role not in {"ui", "mw"}:
+        raise ValueError("Current product source has an invalid endpoint identity or role")
+    route = f"https://apps.razer.com/synapse/products/{pid}/{role}/"
+    source = current_deployment_source(route, candidates=candidates, observations=observations)
+    if source["status"] != "verified":
+        return source
+    acquired, files, audit = source["acquired"], source["files"], source["audit"]
+    entry = source["entry"]
+    manifest_url = urllib.parse.urljoin(entry["url"], "manifest.json")
+    manifest = files.get(manifest_url)
+    stability = [row for row in acquired.get("stability", []) if row["url"] == manifest_url]
+    if (manifest is None or not manifest.get("path") or len(stability) != 1
+            or stability[0].get("unchanged") is not True
+            or any(stability[0].get(key) != manifest["sha256"] for key in ("before_sha256", "after_sha256"))):
+        raise ValueError(f"Current product PID {pid} {role} manifest is missing or unstable")
+    mounted = [row for row in source["selection"]["deployment"]["sources"]
+               if row["identity_verified"] and row["deployment_role"] == "html_include"
+               and re.fullmatch(re.escape(route) + r"(?:static/js/)?main\.[\w]+\.js", row["url"])]
+    if len(mounted) != 1:
+        raise ValueError(f"Current product PID {pid} {role} has no unique mounted main")
+    main = files[mounted[0]["url"]]
+    source.update(manifest=manifest, main=main, freshness=verify_latest_deployment_observations(
+        acquired, [entry, manifest, main], audit, observations=observations))
+    return source
+
 
 
 def _frozen_frontend_artifact(expected, audit):

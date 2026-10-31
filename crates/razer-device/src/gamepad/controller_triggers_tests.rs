@@ -381,12 +381,13 @@ fn circularity_writes_both_sides_without_getter_and_cancellation_stops_second_si
         profile_slot: 4,
         circular: false,
     });
-    assert!(
-        result
-            .unwrap_err()
-            .to_string()
-            .contains("Canceled between controller sides")
+    let error = result.unwrap_err();
+    assert!(format!("{error:#}").contains("Canceled between controller sides"));
+    assert_eq!(
+        error.downcast_ref::<crate::backend::ExchangeInterruption>(),
+        Some(&crate::backend::ExchangeInterruption::Wait)
     );
+    assert!(!crate::backend::exchange_finalization_failed(&error));
     assert_eq!(io.sends.borrow().len(), 1);
     assert_eq!(&io.sends.borrow()[0][6..12], &[3, 12, 18, 4, 1, 0]);
     assert_eq!(io.replies.borrow().len(), 1);

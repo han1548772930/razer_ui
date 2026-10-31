@@ -26,6 +26,8 @@ mod accessory;
 mod audio_mixer_local_settings;
 #[path = "source_workspace/controller_initialization.rs"]
 mod controller_initialization;
+#[path = "source_workspace/camera_identity.rs"]
+mod camera_identity;
 #[path = "source_workspace/help_camo.rs"]
 mod help_camo;
 #[path = "source_workspace/help_owner.rs"]
@@ -49,6 +51,7 @@ mod keyboard_mapping;
 #[path = "source_workspace/keyboard_profile_inventory.rs"]
 mod keyboard_profile_inventory;
 pub use controller_initialization::ControllerInitializationRequested;
+pub use camera_identity::CameraIdentityRequested;
 #[path = "source_workspace/controller_socd.rs"]
 mod controller_socd;
 pub use controller_socd::ControllerSocdRequested;
@@ -145,6 +148,7 @@ pub struct SourceProductWorkspace {
     keyboard_latest_ble: bool,
     keyboard_profile_inventory: keyboard_profile_inventory::Owner,
     controller_initialization: controller_initialization::Owner,
+    camera_identity: camera_identity::Owner,
     controller_socd: controller_socd::Owner,
     page: Option<ProductPageId>,
     page_history: Vec<ProductPageId>,
@@ -1042,6 +1046,7 @@ impl SourceProductWorkspace {
             self.mapping_connection_generation = self.mapping_connection_generation.wrapping_add(1);
             self.invalidate_keyboard_profile_inventory(observation.is_some());
             self.invalidate_controller_initialization(cx);
+            self.camera_identity.invalidate();
             self.receiver_profile_selection.borrow_mut().invalidate();
             self.cancel_profile_transfer_requests();
             self.cancel_keyboard_brightness_connection(cx);
@@ -1083,6 +1088,7 @@ impl SourceProductWorkspace {
         }
         self.device.observe_connection(observation.clone());
         self.saved.observe_connection(observation);
+        self.ensure_camera_identity(cx);
         if connection_changed
             && matches!(self.device.product_id, 1422 | 1446)
             && matches!(
@@ -1112,6 +1118,9 @@ impl SourceProductWorkspace {
         self.help
             .update(cx, |help, cx| help.set_device(&device, cx));
         self.sync_keyboard_read_activity(cx);
+        if connection_changed {
+            self.refresh_help_runtime_versions(cx);
+        }
         self.sync_mouse_mapping_activity(cx);
         self.sync_audio_volume_activity(cx);
         self.sync_audio_mixer_activity(cx);
@@ -1297,6 +1306,7 @@ impl SourceProductWorkspace {
         if let FamilyBody::Controls(body) = &self.body {
             let active = !self.exiting
                 && matches!(self.device.product_id, 3594..=3596)
+                && self.camera_identity.attempted()
                 && self
                     .current_page()
                     .is_some_and(|p| p.role() != ProductPageRole::Help)
@@ -4039,7 +4049,18 @@ impl SourceProductWorkspace {
         ));
         subscriptions.push(cx.subscribe(
             &help,
-            |_: &mut Self, _, request: &super::HelpCamoRequested, cx| {
+            |_: &mut Self, _, request: &super::HelpRuntimeVersionsRequest, cx| {
+                cx.emit(WorkspaceEvent::HelpRuntimeVersionsRequested(request.clone()));
+            },
+        ));
+        subscriptions.push(cx.subscribe(
+            &help,
+            |this: &mut Self, _, request: &super::HelpCamoRequested, cx| {
+                if *request.command() == super::HelpCamoCommand::GetSerialNumber
+                    && this.accepts_help_camo(request, cx)
+                {
+                    this.publish_camera_serial(razer_model::model::CameraSerialObservation::Reading, cx);
+                }
                 cx.emit(WorkspaceEvent::HelpCamoRequested(request.clone()));
             },
         ));
@@ -4119,6 +4140,7 @@ impl SourceProductWorkspace {
             keyboard_latest_ble: false,
             keyboard_profile_inventory: Default::default(),
             controller_initialization: Default::default(),
+            camera_identity: Default::default(),
             controller_socd: Default::default(),
             device,
             page,
@@ -4164,7 +4186,10 @@ impl SourceProductWorkspace {
         this.select_body_page(window, cx);
         let owner = cx.weak_entity();
         cx.defer(move |cx| {
-            let _ = owner.update(cx, |this, cx| this.sync_receiver_profile_initialization(cx));
+            let _ = owner.update(cx, |this, cx| {
+                this.sync_receiver_profile_initialization(cx);
+                this.ensure_camera_identity(cx);
+            });
         });
         this
     }

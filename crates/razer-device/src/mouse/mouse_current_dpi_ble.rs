@@ -583,8 +583,8 @@ pub fn execute_with_slots(
                     );
                     report.profile_slot_writes = synchronization.writes;
                     if let Some(error) = synchronization.interrupted {
-                        interruption = Some(error.clone());
-                        anyhow::bail!(error);
+                        interruption = Some(format!("{error:#}"));
+                        return Err(error);
                     }
                     let failures: Vec<_> = report
                         .profile_slot_writes

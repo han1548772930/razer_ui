@@ -211,11 +211,12 @@ impl MacroPage {
         let state = if row.mode == Some(false) { "program" } else { "" };
         let item = &self.actions[index];
         if item.value != row.program || !item.secondary_value.is_empty() || item.state != state {
-            self.undo.push(self.actions.clone());
+            self.checkpoint_actions();
             self.actions[index].value = row.program.clone();
             self.actions[index].secondary_value.clear();
             self.actions[index].state = state.into();
             self.redo.clear();
+            self.rebuild_action_execution();
         }
         row.baseline = self.actions[index].clone();
         row.armed = false;

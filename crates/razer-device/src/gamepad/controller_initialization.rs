@@ -30,12 +30,13 @@ pub enum Read<T> {
     Failed { error: String },
 }
 impl<T> Read<T> {
-    fn from_result(result: anyhow::Result<T>) -> Self {
+    fn from_result(result: anyhow::Result<T>) -> anyhow::Result<Self> {
         match result {
-            Ok(value) => Self::Observed { value },
-            Err(error) => Self::Failed {
+            Ok(value) => Ok(Self::Observed { value }),
+            Err(error) if controller_feature::terminal_io_failure(&error) => Err(error),
+            Err(error) => Ok(Self::Failed {
                 error: format!("{error:#}"),
-            },
+            }),
         }
     }
     pub fn value(&self) -> Option<&T> {
@@ -722,6 +723,9 @@ impl<'a, T: FeatureTransport + ?Sized, W: FnMut(Duration) -> anyhow::Result<()>>
                 let [high, low] = offset.to_be_bytes();
                 let response = match self.exchange([80, 5, 136], &[slot, high, low, 0, 0], true) {
                     Ok(response) => response,
+                    Err(error) if controller_feature::terminal_io_failure(&error) => {
+                        return Err(error);
+                    }
                     Err(error) => {
                         last_error = format!("{error:#}");
                         break;
@@ -771,11 +775,13 @@ impl<'a, T: FeatureTransport + ?Sized, W: FnMut(Duration) -> anyhow::Result<()>>
         let number_of_profiles = self.byte([1, 5, 128])?;
         let names = profile_ids
             .iter()
-            .map(|slot| ProfileName {
-                slot: *slot,
-                name: Read::from_result(self.name(*slot)),
+            .map(|slot| {
+                Ok(ProfileName {
+                    slot: *slot,
+                    name: Read::from_result(self.name(*slot))?,
+                })
             })
-            .collect();
+            .collect::<anyhow::Result<Vec<_>>>()?;
         let directory = ProfileDirectory {
             button_ids,
             profile_ids,
@@ -948,7 +954,7 @@ impl<'a, T: FeatureTransport + ?Sized, W: FnMut(Duration) -> anyhow::Result<()>>
                 canceled: canceled(),
             };
             if !observed.canceled && features.retained_engine_directory.is_none() {
-                observed.refreshed_directory = Read::from_result(self.directory());
+                observed.refreshed_directory = Read::from_result(self.directory())?;
             }
             let directory = features
                 .retained_engine_directory
@@ -970,7 +976,7 @@ impl<'a, T: FeatureTransport + ?Sized, W: FnMut(Duration) -> anyhow::Result<()>>
                     });
                     observed.socd.push(SocdRead {
                         slot,
-                        result: Read::from_result(read),
+                        result: Read::from_result(read)?,
                     });
                 }
             }
@@ -990,7 +996,7 @@ impl<'a, T: FeatureTransport + ?Sized, W: FnMut(Duration) -> anyhow::Result<()>>
                 Read::from_result(crate::controller_profile::read_connection_probe(
                     self.product_id,
                     &mut |header, data| self.exchange(header, data, false),
-                ));
+                ))?;
         }
         for field in &plan.roots {
             if canceled() {
@@ -1013,7 +1019,7 @@ impl<'a, T: FeatureTransport + ?Sized, W: FnMut(Duration) -> anyhow::Result<()>>
                                 u16::from_be_bytes(bytes)
                             }))
                         }),
-                    );
+                    )?;
                 }
                 RootField::ControllerMode => {
                     result.controller_mode =
@@ -1022,7 +1028,7 @@ impl<'a, T: FeatureTransport + ?Sized, W: FnMut(Duration) -> anyhow::Result<()>>
                             1 => Ok(ControllerMode::Xbox),
                             2 => Ok(ControllerMode::Xinput),
                             _ => anyhow::bail!("Unknown controller mode {value}"),
-                        }));
+                        }))?;
                 }
             }
         }
@@ -1030,7 +1036,7 @@ impl<'a, T: FeatureTransport + ?Sized, W: FnMut(Duration) -> anyhow::Result<()>>
             result.canceled = true;
         }
         if !result.canceled {
-            result.directory = Read::from_result(self.directory());
+            result.directory = Read::from_result(self.directory())?;
             if let Read::Observed { value: directory } = &result.directory {
                 for slot in &directory.profile_ids {
                     if canceled() {
@@ -1053,7 +1059,7 @@ impl<'a, T: FeatureTransport + ?Sized, W: FnMut(Duration) -> anyhow::Result<()>>
                                 *field,
                                 &directory.button_ids,
                                 &mut canceled,
-                            )),
+                            ))?,
                         });
                     }
                     result.profiles.push(profile);

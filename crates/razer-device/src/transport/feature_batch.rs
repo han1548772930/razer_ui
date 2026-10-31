@@ -206,6 +206,15 @@ fn rejected(
 ) -> anyhow::Error {
     // A report's normal return followed by adapter failure is not a normal
     // return of the enclosing batch. Keep the report fact in progress instead.
+    let error = if super::exchange_interrupted(&error) {
+        let phase = error
+            .downcast_ref::<super::ExchangeInterruption>()
+            .copied()
+            .unwrap_or(super::ExchangeInterruption::Native);
+        super::interrupt_exchange(error, phase)
+    } else {
+        error
+    };
     native_io_failure(
         NativeIoOutcome::Rejected,
         error.context(FeatureBatchFailure {
@@ -268,7 +277,11 @@ pub fn execute_feature_batch(
             }
             FeatureBatchOperation::Sleep { milliseconds } => {
                 if let Err(error) = wait(*milliseconds) {
-                    return Err(rejected(progress, None, error));
+                    return Err(rejected(
+                        progress,
+                        None,
+                        super::interrupt_exchange(error, super::ExchangeInterruption::Wait),
+                    ));
                 }
             }
         }
@@ -332,9 +345,18 @@ pub fn checked_feature_batch(
         (Ok(receipt), Ok(())) => Ok(receipt),
         (Ok(receipt), Err(error)) => Err(receipt.into_failure(error)),
         (Err(error), Ok(())) => Err(error),
-        (Err(error), Err(validation)) => Err(error.context(format!(
-            "Feature batch validation also failed: {validation:#}"
-        ))),
+        (Err(error), Err(validation)) => {
+            let phase = validation
+                .downcast_ref::<super::ExchangeInterruption>()
+                .copied()
+                .unwrap_or(super::ExchangeInterruption::Validation);
+            Err(super::interrupt_exchange(
+                error.context(format!(
+                    "Feature batch validation also failed: {validation:#}"
+                )),
+                phase,
+            ))
+        }
     }
 }
 
@@ -445,6 +467,7 @@ mod tests {
             .unwrap_err();
             assert_eq!(calls, 2);
             assert_eq!(native_io_outcome(&error), Some(NativeIoOutcome::Rejected));
+            assert_eq!(super::super::exchange_interrupted(&error), return_then_fail);
             let failure = FeatureBatchFailure::from_error(&error).unwrap();
             assert_eq!(failure.progress.completed_operations, 2);
             assert_eq!(
@@ -592,6 +615,12 @@ mod tests {
             ["send returned", "wait canceled", "send observed"]
         );
         let error = result.unwrap_err();
+        assert!(super::super::exchange_interrupted(&error));
+        assert!(matches!(
+            error.downcast_ref::<super::super::ExchangeInterruption>(),
+            Some(super::super::ExchangeInterruption::Wait)
+        ));
+        assert!(!super::super::exchange_finalization_failed(&error));
         let failure = FeatureBatchFailure::from_error(&error).unwrap();
         assert_eq!(failure.raw_return, None);
         assert_eq!(failure.progress.completed_operations, 1);
@@ -651,6 +680,12 @@ mod tests {
             };
             assert_eq!(observed, expected);
             let error = result.unwrap_err();
+            assert!(super::super::exchange_interrupted(&error));
+            assert!(matches!(
+                error.downcast_ref::<super::super::ExchangeInterruption>(),
+                Some(super::super::ExchangeInterruption::Validation)
+            ));
+            assert!(!super::super::exchange_finalization_failed(&error));
             let failure = FeatureBatchFailure::from_error(&error).unwrap();
             assert_eq!(failure.raw_return, None);
             assert_eq!(failure.progress.completed_operations, 2);

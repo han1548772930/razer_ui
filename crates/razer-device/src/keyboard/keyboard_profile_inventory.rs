@@ -280,6 +280,9 @@ pub(crate) fn read_raw_metadata_hid(
                     bytes.extend_from_slice(&chunk[5..5 + length]);
                 }
                 Err(error) => {
+                    if crate::backend::exchange_interrupted(&error) {
+                        return Err(error);
+                    }
                     validate()?;
                     last_error = Some(error);
                     bytes.clear();

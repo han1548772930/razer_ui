@@ -5,6 +5,9 @@
 pub mod commands;
 #[path = "camera/lifecycle.rs"]
 pub mod lifecycle;
+#[path = "camera/serial.rs"]
+mod serial;
+pub use serial::{CameraInitializationFailure, CameraSerialSession};
 
 use anyhow::Result;
 #[cfg(windows)]
@@ -72,6 +75,7 @@ pub(super) struct ScopedCameraSession {
     target: CameraTarget,
     scope: CameraScope,
 }
+
 impl ScopedCameraSession {
     pub(super) fn open_mode(scope: CameraScope, properties: bool) -> Result<Self> {
         let target = discover(&scope)?;
@@ -149,6 +153,7 @@ impl CameraCommandTransport for ScopedCameraSession {
 #[cfg(windows)]
 pub struct CameraDeviceSession {
     session: CameraSession<windows::CameraComSession>,
+    serial: razer_device::camera_serial::CameraSerialState,
 }
 
 #[cfg(not(windows))]
@@ -165,14 +170,38 @@ impl CameraDeviceSession {
         #[cfg(windows)]
         {
             let transport = windows::CameraComSession::open_mode(&target, properties)?;
+            let serial = razer_device::camera_serial::CameraSerialState::new(target.product_id)?;
             Ok(Self {
                 session: CameraSession::open(transport, target)?,
+                serial,
             })
         }
         #[cfg(not(windows))]
         anyhow::bail!(
             "current camera adapter requires Windows DirectShow; this platform has no audited UVC adapter"
         )
+    }
+
+    fn serial_scoped(
+        &mut self,
+        scope: &CameraScope,
+        validate: &impl Fn() -> Result<()>,
+    ) -> Result<razer_device::camera_serial::CameraSerialProgress> {
+        #[cfg(windows)]
+        {
+            if self.session.target().product_id == razer_device::camera::KIYO_V2_PRO_PRODUCT_ID {
+                let mut transport = extensions::CameraKsSession::new(self.session.transport_mut(), scope, validate);
+                Ok(self.serial.read_pro(&mut transport, validate))
+            } else {
+                let mut transport = focus_family::CameraFamilyKsSession::new(self.session.transport_mut(), scope, validate);
+                Ok(self.serial.read_family(&mut transport, validate))
+            }
+        }
+        #[cfg(not(windows))]
+        {
+            let _ = (scope, validate);
+            anyhow::bail!("camera serial observation requires Windows DirectShow")
+        }
     }
 
     pub fn show_properties(&mut self, validate: &impl Fn() -> Result<()>) -> Result<()> {

@@ -86,6 +86,39 @@ impl FeatureTransport for Simulated {
     }
 }
 #[test]
+fn interrupted_noa_transfers_do_not_retry_and_keep_the_short_frame_ack() {
+    use crate::backend::{NativeIoOutcome, native_io_outcome};
+    use crate::keyboard_control_test_transport::{Mock, reply};
+    let mut cap = transport().clone();
+    cap.sleep_between_out_in_ms = 0;
+    cap.sleep_between_in_ms = 0;
+    for outcome in [
+        NativeIoOutcome::NotCalled,
+        NativeIoOutcome::Returned { byte_count: 64 },
+        NativeIoOutcome::Returned { byte_count: 65 },
+    ] {
+        let device = Mock::new([]).fail_next_send(outcome);
+        let error = execute(&device, &cap, Operation::Bass(7), || Ok(0), || Ok(())).unwrap_err();
+        assert_eq!(native_io_outcome(&error), Some(outcome));
+        assert_eq!(device.sent().len(), 1);
+        let progress = &error.downcast_ref::<ExecutionFailure>().unwrap().progress;
+        assert_eq!(
+            progress.setter_sent,
+            outcome == NativeIoOutcome::Returned { byte_count: 65 }
+        );
+        assert!(progress.acknowledgements.is_empty());
+    }
+    let mut response = reply(&[7, 8]);
+    response.count = 65;
+    let device = Mock::new([response]).interrupt_next_read();
+    let error = execute(&device, &cap, Operation::Bass(7), || Ok(0), || Ok(())).unwrap_err();
+    let progress = &error.downcast_ref::<ExecutionFailure>().unwrap().progress;
+    assert!(progress.setter_sent);
+    assert_eq!(progress.acknowledgements[0].data, [7, 8]);
+    assert_eq!(device.sent().len(), 1);
+}
+
+#[test]
 fn leviathan_source_setters_use_distinct_profiles_without_invented_getters() {
     for (operation, bytes) in [
         (Operation::Bass(7), [2, 8, 7, 1, 7]),
@@ -133,14 +166,110 @@ fn leviathan_bluetooth_reads_source_and_only_writes_on_change() {
 }
 #[test]
 fn leviathan_cancellation_after_input_read_prevents_mutation() {
-    let mut device = Simulated::new([(2, vec![0, 4])]);
+    use crate::backend::{
+        ExchangeInterruption, NativeIoOutcome, exchange_interrupted, native_io_outcome,
+        native_read_bytes,
+    };
+
+    let mut device = Simulated::new([(2, vec![0, 4]), (2, vec![])]);
     device.cancel_after_get = true;
     let error = device.execute(Operation::Bluetooth).unwrap_err();
+    assert!(exchange_interrupted(&error));
+    assert_eq!(
+        error.downcast_ref::<ExchangeInterruption>(),
+        Some(&ExchangeInterruption::Validation)
+    );
+    assert_eq!(error.root_cause().to_string(), "canceled");
+    assert_eq!(
+        native_io_outcome(&error),
+        Some(NativeIoOutcome::Returned { byte_count: 65 })
+    );
+    let mut received = [0; 65];
+    received[1] = 2;
+    received[6..11].copy_from_slice(&[2, 8, 138, 0, 4]);
+    assert_eq!(native_read_bytes(&error), Some(received.as_slice()));
+
     let progress = &error.downcast_ref::<ExecutionFailure>().unwrap().progress;
-    assert!(progress.acknowledgements.is_empty());
+    assert_eq!(
+        progress.acknowledgements,
+        [Acknowledgement {
+            command: [2, 8, 138],
+            transaction: 0,
+            data: vec![0, 4],
+        }]
+    );
+    assert_eq!(progress.requested, Operation::Bluetooth);
     assert!(!progress.setter_sent);
     assert!(progress.previous_input.is_none());
-    assert_eq!(device.sent.lock().unwrap().len(), 1);
+    assert!(progress.headphone_connected.is_none());
+    let sent = device.sent.lock().unwrap();
+    assert_eq!(sent.len(), 1);
+    assert_eq!(sent[0][2], 0);
+    assert_eq!(&sent[0][6..11], &[2, 8, 138, 0, 0]);
+    assert_eq!(device.replies.lock().unwrap().len(), 1);
+}
+
+#[test]
+fn leviathan_interrupted_invalid_input_replies_never_become_acknowledgements() {
+    use crate::backend::{
+        NativeIoOutcome, exchange_interrupted, native_io_outcome, native_read_bytes,
+    };
+    use crate::keyboard_control_test_transport::{Mock, Reply, reply};
+
+    let mut cap = transport().clone();
+    cap.sleep_between_out_in_ms = 0;
+    cap.sleep_between_in_ms = 0;
+    let valid = Reply {
+        count: 65,
+        ..reply(&[0, 4])
+    };
+    for response in [
+        Reply {
+            count: 64,
+            ..valid.clone()
+        },
+        Reply {
+            count: 66,
+            ..valid.clone()
+        },
+        Reply {
+            status: 3,
+            ..valid.clone()
+        },
+        Reply {
+            wrong_transaction: true,
+            ..valid.clone()
+        },
+        Reply {
+            wrong_command: true,
+            ..valid.clone()
+        },
+        Reply {
+            declared_length: Some(55),
+            ..valid.clone()
+        },
+    ] {
+        let count = response.count;
+        let device = Mock::new([response, valid.clone()]).interrupt_next_read();
+        let error = execute(&device, &cap, Operation::Bluetooth, || Ok(0), || Ok(())).unwrap_err();
+        assert!(exchange_interrupted(&error));
+        assert_eq!(
+            native_io_outcome(&error),
+            Some(NativeIoOutcome::Returned { byte_count: count })
+        );
+        assert_eq!(
+            native_read_bytes(&error).map(<[u8]>::len),
+            (count <= 65).then_some(count)
+        );
+        let progress = &error.downcast_ref::<ExecutionFailure>().unwrap().progress;
+        assert!(progress.acknowledgements.is_empty());
+        assert!(!progress.setter_sent);
+        assert!(progress.previous_input.is_none());
+        assert!(progress.headphone_connected.is_none());
+        let sent = device.sent();
+        assert_eq!(sent.len(), 1);
+        assert_eq!(&sent[0][6..11], &[2, 8, 138, 0, 0]);
+    }
 }
 
 #[test]

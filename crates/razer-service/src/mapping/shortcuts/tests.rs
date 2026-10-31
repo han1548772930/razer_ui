@@ -816,9 +816,21 @@ fn recorder_source_started_waits_for_both_mapping_processes_and_restores_them() 
         next_pair: 1,
         movement_mode: 0,
         shortcut: Vec::new(),
+        finalization_macro_type: MacroType::Standard,
+        finalization_delay_mode: 3,
     };
-    let (record_session, updates) =
-        recorder::spawn_with_registry(options, || Ok(record_mock), registry).unwrap();
+    let (record_session, updates) = recorder::spawn_with_geometry(
+        options,
+        || Ok(record_mock),
+        registry,
+        || {
+            Ok(razer_platform::macro_geometry::Snapshot {
+                monitors: json!([]),
+                screen: json!({}),
+            })
+        },
+    )
+    .unwrap();
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_time()
         .build()
@@ -845,7 +857,7 @@ fn recorder_source_started_waits_for_both_mapping_processes_and_restores_them() 
                     .unwrap()
                     .unwrap()
             {
-                assert!(matches!(result, Ok(None)));
+                assert!(matches!(result, Ok(recorder::Completion::Cancelled)));
                 break;
             }
         }

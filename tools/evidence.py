@@ -347,160 +347,246 @@ def locale_keys(raw, keys):
     return matches[0]
 
 
-def locale_export_dictionaries(raw, locales):
-    """Resolve the mounted locale map and webpack exports without evaluating JS.
+class _LocaleSource:
+    """Literal locale resolution shared by route maps and split webpack chunks."""
+    def __init__(self, raw):
+        sys.path.insert(0, str(a.ROOT / "tools/analyzers/python-static"))
+        from tree_sitter import Language, Parser
+        import tree_sitter_javascript
+        self.raw = raw
+        self.tree = Parser(Language(tree_sitter_javascript.language())).parse(raw)
+        if self.tree.root_node.has_error:
+            raise ValueError("Locale export source has JavaScript parse errors")
+        self.bindings = JavascriptBindings(raw, self.tree)
+        self.objects, self.exports = [], []
+        pending = [self.tree.root_node]
+        while pending:
+            node = pending.pop()
+            pending.extend(reversed(node.named_children))
+            if node.type == "object":
+                self.objects.append(node)
+            elif node.type == "call_expression":
+                function = node.child_by_field_name("function")
+                arguments = node.child_by_field_name("arguments")
+                if function is None or function.type != "member_expression" or arguments is None:
+                    continue
+                method = function.child_by_field_name("property")
+                parts = arguments.named_children
+                if (method is not None and method.text == b"d" and len(parts) == 2
+                        and parts[0].type == "identifier" and parts[1].type == "object"):
+                    self.exports.append((node, parts[0], parts[1]))
 
-    A key in another dictionary or lexical scope is not a translation. Export
-    getters may only refer to literal strings in their own complete factory.
-    """
-    sys.path.insert(0, str(a.ROOT / "tools/analyzers/python-static"))
-    from tree_sitter import Language, Parser
-    import tree_sitter_javascript
-    tree = Parser(Language(tree_sitter_javascript.language())).parse(raw)
-    if tree.root_node.has_error:
-        raise ValueError("Locale export source has JavaScript parse errors")
-    wanted = set(locales)
-    if not wanted or len(wanted) != len(locales) or "en" not in wanted:
-        raise ValueError("Locale map must contain unique language identities and English")
-    bindings = JavascriptBindings(raw, tree)
-
+    @staticmethod
     def string(node):
         try:
-            return json.loads(node.text)
+            value = json.loads(node.text)
         except json.JSONDecodeError:
             import json5
             value = json5.loads(node.text.decode())
-            if not isinstance(value, str):
-                raise ValueError("Locale source literal is not a string")
-            return value
+        if not isinstance(value, str):
+            raise ValueError("Locale source literal is not a string")
+        return value
 
-    def region(node):
-        body = raw[node.start_byte:node.end_byte]
+    def region(self, node):
+        body = self.raw[node.start_byte:node.end_byte]
         return {"start_byte": node.start_byte, "end_byte": node.end_byte,
                 "body": body.decode("utf-8"), "sha256": hashlib.sha256(body).hexdigest()}
 
+    @staticmethod
     def scope(node):
         while node.parent is not None and node.type not in {"statement_block", "program"}:
             node = node.parent
         return node
 
-    def literal(node, owner, seen=()):
-        if node.type == "string":
-            return string(node)
-        if node.type != "identifier" or node.text in seen or len(seen) > 32:
-            raise ValueError("Locale binding is dynamic or cyclic")
-        found = bindings.resolve(node.text.decode(), node.start_byte)
+    def declaration(self, node, owner):
+        if node.type != "identifier":
+            raise ValueError("Locale reference is not a lexical identifier")
+        found = self.bindings.resolve(node.text.decode(), node.start_byte)
         if found["resolution"] != "declaration":
             raise ValueError("Locale binding does not resolve to one declaration")
-        declaration = tree.root_node.descendant_for_byte_range(found["start_byte"], found["end_byte"] - 1)
-        if scope(declaration) != owner:
+        declaration = self.tree.root_node.descendant_for_byte_range(found["start_byte"], found["end_byte"] - 1)
+        if self.scope(declaration) != owner:
             raise ValueError("Locale binding escapes its lexical owner")
-        value = declaration.child_by_field_name("value")
-        if value is None:
+        if declaration.child_by_field_name("value") is None:
             raise ValueError("Locale binding has no value")
-        return literal(value, owner, (*seen, node.text))
+        return declaration
 
-    def property_key(node, owner):
+    def literal(self, node, owner, seen=()):
+        if node.type == "string":
+            return self.string(node)
+        if node.type != "identifier" or node.text in seen or len(seen) > 32:
+            raise ValueError("Locale binding is dynamic or cyclic")
+        value = self.declaration(node, owner).child_by_field_name("value")
+        return self.literal(value, owner, (*seen, node.text))
+
+    def property_key(self, node, owner):
         if node.type in {"property_identifier", "identifier"}:
             return node.text.decode()
         if node.type == "string":
-            return string(node)
+            return self.string(node)
         if node.type == "computed_property_name" and len(node.named_children) == 1:
-            return literal(node.named_children[0], owner)
+            return self.literal(node.named_children[0], owner)
         raise ValueError("Locale map key is dynamic")
 
-    objects, exports, pending = [], [], [tree.root_node]
-    while pending:
-        node = pending.pop()
-        pending.extend(reversed(node.named_children))
-        if node.type == "object":
-            # Filter structurally before resolving computed keys. A computed
-            # English identity is valid; unrelated dynamic objects are not
-            # subject to dictionary restrictions.
-            if (len(node.named_children) == len(wanted)
-                    and all(pair.type == "pair"
-                            and pair.child_by_field_name("value").type == "identifier"
-                            for pair in node.named_children)):
-                objects.append(node)
-        elif node.type == "call_expression":
-            function = node.child_by_field_name("function")
-            arguments = node.child_by_field_name("arguments")
-            if function is None or function.type != "member_expression" or arguments is None:
+    @staticmethod
+    def returned(node):
+        if node.type not in {"arrow_function", "function_expression"}:
+            raise ValueError("Locale export is not a zero-argument function")
+        parameters = node.child_by_field_name("parameters")
+        body = node.child_by_field_name("body")
+        if parameters is None or parameters.named_children or body is None:
+            raise ValueError("Locale export getter requires dynamic arguments")
+        if body.type == "statement_block":
+            statements = [child for child in body.named_children if child.type != "comment"]
+            if (len(statements) != 1 or statements[0].type != "return_statement"
+                    or len(statements[0].named_children) != 1):
+                raise ValueError("Locale callback is not a single return")
+            body = statements[0].named_children[0]
+        return body
+
+    def values(self, dictionary, owner, *, getters):
+        values, resolved, seen = {}, [], set()
+        for pair in dictionary.named_children:
+            if pair.type != "pair":
+                raise ValueError("Locale dictionary contains a spread or shorthand")
+            key = self.property_key(pair.child_by_field_name("key"), owner)
+            value = pair.child_by_field_name("value")
+            if key in seen:
+                raise ValueError("Locale export key is duplicate: " + key)
+            seen.add(key)
+            if not getters and key == "__proto__" and value.type == "null":
                 continue
-            method = function.child_by_field_name("property")
-            parts = arguments.named_children
-            if (method is not None and method.text == b"d" and len(parts) == 2
-                    and parts[0].type == "identifier" and parts[1].type == "object"):
-                exports.append((node, parts[0], parts[1]))
+            if getters:
+                value = self.returned(value)
+            values[key] = self.literal(value, owner)
+            resolved.append({"key": key, "export": self.region(pair)})
+        if not values:
+            raise ValueError("Locale export dictionary is empty")
+        return values, resolved
+
+    def global_call(self, node, global_name, method):
+        if node.type != "call_expression":
+            raise ValueError("Locale expression is not the expected static call")
+        function = node.child_by_field_name("function")
+        if function.type != "member_expression":
+            raise ValueError("Locale expression has an unexpected callee")
+        target = function.child_by_field_name("object")
+        member = function.child_by_field_name("property")
+        if (target.type != "identifier" or target.text.decode() != global_name
+                or member.text.decode() != method
+                or self.bindings.resolve(global_name, target.start_byte)["resolution"] != "unresolved_identifier"):
+            raise ValueError("Locale expression shadows or replaces its standard global")
+        return node.child_by_field_name("arguments").named_children
+
+    def lazy_reference(self, getter):
+        call = self.returned(getter)
+        if call.type != "call_expression":
+            raise ValueError("Locale loader is not a static promise callback")
+        function = call.child_by_field_name("function")
+        if (function.type != "member_expression"
+                or function.child_by_field_name("property").text != b"then"):
+            raise ValueError("Locale loader has an unexpected promise method")
+        if self.global_call(function.child_by_field_name("object"), "Promise", "resolve"):
+            raise ValueError("Locale promise resolves a dynamic input")
+        callbacks = call.child_by_field_name("arguments").named_children
+        if len(callbacks) != 1:
+            raise ValueError("Locale loader has additional callbacks")
+        reference = self.returned(callbacks[0])
+        if reference.type != "identifier":
+            raise ValueError("Locale loader does not return its static namespace")
+        return reference
+
+
+def locale_export_dictionaries(raw, locales):
+    """Resolve mounted literal/frozen namespaces and webpack exports statically."""
+    source = _LocaleSource(raw)
+    wanted = set(locales)
+    if not wanted or len(wanted) != len(locales) or "en" not in wanted:
+        raise ValueError("Locale map must contain unique language identities and English")
     candidates = []
-    for node in objects:
-        pairs = [pair for pair in node.named_children if pair.type == "pair"]
-        if len(pairs) != len(wanted) or len(pairs) != len(node.named_children):
+    for node in source.objects:
+        if (len(node.named_children) != len(wanted)
+                or any(pair.type != "pair" for pair in node.named_children)):
             continue
-        owner = scope(node)
+        owner = source.scope(node)
         try:
-            entries = [(property_key(pair.child_by_field_name("key"), owner),
-                        pair.child_by_field_name("value")) for pair in pairs]
+            entries = [(source.property_key(pair.child_by_field_name("key"), owner),
+                        pair.child_by_field_name("value")) for pair in node.named_children]
         except ValueError:
             continue
-        if set(key for key, _ in entries) == wanted and all(value.type == "identifier" for _, value in entries):
-            if len({key for key, _ in entries}) != len(entries):
-                raise ValueError("Locale map contains duplicate language identities")
+        if set(key for key, _ in entries) == wanted:
             candidates.append((node, owner, entries))
     if len(candidates) != 1:
         raise ValueError(f"Mounted locale map is not unique: {len(candidates)}")
     route, owner, entries = candidates[0]
     dictionaries, dictionary_owners, namespaces = {}, [], set()
-    for locale, reference in entries:
-        found = bindings.resolve(reference.text.decode(), reference.start_byte)
-        if found["resolution"] != "declaration":
-            raise ValueError("Locale dictionary reference is unresolved: " + locale)
-        if found["start_byte"] in namespaces:
+    for locale, loader in entries:
+        reference = loader if loader.type == "identifier" else source.lazy_reference(loader)
+        declaration = source.declaration(reference, owner)
+        if declaration.start_byte in namespaces:
             raise ValueError("Locale languages share the same export namespace")
-        namespaces.add(found["start_byte"])
-        declaration = tree.root_node.descendant_for_byte_range(found["start_byte"], found["end_byte"] - 1)
+        namespaces.add(declaration.start_byte)
         initial = declaration.child_by_field_name("value")
-        if initial is None or initial.type != "object" or initial.named_children or scope(declaration) != owner:
-            raise ValueError("Locale export target is not its empty module namespace: " + locale)
-        matches = []
-        for call, target, export_object in exports:
-            if target.text != reference.text or scope(call) != owner:
-                continue
-            resolved_target = bindings.resolve(target.text.decode(), target.start_byte)
-            if resolved_target.get("start_byte") == found["start_byte"]:
-                matches.append((call, export_object))
-        if len(matches) != 1:
-            raise ValueError("Locale export namespace is not unique: " + locale)
-        call, export_object = matches[0]
-        values, resolved = {}, []
-        for pair in export_object.named_children:
-            if pair.type != "pair":
-                raise ValueError("Locale exports contain a spread or shorthand")
-            key = property_key(pair.child_by_field_name("key"), owner)
-            getter = pair.child_by_field_name("value")
-            if key in values or getter.type != "arrow_function":
-                raise ValueError("Locale export key is duplicate or not a getter: " + key)
-            parameters = getter.child_by_field_name("parameters")
-            body = getter.child_by_field_name("body")
-            if parameters is None or parameters.named_children or body is None:
-                raise ValueError("Locale export getter requires dynamic arguments: " + key)
-            # Arrow getters introduce their own scope. The referenced constant
-            # must resolve into the containing source factory instead.
-            value = literal(body, owner)
-            if not isinstance(value, str):
-                raise ValueError("Locale export is not a string: " + key)
-            values[key] = value
-            resolved.append({"key": key, "export": region(pair)})
-        if not values:
-            raise ValueError("Locale export dictionary is empty: " + locale)
+        if initial.type == "object" and not initial.named_children:
+            matches = []
+            for call, target, dictionary in source.exports:
+                if target.text != reference.text or source.scope(call) != owner:
+                    continue
+                if source.declaration(target, owner) == declaration:
+                    matches.append(dictionary)
+            if len(matches) != 1:
+                raise ValueError("Locale export namespace is not unique: " + locale)
+            dictionary, getters = matches[0], True
+        else:
+            arguments = source.global_call(initial, "Object", "freeze")
+            if len(arguments) != 1 or arguments[0].type != "object":
+                raise ValueError("Locale frozen namespace is not a complete literal object")
+            dictionary, getters = arguments[0], False
+        values, resolved = source.values(dictionary, owner, getters=getters)
         dictionaries[locale] = values
         dictionary_owners.append({"locale": locale, "namespace": reference.text.decode(),
-                                  "export_object": region(export_object), "resolved_exports": resolved})
+                                  "loader": source.region(loader),
+                                  "export_object": source.region(dictionary), "resolved_exports": resolved})
     factory = owner.parent if owner.parent is not None else owner
     return {"values": dictionaries, "locale_order": [locale for locale, _ in entries],
-            "routing_owner": region(route), "complete_factory": region(factory),
-            "dictionaries": dictionary_owners,
+            "routing_owner": source.region(route), "complete_factory": source.region(factory),
+            "dictionaries": dictionary_owners, "javascript_executed": False}
+
+
+def locale_chunk_exports(raw, keys=None):
+    """Read a complete translation chunk's actual webpack export-parameter owner."""
+    source = _LocaleSource(raw)
+    wanted = None if keys is None else set(keys)
+    if wanted is not None and (not wanted or len(wanted) != len(keys)):
+        raise ValueError("Locale keys must be nonempty and unique")
+    candidates = []
+    for call, target, dictionary in source.exports:
+        owner = source.scope(call)
+        factory = owner.parent
+        if factory is None or factory.type not in {"arrow_function", "function_expression"}:
+            continue
+        parameters = factory.child_by_field_name("parameters")
+        parameters = parameters.named_children if parameters is not None else []
+        require = call.child_by_field_name("function").child_by_field_name("object")
+        if (len(parameters) != 3 or any(parameter.type != "identifier" for parameter in parameters)
+                or target.text != parameters[1].text or require.text != parameters[2].text):
+            continue
+        keys_in_owner = {source.property_key(pair.child_by_field_name("key"), owner)
+                         for pair in dictionary.named_children if pair.type == "pair"}
+        if wanted is None or wanted <= keys_in_owner:
+            candidates.append((dictionary, owner, factory))
+    if len(candidates) != 1:
+        raise ValueError(f"Locale chunk export owner is not unique: {len(candidates)}")
+    dictionary, owner, factory = candidates[0]
+    values, resolved = source.values(dictionary, owner, getters=True)
+    if wanted is not None:
+        values = {key: value for key, value in values.items() if key in wanted}
+        resolved = [row for row in resolved if row["key"] in wanted]
+    return {"values": values, "owner": source.region(dictionary),
+            "complete_factory": source.region(factory), "resolved_exports": resolved,
             "javascript_executed": False}
+
+
 
 
 class JavascriptBindings:
@@ -980,6 +1066,8 @@ def frontend_deployment_sources(acquired):
         base = urllib.parse.urljoin(entry_response, parsed.base) if parsed.base else entry_response
         for literal, role in parsed.includes:
             select(a.artifact_url(base, literal), role, entry, literal)
+    elif entry_raw is not None:
+        select(entry, "standalone_resource_entry", entry, entry)
     manifests, inline_entrypoints, inline_comparisons, inline_audit = [], [], [], None
 
     def inlined_entrypoint(target):
@@ -1069,6 +1157,7 @@ def frontend_deployment_sources(acquired):
         roles = {ref["role"] for ref in item["references"]}
         item["deployment_role"] = ("html_include" if roles & {"html_script_include", "html_stylesheet_include"}
                                    else "inline_equivalent_original" if "manifest_entrypoint_inlined_equivalent" in roles
+                                   else "standalone_entry_requires_importer_audit" if "standalone_resource_entry" in roles
                                    else "conditional_or_declared_candidate")
         item["react_mount_semantics"] = "requires_complete_component_and_caller_audit"
     stable = acquired.get("source_current_during_acquisition") is True

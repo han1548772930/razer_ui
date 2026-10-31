@@ -112,6 +112,15 @@ pub fn read_device(
     transaction: u8,
     deadline: impl Fn() -> anyhow::Result<()>,
 ) -> anyhow::Result<DeviceReadValue> {
+    let source_deadline = deadline;
+    let deadline = || {
+        source_deadline().map_err(|error| {
+            crate::backend::interrupt_exchange(
+                error,
+                crate::backend::ExchangeInterruption::Validation,
+            )
+        })
+    };
     let (bound, transaction) = cap.for_exchange(device, transaction)?;
     let cap = bound.as_ref();
     let get_report_id = cap.get_report_id_for_transport(device)?;
@@ -137,7 +146,7 @@ pub fn read_device(
                 {
                     Ok(()) => {}
                     Err(error) => {
-                        if crate::backend::exchange_finalization_failed(&error) {
+                        if crate::backend::exchange_interrupted(&error) {
                             return Err(error);
                         }
                         last_error = error;
@@ -166,9 +175,7 @@ pub fn read_device(
                         Err(error) => {
                             // The current host turns a failed getFeatureReport into
                             // an empty response; middleware retries with a new OUT.
-                            if crate::backend::exchange_finalization_failed(&error)
-                                || crate::backend::native_read_bytes(&error).is_some()
-                            {
+                            if crate::backend::exchange_interrupted(&error) {
                                 return Err(retain_failed_device_read(
                                     error,
                                     cap,
@@ -219,6 +226,15 @@ pub fn read_receiver(
     deadline: impl Fn() -> anyhow::Result<()>,
 ) -> anyhow::Result<Vec<(u16, u8)>> {
     use super::receiver_protocol::{self as protocol, Reply};
+    let source_deadline = deadline;
+    let deadline = || {
+        source_deadline().map_err(|error| {
+            crate::backend::interrupt_exchange(
+                error,
+                crate::backend::ExchangeInterruption::Validation,
+            )
+        })
+    };
     let outgoing = protocol::query_report(selected, transaction)?;
     let mut reading = None;
     let result = crate::feature_exchange::with_validated_exchange(
@@ -243,7 +259,7 @@ pub fn read_receiver(
                 {
                     Ok(()) => {}
                     Err(error) => {
-                        if crate::backend::exchange_finalization_failed(&error) {
+                        if crate::backend::exchange_interrupted(&error) {
                             return Err(error);
                         }
                         last_error = error;
@@ -269,9 +285,7 @@ pub fn read_receiver(
                     let received = match received {
                         Ok(count) => count,
                         Err(error) => {
-                            if crate::backend::exchange_finalization_failed(&error)
-                                || crate::backend::native_read_bytes(&error).is_some()
-                            {
+                            if crate::backend::exchange_interrupted(&error) {
                                 return Err(retain_failed_receiver_read(
                                     error,
                                     selected,

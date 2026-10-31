@@ -77,7 +77,8 @@ impl MacroPage {
                                 let palette_disabled = palette_disabled
                                     || kind == "delay"
                                         && self.current_macro_type()
-                                            != razer_pages::features::macro_library::MacroType::Standard;
+                                            != razer_pages::features::macro_library::MacroType::Standard
+                                    || kind == "macro" && self.current_macro_type() == MacroType::Phased;
                                 let id = SharedString::from(format!("macro-palette-{kind}"));
                                 BaseButton::new(id.clone())
                                     .group(id)
@@ -778,7 +779,7 @@ impl MacroPage {
                                 .child(tr("TEXT_LAUNCH_SAVE"))
                                 .on_click(cx.listener(|this, _, window, cx| {
                                     this.finish_pending_edits(window, cx);
-                                    this.save_actions(cx)
+                                    this.save_actions(cx);
                                 })),
                         )
                     }),

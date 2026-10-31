@@ -51,11 +51,12 @@ impl MacroPage {
             return;
         };
         if action.macro_id != Some(id) {
-            self.undo.push(self.actions.clone());
+            self.checkpoint_actions();
             self.actions[index].macro_id = Some(id);
             self.actions[index].xml_macro_guid = None;
             self.actions[index].value = name;
             self.redo.clear();
+            self.rebuild_action_execution();
             // je restores the text only when its selected index changes.
             self.choice_action = None;
         }

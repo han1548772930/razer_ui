@@ -30,7 +30,7 @@ fn number(value: &Value) -> Result<String, String> {
         .ok_or_else(|| "Invalid imported macro number".to_owned())
 }
 
-fn source_entry(document: &Value, id: u64) -> Result<Entry, String> {
+pub(super) fn source_entry(document: &Value, id: u64) -> Result<Entry, String> {
     let guid = document["guid"]
         .as_str()
         .ok_or("Imported macro UUID is absent")?;
@@ -168,7 +168,15 @@ fn source_entry(document: &Value, id: u64) -> Result<Entry, String> {
                     state: optional_u8(&event["MouseEvent"]["State"], "mouse state")?,
                 })
             }
-            ActionKind::Text => action.value = text(&event["Text"]),
+            ActionKind::Text => {
+                action.value = text(&event["Text"]);
+                action.translation_key = match event.get("translationKey") {
+                    None | Some(Value::Null) => None,
+                    Some(Value::String(key)) if key.is_empty() => None,
+                    Some(Value::String(key)) => Some(key.clone()),
+                    Some(_) => return Err("Invalid imported text translation identity".into()),
+                };
+            }
             ActionKind::Command => action.value = text(&event["TextCommand"]),
             ActionKind::Loop => {
                 action.loop_pair_id = pair;
@@ -207,11 +215,15 @@ fn source_entry(document: &Value, id: u64) -> Result<Entry, String> {
         xml_guid: Some(guid.to_owned()),
         xml_mouse_mode: mode,
         source_document: Some(document.clone()),
+        execution: None,
     })
 }
 
 impl Entry {
     pub(super) fn retained_source_document(&self) -> Result<Option<Value>, String> {
+        if self.execution.is_some() {
+            return Ok(None);
+        }
         let Some(document) = &self.source_document else {
             return Ok(None);
         };

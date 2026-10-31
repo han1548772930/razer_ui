@@ -139,7 +139,7 @@ impl PeerHid {
                         firmware: data[2],
                     });
                 }
-                Err(error) if crate::backend::exchange_finalization_failed(&error) => {
+                Err(error) if crate::backend::exchange_interrupted(&error) => {
                     return Err(error);
                 }
                 Err(error) => last = Some(error),

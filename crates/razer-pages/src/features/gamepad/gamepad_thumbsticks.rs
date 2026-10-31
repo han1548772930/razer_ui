@@ -199,6 +199,7 @@ impl GamepadProductWorkspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        self.sync_deadzone_values();
         if let Some(side) = deadzone_state::Side::from_path(path) {
             if self.deadzone.select(
                 side,
@@ -217,6 +218,16 @@ impl GamepadProductWorkspace {
             self.number(deadzone_state::Side::Left.path()),
             self.number(deadzone_state::Side::Right.path()),
         ]
+    }
+
+    pub(super) fn sync_deadzone_values(&mut self) {
+        if self.page == "THUMBSTICKS" {
+            self.deadzone.synchronize(
+                self.deadzone_values(),
+                self.modern_thumbsticks(),
+                self.trigger_runtime.guard(),
+            );
+        }
     }
 
     pub(super) fn submit_thumbstick_value(
@@ -245,6 +256,7 @@ impl GamepadProductWorkspace {
     }
 
     pub(super) fn sync_thumbstick_controls(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.sync_deadzone_values();
         for (path, control) in &self.thumbstick_ui.controls {
             if control.preview.is_none() {
                 if let Some(value) = self.draft.pointer(path).and_then(Value::as_f64) {
@@ -360,7 +372,7 @@ impl GamepadProductWorkspace {
             &self.spec.deadzone_steps
         };
         let modern = self.modern_thumbsticks();
-        let highlight = !sensitivity && value < 7;
+        let highlight = !sensitivity && deadzone_state::is_low(value);
         let color = if highlight {
             Colors::warning()
         } else {
@@ -758,7 +770,7 @@ impl GamepadProductWorkspace {
         let enabled = !sensitivity || self.clutch_assigned(side);
         let left = side == "leftStick";
         let deadzone = self.number(&format!("/controller/{side}/deadzoneValue"));
-        let highlight = !sensitivity && deadzone < 7;
+        let highlight = !sensitivity && deadzone_state::is_low(deadzone);
         let key = if sensitivity {
             if left {
                 "LEFT_THUMBSTICK_TIP_2"
@@ -872,9 +884,9 @@ impl GamepadProductWorkspace {
                 })),
             );
         } else if !sensitivity
-            && ["leftStick", "rightStick"]
-                .iter()
-                .any(|side| self.number(&format!("/controller/{side}/deadzoneValue")) < 7)
+            && ["leftStick", "rightStick"].iter().any(|side| {
+                deadzone_state::is_low(self.number(&format!("/controller/{side}/deadzoneValue")))
+            })
         {
             bottom = bottom.child(div().h(surface::css(47.)));
         }
@@ -1121,7 +1133,7 @@ impl GamepadProductWorkspace {
             let mut row = v_flex()
                 .mt(surface::css(20.))
                 .child(self.widget_slider_row(side, false, true, window, cx));
-            if value < 7 {
+            if deadzone_state::is_low(value) {
                 row = row.child(
                     h_flex()
                         .items_center()

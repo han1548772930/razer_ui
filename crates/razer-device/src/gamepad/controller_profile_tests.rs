@@ -370,6 +370,47 @@ fn mapping_cancellation_preserves_completed_reads_and_never_starts_another_butto
 }
 
 #[test]
+fn mapping_batches_keep_terminal_native_outcomes_instead_of_reading_the_next_button() {
+    use crate::backend::{NativeIoOutcome, native_io_failure, native_io_outcome};
+
+    for product_id in [2636, 2676] {
+        for failed_button in [16, 17, 18] {
+            for outcome in [
+                NativeIoOutcome::NotCalled,
+                NativeIoOutcome::Returned { byte_count: 0 },
+                NativeIoOutcome::Returned { byte_count: 91 },
+            ] {
+                let mut buttons = Vec::new();
+                let error = read_mappings(
+                    product_id,
+                    3,
+                    &[16, 17, 18],
+                    &mut |header, request| {
+                        assert_eq!(header, [80, 2, 140]);
+                        assert_eq!(request[0], 3);
+                        assert_eq!(request[2], 0);
+                        let button = request[1];
+                        buttons.push(button);
+                        if button == failed_button {
+                            Err(native_io_failure(
+                                outcome,
+                                anyhow::anyhow!("owner validation failed"),
+                            ))
+                        } else {
+                            Ok(vec![3, button, 0, 16, 1, button, 0, 0, 0, 0])
+                        }
+                    },
+                    &mut || false,
+                )
+                .unwrap_err();
+                assert_eq!(native_io_outcome(&error), Some(outcome));
+                assert_eq!(buttons, (16..=failed_button).collect::<Vec<_>>());
+            }
+        }
+    }
+}
+
+#[test]
 fn mapping_identity_and_length_failures_remain_per_button_and_never_restore_defaults() {
     for payload in [
         vec![],

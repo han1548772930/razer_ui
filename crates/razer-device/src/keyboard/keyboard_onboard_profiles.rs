@@ -72,7 +72,16 @@ impl<T> Reading<T> {
 /// A read failure is retained only after checking that the caller's identity,
 /// deadline and cancellation guard still allow this snapshot to continue.
 fn retain<T>(result: Result<T>, validate: &impl Fn() -> Result<()>) -> Result<Reading<T>> {
-    validate()?;
+    if result
+        .as_ref()
+        .err()
+        .is_some_and(crate::backend::exchange_interrupted)
+    {
+        return result.map(Reading::Observed);
+    }
+    validate().map_err(|error| {
+        crate::backend::interrupt_exchange(error, crate::backend::ExchangeInterruption::Validation)
+    })?;
     Ok(match result {
         Ok(value) => Reading::Observed(value),
         Err(error) => Reading::Failed {

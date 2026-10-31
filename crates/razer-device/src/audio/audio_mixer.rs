@@ -867,16 +867,24 @@ impl<'a> MixerSession<'a> {
         &self,
         operation: impl FnOnce(&MixerSession<'_>) -> anyhow::Result<R>,
     ) -> anyhow::Result<R> {
+        let validate = || {
+            (self.validate)().map_err(|error| {
+                crate::backend::interrupt_exchange(
+                    error,
+                    crate::backend::ExchangeInterruption::Validation,
+                )
+            })
+        };
         let progress = RefCell::new(MixerExchangeProgress::default());
         let result = crate::feature_exchange::with_validated_exchange(
             self.device,
             crate::backend::ExchangeOptions::plain(),
-            self.validate,
+            &validate,
             |device, _| {
                 operation(&MixerSession {
                     device,
                     lengths: self.lengths.clone(),
-                    validate: self.validate,
+                    validate: &validate,
                     progress: Some(&progress),
                 })
             },
@@ -949,7 +957,11 @@ impl<'a> MixerSession<'a> {
                 // Original 0xde60 calls 0xc460 after publishing the samples
                 // and ignores its return. This value confirms the read only;
                 // it does not claim that the clear request succeeded.
-                let _ = self.write(command, 0);
+                if let Err(error) = self.write(command, 0)
+                    && crate::backend::exchange_interrupted(&error)
+                {
+                    return Err(error);
+                }
                 value
             }
             _ => bail!("该 DSP 原件操作尚未实现"),

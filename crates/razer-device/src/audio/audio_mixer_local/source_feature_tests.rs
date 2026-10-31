@@ -202,6 +202,60 @@ fn execute_command(io: &Transport, command: Command) -> anyhow::Result<Receipt> 
 }
 
 #[test]
+fn one_shot_admission_and_native_owner_failures_never_retry_mixer_channels() {
+    use crate::backend::{NativeIoOutcome, native_io_outcome};
+    use crate::feature_exchange::tests::ExchangeProbe;
+    for feature in [true, false] {
+        let report = if feature {
+            packet(&[7, 0, 0, 0, 0, 0, 0, 2, 12, 0, 112, 0, 20, 5, 0])
+        } else {
+            output_packet(&[3, 24, 0, 192, 16, 16, 16])
+        };
+        let io = Transport::new([]);
+        let admissions = Cell::new(0);
+        let admit = || {
+            let previous = admissions.replace(admissions.get() + 1);
+            ensure!(previous != 0, "one-shot mixer admission failure");
+            Ok(())
+        };
+        let probe = ExchangeProbe::with_admission_check(&io, &admit);
+        let error = if feature {
+            reports::feature(&probe, report.as_slice().try_into().unwrap(), None, &|| {
+                Ok(())
+            })
+        } else {
+            reports::output(&probe, &report, None, &|| Ok(()))
+        }
+        .unwrap_err();
+        assert!(crate::backend::exchange_interrupted(&error));
+        assert_eq!(admissions.get(), 1);
+        assert_eq!(io.sends.get(), 0);
+        for outcome in [
+            NativeIoOutcome::NotCalled,
+            NativeIoOutcome::Returned { byte_count: 0 },
+            NativeIoOutcome::Returned {
+                byte_count: report.len(),
+            },
+        ] {
+            let io = Transport::new([if feature {
+                Step::SendOutcome(report.clone(), Some(outcome))
+            } else {
+                Step::OutputOutcome(report.clone(), Some(outcome))
+            }]);
+            let error = if feature {
+                reports::feature(&io, report.as_slice().try_into().unwrap(), None, &|| Ok(()))
+            } else {
+                reports::output(&io, &report, None, &|| Ok(()))
+            }
+            .unwrap_err();
+            assert_eq!(native_io_outcome(&error), Some(outcome));
+            assert_eq!(io.sends.get(), 1);
+            io.finish();
+        }
+    }
+}
+
+#[test]
 fn source_transfer_uses_terminal_send_facts_before_rejecting_a_canceled_owner() {
     use crate::backend::{NativeIoOutcome, native_io_outcome};
 

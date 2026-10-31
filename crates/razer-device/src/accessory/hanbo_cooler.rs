@@ -597,21 +597,36 @@ fn exchange_packet(
     wait: &mut dyn FnMut(std::time::Duration),
 ) -> Result<[u8; INPUT_LENGTH]> {
     let validation = std::cell::RefCell::new(validate);
-    let validate = || validation.borrow_mut()();
+    let validate = || {
+        validation.borrow_mut()().map_err(|error| {
+            crate::backend::interrupt_exchange(
+                error,
+                crate::backend::ExchangeInterruption::Validation,
+            )
+        })
+    };
     validate()?;
-    let lease = transport.begin_exchange_validated(
-        crate::backend::ExchangeOptions::plain(),
-        std::rc::Rc::new(&validate),
-    )?;
+    let lease = transport
+        .begin_exchange_validated(
+            crate::backend::ExchangeOptions::plain(),
+            std::rc::Rc::new(&validate),
+        )
+        .map_err(|error| {
+            crate::backend::interrupt_exchange(
+                error,
+                crate::backend::ExchangeInterruption::Admission,
+            )
+        })?;
     let result = (|| {
         let transport = lease.transport();
         let mut last_error = String::from("no input response");
         for _ in 0..OUTPUT_ATTEMPTS {
-            validate()?;
-            let count = transport
-                .write_output_counted(report)
-                .context("Hanbo Output Report 发送失败")?;
-            validate()?;
+            let count = crate::backend::checked_native_io(
+                &validate,
+                || transport.write_output_counted(report),
+                &validate,
+            )
+            .context("Hanbo Output Report 发送失败")?;
             if count != EXPECTED_OUTPUT_COUNT {
                 last_error = format!(
                     "native write returned {count} bytes; source requires {EXPECTED_OUTPUT_COUNT}"
@@ -623,12 +638,29 @@ fn exchange_packet(
                 if attempt > 0 {
                     wait(std::time::Duration::from_millis(INPUT_RETRY_DELAY_MS));
                 }
-                validate()?;
                 let mut input = [0u8; INPUT_LENGTH + 1];
-                let received = transport.read_interrupt(&mut input, INPUT_TIMEOUT_MS);
-                validate()?;
+                let received = crate::backend::checked_native_read(
+                    &validate,
+                    &mut input,
+                    |buffer| transport.read_interrupt(buffer, INPUT_TIMEOUT_MS),
+                    &validate,
+                );
                 let count = match received {
                     Ok(count) => count,
+                    Err(error) if crate::backend::exchange_interrupted(&error) => {
+                        let packet = crate::backend::native_read_bytes(&error)
+                            .filter(|bytes| {
+                                bytes.len() == INPUT_LENGTH && matching_packet(bytes, reply_header)
+                            })
+                            .map(<[u8]>::to_vec);
+                        return Err(match packet {
+                            Some(packet) => error.context(CompletedHanboInput {
+                                command: [report[1], report[2]],
+                                packet,
+                            }),
+                            None => error,
+                        });
+                    }
                     Err(error) => {
                         last_error = format!("Hanbo Input Report 读取失败: {error:#}");
                         break;
@@ -676,7 +708,7 @@ impl std::fmt::Display for CompletedHanboInput {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             formatter,
-            "Hanbo Input matched for {:?} before exchange finalization failed",
+            "Hanbo Input matched for {:?}; exchange did not complete",
             self.command
         )
     }

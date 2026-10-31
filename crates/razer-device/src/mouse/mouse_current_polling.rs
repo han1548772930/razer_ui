@@ -229,7 +229,7 @@ fn synchronize_slots(
             validate()?;
             let previous = match read_profile(device, cap, slot.profile_id, next, validate) {
                 Ok(previous) => Some(previous),
-                Err(error) if crate::backend::exchange_finalization_failed(&error) => {
+                Err(error) if crate::backend::exchange_interrupted(&error) => {
                     return Err(error);
                 }
                 Err(_) => None,
@@ -336,7 +336,7 @@ pub fn apply(
     // Missing observations remain explicit; a cancellation still stops SET.
     let previous = match read(device, cap, &mut next, &validate) {
         Ok(previous) => Some(previous),
-        Err(error) if crate::backend::exchange_finalization_failed(&error) => return Err(error),
+        Err(error) if crate::backend::exchange_interrupted(&error) => return Err(error),
         Err(_) => None,
     }
     .and_then(Observation::hz)

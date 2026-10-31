@@ -258,6 +258,8 @@ pub struct DashboardDeviceMetadata {
     pub readonly_keyboard_metadata:
         Option<razer_device::keyboard_metadata::KeyboardMetadataReading>,
     #[serde(skip)]
+    pub readonly_camera_serial: CameraSerialObservation,
+    #[serde(skip)]
     pub readonly_power: Option<PowerStatus>,
     /// Current controller callback observation, independent of query snapshots.
     #[serde(skip)]
@@ -338,6 +340,34 @@ pub enum DeviceConnectionObservation {
     UsbPresent,
     HidPresent,
     ReceiverPeer(u8),
+}
+
+/// The current camera connection's identity read, independent of the serial
+/// retained in a local device document. Failed chunks remain in the progress.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub enum CameraSerialObservation {
+    #[default]
+    Unobserved,
+    Reading,
+    Read(razer_device::camera_serial::CameraSerialProgress),
+    Failed(String),
+}
+
+impl CameraSerialObservation {
+    pub fn serial(&self) -> Option<&str> {
+        match self {
+            Self::Read(progress) => progress.serial(),
+            _ => None,
+        }
+    }
+
+    pub fn error(&self) -> Option<&str> {
+        match self {
+            Self::Read(progress) => progress.error(),
+            Self::Failed(error) => Some(error),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -429,6 +459,7 @@ impl Device {
         self.dashboard.connection_observation = None;
         self.dashboard.readonly_pairing_is_dongle = None;
         self.dashboard.readonly_keyboard_metadata = None;
+        self.dashboard.readonly_camera_serial = CameraSerialObservation::Unobserved;
         self.observe_read_values(None);
         self.clear_controller_input_observations();
         self.setup_status = SetupStatus::Unknown;
@@ -453,14 +484,35 @@ impl Device {
             self.clear_controller_input_observations();
             self.dashboard.readonly_pairing_is_dongle = None;
             self.dashboard.readonly_keyboard_metadata = None;
+            self.dashboard.readonly_camera_serial = CameraSerialObservation::Unobserved;
         }
         self.dashboard.connection_observation = observation;
         self.refresh_runtime_setup();
         if observation.is_none() {
             self.clear_controller_input_observations();
             self.dashboard.readonly_keyboard_metadata = None;
+            self.dashboard.readonly_camera_serial = CameraSerialObservation::Unobserved;
             self.observe_read_values(None);
         }
+    }
+
+    pub fn observe_camera_serial(&mut self, observation: CameraSerialObservation) -> bool {
+        if !matches!(self.product_id, 3594..=3596)
+            || (!matches!(observation, CameraSerialObservation::Unobserved)
+                && self.dashboard.connection_observation.is_none())
+        {
+            return false;
+        }
+        if let CameraSerialObservation::Read(progress) = &observation {
+            if progress.product_id() != self.product_id {
+                return false;
+            }
+            if let Some(serial) = progress.serial() {
+                self.serial_number = serial.to_owned();
+            }
+        }
+        self.dashboard.readonly_camera_serial = observation;
+        true
     }
 
     /// Called by the retained product owner after constructing its page and

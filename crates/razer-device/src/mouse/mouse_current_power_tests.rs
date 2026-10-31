@@ -96,6 +96,76 @@ fn transport(product_id: u32) -> DeviceReadCapability {
     cap.max_retry_out = 2;
     cap
 }
+
+#[test]
+fn native_interruption_stops_every_mounted_power_task_and_feature_route() {
+    use crate::backend::{NativeIoOutcome, native_io_outcome};
+    use crate::keyboard_control_test_transport::Mock;
+    for source in make_mouse_current_power_table() {
+        let mut changes = Vec::new();
+        if source.power_saving {
+            changes.push(Change::PowerSaving(if source.single_profile_seconds {
+                15
+            } else {
+                1
+            }));
+            if source.always_read_power_saving {
+                changes.push(Change::ReadPowerSaving);
+            }
+        }
+        if source.low_power {
+            changes.push(Change::LowPower(5));
+        }
+        if let Some(range) = source.low_battery {
+            changes.push(Change::LowBattery(range.min));
+        }
+        if source.dim_lighting {
+            changes.push(Change::DimLighting {
+                enabled: true,
+                minutes: 1,
+            });
+        }
+        if source.battery_type {
+            changes.push(Change::BatteryType(0));
+        }
+        for physical in &source.transport.direct_pids {
+            if source.is_ble(*physical) {
+                continue;
+            }
+            let mut cap = source.transport(*physical, false).unwrap();
+            cap.sleep_between_out_ms = 0;
+            cap.sleep_between_out_in_ms = 0;
+            cap.sleep_between_in_ms = 0;
+            for change in &changes {
+                for outcome in [
+                    NativeIoOutcome::NotCalled,
+                    NativeIoOutcome::Returned { byte_count: 90 },
+                    NativeIoOutcome::Returned { byte_count: 91 },
+                ] {
+                    let device = Mock::new([]).fail_next_send(outcome);
+                    let error = execute(
+                        source.product_id,
+                        &device,
+                        &cap,
+                        change,
+                        next(cap.transaction_prefix),
+                        || Ok(()),
+                    )
+                    .unwrap_err();
+                    assert_eq!(
+                        native_io_outcome(&error),
+                        Some(outcome),
+                        "PID{} / {physical} / {change:?}",
+                        source.product_id
+                    );
+                    assert_eq!(device.sent().len(), 1);
+                    let progress = &error.downcast_ref::<WriteFailure>().unwrap().progress;
+                    assert!(progress.acknowledgements.is_empty());
+                }
+            }
+        }
+    }
+}
 fn next(prefix: u8) -> impl FnMut() -> anyhow::Result<u8> {
     let mut value = 0;
     move || {

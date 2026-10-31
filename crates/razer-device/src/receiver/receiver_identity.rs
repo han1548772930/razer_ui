@@ -11,6 +11,14 @@ pub fn read_serial(
     transaction: u8,
     validate: impl Fn() -> anyhow::Result<()>,
 ) -> anyhow::Result<String> {
+    let validate = &|| {
+        validate().map_err(|error| {
+            crate::backend::interrupt_exchange(
+                error,
+                crate::backend::ExchangeInterruption::Validation,
+            )
+        })
+    };
     ensure!(
         matches!(cap.product_id, 164 | 241)
             && cap.report_bytes == 91
@@ -33,9 +41,11 @@ pub fn read_serial(
             let mut last = String::from("No serial response");
             for out_attempt in 0..cap.max_retry_out {
                 validate()?;
-                if let Err(error) = device.send_feature_at_collection_max(&report) {
-                    return Err(error);
+                let sent = device.send_feature_at_collection_max_counted(&report);
+                if let Err(validation) = validate() {
+                    return Err(crate::backend::complete_native_io(sent, validation));
                 }
+                sent.and_then(|count| crate::backend::require_complete_send(count, report.len()))?;
                 std::thread::sleep(Duration::from_millis(cap.sleep_between_out_in_ms));
                 let mut resend_out_command = false;
                 for attempt in 0..cap.max_retry_in {
@@ -45,15 +55,28 @@ pub fn read_serial(
                     validate()?;
                     let mut input = vec![0_u8; 91];
                     input[0] = cap.get_report_id();
-                    let count = match device.get_feature_at_collection_max(&mut input) {
+                    let received = device.get_feature_at_collection_max(&mut input);
+                    let received = match validate() {
+                        Ok(()) => received,
+                        Err(validation) => Err(crate::backend::complete_native_read(
+                            received, &input, validation,
+                        )),
+                    };
+                    let count = match received {
                         Ok(count) => count,
+                        Err(error) if crate::backend::exchange_interrupted(&error) => {
+                            return Err(crate::receiver_feature_channel::retain_failed_reply(
+                                error,
+                                [22, 0, 130],
+                                transaction,
+                            ));
+                        }
                         Err(error) if resend_out_command => {
                             last = error.to_string();
                             break;
                         }
                         Err(error) => return Err(error),
                     };
-                    validate()?;
                     ensure!(
                         (9..=input.len()).contains(&count),
                         "Serial Feature report has no complete header"

@@ -30,8 +30,11 @@ mod runtime_versions;
 mod system;
 #[path = "source_help_versions.rs"]
 mod versions;
-pub use camo::{HelpCamoCommand, HelpCamoObservation, HelpCamoRequested};
-pub use runtime_versions::{HelpRuntimeVersionsObservation, HelpRuntimeVersionsRequest};
+pub use camo::{HelpCamoCommand, HelpCamoInstallationStatus, HelpCamoObservation, HelpCamoRequested};
+pub use runtime_versions::{
+    HelpRuntimeVersionStatus, HelpRuntimeVersionsObservation, HelpRuntimeVersionsRequest,
+    HelpRuntimeVersionsStatus,
+};
 pub use system::{HelpSystemInfoCommand, HelpSystemInfoRequested};
 
 #[cfg(test)]
@@ -341,6 +344,20 @@ impl SourceHelp {
         }
     }
     pub(super) fn set_device(&mut self, device: &Device, cx: &mut Context<Self>) {
+        let camo_mount_changed = self.device.product_id != device.product_id
+            || self.device.real_product_id != device.real_product_id
+            || self.device.device_container_id != device.device_container_id
+            || self.device.edition_id != device.edition_id
+            || self.device.layout_id != device.layout_id
+            || self.device.dashboard.connection_observation != device.dashboard.connection_observation;
+        let camera_observation_changed = self.device.dashboard.readonly_camera_serial
+            != device.dashboard.readonly_camera_serial;
+        let runtime_identity_changed = self.device.product_id != device.product_id
+            || self.device.real_product_id != device.real_product_id
+            || self.device.serial_number != device.serial_number
+            || self.device.device_container_id != device.device_container_id
+            || self.device.edition_id != device.edition_id
+            || self.device.layout_id != device.layout_id;
         let camo_serial_changed = self.metadata().is_some_and(|(_, page)| page.camo)
             && self.device.serial_number != device.serial_number
             && self.device.product_id == device.product_id
@@ -366,7 +383,6 @@ impl SourceHelp {
             }
             self.copy_task = None;
             self.localized_product_names = None;
-            self.runtime_versions.unmount();
             self.camo.unmount();
             self.system_info.unmount();
             self.copied_serial = false;
@@ -387,8 +403,13 @@ impl SourceHelp {
             self.page_offset = None;
         }
         self.device = device.clone();
-        if camo_serial_changed {
-            self.camo_serial_changed(&device.serial_number, cx);
+        if runtime_identity_changed {
+            self.mount_runtime_versions(cx);
+        }
+        if camo_mount_changed {
+            self.mount_camo(cx);
+        } else if camera_observation_changed {
+            self.camo_observation_changed(cx);
         }
         cx.notify();
     }
@@ -410,7 +431,6 @@ impl SourceHelp {
             }
             self.page_offset = Some(offset);
             self.mounted_serial = self.device.serial_number.clone();
-            self.runtime_versions.unmount();
             self.view_more = false;
             self.reset_generation = self.reset_generation.wrapping_add(1);
             self.confirmation_generation = self.confirmation_generation.wrapping_add(1);
@@ -422,6 +442,7 @@ impl SourceHelp {
             self.mount_inline_popup_layout(cx);
             self.mount_camo(cx);
             self.mount_system_info(cx);
+            self.mount_runtime_versions(cx);
             self.cancel_audio_resets(cx);
             cx.notify();
         }
@@ -441,13 +462,10 @@ impl SourceHelp {
         if self.copied_serial {
             return;
         }
-        let serial = if self.metadata().is_some_and(|(_, page)| page.camo) {
-            self.camo_serial()
-        } else if self.retains_mounted_serial() {
-            &self.mounted_serial
-        } else {
-            &self.device.serial_number
-        };
+        let serial = self.displayed_serial();
+        if matches!(self.device.product_id, 3594..=3596) && serial.is_empty() {
+            return;
+        }
         cx.write_to_clipboard(ClipboardItem::new_string(serial.to_owned()));
         self.copied_serial = true;
         self.copy_task = Some(cx.spawn_in(window, async move |view, cx| {
@@ -458,6 +476,18 @@ impl SourceHelp {
             });
         }));
         cx.notify();
+    }
+
+    fn displayed_serial(&self) -> &str {
+        if self.metadata().is_some_and(|(_, page)| page.camo) {
+            self.camo_serial()
+        } else if matches!(self.device.product_id, 3594..=3596) {
+            self.device.dashboard.readonly_camera_serial.serial().unwrap_or("")
+        } else if self.retains_mounted_serial() {
+            &self.mounted_serial
+        } else {
+            &self.device.serial_number
+        }
     }
     fn show_reset(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let Some((_, page)) = self.metadata() else {
@@ -1027,12 +1057,7 @@ impl Render for SourceHelp {
                     ),
             );
         }
-        let serial = if self.retains_mounted_serial() {
-            &self.mounted_serial
-        } else {
-            &self.device.serial_number
-        }
-        .clone();
+        let serial = self.displayed_serial().to_owned();
         let mut right = v_flex()
             .gap(surface::css(if exact_help { 0. } else { 20. }))
             .when(exact_help, |column| column.pb(surface::css(10.)));
@@ -1079,7 +1104,8 @@ impl Render for SourceHelp {
                             } else {
                                 "COPY_SERIAL"
                             }),
-                            self.copied_serial,
+                            self.copied_serial
+                                || (matches!(self.device.product_id, 3594..=3596) && serial.is_empty()),
                             cx,
                         )
                         .self_start()

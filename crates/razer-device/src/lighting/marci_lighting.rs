@@ -178,7 +178,14 @@ pub fn submit_javascript_frame(
         transport.report_lengths()?.output.values().max().copied() == Some(OUTPUT_BYTES),
         "Marci Output descriptor does not expose 781 bytes"
     );
-    let lease = transport.begin_exchange(crate::backend::ExchangeOptions::plain())?;
+    let lease = transport
+        .begin_exchange(crate::backend::ExchangeOptions::plain())
+        .map_err(|error| {
+            crate::backend::interrupt_exchange(
+                error,
+                crate::backend::ExchangeInterruption::Admission,
+            )
+        })?;
     let returned = lease
         .transport()
         .write_output_counted(&frame.javascript_report());
@@ -391,6 +398,14 @@ impl Control {
         payload: &[u8],
         wait: &mut impl FnMut(Duration) -> anyhow::Result<()>,
     ) -> anyhow::Result<Vec<u8>> {
+        let wait = &mut |duration| {
+            wait(duration).map_err(|error| {
+                crate::backend::interrupt_exchange(
+                    error,
+                    crate::backend::ExchangeInterruption::Wait,
+                )
+            })
+        };
         validate_control_node(
             transport
                 .hid_node()
@@ -411,7 +426,15 @@ impl Control {
                 let mut error = String::from("No Marci control response");
                 for _ in 0..20 {
                     wait(Duration::ZERO)?;
-                    if let Err(failure) = transport.send_feature_at_collection_max(&request) {
+                    if let Err(failure) = transport
+                        .send_feature_at_collection_max_counted(&request)
+                        .and_then(|count| {
+                            crate::backend::require_complete_send(count, request.len())
+                        })
+                    {
+                        if crate::backend::exchange_interrupted(&failure) {
+                            return Err(failure);
+                        }
                         error = format!("{failure:#}");
                         continue;
                     }
@@ -426,6 +449,13 @@ impl Control {
                         let count = match transport.get_feature_at_collection_max(&mut response) {
                             Ok(n) => n,
                             Err(failure) => {
+                                if crate::backend::exchange_interrupted(&failure) {
+                                    return Err(
+                                        crate::feature_exchange::retain_failed_feature_reply(
+                                            failure, command, request[2],
+                                        ),
+                                    );
+                                }
                                 error = format!("{failure:#}");
                                 break;
                             }

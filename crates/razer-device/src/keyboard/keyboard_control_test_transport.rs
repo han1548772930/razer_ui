@@ -31,6 +31,8 @@ pub struct Mock {
     sent: Mutex<Vec<Vec<u8>>>,
     replies: Mutex<VecDeque<Reply>>,
     send_errors_remaining: Mutex<usize>,
+    next_send_failure: Mutex<Option<crate::backend::NativeIoOutcome>>,
+    interrupt_next_read: Mutex<bool>,
 }
 
 impl Mock {
@@ -39,11 +41,23 @@ impl Mock {
             sent: Mutex::new(Vec::new()),
             replies: Mutex::new(replies.into_iter().collect()),
             send_errors_remaining: Mutex::new(0),
+            next_send_failure: Mutex::new(None),
+            interrupt_next_read: Mutex::new(false),
         }
     }
 
     pub fn fail_sends(self, count: usize) -> Self {
         *self.send_errors_remaining.lock().unwrap() = count;
+        self
+    }
+
+    pub fn fail_next_send(self, outcome: crate::backend::NativeIoOutcome) -> Self {
+        *self.next_send_failure.lock().unwrap() = Some(outcome);
+        self
+    }
+
+    pub fn interrupt_next_read(self) -> Self {
+        *self.interrupt_next_read.lock().unwrap() = true;
         self
     }
 
@@ -55,6 +69,12 @@ impl Mock {
 impl FeatureTransport for Mock {
     fn send_feature(&self, report: &[u8]) -> anyhow::Result<()> {
         self.sent.lock().unwrap().push(report.to_vec());
+        if let Some(outcome) = self.next_send_failure.lock().unwrap().take() {
+            return Err(crate::backend::native_io_failure(
+                outcome,
+                anyhow::anyhow!("scripted native owner interruption"),
+            ));
+        }
         let mut remaining = self.send_errors_remaining.lock().unwrap();
         if *remaining != 0 {
             *remaining -= 1;
@@ -82,6 +102,13 @@ impl FeatureTransport for Mock {
         report[7..9].copy_from_slice(&sent[7..9]);
         report[8] ^= u8::from(reply.wrong_command);
         report[9..9 + reply.data.len()].copy_from_slice(&reply.data);
+        if std::mem::take(&mut *self.interrupt_next_read.lock().unwrap()) {
+            return Err(crate::backend::complete_native_read(
+                Ok(reply.count),
+                report,
+                anyhow::anyhow!("scripted owner interruption after native read"),
+            ));
+        }
         Ok(reply.count)
     }
 

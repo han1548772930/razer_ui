@@ -31,6 +31,9 @@ impl Session {
     pub fn possibly_started(&self) -> bool {
         self.phase != CapturePhase::Idle
     }
+    pub fn is_capturing(&self) -> bool {
+        self.phase == CapturePhase::Capturing
+    }
     pub fn start(
         &mut self,
         request: impl FnMut(crate::ServiceRequest) -> anyhow::Result<serde_json::Value>,

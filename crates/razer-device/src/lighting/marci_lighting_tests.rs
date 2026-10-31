@@ -39,6 +39,7 @@ struct Fake {
     read_len: Cell<usize>,
     read_count: Cell<usize>,
     failed: Cell<bool>,
+    native_send_failure: Cell<Option<NativeIoOutcome>>,
 }
 impl Fake {
     fn new(control: bool) -> Self {
@@ -52,6 +53,7 @@ impl Fake {
             read_len: Cell::new(91),
             read_count: Cell::new(0),
             failed: Cell::new(false),
+            native_send_failure: Cell::new(None),
         }
     }
     fn reply(&self, status: u8, data: &[u8], command: Option<u8>) {
@@ -67,6 +69,12 @@ impl FeatureTransport for Fake {
     fn send_feature(&self, report: &[u8]) -> anyhow::Result<()> {
         ensure!(!self.failed.get(), "simulated send failure");
         self.sent.borrow_mut().push(report.to_vec());
+        if let Some(outcome) = self.native_send_failure.take() {
+            return Err(native_io_failure(
+                outcome,
+                anyhow::anyhow!("one-shot Marci native interruption"),
+            ));
+        }
         Ok(())
     }
     fn get_feature(&self, report: &mut [u8]) -> anyhow::Result<usize> {
@@ -100,6 +108,41 @@ impl FeatureTransport for Fake {
     fn metadata(&self) -> serde_json::Value {
         serde_json::json!({"simulated":true})
     }
+}
+
+#[test]
+fn marci_control_retains_interruption_without_retries_or_following_commands() {
+    for outcome in [
+        NativeIoOutcome::NotCalled,
+        NativeIoOutcome::Returned { byte_count: 90 },
+        NativeIoOutcome::Returned { byte_count: 91 },
+    ] {
+        let device = Fake::new(true);
+        device.native_send_failure.set(Some(outcome));
+        let error = Control::default()
+            .mode(&device, 3, &mut |_| Ok(()))
+            .unwrap_err();
+        assert_eq!(native_io_outcome(&error), Some(outcome));
+        assert_eq!(device.sent.borrow().len(), 1);
+        assert_eq!(device.read_count.get(), 0);
+    }
+    let device = Fake::new(true);
+    let mut fail_wait = true;
+    let error = Control::default()
+        .mode(&device, 3, &mut |duration| {
+            if duration == std::time::Duration::from_millis(40) && std::mem::take(&mut fail_wait) {
+                anyhow::bail!("one-shot Marci wait cancellation");
+            }
+            Ok(())
+        })
+        .unwrap_err();
+    assert!(crate::backend::exchange_interrupted(&error));
+    assert_eq!(
+        error.downcast_ref::<crate::backend::ExchangeInterruption>(),
+        Some(&crate::backend::ExchangeInterruption::Wait)
+    );
+    assert_eq!(device.sent.borrow().len(), 1);
+    assert_eq!(device.read_count.get(), 0);
 }
 
 #[test]

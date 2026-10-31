@@ -23,6 +23,7 @@ impl MacroLibrary {
         debug_assert!(file.validate().is_ok());
         let saved = file.clone();
         file.ensure_guids();
+        file.restore_recording_preferences();
         Self { saved, live: file }
     }
 
@@ -92,6 +93,7 @@ mod tests {
                 xml_guid: None,
                 xml_mouse_mode: 0,
                 source_document: None,
+                execution: None,
             }],
             ..Default::default()
         };

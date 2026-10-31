@@ -309,6 +309,10 @@ impl Registry {
             }
             groups
         };
+        self.drain_groups(&groups)
+    }
+
+    fn drain_groups(&self, groups: &BTreeSet<u64>) -> Result<()> {
         loop {
             let entries: Vec<_> = self
                 .state()
@@ -328,7 +332,7 @@ impl Registry {
             }
         }
         self.state().groups.retain(|id, _| !groups.contains(id));
-        self.take_failures(&groups)
+        self.take_failures(groups)
     }
 }
 
@@ -388,6 +392,28 @@ impl Owner {
         let id = self.spawner.group.id;
         self.spawner.registry.reap_finished(Some(id));
         self.spawner.registry.take_failures(&BTreeSet::from([id]))
+    }
+
+    /// Counts this owner's accepted tasks until their real join. Finished
+    /// threads and deferred cleanup remain counted until explicitly reaped.
+    pub fn active_workers(&self) -> usize {
+        let id = self.spawner.group.id;
+        self.spawner
+            .registry
+            .state()
+            .tasks
+            .values()
+            .filter(|entry| entry.group.id == id)
+            .count()
+    }
+
+    /// Run on a background thread. Stop and drain only this owner's group;
+    /// unrelated camera owners retain their admission and pending results.
+    pub fn shutdown(&self) -> Result<()> {
+        self.stop();
+        self.spawner
+            .registry
+            .drain_groups(&BTreeSet::from([self.spawner.group.id]))
     }
 
     /// Retain the release of already-owned native resources, including after
@@ -469,6 +495,92 @@ mod tests {
 
     fn canceled() -> Arc<AtomicBool> {
         Arc::new(AtomicBool::new(false))
+    }
+
+    #[test]
+    fn group_shutdown_joins_its_work_without_stopping_another_owner() {
+        let registry = Arc::new(Registry::default());
+        let first = Arc::new(Owner::with_registry(registry.clone()));
+        let second = Owner::with_registry(registry.clone());
+        let (first_release, first_wait) = mpsc::channel();
+        let (second_release, second_wait) = mpsc::channel();
+        let first_canceled = canceled();
+        let second_canceled = canceled();
+        let first_result = first
+            .spawn("first-group", first_canceled.clone(), move || {
+                first_wait.recv().unwrap()
+            })
+            .unwrap();
+        let second_result = second
+            .spawn("second-group", second_canceled.clone(), move || {
+                second_wait.recv().unwrap()
+            })
+            .unwrap();
+        assert_eq!(first.active_workers(), 1);
+        assert_eq!(second.active_workers(), 1);
+        let stopping = first.clone();
+        let shutdown = thread::spawn(move || stopping.shutdown());
+        while !first_canceled.load(Ordering::Acquire) {
+            thread::yield_now();
+        }
+        assert_eq!(first.active_workers(), 1);
+        assert!(!shutdown.is_finished());
+        assert!(!second.is_stopped());
+        assert!(!second_canceled.load(Ordering::Acquire));
+        first_release.send(17).unwrap();
+        assert_eq!(first_result.recv().unwrap(), 17);
+        shutdown.join().unwrap().unwrap();
+        assert_eq!(first.active_workers(), 0);
+        assert_eq!(second.active_workers(), 1);
+        assert!(first.spawn("closed-first", canceled(), || ()).is_err());
+        let sibling = second.spawn("live-second", canceled(), || 23).unwrap();
+        assert_eq!(sibling.recv().unwrap(), 23);
+        second_release.send(31).unwrap();
+        assert_eq!(second_result.recv().unwrap(), 31);
+        second.shutdown().unwrap();
+        assert_eq!(second.active_workers(), 0);
+        assert_eq!(registry.active_workers(), 0);
+    }
+
+    #[test]
+    fn group_shutdown_executes_its_deferred_cleanup_and_preserves_other_failures() {
+        let registry = Arc::new(Registry::default());
+        let first = Owner::with_registry(registry.clone());
+        let second = Owner::with_registry(registry.clone());
+        let released = Arc::new(AtomicBool::new(false));
+        let retained = released.clone();
+        registry
+            .register_with(
+                &first.spawner.group,
+                "deferred-first",
+                canceled(),
+                Box::new(move || {
+                    retained.store(true, Ordering::Release);
+                    Ok(())
+                }),
+                true,
+                |_, _| Err(std::io::Error::other("cleanup thread unavailable")),
+            )
+            .unwrap();
+        let other = second
+            .cleanup("failed-second", || anyhow::bail!("second failure"))
+            .unwrap();
+        assert!(other.recv().unwrap().is_err());
+        assert_eq!(first.active_workers(), 1);
+        let error = first.shutdown().unwrap_err().to_string();
+        assert!(error.contains("cleanup thread unavailable"));
+        assert!(!error.contains("second failure"));
+        assert!(released.load(Ordering::Acquire));
+        assert_eq!(first.active_workers(), 0);
+        assert!(!second.is_stopped());
+        assert!(
+            second
+                .shutdown()
+                .unwrap_err()
+                .to_string()
+                .contains("second failure")
+        );
+        assert_eq!(registry.active_workers(), 0);
     }
 
     #[test]

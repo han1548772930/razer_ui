@@ -44,6 +44,28 @@ fn inventory_replies(maximum: u8, ids: &[u8]) -> Vec<Reply> {
 }
 
 #[test]
+fn one_shot_admission_failure_stops_metadata_restarts_for_every_obm_product() {
+    use crate::feature_exchange::tests::ExchangeProbe;
+    use std::cell::Cell;
+    for product_id in OBM_PRODUCTS {
+        let cap = capability(*product_id);
+        let device = Mock::new([]);
+        let admissions = Cell::new(0);
+        let admit = || {
+            let previous = admissions.replace(admissions.get() + 1);
+            ensure!(previous != 0, "one-shot profile metadata admission failure");
+            Ok(())
+        };
+        let probe = ExchangeProbe::with_admission_check(&device, &admit);
+        let error =
+            read_raw_metadata_hid(&probe, &cap, 7, &mut sequence(), &|| Ok(())).unwrap_err();
+        assert!(crate::backend::exchange_interrupted(&error));
+        assert_eq!(admissions.get(), 1, "PID{product_id}");
+        assert!(device.sent().is_empty());
+    }
+}
+
+#[test]
 fn keyboard_profile_inventory_limits_reads_to_actual_hid_obm_mounts() {
     assert_eq!(OBM_PRODUCTS.len(), 42);
     for product in OBM_PRODUCTS {

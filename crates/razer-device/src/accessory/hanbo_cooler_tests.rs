@@ -50,6 +50,7 @@ struct FakeTransport {
     counts: RefCell<VecDeque<std::result::Result<usize, &'static str>>>,
     inputs: RefCell<VecDeque<std::result::Result<Vec<u8>, &'static str>>>,
     reads: Cell<usize>,
+    native_read_failure: Cell<Option<crate::backend::NativeIoOutcome>>,
     events: RefCell<Vec<String>>,
 }
 
@@ -60,6 +61,7 @@ impl FakeTransport {
             counts: RefCell::new(VecDeque::new()),
             inputs: RefCell::new(inputs.into_iter().collect()),
             reads: Cell::new(0),
+            native_read_failure: Cell::new(None),
             events: RefCell::new(Vec::new()),
         }
     }
@@ -89,6 +91,12 @@ impl FeatureTransport for FakeTransport {
         assert_eq!(timeout_ms, 50);
         self.reads.set(self.reads.get() + 1);
         self.events.borrow_mut().push("read".into());
+        if let Some(outcome) = self.native_read_failure.take() {
+            return Err(crate::backend::native_io_failure(
+                outcome,
+                anyhow::anyhow!("native input owner failed"),
+            ));
+        }
         let input = self
             .inputs
             .borrow_mut()
@@ -384,9 +392,81 @@ fn native_write_error_is_retained_without_reading_or_claiming_success() {
 fn cancellation_before_the_first_query_performs_no_io() {
     let transport = FakeTransport::new([Ok(fan_packet())]);
     let error = read_telemetry_with_wait(&transport, || bail!("canceled"), |_| {}).unwrap_err();
-    assert_eq!(error.to_string(), "canceled");
+    assert_eq!(error.root_cause().to_string(), "canceled");
+    assert!(crate::backend::exchange_interrupted(&error));
+    assert!(!crate::backend::exchange_finalization_failed(&error));
     assert!(transport.writes.borrow().is_empty());
     assert_eq!(transport.reads.get(), 0);
+}
+
+#[test]
+fn terminal_native_input_failures_stop_before_retry_or_the_next_query() {
+    use crate::backend::{NativeIoOutcome, exchange_interrupted, native_io_outcome};
+    for outcome in [
+        NativeIoOutcome::NotCalled,
+        NativeIoOutcome::Returned { byte_count: 0 },
+        NativeIoOutcome::Returned { byte_count: 64 },
+        NativeIoOutcome::Rejected,
+    ] {
+        let raw = FakeTransport::new([Ok(fan_packet()), Ok(pump_packet())]);
+        raw.native_read_failure.set(Some(outcome));
+        let probe = crate::feature_exchange::tests::ExchangeProbe::new(&raw);
+        let result = read_telemetry_with_wait(&probe, || Ok(()), |_| {});
+        if outcome == NativeIoOutcome::Rejected {
+            let telemetry = result.unwrap();
+            assert_eq!(telemetry.fan.channel_number, 3);
+            assert_eq!(raw.writes.borrow().len(), 3);
+            assert_eq!(raw.reads.get(), 3);
+        } else {
+            let error = result.unwrap_err();
+            assert!(exchange_interrupted(&error));
+            assert_eq!(native_io_outcome(&error), Some(outcome));
+            assert!(format!("{error:#}").contains("native input owner failed"));
+            assert!(error.downcast_ref::<CompletedHanboInput>().is_none());
+            assert!(!crate::backend::exchange_finalization_failed(&error));
+            assert!(crate::backend::exchange_release_completed(&error));
+            assert_eq!(raw.writes.borrow().len(), 1);
+            assert_eq!(raw.reads.get(), 1);
+            assert_eq!(raw.inputs.borrow().len(), 2);
+        }
+    }
+}
+
+#[test]
+fn a_transient_owner_loss_keeps_only_the_actual_matched_input_and_stops_the_sequence() {
+    use crate::backend::{
+        NativeIoOutcome, exchange_finalization_failed, exchange_interrupted,
+        exchange_release_completed, native_io_outcome,
+    };
+    for (read_index, command, packet) in [(1, [32, 1], fan_packet()), (2, [18, 1], pump_packet())] {
+        let raw = FakeTransport::new([Ok(fan_packet()), Ok(pump_packet())]);
+        let probe = crate::feature_exchange::tests::ExchangeProbe::new(&raw);
+        let rejected = Cell::new(false);
+        let error = read_telemetry_with_wait(
+            &probe,
+            || {
+                if raw.reads.get() == read_index && !rejected.replace(true) {
+                    bail!("transient owner loss after input");
+                }
+                Ok(())
+            },
+            |_| {},
+        )
+        .unwrap_err();
+        assert!(exchange_interrupted(&error));
+        assert!(exchange_release_completed(&error));
+        assert!(!exchange_finalization_failed(&error));
+        assert_eq!(
+            native_io_outcome(&error),
+            Some(NativeIoOutcome::Returned { byte_count: 64 })
+        );
+        let completed = error.downcast_ref::<CompletedHanboInput>().unwrap();
+        assert_eq!(completed.command, command);
+        assert_eq!(completed.packet, packet);
+        assert_eq!(raw.writes.borrow().len(), read_index);
+        assert_eq!(raw.reads.get(), read_index);
+        assert_eq!(raw.inputs.borrow().len(), 2 - read_index);
+    }
 }
 
 #[test]

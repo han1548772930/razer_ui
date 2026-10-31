@@ -309,6 +309,7 @@ pub fn decode(text: &str) -> Result<Entry, String> {
         xml_guid: None,
         xml_mouse_mode: movement_mode,
         source_document: None,
+        execution: None,
     })
 }
 
@@ -322,18 +323,37 @@ fn finite(value: &str, field: &str) -> Result<Value, String> {
 }
 
 pub fn encode(entry: &Entry, entries: &[Entry]) -> Result<String, String> {
-    let modes = entry
-        .actions
-        .iter()
-        .filter_map(|a| a.mouse_movement.as_ref().map(|m| m.mode))
-        .collect::<std::collections::HashSet<_>>();
-    if modes.len() > 1 {
-        return Err("一个 XML 宏只能保存一种鼠标移动模式；当前草稿包含多个模式。".into());
+    let mode = if entry.execution.is_some() || entry.source_document.is_some() {
+        entry.editor_execution()?.engine().movement.setting()
+    } else {
+        let modes = entry
+            .actions
+            .iter()
+            .filter_map(|a| a.mouse_movement.as_ref().map(|m| m.mode))
+            .collect::<std::collections::HashSet<_>>();
+        if modes.len() > 1 {
+            return Err("旧本地宏包含多种鼠标移动模式且未保留执行引擎，无法确定 XML 移动模式。".into());
+        }
+        modes.iter().next().copied().unwrap_or(entry.xml_mouse_mode)
+    };
+    let mut action_bar = entry
+        .source_document
+        .as_ref()
+        .and_then(|document| document.get("macroEvents"))
+        .and_then(Value::as_array)
+        .and_then(|events| {
+            events
+                .iter()
+                .find(|event| event.get("Type").and_then(Value::as_str) == Some("actionBar"))
+        })
+        .cloned()
+        .unwrap_or_else(|| json!({"Type":"actionBar","recordProfile":{},"selected":false}));
+    // Mn replaces the record profile only when the retained engine mode is
+    // nonzero; older recorded rows may carry a different conversion mode.
+    if mode > 0 {
+        action_bar["recordProfile"] = json!({"mmtSetting":mode});
     }
-    let mode = modes.iter().next().copied().unwrap_or(entry.xml_mouse_mode);
-    let mut events = vec![
-        json!({"Type":"actionBar","recordProfile":if mode>0 { json!({"mmtSetting":mode}) } else { json!({}) },"selected":false}),
-    ];
+    let mut events = vec![action_bar];
     let macros = entries
         .iter()
         .filter(|e| e.kind == EntryKind::Macro)
@@ -385,6 +405,9 @@ pub fn encode(entry: &Entry, entries: &[Entry]) -> Result<String, String> {
         };
         if let Some(phase) = item.phase {
             event["phase"] = json!(phase);
+        }
+        if let Some(key) = &item.translation_key {
+            event["translationKey"] = json!(key);
         }
         events.push(event);
     }

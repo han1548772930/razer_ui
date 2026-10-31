@@ -24,6 +24,7 @@ chrono.workspace = true
 regex.workspace = true
 uuid.workspace = true
 semver.workspace = true
+url = "=2.5.8"
 razer-assets.workspace = true
 razer-catalog.workspace = true
 razer-model.workspace = true

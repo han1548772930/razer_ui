@@ -159,7 +159,7 @@ def verify_source_rows(rows):
     return snapshots
 
 
-def index_files(rows, *, publication=None):
+def index_files(rows, *, publication=None, preserve_existing=False):
     rows = list(rows)
     path = ROOT / ".analysis/inputs.json"
     with index_lock():
@@ -174,6 +174,10 @@ def index_files(rows, *, publication=None):
         changes = []
         for row in rows:
             previous = existing.get(row["path"])
+            if preserve_existing and previous is not None:
+                if any(previous.get(key) != row.get(key) for key in ("bytes", "sha256")):
+                    raise ValueError("Source append conflicts with an indexed identity: " + row["path"])
+                continue
             if previous != row:
                 changes.append({"path": row["path"], "previous": previous, "current": row})
             existing[row["path"]] = row
@@ -4259,7 +4263,7 @@ def literal_webpack_chunks(text):
 FRONTEND_REFERENCE_VERSION = 2
 
 
-def enumerate_frontend_chunks(path, tool, report_dir, identifier, tool_identity=None):
+def enumerate_frontend_chunks(path, tool, report_dir, identifier, tool_identity=None, *, reuse_directories=()):
     """Reuse a complete static invocation only while every byte identity matches."""
     def identity(item):
         return {"path": rel(item), "bytes": item.stat().st_size, "sha256": sha(item)}
@@ -4272,17 +4276,22 @@ def enumerate_frontend_chunks(path, tool, report_dir, identifier, tool_identity=
     contract = {"schema_version": 1, "input": source, "analyzer": analyzer,
                 "arguments": ["debug", "enumerate-chunks", source["path"]],
                 "target_execution": False}
-    try:
-        prior = json.loads(receipt.read_bytes())
-        if (all(prior.get(key) == value for key, value in contract.items())
-                and prior.get("input_bytes_unchanged")
-                and prior.get("stdout") == identity(output)
-                and prior.get("stderr") == identity(errors)
-                and type(prior.get("exit_code")) is int):
-            return SimpleNamespace(returncode=prior["exit_code"], stdout=output.read_bytes(),
-                                   stderr=errors.read_bytes())
-    except (OSError, ValueError, KeyError):
-        pass
+    for directory in dict.fromkeys([report_dir, *reuse_directories]):
+        previous_output = directory / (identifier + ".json")
+        previous_errors = directory / (identifier + ".stderr.txt")
+        previous_receipt = directory / (identifier + ".capture.json")
+        try:
+            prior = json.loads(previous_receipt.read_bytes())
+            if (all(prior.get(key) == value for key, value in contract.items())
+                    and prior.get("input_bytes_unchanged")
+                    and prior.get("stdout") == identity(previous_output)
+                    and prior.get("stderr") == identity(previous_errors)
+                    and type(prior.get("exit_code")) is int):
+                return SimpleNamespace(returncode=prior["exit_code"], stdout=previous_output.read_bytes(),
+                                       stderr=previous_errors.read_bytes(), evidence=rel(previous_output),
+                                       error_log=rel(previous_errors), capture=identity(previous_receipt))
+        except (OSError, ValueError, KeyError):
+            pass
     completed = subprocess.run([str(tool), "debug", "enumerate-chunks", str(path)],
                                capture_output=True, check=False)
     report_dir.mkdir(parents=True, exist_ok=True)
@@ -4294,7 +4303,9 @@ def enumerate_frontend_chunks(path, tool, report_dir, identifier, tool_identity=
                    "input_bytes_unchanged": unchanged})
     if not unchanged:
         raise ValueError("Frontend input changed during static enumeration: " + source["path"])
-    return completed
+    return SimpleNamespace(returncode=completed.returncode, stdout=completed.stdout,
+                           stderr=completed.stderr, evidence=rel(output), error_log=rel(errors),
+                           capture=identity(receipt))
 
 
 class FrontendArtifactReuse:
@@ -4341,6 +4352,9 @@ class FrontendArtifactReuse:
 
 def fetch_frontend(args, *, refresh_ledger=True):
     refresh_ledger = refresh_ledger and not getattr(args, "no_refresh_gaps", False)
+    checkpoint = getattr(args, "checkpoint", lambda: None)
+    emit = getattr(args, "progress", lambda row: print(json.dumps(row), flush=True))
+    checkpoint()
     output = resolve(args.output, ".analysis/inputs")
     reuse_acquisitions = getattr(args, "reuse_acquisition", None) or []
     if getattr(args, "repair", False):
@@ -4389,6 +4403,7 @@ def fetch_frontend(args, *, refresh_ledger=True):
         row["url"] = normalized
         rows[normalized] = row
     unknown = []
+    enumeration_captures = {}
     queue = {entry: [{"source": "entry", "kind": "entry"}]}
     entry_response_url = entry
     asset_manifest_probe = urllib.parse.urljoin(entry, "asset-manifest.json")
@@ -4420,6 +4435,7 @@ def fetch_frontend(args, *, refresh_ledger=True):
         enqueue(entry, seed, "explicit-retained-manifest")
 
     while set(queue) - processed:
+        checkpoint()
         batch = sorted(set(queue) - processed)
         needed = []
         for url in batch:
@@ -4441,9 +4457,10 @@ def fetch_frontend(args, *, refresh_ledger=True):
                       and Path(urllib.parse.urlsplit(url).path).suffix.lower() in {".js", ".mjs"}
                       and rows[url].get("content_type", "").split(";", 1)[0].lower() != "text/html"]
         def enumerate_url(url):
+            checkpoint()
             identifier = hashlib.sha256(url.encode()).hexdigest()[:24]
-            return enumerate_frontend_chunks(ROOT / rows[url]["path"], tool, report_dir,
-                                             identifier, tool_identity)
+            return getattr(args, "enumerate_artifact", enumerate_frontend_chunks)(
+                ROOT / rows[url]["path"], tool, report_dir, identifier, tool_identity)
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
             enumerations = dict(zip(javascript, pool.map(enumerate_url, javascript)))
         for url in batch:
@@ -4523,6 +4540,8 @@ def fetch_frontend(args, *, refresh_ledger=True):
             else:
                 identifier = hashlib.sha256(url.encode()).hexdigest()[:24]
                 completed = enumerations[url]
+                if getattr(completed, "capture", None) is not None:
+                    enumeration_captures[url] = completed.capture
                 literal_tables = literal_webpack_chunks(text)
                 if literal_tables:
                     save(report_dir / (identifier + ".literal-tables.json"),
@@ -4534,12 +4553,14 @@ def fetch_frontend(args, *, refresh_ledger=True):
                             enqueue(urllib.parse.urljoin(entry_response_url, table["public_path"]), filename, "source-literal-webpack-chunk", owner=url)
                 if completed.returncode:
                     unknown.append({"kind": "chunk_enumeration_failure", "url": url,
-                                    "exit_code": completed.returncode, "log": rel(report_dir / (identifier+".stderr.txt"))})
+                                    "exit_code": completed.returncode,
+                                    "log": getattr(completed, "error_log", rel(report_dir / (identifier+".stderr.txt")))})
                 else:
                     enumeration = json.loads(completed.stdout).get("enumeration")
                     if enumeration is None:
                         unknown.append({"kind": "chunk_enumeration_unavailable", "url": url,
-                                        "input": rel(path), "evidence": rel(report_dir / (identifier+".json")),
+                                        "input": rel(path),
+                                        "evidence": getattr(completed, "evidence", rel(report_dir / (identifier+".json"))),
                                         "scope": "dynamic chunk/resource closure remains unverified"})
                     if enumeration:
                         for ref in enumeration.get("relative_imports", []):
@@ -4565,20 +4586,35 @@ def fetch_frontend(args, *, refresh_ledger=True):
                            "reference_resolution_policy": "response_final_url_with_requested_source_owner_v1",
                            "requested_urls": sorted(queue), "entry_response_url": entry_response_url,
                            "unresolved": unknown, "target_execution": False,
+                           "enumeration_captures": enumeration_captures,
+                           **({"refresh_observation": args.refresh_observation}
+                              if getattr(args, "refresh_observation", None) is not None else {}),
                            **({"reuse_acquisitions": reuse.receipts} if reuse is not None else {})})
-        print(json.dumps({"acquired": sum("path" in r for r in rows.values()),
-                          "requested": len(queue), "failures": sum("error" in r for r in rows.values())}), flush=True)
+        emit({"acquired": sum("path" in r for r in rows.values()),
+              "requested": len(queue), "failures": sum("error" in r for r in rows.values())})
     # Re-read the entry and manifest to detect a deployment changing during acquisition.
     stability = []
     asset_manifest = asset_manifest_probe
     if rows.get(asset_manifest, {}).get("path"):
         declared_manifests.add(asset_manifest)
     for url in dict.fromkeys([entry, *sorted(declared_manifests)]):
+        checkpoint()
         try:
-            with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "razer-ui-static-evidence"}), timeout=40) as response:
-                actual = hashlib.sha256(response.read()).hexdigest()
-            stability.append({"url": url, "before_sha256": rows[url].get("sha256"), "after_sha256": actual,
-                              "unchanged": actual == rows[url].get("sha256")})
+            if getattr(args, "revalidate_artifact", None) is not None:
+                checked = args.revalidate_artifact(url)
+                actual = checked.get("sha256")
+                stability.append({**checked, "before_sha256": rows[url].get("sha256"),
+                                  "after_sha256": actual,
+                                  "unchanged": checked.get("status") == "ok"
+                                  and actual == rows[url].get("sha256")
+                                  and checked.get("final_url") == rows[url].get("final_url", url)})
+            else:
+                with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "razer-ui-static-evidence"}), timeout=40) as response:
+                    actual = hashlib.sha256(response.read()).hexdigest()
+                stability.append({"url": url, "before_sha256": rows[url].get("sha256"), "after_sha256": actual,
+                                  "unchanged": actual == rows[url].get("sha256")})
+        except InterruptedError:
+            raise
         except Exception as exc:
             stability.append({"url": url, "before_sha256": rows[url].get("sha256"),
                               "unchanged": False, "error": str(exc)})
@@ -4601,14 +4637,15 @@ def fetch_frontend(args, *, refresh_ledger=True):
     indexed_rows.append({"path": rel(acquisition), "bytes": acquisition.stat().st_size,
                          "sha256": sha(acquisition), "kind": "acquisition_receipt"})
     getattr(args, "index_artifacts", index_files)(indexed_rows)
-    print(json.dumps({"acquisition": rel(acquisition), "files": len(rows), "bytes": sum(r.get("bytes",0) for r in rows.values()),
-                      "deployment_stable": data["source_current_during_acquisition"], "unresolved": len(unknown),
-                      "gap_refresh": "pending" if refresh_ledger else "deferred_to_batch"}), flush=True)
+    emit({"acquisition": rel(acquisition), "files": len(rows), "bytes": sum(r.get("bytes",0) for r in rows.values()),
+          "deployment_stable": data["source_current_during_acquisition"], "unresolved": len(unknown),
+          "gap_refresh": "pending" if refresh_ledger else "deferred_to_batch"})
     if refresh_ledger:
         try:
             refresh_gaps()
         except Exception as error:
             raise RuntimeError(f"Frontend acquisition receipt retained; gaps refresh failed: {error}") from error
+    return data
 
 
 def host_app_descriptors(text):

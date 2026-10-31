@@ -539,7 +539,7 @@ fn inventory(
                 match chunk {
                     Ok(chunk) => metadata.extend_from_slice(&chunk),
                     Err(error) => {
-                        if crate::backend::exchange_finalization_failed(&error) {
+                        if crate::backend::exchange_interrupted(&error) {
                             return Err(error);
                         }
                         guard()?;
@@ -582,6 +582,14 @@ pub fn submit(
     mut next: impl FnMut() -> anyhow::Result<u8>,
     guard: impl Fn() -> anyhow::Result<()>,
 ) -> Result<Receipt, Failure> {
+    let guard = || {
+        guard().map_err(|error| {
+            crate::backend::interrupt_exchange(
+                error,
+                crate::backend::ExchangeInterruption::Validation,
+            )
+        })
+    };
     let mut receipt = Receipt {
         intent,
         profile_guid: profile_guid.into(),
@@ -972,11 +980,11 @@ pub fn submit(
     } = &receipt.intent
     {
         let mapping = (**mapping).clone();
-        let finalization_failed = result
+        let interrupted = result
             .as_ref()
             .err()
-            .is_some_and(crate::backend::exchange_finalization_failed);
-        if !finalization_failed && validate(product_id, &receipt.intent).is_ok() {
+            .is_some_and(crate::backend::exchange_interrupted);
+        if !interrupted && validate(product_id, &receipt.intent).is_ok() {
             match guard() {
                 Ok(()) => {
                     let followup_next: &mut dyn FnMut() -> anyhow::Result<u8> = &mut next;
@@ -994,10 +1002,9 @@ pub fn submit(
                             receipt.mapping_followup = Some(Box::new(failure.receipt));
                             result = Err(match result {
                                 Ok(()) => failure.error,
-                                Err(error) => anyhow::anyhow!(
-                                    "Interrupt setters: {error:#}; independent mapping task: {:#}",
-                                    failure.error
-                                ),
+                                Err(error) => failure
+                                    .error
+                                    .context(format!("Interrupt setters also failed: {error:#}")),
                             });
                         }
                     }

@@ -340,6 +340,9 @@ impl<'a, T: FeatureTransport + ?Sized, W: FnMut(Duration) -> anyhow::Result<()>>
             // performs its independent getter and compares raw seconds.
             result.write = match self.exchange(3, &self.capability.encode(seconds)) {
                 Ok(_) => SleepWriteStatus::Acknowledged,
+                Err(error) if crate::controller_feature::terminal_io_failure(&error) => {
+                    return Err(error);
+                }
                 Err(error) => SleepWriteStatus::Failed {
                     error: format!("{error:#}"),
                 },
@@ -360,6 +363,9 @@ impl<'a, T: FeatureTransport + ?Sized, W: FnMut(Duration) -> anyhow::Result<()>>
                     Some(_) => SleepCompletion::Mismatch,
                     None => SleepCompletion::Observed,
                 };
+            }
+            Err(error) if crate::controller_feature::terminal_io_failure(&error) => {
+                return Err(error);
             }
             Err(error) => {
                 result.read = SleepReadStatus::Failed {

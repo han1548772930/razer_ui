@@ -287,7 +287,7 @@ pub fn submit(
         &validate,
     );
     if let Err(error) = &initialization
-        && crate::backend::exchange_finalization_failed(error)
+        && crate::backend::exchange_interrupted(error)
     {
         return SubmissionReport {
             requested: setting,

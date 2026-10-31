@@ -137,6 +137,48 @@ impl MacroPage {
         self.binding_menu = None;
     }
 
+    pub(super) fn reconcile_library_bindings(
+        &mut self,
+        previous: &[Entry],
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let current_id = |id| {
+            previous
+                .iter()
+                .find(|entry| entry.id == id)
+                .and_then(|old| {
+                    self.entries.iter().find(|entry| {
+                        entry.kind == EntryKind::Macro && entry.xml_guid == old.xml_guid
+                    })
+                })
+                .map(|entry| entry.id)
+        };
+        self.local_bindings.retain_mut(|binding| {
+            if let Some(id) = current_id(binding.macro_id) {
+                binding.macro_id = id;
+                true
+            } else {
+                false
+            }
+        });
+        if let Some(dialog) = &self.binding_dialog {
+            let id = current_id(dialog.read(cx).macro_id);
+            if let Some(id) = id {
+                dialog.update(cx, |dialog, cx| {
+                    dialog.macro_id = id;
+                    dialog.bindings = self.local_bindings.clone();
+                    cx.notify();
+                });
+            } else {
+                dialog.update(cx, |dialog, cx| dialog.close(window, cx));
+                self.binding_dialog = None;
+                self.binding_subscription = None;
+                self.binding_menu = None;
+            }
+        }
+    }
+
     pub fn key_binds(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let Some(macro_id) = self.current else {
             return div().into_any_element();

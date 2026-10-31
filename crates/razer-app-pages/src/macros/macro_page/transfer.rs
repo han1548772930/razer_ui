@@ -166,6 +166,7 @@ impl MacroPage {
             current: if was_empty { Some(entry.id) } else { self.current },
             tutorial: Tutorial::Complete,
             record_shortcut: self.record_ui.shortcut.selected.clone(),
+            recording_preferences: Some(self.record_preferences()),
         };
         candidate.entries.push(entry.clone());
         candidate.validate()?;
@@ -204,6 +205,7 @@ impl MacroPage {
             return;
         };
         entry.actions = self.actions.clone(); // Mn exports the live current macro.
+        entry.execution = self.execution.clone();
         let text = match xml::encode(&entry, &self.entries) {
             Ok(text) => text,
             Err(error) => {

@@ -1,4 +1,4 @@
-use super::{CameraApp, package_app_id, vcam_executable};
+use super::{CameraApp, CamoDriver, CamoInstallation, CamoStudio, package_app_id, package_version, vcam_executable};
 use anyhow::{Context, Result, ensure};
 use std::{
     ffi::OsString,
@@ -108,9 +108,7 @@ fn value(key: &Key, name: &str) -> Result<Option<String>> {
         status == ERROR_SUCCESS && count <= 65536 && count % 2 == 0,
         "camera application registry value is invalid ({status}, type {kind}, bytes {count})"
     );
-    if kind != REG_SZ {
-        return Ok(None);
-    }
+    ensure!(kind == REG_SZ, "camera application registry value has unexpected type {kind}");
     let mut data = vec![0u16; count as usize / 2];
     let status = unsafe {
         RegQueryValueExW(
@@ -168,7 +166,35 @@ fn package() -> Result<Option<String>> {
         .into_iter()
         .find(|name| name.contains("ReincubateLtd.CamoStudio") && name.contains("x64")))
 }
-fn camo_driver_enabled() -> Result<bool> {
+fn camo_studio() -> Result<CamoStudio> {
+    if let Some(name) = package()? {
+        return Ok(CamoStudio::Installed { version: Ok(package_version(&name)) });
+    }
+    for path in [
+        r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall",
+        r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall",
+    ] {
+        let Some(parent) = open(HKEY_LOCAL_MACHINE, path)? else { continue };
+        for child in children(&parent)? {
+            let Some(key) = open(parent.0, &child)? else { continue };
+            if value(&key, "DisplayName")?.as_deref() == Some("Camo Studio") {
+                return Ok(CamoStudio::Installed {
+                    version: value(&key, "DisplayVersion").map_err(|error| format!("{error:#}")),
+                });
+            }
+        }
+    }
+    Ok(CamoStudio::Absent)
+}
+
+pub(super) fn observe_camo() -> CamoInstallation {
+    CamoInstallation {
+        studio: camo_studio().map_err(|error| format!("{error:#}")),
+        driver: camo_driver().map_err(|error| format!("{error:#}")),
+    }
+}
+
+fn camo_driver() -> Result<CamoDriver> {
     // Actual ClassGuid bytes at RVA b8b28, not a guessed camera category.
     const CLASS: GUID = GUID::from_u128(0xca3e7ab9_b4c3_4ae6_8251_579ef933890f);
     let devices = unsafe { SetupDiGetClassDevsW(&CLASS, null(), null_mut(), DIGCF_PRESENT) };
@@ -186,7 +212,7 @@ fn camo_driver_enabled() -> Result<bool> {
         }
     }
     let devices = Devices(devices);
-    let mut enabled = false;
+    let mut observed = CamoDriver::Absent;
     for index in 0.. {
         let mut info = SP_DEVINFO_DATA {
             cbSize: std::mem::size_of::<SP_DEVINFO_DATA>() as u32,
@@ -203,7 +229,7 @@ fn camo_driver_enabled() -> Result<bool> {
         let mut description = [0u16; 256];
         let mut kind = 0;
         let mut needed = 0;
-        if unsafe {
+        let success = unsafe {
             SetupDiGetDeviceRegistryPropertyW(
                 devices.0,
                 &mut info,
@@ -213,10 +239,9 @@ fn camo_driver_enabled() -> Result<bool> {
                 512,
                 &mut needed,
             )
-        } == 0
-        {
-            continue;
-        }
+        };
+        ensure!(success != 0, "Camo class device description read failed: {}", std::io::Error::last_os_error());
+        ensure!(kind == REG_SZ && needed <= 512 && needed % 2 == 0, "invalid Camo class device description");
         let end = description
             .iter()
             .position(|c| *c == 0)
@@ -227,10 +252,17 @@ fn camo_driver_enabled() -> Result<bool> {
         let mut status = 0;
         let mut problem = 0;
         let result = unsafe { CM_Get_DevNode_Status(&mut status, &mut problem, info.DevInst, 0) };
-        // The source defaults enabled when CM cannot report status.
-        enabled = result != 0 || status & 0x400 == 0 || problem != 22;
+        // Preserve the last matching device, as the source enumerator does.
+        // A failed CM call has no observed enabled value.
+        observed = CamoDriver::Installed {
+            enabled: if result == 0 {
+                Ok(status & 0x400 == 0 || problem != 22)
+            } else {
+                Err(format!("Camo driver status query failed: {result}"))
+            },
+        };
     }
-    Ok(enabled)
+    Ok(observed)
 }
 struct Apartment;
 impl Apartment {
@@ -310,22 +342,18 @@ fn launch_path(path: PathBuf) -> Result<()> {
     Ok(())
 }
 pub(super) fn launch(app: CameraApp) -> Result<()> {
+    if app == CameraApp::Camo {
+        ensure!(observe_camo().camera_available().map_err(anyhow::Error::msg)?,
+            "Camo Studio or its enabled camera driver is unavailable");
+        return launch_camo(&|| Ok(()));
+    }
     let keys = uninstall_keys()?;
     let names = keys
         .iter()
-        .map(|k| {
-            value(k, "DisplayName").unwrap_or_else(|error| {
-                eprintln!("camera application registry entry: {error:#}");
-                None
-            })
-        })
-        .collect::<Vec<_>>();
-    let camo_package = if app == CameraApp::Camo { package()? } else { None };
+        .map(|key| value(key, "DisplayName"))
+        .collect::<Result<Vec<_>>>()?;
     let installed = match app {
-        CameraApp::Camo => {
-            (camo_package.is_some() || names.iter().flatten().any(|s| s == "Camo Studio"))
-                && camo_driver_enabled()?
-        }
+        CameraApp::Camo => unreachable!("Camo has a separate source admission rule"),
         CameraApp::NvidiaBroadcast => names
             .iter()
             .flatten()
@@ -336,21 +364,6 @@ pub(super) fn launch(app: CameraApp) -> Result<()> {
         installed,
         "the selected camera application is not installed or its camera driver is disabled"
     );
-    if let Some(package) = camo_package.and_then(|name| package_app_id(&name)) {
-        // No shell parsing: the AppsFolder activation string is one argument.
-        let explorer = std::env::var_os("WINDIR")
-            .map(PathBuf::from)
-            .context("Windows directory is unavailable")?
-            .join("explorer.exe");
-        if explorer.is_file()
-            && std::process::Command::new(explorer)
-                .arg(format!(r"shell:AppsFolder\{package}"))
-                .spawn()
-                .is_ok()
-        {
-            return Ok(());
-        }
-    }
     let filename = match app {
         CameraApp::Camo => "Camo Studio.lnk",
         CameraApp::NvidiaBroadcast => "NVIDIA Broadcast.lnk",
@@ -379,4 +392,38 @@ pub(super) fn launch(app: CameraApp) -> Result<()> {
         }
     }
     anyhow::bail!("installed camera application has no usable local launch target")
+}
+
+pub(super) fn launch_camo(validate: &impl Fn() -> Result<()>) -> Result<()> {
+    validate()?;
+    match package().map(|name| name.and_then(|name| package_app_id(&name))) {
+        Ok(Some(package)) => {
+            let explorer = std::env::var_os("WINDIR")
+                .map(PathBuf::from)
+                .context("Windows directory is unavailable")
+                .map(|directory| directory.join("explorer.exe"));
+            validate()?;
+            // Native LaunchCamoStudioUVP closes both process handles after
+            // CreateProcess. A failed package attempt continues to the shortcut.
+            let launched = explorer.and_then(|explorer| {
+                ensure!(explorer.is_file(), "Windows Explorer is unavailable");
+                std::process::Command::new(explorer)
+                    .arg(format!(r"shell:AppsFolder\{package}"))
+                    .spawn()
+                    .context("launch Camo Studio package")?;
+                Ok(())
+            });
+            match launched {
+                Ok(()) => return Ok(()),
+                Err(error) => eprintln!("Camo package launch: {error:#}"),
+            }
+        }
+        Ok(None) => {}
+        Err(error) => eprintln!("Camo package lookup: {error:#}"),
+    }
+    validate()?;
+    let path = shortcut("Camo Studio.lnk")?
+        .context("installed Camo Studio has no usable local launch target")?;
+    validate()?;
+    launch_path(path)
 }

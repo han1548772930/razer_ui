@@ -310,7 +310,7 @@ pub struct CameraExtensionCommand {
 }
 
 impl CameraExtensionCommand {
-    fn new(prefix: &[u8], mutates_state: bool, native_rva: u32) -> Self {
+    pub(crate) fn new(prefix: &[u8], mutates_state: bool, native_rva: u32) -> Self {
         let mut bytes = [0; 8];
         bytes[..prefix.len()].copy_from_slice(prefix);
         Self {
@@ -440,7 +440,7 @@ pub struct CameraExtensionExchange {
 }
 
 impl CameraExtensionExchange {
-    fn new(command: CameraExtensionCommand) -> Self {
+    pub(crate) fn new(command: CameraExtensionCommand) -> Self {
         Self {
             command,
             set_attempted: false,
@@ -484,7 +484,7 @@ impl CameraExtensionProgress {
     }
 }
 
-fn run_exchange(
+pub(crate) fn run_exchange(
     transport: &mut impl CameraExtensionTransport,
     exchange: &mut CameraExtensionExchange,
     validate: &impl Fn() -> Result<()>,

@@ -22,11 +22,13 @@ fn library(entries: &[(u64, &str, MacroType)]) -> MacroLibraryFile {
                 xml_guid: None,
                 xml_mouse_mode: 0,
                 source_document: None,
+                execution: None,
             })
             .collect(),
         current: entries.first().map(|entry| entry.0),
         tutorial: Tutorial::Complete,
         record_shortcut: Vec::new(),
+        recording_preferences: None,
     }
 }
 

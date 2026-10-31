@@ -60,6 +60,14 @@ fn exchange(
     reply: Option<u8>,
     validate: &dyn Fn() -> anyhow::Result<()>,
 ) -> anyhow::Result<Option<Vec<u8>>> {
+    let validate = &|| {
+        validate().map_err(|error| {
+            crate::backend::interrupt_exchange(
+                error,
+                crate::backend::ExchangeInterruption::Validation,
+            )
+        })
+    };
     let mut progress = TransferProgress {
         channel,
         report: report.to_vec(),
@@ -90,7 +98,7 @@ fn exchange(
                 if let Err(error) = sent
                     .and_then(|count| crate::backend::require_complete_send(count, report.len()))
                 {
-                    if crate::backend::exchange_finalization_failed(&error) {
+                    if crate::backend::exchange_interrupted(&error) {
                         return Err(error);
                     }
                     last_error = Some(error);
@@ -126,7 +134,7 @@ fn exchange(
                         }
                         return received.map(|_| None);
                     }
-                    if crate::backend::exchange_finalization_failed(error) {
+                    if crate::backend::exchange_interrupted(error) {
                         return received.map(|_| None);
                     }
                 }

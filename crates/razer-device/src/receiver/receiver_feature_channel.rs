@@ -61,6 +61,34 @@ pub(crate) struct Channel {
     pub ignore_set_device_mode_timeout_error: bool,
 }
 
+/// These receiver factories accept the actual bounded Feature payload. A
+/// successful header remains evidence when the native owner then rejects it.
+pub(crate) fn retain_failed_reply(
+    error: anyhow::Error,
+    command: [u8; 3],
+    transaction: u8,
+) -> anyhow::Error {
+    let data = crate::backend::native_read_bytes(&error).and_then(|bytes| {
+        if !(9..=91).contains(&bytes.len())
+            || bytes[1] != 2
+            || bytes[2] != transaction
+            || bytes[7..9] != command[1..]
+        {
+            return None;
+        }
+        Some(bytes[9..(9 + usize::from(bytes[6])).min(bytes.len())].to_vec())
+    });
+    match data {
+        Some(data) => crate::feature_exchange::CompletedFeatureExchange::retain(
+            error,
+            command,
+            transaction,
+            data,
+        ),
+        None => error,
+    }
+}
+
 pub(crate) fn exchange(
     device: &dyn FeatureTransport,
     cap: &ReceiverCapability,
@@ -116,6 +144,14 @@ pub(crate) fn exchange_channel(
     validate: &impl Fn() -> anyhow::Result<()>,
     progress: &mut WriteProgress,
 ) -> anyhow::Result<Vec<u8>> {
+    let validate = &|| {
+        validate().map_err(|error| {
+            crate::backend::interrupt_exchange(
+                error,
+                crate::backend::ExchangeInterruption::Validation,
+            )
+        })
+    };
     ensure!(
         command[0] <= 80
             && payload.len() <= usize::from(command[0])
@@ -171,12 +207,22 @@ pub(crate) fn exchange_channel(
                     let mut incoming = [0u8; 91];
                     incoming[0] = cap.get_report_id;
                     let reply = device.get_feature_at_collection_max(&mut incoming);
-                    if let Err(validation) = validate() {
-                        return Err(crate::backend::complete_native_io(reply, validation));
-                    }
+                    let reply = match validate() {
+                        Ok(()) => reply,
+                        Err(validation) => Err(crate::backend::complete_native_read(
+                            reply, &incoming, validation,
+                        )),
+                    };
                     let count = match reply {
                 Ok(count) => count,
-                Err(error) if crate::backend::exchange_finalization_failed(&error) => return Err(error),
+                Err(error) if crate::backend::exchange_interrupted(&error) => {
+                    let error = retain_failed_reply(error, command, transaction);
+                    if let Some(data) = crate::feature_exchange::acknowledged_error(&error) {
+                        progress.acknowledged = true;
+                        progress.acknowledged_reply = Some(data.to_vec());
+                    }
+                    return Err(error);
+                }
                 Err(error) if resend_out_command => {
                     last = format!("Receiver brightness getter transport failed: {error:#}");
                     break;

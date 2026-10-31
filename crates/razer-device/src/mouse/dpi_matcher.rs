@@ -110,6 +110,12 @@ pub enum Phase {
     Error,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum InputTimeout {
+    ResetMovement,
+    Failed(Calibration),
+}
+
 /// One immutable middleware observation. BroadcastChannel carries numbers
 /// directly, so this in-process snapshot must not pass through JSON.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -263,6 +269,8 @@ pub struct Session {
     source_last_received: Option<u64>,
     main_timeout_received: Option<u64>,
     source_timeout_received: Option<u64>,
+    completion_pending: bool,
+    stopped_sampling: bool,
 }
 
 impl Default for Session {
@@ -291,7 +299,15 @@ impl Session {
             source_last_received: None,
             main_timeout_received: None,
             source_timeout_received: None,
+            completion_pending: false,
+            stopped_sampling: false,
         }
+    }
+
+    /// START updates the shared movement record before awaiting native START.
+    /// It does not reset earlier samples or the independently armed timers.
+    pub fn prepare_start(&mut self, current_dpi: f64) {
+        self.current_dpi = current_dpi;
     }
 
     pub fn begin(&mut self, current_dpi: f64) -> anyhow::Result<()> {
@@ -299,10 +315,13 @@ impl Session {
             matches!(self.state, State::Ready | State::Error),
             "matcher already active"
         );
-        self.reset();
         self.state = State::RequestingLock;
-        self.current_dpi = current_dpi;
+        self.prepare_start(current_dpi);
         Ok(())
+    }
+
+    pub fn lock_failed(&mut self) {
+        self.state = State::Ready;
     }
     /// Called only after the actual source shared/exclusive lock is acquired.
     pub fn acquired_lock(&mut self) -> anyhow::Result<()> {
@@ -313,8 +332,23 @@ impl Session {
         self.state = State::Calibrating;
         Ok(())
     }
-    pub fn reset(&mut self) {
+    pub fn reset(&mut self) -> Calibration {
+        self.state = State::Ready;
+        let observation = self.response();
+        self.reset_movement();
+        observation
+    }
+
+    /// K/H resets M only. O/C remain scheduled until their own callback or the
+    /// measurement-completion path explicitly clears them.
+    pub fn reset_movement(&mut self) {
+        let state = self.state;
+        let main_timeout = self.main_timeout_received;
+        let source_timeout = self.source_timeout_received;
         *self = Self::new(self.product);
+        self.state = state;
+        self.main_timeout_received = main_timeout;
+        self.source_timeout_received = source_timeout;
     }
     /// The source CANCEL continuation sends its state-machine event before K
     /// clears the movement record. Only calibrating accepts that event.
@@ -326,10 +360,7 @@ impl Session {
         } else {
             None
         };
-        self.reset();
-        if observation.is_none() {
-            self.state = previous;
-        }
+        self.reset_movement();
         observation
     }
     pub fn fail(&mut self) {
@@ -357,10 +388,14 @@ impl Session {
         initial_is_main: bool,
         received_ms: u64,
     ) -> anyhow::Result<bool> {
-        ensure!(
-            self.state == State::Calibrating,
-            "matcher is not calibrating"
-        );
+        self.record_input(&batch, initial_is_main, received_ms);
+        self.advance()
+    }
+
+    /// L records each registered listener's callback synchronously. Its k pass
+    /// runs later, after the emitter has delivered the same batch to all listeners.
+    /// Retained listeners still record callbacks while k awaits native STOP.
+    pub fn record_input(&mut self, batch: &InputBatch, initial_is_main: bool, received_ms: u64) {
         let main = if !batch.container_id.is_empty() && !self.main_container.is_empty() {
             batch.container_id == self.main_container
         } else if !batch.container_id.is_empty() && !self.source_container.is_empty() {
@@ -369,37 +404,45 @@ impl Session {
             initial_is_main
         };
         if main {
-            self.main_container = batch.container_id;
+            self.main_container.clone_from(&batch.container_id);
             self.main_last_received = Some(received_ms);
             if self.source_last_received.is_some() {
                 self.main_timeout_received = Some(received_ms);
             }
             self.buffered.extend_from_slice(&batch.movement);
-            self.main.extend(batch.movement);
+            self.main.extend_from_slice(&batch.movement);
         } else {
-            self.source_container = batch.container_id;
+            self.source_container.clone_from(&batch.container_id);
             self.source_product_id = Some(batch.product_id);
             self.source_last_received = Some(received_ms);
             if self.main_last_received.is_some() {
                 self.source_timeout_received = Some(received_ms);
             }
-            self.source.extend(batch.movement);
+            self.source.extend_from_slice(&batch.movement);
         }
-        self.advance()
     }
-    fn advance(&mut self) -> anyhow::Result<bool> {
+
+    pub fn advance(&mut self) -> anyhow::Result<bool> {
         let maximum = 5. * self.current_dpi;
         loop {
             let process = source_round(self.traveled / maximum * 100.);
             self.process = source_min(process, 99.);
-            if self.main.is_empty() || self.source.is_empty() || self.buffered.is_empty() {
+            if self.main.is_empty()
+                || self.source.is_empty()
+                || self.buffered.is_empty()
+                || self.stopped_sampling
+            {
                 return Ok(false);
             }
             // Source checks completion before consuming another max-100 batch.
             if maximum <= self.traveled && self.stop_tick <= self.source.last().unwrap().time_tick {
                 // k/w removes the listener and awaits STOP before calling U. Keep
                 // the result unavailable while that transport obligation is pending.
-                self.state = State::Stopping;
+                self.completion_pending = true;
+                self.stopped_sampling = true;
+                if self.state == State::Calibrating {
+                    self.state = State::Stopping;
+                }
                 self.main_timeout_received = None;
                 self.source_timeout_received = None;
                 return Ok(true);
@@ -423,10 +466,7 @@ impl Session {
 
     /// Invoke the source U continuation only after the caller's real STOP ACK.
     pub fn complete_after_stop(&mut self) -> anyhow::Result<()> {
-        ensure!(
-            self.state == State::Stopping,
-            "matcher is not waiting for STOP"
-        );
+        ensure!(self.completion_pending, "matcher is not waiting for STOP");
         let start = source_max(self.main[0].time_tick, self.source[0].time_tick);
         let end = source_min(
             self.main.last().unwrap().time_tick,
@@ -441,27 +481,35 @@ impl Session {
         let main = distance(&self.main);
         let source = distance(&self.source);
         self.new_dpi = source_round(source / main * self.current_dpi);
-        self.state = State::Completed;
+        self.completion_pending = false;
+        if self.state == State::Stopping {
+            self.state = State::Completed;
+        }
         Ok(())
     }
 
     /// P arms only the current stream's timer once both allEvents arrays contain
     /// a callback, even if a callback contains no mouseMove rows.
-    pub fn check_timeout(&mut self, now_ms: u64) -> bool {
-        if self.state != State::Calibrating {
-            return false;
-        }
-        if [self.main_timeout_received, self.source_timeout_received]
+    pub fn check_timeout(&mut self, now_ms: u64) -> Option<InputTimeout> {
+        let (stream, _) = [self.main_timeout_received, self.source_timeout_received]
             .into_iter()
-            .flatten()
-            .any(|last| now_ms.saturating_sub(last) >= 500)
-        {
-            // P sends the error transition, then K resets the movement record.
-            self.reset();
-            self.state = State::Error;
-            return true;
+            .enumerate()
+            .filter_map(|(stream, received)| received.map(|received| (stream, received)))
+            .filter(|(_, received)| now_ms.saturating_sub(*received) >= 500)
+            .min_by_key(|(_, received)| *received)?;
+        if stream == 0 {
+            self.main_timeout_received = None;
+        } else {
+            self.source_timeout_received = None;
         }
-        false
+        let timeout = if self.state.accepts_cancel() {
+            self.state = State::Error;
+            InputTimeout::Failed(self.response())
+        } else {
+            InputTimeout::ResetMovement
+        };
+        self.reset_movement();
+        Some(timeout)
     }
 }
 

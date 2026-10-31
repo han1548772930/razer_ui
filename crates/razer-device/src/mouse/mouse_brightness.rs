@@ -461,7 +461,7 @@ impl<'a> MouseBrightness<'a> {
                     }
                 }
                 Err(error) => {
-                    if crate::backend::exchange_finalization_failed(&error) {
+                    if crate::backend::exchange_interrupted(&error) {
                         return Err(error);
                     }
                     // Cancellation/session loss must never become fallback I/O.
@@ -622,7 +622,7 @@ impl<'a> MouseBrightness<'a> {
                 }
                 if scope == BrightnessScope::Active
                     || phase == BrightnessFailurePhase::Cancelled
-                    || crate::backend::exchange_finalization_failed(&error)
+                    || crate::backend::exchange_interrupted(&error)
                 {
                     return Err(BrightnessWriteFailure {
                         phase,

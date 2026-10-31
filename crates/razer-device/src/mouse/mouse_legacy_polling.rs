@@ -173,7 +173,7 @@ pub fn apply_polling(
     // setupDevice awaits Y but does not treat its caught communication error
     // as an initialization success or a fatal polling error.
     if let Err(error) = initialize_driver_mode(device, cap, &mut next_transaction, &validate) {
-        if crate::backend::exchange_finalization_failed(&error) {
+        if crate::backend::exchange_interrupted(&error) {
             return Err(error);
         }
         eprintln!("Legacy mouse driver-mode initialization failed: {error:#}");
@@ -184,7 +184,7 @@ pub fn apply_polling(
         {
             Ok(previous) => Some(previous),
             Err(error) => {
-                if crate::backend::exchange_finalization_failed(&error) {
+                if crate::backend::exchange_interrupted(&error) {
                     return Err(error);
                 }
                 eprintln!("Legacy polling initial getter failed: {error:#}");
@@ -280,7 +280,7 @@ pub fn apply_dpi(
     let setter = crate::device_writes::prepare(write_capability(), &requested)?;
     validate()?;
     if let Err(error) = initialize_driver_mode(device, cap, &mut next_transaction, &validate) {
-        if crate::backend::exchange_finalization_failed(&error) {
+        if crate::backend::exchange_interrupted(&error) {
             return Err(error);
         }
         eprintln!("Legacy mouse driver-mode initialization failed: {error:#}");

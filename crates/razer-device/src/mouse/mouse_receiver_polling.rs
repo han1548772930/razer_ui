@@ -221,7 +221,7 @@ impl ReceiverRead {
             let previous = match get(next()?) {
                 Ok(hz) => PollingPreRead::Observed { hz },
                 Err(error) => {
-                    if crate::backend::exchange_finalization_failed(&error) {
+                    if crate::backend::exchange_interrupted(&error) {
                         return Err(error);
                     }
                     PollingPreRead::Failed {

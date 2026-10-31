@@ -1,5 +1,5 @@
 //! Current Macro business IIFE and 58190/21700/1519; current contract:
-//! docs/re/macro-ui-current.md. Local drafts remain separate from observed
+//! docs/products/shared/macros.md. Local drafts remain separate from observed
 //! recorder events and device metadata. CSS px scale with the shared rem unit.
 use gpui_kit::base::{
     Button as BaseButton, TestSupportExt as _,
@@ -31,6 +31,8 @@ mod keyboard;
 mod keyboard_windows;
 #[path = "macro_page/launch.rs"]
 mod launch;
+#[path = "macro_page/library.rs"]
+mod library;
 #[path = "macro_page/nested.rs"]
 mod nested;
 #[path = "macro_page/nested_overlay.rs"]
@@ -47,6 +49,7 @@ mod record_options;
 mod record_shortcut;
 #[path = "macro_page/recording.rs"]
 mod recording;
+use razer_model::macro_library::ExecutionSnapshot;
 use razer_model::macro_library::recording as recording_decode;
 use razer_service::mapping::recorder as recording_actor;
 #[path = "macro_page/row_actions.rs"]
@@ -124,6 +127,7 @@ impl MacroTab {
 
 pub struct MacroPage {
     library: Entity<razer_pages::features::macro_library::MacroLibrary>,
+    library_snapshot: razer_pages::features::macro_library::MacroLibraryFile,
     tab: MacroTab,
     focus: FocusHandle,
     history: Vec<MacroTab>,
@@ -137,6 +141,8 @@ pub struct MacroPage {
     hovered_action: Option<usize>,
     saved_actions_for: Option<u64>,
     saved_actions: Vec<ActionItem>,
+    actions_dirty: bool,
+    execution: Option<ExecutionSnapshot>,
     undo: Vec<Vec<ActionItem>>,
     redo: Vec<Vec<ActionItem>>,
     inactive_drafts: std::collections::HashMap<u64, unsaved::ActionDraft>,
@@ -216,7 +222,7 @@ impl MacroPage {
         });
         let keyboard_focus = cx.focus_handle();
         let mut record_ui = record_options::RecordUi::new(window, cx);
-        record_ui.shortcut.selected = file.record_shortcut;
+        record_ui.shortcut.selected = file.record_shortcut.clone();
         let record_subscriptions = [
             (&record_ui.fixed, record_options::NumberField::Fixed),
             (&record_ui.min, record_options::NumberField::Min),
@@ -228,6 +234,9 @@ impl MacroPage {
                 if matches!(event, InputEvent::Change) {
                     this.record_number_changed(field, window, cx);
                 }
+                if matches!(event, InputEvent::Blur) {
+                    this.record_number_blurred(field, window, cx);
+                }
                 if matches!(event, InputEvent::Focus | InputEvent::Blur) {
                     cx.notify();
                 }
@@ -235,6 +244,33 @@ impl MacroPage {
         })
         .collect::<Vec<_>>();
         let subscriptions = vec![
+            cx.subscribe(&record_ui.start, |this, _, event, cx| {
+                if let select::SelectEvent::Confirm(Some(value)) = event {
+                    this.set_record_start_delay(value, cx);
+                }
+            }),
+            cx.subscribe_in(
+                &library,
+                window,
+                |this,
+                 _,
+                 _: &razer_pages::features::macro_library::MacroLibraryChanged,
+                 window,
+                 cx| {
+                    this.receive_library(window, cx);
+                },
+            ),
+            cx.subscribe_in(
+                &library,
+                window,
+                |this,
+                 _,
+                 _: &razer_pages::features::macro_library::MacroLibraryProfileImported,
+                 window,
+                 cx| {
+                    this.receive_library(window, cx);
+                },
+            ),
             cx.on_blur(&keyboard_focus, window, |this, _, cx| {
                 this.finish_keyboard_editor();
                 cx.notify();
@@ -298,6 +334,7 @@ impl MacroPage {
         ];
         let mut page = Self {
             library,
+            library_snapshot: file.clone(),
             tab: MacroTab::MyMacros,
             focus: cx.focus_handle(),
             history: vec![MacroTab::MyMacros],
@@ -311,6 +348,8 @@ impl MacroPage {
             hovered_action: None,
             saved_actions_for: file.current,
             saved_actions,
+            actions_dirty: false,
+            execution: None,
             undo: Vec::new(),
             redo: Vec::new(),
             inactive_drafts: Default::default(),
@@ -363,28 +402,42 @@ impl MacroPage {
                 .chain(record_subscriptions)
                 .collect(),
         };
+        page.adopt_record_preferences(
+            page.library_snapshot.recording_preferences.clone(),
+            window,
+            cx,
+        );
+        page.load_current_execution();
+        page.sync_phased_mount(cx);
+        page.refresh_translated_actions(window, cx);
         page.activate_record_shortcut(window, cx);
         page
     }
     pub fn focus(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.refresh_locale(window, cx);
+        self.receive_library(window, cx);
         self.activate_record_shortcut(window, cx);
         self.focus.focus(window, cx);
         cx.notify();
     }
-    fn publish_library(&self, cx: &mut Context<Self>) {
-        let mut entries = self.entries.clone();
-        for entry in &mut entries {
-            entry.open = false;
+    pub fn refresh_locale(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let locale = i18n::locale();
+        if self.locale == locale {
+            return;
         }
-        let file = razer_pages::features::macro_library::MacroLibraryFile {
-            next_id: self.next_id,
-            entries,
-            current: self.current,
-            tutorial: self.tutorial,
-            record_shortcut: self.record_ui.shortcut.selected.clone(),
-        };
-        self.library
-            .update(cx, |library, cx| library.replace(file, cx));
+        self.locale = locale;
+        self.refresh_translated_actions(window, cx);
+        self.update_search_placeholder(window, cx);
+        self.text_editor.update(cx, |input, cx| {
+            input.set_placeholder(tr("TEXT_TEXT_FUNCTION_PLACEHOLDER"), window, cx)
+        });
+        self.text_ui.search.update(cx, |input, cx| {
+            input.set_placeholder(tr("TEXT_SEARCH_EMOJI"), window, cx)
+        });
+        if let Some(dialog) = &self.binding_dialog {
+            dialog.update(cx, |dialog, cx| dialog.refresh_locale(window, cx));
+        }
+        cx.notify();
     }
     fn load_current_actions(&mut self) {
         self.record_ui.close();
@@ -398,6 +451,8 @@ impl MacroPage {
             .unwrap_or_default();
         self.saved_actions_for = self.current;
         self.saved_actions = self.actions.clone();
+        self.actions_dirty = false;
+        self.load_current_execution();
         self.undo.clear();
         self.redo.clear();
         self.selected_actions.clear();
@@ -406,6 +461,8 @@ impl MacroPage {
             self.undo = draft.undo;
             self.redo = draft.redo;
             self.selected_actions = draft.selected;
+            self.actions_dirty = draft.actions_dirty;
+            self.execution = draft.execution;
         }
     }
     pub fn has_previous_page(&self) -> bool {
@@ -427,6 +484,7 @@ impl MacroPage {
         }
         self.tab = self.history[self.history_index];
         self.finish_pending_edits(window, cx);
+        self.sync_phased_mount(cx);
         self.dismiss_transient_ui(window, cx);
     }
     pub fn refresh(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -461,6 +519,7 @@ impl MacroPage {
         self.history.push(tab);
         self.history_index = self.history.len() - 1;
         self.finish_pending_edits(window, cx);
+        self.sync_phased_mount(cx);
         self.dismiss_transient_ui(window, cx);
     }
     fn macro_count(&self) -> usize {
@@ -491,11 +550,15 @@ impl MacroPage {
     }
 
     fn clear_action_editors(&mut self) {
+        self.record_ui.close();
+        self.finish_keyboard_editor();
+        self.cancel_action_editors();
+    }
+    fn cancel_action_editors(&mut self) {
         self.action_edit_tasks.clear();
         self.numeric_generation = self.numeric_generation.wrapping_add(1);
         self.hovered_action = None;
-        self.record_ui.close();
-        self.finish_keyboard_editor();
+        self.cancel_keyboard_editor();
         self.editing_action = None;
         self.text_ui.emoji_open = false;
         self.text_ui.hovered_emoji = None;
@@ -522,7 +585,9 @@ impl MacroPage {
         !self.recording_busy()
             && self.current.is_some()
             && self.actions_for == self.current
-            && (self.saved_actions_for != self.current || self.actions != self.saved_actions)
+            && (self.saved_actions_for != self.current
+                || self.actions != self.saved_actions
+                || self.actions_dirty)
     }
     fn can_save_with_pending(&self, cx: &App) -> bool {
         if self.recording_busy() {
@@ -621,13 +686,14 @@ impl MacroPage {
             cx.notify();
             return;
         }
-        self.undo.push(self.actions.clone());
+        self.checkpoint_actions();
         self.actions[index].value = value;
         if kind == ActionKind::Delay {
             self.actions[index].state = "fixed".into();
         }
         self.sync_loop_value(index);
         self.redo.clear();
+        self.rebuild_action_execution();
         window.blur(cx);
         cx.notify();
     }
@@ -729,10 +795,11 @@ impl MacroPage {
             return;
         }
         if item.number_min != min || item.number_max != max {
-            self.undo.push(self.actions.clone());
+            self.checkpoint_actions();
             self.actions[index].number_min = min;
             self.actions[index].number_max = max;
             self.redo.clear();
+            self.rebuild_action_execution();
         }
         cx.notify();
     }
@@ -773,7 +840,7 @@ impl MacroPage {
                 item.phase = phase;
             }
         }
-        self.undo.push(self.actions.clone());
+        self.checkpoint_actions();
         let index = index.min(self.actions.len());
         for selected in &mut self.selected_actions {
             if *selected >= index {
@@ -786,27 +853,52 @@ impl MacroPage {
         }
         self.clear_action_editors();
         self.redo.clear();
+        self.rebuild_action_execution();
         cx.notify();
     }
-    pub fn save_actions(&mut self, cx: &mut Context<Self>) {
+    pub fn save_actions(&mut self, cx: &mut Context<Self>) -> bool {
         self.finish_keyboard_editor();
         if !self.can_save() {
-            return;
+            return true;
         }
+        let Some(entry) = self
+            .entries
+            .iter()
+            .find(|entry| Some(entry.id) == self.current)
+        else {
+            return false;
+        };
+        let execution = match self.library_snapshot.execution_for_actions(
+            entry,
+            &self.actions,
+            self.execution.as_ref(),
+            self.recording_movement_setting(),
+        ) {
+            Ok(execution) => execution,
+            Err(error) => {
+                self.recording.error = Some(error);
+                cx.notify();
+                return false;
+            }
+        };
         self.saved_actions_for = self.current;
         self.saved_actions = self.actions.clone();
+        self.actions_dirty = false;
         if let Some(entry) = self
             .entries
             .iter_mut()
             .find(|entry| Some(entry.id) == self.current)
         {
             entry.actions = self.saved_actions.clone();
+            entry.execution = Some(execution.clone());
         }
+        self.execution = Some(execution);
         self.publish_library(cx);
         self.undo.clear();
         self.redo.clear();
         self.selected_actions.clear();
         cx.notify();
+        true
     }
     pub fn undo_action(&mut self, cx: &mut Context<Self>) {
         if !self.can_undo() {
@@ -814,8 +906,10 @@ impl MacroPage {
         }
         self.finish_keyboard_editor();
         if let Some(previous) = self.undo.pop() {
+            self.invalidate_execution();
             self.redo.push(self.actions.clone());
             self.actions = previous;
+            self.rebuild_action_execution();
             self.clear_action_editors();
             self.selected_actions.clear();
             cx.notify();
@@ -827,8 +921,9 @@ impl MacroPage {
         }
         self.finish_keyboard_editor();
         if let Some(next) = self.redo.pop() {
-            self.undo.push(self.actions.clone());
+            self.checkpoint_actions();
             self.actions = next;
+            self.rebuild_action_execution();
             self.clear_action_editors();
             self.selected_actions.clear();
             cx.notify();
@@ -861,7 +956,7 @@ impl MacroPage {
         if self.selected_actions.is_empty() || self.actions_for != self.current {
             return;
         }
-        self.undo.push(self.actions.clone());
+        self.checkpoint_actions();
         let selected: std::collections::HashSet<_> = self.selected_actions.drain(..).collect();
         self.actions = self
             .actions
@@ -871,6 +966,7 @@ impl MacroPage {
             .collect();
         self.clear_action_editors();
         self.redo.clear();
+        self.rebuild_action_execution();
         cx.notify();
     }
 
@@ -911,20 +1007,6 @@ fn format_delay(value: f64) -> String {
 
 impl Render for MacroPage {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        self.sync_phased_mount(cx);
-        if self.locale != i18n::locale() {
-            self.locale = i18n::locale();
-            self.update_search_placeholder(window, cx);
-            self.text_editor.update(cx, |input, cx| {
-                input.set_placeholder(tr("TEXT_TEXT_FUNCTION_PLACEHOLDER"), window, cx)
-            });
-            self.text_ui.search.update(cx, |input, cx| {
-                input.set_placeholder(tr("TEXT_SEARCH_EMOJI"), window, cx)
-            });
-            if let Some(dialog) = &self.binding_dialog {
-                dialog.update(cx, |dialog, cx| dialog.refresh_locale(window, cx));
-            }
-        }
         let body = match self.tab {
             MacroTab::MyMacros => self.editor(window, cx),
             MacroTab::KeyBinds => self.key_binds(window, cx),

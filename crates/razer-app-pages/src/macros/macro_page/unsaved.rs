@@ -6,6 +6,8 @@ pub struct ActionDraft {
     pub undo: Vec<Vec<ActionItem>>,
     pub redo: Vec<Vec<ActionItem>>,
     pub selected: Vec<usize>,
+    pub actions_dirty: bool,
+    pub execution: Option<ExecutionSnapshot>,
 }
 
 #[derive(Clone, Copy)]
@@ -26,6 +28,8 @@ impl MacroPage {
                     undo: self.undo.clone(),
                     redo: self.redo.clone(),
                     selected: self.selected_actions.clone(),
+                    actions_dirty: self.actions_dirty,
+                    execution: self.execution.clone(),
                 },
             );
         }
@@ -75,8 +79,7 @@ impl MacroPage {
             PendingAction::Select(id) => self.select_entry_now(id, cx),
             PendingAction::Refresh => {
                 // Source reload reconstructs every draft from savedMacros.
-                self.inactive_drafts.clear();
-                self.load_current_actions();
+                self.reload_library(window, cx);
                 self.dismiss_transient_ui(window, cx);
             }
         }
@@ -100,7 +103,9 @@ impl MacroPage {
             return;
         };
         if save {
-            self.save_actions(cx);
+            if !self.save_actions(cx) {
+                return;
+            }
         } else {
             if let Some(id) = self.current {
                 self.inactive_drafts.remove(&id);

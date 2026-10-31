@@ -124,6 +124,70 @@ class CurrentFrontendRevalidationTests(unittest.TestCase):
         self.assertEqual(fetch.call_count, 10)
         self.verify_receipt(report)
 
+    def test_all_current_selects_newest_route_and_includes_shared_host_pages(self):
+        old, _ = self.fixture("old")
+        latest, _ = self.fixture("latest")
+        shared, _ = self.fixture("macro", "https://apps.razer.com/synapse/macro/")
+        earlier = json.loads((self.root / old).read_bytes())
+        earlier["recorded_at_utc"] = "2026-10-15T00:00:00+00:00"
+        (self.root / old).write_text(json.dumps(earlier), encoding="utf-8")
+        with mock.patch.object(workspace, "_frontend_revalidation_fetch", side_effect=self.fetch) as fetch:
+            report = workspace.revalidate_current_frontends(all_current=True, workers=2)
+        self.assertTrue(report["passed"])
+        self.assertEqual({row["acquisition"]["path"] for row in report["source_sets"]}, {latest, shared})
+        selection = report["current_source_selection"]
+        self.assertEqual((selection["candidate_count"], selection["route_count"]), (3, 2))
+        self.assertEqual(selection["capture_verification"], "not_requested")
+        self.assertEqual(fetch.call_count, 20)
+        self.verify_receipt(report)
+
+    def test_all_current_keeps_missing_and_corrupt_routes_failed_without_falling_back(self):
+        valid, _ = self.fixture("valid", "https://apps.razer.com/synapse/macro/")
+        old, _ = self.fixture("old")
+        corrupt, owner = self.fixture("corrupt")
+        earlier = json.loads((self.root / old).read_bytes())
+        earlier["recorded_at_utc"] = "2026-10-15T00:00:00+00:00"
+        (self.root / old).write_text(json.dumps(earlier), encoding="utf-8")
+        (self.root / owner).write_bytes(b"changed dependency")
+        missing = self.root / ".analysis/inputs/frontend/missing/acquisition.json"
+        missing.parent.mkdir(parents=True)
+        missing.write_text(json.dumps({"entry_url": "https://apps.razer.com/synapse/products/680/ui/",
+                                      "source_current_during_acquisition": False, "target_execution": False}),
+                           encoding="utf-8")
+        cached = self.root / ".analysis/inputs/frontend/cache/acquisition.json"
+        cached.parent.mkdir(parents=True)
+        cached.write_text(json.dumps({"source": ".analysis/inputs/installed-current/acquisition.json"}), encoding="utf-8")
+        with mock.patch.object(workspace, "_frontend_revalidation_fetch", side_effect=self.fetch):
+            report = workspace.revalidate_current_frontends(all_current=True, workers=2)
+        self.assertFalse(report["passed"])
+        self.assertEqual([row["acquisition"]["path"] for row in report["source_sets"]], [valid])
+        self.assertEqual(len(report["current_source_selection"]["failures"]), 2)
+        self.assertEqual(len(report["current_source_selection"]["excluded"]), 1)
+        self.assertTrue(any("No stable official" in row["error"] for row in report["failures"]))
+        self.assertTrue(any("failed strict verification" in row["error"] for row in report["failures"]))
+        self.verify_receipt(report)
+
+    def test_all_current_rejects_candidate_mutation_or_addition_during_http(self):
+        old, _ = self.fixture("old")
+        self.fixture("latest")
+        earlier = json.loads((self.root / old).read_bytes())
+        earlier["recorded_at_utc"] = "2026-10-15T00:00:00+00:00"
+        (self.root / old).write_text(json.dumps(earlier), encoding="utf-8")
+
+        def fetch(url):
+            (self.root / old).write_bytes(b"changed candidate")
+            added = self.root / ".analysis/inputs/frontend/addition/acquisition.json"
+            added.parent.mkdir(exist_ok=True)
+            added.write_bytes(b"{}")
+            return self.fetch(url)
+
+        with mock.patch.object(workspace, "_frontend_revalidation_fetch", side_effect=fetch):
+            report = workspace.revalidate_current_frontends(all_current=True, workers=1)
+        self.assertFalse(report["passed"])
+        self.assertIn({"kind": "protected_input_changed", "path": old}, report["failures"])
+        self.assertIn({"kind": "current_source_candidate_set_changed"}, report["failures"])
+        self.verify_receipt(report)
+
     def test_changed_root_is_retained_separately_and_never_promotes_a_new_deployment(self):
         acquisition, _ = self.fixture()
         existing = {"path": "unchanged-owner", "kind": "preserve-existing-metadata", "bytes": 1,
@@ -366,6 +430,180 @@ class CurrentFrontendRevalidationTests(unittest.TestCase):
             row = workspace._frontend_revalidation_fetch(url)
         self.assertEqual(row["status"], "missing")
         self.assertTrue(body.closed)
+
+
+class CurrentFrontendRefreshTests(unittest.TestCase):
+    setUp = CurrentFrontendRevalidationTests.setUp
+    fixture = CurrentFrontendRevalidationTests.fixture
+
+    def observation(self, acquisitions):
+        import analysis
+        sources, observations = [], []
+        for acquisition in acquisitions:
+            path = self.root / acquisition
+            acquired = json.loads(path.read_bytes())
+            for row in acquired["files"]:
+                row["acquired_at_utc"] = "2026-10-20T00:00:00+00:00"
+            acquired["recorded_at_utc"] = "2026-10-20T00:00:00+00:00"
+            path.write_text(json.dumps(acquired), encoding="utf-8")
+            name = path.parent.name
+            sources.append({"name": name, "route": acquired["entry_url"].removesuffix("index.html"),
+                            "acquisition": {"path": acquisition, "bytes": path.stat().st_size,
+                                            "sha256": workspace.digest(path)}})
+            url = acquired["entry_url"]
+            body = b'<html><script src="next.js"></script></html>'
+            original = workspace._frontend_revalidation_publish(body)
+            rounds = [{"round": number, "url": url, "final_url": url, "status": "ok", "http_status": 200,
+                       "bytes": len(body), "sha256": hashlib.sha256(body).hexdigest(),
+                       "headers": {"Content-Type": "text/html"},
+                       "acquired_at_utc": "2026-10-29T00:00:00+00:00"} for number in (1, 2)]
+            observations.append({"source_set": name, "url": url, "classification": "changed_or_new_deployment",
+                                 "observed_original": original, "rounds": rounds})
+            self.responses[url] = body
+            base = url.removesuffix("index.html")
+            self.responses[base + "next.js"] = b"const next = 2;"
+            self.responses[base + "asset-manifest.json"] = b'{"files":{"main":"next.js"},"entrypoints":["next.js"]}'
+        report = {"schema_version": 1, "kind": "immutable_current_frontend_deployment_revalidation",
+                  "target_execution": False, "protected_originals_unchanged": True,
+                  "created_at_utc": "2026-10-29T00:00:00+00:00", "source_sets": sources,
+                  "observations": observations}
+        proof = workspace._frontend_revalidation_publish(json.dumps(report).encode(), receipt=True)
+        self.protected = {self.root / name: (self.root / name).read_bytes() for name in acquisitions}
+        return proof["path"], report, proof
+
+    def fetch(self, url):
+        result = CurrentFrontendRevalidationTests.fetch(self, url)
+        result["acquired_at_utc"] = "2026-10-31T00:00:00+00:00"
+        return result
+
+    def download(self, url, output):
+        import analysis
+        result = self.fetch(url)
+        raw = result.pop("_raw", None)
+        if raw is None:
+            return {**result, "error": "HTTP Error 404: Not Found"}
+        path = analysis.raw_path(output, url)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(raw)
+        return {**result, "path": analysis.rel(path), "content_type": "application/javascript"}
+
+    def invoke(self, observation, **kwargs):
+        import analysis
+        from types import SimpleNamespace
+        tool = self.root / "tools/analyzer.exe"
+        tool.parent.mkdir(exist_ok=True)
+        tool.write_bytes(b"verified static analyzer fixture")
+        with mock.patch.object(analysis, "wakaru", return_value=tool), \
+                mock.patch.object(analysis, "download", side_effect=self.download), \
+                mock.patch.object(analysis, "enumerate_frontend_chunks", return_value=SimpleNamespace(
+                    returncode=0, stdout=b'{"enumeration":null}', stderr=b"")), \
+                mock.patch.object(workspace, "_frontend_revalidation_fetch", side_effect=self.fetch):
+            return workspace.refresh_current_frontends(observation, workers=2, **kwargs)
+
+    def test_priority_keeps_every_changed_route_and_observation_identity(self):
+        first, _ = self.fixture("first", "https://apps.razer.com/synapse/products/1/ui/")
+        second, _ = self.fixture("second", "https://apps.razer.com/synapse/products/2/ui/")
+        path, _, _ = self.observation([first, second])
+        plan = workspace.frontend_refresh_plan(path, priority_sources=["second"])
+        self.assertEqual([row["name"] for row in plan["jobs"]], ["second", "first"])
+        with self.assertRaisesRegex(ValueError, "absent"):
+            workspace.frontend_refresh_plan(path, source_names=["not-observed"])
+        (self.root / path).write_bytes((self.root / path).read_bytes() + b" ")
+        with self.assertRaisesRegex(ValueError, "unchanged"):
+            workspace.frontend_refresh_plan(path)
+
+    def test_batch_uses_changed_roots_keeps_old_bytes_and_resumes_without_fetch(self):
+        first, _ = self.fixture("first", "https://apps.razer.com/synapse/products/1/ui/")
+        second, _ = self.fixture("second", "https://apps.razer.com/synapse/products/2/ui/")
+        path, _, _ = self.observation([first, second])
+        result = self.invoke(path)
+        self.assertTrue(result["passed"], result)
+        self.assertEqual([row["status"] for row in result["jobs"]], ["acquired", "acquired"])
+        for original, raw in self.protected.items():
+            self.assertEqual(original.read_bytes(), raw)
+        receipts = [row["refreshed_acquisition"] for row in result["jobs"]]
+        for proof in receipts:
+            acquired = json.loads((self.root / proof["path"]).read_bytes())
+            self.assertTrue(any(row["url"].endswith("next.js") for row in acquired["files"]))
+            self.assertFalse(any(row["url"].endswith("main.js") for row in acquired["files"]))
+        import analysis
+        with mock.patch.object(analysis, "fetch_frontend", side_effect=AssertionError("valid snapshot fetched again")):
+            resumed = workspace.refresh_current_frontends(path, workers=2)
+        self.assertTrue(resumed["passed"])
+        self.assertEqual([row["refreshed_acquisition"] for row in resumed["jobs"]], receipts)
+        self.assertTrue(resumed["cleanup"]["all_worker_threads_joined"])
+        self.assertEqual(list(self.root.rglob("*.tmp")), [])
+
+    def test_seed_corruption_is_fatal_and_never_falls_back_to_network(self):
+        acquisition, _ = self.fixture()
+        _, report, proof = self.observation([acquisition])
+        resource = workspace.FrontendRefreshResources(report, proof, network_workers=2, parse_workers=1)
+        row = report["observations"][0]
+        (self.root / row["observed_original"]["path"]).write_bytes(b"corrupt")
+        import analysis
+        with mock.patch.object(analysis, "download") as fetch, self.assertRaisesRegex(ValueError, "identity"):
+            resource.download(row["url"], self.root / "unused")
+        fetch.assert_not_called()
+
+    def test_missing_or_unstable_observations_are_not_promoted_to_originals(self):
+        acquisition, _ = self.fixture()
+        _, report, proof = self.observation([acquisition])
+        report["observations"][0]["rounds"][1]["status"] = "failed"
+        resource = workspace.FrontendRefreshResources(report, proof, network_workers=1, parse_workers=1)
+        self.assertFalse(resource.observed)
+
+    def test_same_url_is_downloaded_once_and_transient_history_survives(self):
+        import analysis
+        import concurrent.futures
+        import threading
+        resource = workspace.FrontendRefreshResources({"observations": []}, {}, network_workers=1, parse_workers=1)
+        url = "https://apps.razer.com/synapse/current.js"
+        entered, release = threading.Event(), threading.Event()
+        calls = []
+        def download(*_):
+            calls.append(url)
+            if len(calls) == 1:
+                entered.set()
+                self.assertTrue(release.wait(5))
+                return {"url": url, "error": "TLS connection interrupted"}
+            return {"url": url, "path": "retained", "bytes": 4, "sha256": "identity"}
+        with mock.patch.object(analysis, "download", side_effect=download), \
+                concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+            first = pool.submit(resource.download, url, self.root)
+            self.assertTrue(entered.wait(5))
+            second = pool.submit(resource.download, url, self.root)
+            release.set()
+            left, right = first.result(), second.result()
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(left, right)
+        self.assertEqual(left["retrieval_attempts"][0]["error"], "TLS connection interrupted")
+        self.assertEqual(len(left["retrieval_attempts"]), 2)
+
+    def test_cancelled_batch_joins_workers_and_preserves_resumption_receipt(self):
+        acquisition, _ = self.fixture()
+        path, _, proof = self.observation([acquisition])
+        import analysis
+        with mock.patch.object(analysis, "fetch_frontend", side_effect=KeyboardInterrupt), \
+                self.assertRaises(KeyboardInterrupt):
+            workspace.refresh_current_frontends(path, workers=1)
+        report = json.loads((self.root / ".analysis/results/frontend-refresh" / (proof["sha256"] + ".json")).read_bytes())
+        self.assertTrue(report["interrupted"])
+        self.assertFalse(report["passed"])
+        self.assertTrue(report["cleanup"]["all_worker_threads_joined"])
+        self.assertEqual(list(self.root.rglob("*.tmp")), [])
+
+    def test_append_publication_preserves_existing_url_provenance(self):
+        import analysis
+        path = self.root / ".analysis/inputs/frontend/source.js"
+        path.parent.mkdir(parents=True)
+        path.write_bytes(b"source")
+        identity = {"path": analysis.rel(path), "bytes": 6, "sha256": workspace.digest(path)}
+        original = {**identity, "url": "original-url", "receipt": "original-provenance"}
+        self.index.write_text(json.dumps({"inputs": [original]}), encoding="utf-8")
+        analysis.index_files([{**identity, "url": "new-alias"}], preserve_existing=True)
+        self.assertEqual(json.loads(self.index.read_bytes())["inputs"], [original])
+        with self.assertRaisesRegex(ValueError, "conflicts"):
+            analysis.index_files([{**identity, "sha256": "wrong"}], preserve_existing=True)
 
 
 class LocalizationCatalogTests(unittest.TestCase):

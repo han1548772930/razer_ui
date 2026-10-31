@@ -225,6 +225,9 @@ pub fn read_ble(
                 return decode(&data);
             }
             Err(error) => {
+                if crate::backend::exchange_interrupted(&error) {
+                    return Err(error);
+                }
                 validate()?;
                 last_error = Some(error);
             }
@@ -279,6 +282,9 @@ pub fn read(
                 return decode(&data);
             }
             Err(error) => {
+                if crate::backend::exchange_interrupted(&error) {
+                    return Err(error);
+                }
                 validate()?;
                 last_error = Some(error);
             }
@@ -303,6 +309,41 @@ mod tests {
         cap.sleep_between_out_in_ms = 0;
         cap.sleep_between_in_ms = 0;
         cap
+    }
+
+    #[test]
+    fn one_shot_admission_failure_never_starts_another_edition_attempt() {
+        use crate::feature_exchange::tests::ExchangeProbe;
+        use std::cell::Cell;
+        for source in catalog() {
+            let mut cap = source.clone();
+            cap.max_retry_in = 1;
+            cap.max_retry_out = 1;
+            cap.sleep_between_in_ms = 0;
+            cap.sleep_between_out_ms = 0;
+            cap.sleep_between_out_in_ms = 0;
+            let device = Mock::new([]);
+            let admissions = Cell::new(0);
+            let admit = || {
+                let previous = admissions.replace(admissions.get() + 1);
+                ensure!(
+                    previous != 0,
+                    "one-shot keyboard metadata admission failure"
+                );
+                Ok(())
+            };
+            let probe = ExchangeProbe::with_admission_check(&device, &admit);
+            let error = read(&probe, &cap, || Ok(cap.transaction_prefix), &|| Ok(())).unwrap_err();
+            assert!(crate::backend::exchange_interrupted(&error));
+            assert_eq!(
+                admissions.get(),
+                1,
+                "PID{} / {:?}",
+                cap.product_id,
+                cap.direct_pids
+            );
+            assert!(device.sent().is_empty());
+        }
     }
 
     #[test]

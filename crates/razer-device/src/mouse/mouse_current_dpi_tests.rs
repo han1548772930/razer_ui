@@ -75,6 +75,103 @@ impl FeatureTransport for Mock {
 }
 
 #[test]
+fn one_shot_admission_failure_stops_all_current_dpi_routes() {
+    use crate::feature_exchange::tests::ExchangeProbe;
+    use crate::keyboard_control_test_transport::Mock as Script;
+    use std::cell::Cell;
+
+    for source in make_mouse_current_dpi_table() {
+        let canonical = capability(source.product_id).unwrap();
+        for physical in &canonical.transport.direct_pids {
+            let mut cap = canonical.clone();
+            cap.transport = canonical.transport.for_physical_product(*physical).unwrap();
+            cap.transport.sleep_between_out_ms = 0;
+            cap.transport.sleep_between_out_in_ms = 0;
+            cap.transport.sleep_between_in_ms = 0;
+            let device = Script::new([]);
+            let admissions = Cell::new(0);
+            let admit = || {
+                let previous = admissions.replace(admissions.get() + 1);
+                ensure!(previous != 0, "one-shot DPI admission failure");
+                Ok(())
+            };
+            let probe = ExchangeProbe::with_admission_check(&device, &admit);
+            let error = execute_with_capability(
+                &cap,
+                &probe,
+                None,
+                || Ok(cap.transport.transaction_prefix),
+                || Ok(()),
+            )
+            .unwrap_err();
+            assert!(
+                crate::backend::exchange_interrupted(&error),
+                "PID{} / {physical}",
+                source.product_id
+            );
+            assert_eq!(admissions.get(), 1, "PID{} / {physical}", source.product_id);
+            assert!(device.sent().is_empty());
+        }
+    }
+}
+
+#[test]
+fn native_interruption_stops_dpi_retries_and_retains_actual_read_bytes() {
+    use crate::backend::{NativeIoOutcome, native_io_outcome};
+    use crate::keyboard_control_test_transport::{Mock as Script, reply as packet};
+
+    for source in make_mouse_current_dpi_table() {
+        let canonical = capability(source.product_id).unwrap();
+        for physical in &canonical.transport.direct_pids {
+            let mut cap = canonical.clone();
+            cap.transport = canonical.transport.for_physical_product(*physical).unwrap();
+            cap.transport.sleep_between_out_ms = 0;
+            cap.transport.sleep_between_out_in_ms = 0;
+            cap.transport.sleep_between_in_ms = 0;
+            for outcome in [
+                NativeIoOutcome::NotCalled,
+                NativeIoOutcome::Returned { byte_count: 90 },
+                NativeIoOutcome::Returned { byte_count: 91 },
+            ] {
+                let device = Script::new([]).fail_next_send(outcome);
+                let error = execute_with_capability(
+                    &cap,
+                    &device,
+                    None,
+                    || Ok(cap.transport.transaction_prefix),
+                    || Ok(()),
+                )
+                .unwrap_err();
+                assert_eq!(native_io_outcome(&error), Some(outcome));
+                assert_eq!(device.sent().len(), 1);
+                assert!(crate::feature_exchange::acknowledged_error(&error).is_none());
+            }
+            let device = Script::new([packet(&[7, 8])]).interrupt_next_read();
+            let error = execute_with_capability(
+                &cap,
+                &device,
+                None,
+                || Ok(cap.transport.transaction_prefix),
+                || Ok(()),
+            )
+            .unwrap_err();
+            assert_eq!(
+                native_io_outcome(&error),
+                Some(NativeIoOutcome::Returned { byte_count: 91 })
+            );
+            assert_eq!(
+                crate::feature_exchange::acknowledged_error(&error),
+                Some(&[7, 8][..])
+            );
+            assert_eq!(device.sent().len(), 1);
+            let progress = &error.downcast_ref::<WriteFailure>().unwrap().progress;
+            assert!(progress.stages.is_none() && progress.active.is_none());
+            assert!(!progress.verified);
+        }
+    }
+}
+
+#[test]
 fn finish_failure_keeps_the_decoded_dpi_ack_and_stops_independent_following_tasks() {
     let device = Mock::new(vec![reply(vec![7, 8])]);
     let leased = crate::feature_exchange::tests::ExchangeProbe::failing_finish(&device);

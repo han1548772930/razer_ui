@@ -33,6 +33,8 @@ pub mod camera_focus_family;
 pub mod camera_processing_family;
 #[path = "camera/camera_queue.rs"]
 pub mod camera_queue;
+#[path = "camera/camera_serial.rs"]
+pub mod camera_serial;
 #[path = "camera/camera_submission.rs"]
 pub mod camera_submission;
 #[path = "gamepad/controller_calibration.rs"]

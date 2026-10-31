@@ -459,6 +459,9 @@ fn sidepad(
                 },
             ),
             Err(error) => {
+                if crate::backend::exchange_interrupted(&error) {
+                    return Err(error);
+                }
                 validate()?;
                 publish(Update::Diagnostic {
                     message: format!("Sidepad query failed: {error:#}"),
@@ -501,6 +504,9 @@ pub fn monitor(
                 let (connected, origin) = match transport.query(Query::Wireless, validate) {
                     Ok(status) => (status == 1, Origin::InitialQuery),
                     Err(error) => {
+                        if crate::backend::exchange_interrupted(&error) {
+                            return Err(error);
+                        }
                         validate()?;
                         publish(Update::Diagnostic {
                             message: format!("Hyperflux wireless query failed: {error:#}"),

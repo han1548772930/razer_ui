@@ -74,6 +74,7 @@ fn library() -> MacroLibraryFile {
         xml_guid: Some("12345678-1234-4234-8234-123456789abc".into()),
         xml_mouse_mode: 0,
         source_document: None,
+        execution: None,
     });
     library
 }
