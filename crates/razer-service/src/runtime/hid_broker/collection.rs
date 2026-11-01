@@ -27,6 +27,9 @@ const QUEUE_CAPACITY: usize = 64;
 const PACKET_CAPACITY: usize = 8;
 const CONTROL_POLL: Duration = Duration::from_millis(10);
 const MAX_BUFFER_BYTES: usize = 65_536;
+/// UsbRzDeviceAction `mutexProtocolHoldTimeout=3e4`, passed as `holdTimeoutMs`
+/// to every opened collection's `hidDeviceMutex` RzMutx.
+const PROTOCOL_MUTEX_HOLD: Duration = Duration::from_millis(30_000);
 
 pub(super) type RawFactory = fn() -> anyhow::Result<Box<dyn HidBackend>>;
 pub(super) type IdentityResolver = fn(&HidNode) -> anyhow::Result<CollectionIdentity>;
@@ -274,6 +277,7 @@ struct PoolInner {
     resolver: IdentityResolver,
     state: Mutex<PoolState>,
     commands: Arc<CommandRegistry>,
+    mutex_hold: Duration,
 }
 
 #[derive(Default)]
@@ -287,6 +291,14 @@ struct PoolState {
 
 impl Pool {
     pub(super) fn new(raw_factory: RawFactory, resolver: IdentityResolver) -> Self {
+        Self::with_mutex_hold(raw_factory, resolver, PROTOCOL_MUTEX_HOLD)
+    }
+
+    fn with_mutex_hold(
+        raw_factory: RawFactory,
+        resolver: IdentityResolver,
+        mutex_hold: Duration,
+    ) -> Self {
         Self {
             inner: Arc::new(PoolInner {
                 raw_factory,
@@ -297,6 +309,7 @@ impl Pool {
                     ..PoolState::default()
                 }),
                 commands: Arc::new(CommandRegistry::default()),
+                mutex_hold,
             }),
         }
     }
@@ -404,6 +417,7 @@ impl Pool {
             self.inner.raw_factory,
             self.inner.resolver,
             self.inner.commands.clone(),
+            self.inner.mutex_hold,
         )?;
         state.entries.insert(key, entry.clone());
         Ok(entry)
@@ -622,6 +636,7 @@ struct Entry {
     raw_factory: RawFactory,
     resolver: IdentityResolver,
     commands: Arc<CommandRegistry>,
+    mutex_hold: Duration,
     state: Mutex<EntryState>,
     changed: Condvar,
     worker: Mutex<Option<JoinHandle<()>>>,
@@ -643,6 +658,7 @@ impl Entry {
         raw_factory: RawFactory,
         resolver: IdentityResolver,
         commands: Arc<CommandRegistry>,
+        mutex_hold: Duration,
     ) -> anyhow::Result<Arc<Self>> {
         let entry = Arc::new(Self {
             identity,
@@ -651,6 +667,7 @@ impl Entry {
             raw_factory,
             resolver,
             commands,
+            mutex_hold,
             state: Mutex::new(EntryState {
                 admitting: true,
                 ready: None,
@@ -752,6 +769,7 @@ impl Entry {
             canceled,
             options,
             forced: AtomicBool::new(false),
+            hold_released: AtomicBool::new(false),
         });
         ensure!(
             !control.canceled(),
@@ -873,7 +891,12 @@ impl Entry {
             if pending.control.canceled() || pending.granted.send(Ok(())).is_err() {
                 pending.control.forced.store(true, Ordering::Release);
             } else {
-                self.run_lease(native.as_ref(), &mut clock, origin, &pending);
+                let hold = MutexHold::start(
+                    origin.elapsed(),
+                    pending.control.options.timing,
+                    self.mutex_hold,
+                );
+                self.run_lease(native.as_ref(), &mut clock, origin, hold, &pending);
             }
             if let Ok(mut state) = self.state.lock() {
                 state.active = None;
@@ -882,11 +905,15 @@ impl Entry {
         }
     }
 
+    /// Hold expiry is observed only between requests: a dispatched native call
+    /// still delivers its terminal result to this holder. The clock is never
+    /// touched by a cancellation or hold-timeout release.
     fn run_lease(
         &self,
         native: &dyn FeatureTransport,
         clock: &mut SourceClock,
         origin: Instant,
+        hold: MutexHold,
         pending: &PendingLease,
     ) {
         loop {
@@ -899,11 +926,20 @@ impl Entry {
                 }
                 return;
             }
-            let request = match pending.inbox.recv_timeout(CONTROL_POLL) {
+            let now = origin.elapsed();
+            if hold.expired(now) {
+                release_expired_hold(&hold, pending, None);
+                return;
+            }
+            let request = match pending.inbox.recv_timeout(hold.poll_wait(now)) {
                 Ok(request) => request,
                 Err(RecvTimeoutError::Timeout) => continue,
                 Err(RecvTimeoutError::Disconnected) => return,
             };
+            if hold.expired(origin.elapsed()) {
+                release_expired_hold(&hold, pending, Some(request));
+                return;
+            }
             if request.signature != pending.control.signature
                 || request.signature.epoch != self.epoch
                 || request.signature.owner.is_nil()
@@ -1073,6 +1109,7 @@ struct LeaseControl {
     canceled: Arc<AtomicBool>,
     options: ExchangeOptions,
     forced: AtomicBool,
+    hold_released: AtomicBool,
 }
 
 impl LeaseControl {
@@ -1080,6 +1117,85 @@ impl LeaseControl {
         self.forced.load(Ordering::Acquire)
             || self.canceled.load(Ordering::Acquire)
             || self.options.is_canceled()
+    }
+
+    /// Set only by the actor between requests, after every earlier request of
+    /// this cycle has received its terminal reply.
+    fn hold_released(&self) -> bool {
+        self.hold_released.load(Ordering::Acquire)
+    }
+}
+
+/// RzMutx starts its hold timer when `acquire` resolves. Only the
+/// `hid.sendFeatureReportMutex` cycle, which stays held across renderer IPC
+/// calls until `hid.releaseMutex`, maps here. Batch releases in the same
+/// handler that acquired it, and Plain operations take no host mutex.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct MutexHold {
+    deadline: Option<Duration>,
+    limit: Duration,
+}
+
+impl MutexHold {
+    fn start(granted_at: Duration, timing: ExchangeTiming, limit: Duration) -> Self {
+        let deadline = match timing {
+            ExchangeTiming::MutexOut { .. } => Some(granted_at.saturating_add(limit)),
+            ExchangeTiming::Plain | ExchangeTiming::Batch => None,
+        };
+        Self { deadline, limit }
+    }
+
+    fn expired(&self, now: Duration) -> bool {
+        self.deadline.is_some_and(|deadline| now >= deadline)
+    }
+
+    fn poll_wait(&self, now: Duration) -> Duration {
+        match self.deadline {
+            Some(deadline) => CONTROL_POLL.min(deadline.saturating_sub(now)),
+            None => CONTROL_POLL,
+        }
+    }
+}
+
+/// The hold timer released this cycle. As with RzMutx `_releaseToken`, the
+/// previous holder's later packets and release cannot reach its successor.
+#[derive(Debug)]
+struct HoldTimeoutRelease {
+    limit: Duration,
+}
+
+impl std::fmt::Display for HoldTimeoutRelease {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            formatter,
+            "HID mutex hold timed out after {} ms and was released",
+            self.limit.as_millis()
+        )
+    }
+}
+
+impl std::error::Error for HoldTimeoutRelease {}
+
+fn hold_timeout_failure(limit: Duration) -> anyhow::Error {
+    native_io_failure(
+        NativeIoOutcome::NotCalled,
+        anyhow::Error::new(HoldTimeoutRelease { limit }),
+    )
+}
+
+/// The hold timer clears this holder and releases its token without touching
+/// `lastCommandSendTimeMs`. Requests already queued by the previous holder,
+/// including its release, are answered without native I/O; returning lets the
+/// actor admit the next FIFO lease.
+fn release_expired_hold(
+    hold: &MutexHold,
+    pending: &PendingLease,
+    received: Option<ActorRequest>,
+) {
+    pending.control.hold_released.store(true, Ordering::Release);
+    pending.control.forced.store(true, Ordering::Release);
+    for request in received.into_iter().chain(pending.inbox.try_iter()) {
+        request.reply(Err(hold_timeout_failure(hold.limit)));
     }
 }
 
@@ -1284,14 +1400,27 @@ struct ActiveLease {
 }
 
 impl ActiveLease {
+    /// The actor stores `hold_released` before `forced` and before dropping
+    /// this cycle's inbox, so a stopped lease observes its hold-timeout cause.
+    fn released_by_hold(&self) -> Option<anyhow::Error> {
+        self.control.hold_released().then(|| {
+            anyhow::Error::new(HoldTimeoutRelease {
+                limit: self.entry.mutex_hold,
+            })
+        })
+    }
+
     fn call(&self, operation: ActorOperation) -> anyhow::Result<PacketReply> {
         let finishing = matches!(&operation, ActorOperation::Finish);
         let (response, receipt) = mpsc::sync_channel(1);
         let admitted = (|| {
-            ensure!(
-                !self.control.canceled() && self.entry.admitting()?,
-                "HID lease is canceled or stale"
-            );
+            let stopped = |message: &'static str| {
+                self.released_by_hold()
+                    .unwrap_or_else(|| anyhow::Error::msg(message))
+            };
+            if self.control.canceled() || !self.entry.admitting()? {
+                return Err(stopped("HID lease is canceled or stale"));
+            }
             let mut request = ActorRequest {
                 signature: self.control.signature,
                 operation,
@@ -1302,14 +1431,15 @@ impl ActiveLease {
                     Ok(()) => break,
                     Err(TrySendError::Full(pending)) => {
                         request = pending;
-                        ensure!(
-                            !self.control.canceled() && self.entry.admitting()?,
-                            "HID packet admission was canceled"
-                        );
+                        if self.control.canceled() || !self.entry.admitting()? {
+                            return Err(stopped("HID packet admission was canceled"));
+                        }
                         thread::sleep(CONTROL_POLL);
                     }
                     Err(TrySendError::Disconnected(_)) => {
-                        anyhow::bail!("Native collection actor closed before packet admission")
+                        return Err(stopped(
+                            "Native collection actor closed before packet admission",
+                        ));
                     }
                 }
             }
@@ -1324,10 +1454,16 @@ impl ActiveLease {
             }
         })?;
         // Once dispatched, cancellation cannot discard the native operation.
-        // Wait for its terminal result; its buffers belong to the actor.
+        // Wait for its terminal result; its buffers belong to the actor. A
+        // request dropped without a reply after a hold-timeout release was
+        // discarded by the actor before native dispatch.
         let result = receipt
             .recv()
-            .context("Native collection actor closed before terminal packet result")
+            .map_err(|error| match self.released_by_hold() {
+                Some(hold) => native_io_failure(NativeIoOutcome::NotCalled, hold),
+                None => anyhow::Error::new(error)
+                    .context("Native collection actor closed before terminal packet result"),
+            })
             .map_err(|error| {
                 if finishing {
                     reject_exchange_release(error)

@@ -6,9 +6,9 @@ use razer_pages::nav::Tab;
 use gpui_kit::component::{Root, Theme, h_flex};
 use gpui_kit::test::TestWindowExt as _;
 use gpui_kit::{
-    AppContext, Context, InteractiveElement, IntoElement, MouseButton, ParentElement, Render,
-    ScrollDelta, ScrollHandle, SharedString, StatefulInteractiveElement, Styled, Window, div,
-    point, px, size,
+    AppContext, Context, InteractiveElement, IntoElement, MouseButton, ParentElement, Pixels,
+    Render, ScrollDelta, ScrollHandle, SharedString, StatefulInteractiveElement, Styled, Window,
+    div, point, px, size,
 };
 use std::{cell::Cell, rc::Rc};
 
@@ -326,6 +326,14 @@ fn host_controls_keep_intrinsic_svg_sizes_and_full_close_hit_target(cx: &mut Tes
         cx.simulate_window_resize(handle.into(), size(px(viewport_width), px(200.)));
         cx.update_window(handle.into(), |_, window, cx| {
             window.render_frame(cx);
+            // GPUI lays out on the device pixel grid: each authored length is
+            // rounded to the nearest device pixel (midpoints toward zero) and
+            // laid-out edges are snapped. The 12.7px close SVG therefore spans
+            // 25 device pixels at 2x, and an odd free span leaves its extra
+            // device pixel on one side. Both checks are exact on that grid.
+            let scale = window.scale_factor();
+            let device = |length: Pixels| (f32::from(length) * scale).round() as i32;
+            let grid = |css: f32| (css * scale - 0.5).ceil() as i32;
             for (id, width, height) in [
                 ("minimize", 48., 32.),
                 ("maximize", 48., 32.),
@@ -335,10 +343,28 @@ fn host_controls_keep_intrinsic_svg_sizes_and_full_close_hit_target(cx: &mut Tes
                 let control = window.find(id).bounds();
                 let glyph = window.within(id).find("window-control-image").bounds();
                 assert_eq!(control.size, size(px(48.), px(42.)));
-                assert!((glyph.size.width - px(width)).abs() < px(0.1));
-                assert!((glyph.size.height - px(height)).abs() < px(0.1));
-                assert!((glyph.center().x - control.center().x).abs() < px(0.1));
-                assert!((glyph.center().y - control.center().y).abs() < px(0.1));
+                assert_eq!(
+                    (device(glyph.size.width), device(glyph.size.height)),
+                    (grid(width), grid(height)),
+                    "{id} glyph keeps its intrinsic CSS size"
+                );
+                for (lead, trail) in [
+                    (
+                        glyph.left() - control.left(),
+                        control.right() - glyph.right(),
+                    ),
+                    (
+                        glyph.top() - control.top(),
+                        control.bottom() - glyph.bottom(),
+                    ),
+                ] {
+                    let (lead, trail) = (device(lead), device(trail));
+                    assert_eq!(
+                        (lead - trail).abs(),
+                        (lead + trail) % 2,
+                        "{id} glyph is centered in its control"
+                    );
+                }
             }
             assert_eq!(window.find("close").bounds().right(), px(viewport_width));
             let before = closes.get();

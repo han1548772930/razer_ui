@@ -15,8 +15,9 @@ pub(super) enum NativeReturn {
 
 /// Releases completed by the collection actor. The queue validates the complete
 /// holder identity and URL before authorizing ExplicitMatched. A rejected
-/// explicit release, cancellation or forced lease drop never reaches the actor,
-/// so it leaves the clock unchanged as the source release branches require.
+/// explicit release, cancellation, owner disconnect, forced lease drop or
+/// hold-timeout release has no reason here and leaves the clock unchanged, as
+/// the source release, tabDestroyed and RzMutx hold-timer branches require.
 /// These events never acquire or release the queue's lease.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum ReleaseReason {

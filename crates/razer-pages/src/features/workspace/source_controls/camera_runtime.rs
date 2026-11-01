@@ -63,24 +63,45 @@ impl State {
         scope: &CameraScope,
         canceled: &Arc<AtomicBool>,
         result: &Result<CameraSubmissionProgress, String>,
-    ) -> bool {
+    ) -> PropertiesSettlement {
         if !self
             .properties_canceled
             .as_ref()
             .is_some_and(|current| Arc::ptr_eq(current, canceled))
         {
-            return false;
+            return PropertiesSettlement::Superseded;
         }
         self.properties_canceled = None;
-        self.queue.scope() == Some(scope)
-            && !canceled.load(Ordering::Acquire)
-            && result.as_ref().is_ok_and(|progress| {
-                progress
-                    .outcomes
-                    .iter()
-                    .any(|outcome| matches!(outcome, CameraCommandOutcome::PropertiesClosed))
-            })
+        if self.queue.scope() != Some(scope) || canceled.load(Ordering::Acquire) {
+            return PropertiesSettlement::Superseded;
+        }
+        let closed = result.as_ref().is_ok_and(|progress| {
+            progress
+                .outcomes
+                .iter()
+                .any(|outcome| matches!(outcome, CameraCommandOutcome::PropertiesClosed))
+        });
+        if closed {
+            PropertiesSettlement::Closed
+        } else {
+            PropertiesSettlement::EndedWithoutClose
+        }
     }
+}
+
+/// How one retained property-frame request settled for its current owner.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum PropertiesSettlement {
+    /// The service returned the frame's real close outcome. Only this result
+    /// feeds the source close consumer and its getter round.
+    Closed,
+    /// The request ended through an interface, host-window, frame, live-scope
+    /// or transport failure without a close outcome. The worker has returned,
+    /// so the request no longer holds a window open; it is not a close event
+    /// and requests no getter.
+    EndedWithoutClose,
+    /// Another request, a scope replacement or a cancel owns the page now.
+    Superseded,
 }
 
 impl SourceControls {
@@ -162,18 +183,28 @@ impl SourceControls {
                         }
                     }
                     let _ = view.update_in(cx, |this, window, cx| {
-                        if this.camera_runtime.finish_properties(
+                        let settlement = this.camera_runtime.finish_properties(
                             &completed_scope,
                             &canceled,
                             &result,
-                        ) {
+                        );
+                        if settlement != PropertiesSettlement::Superseded {
+                            // The source reducer clears its open flag only from
+                            // the close event; its native early returns send no
+                            // event and no failure value. This service returns
+                            // the failure itself, so an ended request stops
+                            // blocking 3596 edits without counting as a close.
                             if let Some(state) = &mut this.camera_preview {
                                 state.observation.windows_properties_open = false;
                             }
+                        }
+                        if settlement == PropertiesSettlement::Closed {
                             // Current MW He handles the native close event with
                             // Je -> YQJ. Real getters feed PU's difference choice;
                             // closing a property frame is never a write/save ACK.
                             this.request_camera_cache(true, Duration::ZERO);
+                        }
+                        if settlement != PropertiesSettlement::Superseded {
                             this.sync(window, cx);
                         }
                         this.camera_runtime.properties_delivery = None;
@@ -494,7 +525,7 @@ impl SourceControls {
 
 #[cfg(test)]
 mod tests {
-    use super::State;
+    use super::{PropertiesSettlement as Settled, State};
     use razer_device::camera_submission::{
         CameraCommandOutcome, CameraScope, CameraSubmissionProgress,
     };
@@ -532,10 +563,16 @@ mod tests {
         let (mut state, signal) = state();
         state.invalidate();
         assert!(!signal.load(Ordering::Acquire));
-        assert!(state.finish_properties(&scope(), &signal, &closed()));
+        assert_eq!(
+            state.finish_properties(&scope(), &signal, &closed()),
+            Settled::Closed
+        );
         assert!(state.properties_canceled.is_none());
         // A duplicate callback cannot request another getter round.
-        assert!(!state.finish_properties(&scope(), &signal, &closed()));
+        assert_eq!(
+            state.finish_properties(&scope(), &signal, &closed()),
+            Settled::Superseded
+        );
     }
 
     #[test]
@@ -544,21 +581,40 @@ mod tests {
         let mut result = closed().unwrap();
         result.completed = false;
         result.error = Some("simulated service cleanup failure after frame close".into());
-        assert!(state.finish_properties(&scope(), &signal, &Ok(result)));
+        assert_eq!(
+            state.finish_properties(&scope(), &signal, &Ok(result)),
+            Settled::Closed
+        );
     }
 
     #[test]
-    fn properties_open_failure_and_missing_close_do_not_fabricate_refresh() {
+    fn properties_open_failure_and_missing_close_end_the_request_without_a_close() {
         for result in [
             Err("simulated OleCreatePropertyFrame failure".into()),
+            Err("camera property worker disconnected".into()),
+            Ok(CameraSubmissionProgress {
+                completed: false,
+                error: Some("simulated ISpecifyPropertyPages failure".into()),
+                ..Default::default()
+            }),
             Ok(CameraSubmissionProgress {
                 completed: true,
                 ..Default::default()
             }),
         ] {
             let (mut state, signal) = state();
-            assert!(!state.finish_properties(&scope(), &signal, &result));
+            // Ended releases the open request; it is neither a close event
+            // nor a getter request.
+            assert_eq!(
+                state.finish_properties(&scope(), &signal, &result),
+                Settled::EndedWithoutClose
+            );
             assert!(state.properties_canceled.is_none());
+            // A new request may start after the failed one has ended.
+            assert_eq!(
+                state.finish_properties(&scope(), &signal, &result),
+                Settled::Superseded
+            );
         }
     }
 
@@ -566,24 +622,41 @@ mod tests {
     fn canceled_or_old_device_properties_close_cannot_publish_to_current_device() {
         let (mut state, signal) = state();
         signal.store(true, Ordering::Release);
-        assert!(!state.finish_properties(&scope(), &signal, &closed()));
+        assert_eq!(
+            state.finish_properties(&scope(), &signal, &closed()),
+            Settled::Superseded
+        );
         let (mut state, signal) = self::state();
         let mut other = scope();
         other.container_id = "{fedcba98-7654-3210-fedc-ba9876543210}".into();
         state.queue.set_scope(Some(other));
-        assert!(!state.finish_properties(&scope(), &signal, &closed()));
+        assert_eq!(
+            state.finish_properties(&scope(), &signal, &closed()),
+            Settled::Superseded
+        );
         assert!(state.properties_canceled.is_none());
+        let (mut state, signal) = self::state();
+        signal.store(true, Ordering::Release);
+        assert_eq!(
+            state.finish_properties(&scope(), &signal, &Err("canceled".into())),
+            Settled::Superseded
+        );
     }
 
     #[test]
     fn stale_properties_completion_keeps_new_operation_owner_and_drop_cancels_it() {
         let (mut state, signal) = state();
         let old = Arc::new(AtomicBool::new(false));
-        assert!(!state.finish_properties(&scope(), &old, &closed()));
-        assert!(Arc::ptr_eq(
-            state.properties_canceled.as_ref().unwrap(),
-            &signal
-        ));
+        for result in [closed(), Err("old request failed".into())] {
+            assert_eq!(
+                state.finish_properties(&scope(), &old, &result),
+                Settled::Superseded
+            );
+            assert!(Arc::ptr_eq(
+                state.properties_canceled.as_ref().unwrap(),
+                &signal
+            ));
+        }
         drop(state);
         assert!(signal.load(Ordering::Acquire));
     }

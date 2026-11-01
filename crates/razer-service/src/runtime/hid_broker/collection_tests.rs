@@ -423,6 +423,31 @@ fn pool() -> Pool {
     pool
 }
 
+/// The production limit is 30 s; tests inject a short one instead of sleeping.
+fn pool_with_mutex_hold(mutex_hold: Duration) -> Pool {
+    let pool = Pool::with_mutex_hold(raw_factory, identity, mutex_hold);
+    pool.install_topology_gate(TopologyGate::Scripted(Arc::new(AtomicU64::new(1))))
+        .unwrap();
+    pool.resume_after_reconcile().unwrap();
+    pool
+}
+
+fn wait_active_released(pool: &Pool, node: &HidNode) {
+    let entry = pool.entry(node).unwrap();
+    let state = entry.state.lock().unwrap();
+    let (state, _) = entry
+        .changed
+        .wait_timeout_while(state, Duration::from_secs(3), |state| {
+            state.active.is_some()
+        })
+        .unwrap();
+    assert!(state.active.is_none(), "actor never released the active lease");
+}
+
+fn hold_timed_out(error: &anyhow::Error) -> bool {
+    error.downcast_ref::<HoldTimeoutRelease>().is_some()
+}
+
 fn topology_revision(pool: &Pool) -> Arc<AtomicU64> {
     let state = pool.inner.state.lock().unwrap();
     match state.topology_gate.as_ref().unwrap() {
@@ -455,7 +480,7 @@ fn wait_queued(pool: &Pool, node: &HidNode) {
     );
 }
 
-fn wait_command_queued(pool: &Pool) {
+fn command_gate(pool: &Pool) -> Arc<CommandGate> {
     let gates: Vec<_> = pool
         .inner
         .commands
@@ -470,7 +495,11 @@ fn wait_command_queued(pool: &Pool) {
         1,
         "one source command must already hold admission"
     );
-    let gate = &gates[0];
+    gates[0].clone()
+}
+
+fn wait_command_queued(pool: &Pool) {
+    let gate = command_gate(pool);
     let state = gate.state.lock().unwrap();
     let (state, _) = gate
         .changed
@@ -594,6 +623,7 @@ fn an_empty_batch_lease_finish_does_not_dispatch_or_refresh_the_clock() {
         canceled: Arc::new(AtomicBool::new(false)),
         options: ExchangeOptions::batch(),
         forced: AtomicBool::new(false),
+        hold_released: AtomicBool::new(false),
     });
     let (sender, inbox) = mpsc::sync_channel(PACKET_CAPACITY);
     let (response, receipt) = mpsc::sync_channel(1);
@@ -611,7 +641,12 @@ fn an_empty_batch_lease_finish_does_not_dispatch_or_refresh_the_clock() {
         granted,
     };
     let mut clock = SourceClock::default();
-    entry.run_lease(native.as_ref(), &mut clock, Instant::now(), &pending);
+    let hold = MutexHold::start(
+        Duration::ZERO,
+        pending.control.options.timing,
+        Duration::ZERO,
+    );
+    entry.run_lease(native.as_ref(), &mut clock, Instant::now(), hold, &pending);
     expect_unit(receipt.recv().unwrap().unwrap()).unwrap();
     assert_eq!(clock.out_wait(Duration::ZERO, Duration::MAX), None);
     assert!(fixture.observed().is_empty());
@@ -1617,6 +1652,137 @@ fn same_source_commands_keep_the_outer_scope_across_a_hid_retry() {
     assert_eq!(second.observed(), [Observed::Send(vec![0x20])]);
     stop(&pool);
 }
+
+// RzMutx `hidDeviceMutex-<key>` uses holdTimeoutMs=mutexProtocolHoldTimeout
+// (3e4). Its timer only exists for holdTimeoutMs>0 and fires at that limit.
+#[test]
+fn only_the_mutex_out_cycle_carries_the_thirty_second_source_hold() {
+    let ms = Duration::from_millis;
+    assert_eq!(PROTOCOL_MUTEX_HOLD, ms(30_000));
+    assert_eq!(paused_pool().inner.mutex_hold, PROTOCOL_MUTEX_HOLD);
+    let hold = MutexHold::start(
+        ms(1_000),
+        ExchangeTiming::MutexOut { interval: ms(5) },
+        PROTOCOL_MUTEX_HOLD,
+    );
+    assert!(!hold.expired(ms(30_999)));
+    assert!(hold.expired(ms(31_000)));
+    assert!(hold.expired(ms(90_000)));
+    assert_eq!(hold.poll_wait(ms(1_000)), CONTROL_POLL);
+    assert_eq!(hold.poll_wait(ms(30_995)), ms(5));
+    assert_eq!(hold.poll_wait(ms(31_000)), Duration::ZERO);
+    for timing in [ExchangeTiming::Plain, ExchangeTiming::Batch] {
+        let hold = MutexHold::start(ms(1_000), timing, PROTOCOL_MUTEX_HOLD);
+        assert!(!hold.expired(Duration::MAX));
+        assert_eq!(hold.poll_wait(Duration::MAX), CONTROL_POLL);
+    }
+}
+
+fn queued_cycle(
+    entry: &Entry,
+    canceled: bool,
+    operations: Vec<ActorOperation>,
+) -> (
+    Arc<LeaseControl>,
+    PendingLease,
+    Vec<Receiver<anyhow::Result<PacketReply>>>,
+) {
+    let control = Arc::new(LeaseControl {
+        signature: Signature {
+            owner: Uuid::new_v4(),
+            request: Uuid::new_v4(),
+            epoch: entry.epoch,
+        },
+        canceled: Arc::new(AtomicBool::new(canceled)),
+        options: ExchangeOptions::mutex_out(Duration::ZERO),
+        forced: AtomicBool::new(false),
+        hold_released: AtomicBool::new(false),
+    });
+    let (sender, inbox) = mpsc::sync_channel(PACKET_CAPACITY);
+    let receipts = operations
+        .into_iter()
+        .map(|operation| {
+            let (response, receipt) = mpsc::sync_channel(1);
+            sender
+                .send(ActorRequest {
+                    signature: control.signature,
+                    operation,
+                    response,
+                })
+                .unwrap();
+            receipt
+        })
+        .collect();
+    let (granted, _admission) = mpsc::sync_channel(1);
+    let pending = PendingLease {
+        control: control.clone(),
+        inbox,
+        granted,
+    };
+    (control, pending, receipts)
+}
+
+// The RzMutx hold timer and tabDestroyed clear `mutexRelease`/`mutexUrl`
+// without assigning `lastCommandSendTimeMs`; only a matched hid.releaseMutex
+// does. Requests the expired holder already queued never reach native I/O.
+#[test]
+fn hold_expiry_and_owner_cancellation_answer_queued_requests_without_io_or_clock_release() {
+    let pool = pool();
+    let fixture = Fixture::new(190);
+    let entry = pool.entry(&fixture.0.node).unwrap();
+    entry
+        .wait_ready_validated(&AtomicBool::new(false), &no_validation)
+        .unwrap();
+    let mut backend = raw_factory().unwrap();
+    let native = backend.open(&fixture.0.node).unwrap();
+    let send = || {
+        ActorOperation::Packet(Packet::Send {
+            bytes: vec![0x10, 1, 2, 3],
+            collection_max: false,
+        })
+    };
+    // (owner canceled, hold limit, expect hold-timeout release)
+    for (canceled, limit, expired) in [
+        (false, Duration::MAX, false),
+        (false, Duration::ZERO, true),
+        (true, Duration::MAX, false),
+    ] {
+        let observed_before = fixture.observed().len();
+        let (control, pending, receipts) =
+            queued_cycle(&entry, canceled, vec![send(), ActorOperation::Finish]);
+        let hold = MutexHold::start(Duration::ZERO, control.options.timing, limit);
+        assert_eq!(hold.expired(Duration::ZERO), expired);
+        let mut clock = SourceClock::default();
+        entry.run_lease(native.as_ref(), &mut clock, Instant::now(), hold, &pending);
+        let replies: Vec<_> = receipts
+            .into_iter()
+            .map(|receipt| receipt.recv_timeout(Duration::from_secs(3)).unwrap())
+            .collect();
+        let observed = fixture.observed()[observed_before..].to_vec();
+        if canceled || expired {
+            for reply in replies {
+                let error = reply.err().expect("released cycle must not publish success");
+                assert_eq!(native_io_outcome(&error), Some(NativeIoOutcome::NotCalled));
+                assert_eq!(hold_timed_out(&error), expired);
+                assert!(!native_io_attempted(&Err(error)));
+            }
+            assert!(observed.is_empty());
+            assert_eq!(clock.out_wait(Duration::ZERO, Duration::MAX), None);
+            assert!(control.forced.load(Ordering::Acquire) || canceled);
+        } else {
+            let mut replies = replies.into_iter();
+            assert_eq!(expect_count(replies.next().unwrap().unwrap()).unwrap(), 4);
+            expect_unit(replies.next().unwrap().unwrap()).unwrap();
+            assert_eq!(observed, [Observed::Send(vec![0x10, 1, 2, 3])]);
+            assert!(clock.out_wait(Duration::ZERO, Duration::MAX).is_some());
+        }
+        assert_eq!(control.hold_released(), expired);
+    }
+    drop(native);
+    stop(&pool);
+}
+
+HOLD_TIMEOUT_TESTS_CONTINUE
 
 #[test]
 fn queued_cancellation_never_issues_native_io() {
