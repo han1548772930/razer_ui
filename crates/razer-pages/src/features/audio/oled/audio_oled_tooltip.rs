@@ -1,6 +1,6 @@
 //! 1383 `58837:p/h`: portal placement, including the source horizontal 8px guard.
 use super::*;
-use gpui_kit::base::{ElementExt as _, Tooltip};
+use gpui_kit::base::Tooltip;
 use std::{cell::Cell, rc::Rc, time::Duration};
 
 #[derive(Default)]

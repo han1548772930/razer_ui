@@ -19,7 +19,7 @@ pub(super) fn render(window: &Window) -> AnyElement {
                     .bg(rgba(0x00000080))
                     .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
                     .on_mouse_down(MouseButton::Right, |_, _, cx| cx.stop_propagation())
-                    .on_scroll_wheel(|_, _, cx| cx.stop_propagation())
+                    .on_scroll(|_, _, cx| cx.stop_propagation())
                     .child(
                         anchored()
                             .anchor(Anchor::BottomCenter)

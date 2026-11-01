@@ -87,39 +87,25 @@ fn a_matching_explicit_release_updates_even_without_a_native_return() {
 }
 
 #[test]
-fn a_rejected_explicit_release_never_updates_the_clock() {
+fn a_batch_finally_release_does_not_change_the_last_command() {
     let mut clock = SourceClock::default();
-    clock.release(ms(100), ReleaseReason::ExplicitRejected);
+    clock.release(ms(100), ReleaseReason::BatchFinally);
     assert_eq!(clock.out_wait(ms(101), ms(5)), None);
     clock.native_return(ms(100), NativeReturn::Send);
-    clock.release(ms(104), ReleaseReason::ExplicitRejected);
+    clock.release(ms(104), ReleaseReason::BatchFinally);
     assert_eq!(clock.out_wait(ms(105), ms(5)), None);
 }
 
-#[test]
-fn forced_and_automatic_releases_do_not_change_the_last_command() {
-    for reason in [
-        ReleaseReason::TabDestroyed,
-        ReleaseReason::HoldTimeout,
-        ReleaseReason::Canceled,
-        ReleaseReason::BatchFinally,
-    ] {
-        let mut clock = SourceClock::default();
-        clock.release(ms(100), reason);
-        assert_eq!(clock.out_wait(ms(101), ms(5)), None);
-        clock.native_return(ms(100), NativeReturn::Send);
-        clock.release(ms(104), reason);
-        assert_eq!(clock.out_wait(ms(105), ms(5)), None);
-    }
-}
+// The transport marks a native call that threw as `NativeIoOutcome::Rejected`.
+const THREW: Option<NativeIoOutcome> = Some(NativeIoOutcome::Rejected);
 
 #[test]
 fn a_native_throw_leaves_the_clock_unobserved_or_at_its_previous_return() {
     let mut clock = SourceClock::default();
-    clock.native_return(ms(100), NativeReturn::Threw);
+    clock.native_outcome(ms(100), NativeReturn::Send, THREW);
     assert_eq!(clock.out_wait(ms(101), ms(5)), None);
     clock.native_return(ms(100), NativeReturn::Send);
-    clock.native_return(ms(104), NativeReturn::Threw);
+    clock.native_outcome(ms(104), NativeReturn::Get, THREW);
     assert_eq!(clock.out_wait(ms(105), ms(5)), None);
 }
 
@@ -127,7 +113,7 @@ fn a_native_throw_leaves_the_clock_unobserved_or_at_its_previous_return() {
 fn a_native_throw_can_still_be_followed_by_a_matching_explicit_release() {
     let mut clock = SourceClock::default();
     clock.native_return(ms(100), NativeReturn::Send);
-    clock.native_return(ms(104), NativeReturn::Threw);
+    clock.native_outcome(ms(104), NativeReturn::Send, THREW);
     clock.release(ms(104), ReleaseReason::ExplicitMatched);
     assert_eq!(clock.out_wait(ms(105), ms(5)), Some(ms(2)));
     assert_eq!(clock.out_wait(ms(109), ms(5)), None);

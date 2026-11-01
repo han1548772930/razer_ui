@@ -118,7 +118,7 @@ impl Render for ChromeFixture {
                         let id = SharedString::from(format!("fixture-tab-{i}"));
                         super::tab_frame(id.clone(), i == 0)
                             .w(px(140.))
-                            .on_scroll_wheel(move |event, window, _| {
+                            .on_scroll(move |event, window, _| {
                                 super::scroll_tabs(&scroll, event, window);
                             })
                             .child(

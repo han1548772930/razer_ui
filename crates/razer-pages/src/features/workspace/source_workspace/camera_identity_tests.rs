@@ -1,5 +1,6 @@
 use super::*;
 use gpui_kit::{AppContext, TestAppContext, component::Root, px, size};
+use std::prelude::v1::test;
 use std::{cell::RefCell, rc::Rc};
 
 fn camera(product_id: u32) -> Device {

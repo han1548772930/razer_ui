@@ -639,7 +639,7 @@ impl SourceHelpOwner {
             .occlude()
             .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
             .on_mouse_down(MouseButton::Right, |_, _, cx| cx.stop_propagation())
-            .on_scroll_wheel(|_, _, cx| cx.stop_propagation())
+            .on_scroll(|_, _, cx| cx.stop_propagation())
             .child(
                 div()
                     .relative()
@@ -829,6 +829,7 @@ impl Element for CenteredAt {
 #[cfg(test)]
 mod power_tutorial_tests {
     use super::*;
+    use std::prelude::v1::test;
 
     fn request(product_id: u32, command: HelpOwnerCommand) -> HelpOwnerRequested {
         HelpOwnerRequested {

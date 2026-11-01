@@ -188,7 +188,7 @@ impl AudioProductWorkspace {
             .occlude()
             .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
             .on_mouse_down(MouseButton::Right, |_, _, cx| cx.stop_propagation())
-            .on_scroll_wheel(|_, _, cx| cx.stop_propagation())
+            .on_scroll(|_, _, cx| cx.stop_propagation())
             .child(
                 image_cache(razer_assets::resource_image_cache())
                     .w(surface::css(320.))

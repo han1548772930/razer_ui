@@ -7,6 +7,7 @@ use razer_device::{
 };
 use razer_model::model::DeviceConnectionObservation;
 use razer_platform::camera_apps::{CamoDriver, CamoStudio};
+use std::prelude::v1::test;
 use std::{cell::RefCell, collections::VecDeque, rc::Rc};
 
 fn device(product_id: u32) -> Device {
@@ -295,6 +296,8 @@ fn help_camo_reconnection_variant_change_unmount_and_release_cancel_old_requests
             .unwrap()
     });
     drop(help);
+    // GPUI releases dropped entities when an update flushes its effects.
+    cx.update(|_| ());
     cx.run_until_parked();
     assert!(request.is_cancelled());
 }

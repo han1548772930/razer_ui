@@ -346,7 +346,7 @@ impl RenderOnce for DpiNumberInput {
                     cx.stop_propagation();
                 }
             })
-            .on_scroll_wheel(move |event, window, cx| {
+            .on_scroll(move |event, window, cx| {
                 if disabled || !focus.is_focused(window) {
                     return;
                 }

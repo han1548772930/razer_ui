@@ -552,7 +552,7 @@ impl AppShell {
                     .items_end()
                     .overflow_x_scroll()
                     .track_scroll(&self.host_tabs.scroll)
-                    .on_scroll_wheel(cx.listener(|_, _, _, cx| cx.notify()))
+                    .on_scroll(cx.listener(|_, _, _, cx| cx.notify()))
                     .children(tabs),
             )
             .when(overflow, |bar| {
@@ -633,7 +633,7 @@ impl AppShell {
                     // Win32 no-drag requires an occluding hitbox, which also blocks
                     // its ancestor's wheel listener. Forward to the same native
                     // scroll handle, retaining GPUI's axis choice and layout clamp.
-                    frame.on_scroll_wheel(move |event, window, _| {
+                    frame.on_scroll(move |event, window, _| {
                         scroll_tabs(&scroll, event, window);
                     })
                 },
@@ -929,7 +929,7 @@ fn tab_gradient(active: bool) -> Background {
     .into()
 }
 
-fn scroll_tabs(scroll: &ScrollHandle, event: &ScrollWheelEvent, window: &mut Window) {
+fn scroll_tabs(scroll: &ScrollHandle, event: &ScrollEvent, window: &mut Window) {
     let delta = event.delta.pixel_delta(window.line_height());
     let x = if delta.x.is_zero() { delta.y } else { delta.x };
     scroll.set_offset(scroll.offset() + point(x, px(0.)));

@@ -110,7 +110,7 @@ fn guide_closes_through_keyboard_and_pointer_with_window_owned_focus(cx: &mut Te
     });
     let handle = cx.open_window(size(px(900.), px(800.)), |window, cx| {
         let view = cx.new(|cx| Background(cx.focus_handle()));
-        view.read(cx).0.focus(window, cx);
+        view.read(cx).0.clone().focus(window, cx);
         Root::new(view, window, cx)
     });
     cx.update_window(handle.into(), |_, window, cx| {

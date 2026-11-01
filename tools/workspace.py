@@ -13817,6 +13817,7 @@ def rust_validation_commands():
         ("mouse-profile-import", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "mouse_import"]),
         ("local-profile-codec", ["cargo", "test", "--locked", "--offline", "-p", "razer-model", "--lib", "profile_transfer"]),
         ("help-reset-profile-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "help_owner::tests"]),
+        ("help-power-tutorial-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "power_tutorial_tests"]),
         ("help-reset-defaults", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "blackshark_reset::tests"]),
         ("help-reset-protocol", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "help_factory_reset1398"]),
         ("help-reset-service", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "help_factory_reset1398"]),

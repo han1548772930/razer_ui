@@ -121,7 +121,7 @@ impl MouseProductWorkspace {
             .flex_1()
             .min_w_0()
             .min_h_0()
-            .on_scroll_wheel(cx.listener(|_, _, _, cx| cx.notify()))
+            .on_scroll(cx.listener(|_, _, _, cx| cx.notify()))
             .scrollable_both()
             .track_scroll(&state.body_scroll)
             .child(super::super::product_surface::body_inset(

@@ -1,6 +1,7 @@
 use super::*;
 use razer_pages::features::HelpRuntimeVersionStatus;
 use serde_json::json;
+use std::prelude::v1::test;
 
 static WORKER_TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 

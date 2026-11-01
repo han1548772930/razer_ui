@@ -2250,27 +2250,22 @@ impl MouseProductWorkspace {
                                         }
                                     },
                                 ))
-                                .on_scroll_wheel(cx.listener(
-                                    |this, event: &ScrollWheelEvent, window, cx| {
-                                        let focused = this
-                                            .mapping_190_state
-                                            .turbo_number
-                                            .as_ref()
-                                            .is_some_and(|input| {
-                                                input.focus_handle(cx).is_focused(window)
-                                            });
-                                        if !focused {
-                                            return;
-                                        }
-                                        cx.stop_propagation();
-                                        let delta = event.delta.pixel_delta(window.line_height()).y;
-                                        if delta > px(0.) {
-                                            this.mapping_190_turbo_step(1, window, cx);
-                                        } else if delta < px(0.) {
-                                            this.mapping_190_turbo_step(-1, window, cx);
-                                        }
-                                    },
-                                ))
+                                .on_scroll(cx.listener(|this, event: &ScrollEvent, window, cx| {
+                                    let focused =
+                                        this.mapping_190_state.turbo_number.as_ref().is_some_and(
+                                            |input| input.focus_handle(cx).is_focused(window),
+                                        );
+                                    if !focused {
+                                        return;
+                                    }
+                                    cx.stop_propagation();
+                                    let delta = event.delta.pixel_delta(window.line_height()).y;
+                                    if delta > px(0.) {
+                                        this.mapping_190_turbo_step(1, window, cx);
+                                    } else if delta < px(0.) {
+                                        this.mapping_190_turbo_step(-1, window, cx);
+                                    }
+                                }))
                                 .child(razer_widgets::keyboard_navigation::focus_input(
                                     Input::new(number)
                                         .appearance(false)

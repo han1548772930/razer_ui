@@ -104,7 +104,7 @@ impl MacroPage {
         v_flex()
             .id("macro-tree")
             .max_h(window.viewport_size().height * 0.5)
-            .on_scroll_wheel(cx.listener(|this, _, _, cx| {
+            .on_scroll(cx.listener(|this, _, _, cx| {
                 if !this.tree_scrolling {
                     this.tree_scrolling = true;
                     this.tree_menu = None;

@@ -387,26 +387,24 @@ impl RenderOnce for DashboardGrid {
                         let wheel = wheel.clone();
                         // bi installs a document wheel listener for the whole press,
                         // including outside the group and before GPUI starts a drag.
-                        window.on_mouse_event(
-                            move |event: &ScrollWheelEvent, phase, window, cx| {
-                                if !phase.capture()
-                                    || !wheel
-                                        .read(cx)
-                                        .press
-                                        .as_ref()
-                                        .is_some_and(|press| press.group == group)
-                                {
-                                    return;
-                                }
-                                // GPUI scroll deltas move the content; DOM WheelEvent
-                                // deltaX/Y have the opposite sign (positive scrolls down).
-                                let pointer =
-                                    event.position - event.delta.pixel_delta(window.line_height());
-                                wheel.update(cx, |state, cx| state.move_to(pointer, window, cx));
-                                window.prevent_default();
-                                cx.stop_propagation();
-                            },
-                        );
+                        window.on_mouse_event(move |event: &ScrollEvent, phase, window, cx| {
+                            if !phase.capture()
+                                || !wheel
+                                    .read(cx)
+                                    .press
+                                    .as_ref()
+                                    .is_some_and(|press| press.group == group)
+                            {
+                                return;
+                            }
+                            // GPUI scroll deltas move the content; DOM WheelEvent
+                            // deltaX/Y have the opposite sign (positive scrolls down).
+                            let pointer =
+                                event.position - event.delta.pixel_delta(window.line_height());
+                            wheel.update(cx, |state, cx| state.move_to(pointer, window, cx));
+                            window.prevent_default();
+                            cx.stop_propagation();
+                        });
                     },
                 )
                 .absolute()

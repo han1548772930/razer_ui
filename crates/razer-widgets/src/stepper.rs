@@ -266,7 +266,7 @@ impl Stepper {
         }
     }
 
-    fn scroll(&mut self, event: &ScrollWheelEvent, window: &mut Window, cx: &mut Context<Self>) {
+    fn scroll(&mut self, event: &ScrollEvent, window: &mut Window, cx: &mut Context<Self>) {
         // Current 4230/44230 register window mousewheel only when the text
         // input is clicked. Tab focus and spinner presses do not register it.
         if self.disabled || !self.interacting {
@@ -583,15 +583,13 @@ impl Render for Stepper {
                         // clicked input keeps receiving wheel events after
                         // the pointer leaves it. Blur ends registration, and
                         // unmount removes this frame's weak listener.
-                        window.on_mouse_event(
-                            move |event: &ScrollWheelEvent, phase, window, cx| {
-                                if phase.bubble() {
-                                    let _ = wheel_owner.update(cx, |this, cx| {
-                                        this.scroll(event, window, cx);
-                                    });
-                                }
-                            },
-                        );
+                        window.on_mouse_event(move |event: &ScrollEvent, phase, window, cx| {
+                            if phase.bubble() {
+                                let _ = wheel_owner.update(cx, |this, cx| {
+                                    this.scroll(event, window, cx);
+                                });
+                            }
+                        });
                     },
                 )
                 .absolute()

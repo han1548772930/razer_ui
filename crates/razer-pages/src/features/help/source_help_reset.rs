@@ -71,7 +71,7 @@ impl SourceHelp {
             .bg(Colors::shade())
             .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
             .on_mouse_down(MouseButton::Right, |_, _, cx| cx.stop_propagation())
-            .on_scroll_wheel(|_, _, cx| cx.stop_propagation())
+            .on_scroll(|_, _, cx| cx.stop_propagation())
             .on_key_down(|_, _, cx| cx.stop_propagation())
             .when(!self.reset_overlay_acknowledged, |layer| {
                 layer.child(

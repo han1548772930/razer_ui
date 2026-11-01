@@ -4,8 +4,8 @@ use super::super::audio_seiren_eq::colors::Colors as C;
 use super::*;
 use gpui_kit::base::motion::{self, Easing, Transition};
 use gpui_kit::base::{
-    Checkbox as BaseCheckbox, Dialog, ElementExt as _, Positioner, Slider as BaseSlider,
-    SliderIndicator, SliderThumb, SliderTrack,
+    Checkbox as BaseCheckbox, Dialog, Positioner, Slider as BaseSlider, SliderIndicator,
+    SliderThumb, SliderTrack,
 };
 use gpui_kit::component::{
     IconName, Size, StyleSized,

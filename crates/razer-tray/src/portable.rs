@@ -33,7 +33,7 @@ impl DesktopTray {
         self.popup = Some(gpui_kit::open_window(options, cx, |window, cx| {
             let popup =
                 cx.new(|cx| TrayPopup::new(sender, window, cx, self.widget_devices.clone()));
-            popup.read(cx).focus.focus(window, cx);
+            popup.read(cx).focus.clone().focus(window, cx);
             popup
         })?);
         Ok(())

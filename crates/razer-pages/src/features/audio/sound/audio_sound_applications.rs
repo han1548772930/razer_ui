@@ -395,7 +395,7 @@ impl AudioProductWorkspace {
             v_flex()
                 .id("current-audio-app-list")
                 .max_h(surface::css(340.))
-                .on_scroll_wheel(cx.listener(|this, _, _, cx| {
+                .on_scroll(cx.listener(|this, _, _, cx| {
                     this.sound.apps_dropdown = None;
                     this.sound.apps_remove_shown = false;
                     this.sound.apps_remove_generation =

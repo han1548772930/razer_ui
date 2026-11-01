@@ -5,23 +5,22 @@ use std::time::Duration;
 const OUT_POLL_INTERVAL: Duration = Duration::from_millis(2);
 
 /// Normal native returns refresh the timestamp regardless of device ACK status.
+/// A thrown native call is classified by its `NativeIoOutcome`, not here.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum NativeReturn {
     Send,
     Get,
     Batch,
-    Threw,
 }
 
-/// The queue validates the complete holder identity and URL before authorizing
-/// ExplicitMatched. These events never acquire or release the queue's lease.
+/// Releases completed by the collection actor. The queue validates the complete
+/// holder identity and URL before authorizing ExplicitMatched. A rejected
+/// explicit release, cancellation or forced lease drop never reaches the actor,
+/// so it leaves the clock unchanged as the source release branches require.
+/// These events never acquire or release the queue's lease.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum ReleaseReason {
     ExplicitMatched,
-    ExplicitRejected,
-    TabDestroyed,
-    HoldTimeout,
-    Canceled,
     BatchFinally,
 }
 
@@ -57,20 +56,15 @@ impl SourceClock {
             NativeReturn::Send | NativeReturn::Get | NativeReturn::Batch => {
                 self.last_command = Some(now);
             }
-            NativeReturn::Threw => {}
         }
     }
 
     /// The explicit host release updates its clock before releasing a valid
-    /// holder. Forced and automatic releases carry no additional timestamp.
+    /// holder. The batch finally release carries no additional timestamp.
     pub(super) fn release(&mut self, now: Duration, reason: ReleaseReason) {
         match reason {
             ReleaseReason::ExplicitMatched => self.last_command = Some(now),
-            ReleaseReason::ExplicitRejected
-            | ReleaseReason::TabDestroyed
-            | ReleaseReason::HoldTimeout
-            | ReleaseReason::Canceled
-            | ReleaseReason::BatchFinally => {}
+            ReleaseReason::BatchFinally => {}
         }
     }
 }

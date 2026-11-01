@@ -2,8 +2,8 @@
 //! No service telemetry or SET_OLED_DISPLAY_SYSTEM_INFO acknowledgement is forged.
 use super::dialog::{self, DialogState};
 use super::*;
+use gpui_kit::base::PopoverState;
 use gpui_kit::base::motion::{self, Easing, Transition};
-use gpui_kit::base::{ElementExt as _, PopoverState};
 use razer_widgets::keyboard_navigation::Button as BaseButton;
 use razer_widgets::scroll::SourceScrollable as _;
 use razer_widgets::source_tooltip::SourceTooltip;

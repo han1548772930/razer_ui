@@ -81,8 +81,11 @@ impl TopologyRevision {
     }
 }
 
+/// `identity::resolve` produces `Portable` only on targets without the Windows
+/// container metadata adapter.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) enum PlatformIdentity {
+    #[cfg(not(windows))]
     Portable,
     Windows {
         container_id: String,
@@ -107,24 +110,26 @@ impl CollectionIdentity {
             !self.node.path.is_empty() && !self.node.path.contains(&0),
             "Collection path is empty or contains NUL"
         );
-        if let PlatformIdentity::Windows {
-            container_id,
-            hid_instance_id,
-            parent_instance_id,
-        } = &self.platform
-        {
-            ensure!(
+        match &self.platform {
+            #[cfg(not(windows))]
+            PlatformIdentity::Portable => {}
+            PlatformIdentity::Windows {
+                container_id,
+                hid_instance_id,
+                parent_instance_id,
+            } => ensure!(
                 [container_id, hid_instance_id, parent_instance_id]
                     .iter()
                     .all(|value| !value.is_empty() && !value.contains('\0')),
                 "Windows collection identity is incomplete"
-            );
+            ),
         }
         Ok(())
     }
 
     fn path_key(&self) -> Vec<u8> {
         match self.platform {
+            #[cfg(not(windows))]
             PlatformIdentity::Portable => self.node.path.clone(),
             PlatformIdentity::Windows { .. } => self.node.path.to_ascii_lowercase(),
         }
@@ -134,6 +139,7 @@ impl CollectionIdentity {
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 enum CommandEndpoint {
     WindowsContainer(String),
+    #[cfg(not(windows))]
     PortablePath(Vec<u8>),
 }
 
@@ -179,6 +185,7 @@ impl CommandRegistry {
             PlatformIdentity::Windows { container_id, .. } => {
                 CommandEndpoint::WindowsContainer(container_id.to_ascii_lowercase())
             }
+            #[cfg(not(windows))]
             PlatformIdentity::Portable => {
                 CommandEndpoint::PortablePath(entry.identity.node.path.clone())
             }
@@ -407,6 +414,7 @@ impl Pool {
         state.generation = Uuid::new_v4();
         for entry in state.entries.values() {
             let matches = match entry.identity.platform {
+                #[cfg(not(windows))]
                 PlatformIdentity::Portable => entry.identity.node.path == path,
                 PlatformIdentity::Windows { .. } => {
                     entry.identity.node.path.eq_ignore_ascii_case(path)

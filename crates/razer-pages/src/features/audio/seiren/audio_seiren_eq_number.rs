@@ -258,7 +258,7 @@ impl Render for Number {
                     cx.stop_propagation();
                 }
             }))
-            .on_scroll_wheel(cx.listener(|this, event: &ScrollWheelEvent, window, cx| {
+            .on_scroll(cx.listener(|this, event: &ScrollEvent, window, cx| {
                 if this.disabled || !this.focused {
                     return;
                 }

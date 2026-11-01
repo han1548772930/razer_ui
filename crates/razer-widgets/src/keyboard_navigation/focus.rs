@@ -777,7 +777,7 @@ mod tests {
                 disabled: false,
                 readonly: false,
             });
-            view.read(cx).first.focus(window, cx);
+            view.read(cx).first.clone().focus(window, cx);
             targets = Some(view.clone());
             Root::new(view, window, cx)
         });

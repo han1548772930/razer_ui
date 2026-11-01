@@ -1359,7 +1359,7 @@ impl Render for IotPopup {
                     .absolute()
                     .size_full()
                     .occlude()
-                    .on_scroll_wheel(|_, _, cx| cx.stop_propagation())
+                    .on_scroll(|_, _, cx| cx.stop_propagation())
                     .bg(MainPageColors.banner_shade().opacity(0.7 * opacity)),
             )
             .popup(razer_assets::resource_scope(

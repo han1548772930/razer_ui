@@ -201,7 +201,7 @@ impl Render for ModalLayers {
                             .w(px(650.))
                             .h(px(500.))
                             .on_click(move |_, _, _| clicks.set(clicks.get() + 1))
-                            .on_scroll_wheel(move |_, _, _| scrolls.set(scrolls.get() + 1))
+                            .on_scroll(move |_, _, _| scrolls.set(scrolls.get() + 1))
                             .child("Background popup")
                             .into_any_element()
                     }),

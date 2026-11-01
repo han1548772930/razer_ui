@@ -231,7 +231,7 @@ mod tests {
                 keyed_disabled: false,
                 activations: Vec::new(),
             });
-            view.read(cx).first.focus(window, cx);
+            view.read(cx).first.clone().focus(window, cx);
             buttons = Some(view.clone());
             Root::new(view, window, cx)
         });

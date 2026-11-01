@@ -228,7 +228,7 @@ impl Render for MixerNumber {
                     cx.stop_propagation();
                 }
             }))
-            .on_scroll_wheel(cx.listener(|this, event: &ScrollWheelEvent, _, cx| {
+            .on_scroll(cx.listener(|this, event: &ScrollEvent, _, cx| {
                 if !this.enabled || !this.registered {
                     return;
                 }

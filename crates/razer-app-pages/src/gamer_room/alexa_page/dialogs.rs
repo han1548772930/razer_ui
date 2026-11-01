@@ -197,7 +197,7 @@ impl AlexaPage {
                     .inset_0()
                     .occlude()
                     .bg(cx.theme().title_bar.opacity(0.7 * opacity))
-                    .on_scroll_wheel(|_, _, cx| cx.stop_propagation()),
+                    .on_scroll(|_, _, cx| cx.stop_propagation()),
             )
             .popup(razer_assets::resource_scope(popup))
             .into_any_element()

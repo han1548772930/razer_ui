@@ -6,7 +6,7 @@
 
 ## 设备身份与版本从哪里来
 
-PID 70、679、563、3594 和 2684 的当前通用 Help 组件在挂载时分别读取 UI、MW 与应用版本。UI 版本来自 `noscript#version` 的 JSON，并组合 `version.buildVersion`；保留 `VERSION_PLACEHOLDER` 的内容不作为有效版本。MW 版本来自宿主窗口存储；2684 按 URL 中的 `containerId` 及产品／dongle ID 选择记录，3594 的当前代码直接取返回数组第一项，二者不能混写为同一种关联规则。
+PID 70、679、563、3594 和 2684 的当前通用 Help 组件在挂载时分别读取 UI、MW 与应用版本。UI 版本来自 `noscript#version` 的 JSON，并组合 `version.buildVersion`；保留 `VERSION_PLACEHOLDER` 的内容不作为有效版本。MW 版本来自宿主窗口存储；2684 按 URL 中的 `containerId` 及产品／dongle ID 选择记录，3594 的当前代码直接取返回数组第一项，二者不能混写为同一种关联规则。该值由各产品 MW 页面在初始化链中写入：读取 MW 页面自身的 `noscript#version`，含 `VERSION_PLACEHOLDER` 时直接返回，否则以 `${version}.${buildVersion}` 调用 `setWindowStorageItem("mwVersion", …)`。70、3594、2684 的 MW 另要求去空白后的内容以 `{` 开头、`}` 结尾，否则只记错误不写入；679、563 直接 `JSON.parse`。解析失败只记录日志，不中断 MW 初始化。依据为五款产品当前 MW bundle 中的同一写入函数（`.analysis/inputs/frontend/<category>-mw-<pid>-current/`）。
 
 应用版本来自本机 `apps` 记录中 `name === "synapse"` 的项，显示时把第一段替换为 `4`。固件、BIOS、EC 与 VBIOS 值则由组件 props 提供，不来自上述软件版本。更多信息按钮仅改变组件 `viewMore`，不发起固件查询。
 
@@ -189,7 +189,7 @@ CTR 确有原默认 ICC 的备份与恢复实现，但其调用方是**批量安
 | 功能／所有者 | 当前 Rust 的真实路径与限制 |
 | --- | --- |
 | Help 身份、UI build、复制 | [SourceHelp](../../../crates/razer-pages/src/features/help/source_help.rs) 保留 mounted serial、复制任务和页面实体；[UI build](../../../crates/razer-pages/src/features/help/source_help_versions.rs) 读取安装目录库，不冒充运行时 MW 版本 |
-| MW／应用版本 | [runtime_versions](../../../crates/razer-pages/src/features/help/source_help_runtime_versions.rs) 已有 owner／generation 校验和观察 API；全 workspace 调用核对未找到 Shell 请求消费者或生产 observation 构造，当前未接到真实 storage／本机版本 producer |
+| MW／应用版本 | [runtime_versions](../../../crates/razer-pages/src/features/help/source_help_runtime_versions.rs) 持有 owner／generation 校验和观察 API；[Shell 消费者](../../../crates/razer-shell/src/shell/host/help_runtime_versions.rs) 按 Help 实体登记宿主窗口视图，以 `getWindowStorageItem` 读取 `mwVersion`，后台读取本机 `apps` 并按挂载投递。全 workspace 没有写入窗口存储 `mwVersion` 的 Rust producer：官方写入方是 MW 网页自身，而本项目的设备中间层不是网页，因此当前读取如实得到未观测。不能用目录 UI build 或常量代替 |
 | 164／241 Help reset | [receiver_reset](../../../crates/razer-shell/src/shell/receiver/receiver_reset.rs) 进入真实 receiver profile 保存、设备操作及灯光恢复；不能泛称仅改草稿，产品链见 [接收器与底座](../accessories/receiver-and-dock.md) |
 | 1398 firmware／hardware reset | [help_hardware_reset](../../../crates/razer-shell/src/shell/receiver/help_hardware_reset.rs) 保留旧档、生成新默认档，先进入持久化队列，保存后才采用并提交真实 `FactoryReset1398`；设备身份、连接代次、profile 和实际 acknowledged receipt 都要匹配。已保存默认档与硬件失败分别保留；换页／断开不采用旧回执 |
 | 1342 audio restart | [restart](../../../crates/razer-shell/src/shell/audio/audio_mixer/restart.rs) 经独立服务解析真实有线设备，按原序列调用 Rust 驱动 IOCTL，记录每流返回值并完成进程清理。非零原生返回值仍继续后续流；只确认 IOCTL 序列，不声称音频已经恢复，不替换 profile。它与右列 factory reset 是不同动作 |

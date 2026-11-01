@@ -482,7 +482,7 @@ impl RenderOnce for SourceSlider {
                                 // leaves its bounds. The keyed blur subscription ends
                                 // this behavior, and unmount removes the paint listener.
                                 window.on_mouse_event(
-                                    move |event: &ScrollWheelEvent, phase, window, cx| {
+                                    move |event: &ScrollEvent, phase, window, cx| {
                                         if !phase.bubble() || !wheel_input.read(cx).registered {
                                             return;
                                         }

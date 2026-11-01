@@ -1074,7 +1074,7 @@ impl MouseProductWorkspace {
                 // Source wheel listener is document-wide, even when presets are
                 // displayed. Keep transient custom zoom until component unmount.
                 let wheel_owner = entity.clone();
-                window.on_mouse_event(move |event: &ScrollWheelEvent, phase, _, cx| {
+                window.on_mouse_event(move |event: &ScrollEvent, phase, _, cx| {
                     if phase.capture() && event.modifiers.control {
                         let delta = event.delta.pixel_delta(px(1.)).y;
                         if delta != px(0.) {

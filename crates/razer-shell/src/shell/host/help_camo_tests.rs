@@ -1,5 +1,6 @@
 use super::*;
 use razer_platform::camera_apps::{CamoDriver, CamoStudio};
+use std::prelude::v1::test;
 use std::{cell::Cell, rc::Rc, thread};
 
 #[derive(Debug, PartialEq, Eq)]

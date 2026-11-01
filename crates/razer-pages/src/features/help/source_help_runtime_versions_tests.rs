@@ -1,5 +1,6 @@
 use super::*;
 use gpui_kit::{AppContext, TestAppContext};
+use std::prelude::v1::test;
 use std::{cell::RefCell, rc::Rc};
 
 fn device() -> Device {
@@ -134,6 +135,8 @@ fn help_runtime_release_cancels_pending_reads(cx: &mut TestAppContext) {
     });
     assert!(!request.is_cancelled());
     drop(help);
+    // GPUI releases dropped entities when an update flushes its effects.
+    cx.update(|_| ());
     cx.run_until_parked();
     assert!(request.is_cancelled());
 }
