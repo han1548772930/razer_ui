@@ -16,7 +16,7 @@
 | 4133 | Razer Raiju V3 Pro | Customize、Triggers、Thumbsticks、Power、Calibration、Help | PlayStation，无线 SagePC，10 ms；`PROTOCOL25_PLAYSTATION_CONTROLLER`；强制核对 edition、查询电池；D-pad SOCD 从设备读取 |
 | 4144 | Razer Raiju V3 Pro Signature Edition | 同 4133 | 独立 PID、dongle 4146、BLE 4147；同一类 PlayStation 协议与页面组合；当前 bootstrap 未注册 4133 的 `useGetDockEditionAPI` |
 
-2684 的根经 `main.fbe5395b.js` 的模块 4841 动态依赖加载，实际页面数组在 `.analysis/inputs/frontend/gamepad-2684-current/raw/apps.razer.com/synapse/products/2684/ui/static/js/8169.3cf63c70.chunk.js`，UTF-8 byte 549199 附近；不能只看 main 中的 lazy wrapper。其余八款的根直接位于各自 UI main；各页数组的 byte 起点依次为 2629：7563783、2636：7507081、2647：7479125、2650：7427750、2676：7652768、4115：7518571、4133：7595295、4144：7541198。
+九产品原导航基线中，2684 的根经 `main.fbe5395b.js` 的模块 4841 动态依赖加载，页面数组位于 `.analysis/inputs/frontend/gamepad-2684-current/raw/apps.razer.com/synapse/products/2684/ui/static/js/8169.3cf63c70.chunk.js` 的 UTF-8 byte 549199 附近；不能只看 main 中的 lazy wrapper。其余八款原基线的根位于各自 UI main，各页数组 byte 起点为 2629：7563783、2636：7507081、2647：7479125、2650：7427750、2676：7652768、4115：7518571、4133：7595295、4144：7541198。4115 已由下文的刷新部署取代该旧坐标，当前实际挂载以[正式 MW 审计](../../../.analysis/results/frontend/gamepad-mw-audit.json)中 `gamepad_mode_socd_current.mounted_consumers`、`roles.product_tab` 和对应完整 owner 为准。
 
 ## 功能与状态边界
 
@@ -29,6 +29,6 @@
 
 ## 原件与追溯入口
 
-9 款产品分别使用 `.analysis/inputs/frontend/gamepad-<PID>-current/acquisition.json` 与 `.analysis/inputs/frontend/gamepad-mw-<PID>-current/acquisition.json` 的当前部署收据。完整实际路径、HTTP 来源、部署稳定性与字节身份由这些收据及 `.analysis/inputs.json` 维护，不在功能正文复制哈希。
+9 款产品的 UI 与 MW 基线分别登记于 `.analysis/inputs/frontend/gamepad-<PID>-current/acquisition.json` 和 `.analysis/inputs/frontend/gamepad-mw-<PID>-current/acquisition.json`。4115 当前 UI 选择[刷新部署收据](../../../.analysis/inputs/frontend/gamepad-4115-current-refresh-ec3db4b29c5a/acquisition.json)，MW 选择 [81ed5dc91a596f97101f 闭包收据](../../../.analysis/inputs/frontend/gamepad-mw-4115-snapshot-81ed5dc91a596f97101f-closure/acquisition.json)；Mode／SOCD 的当前调用链见[对应专题](mapping-and-sensitivity.md#4115设备模式与-socd-的不同存储和恢复链)，不能继续把旧 UI／MW main 或其捕获状态当作当前部署。完整实际路径、HTTP 来源、部署稳定性与字节身份由获取收据及 `.analysis/inputs.json` 维护，不在功能正文复制哈希。
 
 关键审计入口为 `.analysis/results/frontend/gamepad-mw-audit.json` 的 `products[product_id].mounted_main/source_set`，以及 `.analysis/results/frontend/gamepad-main-audit.json` 的 `gamepad_lighting.products[].source_sets`、`source_semantics`、`palette_profile_chain` 与 `native_engine`。这里保留了完整源函数、AST UTF-8 byte 边界和间接依赖。静态源码理解、Rust 独立实现、UI/后端接线、模拟验证、真实运行验收分别判断；本目录描述的是源码语义。

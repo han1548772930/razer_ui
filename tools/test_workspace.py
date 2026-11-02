@@ -7077,6 +7077,47 @@ class PlannedScratchCleanupTests(unittest.TestCase):
         self.assertTrue(self.target.is_dir() and self.batch.is_file() and protected.is_file())
         self.assertTrue((self.result / "capture.json").is_file())
 
+    def test_empty_apply_keeps_its_scope_without_rescanning_unrelated_candidates(self):
+        reference = self.write(self.root / ".analysis/results/current-owner.json",
+                               {"source_database": self.name + "/library.dll.i64"})
+        plan = self.plan()
+        self.assertEqual(plan["candidates"], [])
+        reference.unlink()
+        with mock.patch.object(workspace, "_clean_candidates", side_effect=AssertionError("unrelated inventory")) as native, \
+                mock.patch.object(workspace, "_verification_candidates", side_effect=AssertionError("unrelated tests")) as verification, \
+                mock.patch.object(workspace, "_scratch_processes", side_effect=AssertionError("unrelated processes")) as processes:
+            receipt = self.apply()
+        native.assert_not_called()
+        verification.assert_not_called()
+        processes.assert_not_called()
+        self.assertEqual(receipt["scope"], [])
+        self.assertEqual(receipt["removed"], [])
+        self.assertEqual(receipt["failures"], [])
+        self.assertEqual(receipt["status"], "completed")
+        self.assertTrue(self.target.is_dir() and self.batch.is_file())
+        self.assertTrue((self.target / "library.dll.i64").is_file())
+
+    def test_empty_apply_still_requires_reviewed_bytes_workspace_and_clear_guards(self):
+        self.write(self.root / ".analysis/results/current-owner.json",
+                   {"source_database": self.name + "/library.dll.i64"})
+        plan = self.plan()
+        self.assertEqual(plan["candidates"], [])
+        original = self.plan_path.read_bytes()
+        reviewed_sha256 = workspace.digest(self.plan_path)
+        for issue in ("bytes", "workspace", "guards"):
+            with self.subTest(issue=issue):
+                altered = dict(plan)
+                if issue == "workspace":
+                    altered["workspace"] = str(self.root.parent)
+                if issue == "guards":
+                    altered["guard_failures"] = ["unavailable process inspection"]
+                self.plan_path.write_bytes(original + b"\n" if issue == "bytes" else json.dumps(altered).encode())
+                expected = reviewed_sha256 if issue == "bytes" else workspace.digest(self.plan_path)
+                with self.assertRaisesRegex(ValueError, "plan bytes changed|invalid ownership or failed guards"):
+                    workspace.clean(apply=self.plan_path.relative_to(self.root).as_posix(), plan_sha256=expected)
+                self.assertTrue(self.target.is_dir() and self.batch.is_file())
+        self.assertFalse(self.plan_path.with_name(self.plan_path.stem + "-applied.json").exists())
+
     def test_ended_attempt_own_private_database_inventory_does_not_prevent_unified_cleanup(self):
         path = self.result / "session.json"
         session = json.loads(path.read_bytes())
@@ -7085,6 +7126,110 @@ class PlannedScratchCleanupTests(unittest.TestCase):
             "reason": "Retain until formal evidence validation and unified dependency-aware cleanup"}
         self.write(path, session)
         self.assertEqual(len(self.plan()["candidates"]), 1)
+
+    def native_release_fixture(self):
+        output = self.result.relative_to(self.root).as_posix()
+        source = {"path": self.batch.relative_to(self.root).as_posix(),
+                  "bytes": self.batch.stat().st_size, "sha256": workspace.digest(self.batch)}
+        plan_path, capture_path = (self.result / name for name in ("plan.json", "capture.json"))
+        plan = json.loads(plan_path.read_bytes())
+        plan.update(sha256="a" * 64, output=output,
+                    source_database={key: source[key] for key in ("path", "sha256")})
+        self.write(plan_path, plan)
+        capture = json.loads(capture_path.read_bytes())
+        capture.update(all_pseudocode_captured=True, failures=[], source_database=plan["source_database"])
+        self.write(capture_path, capture)
+        files = [{"path": path.relative_to(self.root).as_posix(), "bytes": path.stat().st_size,
+                  "sha256": workspace.digest(path)} for path in sorted(self.target.iterdir())]
+        item = {"sha256": "a" * 64, "selection_id": "b" * 16, "scratch_directory": self.name,
+                "retained_result_directory": output, "eligible_for_cleanup_released": True,
+                "session_passed": True, "all_pseudocode_captured": True, "capture_failures_retained": [],
+                "analyzer_pid": 123, "finished_at_utc": "2000-01-01T00:00:00+00:00",
+                "source_database": source, "private_database_preanalysis_from_plan": plan["database"],
+                "private_database_final": next(row for row in files if row["path"].endswith(".i64")),
+                "files": files, "scratch_bytes": sum(row["bytes"] for row in files)}
+        for field in ("session", "plan", "capture"):
+            path = self.result / (field + ".json")
+            item["retained_" + field] = {"path": path.relative_to(self.root).as_posix(),
+                                       "bytes": path.stat().st_size, "sha256": workspace.digest(path)}
+        self.release_document = {"schema_version": 1,
+            "review_kind": "completed_native_private_database_release_candidates",
+            "recorded_at_utc": "2000-01-01T00:00:01+00:00", "target_execution": False,
+            "all_owned_coordinators_finished": True, "new_native_jobs_started_after_cleanup_priority": False,
+            "canonical_outputs_modified": False, "files_deleted": False,
+            "process_observation": {"ida_process_count": 0, "processes": []},
+            "retained_source_databases": [source], "cleanup_released_candidates": [item]}
+        self.release_path = None
+        self.publish_native_release(self.release_document)
+
+    def publish_native_release(self, document):
+        if self.release_path is not None:
+            self.release_path.unlink()
+        raw = json.dumps(document).encode()
+        self.release_path = self.root / ".analysis/results/reverse-pending/review-sources" / (
+            hashlib.sha256(raw).hexdigest() + ".json")
+        self.release_path.parent.mkdir(parents=True, exist_ok=True)
+        self.release_path.write_bytes(raw)
+        self.release_owner = self.root / ".work/reverse-pending/native-scratch-release-review.json"
+        self.release_owner.parent.mkdir(parents=True, exist_ok=True)
+        self.release_owner.write_bytes(raw)
+
+    def test_released_private_inventory_requires_exact_frozen_review_and_retained_completion(self):
+        self.native_release_fixture()
+        report = self.plan()
+        self.assertEqual(len(report["candidates"]), 1)
+        basis = {row["path"] for row in report["candidates"][0]["basis"]}
+        self.assertTrue({self.release_path.relative_to(self.root).as_posix(),
+                         self.release_owner.relative_to(self.root).as_posix(),
+                         self.batch.relative_to(self.root).as_posix()}.issubset(basis))
+        self.release_path.unlink()
+        self.assertFalse(self.plan()["candidates"])
+
+    def test_released_private_inventory_never_hides_incomplete_or_changed_identities(self):
+        self.native_release_fixture()
+        for issue in ("schema", "kind", "unfinished", "new_job", "executed", "processes", "not_released",
+                      "partial", "failures", "changed_receipt", "changed_database", "private_source"):
+            with self.subTest(issue=issue):
+                document = copy.deepcopy(self.release_document)
+                item = document["cleanup_released_candidates"][0]
+                if issue == "schema": document["schema_version"] = 2
+                if issue == "kind": document["review_kind"] = "another_review"
+                if issue == "unfinished": document["all_owned_coordinators_finished"] = False
+                if issue == "new_job": document["new_native_jobs_started_after_cleanup_priority"] = True
+                if issue == "executed": document["target_execution"] = True
+                if issue == "processes": document["process_observation"]["ida_process_count"] = 1
+                if issue == "not_released": item["eligible_for_cleanup_released"] = False
+                if issue == "partial": item["all_pseudocode_captured"] = False
+                if issue == "failures": item["capture_failures_retained"] = [{"error": "unresolved"}]
+                if issue == "changed_receipt": item["retained_capture"]["sha256"] = "f" * 64
+                if issue == "changed_database": item["private_database_final"]["sha256"] = "f" * 64
+                if issue == "private_source": item["source_database"]["path"] = self.name + "/library.dll.i64"
+                self.publish_native_release(document)
+                self.assertFalse(self.plan()["candidates"])
+
+    def test_released_private_inventory_keeps_source_recovery_and_other_paths_visible(self):
+        self.native_release_fixture()
+        for field in ("source_database", "recovery_database", "required_log"):
+            with self.subTest(field=field):
+                document = copy.deepcopy(self.release_document)
+                document["cleanup_released_candidates"][0][field] = {"path": self.name + "/library.dll.i64"}
+                self.publish_native_release(document)
+                self.assertFalse(self.plan()["candidates"])
+        self.publish_native_release(self.release_document)
+        (self.target / "unreviewed.log").write_bytes(b"a later task owns these bytes")
+        self.assertFalse(self.plan()["candidates"])
+
+    def test_released_private_inventory_binds_review_and_source_database_before_apply(self):
+        self.native_release_fixture()
+        for path in (self.release_path, self.release_owner, self.batch):
+            with self.subTest(path=path):
+                self.assertEqual(len(self.plan()["candidates"]), 1)
+                raw = path.read_bytes()
+                path.write_bytes(raw + b" ")
+                with mock.patch.object(workspace, "_clean_delete_group") as delete, self.assertRaisesRegex(ValueError, "changed"):
+                    self.apply()
+                delete.assert_not_called()
+                path.write_bytes(raw)
 
     def test_version_one_attempt_name_requires_exact_source_bound_plan_and_session(self):
         import analysis

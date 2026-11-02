@@ -86,6 +86,10 @@ Quick/Advanced 切换发送 Chroma enabled，退出 Advanced 恢复当前档 qui
 
 硬件专有效果和电池节能效果另走 applyQuickEffect。OLED 菜单灯效还有 `setOLEDMenuChromaEffect`；不能把普通 RGB 行数据当成 OLED 媒体内容。
 
+当前共享 storage 入口先要求引擎已初始化，再在 mutex 内按实际存储键分派；`connectedDevices` 的 `WindowStorageHandler` 另管 ready、driver 和供电状态，不消费 quickEffects。`onStorageChange_device` 对空串／undefined 新值直接返回，旧、新 JSON 解析异常各自置为空对象；随后只处理已开机且 productId／localStoragePId 匹配的实例，并排除 Chroma Studio region。metadata 活动 GUID 缺失时，它按设备 ID 尾段查找 metadata，再采用文档 activeProfile；这是官方本机配置选择，不能表示硬件返回了该 GUID。普通区域、多区域 mask 和 ports 在这里分流，不能只追一条普通区域调用后宣称全部附件已经覆盖。
+
+`applyQuickEffect` 用 **50 ms 定时器**安排硬件 SET 后立即结束，`await applyQuickEffect` 不等待该 SET。此 owner 不保存定时器句柄、不接收取消信号，async callback 的 Promise 也没有消费者，不能把上游返回当作写入完成或取消屏障。callback 调用的共享 `setChromaEffectCommon` 不返回设备 setter 结果，try 内异常只记日志，且生成参数／取得设备发生在 try 前；没有写后读回或失败回滚。`syncHWEffect` 的即时同步则 await 该 wrapper 后再等 100 ms，退出同步只登记恢复目标并刷新主机默认数据，两者也不能因此升级为真实设备确认。
+
 processEvent 使用全局灯光锁，部分锁占用状态会跳过帧。帧 writer 的部分逐行异常只记录后继续，最后仍构造 SUCCESS；一般帧路径不等待设备效果读回。因此，UI completed、引擎 enable、writer SUCCESS 均不能单独证明所有 LED 已呈现目标帧。完整共享参数、帧锁与退出消费者见 [系统灯光链](../system/customize-lighting.md#quickadvanced-到真实灯光帧)。
 
 引擎退出设置 isExiting，停止主进程灯光帧，terminate 引擎，清理高级/预览及区域对象，执行按产品登记的硬件恢复，清设备实例 map、linkedDevices，并通知主进程允许关闭/已完成。需要恢复的 effect 由当前产品和退出数据决定，不是统一写一份默认配置。
@@ -173,9 +177,21 @@ Windows 分支把八字节头与二十字节 payload 分片逐个写出，没有
 
 本节只完成原件、函数边界、报文编码和错误/释放语义的静态核对；没有运行厂商 JavaScript、主程序、HID.node、官方 DLL 或真实设备。Rust 实现仍需用独立期望测试覆盖六个命令的大小端字节、transaction/class/id 匹配、六种状态、busy/重发、unsupported/unknown、空读取、取消与关闭清理，并在允许的显式对照入口中先只读比较官方实际 GET；可恢复写入还要记录原值、官方写入及独立读回、Rust 写入及独立读回、恢复和清理。当前没有设备或实际运行收据时，Power 写回、固件行为和 UI 视觉结果必须保持未验证。
 
+## 键鼠输入通知的内核生产链
+
+统一收据的 `mapping_kernel_input_producer` 接续 `mapping_physical_input_decode`，通过 `python -X utf8 tools/workspace.py audit-host-local --query mapping-kernel-input-producer` 复核。当前 Host 4.0.896 的 RzCommon.sys 1.0.0.76 发布与 Mapping 相同的设备接口，并查询真实产品驱动接口：40 字节、版本 1、注册槽位 24。普通键盘类别 2 与鼠标类别 1 分别进入实际内核生产者；不能从用户态的 304 字节结构反推所有设备报告。
+
+通知通过 `0x88883038` 按文件启停 mask 4，`0x88883018` 请求至少 304 字节的输出。帧的事件、输入类型、原生输入分别位于偏移 8、16、20。键盘逐条复制 12 字节输入，通知为事件 4／类型 1；特定状态标记成立时会过滤扫描码 69。鼠标逐条复制 24 字节，通知为事件 4／类型 2，且原生输入偏移 4 的 DWORD 必须非零，纯位移不由这一通知分支发布。这两个普通生产者未清零整帧，不能把首 8 字节和其他未赋值区域视为已定义字段，也不能把通知等同于 hook／redirect。
+
+每个文件拥有手动请求队列和环形缓冲；实际索引按 1024 取模，追尾时推进读指针、丢弃最旧帧。提交队列失败仍可能返回 pending；取得输出内存后复制失败仍消耗该帧，完成状态保持真实错误，而 information 仍为 304。文件关闭移除的是实际文件对象；设备释放注销已记录的产品回调。这些事实不能证明所有在途 I/O 或上层 FFI／JS 回调已排空。
+
+产品资格只确认当前 226 包中的 RzDev_00e2.sys 1.0.0.78：实际接口 GUID、注册／分发槽位与 INF 的 1532:00e2／00e3 分支一致，MI00 为鼠标、MI02 为键盘、MI01 为 USB lower filter。清单资源版本为 26.0.0.50，包文件名版本为 26.0.2.0，分别保留；不能把这些鼠标复合接口资格迁移给键盘 756。PID02f4／756 的隔离原件未提升为当前证据。
+
+本批复用现有捕获，核对 Common 的 30 个函数与 226 的 11 个函数及实际调用边。Common 全库捕获零失败；226 原有 `5A94` 反编译失败仍保留，选中函数完整不代表整个驱动完成。安装器的 OS／INF／SYS 选择、`RzCommon_1.sys`、未核产品／固件／传输的报告生产及取消排空继续保留为缺项。未执行 SYS、DLL 或设备操作；独立 Rust、接线及运行时对照仍分别保持未验证。
+
 ## 原件与核对边界
 
-各 PID 的完整路径和当前收据见 [产品页](products/)。代表性获取记录：[515 UI](../../../.analysis/inputs/frontend/keyboard-515-current/acquisition.json)、[574 UI](../../../.analysis/inputs/frontend/keyboard-574-current/acquisition.json)、[574 MW](../../../.analysis/inputs/frontend/keyboard-mw-574-current/acquisition.json)、[756 UI](../../../.analysis/inputs/frontend/keyboard-756-current/acquisition.json)、[756 MW](../../../.analysis/inputs/frontend/keyboard-mw-756-current/acquisition.json)、[691 UI](../../../.analysis/inputs/frontend/keyboard-691-current/acquisition.json)、[灯光引擎](../../../.analysis/inputs/frontend/synapse-lighting-engine-current/acquisition.json)。以下为原始 UTF-8 字节半开区间。
+各 PID 的完整路径和当前收据见 [产品页](products/)。代表性获取记录：[515 UI](../../../.analysis/inputs/frontend/keyboard-515-current/acquisition.json)、[574 UI](../../../.analysis/inputs/frontend/keyboard-574-current/acquisition.json)、[574 MW](../../../.analysis/inputs/frontend/keyboard-mw-574-current/acquisition.json)、[756 UI](../../../.analysis/inputs/frontend/keyboard-756-current/acquisition.json)、[756 MW](../../../.analysis/inputs/frontend/keyboard-mw-756-current/acquisition.json)、[691 UI](../../../.analysis/inputs/frontend/keyboard-691-current/acquisition.json)、[当前灯光引擎](../../../.analysis/inputs/frontend/synapse-lighting-engine-snapshot-1d1be731/acquisition.json)。以下为原始 UTF-8 字节半开区间。
 
 | 原件 | owner 区间 |
 | --- | --- |
@@ -190,8 +206,10 @@ Windows 分支把八字节头与二十字节 payload 分片逐个写出，没有
 | 同 MW | Quick maker `[1737247,1740151)`；hardware effect `[1740151,1745147)`；dim/power makers `[1808814,1811133)`；brightness runner `[1929188,1931091)` |
 | 同 MW | dim runner `[2013219,2013757)`；power runner `[2014372,2014910)`；numeric sleep runner `[2015567,2016408)`；observers/handlers `[2094469,2095626)`；dim/power adapters `[2417840,2419073)` |
 | 756 `rzDevice25.40fe6f559bba152076d4.js` | sleep/mode/dim wrappers `[140022,140615)`；brightness wrappers `[207480,207863)`；OLED brightness status `[257040,257458)` |
-| lighting-engine `main.a383ea9e.js` | storage router `[908613,909145)`；device consumer `[844173,849899)`；region `[823012,825228)`；hardware sync `[825247,826331)`；custom effect `[863131,868219)` |
-| 同引擎文件 | frame event `[435194,437352)`；frame writer `[550280,551544)`；exit `[874724,876284)` |
+| lighting-engine `main.1d1be731.js` | storage router `[902476,903008)`；device consumer `[838420,844174)`；region `[817188,819404)`；hardware sync `[819405,820507)`；custom effect `[857366,862473)` |
+| 同引擎文件 | 定时硬件效果 `[862474,863283)`；共享 SET wrapper `[724168,725033)`；frame event `[429477,431575)`；base frame writer `[541171,542428)`；exit `[868852,870413)` |
+
+当前引擎 main 的 SHA-256 为 `8c9f7074401b54927c5dc49f68a5bf66467ef415ce5655ea5808b48c6681efd3`。storage、区域／软件效果、base writer 和退出完整 owner 已保存在[现有共享静态结果](../../../.analysis/results/frontend/receiver-page-layout-audit.json)的 `products[product_id=164/241].help_reset`，其共享引擎来源与本页逐字节复读一致；产品 reset／dock 语义仍只属于对应产品。该引擎快照的完整 Wakaru capture 缺失仍保留为 `complete_capture_unavailable`，不能用旧快照捕获替代。普通 Quick 的主要调用链已有静态依据，剩余工作须区分所有产品／附件分支的语义核对、独立 Rust／UI 接线与实际 DLL／设备验收，不再笼统记成整条链尚未逆向。
 
 本页是静态追踪的官方行为说明，不表示 Rust/UI 独立实现、真实设备写回或运行时验收已经完成。原件中吞异常、乐观显示和缺少读回的边界均按实际链保留；未运行主应用、厂商 JavaScript、安装器或动态调试。
 

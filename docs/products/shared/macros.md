@@ -30,6 +30,24 @@
 
 普通动作回调携带 FILETIME 纪元墙钟微秒；开始、停止及停止尾批使用另一条单调时钟。不能把回调到达 UI 的时间当成原版动作时间。`recordingHandler` 与 `reserveMouseMovePositions` 分别把单项和移动批次放入状态机上下文。
 
+### 当前录制 callback、线程与迟到事件
+
+[主机正式收据](../../../.analysis/results/host-current/local-audit.json)的 `macro_native_recorder` 单独核对官方稳定宿主 **4.0.896** 的包、ASAR 原字节与 `mapping_engine.dll` **1.3.17.2**（3,948,744 字节，SHA-256 `c64e539437b50da2b1f2e4155d8cbb0fb1c3e1ebaad894caf509bad97e9857f9`）。所选链保留 40 个完整 AST 所有者、109 个完整当前原生函数、20 个实际 PE 槽及 8 个导出；下面的地址均为 RVA。旧 1.3.16.5 hook 输入收据继续独立保留，不能仅凭两版 Host JS 同字节推广整个 DLL 的语义。
+
+| 边界 | 当前所选链的实际语义 |
+| --- | --- |
+| 线程与所有者 | engine 创建 `MappingEngineMacroRecorderThread`；Windows recorder 另持有 `MappingEngineWindowHookThread`。hook 复制模式／JSON 和 tick 后投递给 recorder runner，`0xd764a` 再逐 observer 投递到各自注册的 runner。engine observer 为 **base+40**，由表 `0x2e04d0` 的 `+8/+16/+24 → 0x19070/0x190a0/0x190d0` 消费；这三个回调在该 observer 的 engine runner 上执行 |
+| 注册与 callback | engine 表 `0x2e0010` 的 `+704…760` 接录制查询、启动、停止、注册及安装 callback。register／unregister 只原子修改 **base+168**；三份 callback 独立保留在 **base+176/184/192**。注销不停止录制、不删除 observer、不释放 callback。Host 首个 URL 先入订阅表，再等待 native register 和 setCallback，但不消费后者返回 bool；后续 URL 共用一次注册 |
+| 实际 ABI | started／stopped 分别为 `void(const char* mode, int32 kind, uint64 tick)`，kind 为 0／1；item 为 `void(int32 kind, const char* JSON, uint64 tick)`，kind 为 2。`0x49ca0` 的完整汇编保留 **R8 tick**，不能按不完整的反编译函数原型丢掉第三参。三者和 completion 还受 DLL `0x395760 & 1` 控制；void 导出的表面 AL 返回值不代表操作成功 |
+| Host 通知 | 构造函数持有三份 FFI 对象；started／stopped 使用普通 `ffi.Callback`，item 根据实际 `CanUseAnneCallback` 走对应分支。事件发送到当前订阅 URL 且仍存活、允许接收的 webContents。started／stopped 保留 `{mode,eventType,timeTick}`；item 丢弃 native kind，发送 `{type:"macroitem",macroItem,timeTick}` |
+| 停止与释放 | `0xda390` 先调用 `UnhookWindowsHookEx`，未核对其返回值；尾批与 stopped 共用 `0x1b8720` 取得的 tick，尾批先发，然后清 active／mode，再经 recorder 和 engine runner 交付 completion。本切片未扩展时钟 provider 的单位。stop 不注销订阅、不清 callback、不 join。全局 shutdown 的 `0x19d30` 才先清注册位与 callback、移除 observer，再完成 stop／service 释放；hook 与 recorder 所属线程通过 `0x1b8e40 → 0x1a9ee0` 等待退出并关闭 handle |
+
+`0xb1960` 在已经排队的 observer 任务执行时重新核对 observer 指针与注册代次；engine 消费者还读取当前注册位。然而普通 unregister 只改注册位，不移除该 observer：若旧事件尚在队列中就重新 register，旧事件可能在重新启用的位下继续交付。该 ABI、Host 和上述前端消费者都没有每次录制的身份字段。Host 注销先删 URL，最后一个 URL 才调用 native，失败时把 URL 加回；删除 URL 也不能撤回已经发送的 IPC／JS 事件。**stop／unregister 完成和 native 线程 join 均不能证明所有外部事件队列已经排空。**
+
+软件宏的 API response 原样 emit 三种通知；`Or` 先订阅 `_r/Sr/Ar` 再 register。`_r` 解析数组、弹出最后一项，前面的移动项发送 `ON_MACRO_MOUSE_MOVE_LIST`，实际过滤后再发送 `ON_MACRO_ITEM`；该 owner 没有空数组／解析异常处理或录制代次检查。`Ar` 忽略 stopped payload，更新页面状态并发送 `ON_RECORDING_STOPPED`。软件开始分支读取 `e.timeTick`，其 OTFM 分支和后台 `So` 却读取 **`e.timerTick`**；Host 只发送前一个字段，不能悄悄补齐。后台 `Mo` 没有订阅 stopped，停止监听先删除本地监听再等待 native unregister；既有状态机／保存结论继续复用。
+
+本查询闭合这条当前静态 callback 链。设备 OTFM 写回、其他宏执行器、当前版本的映射／快捷键暂停、独立 Rust 完整迁移及实际 DLL／设备对照仍分别登记；本批没有执行厂商 DLL、JS 或应用。
+
 ## 停止、后处理与保存
 
 显式停止按钮和全局录制快捷键发送 `ON_STOP_RECORDING`。状态机进入 `stoppingRecorder`，复制动作数组、清空部分快捷键缓存，调用共享窗口项删除，然后调用停止保护函数 `dr`。原生 `ON_RECORDING_STOPPED` 再推动录制后显示器查询与后处理。
@@ -50,9 +68,9 @@
 
 ### 映射与快捷键暂停的原生所有者
 
-[当前对照查询](../../../.analysis/results/host-current/local-audit.json)的 `macro_recorder.native_mapping_suppression` 已沿四个导出、实际虚表、线程投递、状态消费者和释放路径保留73个完整原生函数、8段实际PE表及22个槽位目标。原件为当前宿主包内 `mapping_engine.dll`，3,945,672字节、版本1.3.16.5，Image Base `0x180000000`；下列地址均为RVA。这个范围解析了暂停语义，不代表整个映射引擎已经迁移或完成实际DLL对照。
+[保留安装分支的对照查询](../../../.analysis/results/host-current/local-audit.json)的 `macro_recorder.native_mapping_suppression` 已沿四个导出、实际虚表、线程投递、状态消费者和释放路径保留73个完整原生函数、8段实际PE表及22个槽位目标。原件来自旧宿主快照的 `mapping_engine.dll`，3,945,672字节、版本1.3.16.5，Image Base `0x180000000`；下列地址均为RVA。这个范围解析了该保留安装分支的暂停语义，不覆盖当前4.0.896宿主的1.3.17.2暂停链，也不代表整个映射引擎已经迁移或完成实际DLL对照。
 
-| 边界 | 当前官方实际路径与结果 |
+| 边界 | 保留安装分支的官方实际路径与结果 |
 | --- | --- |
 | 查询映射开关 | `isMappingEnabled 0x286a0 → engine vtable+208 → 0x68f0` 读取全进程的原子字节 `0x3811d8`。它不是当前页面／设备的计数，也不证明任何宏已经停止 |
 | 禁用映射 | `0x28c20 → engine+216 → 0x6b90 → 0x6d50 → manager+24 → 0x580b0`。true才改为false，通知各输入设备，并把 `0x57090` 排回manager线程；该任务取消活动执行、清等待队列并停止exclusive executor。导出completion在这些任务排队后调用，**没有等待每个设备通知和宏清理完成** |
@@ -181,6 +199,29 @@ producer多出的37项按**实际DeviceInfo.category**分类如下；其primary�
 `completed` 将录制活动标记清除，再释放锁／删除共享项、停止系统和 recorder 监听；这些调用不全被等待。已取消分支与在途保存事件可以交错，不能让旧完成事件释放新录制的所有者。上述完整所有者没有统一关闭本次创建的每个设备 transport，也不确认所有指示灯／输入已恢复；独立 Rust 生命周期、全部产品事件消费者及真实 DLL／设备对照仍须分别实现和验收。
 
 OTFM 测试须覆盖表内每类／接口／双链分支、枚举局部失败、多设备同时参与、起始亮度0／失败、两个输入源与300ms边界、修饰键／Hypershift、无鼠标／含鼠标、几何变化拒绝、各保存阶段失败、原生map拒绝但Promise完成、取消／拔出／锁屏与在途保存、2000ms恢复及部分拒绝。期望应区分原版真实行为与本项目明确禁止的失败回退；纯测试、DLL执行、真实恢复与页面提示分别留收据。
+
+### PID 756：保存后的真实映射写回
+
+`audit-host-local --query otfm-device-writeback` 从既有录制／保存链接续，只核一个实际挂载 OTFM 的键盘产品。当前来源为 [PID 756 获取收据](../../../.analysis/inputs/frontend/keyboard-mw-756-current-refresh-ec3db4b29c5a-2/acquisition.json)与[后台刷新收据](../../../.analysis/inputs/frontend/background-manager-current-refresh-ec3db4b29c5a/acquisition.json)，结果归入[统一收据](../../../.analysis/results/host-current/local-audit.json)的 `otfm_device_writeback`。后台当前 `Ro [161207,166522)` 与上节已审保存所有者字节相同；其新导入的共享工具仍须单独复核，不能由函数本体相同推断整个后台依赖不变。
+
+当前产品从 `start-otfm` 传递真实 container、PID 和运行时 layout。保存后的下游为：浏览器设备配置版本变化 → storage 消费者 → 当前配置恢复队列 → `ON_SET_KEYMAPPING` → TaskMaker → OBM 宏与映射任务 → 协议写入及应答。storage 消费者先排除相同版本，并按 activeProfile 的实际差异调用恢复入口；调用没有等待恢复完成。`obmReady` 决定是否附加 `updateObm`，另一条获准路径只生成 appEngine。后台的 `ON_MACRO_SAVED`、TaskMaker 的 `completed` 均早于这些排队设备任务的完成，不能显示成硬件写入确认。
+
+PID 756 明确选择 `obmEngineKeyboardCalMaxMem`，并启用 `analogKeyboardV3`；继承的初始化显式将 `analogKeyboard=false`。因此这里的基础宏绑定实际走 **`setSingleKeyAssignment`**，不能凭模拟轴功能名换成旧 analog 单键写入。其参数为 profile、button、mode、fnId、fnDataLength 和功能字节，命令头 `[80,2,13]`，当前调用将有效载荷长度设为 10。Once 固件投影的次数为 1；UI 对象中的 `repeatCount=2` 不改变 Once 语义。触发阈值／Rapid Trigger 另有成对排队任务，基础映射应答不证明这两项已写入。
+
+OBM 先从 IDB 取宏，按实际 active／未锁定配置的引用选择待增删宏，再排各槽的默认／新映射任务；不适合固件的宏投影为 disableGroup。worker 4795 接收 `none` 或 `relative` 移动模式，归一化键盘 flag／scancode 后交给固件字节转换器。宏写入先分配空间，随后将 250 字节名称结构按 64 字节分块、宏数据按 72 字节分块提交，并查询存储容量。**名称写入与 `addMacroLocal` 均存在捕获异常后继续的原版路径**，之后的缓存宏列表或容量查询成功不证明全部宏字节已写入；没有完整宏内容的独立读回。内存不足时的 standby 清理可以删除待机宏，也不能概括成无副作用重试。
+
+当前协议构建 90 字节报文，字节 88 为字节 2–87 的 XOR。Electron 经 `apiElectron.doRzDeviceAction` → `rzDeviceAction` IPC → 当前宿主 `UsbRzDeviceAction` 调用 HID。发送返回长度符合后再 `getFeatureReport`，核对 transaction、class、command 与状态 2；busy、错关联和失败依源码限次重试，不支持／未知状态停止重试。当前消费者未验证接收长度／校验和，也没有独立查询单键或完整宏数据。命令 `finally` 等待受支持的 HID mutex 释放；宿主还检查释放者 URL，返回 false 不等于已释放。
+
+宿主证据已从当前 4.0.896 release 重新绑定，未沿用旧 4.0.827 的身份：核实当前 ASAR 中的 preload、IPC、HID 分支与实际容器字节，以及[当前 HID 捕获](../../../.analysis/results/native/5f185c3c865fb37a8cfb85d52a61704555543d70ea954bead84bbadda66fcfac/capture.json)的 8 个完整函数。`0xcc90` 的实际注册字符串连接 send/get，`0x7f40／0x7340 → 0x5280 → 0x4800` 排队执行，最终分别进入 `0x17a10` 的 `HidD_SetFeature` 与 `0x17ac0` 的 `DeviceIoControl`；`0x50e0` 交付异步结果。这仅覆盖所选函数，捕获中另一个函数的 Hex-Rays 失败仍保留。
+
+| 当前所有者 | UTF-8 字节区间 |
+| --- | --- |
+| [6737 分块](../../../.analysis/inputs/frontend/keyboard-mw-756-current-refresh-ec3db4b29c5a/raw/apps.razer.com/synapse/products/756/mw/6737.e9cfdfde12b1ade72a64.js)：producer／storage／恢复映射 | `[1202467,1202706)`／`[2081191,2083304)`／`[1317264,1318041)` |
+| 同分块：TaskMaker／OBM 更新／宏与映射 runner | `[1703053,1714146)`／`[1718504,1720125)`／`[1969871,1971363)`、`[1971363,1972213)` |
+| [OBM 原件](../../../.analysis/inputs/frontend/keyboard-mw-756-current-refresh-ec3db4b29c5a/raw/apps.razer.com/synapse/products/756/mw/obmEngineKeyboard.548c12e603ff5072603e.js)：V3 初始化／单键／宏本地写入 | `[71974,77137)`／`[100820,102841)`／`[60244,61615)` |
+| [协议原件](../../../.analysis/inputs/frontend/keyboard-mw-756-current-refresh-ec3db4b29c5a/raw/apps.razer.com/synapse/products/756/mw/rzDevice25.2f39d1d815a9b796d2ea.js)：单键参数／发送／应答 | `[174991,175721)`／`[116968,121393)`／`[113928,116968)` |
+
+5 项专属维护测试验证完整 JSON 往返、当前来源、真实分支与反例拒绝；这不是设备功能测试。其余产品／固件／传输、完整阈值与取消恢复、Rust 独立实现、UI 接线及真实 DLL／设备写回对照继续保持未完成／未验证。本批未创建临时数据库、额外捕获或解压副本。
 
 ## XML 导入、导出与文件写入
 

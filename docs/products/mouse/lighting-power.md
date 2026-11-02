@@ -32,6 +32,8 @@ PID158 中间件亮度 writer 按 rzDeviceType／region／lighting engine 分流
 
 硬件效果同步写 profile1 后等待 100 ms；退出同步则登记 quickEffectOnExit 并交给 HID 默认数据链。软件效果分支设置 device mode3、CustomFrame effect8，创建 engine／实际设备／effect、映射 LED 后启用。帧回调按 devicehandle/linkseq 查设备，执行 LED remap、frame filter、lighting lock，再调用批量 controlTransferOuts 或逐行 setChromaFrame。部分逐行异常只记录并继续，函数末尾仍返回 SUCCESS，因此不能把其顶层 SUCCESS 解释成每行都收到确认。
 
+硬件专有效果和电池节能条件还会进入 `applyQuickEffect`：当前共享 owner 以 50 ms 定时器安排 SET，随即返回，调用方 await 不等待该 SET；定时器 callback 的 Promise 没有消费者，owner 也不保存可取消的定时器句柄。其共享 SET wrapper 丢弃设备返回，try 内错误仅记录日志，没有写后读回或回滚。即时同步、登记退出目标、安排定时 SET、实际传输完成必须分别判断；当前源码位置和完整共享收据见[键盘页的同一链](../keyboard/lighting-power.md#保存如何到真实灯光帧)，不由这条共享调用推定每款鼠标均启用该硬件分支。
+
 停止时按官方退出链停止帧、终止／释放引擎、恢复设备默认数据、清空映射并关闭宿主、unInit。尊重 Advanced／Chroma Connect 占用、锁定和系统 WDL 的条件由 engine 消费者处理；关闭页面卡片不会自行等价于停止全局帧输出。完整消费者及原件字节位置见[系统灯光的同一共享链](../system/customize-lighting.md#quickadvanced-到真实灯光帧)。
 
 ## PID104／105：鼠标与供电垫
@@ -63,6 +65,10 @@ PID158 `mousePowerSavingReducer` 先更新本地编辑值并发送 `ON_SET_POWER
 原件部分读取 helper 捕获异常后返回传入默认值（例如 getPowerSavingFromDevice 默认 5）。这是需要原样理解的失败分支，不能在文档中称它为真实设备读数。常规 task runner 则把错误发布到 action/error 通道，保留已编辑的乐观值；上述完整 sleep writer 会在取消或读回不一致时失败，不执行成功结算。
 
 连接类型、主接收器或配置改变会改变真正的 rzDevice 和 region 选择。设备任务由其队列拥有；效果动画、屏幕取色等持续功能另有自己的启动／停止链，不能把关闭一个卡片当作所有灯光工作已停止。
+
+## 226 输入通知的驱动资格
+
+当前 226 原件已核到 `RzDev_00e2.sys` 的真实产品接口及注册／分发槽位，INF 明确列出 1532:00e2／00e3 的 MI00 鼠标、MI02 键盘及 MI01 USB lower filter。它们接入当前 Common 的共享 304 字节通知链；普通鼠标通知只在原生输入偏移 4 的 DWORD 非零时生产，不能据此宣称纯位移、全部按钮组合或其他产品传输已覆盖。共享生产、队列失败与释放语义统一见[键鼠输入通知的内核生产链](../keyboard/lighting-power.md#键鼠输入通知的内核生产链)及统一收据 `mapping_kernel_input_producer`，不平行维护另一份进度。当前结论为静态资格，未执行驱动或真实设备对照。
 
 ## 原件与复核位置
 

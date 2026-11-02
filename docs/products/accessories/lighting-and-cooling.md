@@ -46,6 +46,37 @@ Customize 的端口选择、联动、名称、灯带种类与数量、分段/弯
 
 784 灯带真实 LED 数查询会更新 `detectedLedCount`；若当前分段总数超过实读值，原版缩成一个包含全部实读 LED 的 segment。查询失败会抛出；刷新 start 已发而 stop 位于成功尾部，不可据此伪造查询完成。
 
+### 3849 HDK 的灯带读取与 Studio 刷新边界
+
+当前官方正常引导路径已经确认：**Studio 会发送 HDK Refresh 请求，但 3849 MW 不执行刷新**。Refresh 菜单项随 `select` 工具挂载；点击后才按已选产品或右键目标筛选 `hasRefresh`，按 `deviceContainerId` 去重，通过 MW BroadcastChannel 发送 `{msgName:"uiRequest",msgData:"refreshDeviceFromChromaStudio"}`，随后关闭通道。MW 只有在 `isMultiPortDevice.config.argb` 为真时才入队 `ON_REFRESH_ARGB_CONTROLLER`。3849 bootstrap 只注册 `rzDevice25`、`isLightingKit=yes`、`useMWManifest=yes` 和 `useGetDockEditionAPI=yes`；当前默认特性、纯派生函数、runtime 导出和 injector 均未提供 `isMultiPortDevice`，完整当前 JS 中也没有另一处 `useFeature` 注册。因此正常路径的 gate 不满足，不新增桥接功能，也不把灯光引擎独立的 `refreshDevices` 内存动作误写成按钮后续。
+
+`useMWManifest` 只令 `ResourceUpdateChecker.init` 选择 `common` 与 `synapse/products/3849/mw` 安装资源目录；其 `getManifestData` 读取 `installer-manifest.json` 和版本资源清单，不向能力表注入开关。灯光引擎的 DeviceManifest 是另一条链：按运行时产品目录选主 PID，请求 MW `lighting-manifests/DeviceManifest_3849_0.json`，失败后尝试 LE `manifest/`，再与 IndexedDB 版本比较。本轮前者实际返回 404，后者取得 8948 B 原件且前后 SHA 相同；保留整轮获取稳定性为 false，不能把 fallback 的单项成功写成全部端点有效。
+
+该 edition 0 原件声明 `rzDevice25`、`hasLedStrips=true`、`svgExtraParams.hasRefresh=true` 和 region 2147483649～2147483652。DeviceInfo 的 manifest 配置、SVG-extra 投影、LE 发布器、Studio `lighting-engine-chroma-devices` getter、元数据规范化、add action／builder 与 device items reducer 已连到实际所有者；`hasRefresh` 因而可进入按钮的目标筛选。实际设备是否出现、主 PID 和缓存最终选中哪一份 manifest 尚未运行观测。
+
+| 入口 | 已确认的查询与结果消费 |
+| --- | --- |
+| 灯光引擎上电初始化 | `hasLedStrips` 分支 force check 后立即 GET 一次，追加四条灯带，按 region 2147483649…2147483652 选择 LED 数；该分支没有刷新路径的四轮等待 |
+| 3849 MW 初始化／硬件变化 | force check → 等待 500 ms → GET 一次；保存并发布 `jsonData.data`，缺失时使用 `[]`，没有额外 status 检查。初始化等待 getter，硬件变化回调不等待；READY UI 投影重发 runtime 中的数组 |
+| 灯光引擎 `refreshDevices` 动作 | 只处理 PID 3849，忽略请求中的 instanceId，选择 Map 中首个 instanceId 非数值的物理父设备；找不到父设备或 DeviceInfo 就返回整个处理器。force check 后执行四次“等待 100 ms → GET”，只消费第四次的 `jsonData`，没有提前成功退出或独立 status 检查 |
+
+灯光引擎 GET 通过当前词法导入的协议 helper 发送头 `[0x50,0,0xb5]`、参数 `[1]` 和长度参数 `5`；helper 仅在 SUCCESS 时构造 `jsonData`，HDK 取响应 `data.slice(1,5)` 的四个字节。force check 使用 `[0x50,0,0x36]`、参数 `[1]`、长度 `1`。这些命令与 JS 消费者已经分开保留，不能将调用返回、缺少 `jsonData` 或空数组当成四个端口均已确认断开。
+
+刷新会替换父子 DeviceInfo 的四条灯带，并更新对应 region 的 `stripLedCount`。非零变零时，在 SVG 为真后直接发布 `updateChromaStudio(action:"remove")`，不调用 region 引擎销毁；零变非零走 add，其余数量变化走 update。HDK SVG 生成器即使 LED 数为零也返回非空外层 `<div>`。发布器另行过滤零灯带 region；`removeDeviceChromaEngine` 的等待销毁和全局 `onExit` 是独立生命周期，不得把刷新 remove 写成已释放引擎。刷新异常只记录，没有成功确认、显式取消或回滚结果。
+
+在该 manifest 配置路径中，`skipQuickEffectOnExit`、`useUserQuickEffectOnExit`、`syncHWEffectWithSWEffectWhenExit` 缺省经 configure 取 false，退出效果为 effect 3。`rzDevice25` 在 reset 默认设备名单中，`configureDevicesDefaultData` 仅为物理设备生成 normal-mode／quick-effect 批次，排除 region；默认 `onExit(0)` 交给 host reset 或 `hid.setDevicesToDefault`。JS 单独设置 normal mode／quick effect 的 fallback 适用于 logout 或名单之外的名称，不能声称 HDK 默认退出总会执行这段 fallback。reset 的真实传输、结果和释放仍未做 DLL／设备对照。
+
+本节来源入口如下；逐项字节身份、完整 AST 区间与导入／导出接线保留在[统一收据的 hdk_refresh](../../../.analysis/results/host-current/local-audit.json#hdk_refresh)。
+
+| 当前来源 | 职责 |
+| --- | --- |
+| [Studio EditorCanvas](../../../.analysis/inputs/frontend/synapse-chroma-studio-build-2609080829-current-refresh-ec3db4b29c5a/raw/apps.razer.com/synapse/chroma-studio/static/js/EditorCanvas.3e7d9a22.chunk.js)与 [main](../../../.analysis/inputs/frontend/synapse-chroma-studio-build-2609080829-current-refresh-ec3db4b29c5a/raw/apps.razer.com/synapse/chroma-studio/static/js/main.0b34ec4f.js) | Refresh 菜单、通道、设备元数据及 reducer |
+| [3849 MW main](../../../.analysis/inputs/frontend/accessories-mw-3849-current-refresh-ec3db4b29c5a/raw/apps.razer.com/synapse/products/3849/mw/main.a2f6b47de0bb5f1c6fcd.js)与 [6120](../../../.analysis/inputs/frontend/accessories-mw-3849-current-refresh-ec3db4b29c5a/raw/apps.razer.com/synapse/products/3849/mw/6120.a57cdfc402455de79cc6.js) | bootstrap 特性、接收门槛、初始化／事件消费者及安装清单选择 |
+| [Lighting Engine main](../../../.analysis/inputs/frontend/synapse-lighting-engine-snapshot-1d1be731/raw/apps.razer.com/synapse/lighting-engine/static/js/main.1d1be731.js) | 独立刷新、灯带命令、manifest／region 配置、发布及退出 reset |
+| [DeviceManifest_3849_0.json](../../../.analysis/inputs/frontend/hdk-3849-manifest-current/raw/apps.razer.com/synapse/lighting-engine/manifest/DeviceManifest_3849_0.json)与[获取收据](../../../.analysis/inputs/frontend/hdk-3849-manifest-current/acquisition.json) | edition 0 静态适用性、MW 404 及 LE fallback 的独立稳定性 |
+
+3849 MW 当前选择的是 `accessories-mw-3849-current-refresh-ec3db4b29c5a-2` 获取收据，复用前一目录中的已校验原件；不能按物理目录名换回旧选择。本节的正常引导刷新路由和 edition 0 manifest 静态适用性已经闭合。当前源码仍缺完整重建捕获／source map，运行时目录与缓存选择、原生传输和实际 DLL／设备对照未验证；不据此宣称 HDK 整体逆向或 Rust／UI 接线完成。
+
 ## 769 桥、娱乐区域和灯具
 
 Hue 实际有 HOME 与灯具页面，不能由共享 Help 模块或曾经遗漏的导航数组判定“只有帮助”。完整桥、灯具、扫描/配对和取消管理器在 [9420 chunk](../../../.analysis/inputs/frontend/accessories-mw-769-current/raw/apps.razer.com/synapse/products/769/mw/9420.063fdd1a0fa811873155.js)。原版初始化链为 ConfigureFFI → GetDLLVersion → SetNodeFFIEvent → Create；其 `isInit` 在 ConfigureFFI 成功时已置真，后续 Create 返回不自动成为设备发现成功。
@@ -74,9 +105,11 @@ Hue 实际有 HOME 与灯具页面，不能由共享 Help 模块或曾经遗漏�
 
 ## 3893 Hanbo 风扇、水泵和温度
 
+本节已有 UI、配置与 HID 说明沿用[配件收据](../../../.analysis/results/frontend/accessories-main-audit.json)的 `queries.hanbo-local-runtime` 原件。该收据中的旧系统监测启动与消费者不能当作当前部署；当前 MW 与 1.0.30.0 依赖的变化见[当前系统监测版本与消费者](#当前系统监测版本与消费者)。
+
 页面原件 [main.a7630c14.js](../../../.analysis/inputs/frontend/accessories-3893-current/raw/apps.razer.com/synapse/products/3893/ui/static/js/main.a7630c14.js) 内风扇/水泵组件分别为 `[5352832, 5354064)`、`[5354140, 5355262)`，曲线所有者 `[5349465, 5352745)`。风扇高级曲线 7 点、水泵 5 点；相邻温度/速度限制保持单调，拖动释放按一位小数提交。当前 effect 的 cleanup 也可能调用 onChange，不能假设卸载只清资源而无提交副作用。
 
-MW [6259.e34ab9ddf1b145a67b62.js](../../../.analysis/inputs/frontend/accessories-mw-3893-current/raw/apps.razer.com/synapse/products/3893/mw/6259.e34ab9ddf1b145a67b62.js) 内真实风扇→水泵读取 `[535245, 535534)`，服务轮询所有者 `[855309, 856161)`：风扇/水泵 5000 ms，系统温度 1000 ms。设备 setup 就启动系统监测，不以内部 Performance/Lighting tab 为所有权边界。产品 tab 观察 debounce 400 ms 发 start/stop，但服务 dispatcher 只消费 start；失焦不保证停止 getter。
+旧 MW [6259.e34ab9ddf1b145a67b62.js](../../../.analysis/inputs/frontend/accessories-mw-3893-current/raw/apps.razer.com/synapse/products/3893/mw/6259.e34ab9ddf1b145a67b62.js) 内真实风扇→水泵读取 `[535245, 535534)`，服务轮询所有者 `[855309, 856161)`：风扇/水泵 5000 ms，系统温度 1000 ms。设备 setup 就启动系统监测，不以内部 Performance/Lighting tab 为所有权边界。该版产品 tab 观察 debounce 400 ms 发 start/stop，但服务 dispatcher 只消费 start；失焦不保证停止 getter。当前版本的系统监测订阅与转换器已变化，不能直接复用该版回调。
 
 `isHardwareOutdated` 来自 UI `BC` 的本地初值 `false`，不是固件查询结果。完整 MW 模块 48290 的状态只有七个温度、转速字段，风扇/水泵与系统监测两处回调各合并自己的字段；状态的六处引用没有传出可修改的别名，也没有写入这个标记。MW 67061 与 UI 3254 的 `B8N` 都解析为 `MW_UPDATE_DEVICE_RUNTIMEDATA`；UI `FC` 把 payload 合并到既有 runtimeData，缺少标记时保留原值，显式外部 payload 则仍可覆盖。当前官方轮询链没有固件版本比较或“硬件过旧”观测，不能把初值当作已确认兼容。该边界及独立原件/AST 复核保存在 [Hanbo 正式查询](../../../.analysis/results/frontend/accessories-main-audit.json) 的 `hardware_outdated_flow`，不据此排除任意外部通道注入。
 
@@ -87,6 +120,18 @@ MW [6259.e34ab9ddf1b145a67b62.js](../../../.analysis/inputs/frontend/accessories
 profile ports restore 依次保存、发布/diff 与真实设备任务；缺少端口 diff 时会恢复全部激活热端口。当前 UI port maker 同一原 diff 会重复保存/restore 两次，队列不去重；相等值导致 diff 缺失也可能两次全恢复。模式任务由 deviceAccess 控制，不能添加不存在的“写盘成功才写设备”条件。执行器捕获异常但未逐项检查全部返回 status；日志不代表核对每个应答。
 
 Hanbo 没注册 `usesExternalPowerSupply` 或 `hasFanPowerStatus`，Elsa 也不实现通用供电 getter。热模块 fault bits 不能改作外部电源观测。其 reportLength=65 与 host 前缀组合形成 66 字节参数而写入计数比较 65；静态 host 链会转发并 padding，不能假定 Windows 自动截断；实际接受性仍未运行验证。
+
+### GPU 温度 target 1 的真实生产和释放
+
+正式证据在[配件收据](../../../.analysis/results/frontend/accessories-main-audit.json)的 `hanbo_gpu_temperature_chain`。当前稳定主机 4.0.896 的实际 release／resource 声明选择 `RzSystemService 1.0.30.0`，所选 CPUID 包仍为外部 `1.3.7.6`。保留的 `1.0.29.0` 服务另列为旧依赖分支；两版选定的 GPU 温度结果、舍入及释放语义一致，函数地址分别核实。实际安装或装载哪个版本尚未观测，不能从旧收据推定。
+
+Display API monitor 按真实显示设备的 provider 顺序创建，初次更新只要任一实际传感器读取成功就可能被接纳；这不保证 GPU 温度已存在。GPU `target=1` 只有自身读取成功后才创建，标识为 `0x4002001`。周期刷新写入原始整数与缩放后的当前值，通过温度有效性谓词后才更新最小值和最大值。该类默认每 2 个调度 tick 更新，不把它解释为独立的 2 秒计时器。
+
+NVAPI 分支先核实实际 provider 与设备索引，探测 `-220` 睡眠状态；睡眠时不继续温度回退。正常路径先查 capability 中启用且存在的 type 0，最多检查 32 项，读取 Q8.8 温度并排除 `0xff00` 无效标记，再尝试 thermal-settings 的 type 1 正值。失败不写入输出。传感器创建后，后续读取失败会跳过该次更新，保留旧值和极值；有效性只判断原生负阈值，不携带本次成功或时间戳，因此旧值不能冒充本次实测。
+
+服务读取 class 32、kind `0x2000` 的真实有效传感器，再用独立阈值过滤并把当前值和极值保留 2 位小数，按源码顺序消费各设备首个符合条件的结果。getter 本身不刷新硬件，也不保证 target 1 胜过其他实际传感器或 provider。BSTR 名称由 wrapper 释放，导出的 JSON 使用对应 `FreeMalloc` 释放。
+
+单个 Display API monitor 的 stop 虚槽为空，不能据此判定释放结束。SDK close 先停止接口与 provider，再销毁 monitor、其缓冲区和传感器视图，随后由全局传感器所有者释放传感器缓冲区与分配；NVAPI unload 与模块 `FreeLibrary` 也各有所有者。选定同步调用没有逐次取消 token 或代次保护。CPU、其他 GPU provider／温度 target、时钟与利用率仍须继续逆向，独立 Rust、UI 接线及实际 DLL／设备对照均未验证。
 
 ## 3900 PWM 风扇控制器
 
@@ -130,7 +175,7 @@ identify 先保存真实亮度，按 300 ms 交替 40/80，再恢复初值；cat
 
 Hanbo、PWM、散热垫与 eGPU 共用本地系统监测入口，但由各产品的服务与消费者决定启停。RzSystemCommon 维护隐藏窗口、计时器和命名管道接收，计时请求 GetAllHardwareInfo；服务端返回 JSON 指针由对应释放方法归还，接收端组装 CPU/GPU 并回调。缺少传感器保持 null/未观测，不补 0。
 
-完整选定 native 释放证据保存在 [Hanbo 分析](../../../.analysis/results/frontend/accessories-main-audit.json)：产品 stop 注销 container 并结束 JS 服务，native DeviceTerminate 自身只日志；最后一个 container 注销才杀对应计时器。CommonTerminate 发 WM_DESTROY，关闭窗口线程 handle 而不 join 该线程，join 的是 pipe receiver，然后释放 buffer；WM_DESTROY 杀计时器并退出消息循环。DLL 服务卸载先 Terminate 再 FreeLibrary；CloseAPPServer 是整个 server 的动作，不能拿作单产品停止。本文不运行这些链，也不将原版释放缺口写成已解决。
+完整选定 native 释放证据保存在 [Hanbo 分析](../../../.analysis/results/frontend/accessories-main-audit.json)：产品 stop 注销 container 并结束 JS 服务，native DeviceTerminate 自身只日志；最后一个 container 注销才杀对应计时器。CommonTerminate 发 WM_DESTROY，关闭窗口线程 handle 而不 join 该线程，join 的是 pipe receiver，然后释放 buffer；WM_DESTROY 杀计时器并退出消息循环。当前 DLL 服务还会核对 Terminate 返回值，详见下述版本复核；CloseAPPServer 是整个 server 的动作，不能拿作单产品停止。本文不运行这些链，也不将原版释放缺口写成已解决。
 
 ### RzSystemCommon 1.0.29.0 的订阅、缓存与管道边界
 
@@ -147,3 +192,25 @@ Hanbo、PWM、散热垫与 eGPU 共用本地系统监测入口，但由各产品
 回调计时函数 `0x67df0` 按订阅间隔取缓存字段，组装事件名、`dllName=RzSystemCommon`、`dllFunc=HardwareMonitorCallback` 后同步调用用户回调；随后更新 lastTick，临时 JSON 字符串随后销毁。`GetHardwareDataByType`（`0x6e120`）同样读取缓存，dataType 0 选择常规字段而不自动包括高位 Info 字段；数值判断是 `<= 0x10000000`，不是 known-bit 集合校验。缺少缓存字段不能补造设备状态，静态 JSON 的 SUCCESS 不证明当前服务或设备读取成功。
 
 `UnRegisterFFIEvent`（`0x6dd50`）对不存在的非空名字也返回成功，只有列表为空才关闭两个计时器，删除最短间隔项后未重算最小值。`SetFFIEventTimerIntervalTime`（`0x6d380`）先保存新值，末尾用同步计时器的 interval 0 判断是否关闭 FFI 计时器；没有核对 SetTimer／KillTimer 的 BOOL。`Terminate`（`0x67260`）关闭计时器和窗口、关闭窗口线程 handle、清对象和管道；这不证明窗口线程已 join 或用户回调已静止。相关正常、负间隔、断连、重入、取消与释放结果，以及官方实际 DLL 对照，均需独立验证。
+
+### 当前系统监测版本与消费者
+
+正式续审为[配件收据](../../../.analysis/results/frontend/accessories-main-audit.json)的 `hanbo_system_monitor_versions`。当前 Host 4.0.896 的 release／resource 声明与实际 PE 文件版本均选择下列 **1.0.30.0** 原件；现有 1.0.29.0 收据作为版本比较依据。实际安装或装载版本仍未观测。
+
+| 依赖 | 当前完整捕获 | 本批所选函数 |
+| --- | --- | ---: |
+| RzSystemCommon | [capture.json](../../../.analysis/results/native/b3e20103e3dbd08bae40d5b4e347bf56a58110a93ee8457640806164a9b13088/capture.json) | 38 |
+| RzSystemService | [capture.json](../../../.analysis/results/native/645d8ffdcaefe57b06ab4dd9888a7ce028fe25052f87762c23c452d3936a3cf8/capture.json) | 21 |
+| RzDLLService | [capture.json](../../../.analysis/results/native/11b9c35226089623ad774f9562cfc6f2f02d8d2dc1d5a50900e87c9bbcbd58a9/capture.json) | 6 |
+
+本批复用全部既有捕获及旧版 49 个函数，重新核对实际 PE 字节，没有新增分析数据库、临时副本或传感器捕获。Common 旧版所选 34 个函数中，32 个在仅归一机器地址后全文一致；发送函数的变化为日志参数，接收函数存在实际协议变化。当前 `0x61e00` 除独立五字节 `<EOF>` 外，还在**本次读取区域**调用 `0x60e10`，其实际实现为 `strstr`，找到 marker 即截断并置完整标志。它仍不搜索前次读取区域，仍在 helper 入口清 buffer、在 receiver 保留未完成 offset；不能据此宣称任意分片均已正确重组。解析前置收据标志、非事务缓存、重复注册、负 interval 和 Common 窗口线程未 join 的边界也保留。
+
+当前 MW 原件为 [6259.584850d2dc47de40211b.js](../../../.analysis/inputs/frontend/accessories-mw-3893-current-refresh-ec3db4b29c5a/raw/apps.razer.com/synapse/products/3893/mw/6259.584850d2dc47de40211b.js) 与 [main.0d1beec5e6d0ad51a372.js](../../../.analysis/inputs/frontend/accessories-mw-3893-current-refresh-ec3db4b29c5a/raw/apps.razer.com/synapse/products/3893/mw/main.0d1beec5e6d0ad51a372.js)，[双轮部署复核](../../../.analysis/results/frontend-revalidation/a05e92cae063a115fd792a6a04fd77cd72f6bdc48032324c6b1238d288c582b2.json)确认这两份实际字节未变。当前共享启动先初始化路径与回调，再启动并探测 server；最多 5 次等待分别为 100、200、400、700、1100 ms。所有探测仍失败后也会继续注册，不能把已注册当作服务就绪。Hanbo 在设备 setup 启动，按 1000 ms、`CPU_Info | GPU_Info = 0x300000` 注册，回调明确核对 `RzSystemCommon / HardwareMonitorCallback / SUCCESS`，随后调用模块 83266 转换器。
+
+转换器只在 `initStatus=0` 时处理，CPU 选择 `CPUInfo[0]`；CPU 数组缺失时直接返回初值，GPU 也不会继续处理。GPU 在实际数组中先按名称分类：含 Graphics 为 2，Laptop／Mobile／Max-Q／MX 数字／数字 M 为 1，其余为 0；Hanbo 默认排序把 1／2 类放在 0 类前，再按 NVIDIA／AMD／Intel 的索引排序（未知厂商索引为 -1），取首个 enable，否则取首项。AMD RADEON 温度先 Global 后 GPU，其他取 GPU。未初始化、缺字段、禁用或未找到时，转换器含 0 与字符串 `"0"` 的源码初值；Hanbo 没有再核对投影的 CPU／GPU status，仍可能发布或经 Elsa 转发这些值，并在设备动作完成前更新上次温度。**这些零值属于原版转换和回退来源，不是设备已实测；Rust 不能把它们升级为确认观测。** 本批仅核实际使用字段，不据转换器中的其他名称增加功能。
+
+Service 的更新、快照／结果遍历、设备变更重初始化及 SDK 销毁共用监测 mutex。`GetAllHardwareInfo 0x47ed0 → 0x18340 → 0x141d0 → monitor+104` 的真实 SEH scope 由 PE `.pdata`／unwind 与汇编核实；Hex-Rays 伪代码没有呈现完整异常出口。filter 仅处理 `0xc0000005/0006/001d/008c/0094/0096/00fd` 七种代码。正常 wrapper 返回清连续失败计数，不证明所有传感器本轮成功；已捕获异常第 3／6／9 次尝试重初始化，第 10 次禁用监测。重初始化成功不清计数，须等正常更新；刷新返回未直接改写导出 SUCCESS，已有缓存不能因此当作新实测。
+
+Service 初始化预载系统 `msctf.dll`／`imm32.dll`，保留隐藏窗口线程 handle 与 ID；预载或线程创建失败没有阻止初始化标志置真。关闭先释放 SDK，再反复发送 WM_CLOSE／WM_QUIT，每次等 200 ms、最多 5000 ms。超时返回 false，并保留窗口 owner 与初始化标志；源码把所有非 WAIT_TIMEOUT 结果当作退出，没有独立区分 WAIT_FAILED。当前 server 的 `0x32280` 实际消费 Terminate=false，保留模块映射并跳过 FreeLibrary；没有 Terminate 导出则仍可卸载。但所选 server 退出函数仍在设置线程池关闭标志和停止 worker **之前**调用模块释放；worker 等 10000 ms，任何非零等待结果都会强制终止，再等 1000 ms。这些边界不能表述为整个任务／回调队列已排空。
+
+产品 stop 仍先 await 注销 container，再调用未 await 的 DeviceTerminate；该原生方法只日志，并不执行 Common Terminate 或 CloseAPPServer。当前 Host 的三个 FFI 消费者与既有函数正文一致：`void(string)` JSON 解码、保留 callback map、复制 malloc 字符串并在 finally 中 FreeMalloc。全部选定输入通过静态复核；其余实际传感器／provider／时钟与利用率分支、server 在途任务与回调静止、Hanbo write66／accepted-count65、独立 Rust、UI／后端接线及实际 DLL／设备对照仍未完成。

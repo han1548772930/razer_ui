@@ -6,35 +6,17 @@ IDA 路径：`E:/IDA`（9.1）、`D:/ida/IDA Pro 8.3`（8.3）。GPUI 技能读�
 
 所有批量 Python 入口都必须启用至少两个 worker；类型表生成也使用线程池；当前捕获、前端恢复、宿主资源获取、产品族收集、资源提取、仪表板资源准备、资源所有权审计、Windows PE 静态检查和本页 gaps 校验均使用有界线程池。前端恢复即使只指定一个来源也使用至少两个线程，捕获、恢复、资源审计和安装包准备入口拒绝 `--workers 1`，避免逆向批次悄悄退回串行。并行任务只返回不可变结果，由单一协调者按输入身份排序、校验原始快照后原子发布；任何一个任务失败都保留失败收据，不能以其他线程成功替代它。
 
-当前 `HID.node`（SHA-256 `f611827603911d7807c8499dd231bdf77898fbe2ec3ce40215dccfbb7185cc1f`、405,704 字节）的 [实际捕获收据](../../.analysis/results/native/f611827603911d7807c8499dd231bdf77898fbe2ec3ce40215dccfbb7185cc1f/capture.json) 使用 IDA 9.1、Hex-Rays 9.1.0.250226、Python 3.11.9，完整捕获 1,641 个函数；RVA `0x30888` 的反编译失败及完整汇编保留。其他 IDA 8.3 捕获的函数数与产物摘要不能套用到这份收据。[HID 查询](../../.analysis/results/native/chain-audit.json) 中的工厂、回调、动态导出与共享 worker 链须分别对照其引用的完整函数及实际产物身份；指定查询没有未解边不代表全部 N-API／Promise、产品协议或生命周期已经闭合。当前 GetFeature／GetInput 的完整函数分别位于 RVA `0x17ac0..0x17c43`、`0x17c50..0x17dd3`，Windows 返回长度均为原生已读长度加一；Rust 的 source-host collection 适配与产品重试／取消仍须逐调用方校验。
+当前 4.0.896 的 `HID.node`（SHA-256 `5f185c3c865fb37a8cfb85d52a61704555543d70ea954bead84bbadda66fcfac`、405,704 字节）的[捕获收据](../../.analysis/results/native/5f185c3c865fb37a8cfb85d52a61704555543d70ea954bead84bbadda66fcfac/capture.json)使用 IDA 9.1、Hex-Rays 9.1.0.250226、Python 3.11.9，完整捕获 1,641 个函数；RVA `0x30888` 的反编译失败及完整汇编保留。OTFM 链直接复用该捕获，并独立核对当前 Host、所选 Feature 函数、注册字符串与真实调用边。旧 [f6118276… 捕获](../../.analysis/results/native/f611827603911d7807c8499dd231bdf77898fbe2ec3ce40215dccfbb7185cc1f/capture.json)及 [HID 查询](../../.analysis/results/native/chain-audit.json)仍按各自原件范围保留，不能仅凭名称将其声明为当前；指定查询没有未解边也不代表全部 N-API／Promise、产品协议或生命周期闭合。GetFeature／GetInput 的完整函数区间为 RVA `0x17ac0..0x17c43`、`0x17c50..0x17dd3`，Windows 返回长度为原生已读长度加一；Rust 的 source-host collection 适配与产品重试／取消仍须逐调用方校验。
 
-`capture-corpus --source retained --ida-root E:/IDA --include-path '\.(dll|node|sys)$' --workers 4 --no-refresh-gaps` 本批 884 个不同字节的非 EXE 模块已终态：869 份经校验复用、15 份新捕获，共 2,610,555 个函数，模块级失败为零。[统一原生队列](../../.analysis/results/native-corpus-capture.json)与[独立质量核验](../../.analysis/results/native-corpus-quality.json)分别保留输入、版本、捕获和复核身份；发布前另重读全部 884 份原件及捕获清单摘要。181 份旧 schema 缺少可选完成字段，按完整且稳定的函数清单核验，不补造该字段。
+`capture-corpus --source retained --ida-root E:/IDA --include-path '\.(dll|node|sys)$' --workers 4 --no-refresh-gaps` 按实际字节去重并选择 DLL／NODE／SYS；[统一原生队列](../../.analysis/results/native-corpus-capture.json)与[独立质量核验](../../.analysis/results/native-corpus-quality.json)保存所选输入、完整产物和历史失败。旧 schema 缺少可选完成字段时，核验完整且稳定的函数清单，不补造字段；原始 chunks、未反编译函数与未枚举为指令的字节继续保留。计数读取所属收据，本页不累计批次进度。
 
-241 个模块合计 869 个函数没有成功生成伪代码；全部失败函数的原始块和 1,622,453 条已枚举汇编项已核对原 PE，共 10,014,652 字节 raw chunks。152 个失败函数的汇编项没有覆盖其中 7,185 字节，这些原始字节仍完整保留。队列另外排除 1,066 份输入，其中 995 份 EXE；它们不计入本批完成数，已有独立捕获的输入须按各自收据另核，不能全部当作尚未捕获。该索引队列按 DLL、NODE、SYS 取样，不排除当前产品范围内的主机、服务 EXE 或本机安装生命周期静态逆向；它们按真实调用链和已有独立收据继续核对。禁止的是运行主应用、安装器及无关 helper，不是读取其静态证据。`capture_complete=true` 与 `full_corpus_captured=false` 同时成立，不能将本批终态记为全语料、功能语义或实际 DLL 对照完成。
+该扩展名选择不代表完整语料。服务 EXE、安装器包装层与本机工具按真实依赖另行静态捕获，从[原生目录](../../.analysis/results/native/)及[证据索引](native-bulk-reverse.md)定位；被排除在某次队列外不等于尚未捕获，也不等于产品范围之外。`capture_complete` 只描述所属捕获边界，不能提升为全量语义或实际 DLL 对照完成。
 
-另有十份服务 EXE 已逐项完成完整产物复核：1442／3942 路由服务，1427／709–711／1398 属性服务，以及 1443／1411／1339／694–696／1330 的 companion 服务。十份共核对 182,605 个函数文件及 90 个输出的实际摘要，原件与 capture 前后不变；其中 1427、709–711、1398 各有七个 Hex-Rays 未决，其余七份为零。各自的 [native 捕获目录](../../.analysis/results/native/)保留终态、版本、函数和失败身份；这些额外收据不改写上述 884 模块队列，也不提升为整个服务的语义或运行验收。
+[安装包装层批次](../../.analysis/results/native-corpus-capture-chroma-20261024.json)保留 [RzComDriver 23.0.6.0](../../.analysis/results/native/d17bbc15e025bcee12948655ed5956bfe855019e626e497dd10ed40cb9a5e0dc/capture.json)与 [RazerChroma-Web 4.0.827.0](../../.analysis/results/native/1a7eecf362e5de07c9bfd799bcccbdf3327740ffb3d713bc4c3649110bb94586/capture.json)的旧版本证据。它们是 NSIS 解压、校验、临时文件和子进程包装层；通用 LoadLibraryExW／GetProcAddress、进程创建及轮询不证明厂商业务 DLL 已加载，也不提供 Chroma 帧、HID 报文或设备应答。载荷及本地文件／服务安装生命周期仍按实际消费者核对，不执行包装器。
 
-2026-10-24 另开了一个只针对安装包装层的真实双 IDA 批次：`capture-corpus --source retained --ida-root E:/IDA --include-path 'RzComDriver_v23\\.0\\.6\\.0\\.exe$' --include-path 'RazerChroma-Web-v4\\.0\\.827\\.exe$' --workers 2 --no-refresh-gaps`。协调器先校验原件 SHA，再同时启动两个独立 IDA 进程（批次日志记录 PID `16356` 与 `6380`）；两个模块均为新捕获而非复用，各 105 个函数、0 个捕获失败。独立批次收据另存为 [native-corpus-capture-chroma-20261024.json](../../.analysis/results/native-corpus-capture-chroma-20261024.json)，原件和完整捕获分别为 [RzComDriver](../../.analysis/results/native/d17bbc15e025bcee12948655ed5956bfe855019e626e497dd10ed40cb9a5e0dc/capture.json) 与 [RazerChroma-Web](../../.analysis/results/native/1a7eecf362e5de07c9bfd799bcccbdf3327740ffb3d713bc4c3649110bb94586/capture.json)；对应的 [RzComDriver IDA 日志](../../.work/native/d17bbc15e025bcee12948655ed5956bfe855019e626e497dd10ed40cb9a5e0dc/batch/ida.log) 和 [RazerChroma-Web IDA 日志](../../.work/native/1a7eecf362e5de07c9bfd799bcccbdf3327740ffb3d713bc4c3649110bb94586/batch/ida.log)均保留 `STATIC-CAPTURE 105/105`。
+属性服务、空间音频配置、Blade 迁移、显示校准、触控板版本和 companion 服务分别保留原件与完整输出，失败和原始汇编不合并抹除。函数数或失败 RVA 相同不证明模块相同；ZIP → 内层 EXE → CAB → MSI → Binary.CustomActionKey 的直接容器关系按获取收据核实，不能以外层摘要替代紧邻来源。
 
-这两个 PE 的版本资源分别是 Razer ComDriver Installer `23.0.6.0` 和 Razer Chroma Setup `4.0.827.0`。完整反汇编显示它们是 NSIS 自解压／完整性校验／临时文件／子进程包装层：`start`、`DialogFunc`、`StartAddress`、`CreateProcessW`、100 ms `WaitForSingleObject` 轮询、`GetExitCodeProcess`、注册表与文件操作均已捕获；没有从这两个包装器得到 Chroma 帧、HID 报文或设备 ACK。`LoadLibraryExW`／`GetProcAddress` 只证明通用动态解析通道存在，不能推断某个厂商 DLL 已加载。范围内解压载荷、安装器消费者及本地文件／服务安装生命周期继续静态逆向，既有捕获按原件身份复用；不运行这些包装器，也不把安装包装层当作设备后端或提升 Rust 实现、运行时 DLL／设备对照状态。
-
-随后十三份服务／本机工具又完成 158,625 个函数文件及 117 个输出的实际摘要复核，来源清单、资源声明与原件重新核字节。当前追加重点共 23 份已核验终态；合计 341,230 个函数文件、207 个输出，Hex-Rays 未决函数 1,408 个（仅表示反编译失败，原始汇编与 chunks 仍按收据保留），这组数量独立于 884 模块队列。
-
-| 追加原件 | 完整函数文件 | Hex-Rays 未决函数 |
-| --- | ---: | ---: |
-| 4126／4124 两份属性服务 | 72,416 | 14 |
-| 1443／1411／1339 三份空间音频配置工具 | 31,301 | 1,365 |
-| 两份 Blade 属性迁移工具 | 3,384 | 2 |
-| 显示校准报告工具 | 13,292 | 0 |
-| 触控板固件版本读取工具 | 8,918 | 6 |
-| 1442 安装自定义动作原件 | 716 | 0 |
-| 1337／1372／1383 三份 companion 服务 | 28,598 | 0 |
-
-两份属性服务虽然各有 36,208 个函数和相同失败 RVA，`.text` 等实际 section 字节仍不同，不能合并完整语义。空间配置工具的高失败数照录，函数文件及汇编完整不表示伪代码完成。版本读取工具的六个失败函数另核 10 个 chunks／1,191 字节／357 条指令且无覆盖缺口；安装自定义动作的实际来源是 ZIP → 内层 EXE → CAB → MSI → Binary.CustomActionKey，获取记录中的外层容器摘要不能冒充紧邻 MSI。此处均为静态产物与来源核验，没有执行工具、安装器、服务或设备。
-
-另一个四进程批次补齐了两份 [CVR](../../.analysis/results/native/459b3ce56842911d6a55269228882ca47653fefa3dae25ef134a5c38d5807cf8/capture.json)／[CVR](../../.analysis/results/native/cf3f04f5eee9dba455590c0e5118e24d468dd9ad866faad1a2ba89093281d4ec/capture.json)、[GetPackrat](../../.analysis/results/native/79441d216f4205b2018e517939ede8e59b1093351615a621668206e18a9757bd/capture.json)及[本机保留的提升服务](../../.analysis/results/native/fd7dc9d5de93cfb027eda972967f7b0e6871eeb4f6e1cd337dfd6d186572176c/capture.json)。全部完整函数文件与输出均按摘要复核：函数数分别为 13,292、13,292、4,694、4,182，合计 35,460，另有 36 份输出。提升服务有 5 个 Hex-Rays 失败，另核其 5 个完整 chunks、7,293 原始字节及 1,615 条汇编项；其中 387 字节没有枚举为指令，未补造伪代码或指令覆盖。其余三份反编译失败为零。
-
-两份 CVR 来自当前清单声明的 Blade 工具包 1.0.0.5／1.0.0.8，包内版本均为 1.0.81.0；与已捕获的 1.0.0.9 包副本相比，七个实际 section 的原始字节摘要全部相同，完整 PE 字节仍分别记录。GetPackrat 的实际版本资源为 19.4.13.0，不能按文件名把它归为单纯版本查询器。提升服务仍是独立获取收据绑定的本机 1.1.0.8 副本，完整 IDA 捕获没有证明它等同最新官方部署物。这四份捕获不改写 884 模块队列，也不表示报告、触控板或提升功能已完成语义迁移、实际调用或设备验收。
+两份 [CVR](../../.analysis/results/native/459b3ce56842911d6a55269228882ca47653fefa3dae25ef134a5c38d5807cf8/capture.json)／[CVR](../../.analysis/results/native/cf3f04f5eee9dba455590c0e5118e24d468dd9ad866faad1a2ba89093281d4ec/capture.json)、[GetPackrat](../../.analysis/results/native/79441d216f4205b2018e517939ede8e59b1093351615a621668206e18a9757bd/capture.json)及[本机提升服务](../../.analysis/results/native/fd7dc9d5de93cfb027eda972967f7b0e6871eeb4f6e1cd337dfd6d186572176c/capture.json)也按各自原件判断。两份 CVR 分属 1.0.0.5／1.0.0.8 工具包，包内版本均为 1.0.81.0；与 1.0.0.9 包的七个 section 字节相同，完整 PE 身份分别保留。GetPackrat 的版本资源为 19.4.13.0，不能按文件名认定其只有版本查询能力。提升服务的本机 1.1.0.8 捕获不证明它等同最新官方部署物，原反编译失败及未覆盖指令字节保持可复核。
 
 维护入口统一为 `python tools/workspace.py`。原件位于 `.analysis/inputs/`，获取收据及索引保存实际字节 SHA-256；结果位于 `.analysis/results/`，临时数据库位于 `.work/`。静态分析不执行输入；已授权的本地 DLL／设备测试由显式维护命令记录实际调用、结果与清理，执行边界以根目录规则为准。厂商应用、JavaScript、无关 helper、installer 和调试器仍不运行。
 
@@ -113,7 +95,9 @@ Windows x64 的模糊目标构建还需匹配的 MSVC AddressSanitizer 运行库
 
 [当前官方 host 获取](../../.analysis/inputs/host-current/releases/4.0.896/acquisition.json)确认稳定版 4.0.896。28 项声明中下载 8 项、299,532,120 字节，核验复用 20 项、34,850,073 字节，六个端点前后稳定。[版本范围提取](../../.analysis/results/host-current/releases/4.0.896/inspection.json)完成 15 个容器并正式索引，无当前失败；4 个普通 PE 保持 `extracted=false`，不作为归档载荷完成。
 
-[当前 ASAR 捕获](../../.analysis/results/host-current/asar/e7a524aca1771251ca4f851441a97cac1c33929891b291ed34deb7adfc1831ec/capture.json)对应 102,875,031 字节原件，完整提取 10,108 个文件、未决为零。六份当前原生捕获合计 16,000 个函数，全部汇编完整；BLE／HID 基础捕获各有 1 个伪代码失败，其原件与数据库保持不变。两份独立私有副本的显式类型补查取得完整伪代码并通过核验，私有副本已按正式清理收据释放。统一 gaps 按六个捕获所有者分别记录语义审计和实现验收 pending；静态捕获、补查成功不等于 Rust 或实际 DLL 功能完成。
+维护查询沿 `host_release_metadata`／`verified_host_release_receipt` 核对稳定版本，再用版本所属 acquisition、`current_host_extracted_inputs` 与 `current_host_asar_members` 连接真实包、提取与 ASAR 原件。顶层 `host-current/acquisition.json` 及仍绑定它的旧 helper 保留安装快照分支；名称含 current 不足以证明它选择了最新版本。新字节须独立复核，旧语义、失败与证据引用继续保留。
+
+[当前 ASAR 捕获](../../.analysis/results/host-current/asar/e7a524aca1771251ca4f851441a97cac1c33929891b291ed34deb7adfc1831ec/capture.json)对应 102,875,031 字节原件，完整提取 10,108 个文件、未决为零。原生模块按实际字节 SHA 独立捕获与增量复核，当前数量从[路线图](ui-readonly-first-roadmap.md)及所属收据读取，不在此维护另一份总计。BLE／HID 基础捕获的伪代码失败与后续成功类型补查分别保留，补查私有副本按正式清理收据释放；静态捕获、补查成功、功能语义与实际对照分别判断。
 
 [1422 部署复查](../../.analysis/results/frontend-revalidation/0de5320372280283bc23b259f7d8a33465e08da52447f9012de0d1c90f136cd6.json)记录 entry、asset-manifest、manifest 与共享 manifest.js 四项变化，旧 main 可访问不能证明它仍是当前挂载。[当前 1422 快照](../../.analysis/inputs/frontend/audio-1422-snapshot-ed4fa81d/acquisition.json)请求 534 项，取得 503 项、失败 31 项，保留 37 个未决引用；双采样稳定且获取期间来源当前，部署原件无失败。语义、实际挂载与完整依赖闭包继续逐项核对，不能从获取稳定推定已完成。
 
@@ -123,31 +107,31 @@ Windows x64 的模糊目标构建还需匹配的 MSVC AddressSanitizer 运行库
 
 `audit-host-local --query macro-recorder` 从当前 PID192／756 middleware、Macro 和 background-manager 原件保留完整 AST owners 与真实 UTF-8 byte 区间，并复核四套既有 Wakaru 捕获的全部原件、产物和分析器字节。完整捕获中的 validate 非零结果与获取缺失不升级为成功；统一 [local host 查询](../../.analysis/results/host-current/local-audit.json) 保留软件录制与 OTFM 写入／移除、PID756 非独占预触发与全局广播、background OTFM 全局锁与完整状态机、An 初始扫描与 q 事件字段差异、接收器缓存最后匹配、serialNumber 筛选及当前功能注入配置。JSON 记录不会补造 getHWModule；原生 transport、完整页面与真实运行验收仍未闭合。
 
-`audit-host-local --query window-lifecycle` 在同一查询收据保留 25 份字节核实的完整宿主 JS 文件及 117 个去重 AST 所有者。输入逐一与 packed ASAR、官方包成员和获取清单核对；窗口／页签身份、120000 ms 默认休眠与显式休眠、URL 内存存储、Windows 原生事件的 JS 消费者、退出拒绝与超时、已登记 HID 恢复命令及 WebSocket／BLE／日志停止分别记录。BLE endpoint 原件的 797 个函数、9 份汇总产物和 16 个完整行为所有者另经实际字节校验，其 UTF 失败的 7 函数 supplement 保留原失败、类型依据和数据库不变性。该查询为静态操作，不执行 JS 或 DLL，不把异步发送、FreeFFI 返回 true、三秒超时或 app.exit 当作释放成功；`refresh-gaps` 保留其失败、剩余调用链及独立实现／实际对照的未验证状态。具体顺序、源码缺陷和对照边界见[窗口生命周期](../products/host/window-lifecycle.md)。
+`audit-host-local --query window-lifecycle` 将原始 JS、完整 AST 所有者及所选原生函数与 packed ASAR、官方包和获取清单核对，写入统一查询收据的 `window_lifecycle`。该查询仍有旧版本范围，当前 Mac JS 由 `profile-mac-sysutils-native` 独立接续；来源、具体语义及未决释放边界统一见[窗口生命周期](../products/host/window-lifecycle.md)，不在此重复维护计数和产品结论。`refresh-gaps` 保留所属失败及剩余链，静态查询不执行 JS 或 DLL。
 
-`audit-host-local --query profiles` 在同一收据新增 [profiles 字段](../../.analysis/results/host-current/local-audit.json#/profiles)，`--verify-only` 只独立复核而不收集或发布。当前两套部署和五份宿主原件保存 43 个完整 AST 所有者、32 个选中调用者、439 个原件及 2,157 个校验工件；完整捕获中的两个失败阶段继续保留。54 项 `test_host` 通过，其中 15 项覆盖本查询的字节、完整边界、绑定、获取变更、19 类失败／取消／完成度篡改与发布保护。正式报告原有十个顶层字段逐项保留 canonical 身份。Add 的 action 吞发布异常、Browse／drop 不等待所有添加、刷新早退、扫描结果未关联、重定位仅写 id/path、拖放监听的清理行为分别见 [Profiles](../products/host/profiles.md)。这些维护工具测试不等于 Rust 功能或真实 DLL 对照；全部 scanner、设备自动配置档写入和窗口仍须逐链验证。
+`audit-host-local --query profiles` 维护同一收据的 [profiles 字段](../../.analysis/results/host-current/local-audit.json#/profiles)；`--verify-only` 只独立复核而不收集或发布，逐项检查原件、完整边界、词法绑定、获取身份、失败与完成状态。整页旧查询和当前本机应用、扫描策略及辅助方法各有独立来源范围，统一见 [Profiles](../products/host/profiles.md)及所属正式字段。维护器测试、Rust 功能和实际 DLL／服务对照分别记录，不在工具文档维护另一份功能进度。
+
+映射、灯光与驱动的语义查询共用 `audit-host-local --query <查询名>` 和静态发布器，各自保留来源、完整 owner、原生调用边、失败及独立结果字段；可用查询名从该命令的 `--help` 读取。具体语义和剩余依赖统一维护在[键盘映射](../products/keyboard/customize.md)、[动态灯光](../products/shared/dynamic-lighting.md)、[键鼠输入](../products/keyboard/lighting-power.md)与[安装生命周期](../products/host/firmware-and-installation.md)专题，不按批次在此重复计数或复制功能结论。不能以旧版依赖、同名函数或捕获完整代替当前调用链已复核。
 
 `inspect-host` 对多个独立归档使用 `--workers`（2–16，默认 4）并行运行只读列表／提取，按输入 SHA 排序由协调线程合并 `inspection.json` 和索引；`analyze-host --managed-scope ... --workers N` 对独立 CLR 程序并行调用 ILSpy，每个 worker 只写自己的 SHA 输出目录，协调线程按稳定输入顺序发布 managed capture。`analyze-host --resolve-managed-dependencies --workers N` 同样按程序集并行补充依赖，失败、退出码和诊断逐项保留。
 
 `analyze-frontend --input ... --workers N` 在完成统一 unpack／validate 后并行提取各 source map；命令记录按原始输入顺序发布，恢复器仍由单一协调者校验完整原件。`prepare-local-protocol-tables` 的五个固定输入、`prepare-mapping-capabilities` 的各鼠标挂载输入和 `prepare-mapping-producers` 的各产品输入均使用 2–16 线程（默认 4），只在所有结果收齐后写 Rust 输出和 typed-data 收据；参数为 1、非整数或超出范围时立即失败，不能退回串行生成。
 
+前端获取收据可直接复用 `frontend-revalidation/blobs/<SHA>` 中的官方复核原件；分析器核对其文件名 SHA 与实际字节后，与普通 frontend 原件共用保留输入根。其他分析输入、非 SHA 名称、嵌套冒充或字节变化仍拒绝，不为适配目录复制原始资源。
+
 `audit-family-function` 的 `mouse-dpi`、`mouse-customize` 和 `keyboard-artwork` 查询也按产品输入使用 2–16 个 worker（默认 4）；每个 worker 只返回局部 AST、布局、解析和失败结果，由协调线程按产品身份合并并重映射共享几何索引，统一的 Wakaru normalize 仍在合并后执行。其他单一输入的静态查询保持单 analyzer 阶段，不把一个输入伪拆成无独立边界的任务。
 
 [Dashboard 重试安装与无存活恢复](../products/host/dashboard.md#重试安装无存活恢复与服务端状态)另核 `BoxItemDevice` 与 background-manager 的当前字节、`BroadcastChannel` 消息、`noAliveSignMW` 身份键、40,000 ms 存活检查和 `resuscitate`／`_openMW` 门禁。`retryInstall`、窗口重开、中间件握手、重新枚举及设备读回分别记录；消息发送、窗口关闭或后台 Map 清理没有 Dashboard ACK，也不能当作 HID 写入或安装成功。此段静态 AST／字节证据未运行厂商 JavaScript、后台服务、DLL 或设备，Rust UI 与真实对照仍未验证。
 
-Profiles 的 Windows 原生枚举／图标另复用 [SysUtilsNative 完整捕获](../../.analysis/results/native/01223bfabf0355f42705836974e343a1f16f837d692999020d218b2615b8e318/capture.json)，独立核 38 个函数、38 个 chunks、7,525 条指令及 36,131 原始字节，1,078 字节未枚举范围保留；九份汇总输出也按摘要核对。同字节的官方主机包成员、实际版本、导出／导入及注册表根表分别确认。枚举仅查询 HKLM／HKCU 下两种 Uninstall 路径，不补成 UWP／快捷方式扫描；图标缓存键、GDI+／PNG／base64、临时文件、短读和失败释放分别记录。这是所选 Windows 静态链，不能扩写为扫描服务、macOS、Rust 或实际 DLL 已验证。
+Profiles 的 Windows 枚举／图标来源与语义统一见 [Profiles 专题](../products/host/profiles.md)。当前 4.0.896 分支使用其所属 SysUtilsNative 1.2.3.0；旧版 [SysUtilsNative 捕获](../../.analysis/results/native/01223bfabf0355f42705836974e343a1f16f837d692999020d218b2615b8e318/capture.json)仅证明对应旧安装分支，不自动覆盖当前版本、扫描服务、macOS、Rust 或实际 DLL 对照。
 
-[GMS 续追](../products/host/profiles.md#gms-服务发现排队添加与任务退出)再核同 DLL 的 7 个函数、966 条指令及 4,061 原始字节，5 字节未枚举；服务发现读取注册表，扫描实际经 JS／SignalR 进入托管服务。当前包的三个程序集及同字节 aliases、22 个注册策略源码均核对捕获摘要；另独立解析 CLR MethodDef 与 tiny／fat 方法头，核 46 个方法的 token、RVA、头长与 code size，以及七处原始 IL opcode，未将其宣称为全部托管 IL 逐指令验证。OnStartScan 的 async void 正常主体没有 await 挂起点，异常仍经 builder 脱离外层 Action；WaitAll 的超时 bool 被 pop，finished 通知早于 stopped 和落盘。两把 Promise 锁的反向顺序／重入可形成条件等待环，实际触发与服务时序未执行。分段收集、请求关联丢失、策略停止粒度、取消与资源收束须按文档分别测试，不能由服务发现或静态正常返回证明成功。
+Profiles／GMS 查询复用[完整托管捕获](../../.analysis/results/host-current/managed/capture.json)，独立核对 CLR MethodDef、tiny／fat 方法头、token、RVA、code size、选定调用／分支原字节、EH／TypeRef catch 类型及 #US 字符串。所选集合可能重叠，计数不累加为全策略覆盖，也不宣称全部托管 IL 已独立逐指令验证。实际查询范围、输入身份和诊断由[主机收据](../../.analysis/results/host-current/local-audit.json)维护。
 
-同链[本机扫描的路径与去重](../products/host/profiles.md#本机扫描的路径去重与结果发布)继续核七个策略、公共基类和两份 SQLite reader，十一份 C# 输出字节与既有清单一致；25 个所选 MethodDef 身份／方法头独立核对，包含与前片重叠的方法，不直接相加为新增覆盖。两种 Registry 策略的 64 位门禁后实际调用 32 位 getter，由四处原 IL 与 MemberRef 名称共同证明；共享 AddFoundGame 的七处索引／通知调用也另核。不同 HashSet 比较器、数据库失败后返回前缀、无效 GUID、先插入后补字段、两张索引的非事务更新和通知早于保存分别保留。Encoding.Default、HMAC-MD5 大写 hex 与 Guid(string) 属于身份语义，不能擅自改用 Guid(byte[]) 或通用正规化。底层依赖、全策略取消／并发、Rust 与实际功能对照继续未验证。
-
-同链[解析与发现通知](../products/host/profiles.md#解析依赖与发现通知的完成边界)另核 Lib 18 个、Common 9 个、服务 EXE 1 个所选 MethodDef 身份／方法头、完整 IL 及相关输出摘要；集合与此前有重叠，不相加为覆盖总数。路径字典实际由 Controller 注入 CurrentCultureIgnoreCase tuple comparer；服务注入名为 NewtonsoftJsonSerializer 的类实际使用 System.Text.Json，字符串／文件／固定 4096 B 字节入口的参数和错误边界不同。Mihoyo 字符分帧、逐条 JSON catch 与外层 I/O 失败、发现广播先于缓存更新、async void 发送挂起、缓存缺分区仍可回 GS_SUCCESS 及 void 保存失败分别保留。所选构造／调用另核原 PE 字节，完整 JSON／加密存储依赖、所有并发交错、Rust 行为测试与官方实际功能对照仍未由此完成。
-
-[Steam、BattleNet 与 Epic 的本机输入](../products/host/profiles.md#steambattlenet-与-epic-的实际本机输入)另核 Lib 的 39 个、Common 的 4 个所选 MethodDef 身份、原 PE 方法头及关键调用字节，并重新核对两套程序集的全部 246／107 个捕获输出摘要；方法集合有交集，不累加为全策略覆盖。Steam 的两个 bool 结果被 pop、停止库循环后仍可能进入联网补全、数据库适配器丢弃序列化返回值、BattleNet 日志单次读取及 64 位门禁后调用 32 位 getter、Epic 先读两列表却以不同列表作门槛与遍历均分别记录。联网目录与匿名登录属于本项目删除范围，不能因此省略本机文件／数据库／图标和结果发布链。底层 KV／SQLite provider、完整取消与发布并发、独立 Rust 行为测试及实际 DLL／服务对照仍未由此完成。
-
-[Arc、Bethesda、EA、GOG、Mihoyo、Riot 与 Uplay 的本机扫描](../products/host/profiles.md#arcbethesdaeagogmihoyoriot-与-uplay-的实际本机扫描)继续核对剩余七个注册策略及其公共 Registry／Path 适配器。选定 ServiceLib 44 个、Common 12 个、服务 EXE 1 个共 57 个方法的身份／方法头、调用与分支摘要已独立复核，并保留 68 个异常区间、55 行定位表和 1901 个调用／操作计数；这些集合与前段重叠，不相加为全策略覆盖。实际输入包括 HKLM Registry32 两视图、Bethesda reader、Arc／EA／GOG 注册表字段、Mihoyo gamedata、Riot rc_live／metadata YAML、Uplay 本地 configuration 文本及路径适配器；逐项停止只位于候选边界，预读取、枚举器和 AsyncTaskMethodBuilder 异常不会自动回滚。完整策略取消／并发、Rust 行为测试及实际 DLL／服务对照仍未验证。
-
-[GSL 加密文件与重试](../products/host/profiles.md#加密设置文件的读取重试与释放)另核 Lib 5 个、Common 10 个所选 MethodDef／方法头、原 EH sections、TypeRef catch 类型及静态 #US 字段；方法集合含复用。FileMode.Create 会直接重写目标，独占打开探测不读内容且耗尽后仍置完成，外层十次 IOException 也可正常 void 返回；Dispose 顺序和非 IO rethrow 分开。加密字符串 Serialize 返回 Base64，而 DeserializeString 直接取输入的 UTF-8 字节后解密，未执行反向 Base64 解码。Aes 工厂显式参数与框架默认参数分开记录；加载失败后重建本地缓存不证明设备无配置。框架密码／XML 内部、完整数据契约及 Rust／实际 DLL／文件恢复对照仍未验证。
+| 功能链 | 语义与版本边界 |
+| --- | --- |
+| 服务发现、任务与结果 | [服务发现与退出](../products/host/profiles.md#gms-服务发现排队添加与任务退出)、[路径与去重](../products/host/profiles.md#本机扫描的路径去重与结果发布)、[解析与发现通知](../products/host/profiles.md#解析依赖与发现通知的完成边界) |
+| 当前扫描策略差异 | [七个平台策略](../products/host/profiles.md#七个扫描策略的当前版本差异)、[Steam／Battle.net／Epic](../products/host/profiles.md#steambattlenet-与-epic-的当前版本差异)、[本机目录与注册表](../products/host/profiles.md#本机目录与注册表七策略的当前版本复核)、[Fever／ItchIo／Twitch／UWP](../products/host/profiles.md#feveritchiotwitch与uwp的当前版本复核)；旧版证据保留在同页对应段落及收据 |
+| 加密文件与重试 | [读取、重试与释放](../products/host/profiles.md#加密设置文件的读取重试与释放) |
 
 `inspect-corpus --no-refresh-gaps` 对所有索引 DLL／NODE／EXE／SYS 及静态提取的实际 MZ 无扩展名载荷分类 native、CLR、混合 CLR／native 和其他格式，保存 aliases、imports、delay imports、exports、version resources、CLR／ReadyToRun 头及失败。扩展名不代替 CLR 判定，ReadyToRun 不冒充纯 native C++。
 
@@ -162,6 +146,8 @@ corpus schema 3 另从当前官方原始 manifest／生产发现 JSON 建立版�
 bootstrap 与 metadata 复核各自拥有独立 gaps owner；核对索引原字节、HTTP 200、官方 HTTPS、两份实际样本、前后稳定摘要及与原 acquisition 的一致性。重查失败、未完成、部署漂移或收据身份不符均独立保留，不能被旧获取收据覆盖。
 
 `analyze-host` 默认先导出 version resource 声明 Razer 所属的 CLR 程序集；`--managed-scope all` 包括所有实际 CLR 原件与依赖，范围、当前输入身份、两阶段结果和 pending 清单见 [managed capture](../../.analysis/results/host-current/managed/capture.json)。新增嵌套原件后继续补捕获，不能沿用先前计数当全库闭合。native Razer.WMI.dll 使用 IDA。不能根据 Analytics、Online、Cloud 等文件名排除整份模块，需按实际调用链分类本地和联网行为。
+
+`analyze-host --managed-input <索引中的项目相对路径>` 可重复指定索引中的 CLR 原件；仅分类与捕获选定字节，按 SHA 复用已核实输出，保留其他程序集、失败、诊断和依赖记录。精确模式不受默认厂商筛选影响，拒绝未索引、歧义、部分解包、字节变化、越界及非 CLR 输入，也不能混用 JS、ASAR 或依赖补充模式。`selection` 记录本次选择与保留边界，`selected_capture_complete` 仅表示所选两阶段捕获完成，`all_csharp_resolved` 另行判断；精确增量不声称全库当前完成。
 
 嵌套获取按实际文件头递归 opaque Burn／MSI 流、CAB、ZIP、Compound 和 Inno Setup。`extract-embedded-inputs` 对实际 MZ 输入扫描边界合法 CAB，DLL 与无扩展名文件不会因名称漏掉；exact CLR resource 另核对原件唯一字节匹配与长度前缀。CAB 头合法仅表示候选，必须核对静态解压全部内容。Inno 完整条目表及提取结果保留，重建 script 放 results。失败解压产生的 partial 及后代经 `reconcile-native-extractions` 明确标为未验证，保留实际 bytes／SHA，不用于当前源码、native 或 managed 原件证据。
 
@@ -377,7 +363,7 @@ Hex-Rays 的默认 `MAX_FUNCSIZE = 64` 会拒绝超过 64 KiB 的函数，即使
 
 计划的 `function_selection.decompiler_limits` 参与精确 selection 身份，capture 的 `applied_decompiler_limits` 必须与计划完全一致；插件不可用或拒绝设置时立即失败。严格复核继续逐字节核对原件、原始函数边界和实际输出，未应用上限、应用不同上限或篡改原件／汇编均不能被接纳。分析进程成功退出仍不等于恢复成功，必须在补查完整、伪代码存在和独立复核均满足后分别记账。
 
-本批以同一协调脚本的 `--phase large --workers 16` 选择仍报 `too big function` 的 17 个范围内模块、34 个函数，显式设置 1024 KiB，排除安装器插件。[大函数补查收据](../../.analysis/results/native-bulk/large-reanalysis.json)现记录 17/17 模块结束，34 条恢复经随后的 `--phase audit --workers 16` 全库严格复核确认。相关收据正向、篡改反例及原始字节保护通过 `NativeSupplementTests` 定向验证，当前 9 个测试通过；该测试证明维护工具的接受边界，不是 DLL 功能运行测试。
+大函数补查以同一协调脚本的 `--phase large --workers 16` 选择仍报 `too big function` 的 17 个范围内模块、34 个函数，显式设置 1024 KiB，排除安装器插件。[大函数补查收据](../../.analysis/results/native-bulk/large-reanalysis.json)现记录 17/17 模块结束，34 条恢复经随后的 `--phase audit --workers 16` 全库严格复核确认。相关收据正向、篡改反例及原始字节保护通过 `NativeSupplementTests` 定向验证，所属批次 9 个测试通过；该测试证明维护工具的接受边界，不是 DLL 功能运行测试。
 
 ### 统一剩余静态任务与严格复核
 
@@ -425,8 +411,6 @@ host 获取、来源选择、ABI 核验、对照生命周期和清理的纯测�
 
 `validate-rust` 的正式输出为[当前验证收据](../../.analysis/validation.json)，分别登记适用的纯／模拟套件；过滤后必须实际执行非零测试，窗口测试仅编译。`suite_selection` 与 `all_configured_suites` 确定选择范围，`commands` 逐项保存实际命令、结果、测试数量、忽略项及完整日志，`inputs` 与 `inputs_unchanged` 限定执行时的输入快照。定向套件通过不自动证明工作区 all-targets 检查、Clippy 或未选套件已执行。失败批次和后续复验沿不可变 `previous_receipt` 链保留，不同快照的测试数不得累计为本批全套。warning-lines 包含编译汇总，不等于互不重复的警告数量；实际 DLL、设备与窗口验收仍按各自功能范围独立记录。
 
-本批[统一验证收据](../../.analysis/validation.json)在同一稳定输入快照中实际执行 `workspace`、`hid-broker`、`mouse-matcher-service`、`controller-lighting-service`、`controller-calibration-service`、`mouse-dynamic-service`、`device` 并通过；`workspace` 为 `cargo check --locked --offline --workspace --all-targets`，其余六项为所选纯／模拟测试。测试数量、忽略项及日志按各条 `commands` 核对，未选套件不因此视为已执行；首轮失败与此前批次沿不可变 `previous_receipt` 链保留。
-
 Protocol30 写入在全部分片 dispatch 后开始 500ms 响应预算；write、CCCD enable 及 Connection 内两条 discovery operation 的取消、终态与 Close 分开处理。Connection 先取得真实生命周期所有权，再启动 FromBluetoothAddressAsync；DeviceAcquisition 保留 typed operation、result_observed 和 sticky cleanup 状态，完成操作 Close 后才交给正常初始化。Close 失败保留已观测结果，不重复 GetResults；超时或取消后的 late Completed 只读取结果、收束 operation.Close 并释放结果，不注册 handler、初始化或发布新连接。Status、Cancel、GetResults、Close 的清理错误阻止同容器重连；retained registry 和后台关闭继续持有未终态操作。官方 Connect0x3e540／Completed0x3eb00 只在 AsyncStatus::Completed 时读取结果；Disconnect0x26e00 注销事件后由 0x2200 执行 IUnknown::Release，不能将其记作物理断开或 IAsyncInfo::Close。operation.Close、结果 IUnknown::Release 及父资源 Close 各自保留契约，未增加逐项 service.Close 或 late device.Close。
 
 USB 间隔依据当前主机 UsbRzDeviceAction 与已核验的 PID190 middleware、chunk6120；部署根／UI 和显式 chunk 的双采样复核分别保留，必需原件与可选 asset-manifest 缺失分别记账。PID191 是 PID190 的 dongle 分支。首次或充分空闲的 collection 无需固定再等 5ms，每次请求第六参数的 sleepTimeBetweenOut 覆盖值须保留，包括显式零值。显式 hid.releaseMutex 只有 sender URL 匹配且存在 release 时才更新时间并释放，不匹配返回 false，既不释放也不更新时间。batch finally 仅匹配 URL 时释放，不匹配只警告并保留锁，两者均不更新时间；普通 writeMutexAutoRelease 及 sendFeatureReport helper 的 finally 在 URL 不匹配时仍警告后释放，但不更新时间。tabDestroyed 与 timeout 释放也不更新时间。普通 Feature Send／Get 和整个 Batch 正常返回后更新时间，抛出异常则不更新；batch 的 2ms OUT 间隔位于整个 native batch 调用前，不能逐报告重复加入。主机 native send 异常与 middleware IPC 异常分别被 helper 吞为 undefined，不能仅依据 sendCommand 外层 catch 改成立即退出。
@@ -435,15 +419,15 @@ USB 间隔依据当前主机 UsbRzDeviceAction 与已核验的 PID190 middleware
 
 当前 HID.node 的 send RVA 0x17a10／Batch callback RVA 0x13700 只有完整长度或 -1 的已证分支，不能虚构普通短 SEND 或 boolean false；GET 正常返回 BytesReturned+1。空、仅 header 或仅 sleep 的 batch 可正常返回 0，须与 reject 后主机回传 0 区分。PID190 chunk 的 IN 偏移 787846 不含统一的 91 字节判定，OUT 偏移 792769 则严格要求 91 字节，不能据此前者放宽后者。Rust 的 NativeIoOutcome 分别保留未调用、真实返回字节数及原生拒绝，未标记的错误保持未知；clock 消费原生终态，actor 保留类型化错误。失效读取由同一个私有 `NativeIoFailure` 同时持有当前 `outcome` 与可选 `read_bytes`；只有该 owner 的实际返回及匹配字节才能经同一协议解析器保留 ACK 诊断。返回长度超出当前缓冲区时只保留真实 count，字节仍未观测；新调用仅有 count 或失败也不沿错误链复用旧字节，即使两次 count 相同。不能仅凭长度解码调用者缓冲区，取消或旧连接的 ACK 诊断也不发布为当前设备状态。普通 Output 保留已观察 ID、exact／collection max 准入和原生完整写入契约，source-host counted Output 保留独立的补齐与计数语义；两者均在原生终态后保留实际发送事实。释放状态由当前 scope 的唯一类型化状态决定，成功释放后失效与真实释放失败分别记账，旧错误标记不能覆盖本次结果。取消、旧代次和清理错误仍阻止成功发布及后续命令。各类 URL 释放的一致性、实际 OS／native timeout 与 cancel、双进程 endpoint 竞争、全部物理 sender 身份及实际 DLL／设备时序对照仍须独立验收，不能宣称整个 DLL 或全部 UI 完成。
 
-SystemMonitor 的当前 Hanbo 默认链遵循 Common 建立 Timer2 → Register 建立独立 Timer1 → Timer2 请求 → Service 首次 Initialize → GetAllHardwareInfo → 收帧 → 满足订阅门限后发布，并保留各时间锚。原生建窗存在异步调度边界，静态顺序和模拟结果不证明 OS 相位一致；多订阅较短共享周期与显式 interval setter 分支仍未实现。
+SystemMonitor 的版本选择、当前 Hanbo 启动／订阅顺序、时钟及退出边界由[灯光与散热专题](../products/accessories/lighting-and-cooling.md)和所属版本收据维护。旧版初始化顺序、静态调用顺序与模拟结果不自动覆盖当前消费者或实际 OS 时序；Rust 实现和运行验收按各自收据判断。
 
 `audit-runtime-resources` 的 Current DPI／Matcher 检查覆盖其实际页面、Shell、协议、IPC、发现与服务所有者，公共页面入口仅检查所属组合函数，避免把无关功能算入此范围。规则检查 UI I/O、任务保留与清理、连接／配置身份及官方业务 DLL 加载入口；合法的系统 API、本地主机配置路径和独立通信 worker 不因此被禁止。Matcher scope 保留检查按 AST 参数顺序核对领域、页面与归一化代次及 guard，允许 rustfmt 尾逗号。该静态范围不代表全工作区厂商加载器已清零，也不提供完整类型或宏展开证明。
 
 模块服务图像检查从当前 deployment manifest 选择唯一 JS／CSS，通过完整 AST 核对主 runtime 的 chunk 名、公有路径、main → App → lazy6505／factory44442 挂载链，再沿实际 default export 与图像消费者验证样式和 fallback。历史 chunk 不在当前声明中时直接失败，不以保留文件的存在证明当前性。该检查已通过当前声明的 `6505.98da235d.chunk.js`，资源审计的其他闭包项仍须按自身收据验收。
 
-`refresh-gaps --owner <项目相对收据路径>` 可重复指定语义报告及 `native/<sha>/capture.json`，在同一有界批次重算选定所有者；省略参数仍执行原全量流程。两条路径共用缺项分类规则，保留分析器失败、未决链与实现／验收边界。发布前重读选定来源的实际字节；来源变化、路径逃逸、非规范路径或不适用的所有者均拒绝发布，其他所有者保持原样。当前来源身份记录在 `gaps.json` 的 `selected_refresh`，避免补查一个共享链就重扫整份语料。
+`refresh-gaps --owner <项目相对收据路径>` 可重复指定语义报告、`native/<sha>/capture.json` 及 `host-current/managed/capture.json`，在同一有界批次重算选定所有者；省略参数仍执行原全量流程。两条路径共用缺项分类规则，保留分析器失败、未决链与实现／验收边界。发布前重读选定来源的实际字节；来源变化、路径逃逸、非规范路径或不适用的所有者均拒绝发布，其他所有者保持原样。当前来源身份记录在 `gaps.json` 的 `selected_refresh`，避免补查一个共享链就重扫整份语料。
 
-音频资源发布批次的 26 份静态媒体、219,303,345 字节已按[发布收据](../../.analysis/results/asset-release-update.json)发布并固定 revision `7b84565adba1676716bbfaac6271dc5a9de7e007`，远端 7,810 份 source file 与 9 份保留文件均复核。独立 SQLite 目录库为 47,452,160 字节、SHA-256 `bd0b08b92da3e0e091cc6324af88c431d82937d786d257a991f9ad27e5af55f2`；[生成收据](../../.analysis/results/typed-data.json#resource_database)确认 schema 4、12,049 个 alias、7,819 个文件、14 个字体及完整有序往返通过。[资源引用闭包](../../.analysis/results/resource-audit.json#runtime_reference_closure)在其 `recorded_at_utc`、`inputs` 和 `resource_revision` 所限范围内记录 missing_references 为零、输入稳定及静态检查通过；不能用该快照替代后续新增 Rust 文件的复核。[键盘图像审计](../../.analysis/results/resource-audit.json#keyboard_artwork)的像素结果与未决字体另列，动态领域、安装缓存和窗口运行验收仍未验证。目录库生成工具、资源发布、checkout 释放和来源索引各自保留当时身份，后续维护器或输入变化不追溯改写为重新验证。
+媒体数量、固定 revision 和远端核对结果由[资源发布收据](../../.analysis/results/asset-release-update.json)维护；SQLite 的实际长度、SHA、schema 与有序回读结果由[目录库生成收据](../../.analysis/results/typed-data.json#resource_database)维护。[资源引用闭包](../../.analysis/results/resource-audit.json#runtime_reference_closure)和[键盘图像审计](../../.analysis/results/resource-audit.json#keyboard_artwork)分别保留其输入范围、像素结果与未决字体。生成、发布、checkout 释放和来源索引各有当时身份，后续工具或输入变化须重新复核，不能沿用旧快照证明当前代码、安装缓存或窗口验收。
 
 Lighting Engine 与 4115 MW 的当前来源分别由[稳定 LE snapshot](../../.analysis/inputs/frontend/synapse-lighting-engine-snapshot-1d1be731/acquisition.json)和[当前 MW 闭包](../../.analysis/inputs/frontend/gamepad-mw-4115-snapshot-81ed5dc91a596f97101f-closure/acquisition.json)接入共用选择器。[双轮部署复核](../../.analysis/results/frontend-revalidation/96d5e70f5112db87818c4bf0b227ff87b641f9dc3da5c0f9a045777e399fc23f.json)只证明所选入口与直接／显式脚本的当次 HTTP 身份稳定，保留可选缺失；其 `source_semantics_complete=false` 不提升为功能语义完成。source map 404、`declared_references_fetched=false` 与完整捕获不可用继续按各 acquisition 和审计正文分别记录，旧部署捕获不冒充新部署。
 
@@ -454,6 +438,8 @@ Lighting Engine 与 4115 MW 的当前来源分别由[稳定 LE snapshot](../../.
 `python -X utf8 tools/workspace.py clean --stale` 只处理当前批次开始前的 `.work` 根层 `.log/.txt/.out` 与根层 `__pycache__/*.pyc`。引用核对使用已安装的 `rg` 固定字符串多模式搜索与 16 个扫描线程，覆盖维护源码、文档、输入索引及正式 JSON 收据；已索引的函数／AST／原始反编译正文不重复扫描。不明类型、仍有引用、活进程路径、链接／junction、新文件及占用文件保持原样，删除前以 Windows 独占句柄重新核对文件身份。该模式不进入原生 IDB、分析工具与当前运行目录，也不删除 `.analysis` 原件或正式结果。
 
 每轮逆向必须按 [AGENTS.md 第 7.1 节](../../AGENTS.md#71-每轮逆向的清理与体积控制必做) 收尾。默认 `python -X utf8 tools/workspace.py clean` 或显式 `--dry-run` 仅生成 `.analysis/results/scratch-cleanup-<UTC时间>-plan.json`，不再清空 `.work`。计划使用保留名称并独占创建，已有计划和 apply 收据不得覆盖。完成证据充分、无后续依赖的 supplement 私有副本和旧资源克隆由计划逐项列出；原始 batch 数据库、活跃／预留任务、当前 verification checkout 及正式引用保留。执行使用 `clean --apply <计划相对路径> --plan-sha256 <实际计划SHA>`，先获取队列与资源写入锁，再重新核对完整引用、预留、完成收据、实际文件身份、路径和占用；首次删除前持久化完整计划范围和身份。实际删除与失败记入统一收据；清理计划不代表已释放空间。
+
+候选为空的计划仍核对 SHA、工作区归属、guard 结果及独占锁，并写入空范围的正式执行收据；执行时不再枚举无关目录或进程，也不会把计划后出现的新候选加入删除范围。有候选时完整保留上述依赖与占用核验。
 
 旧上传克隆的清理还核对当前资源 lock、真实校验器、完整发布或固定版本只读预检收据、HEAD／refs、index／tree／worktree、LFS 实际对象与 Git 元数据；存在未发布对象、额外引用、未知文件或重建依据不足时保留。apply 在计划中的目录和文件句柄仍持有时，最后重新枚举完整树、核对目录和文件身份并盘点活动进程；任何外部 Git／Git LFS／Git remote 进程，包括相对工作目录命令，均会阻止上传克隆删除。新增锁、资源或传输文件会在首次删除前拒绝并写失败收据。最终重扫与进程盘点不等于原子禁止所有子项创建，目录句柄本身不提供这种保证。
 
@@ -467,4 +453,4 @@ Lighting Engine 与 4115 MW 的当前来源分别由[稳定 LE snapshot](../../.
 
 显式 `compact-analysis --review-receipt <项目相对路径>` 还可将当前 `.analysis/results/reverse-pending/review-sources/<SHA>.json` 纳入同一压缩计划。路径必须处于该边界、没有链接，实际 JSON 字节 SHA 必须等于文件名及计划身份；默认扫描不扩展到其他结果或工作目录。apply 仅使用核验后的原计划，不另接新范围。该路径保持不变，完整逻辑字节和 SHA 经压缩前后核验后才记录实际节省空间，禁止通过删字段或改写完成事实缩小正式收据。
 
-清理结果保存在各次 `scratch-cleanup-*-plan-applied.json`，压缩结果保存在 `storage-compaction-*-apply.json`；实际删除、失败、保留依据和释放空间直接读取所属收据，不在此累计历史数值。当前批次只计本次实际释放量。所有权账本位于 `.analysis/verification/temporary-directories.json`；仍有 `source_database`、正式引用或未决分析依赖的副本继续保护，未知身份与同步锁文件不能按体积或年龄删除。
+清理结果保存在各次 `scratch-cleanup-*-plan-applied.json`，压缩结果保存在 `storage-compaction-*-apply.json`；实际删除、失败、保留依据和释放空间直接读取所属收据，不在此累计历史数值。当前批次只计本次实际释放量。所有权账本位于 `.analysis/verification/temporary-directories.json`；仍有 `source_database`、正式引用或未决分析依赖的副本继续保护。`supplements/.reservation.lock` 的普通文件由 `supplement_native` 共享，用于后续补查任务预留，计划以 `supplement_reservation_lock` 单独保留；目录、链接及其他未明项继续按原检查处理，不能按体积或年龄删除。

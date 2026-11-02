@@ -80,6 +80,6 @@ Power 页面中的省电、关机、充电与电池各有独立状态来源。`p
 
 ## 原件与阅读边界
 
-每款原件入口为 `.analysis/inputs/frontend/audio-<PID>-current/acquisition.json` 与 `audio-mw-<PID>-current/acquisition.json`。上表由全部 77 款 MW main 的实际 AST `useFeature` 调用核对，具体 lazy feature、参数及页面挂载继续由相应功能正文和逐产品文件追溯。获取来源、部署稳定性、实际字节身份与依赖由收据及 `.analysis/inputs.json` 维护。
+每款基础原件入口为 `.analysis/inputs/frontend/audio-<PID>-current/acquisition.json` 与 `audio-mw-<PID>-current/acquisition.json`；已有更新 snapshot 的路由使用统一来源选择器，并保留候选、获取失败和 capture 缺失，不能固定读名称带 current 的旧目录。[1422](products/1422.md) 的 UI 已定位到 `snapshot-ed4fa81d`，其当前挂载与 meter 消费者归 `audio-MapAudio-audit.json / seiren_eq_current_ui`。上表由全部 77 款 MW main 的实际 AST `useFeature` 调用核对，具体 lazy feature、参数及页面挂载继续由相应功能正文和逐产品文件追溯。获取来源、部署稳定性、实际字节身份与依赖由收据及 `.analysis/inputs.json` 维护。
 
 深层证据使用 `.analysis/results/frontend/audio-mw-audit.json`、`audio-MapAudio-audit.json`、`audio-surround-audit.json`、`audio-demo-audit.json`、`audio-help-reset-audit.json` 的完整函数与当前原件。函数名带 `getRuntimeData`、`initDataFromDevice` 或返回 `true` 并不自动代表设备读取/确认：正文逐层说明其真实来源及未消费的应答。源码语义、Rust 独立实现、UI/后端接线、纯/模拟验证与真实运行验收分别判断；本文不将静态阅读记为设备验收。

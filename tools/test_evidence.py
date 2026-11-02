@@ -7796,6 +7796,26 @@ class SelectedGapRefreshTests(unittest.TestCase):
         self.assertFalse(ledger["selected_refresh"]["target_execution"])
         self.assertEqual(set(ledger["derived_owners"]), {"unrelated", self.owner, self.host, self.native})
 
+    def test_managed_refresh_preserves_actual_diagnostics_failures_and_other_owners(self):
+        name = ".analysis/results/host-current/managed/capture.json"
+        diagnostic = {"kind": "managed_decompiler_unresolved", "path": "source/Service.cs", "line": 17,
+                      "text": "Could not resolve original dependency"}
+        data = {"assemblies": [
+            {"input": "service.dll", "commands": [{"stage": "il", "exit_code": 5}],
+             "input_bytes_unchanged": False, "diagnostics": [diagnostic]},
+            {"input": "lib.dll", "commands": [{"stage": "il", "exit_code": 0}],
+             "input_bytes_unchanged": True, "diagnostics": []}]}
+        analysis.save(self.root / name, data)
+        result = analysis.refresh_gaps([name])
+        rows = result["owners"][name]
+        self.assertEqual([row["kind"] for row in rows], ["managed_analyzer_failure",
+                         "managed_decompiler_unresolved", "managed_input_identity_unverified", "semantic_audit_pending"])
+        self.assertEqual(rows[0]["exit_code"], 5)
+        self.assertEqual(rows[1], {**diagnostic, "input": "service.dll", "evidence": name})
+        self.assertEqual(result["owners"]["unrelated"], self.other)
+        self.assertEqual(result["owners"][self.owner], [{"kind": "old"}])
+        self.assertEqual(result["selected_refresh"]["sources"][0]["sha256"], analysis.sha(self.root / name))
+
     def test_changed_source_refuses_publication_without_touching_existing_ledger(self):
         analysis.save(self.root / self.owner, {"queries": {"power": {"failures": []}}})
         previous = self.path.read_bytes()

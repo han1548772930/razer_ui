@@ -597,6 +597,25 @@ callDLL／callDLLAsync 的 FreeFFI 分支直接 return true，未调用空的 `_
 
 最终发布产品版本前检查 installErrors；源码的 ignoreErrors 分支可以在仍有错误时完成原版流程，这个状态不能在本项目中被解释为所有本地能力成功。completedResources、expectedResources、upgradedResources、真实进程结果、资源记录与产品记录分别维护。
 
+### RzComDriver 的两个实际载荷与安装结果消费者
+
+当前 Host `4.0.896` 的 `RzComDriver_v23.0.6.0.exe` 由[版本所属提取收据](../../../.analysis/results/host-current/releases/4.0.896/d17bbc15e025bcee12948655ed5956bfe855019e626e497dd10ed40cb9a5e0dc/inspection.json)绑定原件和成员。维护查询 `audit-host-local --query common-driver-install-selection` 将本节结论接到[统一主机收据](../../../.analysis/results/host-current/local-audit.json)的 `common_driver_install_selection`。分析复用现有完整捕获，在内存中解压并逐项核对载荷，没有运行安装器或新增分析数据库。
+
+Unicode NSIS entry `32` 读取 `%WINDIR%\System32\kernel32.dll` 的文件版本，解释器实际调用 `GetFileVersionInfoSizeW/GetFileVersionInfoW/VerQueryValueW`。entry `38` 对高 DWORD 与 `0x000A0000` 作有符号比较；相等或更大进入 `39`，更小跳到 `44`。版本读取失败先留空，数值路径按零选择 legacy，但仍属于未观测。不能把这条文件版本判断替换成 OS 名称或无符号比较。
+
+| 分支 | 官方输出文件 | SYS 版本与 WDF 绑定 | 保留原件 |
+| --- | --- | --- | --- |
+| universal，entries `39–42` | `rzcommon.cat`、`RzCommonU.inf`、`RzCommon.sys` | `1.0.0.76`，WDF `1.15.0`／444 项 | `Drivers/x64/RzCommon.sys` |
+| legacy，entries `44–48` | `rzcommon.cat`、`RzCommon.inf`、`RzCommon.sys`、`WdfCoinstaller01009.dll` | `1.0.0.71`，WDF `1.9.7600`／396 项 | `Drivers/x64/RzCommon_1.sys` |
+
+两套 SYS 和 CAT 的官方输出名相同，提取原件的 `_1` 来自重名保留，不能解释为另一服务名。两份 INF 都声明 `RAZER\DeviceContol`、按需启动的内核服务 `RzCommon` 和 `%12%\RzCommon.sys`；legacy 的 NT 6.1 分支使用 coinstaller／KMDF 1.9，universal 声明 NTamd64 与 `PnpLockdown=1`。这些声明不能证明 Windows 实际选支或安装成功。
+
+entry `61–78` 依次调用 `GetCurrentProcess`、`IsWow64Process2`、`IsWow64Process`，把两个 probe 的 process-machine／WOW64 输出作 OR。两次 probe 都会调用；native-machine 输出和 API BOOL 返回没有成功消费者。OR 为零时 entry `79` 跳到 `85`，跳过 `nsExec.Exec`；非零时执行 `DPInst_amd64.exe /F /LM /SW /SA /PATH ...`。这条门禁不等于 native AMD64 资格已确认。
+
+`nsExec` 的实际 `0x1096` 所有者处理进程、管道、退出码和关闭句柄；当前命令没有超时参数。它保留 `error/timeout` 字符串，正常退出码按有符号十进制入栈。entry `85–90` 只取 `0x40000000` 重启位，命中才设置最终退出码 `3010`，两条路径均把该位值写入 HKCU `Volatile Environment/RzComDriver`。单独失败位没有在这里检查；`-1` 也含重启位，非数值文本会转成零；跳过 Exec 后的 Pop 也不能当作新退出结果。它们均不能证明驱动、服务或设备已就绪。
+
+本查询选定 28 个语义函数，并将安装器 105、System 62、nsExec 17 个完整捕获函数的 chunks／指令与原始 PE 核对；System 调用桥的正栈警告仍保留。两套 SYS 已有的 121／105 函数完整捕获只核身份和可用性，legacy `1.0.0.71` 的通知、取消和释放语义仍须独立复核，不能继承 universal 结论。Rust 独立实现、完整安装／卸载调用方、实际 DLL／设备对照及运行验收分别保持未完成或未验证。
+
 ### InterHaptics 安装与卸载的旧进程退出链
 
 当前资源清单绑定的 `1.0.0.49` [安装包与完整提取收据](../../../.analysis/results/native-packages/33954697ea3c99d8a7e1ffd99255834c29a01e4d0712b9e8fbc83f5db346d83f/inspection.json)、[安装解释器捕获](../../../.analysis/results/native/33954697ea3c99d8a7e1ffd99255834c29a01e4d0712b9e8fbc83f5db346d83f/capture.json)及[同包卸载解释器捕获](../../../.analysis/results/native/2889e68bb939c46eb568ed1ac386f435b1672af6ecbf04c0e212a451c23824ec/capture.json)共同约束这条本地生命周期。安装包为 2,157,704 B，提取的 `Uninstall.exe` 为 366,544 B，均为 x86、Image Base `0x400000`。两套捕获各 105 个函数、8,320 条指令、25,589 B raw chunks，逐函数文件摘要、chunk 摘要及全部指令字节已与各自 PE 核对；这只是静态证据核验，不是执行安装、卸载或 helper 的收据。
@@ -620,11 +639,39 @@ callDLL／callDLLAsync 的 FreeFFI 分支直接 return true，未调用空的 `_
 
 同包 `nsProcess.dll` 已按实际字节与[完整捕获](../../../.analysis/results/native/30c6c3dd3cc7fcea6e6081ce821adc7b2888542dae30bf00e881c0a105eb4d11/capture.json)核对：x86、Image Base `0x10000000`、11 个函数、425 条指令、1,280 B。`_FindProcess` 导出 `0x1377` 通过 `0x10d0` 查询进程名；找到返回 `0`，未找到为 `603`，OS／加载／查询失败另有 `604..608` 等结果。上述脚本把所有非零结果走到同一个“未运行”分支，因此这些分支不能提升成已确认进程不存在。`_KillProcess` 导出 `0x13b8` 使用 `0x103f` 的 `OpenProcess/TerminateProcess` 路径，关闭成功打开的进程 handle；本脚本未调用带窗口关闭等待的 `_CloseProcess`。NT 查询缓冲在正常枚举完成后 LocalFree，模块查询 handle 与 Toolhelp snapshot 按各自路径释放；输入／输出 NSIS 栈节点由 `0x143a/0x1489` 消费和产生，opcode `0x1f` Pop 实际 GlobalFree 节点。不能只据导出名字推定返回 ABI 或强制停止成功。
 
-HapticService 的停止等待与 helper 是独立阶段。安装 entry `688` 调用 `SimpleSC::StopService` 后等 `1,000` ms，重新取得服务状态；仅状态 `3/4` 进入 entry `757..783` 的进程轮询。该循环每次仍找到 `HapticService.exe` 才等 `1,000` ms 并增加计数，达到 `50` 退出；entry `788/790` 再次查询／判断，仍找到时拒绝继续移除服务并转重启安装，非零查询结果才继续 `RemoveService`。卸载另有 entry `519` 的 StopService、`523` 的 `1,000` ms 延迟、`524..550` 的 50 次轮询，却没有安装的最后一轮 `_FindProcess` 屏障；它继续查询服务状态并在 `612` 请求 RemoveService，后续由目录操作决定是否登记重启卸载。这里的 `SimpleSC` 调用名、参数、返回栈及脚本消费者均为静态事实，完整 SCM 内部路径及实际服务结果仍需独立核对，不能由日志补成成功。
+HapticService 的停止等待与 helper 是独立阶段。安装 entry `688` 调用 `SimpleSC::StopService` 后等 `1,000` ms，重新取得服务状态；仅状态 `3/4` 进入 entry `757..783` 的进程轮询。该循环每次仍找到 `HapticService.exe` 才等 `1,000` ms 并增加计数，达到 `50` 退出；entry `788/790` 再次查询／判断，仍找到时拒绝继续移除服务并转重启安装，非零查询结果才继续 `RemoveService`。卸载另有 entry `519` 的 StopService、`523` 的 `1,000` ms 延迟、`524..550` 的 50 次轮询，却没有安装的最后一轮 `_FindProcess` 屏障；它继续查询服务状态并在 `612` 请求 RemoveService，后续由目录操作决定是否登记重启卸载。下节继续核对实际调用的 SCM 路径；插件返回、进程观察与设备停止仍是不同结果，不能由日志补成成功。
 
 解释器 `0x1434` 的 opcode `0x2c` 在调用前核实模块和实际导出地址，并传递窗口、字符串容量 `1024`、变量表、栈地址及额外参数表；并非通过猜测的普通 C getter 签名调用。`0x68d9` 的文件存在检查会 FindClose；普通 Synesthesia 查询／终止的调用在没有保持加载或注册回调条件时 FreeLibrary。HapticService 轮询的 nsProcess 调用带保持加载操作数，不能称每轮都卸载。进程退出前 `0x3557 → 0x3b74 → 0x3bb9` 处理输入 handle、已登记插件回调／模块与临时插件目录，`0x5c88` 处理目录枚举、删除及失败后的延后删除；这不是删除 `$R5` 指向的 helper。尚未取得 `SynesthesiaStop.exe` 的当前官方文件，也未取得 `Interhaptics.HidProvider.dll`，本包完整提取的 11 个文件没有它们。因此这里只确认安装／卸载调用方对 helper 的执行意图和结果消费，helper 内部的通信、退出、等待及释放仍未确认。
 
 后续测试须独立覆盖进程查询 `0/603/查询错误`、helper 缺失／创建失败／非零退出／等待、两条不同的延迟、终止后仍存活、50 次服务等待、80 次目录重试以及 RunOnce／`3010` 消费；独立 Rust 实现与当前官方 DLL 的实际执行结果仍须按全功能对照规则留收据。当前仅完成上述静态核验，没有执行 installer、uninstaller、helper 或厂商脚本；这些程序的运行验收、实际服务变化和设备停止全部保持未验证。
+
+#### SimpleSC 的实际 SCM 调用与等待边界
+
+维护查询 `audit-host-local --query interhaptics-services` 将当前清单、安装包、UTF-16 NSIS header、实际导出及原始 PE 字节接到[统一主机收据](../../../.analysis/results/host-current/local-audit.json)的 `interhaptics_services`。复用同包 [SimpleSC 完整捕获](../../../.analysis/results/native/1620cdf739f459d1d83411f93648f29dcf947a910cc761e85ac79a69639d127d/capture.json)，插件为 x86、Image Base `0x400000`、1,110,016 B；本次选中 37 个插件函数、两份解释器各 4 个函数和 4 个数据区域逐字节核对。安装 header 实际调用 6 次、卸载调用 4 次，仅涉及下列四项；不能据插件另外导出 `StartService/InstallService` 增加本链需求。
+
+| 实际调用 | 内部路径及结果边界 |
+| --- | --- |
+| `ExistsService`，导出 `0xec79c → 0xe923c` | 以 access `1` 打开 SCM 和服务；两次打开成功返回错误码 `0`，失败保留 Win32 错误。它不是布尔存在位；权限失败不能当服务不存在。已打开的服务及 SCM handle 关闭。 |
+| `GetServiceStatus`，`0xebb54 → 0xe9b04` | SCM access `1`、服务 access `4`，真实 `QueryServiceStatus` 成功才写 `dwCurrentState`。导出先 Push state、再 Push error，脚本先 Pop error 到 `$0`，再 Pop state 到 `$1`；错误时初始 state `0` 不能当作实测状态。 |
+| `StopService`，`0xeb8ac → 0xe966c` | 两份脚本均依次 Push `30`、`1`、服务名，导出按反序消费；仅 UTF-16 字面量 `1` 开启后续文件等待。SCM access `5`、服务 access `0x28`；先枚举 active 依赖服务，递归以 flag `0` 和同一 timeout 停止，依赖报错则不停止父服务。`ControlService(STOP)` 成功后等待实际查询 state `1`，关闭服务及 SCM handle 后才进入可选文件等待。 |
+| `RemoveService`，`0xeb7a8 → 0xeafa4` | SCM `0xf003f`、服务 `0xf01ff`；锁服务数据库、`DeleteService`、解锁并关闭 handle。错误码 `0` 仅表示删除请求被接受；函数没有先停止、等待服务最终删除或确认文件释放。解锁／关闭结果未写入业务返回。 |
+
+状态等待 `0xe9148` 每次按 `GetLocalTime` 建立自己的 deadline，参数 `30` 乘 `1,000` 转毫秒；时间换算的两份每日期常量均为 `86,400,000`。未达目标状态时 Sleep `250` ms，查询错误立即返回，超期返回 `1053`。每个依赖、主服务和后续文件检查分别计时，不能将 `30` 描述成完整停止链的总时限，也没有已核实的取消入口。
+
+停止成功且 flag 为真后，`0xe9028 → 0xe9bc0` 用 `QueryServiceConfigW` 取得程序路径并释放配置缓冲。路径辅助函数 `0x203e4 → 0x2ac84` 查找整个输入中最后一个反斜杠或冒号，保留到该分隔符的前缀；`0xe8f38` 只将余下部分截到首个 ASCII 空格，再连接回前缀。它保留引号、Tab 和环境变量，不按 Windows 命令行解析；参数中更靠后的反斜杠／冒号也参与前缀选择。`0x203e4` 的 bad-stack 警告保留，参数设置及 Copy 边界已由完整汇编和实际 PE 字节核实，静态结论不再作为待核项。
+
+| 原始 `binaryPathName` | 路径辅助函数的静态结果 |
+| --- | --- |
+| `C:\Program Files\svc.exe --quiet` | `C:\Program Files\svc.exe` |
+| `"C:\Program Files\svc.exe" --quiet` | `"C:\Program Files\svc.exe"`，保留双引号 |
+| `C:\dir\service name.exe --quiet` | `C:\dir\service` |
+| `C:\svc.exe --log D:\logs\file name.txt` | `C:\svc.exe --log D:\logs\file` |
+
+随后存在性门槛 `0x2034c` 遇到 `GetFileAttributesW` 错误 `2/3/123` 直接为假，其他错误可走 `FindFirstFileW`；目录为假，reparse 分支另检查 share `1` 的读取打开，错误 `32` 视为存在。门槛为假时直接返回 `0`，不会执行独占打开循环。门槛为真才尝试 `CreateFileW(read|write, share=0, OPEN_EXISTING)`；成功立即关闭文件 handle，超时返回 `250`。轮询没有 Sleep；返回 `0` 本身不能证明文件已释放、进程已退出或设备已停止。上述字符串案例是汇编静态投影，官方插件实际执行仍未验证。
+
+NSIS Pop／Push `0x37c34/0x37c68` 对栈节点执行 `GlobalFree/GlobalAlloc`，插件字符串在 finally 链释放。但停止函数在 `0xe9702` 分配依赖枚举缓冲，随后按 `0x24` 步长推进指针，选中的正常和 finally 汇编没有对应释放，不能宣称原版已完整释放该缓冲。迁移时应由拥有枚举缓冲的 Rust 调用负责释放。
+
+这组证据补齐所选 SCM 路径及路径提取语义，不关闭缺失 helper／HID provider、Rust 独立实现或实际服务对照；这些项仍分别未完成／未验证。相关后续用例应覆盖查询失败加 state `0`、依赖失败、状态超时、路径门槛跳过、文件不可独占、删除请求受理与最终删除的区别及资源释放。
 
 ## 安装原生队列、退出码与服务状态
 

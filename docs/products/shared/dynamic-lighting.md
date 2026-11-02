@@ -223,6 +223,336 @@ Ambient 的源码与 native owner 为 `0x5ce60/0x5cf80/0x5d0b0`：screen rect �
 
 旧附片的 `followup_plans`／`remaining` 等字段保留其历史收据语义。冻结基线的 61 项静态复核现为 0 未决、0 失败，当前结果见 [unresolved-current](../../../.analysis/results/reverse-pending/unresolved-current.json)；这不等于全部 Rust 功能、界面接线或设备验收完成，也不要求重复执行已完整捕获的静态提取。
 
+### 当前 Advanced Profile 的层顺序、区域 mask 与 native 合成
+
+统一入口 `python -X utf8 tools/workspace.py audit-host-local --query lighting-static-layer` 将[当前 LE 原件](../../../.analysis/inputs/frontend/synapse-lighting-engine-snapshot-1d1be731/acquisition.json)的 Profile 消费者接到[已有 4.0.55.0 完整 native 捕获](../../../.analysis/results/native/cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa/capture.json)，结果归[同一主机收据的 lighting_static_layer](../../../.analysis/results/host-current/local-audit.json#lighting_static_layer)。本片保留 41 个完整 AST owner，重新核对 71 份完整 native 函数与 26 个实际 PE 虚表槽；正文及 chunk 引用复用既有捕获，不重复启动 IDA 或复制数据库。旧 `lighting_frame_lifecycle` 的 Marci 范围及失败事实独立保留。
+
+Profile 选择来自当前用户的本地 enabled／currentProfile；`onStorageChange_ChromaStudioUsers` 只在 software 状态消费它。`enableAdvancedEngine` 在自身 mutex 内先销毁旧引擎，再从 IndexedDB 取指定 Profile 并重建，失败后没有恢复旧引擎的分支。`applyChromaStudioEngine` 先访问 `profile.devices`，因此未取得 Profile 时会在创建前抛错；后面的 undefined 判断不能保护这个访问。它过滤未连接、断电及 inactive 的区域设备，创建 25fps 引擎并保存句柄，再加设备位置、效果层和 mask，最后 enable。设备表为空时会在保存新句柄后提前返回，没有对应的即时销毁。
+
+| 当前主脚本完整 owner | UTF-8 字节区间及实际语义 |
+| --- | --- |
+| `enableAdvancedEngine`／`getProfileFromIndexedDB` | `[929546,930624)`／`[941513,942320)`；先销毁再读取当前 Profile，不把它当作设备实测 |
+| `applyChromaStudioEngine`／`applyLayersEffect` | `[877847,880046)`／`[880047,880543)`；顶层用 `toReversed()`，组内用会修改原数组的 `reverse()`，该循环没有另外检查组的 visible |
+| `applyLayersEffect_layer` | `[947157,948532)`；跳过不可见层与缺失／空 regions，每个 region 创建一个效果，region.params 覆盖 layer.params |
+| `applyLayersEffect_region_devices` | `[948532,951801)`；查询实际行列后建零 mask，选中 LED 写 100；mirror 只有行列与主 region 相等才提交 |
+| facade `addEffect`／native wrapper `AddEffect` | `[409545,413727)`／`[308356,309036)`；effect 6 只传 Color，经实际导入的 RGB/BGR 转换后提交 Action 33 |
+
+native 的 `0x21ac0 case 6 → CEffectEngine +64 → 0x4c740 → 0x521e0 → 0x51200` 构造 Static。`0x4c740` 的伪代码省略了转发参数，完整汇编保留进入 `0x521e0` 的 RDX／R8，不能据省略的文本重写 ABI。`0x68c30 → 0x691a0` 复制参数，`0x68c70` 将同一个 32-bit Color 写满 rows×cols；空矩阵返回成功但不产生像素，NULL 输出失败。转换函数单独保留 `0x64000000` 透明哨兵，其余正常颜色交换红蓝通道。
+
+mask 走 Action 35 的 `0x24610 → engine +112／0x4c270 → container +80／0x52970`，先核对设备 region 和精确矩阵长度，再按实际几何映射写入容器 mask；`0x52a50` 提交非零 mask 的包围区域。当前 JS 只显式排除 index≥length 的 LED，并没有额外的负数／整数检查。mirror 的一次 await 也不能证明设备收到设置：低层 SetMask 返回 Status，facade 丢弃它；Enable 和销毁包装同样丢弃 native Status，AddEffect 直接取 effect_handle，没有先检查 Status。
+
+容器 `0x52df0` 清零目标帧，按存入顺序渲染启用的效果，并用 `过渡不透明度 × (100−alpha 字节)/100 × mask/100` 混合 RGB；没有 mask 时省略最后一项。mode bit `0x20` 另用非黑像素条件决定覆盖。每个通道先把浮点差值截成整数再写 byte；子 render 失败不会自动跳过混合，函数最后返回最后一次子 render 的状态。新项 enabled、目标不透明度 1、state 3，默认过渡 3000ms；`0x52c50/0x52600` 按整数帧间隔计算步数、推进淡入／淡出并释放 state 1 项，不能把它换成一次静态填色。
+
+实际计时回调由已核对的调整虚表进入 `0x4cfd0`，调用容器合成，映射为设备 RGB，再经 `0x485d0 → 0x50db0 → 0x50d90 → 0x49110 → 0x486e0 → 0x4fcd0 → 0x4980` 接入前文 eventId 2 和按 handle 替换的帧通路。停止与成功仍分开：enable 0 会停 timer 并等待在途 timer callback；Action 4 删除不存在的句柄也返回 0。真实 entry 析构才调用 engine 析构，先停用、等待并关闭 timer，再销毁容器；已核对的 Static 删除槽释放效果，容器释放 mask／scratch。
+
+引擎关联记录保存的是借用的 CDevice 主对象。`0x4b470` 经主虚表 `0x1a83c8+88 → 0x47830` 解除 engine／region 关联，再由 `0x4a790` 释放关联记录的四份 vector；这里没有删除物理设备或等待设备 worker。`0x47830` 在设备锁内移除首个匹配节点，缺项返回 E_FAIL；若没有保留活动项的 engine 状态，再清帧 gate。显式 `0x4bbc0` 的 region=0 会逐一解除该设备全部区域，非零则筛具体 region；它没有消费 detach 返回值。
+
+真正的设备删除槽 `0x490c0 → 0x473c0` 先在设备锁内让剩余 engine 经 `+16 → 0x4bbc0` 释放所有关联，解锁后设置 teardown 字段、禁用输入，再由 `0x50d10` 收束设备 work。只有提交标志已置位时才调用 `WaitForThreadpoolWorkCallbacks(work, TRUE)`，随后关闭并清 handle；TRUE 会取消尚未开始的回调，不能解释为全部输入或灯帧均已交付。callback／engine 列表和 control owner 在这之后释放，worker 析构重复执行空 handle 安全的关闭。实际 CDeviceAccess 析构只释放自身 buffer／map／JSON。这些局部等待没有覆盖独立的 latest-frame timer、JS callback、LightingDriver 或 HID Promise；该边界与前文已核对的下游行为相接，不能新增原版没有的全局完成屏障。
+
+本片补齐当前高级层的上述静态链，不改记既有 Static／speed=0 Wheel 对照的输入或结果。共享编辑／预览／本地保存复用 [Studio 消费者](../system/customize-lighting.md#studio-共享编辑预览与本地保存)；其他效果、各面板控件、全部产品几何／mirror 分支、动态过渡与取消的实际执行、完整 Rust／UI 接线及设备写回／读回仍须接续；这里没有执行官方 JS、DLL、设备或应用。
+
+### 当前 Advanced 的时间与颜色效果
+
+`collect_lighting_timed_effects` 将当前 LE 的实际 `addEffect`／`getModeWithPlayback`／`AddEffect` 接到同一份 4.0.55.0 完整捕获，结果归[主机收据的 lighting_timed_effects](../../../.analysis/results/host-current/local-audit.json#lighting_timed_effects)。本片核对 38 个完整 AST owner、80 个完整 native 函数、45 个实际 PE 虚表槽和 12 段原始常量；原捕获的 10 条全库失败继续保留，所选函数没有局部缺伪代码或新增失败。当前获取缺项、source map 不可用及未取得完整前端捕获的事实独立保留。本片没有重新启动 IDA、复制数据库或执行厂商代码。
+
+实际 factory 的纯时间／颜色分支为 Wave 2、Spectrum 4、Breathing 5、Starlight 7、Fire 8、Tidal 19。Static 6 复用前节，Wheel 13 复用既有颜色计算；这里补核 Wheel 的输入、reset 与析构。原生 factory 明确拒绝 9／10／14／16，不能按名称补出效果。Ripple 1 的实际面板与计算见下节；Reactive 3、Radiate 17、screen 11、audio 12、Type／media 15／18 仍有各自的输入与生命周期边界，不能拿本片的纯计算结论覆盖它们。
+
+| 效果 | 当前前端参数与原生时间语义 |
+| --- | --- |
+| Wave 2 | split 加 2；布尔 counterclockwise 选择 1024／2048 并将 angle 置 0。原生 width 最低 10，方向使用 angle+270；step 为 `(4×speed/100)×extent/fps`，speed=0 时使用 `1/fps` 但不推进 cursor。渐变宽度与 pause 均截断成帧，有限循环在 wrap 后扣减，最后一轮保留额外尾段；reset 恢复 cursor、cycles 与周期。方向投影、周边路径及向内拷贝由不同函数完成。 |
+| Spectrum 4 | 当前 mapper 固定 Mode=0、Cycles=-1、Pause=0；Duration=0 时原生取 37740ms。每帧将当前 palette 项写满矩阵，wrap 后扣减有限 cycles；reset 只清 cursor，不恢复 active 或 cycles。原生存在触发输入分支，当前 mapper 不会选择它。 |
+| Breathing 5 | randomColor 使用 mode 1 与空 stops；否则使用显式 stops，或生成 `0/12/25/38/50/62/75/88/100` 的双峰。原生 Duration=0 取 14000ms，初始化将 Cycles=0 改为 -1，但输入重启直接使用原 Cycles，不再转换。cursor=0 时先输出旧 palette，再随机替换峰色并生成后续 palette；reset 只清 cursor。原生 bits 8／16 的 StaticColor 分支另留完整证据，不能误写为当前 mapper 已生成的模式。 |
+| Starlight 7 | `MaxStar=density/10×100`，固定 Regen=10、Cycles=1、Pause=0。原生按容量缺口抽取新增星数，有界重试占用位置；每颗星分别拥有随机时长、亮度、palette、cursor 与 cycles。先推进已有星，regen cursor=0 才生成并回收死亡项；reset／input 均为空操作，析构释放全部星、树节点与哨兵。 |
+| Fire 8 | mapper 固定 Rate=160、Seed=100、Cycles=-1 与三个颜色停点。原生 Rate<40 取 40、Seed=0 取 50；动画帧数为 `Seed×(Rate/40+1)`，这里的 40 不随 fps 改变。7×23 noise 使用 CRT rand，按两份各 161 字节的 PE 表衰减／选色，再乘 RGB 强度并截断；小几何裁行，大几何缩放行且列按 23 取模。有限 cycles 在 cursor=0 的首帧扣减；reset／input 是空操作。 |
+| Tidal 19 | mapper 保留实际 split／random／direction／中心和播放参数，缺省 Width=100、Pause=0。原生通过真实引擎几何换算中心，使用 `(2×speed/100)×extent/fps`，持有三个初始 offset 为 `0/-width/-2width` 的波片及各自 palette。每次 render 先推进 offset，超出范围后循环到最小 offset 之前；主 cursor／cycles 仅在 speed≠0 时推进。reset 恢复计数但保留波片位置与颜色；普通输入重启另调 `0x67f40`。 |
+
+`getModeWithPlayback` 的值来自实际 module 5596 导出：onPress 加 `4096`、onSelectedKeys 加 `12288`，toggle 加 `4`。Wave／Breathing／Tidal／Wheel 消费这些参数；Spectrum／Starlight／Fire 的当前 mapper 不消费它们。原生 `0x1000` 分支先增加引擎输入引用并暂不渲染，四个输入槽均比较并保存完整状态值、忽略相同值和 0；模拟按键的非零力度变化也可能再次触发，toggle 将活动效果的 remaining 置 0。真实 provider、所选按键与注销边界见[共享输入链](../../../.analysis/results/host-current/local-audit.json#lighting_input_lifecycle)，引用计数本身不证明物理注册成功。析构配对减引用并释放各效果自有的 palette／动画／波片存储。
+
+共享 `0x692e0` 会调整落在同一整数帧格的停点，以浮点累加和逐通道截断生成渐变。`0x69600` 的效果随机流采用 214013／2531011 LCG、`state ^ (state>>16)` 与 RGB 0／128／255 分档，并拒绝三个相同通道；Fire 的 CRT rand 是另一条线程状态流。Tidal 前两个随机初始化循环在伪代码中显示 JUMPOUT，其完整汇编仍包含实际随机调用和颜色写回，本片按汇编核实，未把 JUMPOUT 当作不存在的分支。
+
+现有 [Rust 时间／颜色渲染器](../../../crates/razer-device/src/lighting/renderer/mod.rs)已包含这些算法，不能将本片描述成首次实现。当前模式校验仍较窄：Wave 为 0／2／1024／2048，Breathing／Starlight 为 0／1，Tidal 为 2／3，Wheel 为 1024／2048，输入分派也没有接全上述高级播放分支。后续在全量语义闭合后按这些差异迁移。当前只完成所列静态计算与效果自有生命周期核对；Studio 各面板控件、全部产品几何／mirror、完整 Rust／UI／后端接线及动态、随机、有限循环、reset／取消的官方实际对照均未升级完成状态。共享编辑与本地保存沿前节收据复用，前文 Static／speed=0 Wheel 的固定场景结果保持原范围。
+
+### 当前 Ripple 的面板、输入计算与停止
+
+`collect_lighting_ripple_chain` 将当前 Studio 实际挂载的 Ripple 面板接到[主机收据的 lighting_ripple_chain](../../../.analysis/results/host-current/local-audit.json#lighting_ripple_chain)。本片保留 121 个完整 AST owner、34 个完整原生函数、23 条真实调用边、7 个实际 PE 虚表槽及初始化常量。原生原件通过当前 **4.0.896** 的版本所属获取收据核实为同字节 **4.0.55.0**，复用完整捕获；原捕获的 10 条全库失败保留，所选函数缺伪代码及局部失败为 0。没有新建数据库或执行官方代码。
+
+实际挂载为 `EditorCanvas → chunks 606/255 → module 5305`，面板包含渐变、速度／宽度及播放控件；完整共享编辑、预览、保存和取消复用 `studio_editing_consumers`，输入 provider 与区域选择复用 `lighting_input_lifecycle`。
+
+| 控件 | 当前源码的值与消费 |
+| --- | --- |
+| 渐变 | 五组实际预设，可编辑并保存自定义图案；180 px 选择器，1–7 个 stop。拖动保持间隔，新增采样颜色，删除保留至少一个 stop；编码为排序的整数 `Stop` 与 RGB 数值，提交到同一参数草稿。 |
+| 速度 | 1–50，步长 1，默认 10；输入与滑块变化写入 `speed`，结束操作通过同一 `HZ` 调用的第二标志提交。 |
+| 宽度 | 100–400，步长 100，默认 300；导入参数只处理越界，不会把范围内值自动取整为步长。 |
+| 开始 | `random / onPress / onSelectedKeys`，默认 `onPress`。切换到 random 时同时写 `never/-1`，其他选项写 `after` 并恢复上次编辑次数或 1。 |
+| 结束／次数 | `never / after / toggle`，默认 `after/1`；random 隐藏 toggle。仅 after 显示 1–100 次输入；never／toggle 写 -1。 |
+
+渐变卸载移除拖动监听，窗口失焦只清拖动标记、不提交；数值 stepper 的长按计时在抬起／移出或到达边界时停止，但该 owner 没有卸载清理。范围滑块会断开 `ResizeObserver`。共享颜色选择器卸载仅移除 DOM／原生事件监听，取色 terminate 在其 `beforeunload` 分支调用；监听移除不能冒充原生取消确认。
+
+LE 的 Ripple 分支发送 `Mode=getModeWithPlayback(0,params)`、`ColorStops`、`Width`、`Speed`、`Duration=0`、`Cycles`、`Pause=0`，经 RGB→BGR 转换后调用 action 33。onPress／onSelectedKeys 分别加 4096／12288，toggle 加 4；**random 文案没有额外设置原生随机位置位**，有效渐变的 mode 0 以中心自动播放。共享 mapper 补 stop 0／100 与透明颜色；其临时排序结果随后被 Ripple 的原 `s` 数组覆盖，正常面板由渐变编码器先完成排序。原生 JSON 最多读取 10 组 stop／color 及 Cycles／Pause／Mode／Width／Speed，该分支不读取 Duration。返回 effect handle 不代表设备已确认。
+
+原生 `CRippleEffect` 的真实 vtable 位于 RVA `0x1aae78`。初始化按实际几何计算 `velocity=speed/fps`，并以整数 `Width/100`、最长边及短边一半确定波纹帧数。速度 0 改为 1；速度至少 26 时还受当前几何上限约束。无输入模式且中心坐标均为 0 时使用行／列中点。非法 stop 顺序或范围会进入原生 `0x101` 随机颜色／位置分支；不能由面板名称推断该分支已设置。输入模式与其引用计数继续按共享输入链解释。
+
+输入 RVA `0x541d0` 拒绝空 LED 数组；任一状态／值为 0 会清除上次 LED。相同单 LED 在未释放前被抑制，但单格几何例外；多 LED 数组不走这个相同值抑制。首项为 `UINT_MAX` 时不会生成波纹；其余有效多 LED 使用行列包围范围的整数中点。toggle 活动时清零顶层游标和 remaining，停止后再输入恢复 active／cycles；该调用仍会继续创建波纹。每个新波纹使用原 Cycles，0 不会自动转换为无限。
+
+每个波纹拥有独立 palette、图像、中心、游标和剩余次数。RVA `0x53c60` 先清图，以截断后的 `cursor*velocity` 画外圆并清内圆；低速分支另绘制分数边缘，RGB 截断而保留 alpha。圆的水平段按图像边界裁剪，再围绕输入中心裁出设备矩阵，越界补 0，仅把非零像素写入输出；后加入波纹覆盖先前波纹的非零像素。每个波纹独立按游标回绕扣次数；顶层只有回绕时才清理已失活波纹。无输入模式在列表空时自动创建单次波纹，有限顶层次数仅在创建且顶层游标为 0 时扣减。remaining 为 0 后的下一帧失活并返回 0，不写输出。
+
+**reset 与释放有不同的真实边界。** reset 槽 `0x69250` 直接返回 0，不清游标、波纹、palette 或输入抑制。正常过期移除经 `0x540c0` 释放 palette、图像与波纹载荷，再释放节点；整个效果析构 `0x535d0` 则仅注销取得的输入引用、释放链表节点与哨兵。完整汇编没有调用剩余波纹的释放函数，也没有释放节点内的 96 字节载荷指针，不能写成已完成在途波纹清理。删除析构另释放 432 字节效果对象。共享颜色选择器的原生取色 provider、产品／固件／传输几何、旧连接结果隔离以及真实队列停止仍归对应共享链；Ripple 的 Rust 对齐、UI／后端接线及实际 DLL／设备功能对照未验证。
+
+### 当前 Reactive／Radiate 的输入计算与释放
+
+`python tools/workspace.py audit-host-local --query lighting-reactive-radiate-chain` 从 Ripple 的剩余项接续，正式字段为 `lighting_reactive_radiate_chain`。本片复用当前 Studio／LE 原件和由 Host **4.0.896** 收据核实的 LightingEngineDLL **4.0.55.0** 完整捕获，保留 97 个完整 AST owner、45 个原生函数、38 条真实调用边及 14 个实际 PE 虚表槽。全库 10 条失败继续保留，所选函数伪代码缺失及局部失败为 0。
+
+当前 Studio 真实挂载为 `EditorCanvas → chunks 606/42 → module 7518 → Reactive`。完整效果名称 mapper、支持列表及匹配的 lazy 路由表没有 Radiate17；LE 和原生 factory 仍各自保留 17。这个结论仅限当前已核 Studio 集合，不否定产品 Quick 或其他调用方，也不据名称补造 Radiate Advanced 面板。
+
+| 实际 Reactive 控件 | 参数与消费者 |
+| --- | --- |
+| 单色／随机色 | 单色选择器在随机色启用时禁用，mixed 状态分别读取；完成修改通过真实 `HZ` action 更新。画笔／填充新建默认绿色 65280，选择模式默认 color 未定义，randomColor=false |
+| 持续时间 | 三档索引 0／1／2 对应 2000／1500／500 ms，默认 1500 ms；导入值不在该表时替换为 1500 |
+| 保留的播放参数 | 默认 onPress／after／cycles=1，规范化继续保留。该面板只挂载颜色及持续时间控件，没有自行挂载播放编辑器 |
+
+持续时间预览的 RAF 以 1.5／1.75／2 增加背景位置，悬停或拖动时更新；卸载重置 phase、取消 RAF 并移除 blur listener。其 phase、速度及悬停／动画标志是模块变量，不能改写为每实例完全隔离。共享颜色选择、预览、保存、取消和自定义色板仍沿 `studio_editing_consumers`，不重复领取。
+
+LE 的 Reactive3 以固定色生成 stop0／color 与 stop100／透明哨兵，随机色则传空 stops、置 bit1；两者都 OR32，再加共享播放位并发送 Duration／Cycles／Pause0。Radiate17 固定发送 Mode4096、Duration0、Cycles0、Speed0、Pause0 及当前 stops。原生 JSON 的 Reactive 分支实际读取 Cycles／Pause／Mode／Duration；Radiate 只读 Cycles／Speed／Mode，未读取所传 Duration／Pause。两者最多读取十组 stop／color。action33、RGB→BGR 和 effect_handle 消费沿实际 wrapper；handle 不证明设备应答。
+
+Reactive 的实际表位于 `0x1ac828`，构造分配 416 字节。[初始化 `0x63890`](../../../.analysis/results/native/cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa/functions/63890.json)强制首尾 0／100 并检查 stop 严格递增，非法 stop 进入随机模式。Duration0 使用 14000 ms，帧数为合法 stop 数与 `duration/(1000/fps)` 的最大值。每个 LED 拥有独立 40 字节序列、palette、游标和原始 Cycles；Cycles0 不转无限。
+
+[Reactive 输入 `0x63e30`](../../../.analysis/results/native/cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa/functions/63e30.json)拒绝空数组，忽略 state0，只在 mode0x1000 时处理非零状态，不使用 a5。重复按下会释放并重建该 LED 序列，没有普通输入的相同状态抑制，也不把 bit4 解释为停止现有序列。UINT_MAX 被跳过，但此函数没有几何上限检查。多 LED 输入只随机一次，再经实际 input 虚槽逐 LED 生成，共享本次随机色。render 写当前 palette 值，回绕扣有限次数；观察到 cycles0 后置 inactive、不再写入。每 fps 次 render 才回收死序列。reset 槽 `0x69250` 直接返回 0；整个析构会释放剩余 palette／载荷、树节点与哨兵，并注销取得的输入引用。
+
+Radiate 的实际表位于 `0x1acf18`，构造分配 560 字节。[输入 `0x6a4d0`](../../../.analysis/results/native/cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa/functions/6a4d0.json)要求 a5=true 且 mode0x1000，不验证 LED 指针／数量或 UINT_MAX。它使用单 LED、全部位置包围盒的整数中点，或 mode0x4000 的保存中心。真实 `and 80008000h → neg → jno` 仅在 bit31=1 且 bit15=0 时选择模拟量，level 为低 15 位；正 level 加入 pressed set 并更新，零则删 membership 后更新为 0。
+
+普通数字输入不向 pressed set 插入：坐标不在集合中时，非零发送 100、释放发送 0；连续数字按下会更新同一 wave。坐标已在模拟量 pressed set 时返回 E_FAIL、不修改 level，随后数字释放只删除 membership，没有把既存 wave 降为 0。不能合并成统一的布尔上升沿或“释放必停”。level 不限制在 100；父锁保护坐标更新，只有非零 level 才新建 160 字节 wave。
+
+Radiate 每个 wave 分配 `max(rows,cols)+1` 的 gradient 和边长 `2*max(rows,cols)` 的强度图，外半径固定为 7。[计算 `0x6a0e0`](../../../.analysis/results/native/cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa/functions/6a0e0.json)先清图、绘制外零圆及当前强度内圆，围绕输入中心裁剪、越界补零；非零强度乘 `gradient[列]` RGB／100 并截断，alpha 写零，后 wave 覆盖前者的非零强度像素。它按列取 palette，并非按径向距离取色。绘制后才复制新请求强度并计算 `radius=7*level/100`；请求为 0 在这一步置 inactive，之前仍可能再画最后一帧。该实现没有由 Duration／Speed／Cycles 驱动的有限周期动画，父 render 每 fps 次才移除 inactive wave。
+
+正常过期移除会释放 Radiate palette、图像像素／对象及载荷。整个析构 `0x69be0` 却只注销输入引用，释放 pressed-set bucket／节点及 wave-list 节点／哨兵；完整汇编没有调用剩余 wave 的释放函数或释放其载荷。子初始化在分配 160 字节后失败的返回路径也没有释放该 child，图像分配异常不能冒充所有资源已收束。reset 同样是无状态修改的 return0，不清 level、坐标、图像或在途输入。
+
+10 项维护器测试覆盖新增／改变挂载、Radiate 别名、重复输入与零周期假设、模拟量／释放边界、owner／调用边／虚表／指令篡改，并通过严格 JSON 往返、全部 AST 对原件及稳定快照核验。它们验证的是静态收据。现有 Rust Reactive 只接受 mode4128，输入接口只有索引；该 renderer 不接受 Radiate17。独立 Rust 对齐、完整 UI／后端、产品 Quick／模拟量 provider 与几何差异、实际 DLL／设备对照仍待接续；本片没有执行官方代码或新增临时文件、数据库副本、分析会话。
+
+### 当前 Ambient screen11 的控件、屏幕输入与缓存输出
+
+`python tools/workspace.py audit-host-local --query lighting-ambient-screen-chain` 接续 Reactive／Radiate 的 screen11 剩余项，结果归统一主机收据的 `lighting_ambient_screen_chain`。本片复用当前 Studio／LE 和由 Host **4.0.896** 声明的 LightingEngineDLL **4.0.55.0** 完整捕获，核对 113 个完整 AST owner、43 个原生函数、22 个实际 PE 虚表槽及 20 条直接调用边。全库 10 条 Hex-Rays 失败原样保留，所选函数缺伪代码及局部失败为 0；没有重新启动分析器或复制数据库。
+
+真实挂载为 `EditorCanvas → chunk958 → module1958 → Ambient`，面板只有区域选择与 blur。Studio 新建画笔／填充默认 full／blur5，选择模式的 screen 未定义；blur 控件范围为 1..9，拖动发送 `HZ(...,false)`，完成发送 `HZ(...,true)`，后者仅在 select 工具时再触发预览。规范化直接保留 screen／screenRect／blur，没有额外裁剪。前文 Quick 的 Blur1 仍属于 Quick 消费者，不能替换 Studio 默认。
+
+五个预设是 full／left／top／right／bottom；四边对应 10% 裁区，单位 65535。点击仅修改 screen，custom 保留原 screenRect。编辑先最小化窗口，等待 StartSelectRegion 后显示 custom 项，未检查原生布尔结果。Selected 事件保存像素矩形字符串，读取分辨率、`parseInt` 后换算四个坐标，再提交 custom 并恢复窗口；Cancelled 仅恢复窗口。保存的 screenRect 不会填充初始为空的原始字符串 ref，因此导入的 custom 不一定能触发悬停预览；部分悬停门是每次 render 重置的局部变量。
+
+取消与卸载必须按真实边界区分。wrapper 收到 Selected／Cancelled 后延后执行 StopSelectRegion，再发给 UI，但 Electron20 构造器只订阅 Selected。普通面板卸载只移除 beforeunload listener，没有移除 native event、停止选择或 terminate；beforeunload 才移除 native event 并 terminate。Show 保存返回值为 created flag，Close 不清它；terminate 先关闭已建预览，只在 Electron20 FreeFFI，未显式停止选择，返回 true 也不证明线程／窗口已释放。共享编辑、预览与本地保存继续复用 `studio_editing_consumers`。
+
+区域 DLL 的当前来源与原生窗口／线程语义已分别取证，详见下节。Ambient 本片保留自己的屏幕采集范围，不将颜色选择或窗口静态复核计为运行验收。
+
+LE case11 实际传 ScreenRect／Blur，经 AddEffect／action33 进入原生 JSON；capture fps 固定为 25，Blur 转 float，矩形转整数。factory11 分配 456 字节，初始化将 Blur 限于 0..10、分配最小 3×3 采样缓存及零输出缓存，再取得共享采集对象。render 仅在整数游标变化时查帧身份；不变、失败或同帧时复制旧输出并返回 0。新 frame ID **先保存，再采样**，采样失败会复制旧输出，同一帧不会重试；初始黑缓存和旧输出均不能当作新的屏幕实测。
+
+滤波按真实汇编传入 `xmm1` 的 sigma、order0、boundary=true，依次处理 x／y，depth≥2 才处理 z；不能沿丢失浮点实参的伪代码重写调用。平面 RGB 每轴截为 byte，再写 alpha0；保留原版 padded stride、1×1 的中心 offset4、区域输出位置及整个输出缓存。input／reset 是无状态修改的 return0，不清帧身份／缓存，也不停止采集。前文现有独立 Rust renderer／平台适配与历史纯／模拟验证分别保留，本片没有重新执行它们。
+
+| 采集与释放边界 | 当前原生真实行为 |
+| --- | --- |
+| 后端选择 | Windows≥6.2 先 Desktop Duplication，初始化失败再 DX9；旧系统直接 GDI。DX9 失败不再退 GDI。共享门使用 30ms 计时，无 sleep；最后引用释放才析构采集对象。 |
+| Desktop Duplication | 选择 output0，AcquireNextFrame timeout0；两种 access-loss 进入无固定次数上限的重建循环。按真实 RowPitch 复制，只有非空映射像素才递增帧号，超时／Map 失败可能成功返回旧帧。正常 QueryInterface 路径的 IDXGIResource 在早期 Release 后未清指针，局部清理又 Release，原版缺陷保持可见。 |
+| DX9 | adapter0，FrontBuffer／LockRect 按 pitch 复制。失败后释放并重新初始化，但忽略重建结果、返回旧帧与 0；部分初始化 API 失败同样未转失败。 |
+| GDI | 使用主屏尺寸，未检查创建 DC／采样 API 结果或输出容量。frame 返回 postincrement 前的 ID；HALFTONE／StretchBlt／GetPixel 后未恢复原选中 bitmap，DeleteObject 成功未确认。 |
+| 采样／析构 | rect 转像素时仅作上界／顺序修正，不补下界；全零 rect 表示全屏。Duplicate 旋转和 mode1 最近邻缩放的浮点参数／实际分支已核。正常临时图释放与异常路径分开；采集析构释放 COM／像素缓存或 DC，没有配对释放其 LoadLibrary 引用。Ambient 自有析构释放采集引用及 sample／output／planar 存储。 |
+
+11 项专题维护器测试及 2 项统一接线测试通过，覆盖当前 manifest 与字节、挂载／默认值、float 参数／虚表／调用边篡改、旧帧和原版取消／释放缺陷、严格 JSON、全部 AST 原件与稳定快照。它们只验证静态收据。区域原生窗口、Audio12、Type／media15／18 见各自专题；其他实际控件及产品几何继续按统一缺项接续。完整 Rust／UI／后端接线和实际桌面／DLL／设备／窗口验收仍未验证。本片没有执行厂商代码，没有新增临时文件或分析会话。
+
+### 当前区域预览、选择回调与窗口线程生命周期
+
+`python tools/workspace.py audit-host-local --query studio-region-window-lifecycle` 的正式字段为 `studio_region_window_lifecycle`。本片从已核 Ambient 调用方接续，复用[当前 Chroma 获取收据](../../../.analysis/inputs/frontend/chroma-app-dashboard-current-refresh-ec3db4b29c5a/acquisition.json)、[资源 manifest](../../../.analysis/inputs/frontend-revalidation/blobs/4480ff600b3d7519c5a37bdb565c61cc59d7a620637b0f684fd325b4bbaf9ccb)及[已有双轮 HTTP 复核](../../../.analysis/results/frontend-revalidation/b181989559ca057413572a251baf085313b7a6eb932120cf123acd3807b7b482.json)，没有重新请求部署。当前 `resourceManifest.resources` 与[原生获取收据](../../../.analysis/inputs/official-native-current/acquisition.json)逐字段一致，仍声明 ChromaStudioNativeDLL **1.0.13.1**、1,036,424 字节，实际 SHA 为 `c9a61daec651215975dc9cd4c7f6a8037b6855981b403e6a9449b2e9bd102778`。
+
+复用该原件的[完整捕获](../../../.analysis/results/native/c9a61daec651215975dc9cd4c7f6a8037b6855981b403e6a9449b2e9bd102778/capture.json)，本批复核 **56 个完整原生函数、32 个选定源码角色／40 个 AST owner、28 个实际回调槽、44 条直接调用边、19 处函数／表指针绑定及 8 个导出**。原件基线 2,031 个函数不算本批新增复核数；全库与所选函数均无捕获失败。颜色选择继续复用 `screen_color`，不重复捕获或扩大到全部屏幕选择产品。
+
+当前 Studio 的 `doDLLMainAction → preload ffiPreload → main Ge.callDLL → _handleAction_Default` 在 Host **同步调用**原生函数；前端 `await` 不代表选择了 `.async` 分支。Host 持有每频道 mutex、DLL 与回调 Map，并将借用的 UTF-8 回调字符串立即解析后送给匹配且存活的 webContents。返回的分辨率字符串在 `readCString` 成功设置标记后才由 `finally` 调用 FreeMalloc；解码失败没有这条释放。当前 Host 的旧 `doDLLAction` 仅记录 deprecated 日志。
+
+[GetScreenResolution](../../../.analysis/results/native/c9a61daec651215975dc9cd4c7f6a8037b6855981b403e6a9449b2e9bd102778/functions/1ef0.json)使用桌面矩形 right／bottom，未检查读取成功或减去原点；预设与选择 hook 使用主屏尺寸。custom 仅在逗号分隔恰好四项时，裁去实际六种空白字节并作十进制 stoi；项数不符保持四个零，非法或越界数值抛异常，没有通用矩形修正或多屏推断。前端收到 Selected 后才读取分辨率、换算为 65535 单位并提交 custom；facade 丢弃 Start／Show 布尔返回值，不能把它当作窗口创建成功。
+
+| 原生所有者 | 创建、事件与实际释放 |
+| --- | --- |
+| 192 B 预览窗口 | [Show `0x2030`](../../../.analysis/results/native/c9a61daec651215975dc9cd4c7f6a8037b6855981b403e6a9449b2e9bd102778/functions/2030.json)先删除旧 owner，没有先 Close；旧线程仍 joinable 时会 terminate。新线程发布 created 标记后才定位窗口，以黑色为透明键，画 2 px 边框；预设为全屏或四边 10%，custom 原样使用像素差值。[Close `0x38cf0`](../../../.analysis/results/native/c9a61daec651215975dc9cd4c7f6a8037b6855981b403e6a9449b2e9bd102778/functions/38cf0.json)最多等 created 2 秒，再同步 SendMessage(WM_CLOSE)、释放 WindowBase、无超时 join。 |
+| 104 B cursor 窗口 | 选择前创建近透明 alpha1 的主屏窗口，拥有独立线程。创建通知只记日志。Selected 回调发事件后关闭并 join 它；Cancelled 回调先关闭并 join，再发事件。单独 StopSelectRegion 不关闭它。 |
+| 280 B selection 窗口 | [Start `0x2180`](../../../.analysis/results/native/c9a61daec651215975dc9cd4c7f6a8037b6855981b403e6a9449b2e9bd102778/functions/2180.json)替换旧 selection 前不 Stop；旧线程仍 joinable 时同样 terminate。独立消息循环安装 WH_MOUSE_LL／WH_KEYBOARD_LL，鼠标坐标限于主屏含边界范围，左键抬起发送 `0x466`、Esc keydown 发送 `0x465`；零面积未拒绝，hook 始终 CallNextHookEx。窗口以黑色为透明键，绘制绿色选择框。 |
+
+共享 WindowBase 实际函数指针、std::function 复制／调用／释放槽和三个线程入口已与 PE 字节核对。创建、SetWindowPos 和 hook 失败没有转成可靠的窗口成功应答；创建线程成功也没有 readiness 屏障。WM_CLOSE 真正 DestroyWindow，WM_DESTROY 才 PostQuitMessage；日志写 PostMessage 的关闭处实际调用 SendMessage。线程创建失败抛 C++ error6，缺失／自身／失败 join 分别抛 1／5／2，不能把导出最后的 return1 视为这些路径全部成功。
+
+[selection WndProc `0x39220`](../../../.analysis/results/native/c9a61daec651215975dc9cd4c7f6a8037b6855981b403e6a9449b2e9bd102778/functions/39220.json)先移除两个 hook，再在 **selection 消息循环线程**调用 Selected／Cancelled 实际槽。Selected 发送 min／max 四坐标字符串，Cancelled 没有 data；回调字符串由临时对象持有，未转移所有权。Node 回调有异常捕获，另一个 event-interface 回调不在该 catch 内。两种回调均不 join selection 本身；JS 用 setTimeout 延后 Stop 再向页面发事件，但 Electron20 只订阅 Selected，不能假定 Cancelled 已到达消费者。
+
+三个退出路径须分别保留。[StopSelectRegion `0x2ad0`](../../../.analysis/results/native/c9a61daec651215975dc9cd4c7f6a8037b6855981b403e6a9449b2e9bd102778/functions/2ad0.json)卸 hook、关闭已有 HWND、join 并释放 selection，不等待创建、不清原始 selection alias，也不关闭 cursor；卸 hook／注销窗口类结果未检查。[原生 TerminateDLL `0x3420`](../../../.analysis/results/native/c9a61daec651215975dc9cd4c7f6a8037b6855981b403e6a9449b2e9bd102778/functions/3420.json)先清 Node 回调，再 Stop、关闭预览并沿已核颜色关闭链，仍没有关闭 cursor。**JS terminate 没有声明或调用 TerminateDLL，也不 Stop**；它只关闭 recorded preview、在 Electron20 发送 FreeFFI 并清 JS 字段，而 Host 的 FreeFFI 直接返回 true，DLL／回调 Map 均未释放。
+
+11 项专属维护器测试通过，覆盖真实同步调用、回调先后顺序、PE 槽／线程指针／调用边、篡改后重算摘要仍拒绝、原版取消／重复创建／释放缺陷、严格 JSON 与全部 AST 原件和稳定快照。区域窗口的这段静态语义已复核；独立 Rust、UI／后端、实际 hook／窗口并发／DLL／设备与运行验收仍未验证。后续只接剩余实际控件与产品几何；本批没有执行官方代码或新建临时文件、数据库、分析会话。
+
+### 当前 Audio12 的实际控件、系统峰值输入与释放
+
+`python tools/workspace.py audit-host-local --query lighting-audio-effect-chain` 从 Ambient 的剩余项接续，正式字段为 `lighting_audio_effect_chain`。本片复用当前 Studio／LE 与由 Host **4.0.896** 声明的 LightingEngineDLL **4.0.55.0** [完整捕获](../../../.analysis/results/native/cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa/capture.json)，核对 94 个完整 AST owner、34 个原生函数、16 个实际 PE 槽、16 条直接调用边与 9 段原始常量／COM GUID。全库 10 条失败继续保留，所选函数没有缺伪代码或局部失败；没有重新启动 IDA、复制数据库或执行官方代码。
+
+实际挂载为 `EditorCanvas → chunks606/412 → module9120 → Audio`，只有色阶、boost、autoBoost 和 decay。新建画笔／填充使用首个绿／黄／红色阶，选择模式的 stops 未定义；默认 boost1、autoBoost=false、decay1 秒。boost 范围 0.25..4、步长 0.25，autoBoost 启用时禁用手动 boost；decay 范围 0.1..2 秒、步长 0.1。数字修改中发送 `HZ(...,false)`，完成发送 true；autoBoost 与色阶提交沿真实 action。色阶本地状态跟随 store，mixed 字段独立；共享色板、预览、保存、取消复用既有所有者。规范化复制这五个参数，不额外裁剪，也不保留 flow；面板没有音频源或播放控制器。
+
+LE case12 发送 `Mode=0`、ColorStops、BoostLevel、AutoBoost=1/0、`Decay=秒×1000`、Auto=0 和 `Flow=flow??0`。实际 action33 wrapper 完成 RGB／BGR 转换。原生 JSON 只读取最多十组 stop／color、Decay、AutoBoost、BoostLevel 与可缺省为 0 的 Flow；它将 automatic style 固定为 0，未读取所传 Mode／Auto。Flow 保存为低 16 位，等于 1 时选 eCapture，其余选 eRender；Decay／AutoBoost 的整数转换接受布尔值及数值，BoostLevel 的 double 转换不接受布尔值。字段类型错误按原有 JSON 异常链处理，未增设静默默认。
+
+[初始化 `0x5f0b0`](../../../.analysis/results/native/cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa/functions/5f0b0.json)所属 factory 对象为 472 字节，拥有 `+384` 的 endpoint 子对象、`+400` 的通知接口、palette 和 meter。它 CoCreate 系统 MMDeviceEnumerator，使用实际 IID_IMMDeviceEnumerator 与 CLSCTX23；创建 HRESULT 未检查便解引用枚举器，通知注册 HRESULT 也未检查就标记 registered=1。随后读取默认 eConsole endpoint，Activate 实际 `IAudioMeterInformation` 并释放临时 IMMDevice；查找／激活失败返回 factory 并走真实删除析构。输入来自 **GetPeakValue**，没有 PCM／FFT 采集链，不从效果名称补造音频处理。
+
+初始化分配 1025 项 palette，maximum=1024、当前 peak=0、autoBoost 历史=0。Decay0 取 1000ms，衰减步长为 `1024 / (Decay / (1000/fps))`，内部帧数按整数除法截断；没有控件范围裁剪或不足一帧保护。仅当十个 stop 均不为 100 时，写前六项 stops `0/10/30/50/80/100`、colors `0/16711680/65280/65535/255/255`，其余四项原样保留；不能将它扩大为所有非法色阶的通用恢复。后续色表计算复用已核 gradient。
+
+[render `0x5f3e0`](../../../.analysis/results/native/cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa/functions/5f3e0.json)先将系统 peak 初始化为 0、状态设 S_OK；缺 meter 就保持它们，有 meter 则调用 GetPeakValue，无论 HRESULT 都继续使用实际 out 值，不做有限性／范围校验。自动增益使用 `average=(旧 average+peak)×0.5`：average<0.1 时把 gain 置 1、记忆 maximum 置 0；否则仅在 average 创新高时更新 `gain=min(1/average,4)`。每 60×fps 回绕的计数器不清这段历史，低峰值也不恢复原手动 boost。
+
+level 来自实际 `peak×gain×1024 → truncate64 → 低32位 → unsigned 上限1024` 指令；未自行补下界。level 高于 maximum 或正在衰减的 peak 时，两者都改为 level。二者均为 0 会直接 return0、不写输出，还会掩盖本次 meter HRESULT；非零时当前 JSON style0 将整片写为 `palette[peak]`，随后浮点减衰减步长、截整数并限制最低 0，最后返回 meter 状态。完整函数还有 style1..8 分支，但当前 JSON 强制 style0，不能据这些分支新增 UI 或宣称其他消费者已核验。
+
+[默认设备变更 `0x5f310`](../../../.analysis/results/native/cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa/functions/5f310.json)只筛 eConsole role0，不筛通知的 flow，也不用通知 endpoint ID；先释放旧 meter，再重取自身配置 flow 的默认 endpoint，激活结果未传播。设备 state／added／removed／property 通知是 return0 空操作。通知 QueryInterface 只接受实际 IUnknown／IMMNotificationClient GUID，AddRef／Release 均恒定返回 1，无引用计数；回调换 meter 与 render／析构之间没有本片可见的锁或 generation。
+
+input／reset 是实际 return0 空操作，不清 envelope／增益历史，也不停止 meter。整个析构按 palette → meter → 注销通知 → enumerator 的顺序释放，注销 HRESULT 不检查，没有显式等待在途通知的屏障；`+384` 删除 thunk 会先减 384 再进真正析构。共享引擎 timer 停止、帧等待、合成、传输与设备释放继续沿 `lighting_static_layer`，不能解释成独立 COM 回调队列也已排空。
+
+11 项专题测试与 2 项统一接线测试通过，覆盖真实 GUID／常量、挂载与参数、自动增益／错误／取消／释放边界、指令／虚表／调用边／owner 篡改、严格 JSON 与稳定快照。现有 Rust 已有独立峰值 meter 和手动增益／衰减，但 renderer **拒绝 autoBoost!=0**，这与当前面板存在差异；其线程所有权和安全回调实现不能反向证明原版安全。完整 Rust 对齐、UI／后端、实际系统音频／DLL／设备功能对照及窗口验收未验证。Type／media15／18 见下一专题，其余实际控件和产品分支继续接续，不扩展成全部 Audio Visualizer 应用；本批无临时文件、私库或新分析会话。
+
+### 当前 Type15／media18 的实际消费者、媒体与颜色生成边界
+
+`python tools/workspace.py audit-host-local --query lighting-type-media-chain` 接续 Audio12 的剩余项，正式字段为 `lighting_type_media_chain`。本片保留 104 个完整 AST owner、LightingEngine **4.0.55.0** 的 70 个完整函数、颜色生成库 **1.0.1.0** 的 11 个完整函数、7 个实际 PE 槽及 42＋8 条真实调用边。两份原件均由当前 Host **4.0.896** 的所属资源声明核实，复用现有完整捕获；全库 10＋1 条原始 Hex-Rays 失败原样保留，所选函数缺伪代码及局部失败为 0。获取、静态语义与后续实现验收保持独立。
+
+实际媒体面板为 `EditorCanvas → chunk474 → module2474 → chroma-generate18`，包含文件选择／拖放、Generate、前后历史与移除。当前 Studio 没有 Type15 路由，但 LE module6394 的真实 Quick 转换仍将 `destiny2=80 → SpecialEdition=15 → {type:"Destiny2"}`；不能把 Studio 的有界缺席解释成该功能不存在。
+
+Type15 的原生 JSON 只接受大小写精确的 `Type="Destiny2"` 并生成 subtype0。[实际 factory](../../../.analysis/results/native/cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa/functions/51200.json)在 `0x513c3` 分配 384 B、`0x513d4` 调用 Destiny2 构造器后，下一条指令直接到 `0x513d9`，继续分配 4,888 B AI 对象；`0x513f6` 覆盖同一保存指针，`0x51402` 安装 AI 虚表。完整 PE 字节、连续指令及调用边证明这是真实落入分支，不是反编译器显示错误。先前 Destiny2 对象没有配对释放；实际 AI 初始化仅接受 effect18，故 effect15 返回 `E_INVALIDARG`。factory 删除的是后建 AI 对象；`0x521e0` 只在非负结果登记／输出 handle，JSON 错误路径不生成 `effect_handle`。LE wrapper 直接取该字段而不查 Status；不能沿未被使用的 Destiny2 renderer 宣称成功。
+
+| 媒体边界 | 已核真实行为 |
+| --- | --- |
+| 文件与预览 | picker 接受 `image/*, .mp4`，drop 检查首个文件的 `(image\|video).*` MIME。FileReader 的 dataURL 用于预览与 `mediaList`；真实文件路径以 `btoa(encodeURIComponent(JSON.stringify(path)))` 编码保存，原生接收解码后的本机路径。FileReader 没有错误处理、abort 或旧代次保护；卸载没有 disposer，移除清 src 但不显式 pause。 |
+| 配置与历史 | Generate 随机选择 ai／procedural、变换与 pattern；图片强制 Pattern，视频可选 15 种 blend。`floor(10*random)%9` 使 pattern1 概率为 20%。仅长度恰好 5 时删最旧项；超过 5 的导入列表不会在此被截断。参数 reducer 将 `currentConfig=list[id]??{}`，保存仅保留当前配置，工作历史重建为单项。 |
+| 移除与存储 | 相同 dataURL 变更路径时移动 `mediaList` 的 key。移除根据实际 region、设备和选中 LED 交集登记 `mediaToBeRemoved`；save 再删除该列表项，不删除用户原文件。共享预览、保存、取消与持久化复用已有 `studio_editing_consumers`。 |
+| 原生参数 | `effectConfig` 非空对象才解析并保留 path；空／缺失配置清 path。blend 不区分大小写，映射真实 PE 的 0..14；pattern 可缺省，存在时接受整数或完整十进制字符串，没有 1..9 检查。256 B path 超长会清目标、报告 errno34 并调用 invalid-parameter handler，返回未被 parser 采用。`sampling_rate` 缺省 10，硬件解码缺省 true；实际指令完整拼出该键，不能采用伪代码的缩短显示。 |
+| 帧获取 | 图片支持 jpg/png/tga/bmp/psd/gif/hdr/pic，解码后缩至 32×32；缩放返回未检查即标记可用。视频支持 mp4/mkv/avi，走系统媒体引擎与可选 D3D11／DXGI，loop／Play；按实际视频时钟和 `1/sampling_rate` 采样，未检查采样率为正。硬件映射后直接复制 4,096 B，未见 row-pitch 处理或 Unmap；软件路径采用位图锁并核长度、转换通道、释放临时 COM。 |
+| 返回与释放 | 初始化复制 309 B 参数并打开媒体，不调用共享 base init，也不传播媒体加载失败。render 取得帧、按新帧／空 palette 更新颜色，再计算实际输出，最终 return0；无帧不写输出。input／reset 是空操作。析构释放 palette、媒体 wrapper、媒体引擎 Shutdown、COM／D3D 与路径，不负责全局颜色生成器；共享 timer／帧等待／设备释放仍沿既有收据。 |
+
+颜色生成器从当前声明的 `RzChromaAIColorGenDLL` 取得原件，装载成员精确映射 [Create `0x2350`／Destroy `0x2490`／Generate `0x24c0`](../../../.analysis/results/native/20604ff3a2193710a76147931da4528ae1092ad89149e517f7b95c8996d3e191/capture.json)。全局替换会销毁旧实例，但 loader 未保存 HMODULE 供 FreeLibrary；效果析构不释放这个全局实例。Create 读取实际 `RCDATA type10/id100/language1033`，对应 RVA `0x556438`、59,336 B 的 TFL3 模型，正文 SHA 为 `98f063f9d8a3e6263523afccfbb1e60e0611656f1c5401a3aa88864fd8e042dc`。正式收据核对资源目录、完整模型字节和最多 16 项 primary colors，没有另外提取一份模型副本。
+
+Generate 外层只检查三个指针，返回 true 不能证明推理成功。[内部 `0x1140`](../../../.analysis/results/native/20604ff3a2193710a76147931da4528ae1092ad89149e517f7b95c8996d3e191/functions/1140.json)将每个 4 B 像素的前三个通道除以 255 后送入解释器，再按 16 个输出 score 降序排列 primary colors；结构条件失败时输出 16 个零。媒体调用失败或生成器缺失时，原版确有 procedural／fallback 分支；这项源码事实不能成为独立实现隐藏 AI 失败的理由。
+
+该收据保留的 Lighting `0x6ef70/0x6f410/0x6f870/0x700a0/0x87d60/0x8a440` 依赖已由下节接续：pattern、procedural 与 fallback 算式已复核，解码／缩放包装已明确实际核心。AI `0x1570 → 0xca60/0x4c10/0x8960/0x1a6c0`、`0x1140 → 0x1ab20` 及模型原件、codec／resampler 内部计算仍待接续；均复用已有捕获。各产品 Quick 真实挂载、固件和传输分支继续分别核对；接口调用及完整函数捕获不等于这些语义已完成。
+
+12 项专题维护器测试通过，覆盖 Type15 真实 PE 落入与错误消费者、媒体／历史／删除／取消边界、资源与导出、AST 原件、篡改反例、严格 JSON 与稳定快照。它们验证静态收据；完整 Rust 独立实现、UI／后端接线、实际 DLL／设备对照和窗口验收仍未验证。本批没有执行官方代码，没有新增临时文件、数据库副本或分析会话。
+
+### 媒体 pattern、palette 与图片计算边界
+
+`python tools/workspace.py audit-host-local --query lighting-media-calculations` 将本节结果写入同一主机收据的 `lighting_media_calculations`，kind 为 `current_lighting_media_calculations`。本片复用 LightingEngine **4.0.55.0** 的 19 个完整函数：上述 6 个 owner 与 13 个必要直接依赖；核对 18 条真实调用边和 15 段实际 PE 常量／跳表。所选伪代码缺失与局部失败均为 0，原捕获的 10 条全库失败继续保留。没有重新分析 UI、存储、Type15 或 AI 模型。
+
+[`0x6ef70`](../../../.analysis/results/native/cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa/functions/6ef70.json)先计算 `x*scaleX*scale`、`y*scaleY*scale`，依次执行 flip、减去 `axisScale*offset`、mirror；mirror 仅在该字节等于 1 且坐标大于无符号尺寸右移一位时折返。旋转围绕原点，随后分别除以 cols／rows 得到 `u,v`。pattern2 把旋转角增加 `180*cos(float(float(t/180)*pi)/50)`，其中 `t` 是 render 累加的原版时间值；speed 不参与这项角度计算。保留 SSE 单精度与 double 转换次序，不能把镜像门槛改成浮点半尺寸或补上中心平移。
+
+| pattern | 旋转归一化后的实际 scalar |
+| --- | --- |
+| 1／2 | `u`；2 使用上述动态角度 |
+| 3 | `4*(u-0.5)*(v+1)` |
+| 4 | `4*(u-0.5)*v` |
+| 5 | `(u-0.5)*v` |
+| 6 | `0.5*cos(5*(u-0.5)*v)` |
+| 7 | `u*(v-0.5)` |
+| 8 | `0.5*cos(5*u*(v-0.5))` |
+| 9 | `pow(float(u*u-v*v),2)` |
+
+其他 pattern 整数走 `u` 默认分支，没有原生 1..9 范围检查。pattern6／8 的余弦输入、pattern9 的 float 转 double 与整数指数 2 均由完整指令复核；伪代码缺失的参数不能当作无参调用。
+
+phase 为 `uint64(truncate(scalarSigned*N*spread + abs(speed)*(t/90))) % 100`；只有 `speed>0` 时先取反 scalar。这里确实先转 **64 位无符号**，再求余，不是带符号或数学正余数：scalar `-0.2`、`N=5`、spread1、speed0、t0 得到 `2^64-1`，余数 **15**。palette 位置为 `(余数/99)*(N-1)`，对当前项和 `(当前项+1)%N` 按小数部分插值；RGB 各通道截整数，alpha 被丢弃。没有补原版不存在的非有限值、溢出或空 palette 保护。
+
+[`0x6f410`](../../../.analysis/results/native/cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa/functions/6f410.json)消费实际采样像素的 lightness `L=(max(R,G,B)+min(R,G,B))/510`，该值是 `0x6ef70` 的真实第 5 个参数，再由 xmm3 送入混合 owner。令 `k=truncate(float(10*L))`、P 为 pattern 颜色：模式6／7 选 `palette[k%2]`／`palette[k%3]`；9 对黑色与 P 按 L 插值；10 仅在 `L>=0.2` 时执行该插值；11 在 `L<0.2` 时取 palette0，其余取 P；12 在该阈值下取 palette0，其余插值；13 对黑色与 `palette[k%3]` 插值；14 在 `k%3==0` 时取 palette0，其余对黑色与 P 插值。模式1..5／8 在上游 `0x6ec60` 分派，不能用本函数的默认分支覆盖；模式8 在纯白时实际先读 `palette[N]`，未见对首项索引的上限保护。
+
+[`procedural 0x6f870`](../../../.analysis/results/native/cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa/functions/6f870.json)按 hue 圆周距离只比较“当前 seed”与“下一 seed”，平局保留当前，选中项成为下一次当前项。每个已筛选的唯一颜色贡献一次 cos、sin、saturation、lightness；均值**不按像素频次加权**。独立扫描原始帧的低 24 位 RGB，累计各组实际出现次数用于降序排列。hue 采用 `atan2(meanSin,meanCos)`，负角加 `2*pi` 后转度数；saturation 为 `min(1,meanS+0.3)`，lightness 为 meanL。空 seed 返回空列表；存在 seed 而组内无唯一颜色时没有除零保护，完整排序也不保证所有同频组稳定。
+
+[`fallback 0x700a0`](../../../.analysis/results/native/cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa/functions/700a0.json)同样对所有唯一 histogram RGB 求非频次加权的圆周 hue 与平均 lightness，固定 saturation0.1。当 `L<=0.5` 时 delta 为 +0.2，否则为 -0.2；按原顺序生成 8 项 lightness：`L, clamp(L+delta), clamp(1-L), 0.9, L, clamp(L-delta), clamp(L+1), 0.1`，clamp 范围 0.05..0.95。第 5 项重复基色，第 7 项确实加 1；不能按颜色名称推成另一套补色或对称亮度。HSL 转换及低字节打包复用完整 `0x707a0`，实际 DLL 浮点舍入对照仍未执行。
+
+图片的 [`0x87d60`](../../../.analysis/results/native/cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa/functions/87d60.json)是文件包装：打开失败记录 `can't fopen` 并返回 null；成功经 `0x87e40 →0x87f00 →0x8b480` 解码，随后关闭文件。当前消费者要求 4 通道、8 bit；非 8 bit 转换与可选翻转分别进入 `0x8b660`、`0x8b750`。[`0x8a440`](../../../.analysis/results/native/cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa/functions/8a440.json)经 `0x8a580 →0x89840 →0x8a2f0` 准备输出并执行缩放。实际 layout4 经 PE 表取值5，对应4通道、每通道1 B，32×32 的 row 为128 B、frame为4,096 B；当前传入 media owner 的现成缓冲，包装不会另配输出，也不会在失败时释放该缓冲。仅在未提供缓冲时才分配并在失败时释放自有输出。实际调用方仍不检查缩放返回就标记图片可用。
+
+
+本片只确认解码／缩放包装及 row 字节计算，当前 caller 的 resampler 内部由下节接续；格式分派、压缩像素展开、位深转换／翻转继续取证。AI 模型算子和实际产品 Quick 分支沿前节继续。本片 10 项专属维护器测试通过，覆盖九种 scalar 固定向量、64 位负值回绕、speed／时间、混合阈值、8 项 fallback、隐藏寄存器参数、常量、篡改拒绝、严格 JSON 与稳定快照；没有执行官方代码、创建新捕获、临时副本或分析会话。Rust 独立实现、UI／后端接线、实际 DLL／设备对照和窗口验收均未由本片验证。
+
+### 当前图片 32×32 resampler
+
+查询 lighting-media-resampler 接续同一主机收据的 lighting_media_resampler，kind 为 current_lighting_media_resampler。复用 LightingEngine 4.0.55.0 的 107 个完整函数，核对 61 个实际 PE 函数槽、62 条直接 call／jmp 边、24 段常量和 21 段关键汇编；32 个纵向累加函数及 16 个七通道横向函数均绑定实际分发表。原全库 10 条 Hex-Rays 失败保留，所选函数伪代码缺失和局部失败为 0。本节范围是当前图片 caller 的可变源尺寸到 32×32 输出；通用库其余 layout、sample type、edge 与 custom kernel 没有由此宣称复核。
+
+实际链为 0x8b130 → 0x8a440 → 0x89840/0x898a0 → 0x8a2f0 → 0x8a2e0/0x8a000/0x8a050 → 0x8a3a0。当前配置为 layout4（表映射5）、type0、完整归一化输入矩形、无偏移输出矩形、自动 filter0、clamp edge0、flags0，无自定义 kernel／输入输出回调；输出由 media owner 提供，row128 B、frame4,096 B。0x8a2e0 真实设置 EDX=1；0x8a3a0 保留真实 R8D worker 数。
+
+自动轴比例为 s=float(32/源尺寸)，inverse=float(源尺寸/32)，offset 为 0。缩小时选 Mitchell filter5，放大时选 Catmull-Rom filter4，两者 support2；等尺寸且整数偏移选 box6、support0.5。s>=1 用 mode1；横向缩小始终用 mode2；纵向缩小且 ceil(4/s)<=32 用 mode2，超过32用 mode0。纵向源256恰为 footprint32，源257已进入 mode0，不能把输出固定32误解为源尺寸固定。
+
+系数由 0xaa440 → 0xab400/0xabe20 → 0xab630 生成并按原 float 次序求和归一化；绝对值小于 7.52316384526264e-37 的系数清零。当前 clamp 把越界贡献并入首／末真实像素，保留负瓣，随后裁去零项，不能先丢弃越界贡献再归一化。gather kernel 输入为 (out+.5+offset)*inverse-(input+.5)，第二浮点参数为 inverse；scatter 输入为 out+.5+offset-(input+.5)*s，第二浮点参数为 s，结果再乘 s。0xa9660 的有界连分数、0xab630/0xac1f0 的周期复制、mode0 转置、0xaa9b0/0xaacd0 的跨度和边界补零均保留。
+
+非 exact 路径由 0x9ffa0 将 byte 乘 1/255（无 sRGB），0xa9fc0 附加 RGB×A 形成 7 float/pixel；0xaa120 仅在 alpha 达到阈值时除回 alpha，透明 RGB 不强制归零；0xa6ad0 乘255、加0.5、clamp 后截整数。双轴 box exact 关闭 alpha 扩展，使用 4 float/pixel，实际 converter 槽为 0xa0120/0xa6c40，保留 0..255 float；0xb1610 的横向 s1 直接复制，0xb1720 的单系数接近1时复制，不能把所有分支统一写成归一化七通道。
+
+0xa9ee0 使用当前 working4/working7 cost 表选择两轴先后。0x8a3a0 对 mode 非零尾调用 0xb0c70 做输出 gather；mode0 以实际 jz 尾分派 0xb0dd0，逐输入行 scatter 并 flush。环形行缓冲使用真实 modulo 地址，空行哨兵为 float 3e38。纵向每批最多8行，first/add 与 assign/add 使用四张独立表；0xb1589 与 0xb4a22 的间接 call 均带 -8 位移。横向七通道长度1..12使用精确槽，更长按长度模4选择向量循环；SIMD 与 scalar tail 的顺序不能由数学等价推断。0xac0e0 的通用 prepend 向后循环由机器码确认并原样保留。
+
+14 项专属维护器测试通过，覆盖自动 kernel／极端缩小、先归一化再 clamp、负瓣、exact4／非exact7、透明彩色／半透明、实际槽、隐藏参数、-8 调用、原始循环、常量篡改拒绝、严格 JSON 与稳定快照。摘要 SHA-256 为 cb5edf2721c2e677dffd060d5e9bf8ce490c29cd741266d56430821da1f5201c。测试仅验证静态维护工具；Rust 独立实现、UI／后端接线、实际 DLL／设备对照、SIMD 舍入及运行验收仍未验证。codec 解码、AI 模型算子与真实产品 Quick 分支继续沿现有缺项，本片没有新建捕获、副本、临时输出或分析会话。
+
+### 当前 Advanced 的输入、所选按键与注销
+
+`collect_lighting_input_lifecycle` 将共享播放输入接到[主机收据的 lighting_input_lifecycle](../../../.analysis/results/host-current/local-audit.json#lighting_input_lifecycle)：本片核对当前 LE 与 host 的 58 个完整 AST owner（含选定函数及其导入／导出）、同一份 4.0.55.0 捕获的 36 个完整原生函数、15 个实际 PE 槽和两段鼠标输入表。复用前两节的效果计算、mask 构建与设备释放，不重新捕获。所选函数缺伪代码及局部失败为 0；原捕获的 10 条全库失败、当前前端获取缺项与实际执行未验证分别保留。
+
+| 输入边界 | 已确认的真实行为 |
+| --- | --- |
+| 普通输入 | `5954.addChromaDevice` 仅在 `isRegisterInputEvents && !useParentDevice && !isChromaStudioRegionId` 时，经 200ms 延迟注册 5989。5989 依次等待 mapping 的 `addUsbDevice`、`registerInputNotification`，只有通知注册结果为真才保存 container，但其返回 true 只要求前一步成功，不能据此宣称通知注册成功。 |
+| Host 通知 | 首个窗口 URL 注册实际 DLL 通知，等待结果后加入该设备的 URL 列表并设置回调；设置回调的布尔结果没有继续消费。后续窗口共享注册。回调 ABI 为 `void(string,int,string,ulonglong)`，仅类型 1、实际设备身份、获准且仍存活的窗口会收到 `inputnotified`；前端还须命中已登记的 container 才解析并发布。 |
+| 模拟输入 | 1679 的控制器硬件消费者只在真实 console-controller、`CONTROLLER_SYNC_EVENT`、`BUTTON_EVENT` 及 `simulateInputEvents` 门槛同时满足时，经 3720 发布固定 mouse 输入。这是原版的模拟路径，不扩展成所有控制器的物理鼠标能力。 |
+| 送入引擎 | 5954 按当前 container、产品及类别匹配，受 `isInit` 和设备输入开关限制；按需将 analogKey 转成 keyboard、换算 level，并按 HID page／id 表映射 scancode／flag。`toLowerCase()` 的返回值未保存，匹配仍使用原 type。61445 的原生入口只接受大小写精确的 mouse／keyboard／razerKey／analogKey；无当前 handle 或未知 type 返回失败。NoReturn 包装返回 0 只表示其发送路径结束。 |
+
+原生接口必须区分实际 `this`：CDevice 主表 `0x1a83c8` 的 `+152 → 0x48b80` 是输入入队；`device+8` 表 `0x1a8478` 的 `+152 → 0x48b10` 是输入引用，`+160 → 0x48ce0` 调整回主对象后入队。`0x4cde0` 明确从 engine 关联记录取得主对象，再加 8 广播引用计数。`0x4fcf0` 只有引用变成 1 且原 handle 已非零时才发注册请求；其 `+64/+72` provider 槽当前返回 E_FAIL，结果未被消费。`+48 → 0x4980` 将请求发布成 `eventId=3/enableInputNotify`，当前 `2198.processEvent` 及 WDL filter 不用这个字段注册 mapping 输入。引擎引用、注册请求事件与真正输入 provider 的成功不能合并。
+
+输入环共有 256 个 80 B 槽。入队在锁内推进 uint8 索引，追上读指针时丢最旧项；worker 在锁内复制并推进，解锁后向活动 engine 投递。`0x4cec0 → 0x4c170 → 0x4f940 → 0x56f0 → 0x7710` 沿真实 `LedInputMap`、区域 LED 与 engine 坐标变换取得输入位置；非空表缺项返回失败，空表保留原版整区域映射。关联输入的末字段标为 `0xffff`，使效果收到 `a5=false`；其设备回调仅接受类型 1／2／5，analog 14 不沿此回调转发。这条标记与 selected mask 各自处理不同边界。
+
+`0x53050` 对非空 mask 且同时具有 `0x1000/0x2000` 的 onSelectedKeys 效果，要求至少一个有效输入位置命中非零 mask；零输入数或全部未命中则跳过。onPress 及空 mask 保留直接投递，原 `a5` 不因 mask 命中而改写。Wave／Breathing／Wheel／Tidal 比较完整输入 state，忽略相同值与 0 抬键；按下值可为 `0x80000000 | level`，两个不同的非零模拟量值仍可能到达 toggle 分支，不能统一压成布尔上升沿。
+
+取消边界保留原版实际限制：5989 的 `unregisterDeviceAsync` 没有等待或返回内部注销 Promise，`skipHardware` 仅用于日志；内部按真实硬件事件注册状态决定是否移除 USB 设备，并在布尔失败后仍删除 container。8027 的硬件注销包装会返回 Promise。5954 的 `terminate` 只清 `isInit`，本片所列输入订阅没有配对 disposer；标志不能证明在途投递已排空。物理 CDevice 的 work 取消／等待复用前节 `device_cleanup_boundary`，不扩展成 JS、mapping、帧、driver 或 HID 的全局屏障。
+
+本片没有运行官方代码、新建数据库副本或修改产品 Rust／UI。Reactive／Radiate 的所选效果计算与自有释放见前节；mapping DLL 的设备／过滤驱动 provider、各产品／固件／传输的实际输入门槛和 `LedInputMap`、analog 注册及其他输入型效果、在途取消确认继续按现有缺项接续；完整 Rust 接线与实际 DLL／设备功能对照仍未验证。
+
+### 当前键鼠产品的输入映射资格
+
+`collect_lighting_product_input_map`（查询名 `lighting-product-input-map`，收据 kind `current_lighting_product_input_map`）沿当前 LE 的 `5954`／`8199` 完整 JS owner，复用既有输入生命周期、Mapping provider 和 LightingEngine 原生映射函数。本批只核对目录注册、manifest 请求键、产品／传输身份、edition／layout 选择和实际 `LedInputMap`／region 消费；没有重新捕获共享帧解码或复制完整产品目录。
+
+当前 LE 原件为 [`synapse-lighting-engine-snapshot-1d1be731`](../../../.analysis/inputs/frontend/synapse-lighting-engine-snapshot-1d1be731/acquisition.json)，主文件为 `raw/apps.razer.com/synapse/lighting-engine/static/js/main.1d1be731.js`（1,815,379 B，SHA-256 `8c9f7074401b54927c5dc49f68a5bf66467ef415ce5655ea5808b48c6681efd3`）。`8199.configure`、`getManifestData`、`getLedConfig`、`checkDeviceInfoReady` 与 `5954.onDeviceInfoReady` 的 owner 均在这份已复核部署中；主文件的双轮稳定复核已由现有 revalidation 收据保留。产品 manifest 复用已留存的当前来源：[`mouse-mw-226-snapshot-738e48c31af52973b33c`](../../../.analysis/inputs/frontend/mouse-mw-226-snapshot-738e48c31af52973b33c/acquisition.json) 与 [`keyboard-mw-756-current-refresh-ec3db4b29c5a-2`](../../../.analysis/inputs/frontend/keyboard-mw-756-current-refresh-ec3db4b29c5a-2/acquisition.json)。
+
+目录 `AvailableDevices.json` 的当前静态注册将 226→227→228 和 756→757→758 分别作为有线、dongle、BLE 关系；这只证明目录身份，不能证明设备已连接或物理 provider 注册成功。当前收据保留 9 个实际 manifest 请求和 27 个 LED 表：226／227／228 的 edition 0、128 共 6 个请求，756／757／758 的 edition 0 共 3 个请求。`8199.getManifestData` 先按实际主 PID 请求 `DeviceManifest_<PID>_<edition>.json`，再按 LE fallback、IndexedDB 版本和 CacheStorage 顺序处理；`getLedConfig` 使用 `ledConfig_<effectiveEdition>_<layout>`，缺失时按类别执行原版 layout fallback，仍缺失就保持未观测。
+
+| 分支 | 当前已核实的映射与输入门槛 |
+| --- | --- |
+| 226／227／228 鼠标 | 每张表含 7 个 `mou` 和 5 个 `dkm` 输入，`MatrixPos` 全为 `[65535,65535]`。这是原版整区域映射：`0x30b0` 保留 sentinel，`0x7710` 产生 region 0／matrix 65535，随后 `0x4f200` 枚举完整 region 0；不能把 sentinel 当成“不支持”。LED 矩阵含区域 1、4、10。 |
+| 756／757／758 键盘 | 每个 manifest 保留 layout 1、3、4、6、8、9、12；输入表依次为 67／69／69／69／67／67／73 项，均为 `kbd` 加一个 `dkm`，坐标为具体矩阵位置，没有鼠标的整区域 sentinel。 |
+| 227 edition 128 | 请求键仍是 `DeviceManifest_227_128.json`，但文档声明 PID 为 226、适配器为 `rzDevice25`；必须保留请求 PID、声明 PID 和传输角色三个身份，不能并入 227 edition 0 的 DualLinkMouse。 |
+| 758 BLE | `isRegisterInputEvents=true`，同时 `isBLE=true`、`rzDevice30`、`isHardwareEffectsOnly=true`、`isChromaStudioSupported=false`。输入注册条件成立只表示请求进入共享注册路径，不表示 BLE 物理输入已成功到达。228 的 BLE manifest 与 758 不同，仍保留 Studio 支持差异。 |
+
+上述表格只说明映射数据和前端注册资格。`addChromaDevice` 的真实 gate 仍是 `isRegisterInputEvents && !useParentDevice && !isChromaStudioRegionId`；随后 5989 的 `addUsbDevice` 与 `registerInputNotification` 结果、Mapping driver／firmware／transport、analog／BLE／external／OS-hook producer、在途代次与取消以及设备读回均未由本批静态原件证明。鼠标整区域映射、键盘具体坐标和 758 的硬件效果限制必须在 Rust 实现与实际 DLL／driver／device 对照时分别验证，不能从 manifest 计数提升为产品完成。
+
+本批专属测试为 `LightingProductInputMapTests`（3 项），覆盖 9 个 manifest 分支的严格 JSON／快照、227 edition 128 的声明 PID 差异、鼠标 sentinel 整区域语义、758 标志差异及 manifest 依赖边篡改。测试只执行静态解析，没有运行官方 JS、DLL、应用或设备；Rust 独立实现、UI／后端接线、真实功能对照和窗口验收保持未验证。
+
+### 当前 756 的真实 producer 与配置发布
+
+查询 `mapping-input-producer-eligibility` 将本节固化在[主机收据的 mapping_input_producer_eligibility](../../../.analysis/results/host-current/local-audit.json#mapping_input_producer_eligibility)。范围为当前 756 MW 的实际启动、所挂载 `gamepad_configuration` 发布者与 Mapping **1.3.17.2** 的 USB 报告消费者；复用上节 9 份 manifest／27 张表，不把这些表当作 757／758 实际 MW caller 的证据。
+
+756 来源仍由[当前获取收据](../../../.analysis/inputs/frontend/keyboard-mw-756-current-refresh-ec3db4b29c5a-2/acquisition.json)选择。主文件与共享 `6737.e9cfdfde12b1ade72a64.js` 分别具有独立的双轮部署核对；共享文件为 2,504,021 B、SHA-256 `faf2ae826a378dbacab50e9f0c94326761f766abfc5ede73f964330b869771a3`，[本次部署收据](../../../.analysis/results/frontend-revalidation/e6bc71dc8a502d909a96d9d48d4eafcaaf1f2c7e405bbe6a8851b71a8d17a287.json)两轮均复用同字节原件。完整 AST owner、实际导出绑定、15 个既有原生函数及 6 个 PE 槽独立保留，没有新增原生捕获。
+
+主入口 `86191` 明确启用 `analogV3` 并挂载 `gamepad_configuration`，随后加载共享 `16737`。实际 `noUpdate` 分支调用 `26568.setupOnDeviceReady → Vn`；`Vn` 先取得 `90994.X7` 的真实 dual-link 身份，再调用 `65200.addUsbDevice(o.device)`，默认参数不跳过 filter driver。Host 仍要求 completion 与 driver-ready 事件；前端 `Vn` 自己没有消费添加返回的布尔值，其后的错误条件检查的是 containerId。
+
+| 不同身份 | 真实来源与消费者 |
+| --- | --- |
+| Mapping 构造类型 | 当前原生 `addUsbDevice 0x277d0` 硬编码 `{"type":"usb"}`，经 `0x57380 → 0xa8730` 建 USB 对象；本 caller 没有传 `addDevice({type:"ble"})`。 |
+| 配置中的 BLE 标志 | `89423.PostSetLocalStorage` 将 `bluetoothLE` 设为 `runtimeData.useBle`；prehook 仅在相应表存在时选择 `BLE_REPORTIDS`／`REPORTIDS`。它们不证明实际传输、设备报告或 BLE 构造类型。 |
+| 实际报告偏移 | 成功发布后，`0xe5cf4` 从 published descriptor 的 `+141` 读该标志。USB `0xa8b20` 据此取 `raw[0]`／`raw[1]`，经 `0xe5dec` 分类；class1 到既有 `0x79bde`，仅标志为真时去掉前导字节。 |
+
+配置发布也须区分完成条件。`67403.setLocalStorageData` 等待 prehook 与存储，却没有等待 posthook 的异步工作。`51765.mappingEngineSetLocalStorage` 按 default／profile／gamemode／analogData hash、active profile 和 profile 数量去重，先更新自己的快照，再等待 facade 写入，未消费其布尔结果。当前 native `0x20920 → 0x2fa0 → 0x3160 → 0xd496c → 0xd4b80` 完成存储与独立回调；成功回调不等于 JSON 已应用或设备已写回。USB 存储槽进入 `0x65cc0`，当前 `0xe3f10` 还须 ready、`0xe419e` 解析成功及 change byte 65 的 bit0，才将 candidate `+48` 移到 published `+56`。
+
+`61450.updateDeviceData/restoreAppEngine` 的实际所有者是 `gamepad_configuration` 类 `Y`。发布分支维护 appEngine hash／version、经过 gaming-mode 转换后写入 Mapping；不发布分支仅合并本地缓存。restore 在转换前、写入前及更新缓存前分别检查可选 `isCurrent()`、active-profile GUID 和 version。这些是选定恢复链的保护，不能推成所有 analog 配置或连接队列都已闭合。实际 disconnect／remove／exit 进入 `cleanUpDevice → removeUsbDevice`，另行停止 turbo／macro；原版仍有未等待调用和未消费的失败，完整代次、排空与恢复按原缺项继续核实。
+
+本节尚待取证的是 `runtimeData.useBle` 的真实生产者与报告／固件门槛、757／758 当前 MW caller，以及 actual external／OS-hook／custom-BLE caller 与消费者。只有 API 定义、同名字符串或 manifest 不足以确认这些资格；未取得 caller 也不能判定功能不存在。`MappingInputProducerEligibilityTests` 的 5 项静态测试覆盖真实 USB caller、标志／偏移分离、异步 hook、恢复门禁、原生发布槽及独立部署收据反例。未执行官方 JS、DLL、应用或设备，独立 Rust、UI／后端接线及实际功能对照仍未验证。
+
+### Mapping 普通输入的注册、回调与版本边界
+
+`collect_mapping_input_provider` 对应[主机收据的 mapping_input_provider](../../../.analysis/results/host-current/local-audit.json#mapping_input_provider)。本片复用前节 LE 输入与鼠标 receiver 的正式证据，核对 22 个完整 AST owner（14 个功能所有者、6 项 FFI 声明及 2 项词法绑定）、当前版 62 个完整原生函数、32 个实际间接槽及 11 条 producer／释放交叉引用；旧版 62 个对应函数与收据独立保留，没有重新捕获硬件 type0 或 selected mask。
+
+当前来源为[最新 4.0.896 获取收据](../../../.analysis/inputs/host-current/releases/4.0.896/acquisition.json)中的 Mapping Engine **1.3.17.2**，实际 SHA 为 `c64e539437b50da2b1f2e4155d8cbb0fb1c3e1ebaad894caf509bad97e9857f9`；[当前完整捕获](../../../.analysis/results/native/c64e539437b50da2b1f2e4155d8cbb0fb1c3e1ebaad894caf509bad97e9857f9/capture.json)已由 IDA 9.1／Hex-Rays 9.1 完成。旧版 **1.3.16.5** 的 SHA 为 `6eabdfdedf797e042738b630d827c06f7a45dbe560ebaec96c66698f88f3320a`。两版 `.text/.rdata` 不同；本片逐项核对新版完整函数、参数、汇编、真实虚表与调用者，不靠名称或旧 RVA 自动转移结论。最新 mapping host JS 与已核源码字节相同，原件、ASAR、包及版本差异单列。以下 RVA 均为当前 1.3.17.2；两版在本片所选注册、回调 ABI、标志与注销语义上相同，driver gate 的日志源码行号不同，不扩展为整个 DLL 等价。
+
+| 边界 | 已核的真实行为 |
+| --- | --- |
+| 添加与身份 | Host 等待 DLL completion 和 `info=driver ready` 两者成功；没有 filter driver 的状态不算成功。请求带当前映射设备的 guid；原生按 guid 查当前设备。Host 的 product／container／instance 查找还有原版的空 instance 回退，不能改写成全局唯一 container 假设。 |
+| 导出与派发 | FFI 声明返回 `void`，业务结果由 `void(bool,string,string)` completion 返回。引擎主表 `0x2e0010` 经 engine 线程，取 `+152` 的 manager；其真实主表 `0x2e5a88` 的 `+80/+88/+96/+104` 转到 query／register／unregister／setCallback。缺线程、manager、当前设备或输入接口分别失败。 |
+| 实际输入接口 | USB、BLE、external、OS-hook 与输入基类的构造器均把当前输入接口表写到 **base+136**；其 `+80/+88/+96/+104 → 0x6bc60/0x6bc70/0x6bed0/0x6c130`。硬件报告接收的 base+128 子对象由既有 receiver 收据另行证明，不能混用其表。 |
+| 注册／注销 | 两者先排到设备线程，`0xaab50/0xab040` 要求 base+328 的 driver thread 存在且其 valid bit 为真，然后原子交换 **base+712** 为 1／0，再向 owner runner 排入成功 completion。重复注册返回 true 加警告；未注册时注销返回 false。这个标志是通知资格，不是设备写回或物理输入到达确认。 |
+| 普通通知 | `0x6c320` 保存回调到 **base+720**；`0x802dc` 要求标志与回调都存在，调用输入对象的实际 JSON serializer，获取 time tick，再由 `0x9e1e2` 独立持有回调、字符串与 timestamp 并排队。driver 消费者 `0xaa170` 与另有门槛的 analog 消费者可到达该共享通知链；本片没有据此宣称全部输入格式已解析。 |
+
+事件 ABI 由完整汇编补足：`0x51ac0 → 0x51b12` 将 timestamp 放入 R9，`0x38b50` 保留 R9、设置 `EDX=1`，与 Host 的 `void(string,int,string,ulonglong)` 完全对应。三参数伪代码漏掉 timestamp，不能据此丢失第四参数。原生全局门关闭可抑制事件及 completion；Host 只向实际身份匹配、已订阅、存活且策略允许的窗口发送 `inputnotified`。查询结果还结合调用窗口的 URL 成员关系；DLL 返回 false 会清空该设备的 Host 通知列表。
+
+注销先删除窗口 URL，最后一个 URL 才调用原生注销，失败不会恢复成员。原生注销只清 `+712`，保留 `+720`；已经排队的任务拥有自己的回调引用，执行时不再检查注册标志。设备析构在 `0x1b8e40/0x1a9ee0` 停止并 join 其设备线程后释放回调槽，但不能把它等同于 owner runner、FFI 或 JS 队列全部排空。最后一个添加者移除设备后，Host 即使收到 false completion 仍删除 map；本片没有发现可据以宣称旧连接消息已被全部拒绝的代次屏障。
+
+本片只复用协调者完成的一份当前静态捕获，没有另建数据库或运行 DLL、JS、设备及应用。当前所选原生边界已复核；filter-driver 建连／probe／报文、各产品／固件／传输门槛、输入子类 serializer、完整 analog 分支及在途切换继续按统一缺项推进。独立 Rust、UI／后端接线、真实功能对照与运行验收仍分别未验证。
+
 ### HID 中先前失败函数的真实职责
 
 [编码语义结果](../../../.analysis/results/native/f611827603911d7807c8499dd231bdf77898fbe2ec3ce40215dccfbb7185cc1f/utf16-semantic-audit.json)已重新核实 `0x30888`：它是 **UTF-16 code-unit 到 UTF-8 的增量转换**，不是 HID 构帧或设备传输。PE 的 `.pdata 0x6170c` 与 unwind `0x539a0` 明确给出单块 `[0x30888,0x3092b)`、163字节／49指令，无异常拆块；跳到 `0x3ac8c` 是尾调用，并非丢失函数体。
@@ -725,6 +1055,16 @@ parent 检查 `0xf4730` 以 PROCESS_QUERY_LIMITED_INFORMATION（`0x1000`）打�
 `0xf7140` 按 GetMessageW → TranslateMessage → DispatchMessageW 运行，退出后 DestroyWindow。`0xf71d0` 随后先清全局 RPC server 指针并析构／释放对象，再 join RPC worker，最后 join 存在的 parent 监控；main 才 CloseHandle(session mutex)、清日志和参数。server 析构 `0x35c70 → 0x37a60` 先 RpcMgmtStopServerListening，**仅成功才继续** RpcServerUnregisterIf(nullptr,nullptr,false)；清理 bool 被析构调用者丢弃。请求退出、固定等待、停止请求、RPC 注销、析构与线程 join 因此要分别记录。
 
 安装链的静态结果不能用 install exit=1 当失败、uninstall exit=0 当已卸载，也不能用启动线程当服务就绪。对应测试需分别核对内部 bool、实际包状态、IsRegistered、服务状态、退出码和清理；覆盖已有 identity 短路、坏签名／取消／部署错误、uninstall 异步失败、parent 查询失败、mutex／旧窗口／RPC 注册／Listen／停止失败。上述 EXE、安装／卸载和真实服务验收本次均未执行，仍受[执行限制](../../../AGENTS.md)约束。
+
+## 产品页的 Chroma 内存发布与消费者
+
+`audit-host-local --query product-chroma-observation` 在[同一正式收据](../../../.analysis/results/host-current/local-audit.json)的 `product_chroma_observation` 保存当前发布者和键鼠消费者。Lighting Engine、226、756、162 各自通过正式获取收据选择对应 route 的最新保留稳定部署；没有当前完整 capture 的来源保持 `capture=None`，不借用旧捕获。完整函数正文、字节范围、原件 SHA 和词法导入分别保留，当前主脚本的 publisher 为 `[934383,935226)`、payload producer 为 `[935226,940081)`。
+
+`updateChromaStudio` 从实际 namespace／导出取得 `lighting-engine-chroma-devices`，await 主机内存写入；`generateUpdateChromaStudioPayload` 按设备 Map 顺序生成列表，排除移除目标、具有电源按钮且未开机的设备、Chroma 不支持及无效 region／strip／Glitter 端口。缺请求设备或 metadata 时不发布；克隆单项失败时跳过。派生 ID 重复若命中本次请求键，整次不发布，否则只跳过重复项；空列表的 add 不发布，update／remove 可以发布空列表。因此，未发布、已发布空列表和读取失败不能互相代替。
+
+导出数据在克隆前去掉设备实例、构造器和退出 Quick 参数；region 身份先转换，`containerId` 保留实际实例身份。`instanceId` 使用 `isNaN(value)?0:value`，非数值身份设为 0，其余保留原值，数字字符串不会自动转成 number。产品存储 ID、deviceId、WDL 和镜像 region 来自各自实际所有者。内存写入后的日志克隆也在同一 try 内；捕获到异常不证明写入尚未发生，函数没有提供设备确认结果。移除入口先 await 灯光引擎销毁，再发布 remove；位置查询还会直接使用 payload producer，不经内存发布。
+
+Quick 组件首次读取主机返回列表的第一项值，再监听 `memorystorageevent`，卸载时移除自身 handler；是否可同步取决于已发布的 devices 数量。主机内存、产品本地 Chroma profiles、模块状态、安装探测和动态灯光配置具有独立来源。162 的旧 Babel 分支从已安装模块投影安装状态，没有新版 `checkIsFullyInstall` 探测，不能共用另一产品的初始化结果。普通 Quick 的 storage → 软／硬件分流、50 ms 提交边界和退出恢复见[键盘灯光链](../keyboard/lighting-power.md#保存如何到真实灯光帧)；当前局部链闭合仍不等于全产品语义、独立 Rust、UI 接线或实际设备验收完成。
 
 ## 实际页面与当前 Rust 消费者
 

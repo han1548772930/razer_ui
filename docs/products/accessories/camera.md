@@ -69,7 +69,7 @@ view mode 快捷键先保存并注册本地快捷键，再由事件广播 viewMo
 
 ## 3595 与 3596 的共同链和差异
 
-共同 Camera/Image 页沿本机 Media Foundation/容器枚举获取设备，标准属性仍走各自属性读取。3595 的 Camera `[5365123, 5366002)`、source/resolution `[5357644, 5364562)`、曝光 `[5259048, 5262583)` 见 [main.19c1ceba.js](../../../.analysis/inputs/frontend/accessories-3595-current/raw/apps.razer.com/synapse/products/3595/ui/static/js/main.19c1ceba.js)。3596 对应 [main.0e57873f.js](../../../.analysis/inputs/frontend/accessories-3596-current/raw/apps.razer.com/synapse/products/3596/ui/static/js/main.0e57873f.js) Camera `[5355385, 5356170)`、预览 `[5357564, 5365330)`、Image `[5371496, 5375357)`。
+共同 Camera/Image 页沿本机 Media Foundation/容器枚举获取设备，标准属性仍走各自属性读取。既有整页收据的基线切片为：3595 的 Camera `[5365123, 5366002)`、source/resolution `[5357644, 5364562)`、曝光 `[5259048, 5262583)` 见 [main.19c1ceba.js](../../../.analysis/inputs/frontend/accessories-3595-current/raw/apps.razer.com/synapse/products/3595/ui/static/js/main.19c1ceba.js)；3596 对应 [main.0e57873f.js](../../../.analysis/inputs/frontend/accessories-3596-current/raw/apps.razer.com/synapse/products/3596/ui/static/js/main.0e57873f.js) Camera `[5355385, 5356170)`、预览 `[5357564, 5365330)`、Image `[5371496, 5375357)`。下节 IMAGE 属性链独立核对较新 refresh 原件，未用这些基线切片补齐较新源码。
 
 | 边界 | 3595 V2 | 3596 V2 X |
 | --- | --- | --- |
@@ -86,6 +86,35 @@ view mode 快捷键先保存并注册本地快捷键，再由事件广播 viewMo
 Image 内置预设由 `DEFAULT_SETTINGS` 与 profile 的 `userSettings` 构造。第一次编辑生成 custom 并保留基线，后续 custom/AWB 编辑更新基线；颜色预设身份、当前设备属性和编辑缓存不可混合。Focus 的 Center/Face 以及 V2 的 ExposureLighting 根据真实固件版本选择整对象写入；再次点击已选项仍可能发动作，不能擅自去重。视图快捷键的实际硬件消费者仍是已挂载的 Camera pan effect。
 
 Reset 使用 300 ms debounce，按当前产品顺序发送默认意图，只重置选中的默认图像预设，并在 500 ms 后更新缓存；缺少 ldc 字段时传 false 不代表原 profile 具有该字段。V2/X 不执行 FWRestoreDefaults，不能因共享包装器有导出就新增固件恢复写入。
+
+## 3595／3596 当前 IMAGE 属性读写与结果
+
+`camera-image-properties` 从保留的最新稳定获取收据选源，结果合入[联合收据](../../../.analysis/results/frontend/accessories-camera-local-pages-audit.json)的 `image_properties`。UI 使用 [3595 main.96732b64.js](../../../.analysis/inputs/frontend/accessories-3595-current-refresh-ec3db4b29c5a/raw/apps.razer.com/synapse/products/3595/ui/static/js/main.96732b64.js) 与 [3596 main.14e12dab.js](../../../.analysis/inputs/frontend/accessories-3596-current-refresh-ec3db4b29c5a/raw/apps.razer.com/synapse/products/3596/ui/static/js/main.14e12dab.js)，middleware 使用各自 `refresh-ec3db4b29c5a-2` 获取收据。两层均无完整捕获，保留的完整 AST owner 只证明本条属性链；缺少捕获、source map 与获取未决项仍单独记录。
+
+| 实际产品分支 | 3595 V2 | 3596 V2 X |
+| --- | --- | --- |
+| 白平衡范围／步长 | 2800…7500／10 | 2800…6500／10 |
+| 关闭预览后编辑声明 | `DisplayPreviewWhenDisabled:true` | `false` |
+| 扩展 UVC 曝光注册 | `true` | `false` |
+| IMAGE 挂载 | 预设、亮度、对比度、饱和度、白平衡、anti-flicker、mirror、Windows 设置；sharpness/gain/watermark 均为 false | 相同 |
+
+当前图像编辑与 AWB 经 `z6` action、同身份 reducer case 发完整 `ON_SET_IMAGE_PRESETS`。首次 custom 编辑和 AWB 都保留源码的 `userSettings` 伴随值。该动作更新活动 profile、版本与必要的本地持久化，再进入 `NORMAL_SKIPPABLE/imagePreset`；它没有走旧的 `ON_SET_IMAGE_SETTING` runner。默认写入顺序为 brightness、contrast、saturation、whiteBalance，随后仅在字段存在时写 sharpness/gain；共享 runner 的这些可选参数不代表本产品挂载了对应控件。
+
+runner 只在执行设备操作前检查一次 AbortSignal，依次 await setter，却不检查 false 返回。缺失白平衡字段按源码变为 0／false；未初始化的 saturation 包装器甚至返回 `{}`，其余选定 setter 返回 false。循环正常结束才设置 `result=true/status=completed`；抛异常则设置 `result=false/error`。完成消费者只有日志，没有追加 getter 或把返回值发布成实测属性。页面 reducer 的乐观结果、本地保存、任务 completed 和真实设备确认必须分别记录。
+
+读取是另一条链：产品根 `componentDidMount` 的可见性回调发 `getAdvancedCameraSettingsCache`，MW 等待四个标准 getter 的 `Promise.all`，再读其余摄像头属性，并以核对过身份的响应进入 `currentCameraSettings` reducer 与 CAMERA／SYNAPSE 差异消费者。缓存转换仍可能把缺项压成 0／false；这不是新的默认写入依据。当前两型号最新安装资源声明均指向同一 GenericCamera 1.0.35.0；八个属性导出与四个 COM owner 复用现有完整捕获。真实 `IAMVideoProcAmp` 属性号依次为 0／1／3／7，Set/Get/Release 虚表偏移为 32／40／16；auto flag=1，manual flag=2。Get 的 HRESULT 失败只记日志，仍序列化输出字段，其初值为 0／false，不能据此证明读取成功。
+
+adapter 的 terminate 在实例 lock 内注销监听、等待 `DeviceTerminate` 并清 `isInit`，catch 记录后仍返回 true；`destroy` 与 beforeUnload 不等待这条异步释放。完整队列 owner、预检查取消与单次 COM Release 均不证明所有在途任务和回调已静止。宿主边界由下节接续；独立 Rust、UI／后端和官方实际 DLL／设备对照仍保持未审阅／未执行，整页与产品未完成。
+
+## 3595／3596 当前 Host 转发与释放边界
+
+`camera-image-host-chain` 接续同一联合收据的 `image_host_chain`，只复核既有 IMAGE owner 的当前原件字节，并核对 [4.0.896 获取收据](../../../.analysis/inputs/host-current/releases/4.0.896/acquisition.json)所属 ASAR 的真实成员与偏移。实际链为 `camera.callDLLApi → MW 88382.oE → window.top.apiElectron.doDLLMainActionAsync → preload ffiPreloadAsync → FFIPreloadMain.callDLLAsync → ffi-napi-rz async 调用`。摄像头没有走 `ffiMain.js` 或隔离 `FFIProcess`；其他模块的 worker 关闭行为不能证明摄像头已释放。
+
+Host 按 channel 持有 mutex，等待原生调用后在 finally 释放。重复 `ConfigureFFI` 复用 library 并补充当前页面 URL；callback 也按 channel 复用。异步 FFI 的 error 参数未检查，异常被记录后返回未定义结果。属性 getter 的返回指针在 `readCString` 正常返回后才置释放标志，并在 finally 调用 `FreeMalloc`；若字符串复制先抛异常，该指针不会沿此分支释放。`FreeMalloc` 的原生链最终调用 `HeapFree`。属性 setter 的 bool 与已有 runner 的 completed 语义仍分别记录，没有追加读回。
+
+adapter 在 `ConfigureFFI` 成功后立即置 `isInit=true`，随后查询版本、最多重试十次 `DeviceInitialize`，失败间隔 100 ms，再注册事件；所有重试都失败仍会进入事件注册。DLL 每次初始化调用内部还会最多重试三十次，失败间隔 1000 ms，按 container 查找已有 owner；3595 使用 `CRzDeviceAccess`，3596 使用 `CRzDeviceAccess_0E0C`。这些重试与 `isInit` 不证明设备成功。结束初始化后再次 init 会向原有 channel 再追加 DLL 名称哈希后缀；重连调用方与旧结果隔离仍需继续核对。
+
+原生 `DeviceTerminate` 按 container 查找并断开 owner，关闭属性窗口、释放 filter、停止摄像头线程并从集合移除；已选线程 join 使用无限等待，成功后关闭线程句柄，同线程 join 进入运行库错误路径。关闭窗口可能先发送 `displayCameraPropertiesDialogClosed`：payload 仅含 event／containerId，序列化字符串在 callback 返回后由原生销毁，不能交给 `FreeMalloc`，也不是 IMAGE 写入确认。Host 解析后按当前 WebContents URL 投递，preload 注销只移除页面监听。当前 `FreeFFI` 直接返回 true、对应 handler 为空；library／callback 表未释放，`DeviceTerminate` 也未清全局 callback 指针。取消、重连及全部在途回调静止仍未闭合，不能将这些局部释放提升为整会话完成。
 
 ## 现代型号的实际控件分支
 
@@ -197,15 +226,58 @@ Pro 的恢复命令还有实际版本变化：旧版 `0x526c0` 写入 `a0 0a 01 
 
 ## native 初始化、实例身份与退出
 
-旧版 `DeviceInitialize(0x57640)` 经 `0x3bc50` 扫描工厂，精确比较完整 container 字符串的长度与字节。已存在的同 container 实例直接成功；新实例只接受枚举结果里的 `0x0e0a/0x0e0b/0x0e0c`。base 构造器 `0x4ab30` 建立互斥、队列与 worker，Pro/X 随后替换虚表；DirectShow 连接 `0x4aee0` 枚举 video moniker，核对 DevicePath 并绑定 IBaseFilter。连接成功后才保留共享实例；失败释放临时对象。新版对应入口为 `0x577e0/0x3bcc0/0x4abd0/0x4af80`。
+3595／3596 当前清单指定的 `1.0.35.0` 沿用现有完整捕获；[相机联合收据](../../../.analysis/results/frontend/accessories-camera-local-pages-audit.json)的 `device_lifecycle` 接续 `image_properties` 与 `image_host_chain`，复核 62 个去重完整 AST owner、42 个完整原生函数、10 个原 PE 数据区与 39 条关键指令。两份前端来源、Host `4.0.896` 包／ASAR 成员和原生清单分别核实，未重新捕获整库，也未将 3594 的 `1.0.36.1` 行为混入这两个产品。
+
+`DeviceInitialize(0x57640)` 经 `0x3bc50` 扫描工厂，精确比较完整 container 字符串的长度与字节。已存在的同 container 实例直接成功；新实例只接受枚举结果里的 `0x0e0a/0x0e0b/0x0e0c`，3595 走 base、3596 走 X。构造器 `0x4ab30` 在打开 filter 前就建立互斥、两类队列与 worker，X 随后替换虚表；DirectShow 连接 `0x4aee0` 枚举 video moniker，并以请求 DevicePath 是否为枚举路径的**子串**选择设备，不是完整路径相等。`BindToObject` 的 HRESULT 没有单独核验，返回的 IBaseFilter 指针非空才算连接成功，随后 manager 才保留共享实例；失败释放临时对象。3594 的对应入口为 `0x577e0/0x3bcc0/0x4abd0/0x4af80`，属于独立版本证据。
+
+连接的匹配分支 `0x4b366 → 0x4b3d2` 跳过公共块里的 IPropertyBag Release 与 VariantClear；后续还会覆盖 VARIANT 的内容。原版的正常返回不能证明这两项已释放。物理枚举 `0x3d940` 则先清旧列表，再以 DirectShow 路径筛选 `VID 1532` 与三项 PID，由 SetupDi 的 `DEVPKEY_Device_ContainerId`（property ID 2）取得 GUID 并转为 container 文本；`0x3d4f0` 忽略枚举失败，继续按刷新后的列表移除缺失实例。因此刷新失败也可能导致已登记实例被逐项析构，不能将导出固定 true 当成真实枚举成功。
 
 DLL 的初始化自身最多尝试 **30 次**，每次失败执行 **1000 ms Sleep，包括最后一次失败**，再返回 false；这是包装器外层十次、失败间隔 100 ms 之外的重试。该同步 native 过程没有观察到取消参数，页面退出不能仅以丢弃 JS Promise 证明 native 已停止。控制函数名含 `Async` 也不证明已经排到 worker；标准属性和 ISP 操作的当前路径直接在每实例互斥保护内调用。
 
 `StartCamera/StopCamera` 的旧版 RVA `0x58870/0x58940`，新版 `0x58a10/0x58ae0`，只检查精确 container 是否有已初始化对象，未执行视频流启动或停止。真实预览由媒体请求、流和 track 的所有者控制。`EnumerateCameraList` 刷新物理列表，并关闭、移除不再存在的已连接项；导出固定返回 true 不表示一定发现设备。
 
-旧版 `DeviceTerminate(0x57830)` 先走断开 `0x4b680`：关闭属性页、释放并清空 IBaseFilter，停止 worker。停止函数 `0x4a9b0` 清 active、唤醒条件变量并 join；同线程 join 和无效 join 走错误分支，不能当成功。随后 terminate 再关闭属性页、移除匹配项并释放强/弱引用；未找到实例返回 false。析构函数 `0x4ae30` 处理队列和字符串，并检查是否仍有 joinable 线程。新版 terminate、断开、worker 停止分别为 `0x579d0/0x4b720/0x4aa50`。这条清理链不能由 UI 清空一个连接标志替代。
+`1.0.35.0 DeviceTerminate(0x57830)` 先走断开 `0x4b680`：关闭属性页、释放并清空 IBaseFilter，随后才停止 worker。停止函数 `0x4a9b0` 清 active、唤醒条件变量并无限 join，成功后 CloseHandle；同线程 join 和无效 join 走错误分支，不能当成功。随后 terminate 再关闭属性页、移除匹配项并释放强／弱引用；未找到实例返回 false。原 PE 的 base／X 共享控制块表分别为 `0xb7b08/0xb7460`，前两槽均为 `0x35020/0x35000`，控制块删除槽分别为 `0x42f30/0x42f60`；两张设备虚表的实际删除析构槽均为 `0x4adf0 → 0x4ae30`。析构停止线程后，经 `0x4a3d0 → 0x4f2a0/0x4f4e0` 释放两类待处理队列、future 状态和字符串；这不证明每个硬件动作均已取消。`1.0.36.1` 的 terminate、断开、worker 停止分别为 `0x579d0/0x4b720/0x4aa50`。这条清理链不能由 UI 清空一个连接标志替代。
+
+浏览器选择是另一层身份：当前两款 `getDevice` 先查 label 中的 `1532:0e0a/0e0b/0e0c`，无请求 ID 时取首个命中，有请求 ID 时还须精确匹配 deviceId。仅当 `this.deviceId` 仍为 undefined 才逐项尝试与 audioinput 同 group 的视频，最后一个命中的视频可成为结果；没有在每次枚举前清除旧 deviceId。`connectDevice()` 只返回成功对象，没有打开 native 设备。浏览器 deviceId、native container 与媒体 track 必须分别追踪，不能把这些返回互相当成连接确认。
+
+标准属性 `0x4c780/0x4ca20` 与 ISP guard `0x4edf0` 在实例互斥内发现 filter 为空时，会用保存路径调用 `0x4aee0` 重开；已核标准属性随后直接执行 COM，没有排入上述 worker。`0x3bb10` 查找期间暂增强引用，却在返回裸实例前释放该引用；所选 terminate／刷新／断开路径没有取得同一实例互斥。因此已核的正常析构和 join 不能证明并发属性访问、旧连接结果、所有待处理调用或全局 callback 已静止。产品级预览、重连与取消调用方继续留在统一缺口中。
 
 属性页关闭事件在原回调返回前使用临时 UTF-8 字符串，回调必须立即复制；该借用指针不能交给 `FreeMalloc`，也不能留给后台延后读取。`SetNodeFFIEvent` 是进程级指针赋值，未在 `DeviceTerminate` 中看到按实例清空全局回调。与此相对，字符串 getter 导出另行分配返回副本，由调用者 `FreeMalloc`；传入 null 时该释放导出仍返回 true。事件订阅、返回缓冲区和实例线程是三个独立所有权边界。
+
+## 3595／3596 当前浏览器预览、选择与停止
+
+统一维护查询 `camera-media-preview-chain` 将本专题保存到[相机联合收据](../../../.analysis/results/frontend/accessories-camera-local-pages-audit.json)的 `media_preview_chain`。它固定使用刷新后的两份 UI 原件，保留实际 AST、词法绑定、44 个动作到事件／reducer 的关系及 MW 消费者；`image_properties`、`image_host_chain` 和 `device_lifecycle` 的 42 个原生函数直接复用，没有重做原生捕获。两份刷新主脚本已通过[双轮部署身份复核](../../../.analysis/results/frontend-revalidation/9f1f9eabc98b3f9d9d5aa0e7da68dc5ffaa4d78edd1da1e1ee6f1d332e06ed9d.json)，这只证明当次部署身份，不代表所有依赖或整款产品已逆向完成。
+
+| 产品 | 当前主脚本 | 预览完整 owner／字节区间 | 来源选择完整 owner／字节区间 |
+| --- | --- | --- | --- |
+| 3595 | `main.96732b64.js` | `_m`，`[5725229,5733337)` | `kM`，`[5715823,5722590)` |
+| 3596 | `main.14e12dab.js` | `mM`，`[5715203,5723311)` | `lM`，`[5705888,5712658)` |
+
+来源选择器按当前 VID／PID label、浏览器 deviceId 和 serial 对应的 `cameraHardwareDeviceId_`／`cameraHardwareId_` 本地键选择候选，并保留实际挂载的第三方本地来源。3595 使用默认开启的能力探测；3596 的页面明确传入 `checkUSBCapacity:false`，不执行该探测分支。探测自身持有另一条 `getUserMedia` 请求：先读取首个视频 track 的 capabilities，正常路径再停止全部 tracks；读取之前没有 `finally`，异常不能概括为已释放。来源选择、刷新按钮和 `reconnectCamera` 是不同触发入口，选择后更新 `currentPreviewCameraHardwareId` 并请求重读配置，不能将本地选择值当成 native container 或已确认的媒体连接。
+
+预览启动先检查 enabled，再等待 `getFocusTab("synapse") === window.name`；焦点 hook 另外核对窗口可见、最小化和宿主标签消息。启动随后枚举设备，按实际设备与产品参数选 exact／ideal 约束，将 `getUserMedia` 结果挂到 `video.srcObject`，然后等待 `play()`。获取返回时只复核 enabled ref，**没有连接 generation 或组件挂载身份检查，也没有取消在途媒体 Promise；play 返回后不再复核**。`play().catch` 只复位启动／组件播放状态并记错，不停止 tracks、不清 `srcObject`。这与已分析的其他产品预览实现不同，不能借其释放逻辑替代当前两款源码。成功播放后启动标志会清零，部分失焦停止分支却仅检查该标志，因此不能声称所有隐藏状态都会停流。
+
+停止 owner 操作当前 DOM 视频：停止 tracks、清 `srcObject`、pause、移除 src、load，再更新播放状态；随后延迟 1 秒发送 `CAMERA_TURN_OFF_COMPLETED`。找不到视频时提前返回，不发送该消息。mount 的 `pagehide`／`beforeunload` 与 effect cleanup 也会停止当时 DOM 上的流、清对象及初始化 timer，但没有排空尚未返回的获取请求。track.stop 的调用和延迟消息都不是逐 track ended 确认。产品 render 以样式隐藏预览时仍保留组件；产品根卸载只撤销 IntersectionObserver，流释放由预览 effect 另行持有。工具栏普通刷新另有停止页面全部 video tracks 的 owner，自定义刷新走其实际回调。
+
+开关 action 经 reducer 广播 `ON_SET_IS_PREVIEW`；当前 MW 的 `q8w` maker 仅在存储 gate 开启时保存 `isPreview`，没有调用 native StartCamera／StopCamera。停止消息的真正消费者则 resolve `uiTurnOffMessage`：等待器使用 container＋PID 的 `cameraLock`、`ifAvailable:true` 和 5 秒 Promise 超时。watermark、MJPEG、HDR、LDC 四个 runner 等待它后才继续，各自在等待前检查一次 abort，等待后没有再次检查。该锁消息不能证明浏览器迟到流、全部 native 调用或 callback 已静止。
+
+物理移除消费者由 USB 断连、设备 remove／disconnect 监听触发，必须同时匹配 container 和当前产品；ignore 标志可跳过清理。实际清理调用适配器 `terminate()` 后又调用 `handleBeforeUnload()`，没有 await 前者；普通路径继续关闭窗口，soft reload 标志可跳过关窗。这些当前消费者与已核正常 native 析构分开记录，上游物理事件来源和宿主关闭后的在途排空仍需独立证据。
+
+`GET_CAMERA_HARDWARE_ID` 在当前链中枚举一次媒体设备，最多 9 次并发查询候选的 container，失败间隔 1 秒，以精确 container 相等发布 `MW_SET_CAMERA_HARDWARE_ID`。Kimberly 实际提交 `GetContainerIdFromDeviceId(deviceId, origin)`；预览收据当时未展开的当前宿主／系统映射由下一节独立补查，3594 或 3590 的旧身份链没有替代它。本专题通过 13 项真实原件与反例测试，覆盖字节／AST 篡改、动作身份、产品挂载差异、释放顺序、迟到结果、播放失败、锁等待和物理移除边界。没有修改 Rust 或 UI，没有执行厂商 JS、官方 DLL 或设备；独立实现、实际 DLL 功能对照、真实设备及窗口验收继续为 **Unverified**。
+
+## 3595／3596 当前 Kimberly 浏览器身份转换
+
+维护查询 `camera-kimberly-identity-chain` 将所选结果保存到[相机联合收据](../../../.analysis/results/frontend/accessories-camera-local-pages-audit.json)的 `kimberly_identity_chain`，接续 `media_preview_chain`、`image_host_chain` 和 `device_lifecycle`。两款当前 MW 清单均指向同一 `1.0.35.0` 原件；本专题复用完整捕获，核对 72 个去重 AST owner、16 个完整原生函数、3,138 条指令和 14 条必要调用边，没有新增捕获或分析会话。
+
+预览选择器在候选多于一个时触发实际 `GET_CAMERA_HARDWARE_ID` action。MW 对本次枚举中的厂商视频候选调用适配器；适配器仅在 `isInit` 时发送两个 UTF-8 字符串参数：浏览器 deviceId，以及 `window.location.protocol + "//" + window.location.host`。当前 ABI 是 `pointer(string,string)`。调用复用当前 Host 4.0.896 的 `ffiPreloadAsync`／`FFIPreloadMain.callDLLAsync`，每个 channel 的 mutex 串行保护导出调用；它没有转给隔离 worker。
+
+`GetContainerIdFromDeviceId(0x5ef20) → 0x3ee40` 先建立空结果，deviceId 或 origin 为空则不匹配；原生函数先扫描 C 字符串，没有另行验证空指针。它通过 `0x1be10` 使用 Media Foundation 枚举视频源，取友好名与完整 symbolic link，每条记录 128 字节。`0x66d90` 将完整路径转成 UTF-8，`0x1b880` 使用 **origin 作 HMAC-SHA256 key，完整路径 UTF-8 后接原样盐值作 message**；`0x1d880` 输出 64 个小写十六进制字符。盐值由 `0x1b5a0 → 0x1ac00` 从本机 `CSIDL_LOCAL_APPDATA/Razer/RazerAppEngine/User Data/Default/Preferences` 的 `electron.media.device_id_salt` 字符串读取，只有非空结果进入缓存，不创建或覆盖盐值。缺失、读失败或盐为空时不生成有效身份。
+
+生成结果与浏览器 deviceId 按完整长度和字节比较；命中后，还必须与 manager 中已经初始化的实例匹配。实例 `+248` 的设备路径与 MF 路径分别取 `#{` 前的 UTF-16 部分并精确比较，成功才复制实例 `+216` 的 container；显示名和 PID label 不参与最终身份确认。没有匹配或没有已初始化实例时返回空字符串；导出仍为结果和终止符分配独立 HeapAlloc 副本，分配失败则返回空指针。Host 在 `readCString()` 正常返回后通过 `finally` 调 `FreeMalloc(0x57510) → 0x77800 → HeapFree`；复制抛错时原版没有设置释放标志，不能记为该分支也已释放。
+
+MW 最后以返回 container 与当前 `CONTAINER_ID` 严格相等选中候选，但向 UI 广播的是其浏览器 deviceId；对应 reducer 只更新 `cameraHardwareId`。重试复用首次枚举结果，最多 9 次、失败间隔 1 秒，没有完整的请求取消或连接 generation 屏障。MF 正常路径释放源对象、分配字符串、数组和 attributes 并调用 MFShutdown；部分早退未配对 shutdown，第二个字符串读取失败也未释放第一个。HMAC 正常销毁 hash，但当前二进制仅在 provider handle 为零时进入 close 分支，不能概括为完整 provider 释放。以上均保留原版事实，本专题不追加修复或设备写入。
+
+13 项专属维护测试覆盖当前来源变化、ABI／参数顺序、精确匹配和结果消费者、完整 helper／失败分支篡改、真实 PE 字节、常量、调用边、发布范围及变化输入。该结果只闭合所选静态身份转换链；完整产品分支、独立 Rust、UI／后端接线、实际 DLL 功能对照和真实设备／窗口验收仍分别为未完成或 **Unverified**。
 
 ## 标准 CameraControl 与 VideoProcAmp
 
@@ -305,7 +377,7 @@ MIC 已用 `observation: Option<[u8;2]>` 区分读取收据，但当前 scope �
 
 ### 当前 camera-local-pages 与 camera-source-review 收据
 
-当前联合审计收据 [`accessories-camera-local-pages-audit.json`](../../../.analysis/results/frontend/accessories-camera-local-pages-audit.json) 的 SHA-256 为 `703b8b65f535c6780d2239f3bd4869098bea354194bfb4b4583983ad6cdf7d55`，现代产品部分覆盖 3594、3595、3596 三个当前入口、219 个完整 owner，旧款选择与标准属性增量由其中 `legacy_selection` 独立引用；三份页面层 `failures` 与 `unresolved_chains` 为空，但这只表示已选静态 owner 查询收束，不表示整页验收。3594 记录 51 个 owner、27 个控件比较和 20 条本地链；3595/3596 共享 1.0.35.0 原生捕获，各记录 2,817 个完整函数并保留 `0x870c0` 的 Hex-Rays 失败。3594 使用 1.0.36.1 捕获的 2,825 个完整函数并保留 `0x87ad0` 失败；两处均有独立补查收据，原始失败不能从基准收据中删除。
+联合审计收据 [`accessories-camera-local-pages-audit.json`](../../../.analysis/results/frontend/accessories-camera-local-pages-audit.json)的现代整页基线覆盖 3594、3595、3596 三个入口、219 个完整 owner，旧款选择与标准属性增量由其中 `legacy_selection` 独立引用；三份页面层 `failures` 与 `unresolved_chains` 为空，但这只表示已选静态 owner 查询收束，不表示整页验收。3594 记录 51 个 owner、27 个控件比较和 20 条本地链；3595/3596 共享 1.0.35.0 原生捕获，各记录 2,817 个完整函数并保留 `0x870c0` 的 Hex-Rays 失败。3594 使用 1.0.36.1 捕获的 2,825 个完整函数并保留 `0x87ad0` 失败；两处均有独立补查收据，原始失败不能从基准收据中删除。较新 refresh 的 IMAGE 属性链由 `image_properties` 独立选源与记录，不能由基线完整捕获数量推定该部署已全量解析。
 
 3595 与 3596 收据仍各保留同一条剩余边界：完整的 Image/Camera/Processing 展示、产品/固件分支和快捷键行为需要产品级整页核对，已核的 footer、processing、native vtable 和 source cache 不能提升为整页完成。当前静态结果明确了输入、页面 owner、协议分支、Rust 接线和失败/取消/释放观察；官方 DLL 的逐功能结果、真实设备应答/读回、写入恢复以及窗口与媒体验收仍为 `Unverified`，不可由捕获成功或模拟传输一致替代。
 

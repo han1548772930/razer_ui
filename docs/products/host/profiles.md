@@ -2,6 +2,8 @@
 
 全局 Profiles 管理本机游戏列表、设备配置档与游戏的关联，以及配置档命令弹窗。设备摘要、关联记录、选中项和设备实际激活的配置档是不同数据：在设备卡片里选择配置档，只改变关联目标；新建、删除或导入则发给相应设备中间件，由其持久化和设备任务继续处理。
 
+当前已接续核验 Windows 的 Add App 枚举／普通图标、游戏列表／封面 Alt 图标、GOG 扫描到前端列表，以及全部 22 个实际注册扫描策略的所选方法版本差异。相关专题核对 Host 4.0.896 与当前稳定前端，GOG 及其直接共享扫描链、已选策略方法采用 GMS 3.15.0.1200；详见下方专题及[正式收据](../../../.analysis/results/host-current/local-audit.json)。注册策略版本清单已复核不代表所有消费者或整个 Profiles 语义完成；其余 GMS 与设备配置档段落仍对应注明版本的既有证据，Rust 独立实现、UI／后端接线和实际 DLL 对照分别保持未验证。
+
 ## 页面与设备来源
 
 独立入口来自 `synapse/profiles`。完整窗口挂载模块 43，内嵌窗口挂载模块 8120；完整窗口标题为 `LINKED_GAMES`，导航依次为 `GAMES_HEADER` 和 `DEVICE`。导航保存到 sessionStorage，切换、返回和前进使用映射草稿的离开确认；首次挂载追加当前导航记录。
@@ -110,34 +112,184 @@ Games 的刷新调用不等待扫描 action 返回，随后直接设 isSyncing=t
 
 ## 程序枚举与图标的 Windows 原生链
 
-当前 4.0.827 主机在 Windows 打包路径从 `Program Files/Razer/RazerAppEngine/app-<appVersion>/CommonDLL/SysUtilsNative.dll` 初始化 `sysUtilsNative`；开发路径使用主机相邻的 CommonDLL。调试开关另选本机 Apps/Common 副本，仅在副本缺失时复制。不能仅凭文件名把其他安装位置或版本视为本链的实际原件。当前官方包和已安装证据别名是同字节的 x64 DLL，PE 版本资源为 1.1.31.0，Image Base 为 `0x180000000`。
+本条查询使用当前官方 4.0.896 包内 SysUtilsNative 1.2.3.0，x64、Image Base `0x180000000`，以及 [当前 Profiles 主脚本](../../../.analysis/inputs/frontend/synapse-profiles-current-refresh-ec3db4b29c5a/raw/apps.razer.com/synapse/profiles/static/js/main.bceb4af9.js)、[Add App 所属 chunk](../../../.analysis/inputs/frontend/synapse-profiles-current-refresh-ec3db4b29c5a/raw/apps.razer.com/synapse/profiles/static/js/9473.fa0bcd61.chunk.js) 和 [Games 挂载 chunk](../../../.analysis/inputs/frontend/synapse-profiles-current-refresh-ec3db4b29c5a/raw/apps.razer.com/synapse/profiles/static/js/6360.49064bb7.chunk.js)。不复用旧 4.0.827 Host 或旧前端的字节身份。统一入口为 `python tools/workspace.py audit-host-local --query profile-local-applications`；完整证据写入上述正式字段，选择范围为 57 个完整 AST 所有者中的 49 个角色、40 个完整原生函数和 35 条经汇编交叉引用确认的调用边，不代表整个 Profiles 或 SysUtilsNative 已完成。
 
-Windows FFI 声明为 `getInstalledApplicationList: pointer()`、两个图标接口 `pointer(string, int, int)` 和 `FreeMalloc: void(pointer)`。38 个顺序 API 组共声明 78 个名称，当前 PE 的 89 个具名导出仅缺最后一组 `SimulateMemoryLeak`；源码在配置失败时逐组删尾重试，删去该组后仍保留 Alt 接口。这是声明与导出表的静态核对，未执行绑定，也不能把重试当成加载另一份旧 DLL。
+当前 [主机 main.js](../../../.analysis/inputs/host-current/asar/e7a524aca177/electron/main.js) 实例化 `FFISysUtils(ffiMain)`，平台选择器在 Windows 加载 win 分支。打包路径使用 `app-<appVersion>/CommonDLL`，调试分支只在本机 Apps/Common 副本缺失时复制；`initDll` 检查文件后配置 `sysUtilsNative`。相关声明仍为 `pointer()`、`pointer(string,int,int)` 和 `FreeMalloc:void(pointer)`；配置失败每次删掉一个尾部 API 组，最多尝试三次，不能把它描述为无上限重试或另换 DLL。来源核验包含当前获取收据、官方包、实际提取 PE、ASAR 父容器及每个成员的真实偏移字节。
 
 | 导出／主体 RVA | 实际输入和返回 |
 | --- | --- |
-| `getInstalledApplicationList` ordinal 56，`0x6ef10` | 无参数；返回本 DLL 分配的窄字符 JSON，条目只有 `name`、`path`。初始 JSON 是 null，第一次追加才转为 array，因此没有合格项时序列化为 `null`，不是 `[]`；分配失败返回空指针 |
-| `getApplicationIcons` ordinal 52，`0x70d30 → 0x44b90` | 第一参数是 JSON 文本；遍历字符串路径或带字符串 `path` 的对象，跳过空路径。返回条目为 `path/width/height/image`；提取失败仍可返回条目和空 image，完全没有追加时返回 JSON `null` |
-| `getApplicationIconsAlt` ordinal 53，`0x70d40 → 0x46180` | 遍历对象，分别读取存在的字符串 `path`、`altPath`；返回额外带 `altPath`。没有路径的对象仍进入返回条目；错误字段类型进入 JSON 类型异常链，不能解释为正常空列表 |
-| `FreeMalloc` ordinal 5，`0x6b9d0` | 非空时经 `0x97ce0 → 0xa98e0` 调用本 DLL 堆的 HeapFree；不能用调用方自己的分配器代替 |
+| `getInstalledApplicationList` ordinal 65，`0x6d250` | 无参数；返回本 DLL 分配的窄字符 JSON，条目只有 `name`、`path`。初始值为 null，第一次追加才转为 array；无合格项返回字符串 `"null"`，分配失败返回空指针 |
+| `getApplicationIcons` ordinal 61，`0x6f070 → 0x41bd0` | 本页面传入路径字符串数组的 JSON 文本和 80、80；主体另保留对象 path 分支。返回 `path/width/height/image`；失败可以保留条目但 image 为空，没有追加时为 JSON null |
+| `FreeMalloc` ordinal 5，`0x69d10` | 非空时经 `0x98c30 → 0xaa840` 调用本 DLL 堆的 HeapFree；不能换用调用方分配器 |
 
-程序枚举按 HKLM、HKCU 的顺序，每个根先查 `SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall`，再查普通 Uninstall。根表位于 RVA `0xe2d60`，16 字节的两个指针分别为 `0xffffffff80000002`、`0xffffffff80000001`。每项必须先取得 DisplayName 和 DisplayIcon 的查询尺寸；随后转换为 UTF-8，只在 DisplayIcon 的末三个字符内找逗号并截断其后的图标编号。路径长度大于 5、末四字节小写比较为 `.exe` 或 `exe"` 后，才由 `0x6ed20` 去掉首尾双引号并以 ifstream 打开检查；成功项按枚举顺序追加，没有去重、排序、环境变量展开或从其他字段补路径。
+程序枚举按 HKLM、HKCU 的顺序，每个根先查 WOW6432Node 下的 Uninstall，再查普通 Uninstall。RVA `0xe40b0` 的 16 字节根表已与真实 PE 核对。每项先取得 DisplayName 和 DisplayIcon；只在 DisplayIcon 末三个字符内找逗号并截掉图标编号。路径长度大于 5、末四字节小写比较为 `.exe` 或 `exe"` 后，`0x6d060` 去首尾双引号并以 ifstream 检查可打开性。成功项按原枚举顺序追加，没有原生去重、排序、环境变量展开或从其他字段补路径。
 
 这条完整枚举链没有遍历开始菜单、解析快捷方式或枚举 UWP。独立的 `GetPathFromShortcutLnk` 导出及 GMS 的 UWP／URL 策略属于其他调用链，不能把它们并入 Add App 的程序枚举。两个注册表字符串实际读取的返回码没有二次判定，RegEnumKeyW 只以 ERROR_NO_MORE_ITEMS 终止；读失败不能据最终 null 推断“机器没有安装程序”。固定缓冲区、截断规则、注册表项重复及路径不可打开都应在隔离夹具中单独验证。
 
-图标两条路径共用 `0x41ce0` 生成 `path|altPath|widthxheight` 缓存键。只要任一尺寸为零，键和返回的 width/height 就改用 GetSystemMetrics(11/12)；但实际 miss 提取调用在 `0x454bb`、`0x46bd8`、`0x46cd9` 仍传原始尺寸，不能据返回尺寸断言像素处理成功。普通接口只在路径非空且转换后的 UTF-16 长度大于 4 时提取。Alt 先用同一缓存；miss 时先试长度大于 4 的 path，失败后再试长度大于 4 的 altPath。后者直接按位图文件读取，并不再次走 exe／dll 图标分支。
+实际消费者由 Games 的 lazy 模块 3137 挂载；Add App 在 componentDidMount 发起枚举，通过词法导入 `u=a(37226)` 找到真实平台单例。它解析枚举结果、提取 path，调用普通图标接口，按精确 path 双循环合并，再按 name＋path 去重；空 image 使用页面内 SVG。结果交给 `setInstalledApplicationList`，沿模块 68548 的 action、模块 13254 的真实动作常量、`addGameReducer` 和 connect props，最后由 componentDidUpdate 更新 installedAppList／filteredAppList。仅写入的 `state.appList` 并不是列表渲染所读字段；renderAppRows 对 filteredAppList 排序后呈现。该结果不代表添加游戏、服务持久化或设备写入成功。
 
-`0x3eb70` 将路径末四个 UTF-16 字符转小写：exe／dll 使用 `0x3e170` 的 PrivateExtractIconsW，从索引 0 提取一枚 128×128 HICON；`0x3d340` 将其写为 ICO，随后 DestroyIcon，再用 `0x3de70` 经 GDI+ 缩放为所请求大小，插值模式为 7。其他后缀经 `0x3e770` 的 GdipCreateBitmapFromFile 和 `0x3e540` 缩放。输出位图的 PixelFormat 为 `2498570`，绘制范围覆盖整个目标矩形；普通位图分支先清透明底，不能据另一条路径的行为补齐所有缩放选项。
+`window.top.apiElectron` 经当前 preload 的 `doElectronAction → ipcRenderer.invoke("electronAction")` 到 main 的实际 ipcMain handler；三个相邻 case 最终调用同一个 `po.callDLLAsync(n,i)`，Windows 对象再将 action 和参数交给 ffiMain。完整语法所有者保留了实际导出 getter、词法绑定、声明、处理器和异步结果消费者，没有仅靠同名字符串串接。
 
-两条提取路径使用 `0x3d7a0` 的线程局部临时文件：系统临时目录下 `RazerTempPicture_<thread id>_<counter % 20>.png`，每次取名推进计数。exe 的第一份文件实际装 ICO 字节，第二份才是缩放后的 PNG。`0x3dc50` 打开输出文件并读入内存，`0x3d8e0` 用标准 Base64 字母表和 `=` 补位，加上 `data:image/png;base64,`。`0x3e9c0` 只检查该前缀和允许字符，没有解码 PNG 或校验真实尺寸。正常返回链释放读取缓冲和文件句柄，但没有删除成功生成的临时文件；位图分支在写目标前删除该槽旧文件，失败的 ICO 写入尝试删除不完整文件。这些文件副作用必须纳入对照输入与恢复收据。
+原生 `0x3bbb0` 按末四个 UTF-16 字符分派；exe／dll 经 `0x3b1b0` 的 PrivateExtractIconsW 从索引 0 提取一枚 128×128 HICON，`0x3a380` 写 ICO，随后 DestroyIcon，再由 `0x3aeb0` 按请求尺寸缩放 PNG，插值模式为 7。普通位图分支为 `0x3b7b0/0x3b580`。本页面固定请求 80×80；主体保留的零尺寸分支会把缓存键和返回尺寸改为系统尺寸，却仍向提取器传原请求，不能据返回尺寸断言处理成功。
 
-失败清理也不能统一记为完整：ICO 主路径成功取得位图信息后会删除 hbmColor/hbmMask，关闭创建的文件；但 `0x3cfc0` 在 GetIconInfo 成功、后续 GetObjectW 失败时返回 0，上层失败路径没有释放已取得的两个位图。`0x3ced0`、`0x3d0c0` 和 `0x3d210` 的部分 WriteFile／GetBitmapBits 结果没有参与失败判定；PNG 文件读取的循环没有短读／零进度退出分支。`0x3d670` 使用 GdipGetImageDecodersSize/GetImageDecoders 查找 image/png 的 CLSID，却始终返回 0，故上层与 -1 比较不是有效的未找到检测。GDI+ 缩放主路径有成对的图像和 Graphics 释放，不能据此抹掉这些其他失败分支。
+临时路径 `0x3a7e0` 使用系统临时目录和 `RazerTempPicture_<thread id>_<counter % 20>.png`；exe 第一份实际是 ICO，第二份才是 PNG。`0x3ac90 → 0x3a920` 读取并编码，`0x3ba00` 仅检查数据前缀和 Base64 允许字符。读取缓冲及文件在正常路径释放，成功生成的临时文件没有统一删除；GetIconInfo 成功后 GetObjectW 失败可能遗留位图；部分 WriteFile／GetBitmapBits 结果没有参与失败判定，读取循环也没有短读或零进度退出；PNG codec 查找 `0x3a6b0` 始终返回 0。正式收据保留这些失败分支，未把原版缺口改写成已正确释放。
 
-全局图标缓存由 `0x41f10` 懒加载，`0x41bf0` 定位到 Local AppData 下 `Razer/RazerAppEngine/User Data/State/icon_cache.json`。格式为 version=1、savedAt、entries；每项为 key/base64/lastModified，并可带 sourcePath。`0x440e0` 只在文件属性读取成功、修改时间非零且与缓存值不同的情况下淘汰条目；源文件缺失／属性读取失败仍可能命中旧图标。每次完整批次末尾的 `0x44730` 会剔除不属于本批 key 集的全局条目，再由 `0x43450` 在 dirty 时直接写缓存文件；这不是只读 getter，也没有原子发布或批次事务。并行批次共享互斥量，但不能据有锁就假定它们会共同保留双方的缓存项。
+缓存链为路径 `0x3ec30`、key `0x3ed20`、加载 `0x3ef50`、命中 `0x41120`、批次剔除 `0x41770`、磁盘保存 `0x40490`。位置仍是 Local AppData 下的 `Razer/RazerAppEngine/User Data/State/icon_cache.json`，格式含 version=1、savedAt、entries；key 为 `path|altPath|widthxheight`。只有成功读到非零且变化的修改时间才淘汰；文件缺失也可能命中旧缓存。每批剔除不属于本批 key 的全局项，再直接写文件，没有原子发布或批次事务。图标接口会修改磁盘；未来实际 DLL 对照不能将其默认归为无副作用的只读调用。
 
-DLL attach 的 `0x3c200` 本身会初始化日志和 GDI+；detach 先经 `0x44080` 保存缓存，再由 `0x73d40(0)` 关闭 GDI+ 并继续本机清理。查询返回的 JSON 则由 `0x9a1d0 → 0xa9940` 分配：枚举预留 `2*JSON长度+10`，图标预留 `2*JSON长度+1`，清零后经 `0x9d2e0` 复制。主机异步 FFI 在 readCString 成功后才置释放标志，并在 finally 调 FreeMalloc；readCString 抛出时未置标志，该完整消费者没有释放返回指针的补救路径。枚举／图标函数没有取消参数，页面卸载或桥接代次递增不等于停止本次原生文件／缓存工作。
+返回串由 `0x9b120 → 0xaa8a0` 分配，枚举预留 `2*JSON长度+10`，图标预留 `2*JSON长度+1`，清零后经 `0x9dae0` 复制。ffiMain 只在 readCString 成功后置标志并在 finally 调 FreeMalloc；复制抛出时没有补救释放，async callback 的 error 也没有可靠转换为 Promise rejection。FreeFFI 仅删 Map，不确认在途结束或卸载。DLL attach/detach `0x39240` 保留缓存保存 `0x410c0` 和 GDI+ 生命周期 `0x72080`，不据此声称主机关闭已等待所有调用完成。
 
-前端平台桥接还须与原生 Alt 回退分开：只有 Electron Alt 结果为 JavaScript null／undefined 时，才解析输入并提取每个 path，改调普通接口，altPath 会丢失；字符串 `"null"`、非空结果或空 image 不触发此回退。实际游戏图标传入 launch_exe 和 display_icon_path，尺寸为 80×80；自定义封面只传 path，尺寸为 300×150。实际 DLL 对照要分别覆盖无项 null、混合输入类型、引号与图标编号、零尺寸、主／备用路径、缓存命中与修改／缺失、交错批次、磁盘写失败、短读、分配失败、字符串复制异常与释放；模拟成功不升级为实际 DLL 已验证。当前仅闭合 Windows 这条静态语义，Rust 独立实现、实际 DLL 执行对照、macOS 原生函数和窗口验收均未据此完成。
+页面无返回、无 path 或解析失败时不会共同清空旧列表；refresh 只在非空枚举和图标合并完成后由 300ms timer 结束。卸载移除 click listener、清已保存 timer，没有取消原生请求或旧代次保护；原生入口也无取消参数。这里闭合的是这些实际源码行为，不是运行成功。Alt 的实际消费者和 Windows 主体见下一节；macOS 原生、扫描策略、游戏写入与设备自动配置档继续按各自缺项推进。9 项维护器反例和严格 JSON 往返验证不替代 Rust 功能测试、实际 DLL／设备对照或窗口验收。本子任务复用完整捕获，没有创建临时副本或分析会话。
+
+## 游戏图标、封面与 Alt 平台边界
+
+`python tools/workspace.py audit-host-local --query profile-alternate-icons` 从普通图标收据接续，正式字段为 `profile_alternate_icons`。当前仍使用上节的 Profiles 主脚本、Host 4.0.896 和 SysUtilsNative 1.2.3.0。此专题核对两个实际 Alt 调用、平台 JS 和 17 个原生函数、15 条真实调用边；普通 ICO／PNG 提取、缓存持久化及指针释放的完整深链复用 `profile_local_applications`。Add App 的普通图标消费者保持上节已核实的独立调用。
+
+| 实际消费者 | 请求与结果消费 |
+| --- | --- |
+| `P.getApplicationsIcon` | 本地／用户游戏列表映射为 `{path:launch_exe,altPath:display_icon_path或空串}`，请求 80×80。按返回的原始 path 精确匹配 launch_exe，重复 path 的后项覆盖前项；空 image 使用页面 SVG。原 gameSignature／gameSettings 继续保留 |
+| `P.setCustomGameCover` | 只处理存在 `ATT_CustomGameCover` 且当前封面仍等于 signature 封面的项；输入只有 path，请求 300×150。返回 path 精确匹配自定义路径；image 为 null／undefined 才保留旧封面，空字符串会实际覆盖封面 |
+
+`P` 经真实 connect 后由父组件 render 挂载。挂载先注册 GMS 事件，再注册 iframe／memory 监听并读取快照；本地和用户列表分别经过隐藏项过滤及图标请求，隐藏的本地项另交 removedGames。`addNewGames` 合并列表并处理自定义封面后，调用模块 70399 的 `updateGameList`；模块 13254 的 `GAME_LIST` 进入 `linkedGamesReducer` 的真实提交 helper，过滤特定空名称项、去除已恢复的 removedGames 并清 isSyncing。它另创建 `Profile_GameListUpdates` BroadcastChannel，发布后立即 close。列表消费不证明服务或设备写入成功。
+
+`gmsDataCount` 只保护最终调用 `addNewGames` 的入口；较旧的在途图标结果仍可能先修改 `localGames`／`userGames`。该完整桥类没有 componentWillUnmount，也没有原生取消参数。两个图标消费者的 JSON.parse 不在方法内捕获；封面空串、请求异常、较旧结果和未取得的结果不能统一改写为成功回退。
+
+Windows 导出 `getApplicationIconsAlt` ordinal 62、RVA `0x6f080` 跳到 [完整主体 `0x431c0`](../../../.analysis/results/native/bc0387a0913c882a9cd82aa1a8e147d6408fc7bb7f77519f4f8860f16c5b17c8/functions/431c0.json)。它解析对象数组，字段存在却不是 string 时保留真实 JSON 类型错误；无追加项时返回字符串 `"null"`。主 path 长度大于四个 UTF-16 单元时先走普通路径分派器 `0x3bbb0`，只有所得 image 为空且 altPath 长度大于四时才走 `0x3b7b0` 位图提取，不能把 altPath 也描述成 exe／dll 图标分派。输出保留原 path／altPath，附 width／height／image；备用路径成功不会替换输出 path。任一请求尺寸为零时，返回及缓存键的两维改为系统尺寸，实际提取仍收到原请求尺寸。
+
+缓存键仍为 `path|altPath|widthxheight`。命中检查优先使用已保存的成功 source_path；只有读到非零且变化的文件修改时间才淘汰，文件缺失仍可能命中。`0x41590` 只保存非空图像及实际成功源路径。每批经 `0x45be0` 登记 key，结束时 `0x41770` 剔除其他全局项，`0x40490` 直接落盘，因此 Alt 也有磁盘副作用。返回串分配 `2*JSON长度+1`、清零并复制，调用方沿相同 FFI 在 readCString 成功后才置释放标志并于 finally 调 FreeMalloc；复制异常前的指针、忽略的 async error 及 FreeFFI 不等待在途的边界均保持上节事实。临时文件、短读、位图失败释放等公共缺口没有因选择 Alt 而消失。
+
+当前平台选择器对 win32 选择 win，其余平台都选择 mac；只有 darwin 的主机加载器把文件名改为 `libSysUtilsNative.dylib`，打包路径在 `HOME/Library/Razer/RazerAppEngine/razerappengine.app/Contents/CommonDylib`。当前 Mac JS 声明普通 `getApplicationIcons` 和 FreeMalloc，没有 Alt 声明，generic FFI lookup 因而返回 undefined。前端 Electron Alt 适配器只对 null／undefined 结果回退：解析原对象数组、丢弃 altPath，再以原尺寸调用普通图标接口。空字符串或字符串 `"null"` 不触发此回退；非 Electron Alt 没有直接 window Alt 分支。
+
+当前保留输入中没有 Mac 原生原件；这里只闭合 Mac JS 声明和回退路由，Mac 原生枚举／提取仍待取证，不能据此断言功能不存在。当前来源断点、32 项声明、初始化、事件订阅与释放边界统一见[macOS SysUtils 专项](window-lifecycle.md#macos-sysutils-来源事件订阅与释放)。10 项维护器测试覆盖新增／重复消费者、动态尺寸、错误回退假设、调用边及失败事实篡改，并通过严格 JSON 往返和原件快照核验；这些静态结果不代替独立 Rust、UI／后端接线或实际 DLL／设备对照。专题复用既有完整捕获，没有新增临时副本、数据库或分析会话。
+
+## 当前 GOG 注册表扫描与结果消费
+
+`python tools/workspace.py audit-host-local --query profile-gog-scanner` 从 `profile_local_applications` 和 `profile_alternate_icons` 接续，正式字段为 `profile_gog_scanner`。Host 当前清单已指向 GMS **3.15.0.1200**，因此本批只增量捕获当前包的三个程序集，没有将旧 3.14 收据改标为当前。当前完整 C#／IL 位于 [ServiceLib](../../../.analysis/results/host-current/managed/7d2563f13d79/)、[Common](../../../.analysis/results/host-current/managed/1848c257176f/) 和 [Service](../../../.analysis/results/host-current/managed/d667d986ff57/)。本批选定 78 个 AST 所有者，正式收据含绑定／导出共 86 个完整所有者，另核对 174 个完整托管方法及 41 条原字节调用边；这些计数只描述选定链，不代表整个 Profiles 完成。
+
+真实入口是完整页面的首次挂载与两处游戏刷新按钮。模块 38301 的 `initiateGameScan` 向 `gms-api-request` 写 `{action:"scanGame"}`；名称符合 `profiles-\d+` 的内嵌窗口抑制此请求。主机 memory-storage 保存值并通知其他已注册窗口，不返回扫描完成结果。当前代理连接前只置 pending，连接后通过 SDK 的 `HubConnection.invoke("StartScan")` 调 Hub → GameScanner 状态对象 → Controller；SDK StopScan 调用与代理包装器存在，但当前页面请求 switch 没有 stop 动作。未初始化、重复扫描和调用失败各有实际分支；失败 StartScan 没有统一复位 isScanning。
+
+当前 [GOG 策略](../../../.analysis/results/host-current/managed/7d2563f13d79/source/Razer/GameManagerServiceLib/GameScannerStrategyGogRegistrySearch.cs) 注册为 scoped、优先级 High=4；注册类型参数从原 PE 的 MethodSpec 解码核对。它先整批读取 `HKLM / Registry32 / SOFTWARE\GOG.com\Games\` 下的 `exe`、`launchParam`、`gameName`，随后才检查停止标志。注册表包装器遇异常返回已完成前缀，没有显式 Dispose／Close；策略逐项异常继续，外层异常返回已收集前缀。文件存在性检查删除双引号，保存的启动路径保持原值；标题缺失取文件名并去除 ™／®。身份先按当前主表的注册表 key 匹配，否则以 `gog + platformId` 和源码固定 key 经 Encoding.Default／HMACMD5／大写十六进制构造 Guid；冲突再按实际来源和标题处理。LaunchExe 映射与 helper 映射继续影响最终 GUID，TryUpdate 返回值未检查。
+
+ScanAsync 构造 GOGGALAXY／GOG_REGISTRY 签名，经 CanSkipGame 和共享 AddFoundGame 发布；它没有逐项 catch，正常末尾 Clear 不在 finally，完整状态机没有 await 挂起点。公共层仍会正规化路径、按主表覆盖字段、处理 helper／图标及再次去重，不能把原注册表字段当成最终结果。扫描后的 RemovePostScanDuplicates 在内存列表设置后、图标任务与结束通知前运行：按非空启动路径的当前文化小写值分组，优先主表与路径映射项；单 Steam 候选组可把 Steam 来源／图标／注册表信息合并进保留项，非 Steam 重复项、与 UGL 同 GUID 项及作为其他项 helper 的候选分别移除。对应设置只在此处修改缓存，返回码没有形成事务；异常被外层记录后继续，已完成的修改不回滚。
+
+Controller 正常受理即返回 GS_SUCCESS。每组 WaitAll 的超时 bool 被原 IL 的 pop 丢弃；超时与 StopScan 都不 join 策略，停止只取消回调并设置策略标志。正常尾部先广播 `scanCompleted=true`，再保存 GSL／LGL，LGL 返回码同样被丢弃；随后清 token 集合、重置停止标志和清共享映射，没有旧代次保护。停止通知可先到达，正常尾部仍可能随后到达。发现广播是 async void，调用方不等待发送；通知发出、服务缓存改变、文件保存和实际设备写回是不同完成点。
+
+完成事件按最多 16 项分段，空列表也发一段，没有请求 ID。当前 SDK 累计段后异步派发，代理不检查 scanCompleted，重新读取本地／用户列表并通过零延时 timer 发布 `gms-data`。Profiles 依次消费两组列表，复用既有图标／封面链，最后由真实 Redux 提交 helper 更新 gameList 并清 isSyncing。timer 发布没有被 await，logout 不等待 disconnect，桥组件没有 unmount 取消；较旧分段、在途结果与定时器没有完整代次隔离。
+
+Service 的完整捕获仍有 **10 条 C# 诊断**，其中本批 RegisterService 的 2 条位于 `IL_00d5/00dc` 的 analytics 构造。诊断原样保留，GOG 注册另据完整 IL 与原 MethodSpec 独立确认，没有把整个 Service 标成反编译无缺项。12 项定向测试核对真实 AST／IL 调用、错误目标／RVA／原字节、被丢弃返回值、诊断保留、边界篡改、严格 JSON 往返和输入快照。其余扫描策略、框架内部、Rust 行为实现、实际 DLL／服务／设备对照和窗口验收仍未完成；本批不执行服务、程序集、应用或厂商 JS，也未创建待清理的临时副本。
+
+## 七个扫描策略的当前版本差异
+
+`python tools/workspace.py audit-host-local --query profile-scanner-version-differences` 把已审的 Arc／Bethesda／EA／GOG／Mihoyo／Riot／Uplay 策略接续到 GMS 3.15.0.1200，正式字段为 `profile_scanner_version_differences`。GOG、共享调度／停止／去重及当前列表消费者直接复用上一专题；本批只比较其余六个策略及直接 Reader、Parser、注册表和路径依赖，不重做图标或扫描全库。两版完整方法、原字节、异常区间、实际调用及 #US 字符串均保留于收据，当前原件来自 [3.15 ServiceLib](../../../.analysis/results/host-current/managed/7d2563f13d79/) 与 [3.15 Common](../../../.analysis/results/host-current/managed/1848c257176f/)。
+
+329 个两版完整方法形成 180 个比较项：146 个所选方法在元数据令牌重排后保持相同，3 个改写、29 个新增、2 个移除。比较同时要求非令牌字节、完整 IL 声明／局部类型／异常范围、指令、已解析调用目标及原 #US 常量一致；只遮盖经真实 opcode 和四字节范围核实的令牌操作数，不因类名或 RVA 相同判等，也不把字符串变化遮掉。该结论仅限所选方法，完整字段／TypeSpec 签名及框架运行结果没有被宣称独立验证。
+
+| 分支 | 当前版本核对结果 |
+| --- | --- |
+| Arc、Bethesda、EA、Mihoyo | 完整策略 C# 字节相同，所选方法及实际依赖按两版原字节和元数据重新绑定；下面原有的预读、逐项停止、部分结果、映射副作用和非 finally 清理边界继续适用 |
+| GOG | 复用 `profile_gog_scanner` 的当前策略及共享链，不重复提取和分析 |
+| Riot | ScanAsync 与路径读取调用者保持所选方法一致；正则、解码委托及新的解码函数有实际变化 |
+| Uplay | 改为已安装游戏优先，并增加配置匹配、路径解析、递归 exe 候选排序和空身份字段门禁；旧版仅遍历配置项的描述不能作为当前行为 |
+
+Riot 当前正则从原 #US 堆核实，接受成对的 `\u` 代理项、`\x` 两位、`\u` 四位及 `\U` 八位十六进制。代理对用两个 UTF-16 char 构造字符串，其余走 Convert.ToInt32 → Char.ConvertFromUtf32；ArgumentException／OverflowException 返回原匹配文本，没有捕获所有异常。故孤立代理项、无效标量和旧版单 UTF-16 单元转换须分别比较；不能把失败统一变成空路径。文件读取 catch 仍可能返回已收集文本而跳过后续正规化，停止与释放机制没有因新增解码而改变。
+
+Uplay 仍先读取 `GetUplayData(false)`，随后读取已安装列表和主表注册表索引，以上均先于停止检查。已安装列表非空时只遍历该列表；为空才遍历配置项。每个安装项按 GameId、Name、GameNameIdentifier 的精确匹配，再按 Name、GameNameIdentifier 的双向包含匹配，共五轮 FirstOrDefault，均为 CurrentCultureIgnoreCase；同一配置可以被多个安装项复用。未匹配时以安装项 DisplayName／GameId 构造本地候选，不要求配置文件里已有该游戏。
+
+配置路径仍只试第一条 offline，再试第一条 online；有安装项时用安装目录对象的 GetFullPath，缺 registry key／value 时回填安装项字段。配置路径为空或不存在，且此前未抛异常时，才递归枚举安装目录的 `*.exe`。明确排除 unins 前缀、含 uninstall，以及精确的 UbisoftConnect.exe／Uplay.exe；其余按“正规化显示名＋game、正规化显示名、非 EAC 名称包含显示名、其他非 EAC、EAC／EasyAntiCheat”给出原 IL 常量 0–4，再按全路径分隔符数、字符串长度排序，同分保留原枚举顺序。正规化只保留 Char.IsLetterOrDigit；EAC 是排序条件，不是全部拒绝条件。递归枚举没有停止 token，DirectoryExists 检查位于该方法 catch 外，异常和读后路径失效仍须按上层实际消费者处理。
+
+当前 CreateUplayEntryGuid 在查询注册表索引前检查空 key／value，空 LaunchUrl 不再进入共享映射。GetUplayDisplayName 的原 #US 常量却是重复的 `?`，不是旧段落的 ™／®；四处文字已从原堆字节核实，不能在记录官方结果时自行修正。helper TryUpdate 返回值仍被忽略，配置列表只在正常尾部 Clear；路径与身份／发布各有 catch，但共享映射没有事务或回滚。
+
+当前 Service 的 10 条 C# 诊断保留，RegisterService 的所选 IL 与原 MethodSpec 注册单独核对。Common 的 GetAllPossibleFilenames 及消费者另由[共享 helper 专题](#共享-helper-与实际消费者)复核；这里实际选用的 GetComponents 已独立比较，不将邻接方法并入六策略的完成范围。`ProfileScannerVersionDifferencesTests` 的 11 项定向维护器测试通过，覆盖令牌遮盖范围、原常量、声明差异、五轮匹配、排序原字节、失败边界篡改、JSON 往返及输入快照；没有执行厂商代码或新增临时副本。独立 Rust、行为测试、实际 DLL／服务／设备对照和窗口验收仍未完成。
+
+## Steam、Battle.net 与 Epic 的当前版本差异
+
+`python tools/workspace.py audit-host-local --query profile-store-scanner-versions` 使用 `profile_store_scanner_versions` 正式字段接续 GMS 3.15.0.1200 的四个实际注册策略：SteamLibrarySearch、SteamShortcutsSearch、BattleNetSearchV2 和 EpicLauncherInstalledList。仅核这组及直接 Reader、模型、本地序列化和 SQLite 方法，复用既有七策略、注册入口、路径／注册表与 Mihoyo 边界、图标和共享调度／去重／列表消费者，不重新捕获程序集。
+
+当前完整 RegisterService 的 22 次实际 AddScoped 分别保留 MethodSpec、调用字节、类型和顺序；21 个无条件，UWP 仍要求 OS major≥6。此前七策略与本节四策略的分组事实保留；后续两个专题分别接续[本机目录／注册表七策略](#本机目录与注册表七策略的当前版本复核)和[剩余四策略](#feveritchiotwitch与uwp的当前版本复核)，不能因已经注册或旧版有段落便计为已完成。Service 的 10 条 C# 诊断继续保留。
+
+两版分别保存 298／315 个完整方法，共 613 个，形成 318 个比较项：286 相同、9 改写、20 新增、3 移除。比较复用前述完整 IL、原字节、异常区间、已解析调用及原 #US 常量规则。Steam ReadAsync 的生成所有者由 `<ReadAsync>d__13` 改为 `d__14`，原始比较仍保留新增／移除，不解释成相应功能被删除。Steam 两个策略与主要 Reader 的 C# 字节相同，不代表其调用的 appinfo 查询仍按旧语义执行；JSON 序列化器的完整文本有 cast 呈现差异，本批实际选中的 DeserializePath／DeserializeString 及构造方法没有相应 IL 变化。
+
+### Steam：递归启动项与异常传播
+
+当前 [SteamAppInfoData](../../../.analysis/results/host-current/managed/7d2563f13d79/source/Razer/GameManagerServiceLib/SteamAppInfoData.cs) 的 GetAppType 先检查 common、type 的 ContainsKey；GetLaunchExe 同样先检查 config、launch，再进入新 FindLaunchExe。查找按 KV Children 的实际枚举顺序深度优先遍历：键以 OrdinalIgnoreCase 匹配 executable，值非空且以 `.exe` 结尾才返回，后缀也使用 OrdinalIgnoreCase。当前项不满足时递归其值，再处理下一项；不限制 0–6 槽位，不按 OS／架构额外筛选，也不在此检查文件存在。
+
+旧 GetLaunchExe 捕获 Exception 并返回空，当前 `0x06000821@0x2a20c/104` 没有异常区间；新递归方法 `0x06000822@0x2a280/137` 仅有释放枚举器的 finally，没有 catch 或停止参数。缺少 config／launch 键可正常返回空，null 数据、坏 KV 子项及其他访问异常则交已有 ScanAsync 的单游戏 catch，不能继续当作“查询空后尝试 SQLite”。appinfo 39／40／41 解析、已核的库／manifest 读取顺序和其他既有异常边界保持原证据范围；KV 依赖自身和实际文件／DLL行为仍需分别验证。远程 SteamKit 补全继续属于剔除的联网业务，本批没有重审下游网络包装器。
+
+### Battle.net：不可变黑名单
+
+当前 [BattleNetSearchV2](../../../.analysis/results/host-current/managed/7d2563f13d79/source/Razer/GameManagerServiceLib/GameScannerStrategyBattleNetSearchV2.cs) 的黑名单由 HashSet 改为 FrozenSet，实际构造器 `0x060003b8@0x1b268/76` 调 ToFrozenSet，过滤 lambda 随字段类型变化。原 #US 中的 bna／agent／clnt 和 CurrentCultureIgnoreCase 比较器均保留。实际日志 Parser 的完整 C# 和所选方法无变化，不因此重做日志、停止或共享发布分析；集合分配失败和框架运行结果未被静态同源结论覆盖。
+
+### Epic：候选增加与前置字段门禁
+
+当前 [Epic 策略](../../../.analysis/results/host-current/managed/7d2563f13d79/source/Razer/GameManagerServiceLib/GameScannerStrategyEpicLauncherInstalledList.cs) 仍先读取已安装列表、再读取本地 manifest，改为两表均空才提前返回；仅 manifest 列表为空时才从已安装项合成 manifest，并不把全部未匹配安装项并入非空列表。每个 manifest 在停止检查之前按 AppName、InstallLocation、ProductId 对 ArtifactId／AppID 三轮 FirstOrDefault 匹配，均为 CurrentCultureIgnoreCase。匹配安装项允许 IsApplication=false 的 manifest 继续，并可补 InstallLocation；UE_ 与精确 plugins／plugins/engine 过滤仍保留。
+
+新增路径不能绕过入口的 LaunchExecutable 门禁。完整 [EpicGameManifest](../../../.analysis/results/host-current/managed/7d2563f13d79/source/Razer/GameManagerServiceLib/EpicGameManifest.cs) 的 getter `0x0600049b@0x210a9/7` 直接读取 backing field，构造器 `0x060004ba@0x211d2/7` 只调用 Object 构造器。合成方法 `0x060003e1@0x1c1ec/112` 仅设置 AppName、DisplayName、InstallLocation、IsApplication、MainGameAppName、InstallSize 和 BaseURLs，未赋 LaunchExecutable；后续匹配只补安装目录。MoveNext `0x06000b6a@0x3cf24/2963` 在 `IL_0225` 读取 LaunchExecutable、`IL_022a` 检查空、`IL_022f` 以原字节 `3ab9080000` 跳到下一项 `IL_0aed`，早于 GetLaunchUrl、主表与 fallback。因此新合成项的正常路径仍会被跳过；不能凭新增 helper 宣称此安装列表分支已经找到游戏。
+
+通过门禁后，原有主表／顶层／递归候选先执行；候选为空或不存在才进入 `TryFindEpicFallbackLaunchExe 0x060003e3@0x1c2d0/452`。依序尝试安装根加去前导分隔符的 LaunchExecutable、递归找主表 DefaultExe、最后递归 `*.exe`。后两段按现有 blacklist 过滤；最后一段按原常量 0–3 排序：GTA5／GTAV、正规化显示名或 AppName 精确相等、文件名包含其一、其他，再按路径分隔符数、字符串长度与原枚举顺序。同分不额外按文件名排序；只有候选多于一个才返回完整 RunningExe 集合。此方法没有独立 catch 或取消参数，枚举失败仍可使策略 fault，没有新增逐 manifest 恢复链。
+
+四个旧身份 URL 比较消费者改为 ToLowerInvariant 后 Trim；UGL／LGL 两阶段和后者可覆盖前者的顺序、共享映射副作用、未消费 LaunchCommand、正常尾部仅 Clear installedGames 的事实保留。模型 ProductId 与两个实际 Reader 的所选方法无变化，不扩大其成功或释放语义。
+
+`ProfileStoreScannerVersionsTests` 的 11 项维护器测试通过，检查注册分组、所选方法比较、Steam 异常区间与原常量、Epic 属性生产者／门禁原字节、匹配与排序，以及失败边界与收据篡改；不执行厂商程序集、不扫描本机游戏目录，也没有新建临时副本或分析会话。独立 Rust、UI／后端接线、功能行为测试、实际 DLL／服务／设备对照及窗口验收仍未完成。
+
+## 本机目录与注册表七策略的当前版本复核
+
+`python tools/workspace.py audit-host-local --query profile-local-scanner-versions` 使用 `profile_local_scanner_versions` 字段复核 DefaultExeSearch、DefaultRegistryKey、GameUXInfoSearch、GameUXRegistrySearch、RegistrySearch、UninstallSearch 和 UserFolderExeSearch。范围包含直接 GameUX Reader／模型、注册表搜索、路径适配和实际路径展开方法；复用前述 11 策略、22 个实际注册、共享调度／去重／列表消费者和图标结论，不重新捕获程序集。
+
+两版各保留 124 个完整方法，共 **248 个方法／124 个比较项：123 相同、1 个变化**，无所选方法增删。七策略的完整 C# 字节均相同，GameUX 模型的 8 组 getter／setter 及实际路径辅助方法仍按原始字节、完整 IL、调用目标、异常区间与 #US 常量逐项比较，不能仅以源码同名或文本相同判等。GetAllPossibleFilenames 的变化与消费者归入[共享 helper 专题](#共享-helper-与实际消费者)，不重复纳入本组。
+
+唯一变化位于当前 [RegistryInspector.SearchForRegistryKey](../../../.analysis/results/host-current/managed/1848c257176f/source/Razer/GameScannerCommon/RegistryInspector.cs) 的 `0x06000354@0x829c/354`。旧版两处 `IL_004c/007c` 调 Enumerable.Contains&lt;string&gt;；当前先在 `IL_0046/007b` 转换数组，再在 `IL_0051/0086` 调 MemoryExtensions.Contains&lt;string&gt;。两版 Contains 的原调用字节都为 `281c00002b`，但该令牌实际解析到不同目标；泛型签名字节 `0a010e` 保留 string 参数。转换的完整 IL 呈现 ReadOnlySpan&lt;string&gt;，MemberRef 名称与令牌已校验，TypeSpec 所有者未独立解码；没有据此声称框架运行结果已对照或两种实现完全等价。
+
+此 Reader 确由两个注册表策略 → RegistryWrapper.SearchRegistryString → SearchRegistryKeyPath 消费。单组件先读 value names，再查子键名；优先返回匹配子键，否则返回含同名值的当前键，没有新增忽略大小写比较器。SearchForRegistryKey 和 SearchRegistryString 都没有局部 catch；前者异常进入外层路径搜索的日志／已积累前缀返回，后者还保留 `matchingName.Equals(DisplayName)`，不改写为统一大小写匹配。路径拆分／根格式化位于主 try 之前。指定 Hive 的 64 位进程重试仍在 `IL_017b` 打开 Registry32、`IL_0180` pop 掉返回值，再把原 Default-view 的 local 13 交给搜索；本批没有把它记成已正确切换视图，也没有虚构 RegistryKey 释放链。
+
+| 策略链 | 当前保留的实际语义 |
+| --- | --- |
+| DefaultExe | 先取得除 Network 外的全部本机盘符，再逐游戏检查停止；并非仅 Fixed 盘。按主表路径候选补 Program Files 分支，首个存在路径发布；Steam／Epic／UWP／Mihoyo 排除继续适用 |
+| DefaultRegistryKey／Registry | 非空 SystemId 时才把 HKCU 替换为 HKEY_USERS 下该 SID；直接值为空后才搜索同名安装项。两者的 DefaultExe64 门禁之后，原调用都仍读取 DefaultExe32 来组合候选，收据保留真实消费字段 |
+| GameUXInfo／GameUXRegistry | Info 依次预读 GameUX、Origin、GOG、Uplay，之后才到扫描循环停止点；Reader 自己的停止检查仍单独保留。先 AppExePath 后 ConfigGdfBinaryPath；来源优先级为 Origin、GOG、Uplay、Direct。集合只在正常末尾 Clear，不是所有路径 finally |
+| Uninstall／UserFolderExe | 前者读 HKLM 的 GUID 卸载项 InstallLocation，按原顺序尝试含／不含相邻目录修复的路径；后者只处理 userprofile 前缀，从当前 UserProfile 首字符推导盘符并枚举 Users，选第一个存在 exe。逐游戏异常和路径转换失败分支分别保留 |
+
+共享路径链仍使用原 `C:\` 默认根；通配符候选先 FileExists，再按 CreationTimeUtc 降序选择。多架构候选使用 CurrentCultureIgnoreCase HashSet；64 位进程先把 ProgramFiles 环境变量替换为 ProgramFiles(x86)，再展开环境变量和 SpecialFolder，不自行改用另一套默认目录。没有新添取消 token、旧代次防护、失败恢复或资源释放。
+
+`ProfileLocalScannerVersionsTests` 的 10 项维护器测试核对完整比较、模型字段、相同原令牌的不同目标、实际消费者与异常边界、原句柄丢弃／字段读取、注册分组及收据篡改，并检查 JSON 往返和输入快照。这是所选版本语义复核，独立 Rust、UI／后端接线、功能行为测试、实际 DLL／服务／设备对照和窗口验收仍未完成。其余四策略由下一专题接续；本批不执行厂商代码或枚举本机安装项，没有新增临时副本或分析会话。
+
+## Fever、ItchIo、Twitch与UWP的当前版本复核
+
+`python tools/workspace.py audit-host-local --query profile-remaining-scanner-versions` 使用 `profile_remaining_scanner_versions` 字段复核剩余四个实际注册策略及直接 SQLite Reader、UWP helper、缓存／manifest 模型、Xbox 本地发现、版本选择和 Impersonator。它复用前述 18 策略、共享调度／停止／去重、列表消费者、图标和已有完整捕获，不重做源码获取；当前原件仍来自 [3.15 ServiceLib](../../../.analysis/results/host-current/managed/7d2563f13d79/) 和 [3.15 Common](../../../.analysis/results/host-current/managed/1848c257176f/)。
+
+两版各选 Lib 138、Common 6 个完整方法，共 **288 个方法／144 个比较项，全部相同**；相同要求仍覆盖原始非令牌字节、完整 IL、异常范围、解析调用及原 #US 常量。24 对完整 C# 产物字节相同；另保存两版共 20 个接口／Win32 导入声明，10 对完整 IL 相同，声明本身不证明实际 ABI 或 OS 行为。Twitch 路径拼接实际调用的两个 InlineArray helper 也纳入完整 IL；生成的 C# 文件真实为 0 字节，不能声称恢复出其 C# 源码。
+
+| 策略链 | 当前保留的实际语义 |
+| --- | --- |
+| [Fever](../../../.analysis/results/host-current/managed/7d2563f13d79/source/Razer/GameManagerServiceLib/GameScannerStrategyFeverPlatformSearch.cs) | 使用 HKCU／Default view 的 `Software\FeverGames\FeverGamesInstaller\game\`，不替换 SID；读 DisplayName、ShortcutPath，丢弃 StartupPath 返回值。完整状态机构造签名并处理跳过条件，却没有 AddFoundGame、停止检查或 RegistryKey 释放；不能登记为已发布游戏或已实际枚举本机 |
+| [ItchIo Reader](../../../.analysis/results/host-current/managed/7d2563f13d79/source/Razer/GameManagerServiceLib/ItchIoGamesDataReader.cs) | 在模拟用户上下文取 ApplicationData/itch/db/butler.db，异常后在自身上下文重取路径；查询 caves 与 games，实际消费列 0／1／4，签名身份是 caves.id。单候选直接返回，多候选才筛 Windows 并优先 OS 位数；64 位标识为 amd64，候选文件须存在 |
+| [Twitch Reader](../../../.analysis/results/host-current/managed/7d2563f13d79/source/Razer/GameManagerServiceLib/TwitchGamesDataReader.cs) | 读取 CommonApplicationData/Twitch/Games/Sql/GameInstallInfo.sqlite 的 Id／ProductTitle，再按 Id 读 HKLM 卸载项 DisplayIcon 并检查文件存在；保存 twitch://fuel-launch/＋Id，不在扫描器执行 URL |
+
+ItchIo／Twitch 都在第一次停止检查前完整调用 GetInstalledGames，先修改 SpecialGuidMappings 再 Guid.Parse，之后才发布结果；坏 GUID 没有逐游戏 catch，已修改映射不会自动撤回。Reader 执行 SELECT，但连接串未显式设置只读；catch 返回已收集前缀。command／connection 有 finally，DataReader 无独立显式 Dispose；扫描集合 Clear 仅在正常尾部，不能把枚举器 finally 写成完整恢复／清理。
+
+[UWP](../../../.analysis/results/host-current/managed/7d2563f13d79/source/Razer/GameManagerServiceLib/GameScannerStrategyUwpSearch.cs) 的实际 DI 分别核对 helper 和策略两处 OS major≥6 门槛，低版本绑定 UwpHelperUnsupported。扫描按 GetUwpPackages(SystemId) → GetAllXboxPackages → GetCategoryCache → GetEntitlementsCache 预读，再进行无停止检查的整批分类，最后两组发布循环各自检查停止。已知 MGL family 优先；否则按两份缓存的 Game 条件或本地 config／GamePage marker 分类。包选择按版本降序，再选 OS 架构、Neutral、首项；只有一个包时直接返回。已知项先修改 MGL Version，其实际发布路径要求 DefaultFolderExe 含通配符；非 MGL 排除 Microsoft.XboxApp 和 StoreId `9PJ8266BHFWN`，禁用 overlay；两类均在 AddFoundGame 后才写 ProcessName。
+
+[UwpHelper](../../../.analysis/results/host-current/managed/7d2563f13d79/source/Razer/GameManagerServiceLib/UwpHelper.cs) 枚举指定 SID 的包，异常返回初始化空列表，不能据此确认本机无游戏。Category 按 OS 位数选择注册表视图，优先 InstallService 再 InstallAgent；旧缓存缺 ProductId 才解析 FulfillmentData，Entitlements 只读 Store LocalCache 顶层 JSON。AppxManifest 图标选择及 ms-resource 的 MrtCache 解析按实际消费者保留。GetPkgPath 在 InstalledLocation 为 null 时不会进入 InstalledPath／EffectivePath fallback。Xbox 只查 ready／Fixed 盘和 .GamingRoot，读取 Content/MicrosoftGame.config；组合的 ExecutablePath 不另查存在，WinGDK 为无排序、无停止参数的 BFS 和首个递归 exe。GetAllXboxPackages 无自身 catch，错误由 Scan 外层处理；未新增注册表释放、取消或代次防护。
+
+[Impersonator](../../../.analysis/results/host-current/managed/7d2563f13d79/source/Razer/GameManagerServiceLib/Impersonator.cs) 在 session=-1 时取 active console，WTSQueryUserToken 后以 level=2 DuplicateToken，复制失败返回原 token；SetThreadToken 失败只读取并丢弃 LastError。Dispose 的真实 IL 是 RevertToSelf → pop → ret，没有 CloseHandle；using 不能证明 token 已关闭或身份可靠恢复。
+
+`ProfileRemainingScannerVersionsTests` 的 12 项维护器测试覆盖完整比较、原字节／EH 反例、两处 OS 门槛、无发布／无停止／无释放事实、声明与注册遗漏、完成状态篡改及 JSON 往返。至此 22 个注册策略的**所选方法版本复核清单归零**；三个共享 helper 和实际消费者由下一节接续。其余 Profiles／Service 分支、外部框架、整个扫描语义、独立 Rust、UI／后端接线、功能行为测试及实际 DLL／服务／设备对照仍未完成。本批没有执行厂商代码，没有新增临时副本或分析会话。
+
+## 共享 helper 与实际消费者
+
+`python tools/workspace.py audit-host-local --query profile-shared-helper-consumers` 使用统一宿主收据的 `profile_shared_helper_consumers` 字段，复用 GMS 3.14.0.1109／3.15.0.1200 原件及完整 C#／IL，只补两个 UWP helper、文件名 helper、返回模型和真实消费者。两版各选 Lib 82、Common 25 个完整方法，共 **214 个方法／107 个比较项：106 相同、1 个变化**；18 条实际 helper 调用均绑定到完整方法和原调用字节，每版分别为文件名 5 条、UWP 枚举 2 条、全名回填 2 条。已有 22 策略、缓存／manifest、Impersonator、路径与注册表链直接复用，不新增捕获。
+
+[`GetInstalledUwpApps`](../../../.analysis/results/host-current/managed/7d2563f13d79/source/Razer/GameManagerServiceLib/UwpHelper.cs) 当前为 `0x06000637@0x249b4/653`。它先将 FindPackagesForUser(userId) 完整物化，再读 Category、以 Impersonator(-1) 读 Entitlements；模拟用户或读取异常后重新在自身上下文读取。随后逐包要求安装目录非空、非 framework、manifest 名称与 exe 非空且组合 exe 存在。结果包含名称、相对 exe、family／full name、publisher、安装目录及 logo；ProductKind 先经 family → category ProductId → entitlement 取得，仍空才按 MicrosoftGame.config 的存在置为 Game。**它没有只返回游戏、按架构筛选或按 family 去重**。逐包异常静默跳过，外层错误记录并返回已收集前缀；空表或字段缺失不证明本机无游戏，也没有停止或代次检查。using 与枚举器的 finally 只证明发出释放调用，不能改写上一节的 token 释放边界。
+
+`GetUwpFullName 0x06000638@0x24ccc/288` 用 signature.GameInfo 调 FindPackages，没有传 userId。单包直接用 FullName；多包先选 OS 为 64 位时的 X64、否则 X86，再选 Neutral，不排序版本、不选 ARM64。三个实际架构谓词的原 IL 常量为 9／0／11。它只修改 ProcessName，没有成功返回；无包、无适用架构及普通异常保留旧值。catch 日志仍访问 signature.DisplayName，null signature 可再次抛出，不能概括成全部错误均被吞掉。低 OS 分支的 Unsupported helper 真实返回新空表／执行空回填，但这不是本产品其余平台功能已实现的证明。
+
+唯一版本变化在 [`GetAllPossibleFilenames`](../../../.analysis/results/host-current/managed/1848c257176f/source/Razer/GameScannerCommon/GameSignatureHelper.cs) 的 `0x06000103@0x5e50`，方法体由 577 增至 582 字节。它依次取 DefaultExe、DefaultExe32、DefaultExe64、AlternativeExe、DefaultFolderExe、DefaultFolderExe32、LaunchHelper、RunningExe 的无扩展文件名；多值只按 `|` 拆分、不 Trim，不直接加入 LaunchExe，也不检查文件存在。LaunchHelper 在去扩展名前以原完整 component 比较 Excludables：旧 `Enumerable.Contains<string>` 改为数组到 ReadOnlySpan 后调用 `MemoryExtensions.Contains<string>`，没有显式比较器；当前转换在 `IL_01a9`，Contains 在 `IL_01b0`。两版 Contains 原调用字节同为 `281c00002b`，真实目标不同，泛型签名 `0a010e` 仍为 string。最终 Distinct 使用 CurrentCultureIgnoreCase，不能把该比较器提前套到排除项。八个文件名提取 catch 继续保留，后续异常区间随新增字节移动；字段读取、拆分和 Contains 不全在 catch 内。框架行为等价、TypeSpec 全量签名与实际执行没有由此得到验证。
+
+实际消费者具有不同用途：GetRunningProcesses 在 MGL、LGL、UGL 的独立锁边界收集文件名到 OrdinalIgnoreCase 集合，随后枚举 Process.GetProcesses，先按名称／特殊名称筛选再提取路径；异常可保留前缀，本方法没有显式 Dispose 这些 Process 对象。CacheFileNames 将文件名累加到 HashSet&lt;Guid&gt;，不先 Clear；只有新文件名分支才删同名黑名单，已有 key 添加 GUID 后直接 continue。三种本地／用户列表事件的 RemoveGamesFromBlacklist 则删除 stem 和 stem.exe，锁外仅在正常末尾按 flag 重置 ignored names。枚举器与锁有 finally，部分修改没有回滚，也没有整项取消／join。
+
+UWP 枚举的两个消费者分别是 AddDetectedGame 和 manager.GetUwpApps：前者只取首个 family 的 CurrentCultureIgnoreCase 匹配，把 LogoPath 写到待添加签名后继续添加；后者传当前 SystemId。Hub 的完整异步枚举器 `0x06000cad@0x475e4/398` 在 client 为空时先 yield 空表，**没有 yield break**，下次继续枚举仍会 Task.Run(manager.GetUwpApps) 并 yield 结果。DisposeAsync 的完整 86 字节主体保留，但 Task.Run 没有传取消 token，不能把停止消费视为底层枚举已取消。
+
+两个 AddGameToUserGameList 变体仅在 SourceEx 为 UWP 时回填全名，调用分别在 `IL_0de4`／`IL_0e00`；都晚于 SetGameSettings，早于后续重复检查、列表持久化与通知。全名查询无结果不阻止添加。它们在序列化前就改变签名／列表并设通知 flag；序列化失败返回 GS_FAILED，仍可能发列表更新，外层 catch 也不保证改变初始 GS_SUCCESS。因此图标找到、ProcessName 已填、列表通知、文件保存和添加成功必须分别判断。
+
+`ProfileSharedHelperConsumersTests` 的 11 项维护器测试核对实际调用清单遗漏、原令牌不同目标、架构常量、输出模型、错误／释放边界、原调用字节篡改和完成状态伪造，并核对严格 JSON 往返及输入快照。本节闭合所选 helper 和消费者的静态版本语义；其余添加／存储／进程监听依赖、外部 WinRT／OS／框架、独立 Rust、UI／后端接线、功能测试及实际 DLL／服务／设备对照继续保持未完成。本批无厂商代码执行、新临时副本、数据库或分析会话。
 
 ## GMS 服务发现、排队添加与任务退出
 
@@ -193,7 +345,7 @@ CreateEntryGuid（`0x060003a8@0x1a288`）把来源前缀和标题／平台 ID �
 
 ### Steam、BattleNet 与 Epic 的实际本机输入
 
-本段使用同一当前服务包的 GameManagerServiceLib 与 GameScannerCommon。前者两份原件及全部 246 个捕获输出、后者两份原件及全部 107 个捕获输出均已按实际字节长度和 SHA-256 对上现有 [托管捕获清单](../../../.analysis/results/host-current/managed/capture.json)，没有执行程序集。四个 ScanAsync 包装器和完整 MoveNext、Steam 公共基类、两个实际 Reader／Parser 及其直接文件处理方法已结合 C# 和完整 IL 核对。方法 token、RVA、tiny／fat header 和 code size 另从原 PE 元数据读取；关键分支的 call／callvirt operand 与 pop 也从原方法体字节复核。这里的边界是静态语义，不是 Rust 或实际 DLL 测试通过。
+本段保留 GMS 3.14.0.1109 的 GameManagerServiceLib 与 GameScannerCommon 详细证据；当前 3.15 的变化以前文对应专题为准。前者两份原件及全部 246 个捕获输出、后者两份原件及全部 107 个捕获输出均已按实际字节长度和 SHA-256 对上现有 [托管捕获清单](../../../.analysis/results/host-current/managed/capture.json)，没有执行程序集。四个 ScanAsync 包装器和完整 MoveNext、Steam 公共基类、两个实际 Reader／Parser 及其直接文件处理方法已结合 C# 和完整 IL 核对。方法 token、RVA、tiny／fat header 和 code size 另从原 PE 元数据读取；关键分支的 call／callvirt operand 与 pop 也从原方法体字节复核。这里的边界是静态语义，不是 Rust 或实际 DLL 测试通过。
 
 | 扫描策略 | 实际来源及身份／路径 | 停止、失败与发布 |
 | --- | --- | --- |
@@ -271,7 +423,7 @@ Epic 与独立平台策略调用的 `GetMihoyoGamedata2` 是另一条本地文�
 
 ### Arc、Bethesda、EA、GOG、Mihoyo、Riot 与 Uplay 的实际本机扫描
 
-本段继续核对当前服务包中已注册的七个策略，不重复公共 AddFoundGame、GUID、事件消费者及 LGL 落盘链，也不重复 GetMihoyoGamedata2 的记录解析。当前三份程序集输入、本批 22 份直接相关 C# 和三份完整 IL 的实际长度与 SHA-256 均已对上现有 [托管捕获清单](../../../.analysis/results/host-current/managed/capture.json)。七个 ScanAsync 包装器与 MoveNext、Reader／Parser 和公共文件／注册表适配器结合源码及 IL 审阅；选定方法的 tiny／fat header、方法大小、call／callvirt／newobj opcode、可直接解析的 MethodDef／MemberRef operand、分支目标及异常区间另从原 PE 字节核验。泛型 MethodSpec 调用没有在这次原始元数据核验中独立解析其类型参数，不能将 opcode 一致扩大为完整泛型元数据已独立验证。没有执行厂商程序集、扫描本机注册表或游戏目录。
+本段保留 GMS 3.14.0.1109 中已注册七个策略的详细证据，不重复公共 AddFoundGame、GUID、事件消费者及 LGL 落盘链，也不重复 GetMihoyoGamedata2 的记录解析。该版本三份程序集输入、22 份直接相关 C# 和三份完整 IL 的实际长度与 SHA-256 均已对上现有 [托管捕获清单](../../../.analysis/results/host-current/managed/capture.json)。七个 ScanAsync 包装器与 MoveNext、Reader／Parser 和公共文件／注册表适配器结合源码及 IL 审阅；所选方法的方法头、大小、直接调用、分支和异常区间另核原字节。旧批没有独立解析泛型 MethodSpec 类型参数，其证据范围保持原样；当前版本差异与已解析的真实 DI 绑定见前文两个专题。Arc／Bethesda／EA／Mihoyo 的所选链已据新版复核，Riot／Uplay 的当前变化以前文为准；没有执行厂商程序集、扫描本机注册表或游戏目录。
 
 实际 [ServiceRegister](../../../.analysis/results/host-current/managed/3aa42301ef78/source/Razer/GameManagerService/Service/ServiceRegister.cs) 将 IRegistryWrapper→RegistryWrapper、IPathWrapper→PathWrapper、IGameSignatureHelper→GameSignatureHelper，以及 BethesdaGamesReader、UplayConfigurationParser 和 UplayConfigurationDataReader 注册为 Singleton；七个策略均为 Scoped。它们通过 [GameScannerStrategyDependencies](../../../.analysis/results/host-current/managed/955d4bbd372f/source/Razer/GameManagerServiceLib/GameScannerStrategyDependencies.cs) 获得这些实际实现，不是仅根据接口名称猜测行为。Arc／GOG／Uplay 优先级为 High=4，Bethesda／EA／Mihoyo／Riot 为 Normal=3；完整 IL 的 Priority attribute blob 分别是 `01 00 04 00 00 00 00 00` 和 `01 00 03 00 00 00 00 00`。实际执行顺序仍由前述 Scanner 调度层决定，不能把 DI 注册顺序当作最终顺序。
 
@@ -357,7 +509,7 @@ Executable 按最后反斜线拆 registry key／value，拆分异常给双 null�
 
 之后先 LaunchExe.GetOrAdd，再查 LaunchHelperExe 并 TryUpdate LaunchExe，最后 LaunchUrl.GetOrAdd 决定最终 GUID。GetLaunchUrl 可以返回空字符串，调用方没有单独拒绝它，空键可能参与共享映射；不能为了让结果看起来正常而在对照期望中自行补一个 GameId。该层只赋 LaunchExe／LaunchUrl／Source／registry 及 overlay／machine，没有从 Executable 增加未出现的启动参数。路径 try 与身份 try 外还有集合和读取阶段，正常末尾 Clear 不是全策略异常清理保证。
 
-### 本批的独立测试边界与方法定位
+### 扫描行为测试边界与旧版方法定位
 
 后续最小用例须覆盖相同本机输入、主表与共享映射初始状态，分别保留官方 DLL 的原始候选、映射变化、事件及其顺序、Reader 返回值、失败和释放，再与独立 Rust 结果比较：
 
@@ -372,7 +524,7 @@ Executable 按最后反斜线拆 registry key／value，拆分异常给双 null�
 
 以上是由静态语义驱动的用例要求，尚未执行这些行为测试，也没有新增 Rust 独立扫描实现、UI／后端接线、官方 DLL 实际对照或运行时验收。当前原件已获取与这些方法已核语义分别记录；不能据此提升为整个 GMS、所有本机扫描或整个配置档功能完成。实际 DLL 只在显式对照入口中执行，产品仍由独立 Rust 实现承担。
 
-| 当前程序集 | 完整方法 | MethodDef / RVA / code bytes | 原完整 IL 起始行 |
+| 3.14 程序集 | 完整方法 | MethodDef / RVA / code bytes | 原完整 IL 起始行 |
 | --- | --- | --- | --- |
 | ServiceLib 955d4bbd372f | Arc ScanAsync 包装器／MoveNext／GetArcData | 06000399 / 193d8 / 81；06000b09 / 39bb8 / 416；0600039a / 19438 / 1252 | 76924；76688；76978 |
 | 同上 | Bethesda ScanAsync 包装器／MoveNext | 060003bb / 1b4b0 / 81；06000b1a / 3a9c0 / 1639 | 82865；82146 |
@@ -442,7 +594,7 @@ Profiles 页本身存在可核实的释放缺口：游戏桥接类没有卸载�
 
 所有来源读取均校验 acquisition 的实际 bytes 和 SHA-256；以下为半开 UTF-8 字节区间。
 
-Profiles 和 gms-proxy 的获取收据均于 2026-10-21 重新核对入口、asset-manifest 和 manifest，三端点在各自获取前后均保持同字节，主脚本仍分别为 `main.776df2b1.js` 和 `main.fd0c50a8.js`。recorded 时间记录本次核对，文件 acquired 时间保留首次日期；两套 `declared_references_fetched` 仍为 false，缺失 map 和动态依赖未决项继续保留。
+旧 Profiles 整页收据和 gms-proxy 收据于 2026-10-21 核对入口、asset-manifest 和 manifest，当时主脚本分别为 `main.776df2b1.js` 和 `main.fd0c50a8.js`。两套 `declared_references_fetched` 仍为 false，缺失 map 和动态依赖未决项继续保留。下面的旧页面范围只解释该收据；本机应用链已由前文的 2026-10-31 部署和独立正式字段接续，不能把旧前端身份推广为当前部署身份。
 
 本轮静态收据由 `python tools/workspace.py audit-host-local --query profiles` 维护，使用 `--verify-only` 独立复核，结果写入 [local-audit.json 的 profiles 字段](../../../.analysis/results/host-current/local-audit.json)。复核读取实际原件、完整 AST 节点、导出 getter、词法绑定、官方 ASAR 容器和获取收据，不调用收集器，也不执行厂商脚本。当前获取收据与旧完整捕获所记录的 acquisition 摘要已经不同：Profiles 为 923234 字节／`c8e3592055161a57f004e87418a01006b931a4e2623e6a81e342cc7abaf335c2`，代理为 35208 字节／`a299c9cfc2f2c19b51dae78f8f87072be921e9c750f44be27568097e5b96d8e6`；捕获仍保留其旧摘要。查询重新校验部署原件与捕获输出的实际字节，保留原分析失败和获取未决项，不把修改收据摘要当成更新源码。
 
@@ -453,20 +605,11 @@ Profiles 和 gms-proxy 的获取收据均于 2026-10-21 重新核对入口、ass
 | [9473.f9ed3133.chunk.js](../../../.analysis/inputs/frontend/synapse-profiles-current/raw/apps.razer.com/synapse/profiles/static/js/9473.f9ed3133.chunk.js) | Add App `[13735,17924)`，枚举 `[14053,14884)`、Browse `[14885,15099)`、添加关闭 `[16566,16753)`、卸载 `[17246,17366)`；关联游戏卡 `[52540,57613)`；过滤工具条 `[58769,62307)`；拖放完整所有者 `[121777,124156)` |
 | [gms-proxy main.fd0c50a8.js](../../../.analysis/inputs/frontend/gms-proxy-current/raw/apps.razer.com/synapse/gms-proxy/static/js/main.fd0c50a8.js) | 本机服务 SDK 列表／修改 `[93906,100096)`；API 消费者 `[164292,166232)`；连接／事件／扫描 `[166243,178365)`；列表读取 `[178388,180294)`／`[181340,183291)`；添加 `[183860,189276)`；运行集合／删除 `[189308,193421)`；封面 `[197654,200682)`；订阅、发布与释放 `[203444,212245)` |
 
-添加／选择的主机消费者来自当前 4.0.827 官方包内的 ASAR。完整原件 [main.js](../../../.analysis/inputs/host-current/asar/b2ce8c54dc5c/electron/main.js) 为 60830 字节／`0e3b84c11dd3e6d06072f54fb3295404894afcd7d2f7cce814ac20d9cd7d074e`，文件选择分支 `[50590,50921)`、异步分派 `[53689,53746)`；[ffiMain.js](../../../.analysis/inputs/host-current/asar/b2ce8c54dc5c/electron/modules/ffi/ffiMain.js) 为 5412 字节／`b6eff823bfb4e19b1cb341ef6a840e1004e57490c40e93f51789bcc67e4bcd9d`，完整异步消费者 `[2767,5375)`。Windows、macOS SysUtils 原件分别为 7394 字节／`f6bf22581ac7fce6e32ec1e8ff23bc66aec4a3c6b8e8d14a4a0d57fcbb4a3a0a` 与 4963 字节／`b739d78a2253d67de0e2aae4f3e2fc6f4bfc049bd26f0d55a8c5fdee861bc299`。正式 profiles 收据覆盖这些成员的 ASAR 实际偏移字节、官方包来源和完整函数；上述 Windows 原生续追独立读取既有捕获，未改写该收据，也未把 Rust 实现或实际执行对照标成完成。
+旧 profiles 收据中的添加／选择主机消费者来自 4.0.827 官方包。原件 [main.js](../../../.analysis/inputs/host-current/asar/b2ce8c54dc5c/electron/main.js) 为 60830 字节／`0e3b84c11dd3e6d06072f54fb3295404894afcd7d2f7cce814ac20d9cd7d074e`，文件选择分支 `[50590,50921)`、异步分派 `[53689,53746)`；[ffiMain.js](../../../.analysis/inputs/host-current/asar/b2ce8c54dc5c/electron/modules/ffi/ffiMain.js) 为 5412 字节／`b6eff823bfb4e19b1cb341ef6a840e1004e57490c40e93f51789bcc67e4bcd9d`，完整异步消费者 `[2767,5375)`。该收据保留其实际来源，不改写为 4.0.896；当前应用枚举链另核前文的新 Host、ASAR 字节和返回消费者。
 
-Windows 原生证据复用 [SysUtilsNative 完整捕获](../../../.analysis/results/native/01223bfabf0355f42705836974e343a1f16f837d692999020d218b2615b8e318/capture.json)。本次重新核对官方包提取成员、已安装证据别名、捕获列出的 9 个输出及所读完整函数的实际 SHA-256。IDA 9.1／Hex-Rays 9.1.0.250226 共保留 3867 个完整函数汇编、3866 个伪代码；`0xaad5c` 的原反编译失败继续保留，没有影响下表所读函数均有完整汇编和伪代码的事实，也不能把全库捕获等同于全库语义审计。
+当前本机应用原生证据复用 [SysUtilsNative 1.2.3.0 完整捕获](../../../.analysis/results/native/bc0387a0913c882a9cd82aa1a8e147d6408fc7bb7f77519f4f8860f16c5b17c8/capture.json)，实际 PE SHA-256 为 `bc0387a0913c882a9cd82aa1a8e147d6408fc7bb7f77519f4f8860f16c5b17c8`。IDA 9.1／Hex-Rays 9.1.0.250226 保留全部 3882 个函数的汇编和 3881 个伪代码；`0xabcbc` 的 call analysis failed 原记录保留，所选 40 个函数没有伪代码失败。正式字段校验全部捕获输出、所选函数的完整字节区块、实际导出和 HKLM/HKCU 根表；RVA 与语义集中在前文，避免并列维护旧 Windows 进度表。全模块捕获完成与所选语义完成分别记录。
 
-| 原生所有者 | 完整函数 RVA 与定位 |
-| --- | --- |
-| [程序枚举](../../../.analysis/results/native/01223bfabf0355f42705836974e343a1f16f837d692999020d218b2615b8e318/functions/6ef10.json) | `0x6ef10`；路径去引号／文件打开 `0x6ed20`；HKLM/HKCU 根表 `0xe2d60` 长 16 字节 |
-| [普通图标主体](../../../.analysis/results/native/01223bfabf0355f42705836974e343a1f16f837d692999020d218b2615b8e318/functions/44b90.json)／[Alt 主体](../../../.analysis/results/native/01223bfabf0355f42705836974e343a1f16f837d692999020d218b2615b8e318/functions/46180.json) | 导出跳板 `0x70d30/0x70d40`；主体 `0x44b90/0x46180`；JSON 输入解析 `0x47de0`；路径分派 `0x3eb70` |
-| [exe／dll 提取](../../../.analysis/results/native/01223bfabf0355f42705836974e343a1f16f837d692999020d218b2615b8e318/functions/3e170.json) | `0x3e170/0x3d340/0x3cfc0/0x3ced0/0x3d210/0x3d0c0`；缩放 `0x3de70`，普通位图 `0x3e770/0x3e540`，PNG CLSID `0x3d670` |
-| [临时路径](../../../.analysis/results/native/01223bfabf0355f42705836974e343a1f16f837d692999020d218b2615b8e318/functions/3d7a0.json)／[文件编码](../../../.analysis/results/native/01223bfabf0355f42705836974e343a1f16f837d692999020d218b2615b8e318/functions/3dc50.json) | `0x3d7a0/0x3dc50/0x3d8e0/0x3e9c0`；读取、Base64 和字符检查均为独立完整所有者 |
-| [缓存读取](../../../.analysis/results/native/01223bfabf0355f42705836974e343a1f16f837d692999020d218b2615b8e318/functions/41f10.json)／[批次清理](../../../.analysis/results/native/01223bfabf0355f42705836974e343a1f16f837d692999020d218b2615b8e318/functions/44730.json) | 路径 `0x41bf0`，key `0x41ce0`，加载 `0x41f10`，命中与失效 `0x440e0`，存储 `0x44550`，批次剔除 `0x44730`，磁盘保存 `0x43450` |
-| [返回释放](../../../.analysis/results/native/01223bfabf0355f42705836974e343a1f16f837d692999020d218b2615b8e318/functions/6b9d0.json)／[DLL 生命周期](../../../.analysis/results/native/01223bfabf0355f42705836974e343a1f16f837d692999020d218b2615b8e318/functions/3c200.json) | `0x6b9d0/0x97ce0/0xa98e0`、分配 `0x9a1d0/0xa9940`、复制 `0x9d2e0`；attach/detach `0x3c200`，保存 `0x44080`，GDI+ 关闭 `0x73d40` |
-
-服务内部扩展使用当前静态提取的 GameManagerServiceLib 与 GameScannerCommon，二者文件版本均为 3.14.0.1109。重新核对官方包实际字节、提取与已安装 DLL 别名、所读 C#／IL 输出的 SHA-256 和 [托管捕获收据](../../../.analysis/results/host-current/managed/capture.json)，未运行服务或程序集。PE32 标记和 CLR IL-only 需分别解释，不能仅据 PE machine 字段推定其所有实际进程架构。
+其余服务内部扩展段落保留 GMS 3.14.0.1109 的原静态证据、方法身份和链接。GOG 及共享扫描／去重／结果／停止链、22 个实际注册策略的所选方法版本差异已按前文接续到 3.15.0.1200；未选方法和未复核消费者仍保留旧版本边界。原件、提取别名与 C#／IL 输出身份由[托管捕获收据](../../../.analysis/results/host-current/managed/capture.json)分别记录，不因增量捕获覆盖旧结论。PE machine 与 CLR IL-only 标记分别解释，不能仅据 PE32 推定实际进程架构。本批没有运行服务或程序集。
 
 | 托管所有者 | 完整方法与反编译行定位 |
 | --- | --- |

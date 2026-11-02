@@ -1133,16 +1133,49 @@ def input_root(input_dir, inputs):
     """Find a retained input root for ordinary and cross-product source sets."""
     import analysis as a
     boundary = (a.ROOT / ".analysis/inputs/frontend").resolve()
+    blobs = (a.ROOT / ".analysis/inputs/frontend-revalidation/blobs").resolve()
     paths = [path.resolve() for path in inputs]
-    if not paths or any(not path.is_file() or not path.is_relative_to(boundary) for path in paths):
+    if not paths or any(not path.is_file() or not (path.is_relative_to(boundary)
+            or (path.parent == blobs and re.fullmatch(r"[a-f0-9]{64}", path.name))) for path in paths):
         raise ValueError("Frontend inputs are missing or outside retained frontend originals")
+    if any(path.parent == blobs and a.sha(path) != path.name for path in paths):
+        raise ValueError("Frontend revalidation original differs from its blob identity")
     preferred = (input_dir / "raw").resolve()
     if preferred.is_dir() and all(path.is_relative_to(preferred) for path in paths):
         return preferred
     common = Path(os.path.commonpath([path.parent for path in paths]))
-    if not common.is_dir() or not common.is_relative_to(boundary):
+    retained = (a.ROOT / ".analysis/inputs").resolve()
+    if not common.is_dir() or not common.is_relative_to(retained):
         raise ValueError("Frontend input common directory escaped retained originals")
     return common
+
+
+def capture_original(captured, input_dir, recorded_input, *, originals=None):
+    """Resolve a parser owner through declared originals and its actual unpack argv."""
+    import analysis as a
+    if not isinstance(recorded_input, str) or not recorded_input:
+        raise ValueError("Parser owner has no original input")
+    recorded = recorded_input.replace("\\", "/")
+    if Path(recorded).is_absolute() or Path(recorded).drive:
+        raise ValueError("Parser original input must be relative to its recorded base")
+    originals = originals if originals is not None else {row["path"]: row for row in captured["original_inputs"]}
+    candidates = {(input_dir / "raw" / recorded).resolve()}
+    for command in captured.get("commands", []):
+        if command.get("stage") != "unpack" or command.get("exit_code") != 0:
+            continue
+        arguments = {str(value).replace("\\", "/") for value in command.get("argv", [])}
+        if recorded not in arguments:
+            continue
+        cwd = (a.ROOT / command.get("cwd", a.rel(input_dir / "raw"))).resolve()
+        if not cwd.is_relative_to(a.ROOT.resolve()):
+            raise ValueError("Parser working directory is outside the workspace")
+        candidates.add((cwd / recorded).resolve())
+    matches = [originals[a.rel(path)] for path in candidates
+               if path.is_relative_to(a.ROOT.resolve()) and a.rel(path) in originals]
+    if len(matches) != 1:
+        raise ValueError("Parser original owner is absent or ambiguous")
+    input_root(input_dir, [a.ROOT / matches[0]["path"]])
+    return matches[0]
 
 
 def inline_script_equivalence(left, right, parser):
@@ -1249,10 +1282,7 @@ def lexical_context_findings(captured, provenance, validation, input_dir, audit)
                 or finding.get("kind") not in {"esm_commonjs_residual", "unresolved_reference"}):
             raise ValueError("Unsupported derived-module validation finding requires analysis")
         owner = provenance["modules"][filename]
-        source_path = (input_dir / "raw" / owner["input"].replace("\\", "/")).resolve()
-        source = originals.get(a.rel(source_path))
-        if source is None:
-            raise ValueError("Failed derived module has no verified original owner")
+        source = capture_original(captured, input_dir, owner["input"], originals=originals)
         raw = audit.read(source)
         ranges = owner["ranges"]
         if (not ranges or any(not isinstance(span, list) or len(span) != 2
@@ -1843,8 +1873,8 @@ def recover_one(input_dir, tool, audit):
     indexed = {}
     for name, owner in provenance["modules"].items():
         if owner["input"]:
-            source = (input_dir / "raw" / owner["input"].replace("\\", "/")).resolve()
-            indexed.setdefault(source, []).append((name, owner))
+            source = capture_original(captured, input_dir, owner["input"], originals=originals)
+            indexed.setdefault((a.ROOT / source["path"]).resolve(), []).append((name, owner))
     selected, recovered, commands, scan_failures, readable_scripts = [], [], [], [], []
     def command(label, argv):
         stdout, stderr = output / (label + ".stdout.txt"), output / (label + ".stderr.txt")

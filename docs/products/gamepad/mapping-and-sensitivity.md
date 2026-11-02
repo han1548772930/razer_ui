@@ -76,6 +76,26 @@
 
 4115 `customize` 明确转 [kitsune](../../../crates/razer-pages/src/features/gamepad/kitsune.rs)，独立绘制模式、方向、SOCD 与 polling。其 mode/SOCD 控件仍使用 `choice → write`；应继续逐项核对本 PID 的设置、reset、profile和通知消费者，不得套普通手柄选择表或另一型号已存在的扩展 setter。
 
+### 4115：设备模式与 SOCD 的不同存储和恢复链
+
+本节 MW 使用[当前稳定部署闭包收据](../../../.analysis/inputs/frontend/gamepad-mw-4115-snapshot-81ed5dc91a596f97101f-closure/acquisition.json)实际选中的 `main.81ed5dc91a596f97101f.js`、`8255.78367f9ded0bc62c92d6.js`、`2620.72a37b50422562eadd07.js` 和 `rzDevice25SagePC.b645b2573dcf878c8e1f.js`。这些原件保留于 `.analysis/inputs/frontend/gamepad-mw-4115-snapshot-81ed5dc91a596f97101f/raw/apps.razer.com/synapse/products/4115/mw/`；路径、来源、实际 bytes/SHA 由闭包收据维护。旧 `gamepad-mw-audit.json` 中 4115 的 `main.8c755a3c43990d2c3900.js` 和捕获失败仍属原快照；新部署没有完整 capture，以下是当前原件的定向 AST／调用链阅读，不能将旧 capture 当成新部署已通过。
+
+4115 当前 UI 选择[刷新部署获取收据](../../../.analysis/inputs/frontend/gamepad-4115-current-refresh-ec3db4b29c5a/acquisition.json)的 `main.e1eadc09.js`，不再使用旧 `main.1a52fc92.js` 给当前 MW 证明挂载。Customize 完整 `hm [7882543,7884873)` 在非 macro 显示模式挂载左侧 `Rm/Mm` 与右侧 `Lm({isArcadeController:true})`。当前 `Um [7884879,7885943)` 经过 connect 和保留 props 的 wrapper `[7885600,7885678)`；包装层的 repaint hook 持有 100ms 定时器及 clearTimeout 清理，实际 Customize tab 仍消费该包装后组件。Mode 的 `Mm [7881517,7882542)` 只有 safe、standard 两项；点击先小写化并比较当前值，只有变化才发 `ON_SET_CONTROLLER_MODE_SWITCH`，没有 Apply／Save／Cancel。`Mn [7366968,7367375)` 先乐观更新 `controllerModeSwitcherReducer.mode`，再经 `Pn [7366677,7366967)` 广播；收到 `MW_SET_CONTROLLER_MODE_SWITCH_TO_UI` 或对应本地存储动作时另行更新同一字段。UI 的初始 safe 和 selector 的 safe 回退只是界面初值，不能报告为设备实读。
+
+MW main byte 2686743 附近实际注册 `controllerDPadSOCD/initFromDevice:false`、`deviceReset/isFirmwareReset:false` 和 `controllerModeSwitch`；模块 `1457 [9304,22017)` 按此配置动态加载 `8255` 的 `58255 [549,2381)`。Mode 事件配置 `u [986,1542)` 明确使用 `Storage_Global | Skip_Restore_Device_Data` 和根字段 `controllerModeSwitch`，`updateStorage` 只替换设备 document 的 `{mode}`，不改 active profile。`getRuntimeData [1672,1906)` 从本机 document 读取该根字段，替换已有同名 runtime 消息后投影给 UI；这里没有设备 GET。Mode feature 没有 `onDeviceEvent` 或 `restoreDeviceData`，因此不能因打开页面、连接或切换 profile 就把初始 safe 写回设备。
+
+Mode 的真实 setter 在 chunk8255 `[1906,2278)`：固定第一个参数为 `1`，safe 编码 `0`，standard 编码 `1`；原件对其他字符串也走非 safe 分支，但当前页面只提供这两项。SagePC 的完整当前类继承 controller 协议且没有 Mode／SOCD override。`2620` 的 `setControllerModeSwitch [16995,17249)` 发送头 `[2,12,28]`、payload `[1,option]`；`rt [6011,6079)` 仅在 SUCCESS 时投影应答 `data[1]`。上层只比较 setter 的 SUCCESS，没有追加 GET，也没有比较应答 option 等值；同模块已有的 GET `[2,12,156]`、方法 `[16754,16995)` 并未由本次 Mode 点击或 runtime getter 调用，不能虚构统一写后读回。
+
+两个控件共用的真实提交所有者是当前 MW `1457.taskMakerHandler [15175,18681)`：先按动作授权修改 document、version、`await Pf` 保存，再显式 `updateUI`；获得 deviceAccess 时才排 `NORMAL_SKIPPABLE` 设备任务。`taskRunnerSetDevice [18681,19962)` 保存 execute 的布尔结果并在执行后检查 abort，但即使返回 false，未抛异常的路径仍把 `value.status` 标为 completed；结果回调 `[19962,21899)` 又以这个 status 分类。Mode 的位标志还会按当前按位表达式抑制通用通知，显式本地保存投影仍存在。因此乐观选中、保存完成、通用 completed 与真实 SUCCESS ACK 必须分别记录；原版没有提供自动回滚或写后 GET。
+
+SOCD 另属 active profile：当前 UI `Lm [7876646,7878758)` 支持 `hideNoSocd` 参数，但 4115 的实际调用者没有传入该参数，因此仍挂载 neutral、first、last、absoluteUp、none。点击直接发送 `SET_SOCD_SETTINGS → ON_SET_CONTROLLER_DPAD_SOCD`，没有 Mode 的同值去重。MW `84470 [1800481,1803684)` 的 `initFromDevice:false` 只阻止 DeviceConnected／DeviceReset 回调进入本 feature 的逐槽 SOCD 读取；其显式 `restoreDeviceData` 仍由 profile 恢复调用：当前字段存在则执行 SET，缺字段才先 GET 再 SET，并更新 UI。MW 的恢复总 owner `[2210336,2241820)` 最后调用 `1457.restoreDeviceData [13940,14281)`，不能把“不做连接导入”解释为“永不读取或写入 SOCD”。
+
+SOCD 执行时重新选择 active profile，经当前 `10511.Fk [212431,212559)` 取首个 `obmSlotId`，controller 分支将已存在的 0 转为 wire slot 1；未知／缺失槽不能由本项目补成已确认槽。转换为 neutral0、last1、first2、none3、absoluteUp4 后，`2620.setControllerSOCDCleaningOption [16483,16754)` 发送 `[2,12,27]`、payload `[wireSlot,option]`；GET 方法 `[16225,16483)` 使用 `[2,12,155]`。硬件 SOCD 通知另经 main `[1834547,1835023)` 更新当时 active profile、保存并发布 `MW_SET_CONTROLLER_DPAD_SOCD_TO_UI`，不更新设备根 Mode。原版 GET 失败／未知值回 neutral 的行为只作证据，本项目继续按规则保留失败／未知，不能因此恢复默认值。
+
+统一复核命令为 `python -X utf8 tools/workspace.py audit-family-function --family gamepad --function mw --query gamepad-mode-socd --product 4115`。[现有正式 MW 审计](../../../.analysis/results/frontend/gamepad-mw-audit.json)的 `gamepad_mode_socd_current` 保存本批 59 个完整 AST owner、实际 UI／MW 当前选择、组件挂载与包装、全部所用 factory、命令及应答解析边界、硬件通知和恢复消费者；保留其他字段的 canonical SHA，不覆盖九款基线及旧失败。当前 UI 与 MW 均无完整 capture，收据保持该事实。工具的七项定向纯静态测试覆盖当前选择、原件字节重现、实际 arcade props、GET／SET 差异、语义变更、孤立 loader、通知目标与 false/completed 区分，不执行厂商代码。
+
+以上闭合的是 4115 当前页面、两类存储、设备命令、结果和恢复消费者的静态语义。当前 Rust 的 Mode／SOCD `choice → write` 尚未接通这些具名设备请求；用户写回、全部 profile/reset 分支迁移、实际 DLL／设备功能对照和真实窗口仍未完成。本次没有执行厂商 JS、DLL 或设备，没有新增临时副本或分析数据库。
+
 ### 2636 的 OBM 映射读写原件边界
 
 2636 的 MW 并不是把 Customize 的 `choice → write` 直接当成设备映射写入。当前 [main.f0ca95429464cd09cbdb.js](../../../.analysis/inputs/frontend/gamepad-mw-2636-current/raw/apps.razer.com/synapse/products/2636/mw/main.f0ca95429464cd09cbdb.js) 的 controller OBM owner 位于模块 11365 `[1271752,1282718)`；初始化后由 `obmEngineController` 维护真实 `rzDevice`、`buttonIdList`、`profileIdList` 与 `activeProfileId`。`getDataFromDevice` 先取得本机 document，再按真实活动槽调用 `getAllButtonAssignmentInfo(profileId)`；后者逐个调用 `getSingleButtonAssignment(profileId, buttonId, NormalMode, 10)`。每一项只在 `STATUS_SUCCESS && packetSizeReturned>0` 时解析 `classId, buttonId, mode, functionId, dataSize, dataArray[5]`，单项异常记录并继续，不是整张映射表原子读取。`functionId` 为 Controller 且其返回的第一个数据字节等于当前 button ID 或为零时，该项会被跳过；其余项再按 `fwIDToMapping/HIDToMapping` 转换为 UI 映射，并与 `DEFAULTMAPPINGS` 比较。默认映射和本机 document 是比较基线，不是设备读回结果。
@@ -223,6 +243,145 @@ MW 84470.execute 再次读取 active profile，再经 Fk 发 SET，存在原版�
 原版 1457.taskRunnerSetDevice（1405540）即使 execute 返回 false 也标 completed；generic 动态通知名与当前 UI 的 D_PAD_DIRECTIONS 通知分支也不一致。Rust 根据真实应答、传输异常与取消保留结果，不以 UI completed 日志代替成功。Shell 复用既有独占 ServiceClient、完整 route 身份、请求 guard 与统一 device-task scope；服务响应经 typed IPC 校验后才能发布结果。匹配 ShutdownConfirmation、最终进程／pipe 释放和历史清理错误分开保存，真实释放未完成时保留同一 cleanup owner，继续阻止同资源新任务，不能仅因拿到 SET 应答就放开清理屏障。
 
 证据原件沿用当前 acquisition：`.analysis/inputs/frontend/gamepad-mw-2676-current/acquisition.json`（MW main、2620、SagePC）和 `.analysis/inputs/frontend/gamepad-2676-current/acquisition.json`（UI JS/CSS）。完整项目相对路径、实际 bytes/SHA 与依赖闭包由统一 inputs/gaps 校验维护；没有复制整套分析原件、创建逐问题脚本或临时分析数据库。本链真实设备 SET、实际 DLL 功能对照以及窗口／焦点／像素运行时验收均未执行，保持未验证。
+
+## 共享 Mapping 物理输入通知
+
+维护入口 `audit-host-local --query mapping-physical-input-decode` 将结果写入[现有本机链收据](../../../.analysis/results/host-current/local-audit.json)的 `mapping_physical_input_decode`。本节只覆盖当前 4.0.896 所含 Mapping 1.3.17.2 的 Windows filter-driver 键盘／鼠标通知解码；它是共享输入链，不能据此宣称某款手柄采用相同报文。来源、实际字节身份、完整函数范围、伪代码／汇编及真实虚表槽由[维护 collector](../../../tools/host.py)复核，注册和通知消费者复用既有 `mapping_input_provider`，不重新捕获整库。
+
+`AC900 → 11A96E → 11A066` 根据当前真实 PID、container GUID 和已发现的驱动接口路径选择 endpoint；接口 GUID 为 `e3be005d-d130-4910-88ff-09ae02f680e9`。`ACCEE` 建立拥有该 endpoint 的 driver thread，观察者是 Mapping input device 的 `base+120` 子对象。`117500 → 110040 → 110450` 创建 DriverImpl，以 `OPEN_EXISTING/FILE_FLAG_OVERLAPPED` 打开实际路径并提交 `0x88883018`，输入为空、输出 304 字节。两个 OVERLAPPED 位于 DriverImpl `+536/+872`，对应输出 `+568/+904`；异步完成接口为 `base+8`。打开句柄及成功提交 I/O 不是实测输入。
+
+`114AD0` 在成功完成一个接收后，先对另一缓冲区重新提交相同 IOCTL，再解析已完成帧。帧偏移 `+8` 的事件码用掩码 `0x16` 仅接受 1、2、4；偏移 `+16` 的输入类型 1／2 分别选择键盘／鼠标。事件码 4 才进入普通输入通知，2 为 hook、1 为 redirect；1／类型 4 另有两字节回调，不能混成统一按键通知。此 owner 未显式检查完成回调的返回字节数，现有静态布局不能证明真实驱动每次都返回完整帧。
+
+| 通知字段 | 键盘 `1150BD` | 鼠标 `11513F` |
+| --- | --- | --- |
+| 帧 `+20` | 可选 `unitId` | 可选 `unitId` |
+| 帧 `+22` | 16 位 `scancode` | 本对象不投影此字段 |
+| 帧 `+24` | 16 位 `flag` | 16 位 `id` |
+| 帧 `+26` | 本对象不投影此字段 | 有符号 16 位 `data`，先限于 `[-120,120]` |
+| JSON 所有者 | `10D010`，`type=keyboard` | `10DC90`，`type=mouse`；`data` 按无符号 16 位输出 |
+
+因此鼠标负滚轮值在 JSON 中表现为限幅后字的无符号值，不能直接替换为负数 JSON。两条路径均通过实际对象池取得并重置对象；`extraInformation` 被清零，解码器没有复制驱动该字段。`unitId` 的是否存在由 DriverImpl `+112` 的 dual-link mode 决定，与数值是否为零无关。`modifiers` 来自 `11C930` 的真实 OS `GetKeyState`，分别查询左右 Alt／Ctrl／Shift／Win，不来自该输入帧，也不能从 scancode 推断 HID usage、产品能力或固件键身份。
+
+普通通知经 driver observer `+16 → 1169F0`，在无输入或 driver thread `+153` 关闭门时拒绝。`11924A` 持有输入引用并排队，`1191E0 → C2090` 通过实际观察者虚槽 `+40` 将同一输入交给已核的 `AA170`，后续由 `802DC` 按注册门和当前对象 JSON serializer 排入既有 type1 回调链。完整 `C2090` 汇编保留了该参数，不能采用其不完整的 guard-call 伪代码原型。任务销毁 `1192D0/1192F6` 释放输入和所有者引用。
+
+失败 I/O 不进入上述成功帧路径；`110FB4` 将 OS 成功或 `ERROR_IO_PENDING=997` 记录为已接受，其余错误真实上报。取消链 `110980` 设置关闭状态、对实际句柄 `CancelIo` 并关闭，`1109D8` 仅在 pending I/O 为零时发出清理完成；driver thread 关闭请求及 `117A40` 的输入门单独保留。这不能证明已排队的 owner-runner／FFI／JS 消息全部排空。现有 Lighting `LedInputMap` 与 region lookup 继续复用 `lighting_input_lifecycle`，本批没有增加产品映射变体。
+
+真实 kernel driver 如何产生这些帧、全部 PID／固件／传输资格、analog／BLE／external／OS-hook、其余 hook／redirect 执行和连接代次取消仍待闭合。[专属静态测试](../../../tools/test_host.py)核对来源、完整捕获、字段／ABI、错误反例和 JSON 往返；本批未执行官方 DLL、驱动或设备，未修改 Rust／UI，实际对照及运行时验收保持未验证。
+
+## 共享 Mapping external 原始硬件输入
+
+维护入口 `audit-host-local --query mapping-external-input-routing` 将本批结果写入[现有本机链收据](../../../.analysis/results/host-current/local-audit.json)的 `mapping_external_input_routing`。范围为当前官方 Host 4.0.896 所属 Mapping 1.3.17.2 的 external 原始 HID 输入、硬件事件交付及清理；[collector](../../../tools/host.py)复核原件、完整函数、真实指令／虚槽及当前 Host AST，不重新捕获全库。本节是共享链证据，不证明某款手柄或其他产品实际选择了 external。
+
+`57380` 仅在配置 `type=external` 时创建 `6319C`。其硬件观察者是 `base+128`，表 `2E6668`；注册接口则是 `base+136`，表 `2E6698`。配置解析 `DB242` 的内部 `connectHid/connectFilterDriver` 初值均为 true，再按实际配置解析覆盖；这些是原版内部配置默认值，不能当设备状态或产品已选择该分支。external 初始化 `63590` 仅在 `connectHid` 门允许时，经 `7D260 → AB530 → 11A982` 按实际 PID／container 枚举 HID endpoint；共同的 Windows 身份匹配沿用 `mapping_physical_input_decode` 的 `11A066`，不沿用它的键鼠帧布局。
+
+`ABD80 → AC590 → 123C00/123FE4 → 124130` 为实际 endpoint 建立硬件事件线程，`1234B8` 以 `GENERIC_READ/OPEN_EXISTING/FILE_FLAG_OVERLAPPED` 打开真实路径。`1237D8` 的单次 `ReadFile` 容量为 **100 字节**，两个 `OVERLAPPED` 位于 endpoint `+72/+104`，缓冲区位于 `+136/+237`。完成者 `123AE0` 的 this 为 endpoint `+16`；成功时先重挂另一缓冲区，再将真实非零完成长度经 R9 交给 `1249C0`。后者先核对 endpoint 所有权，再按真实长度复制；不能把 100 字节容量视为固定报文长度，也不能解释成普通键鼠的 304 字节 filter-driver 帧。
+
+`6A330` 复制并排队原始报文，`9D510` 调整回 `base+128`，`6A470` 通过真实虚槽 `+24` 进入 external 的 `64A60`。该 handler 取得当前 tick、丢弃空报文；存在 DeviceData 时会用 `raw[0]` 查询 `E5DEC`，但**不消费分类结果**，随后将整段原始报文传给 `7F17E`。它不剥离前缀或 report ID，也不因此进入 analog 映射执行器。本批尚未确定这些字节的产品内部协议布局。
+
+硬件注册 `6B500` 设置 `base+640`，可选批处理门位于 `+656`，传入 interval 按 uint32 乘 1000 后存于 `+660`；当前 tick 的实际单位不由此推断。`6BB20` 分别持有普通回调 `+648` 与批回调 `+704`。`7F17E` 需全局启用、已注册且有普通回调；普通路径复制 callback／报文／tick 后交给既有 `9E1D0/18DB0`。`2B770` 按无符号字节序列化为数组，以真实四参 ABI `void(const char*, int32, const char*, uint64)` 发出 **type0**。批路径 `7F73E` 保留每个原始报文，达到 10001 条时强制 flush；`7F960` 移走队列后重新核注册等门，`2B8B0` 按到达顺序发出嵌套字节数组，携带 flush 时取得的 tick。
+
+当前 Host `createCbHardwareEvent` 只接收 type0，按真实产品／container／instance 解析当前 map，核对订阅 URL 与 webcontents 存活，再发送 `hardwareevent`，其中 `data.buffer=JSON.parse(payload)`，保留普通数组或批数组的形状。首位订阅者在原生注册成功后增加 URL 并 await callback 设置，但 callback 设置失败不会替换原先的注册结果。后续订阅复用当前模式／interval，不能由 Host 返回成功推断已有真实输入。产品前端如何解析、消费这些 bytes 及其实际 external 配置仍须沿挂载调用取证。
+
+注销 `6B720` 清除注册门及批处理门，保留 callback 与尚存队列；Host 先移除 URL，最后订阅者才请求 native 注销，失败时不恢复 URL。后续批 flush 会在门关闭时释放已移出的报文，但已排队的普通／批回调仍可运行。端点错误 1167 经 `123880` 有界重连，先 `CancelIo/close` 再重开；计数达到 60 后不再尝试。external 清理 `64000 → AC730 → 1247EE → 124950` 对实际端点调用 `123AA0` 取消／关闭，再由 `AC860/123E2A` 释放并 join 硬件线程。端点析构 `123650` 还明确诊断未经 shutdown 的销毁；不能用析构、join 或注销完成推断全部 owner-runner／FFI／JS 队列及旧连接结果已经排空。
+
+`notifyInputForExternalDevice` 是另一条接受 `keyInput` 并 JSON 编码的注入 API，与上述原始 HID／type0 路径分开；其导出存在不证明有实际产品生产者。本批保留该完整 Host owner，只明确这条边界，未扩展 native JSON 映射执行链。后续继续实际 external 产品配置／报文消费者、独立 JSON 注入、BLE／analog／OS-hook 及连接代次取消。[专属静态测试](../../../tools/test_host.py)覆盖来源变化、缺失函数／真实生产边、错误完成长度／前缀／虚槽／事件类型和批阈值、Host 消费变化及 JSON 往返。本批未修改 Rust／UI，未执行官方 DLL、HID 或设备，实际对照与运行时验收保持未验证。
+
+## 共享 Mapping BLE class 1 与 analog stick 输入
+
+维护入口 `audit-host-local --query mapping-ble-analog-stick-routing` 将结果写入[现有本机链收据](../../../.analysis/results/host-current/local-audit.json)的 `mapping_ble_analog_stick_routing`。本节只覆盖当前 Host 4.0.896 所属 Mapping 1.3.17.2 的 BLE class 1 报文、输入 ID 251／252 阈值边缘及实际映射消费者；原件、完整 Host AST、原生函数与真实 PE 表由[collector](../../../tools/host.py)复核。本节不证明某款手柄或其他产品实际选择这条链。
+
+`57380` 仅对精确配置 `type=ble` 创建 `52158`；硬件观察者为 `base+128 / 2E4FD8`，其 `+24` 虚槽真实指向 `53C70`。初始化 `52540` 仅在 `connectHid` 字节 `base+177` 允许时排 `7D260`，随后接入上一节已核的 `AB530 → ABD80 → AC590 → 123C00` HID provider；只在这条已证调用关系内复用其收包与清理，不由 BLE 名称猜测 report 容量或套用 304 字节键鼠帧。实际产品的 HID descriptor、报文 ID、固件和传输资格仍待产品挂载证据。
+
+`53C70` 丢弃长度 0／1 的报文，存在 DeviceData 时用 **`raw[1]`** 查询已发布 `reportIDs`。真实 switch 表 `2E55F8` 的 class 1 先复制 `raw[1..end)`，调用 `79BDE` 后释放副本；class 3、7／8 保留原报文，不能概括为所有 BLE 报文都剥离前缀。缺 DeviceData 走原始硬件事件，缺失或未就绪的已发布分类返回 8；class 1 本身不同时转发 `hardwareevent`。
+
+`79BDE` 在副本长度至少 4 时，从 `copied[1]` 开始解三元组：`inputID:u8 + sample高字节 + sample低字节`，ID 0 终止，后续三元组不完整则停止；增量索引明确缩为 `uint8`。因此首个 ID 在原报文偏移 2，sample 到 stick 消费者按 signed16 解释。全局 Mapping 启用且未被 `base+992` 排除时，只有 251／252 进入 `7E8D2`，其他 ID 进入普通 analog key 的 `7DD9C`，其样本／映射／通知见下一专题，完整输出与取消仍待取证。缺失项清理扫描的是 **`base+1488` previous-sample 树**，可对其中实际存在的 251／252 调用零值释放；阈值 held 树在 **`base+1896`**。两树不同，不能由报文省略推断全部 held stick 已释放；当前 sample 循环受 Mapping 门控制，缺失项清理在该门外。
+
+`E6760` 只返回引擎就绪时的已发布 stick 配置；`EC172` 将可选 `analogStick.threshold` 限定为 signed16 的 1..32766。`7E8D2` 缺已发布配置时内部采用 20000，仅属映射计算阈值。样本幅值按 unsigned16 比较，`-32768` 幅值为 32768，等于阈值也激活；held 身份只按输入 ID。新插入发 make／flag 0，已持有不重复，低于阈值且原 held 存在才发 break／flag 1，直接反向但仍超阈值不发新边缘。251 正／非正分别为 right／left，252 正／非正分别为 up／down；break 使用当前样本符号，零值不会自动沿用先前方向。
+
+真实 type 3 对象由 pool 重置或分配，`FC956` 写 axis／flag 到字节 56／57。BLE 映射 delegate 为 `base+120 / 2E4F88`，`+24 → 66D10` 查映射，成功后 `+32 → 69530` 消费：`677BA` 跟踪输入，随后依次尝试 `69728`、`68D0C`，否则 `794E8` 按实际映射／全局快捷键状态进入 `AD0CC` 或 `AEAFE`。本批闭合到这些真实消费者与引用释放，不扩大为全部输出 executor 已完成。`79BDE / 7E8D2` 没有直接调用 `93E18 / 802DC`；不能直接把 stick 边缘接成 type 1 `inputnotified`。
+
+当前 Host `createCbHardwareEvent` 仅消费 type 0 并解析 bytes JSON；`createCbInputNotification` 仅消费 type 1 并原样交付序列化 input。两者不会构造 class 1 stick 事件。`handleBLEEvent` 在此忽略 new／update；允许的厂商断开／移除事件进入 `handleBLEEvent_removeDevice`，等待 native `removeUsbDevice` 完成后，即使返回 false 也删除 callback context 和当前 map。原生 `53090` 排入真实 `AC730`，沿已核 HID 取消／关闭／provider join 释放；owned 报文、sample 树、快照、stick input、映射和阈值配置各按其所有者释放。map 删除、引用释放及 provider shutdown 均不证明 pending delegate／输出／FFI／JS 或旧连接结果已排空。实际产品资格、配置发布与选定输出、report 省略恢复及连接代次取消仍待闭合；[专属测试](../../../tools/test_host.py)核对真实字节／调用／虚槽反例与 JSON 往返。本批未执行官方 DLL／设备，Rust 独立实现、UI 接线、实际对照和运行时验收分别保持未验证。
+
+## 共享 Mapping 普通 analog key、映射与释放
+
+维护入口 `audit-host-local --query mapping-analog-key-routing` 将结果接入[现有本机链收据](../../../.analysis/results/host-current/local-audit.json)的 `mapping_analog_key_routing`。它从上一节已经确认的 `79BDE → 7DD9C / 7A656` 接续，只复核当前 Mapping 1.3.17.2 的普通按键、实际映射消费者、通知与局部释放；不重复捕获 BLE／HID 库，不重复 stick 阈值。当前 [collector](../../../tools/host.py)保留 46 个完整原生函数、15 个真实虚槽及 7 个完整 Host／产品 AST，核对 61 个指令锚点和 55 条实际调用边。
+
+`7DD9C` 按 **unsigned16** 消费 sample。`E6204` 缺配置时的内部 packed 值为 `AA00AA00`，其中有效字节为零；只有已就绪的 published `analogData+72` 存在最大值时才限幅，不能将其当作设备默认值或实测状态。`E62F8` 先按真实 `inputID:u8` 取已发布 input；缺失时，`E5DB0` 的实际 special-report class `<2 / ==2` 分别选择 PE 表 `2F0C30 / 2F1030`，其他 class 不构造输入。两表各有 256 个 packed `scancode:u16 / flag:u16`，非零项分别为 111／20；scancode 为零直接返回空，`10C755` 对其余项从真实 pool 构造 type 2，写入字段 `+56/+58`，随后按调用者写 modifiers。
+
+按键状态有不同所有者，不能混作一棵 held 树：`+1136` 保存 input ID 到 input，`+1176` 保存 stateless identity，`+1472` 保存前一 unsigned16 sample／方向，`+1512` 保存 pending mapping。初次 sample 插入从 level 0 开始并发 forced sample event；相同 sample 不再进入后续映射。变化时，`E63AC` 按真实 ID／当前 mode 先查 active-profile actuation，再取 published 默认 actuation。上升调用 input 虚槽 `+88` make、使用 actuation `+12`；下降调用 `+96` break、使用 `+14`。有效 max 存在时用于满量程判断；否则只有 version 2 使用 65535，其余使用 255。缺 input／actuation 的错误路径不表示输出成功。
+
+`9254C` 的旁路通知门按实际 input type 区分：type 2 对应 `+744`，type 35 对应 `+746`，或 input ID 已在 `+1656` 树中。`925D0` 对 make 核对真实零值特例与 `previous <= actuation <= current`，仅新插入才通知；break 经 `93FDB` 核对零值、正常跨阈或满量程特例，仅实际移除才继续 `69AAE → 802DC`。未进入旁路则通过 `9071A` 查实际 mapping；存在 rapid-trigger 配置时，其有效字段 `+14/+18/+21` 必须成立才进入 `92748`，违反断言走原生失败路径；**只有缺 rapid 配置才选择普通 `9307E`**。
+
+`92748 / 9307E` 按真实 output type 选择 joystick、Xbox、type 7／15／26／33／38 等消费者；普通分支另有 type 19 → `88B60`、type 41 → `8D952`。正常边缘经 `9474E / 93FDB`，rapid-trigger 经 `9760C` 的实际 extrema／state 树；选中 generic 分支才在 sample event 与 `93E18` 后进入 `794E8`。本节核实这些消费者与引用边界，映射优先级及每个实际选中 executor 的 OS／设备结果仍待后续沿真实分支闭合，不因共享 dispatcher 扩展全部输出。
+
+| 通知 | 实际原生路径 | 当前 Host 消费 |
+| --- | --- | --- |
+| sample event，type 6 | `8E764 → 80888 / 80D70 → 81300`，单项／批项各自序列化 | `analogKeyEventList` → `analogKeyEvent`，保留 `jsonEvent` |
+| redirect，type 3 | 旁路 `69AAE` | redirect 的实际订阅 URL 列表 → `inputredirect` |
+| input notification，type 1 | 旁路 `802DC` 或普通 analog `93E18` | `inputNotificationList` → `inputnotified` |
+
+sample event 的单项门为 callback `+392` 与 `+352` 的已注册 ID，使用计数或 force；批模式另需 `+400` 与 callback `+440`，逐项保存 tick，队列达到 10001 条或到实际 interval 才 flush。`93E18` 使用注册门 `+712`／callback `+720` 和独立的 `+1616` make／break 去重树，随后进入 `8DA4E / 8E0D4`。三条事件的类型、负载、订阅者和状态来源均分开；sample event 不能证明映射或写入成功，tick 单位仍未核实。
+
+缺失按键由 `7A656` 取得或构造真实 input，经 `1009A2` clone 后设置 break，读取 break actuation，以 level 0 进入同一旁路／普通／rapid 链。它仅在相应完成路径按 stateless identity 移除 `+1512`，不能概括为清空所有 held／sample／retained 树。局部 input、mapping、actuation 和 rapid-config 引用有实际释放。SnapTap 回调 `A52C0 / A5400 / A5510` 的 48 字节环境保存的是指向 live 值的指针；真实表的 `A53D0` 只复制三个 16 字节块，`9D320` 只释放环境，不能称为独立拥有 input 深拷贝。`99AAC / 99DBE / 9A20E / 9A692` 的调用、延迟、恢复、取消与排空继续保留未闭合。
+
+产品来源独立核对当前 PID756 MW 的 acquisition、main 原字节和[双轮部署收据](../../../.analysis/results/frontend-revalidation/3445d9b6321b3aead25aae60d308db62eaa5b55750f3d3234182d09d21fe2753.json)：完整默认数据 producer 与词法绑定明确写 report ID 11 为 `analogKeyboardV2ReportID`、4 为 `razerKeyReportID`，默认 actuation 为 19656／1638、`turnOffAnalogToKey=true`，main 实际挂载 `useFeature("analogV3","yes")`。这些是当前产品源码事实；还需接续实际 app-engine 配置 writer、成功 native publication、真实 HID report／传输及固件资格，不能把 Host 版本、默认 report 标签或挂载功能自动推广为全部 live 分支已确认。
+
+[专属静态测试](../../../tools/test_host.py)已通过：来源变化、缺完整函数、错误 sample 宽度／max 有效位／make-break 方向／树偏移、实际调用边、PE 表与虚槽、三类 Host 事件、产品词法绑定、失败或不完整双轮收据均有反例，JSON 往返与输入快照复核通过。本批未创建临时捕获或数据库，无待清理的新中间物；未修改 Rust／UI、未执行官方 JS／DLL／设备。共享订阅与设备移除的接续结论见下一节；完整映射优先级、实际 executor 和产品资格仍待取证，独立实现、UI／后端接线、实际 DLL 对照与运行时验收分别保持未验证。
+
+## 共享 Mapping 输入订阅、设备移除与回调生命周期
+
+维护入口 `audit-host-local --query mapping-input-shutdown-chain` 接续上一节的共享取消项，结果归入[现有本机链收据](../../../.analysis/results/host-current/local-audit.json)的 `mapping_input_shutdown_chain`。[collector](../../../tools/host.py)复用当前 Host 4.0.896／Mapping 1.3.17.2 的既有完整捕获，核对 80 个原生函数、9 个真实虚槽、16 个完整 Host AST、44 个指令锚点和 79 条实际引用边；本节不增加产品资格或输出 executor 范围。
+
+| 边界 | 实际行为 | 不能据此确认的行为 |
+| --- | --- | --- |
+| 全部 sample 注销 `72D30` | 清注册字节 `+400` 和 ID 表 `+352`，再排完成回调 | 不清 interval `+401`、timer `+402`、队列 `+416` 或 callback `+392/+440` |
+| interval flush `81300` | 移走整队列；有 callback 且批次非空时投递；清 timer 字节 | 不重新检查注册字节，注销后的旧批次仍可能投递 |
+| 通用 callback 清理 `786E0` | 仅重置设备事件 callback `+208` | 不重置 sample callback |
+| manager 移除完成 `57E60` | 先删除身份表项并同步析构设备，再报告成功 | 不证明已投往其他 runner／FFI／JS 的事件排空 |
+| 输入对象析构 `656CA` | 等设备线程结束后释放实际 held／sample／pending、队列与 callback | 不证明所有未来 delayed task 已执行／销毁，亦不等同设备或 OS 输出恢复 |
+
+`72580` 注册全部事件时写 mode word `1`，`72960` 注册 interval 时写 `257`，并将 `1000 * interval` 的 32 位结果放入 `+404`；已注册分支直接成功，不切换模式。单项 `73530 / 73BA0` 只维护实际 input ID 的 skip／counter／last 表项；注销单项不移除 Host URL。这里的缩放不能证明 tick 的实际单位。
+
+`80D70` 对新 sample 检查注册门及 interval callback，将自有字符串排入 `+416`；达到 10001 项立即 flush，否则由 `+402` 防止重复安排 delayed `81300`。delayed task 的 `9C870 / 627F0` 使用受检查的 unretained device 指针，没有保留 input 对象引用，也未返回显式取消句柄。单项 `9E1E2` 复制 callback 和字符串，批项 `A3F9C` 保留 callback 并移入列表；`9E1D0 → 18DB0` 调用已复制的 callback，不重查订阅。`9E2D0 / 9E2F6 / A4080` 释放捕获值，不能把注销成功当作这些事件已失效。
+
+真实移除从 `removeDevice / removeUsbDevice` 到 engine `+200 → 6630 → 6800`、manager `+8 → 57AC0`。它按实际身份请求清理相关待执行／运行任务，复制设备身份，并把 `57E60` 接到实际 cleanup `+64`。所选 BLE `53090` 先打断等待，再串行执行通用 callback、本地存储、适用的共享 hook、keyboard executor、硬件／驱动线程、DeviceData 与结束回调；具体硬件线程复用已有收据。`78DFC` 清空并释放 `+256` 的 DeviceData，`54930` 标记 cleanup state 4 后投完成回调。
+
+`57E60 → 6269E → 62708 → 6127C / 60DFA → 5F917` 先移除 manager `+352` 表项，清掉其独占 device 指针并调用真实虚槽 `+0`。BLE 的 `54000 → 52394 → 656CA` 先切回共享 InputDevice 虚表，再通过 `1B8E40` 执行 StopSoon、`QuitWhenIdle` 和线程 HANDLE 等待／关闭。此时 `65C90` 的实际 base `+72` 目标 `77C40` 是空操作 thunk，不能当作合成 break。线程结束后才释放 stick-held `+1896`、bypass-retained `+1656`、normal-notification `+1616`、pending mapping `+1512`、key sample `+1472`，以及 callback `+440/+392`、队列 `+416`、注册表 `+352`；pending／retained 节点按各自真实引用释放。manager 成功回调发生在该同步析构返回之后。
+
+当前 Host 先 await 设置 sample callback，却不检查结果就置 `bSetAnalogKeyEventCallback=true`；成功注册才加入 URL。全部注销先过滤当前 URL，最后一个 URL 才请求 native，失败不恢复列表。设备移除的相应 Host owner await native 后删除 map，未按返回的 `result` 保留失败项；USB 路径的 mutex 在 `finally` 释放，BLE 移除及内部移除函数没有自己的 mutex。
+
+重连创建的新表项含新 guid、空 URL 列表与 false callback 标志；type 6 消费者到达时按事件身份查**当前** map，允许源码中的 PID／container／可选 instance 回退，再核 URL 与 webcontents。该完整消费者不核 guid 或连接代次，旧连接迟到事件可能投给同身份且已重新订阅的新表项。`callDLL` 的 shutdown 只等待自身完成、删除该 completion 并置 `isInit=false`，没有清空设备表或所有 pending completion；这些 Promise 中也没有 timeout／取消入口。
+
+[8 项专属静态测试](../../../tools/test_host.py)通过，覆盖来源变化、缺完整 flush、错误注册／timer／callback／状态偏移、完整函数边界、实际 retain／erase／join 引用边、身份／cleanup／析构虚槽混淆和 Host URL／返回值／当前身份消费者变化；JSON 往返与输入快照复核通过。未新增临时捕获、数据库、解压或日志，保留的是后续可复核依赖的正式原件与收据。
+
+实际 runner／sequence-manager 的 delayed task 销毁与 FFI callback 所有权接续见下一节；本节原有收据仍只证明上述订阅／移除边界。实际选中 output／SnapTap 的恢复与取消，以及 PID756 writer／publication／HID／固件资格继续归原有任务。本节未修改 Rust／UI，未执行官方 JS／DLL／设备，完整链、独立实现、接线、实际对照与运行时验收仍分别未完成或未验证。
+
+## 设备延迟任务销毁与独立 FFI 回调队列
+
+维护入口 `audit-host-local --query mapping-delayed-task-lifecycle` 接续上一节的 runner 缺项，结果归入[现有本机链收据](../../../.analysis/results/host-current/local-audit.json)的 `mapping_delayed_task_lifecycle`。[collector](../../../tools/host.py)复用当前 Mapping 1.3.17.2 捕获，并核对同一 Host 4.0.896 包内 ffi-napi-rz 1.0.11 的实际 JS 与 unpacked addon；所选完整边界包括 65 个 Mapping 函数、18 个 addon 函数、13 个 PE 虚槽及 13 个源码 AST。上一节的 80 函数订阅／manager 移除收据继续作为依赖，不重复扩展其产品或输出范围。
+
+| 所有者 | 已确认边界 | 仍需区分的状态 |
+| --- | --- | --- |
+| device `+16 / +24` | `546E8` 保留构造线程当前 default runner，并另建 type 3 设备线程 | 当前 runner 与设备线程 runner 分属不同所有权 |
+| thread delegate `+64` | `1B92F0` 在 RunLoop 返回后、线程入口返回前销毁 delegate | 设备 join 不等于独立 main runner 或 JS 事件循环排空 |
+| queue handle `341FD0 +16` | `26BBA0 → 26B880` 按 queue `+82` 判断并注销；manager 失效时直接析构 queue | queue handle 引用释放与 manager 独占 queue 释放分别有路径 |
+| task queue `260FC0` | 关闭 poster、标记 shutdown，移走并销毁 incoming／work／delayed task | 未执行任务的销毁不会执行任务 body |
+| addon 跨线程 work | `A0F0` 排队并等待，`93E0` 调 JS 后 signal，等待方释放 work | work 保存原参数／closure 指针，没有复制其对象或按设备代次取消 |
+| callback／environment | buffer finalizer 释放 JS 引用与 closure；环境关闭另走 `uv_close` | finalizer 和环境队列存储析构均不证明在途 producer 已排空 |
+
+真实 runner 从 delegate `2FFC40 +8 → 1B96D0 → 2068A0` 到 controller `341160 +120 → 25B3E0`，取得锁保护的 `controller +440`。该值由 delegate 构造时从 queue handle `+56` 取出，经 manager `+96`／controller `+104 → 25B300` 保存并保留引用。queue handle 独占实际 queue `+24`；manager `+216 → 202E60 → 260760` 创建该 queue，并在 task poster `+32` 留下真实 queue 指针。
+
+runner 的实际表 `341450 +0 → 260150` 移入 callback 并持有 runner 引用；`25FC90` 获得 poster lease 后才取 queue 投递，拒绝投递时由 `267E40 → 1CBD20` 释放 callback。`25FD80` 按 delay 分流：即时任务进入 queue `+40` incoming；同线程延迟任务进入 `+192` heap；跨线程延迟任务先由 `2624B0` 的即时 wrapper 持有完整 168 字节任务，执行时 `2629C0` 移入 heap，未执行时 `266350` 释放嵌套任务。
+
+delegate 析构 `1B9650` 先减 queue handle 引用，再销毁 sequence manager。handle 注销 `26BA40 → 202FD0` 以及 manager 析构 `206960 → 202050` 都会到 `260FC0`：关闭 poster 并清 queue 指针，置 shutdown `+82`，移走 incoming 与 delayed heap，销毁两个 work queue 和保留任务。任务析构 `267F00 → 26DD10 → 1CBD20` 释放弱句柄、runner 与 bind；bind 引用归零调用 **`+16` disposer**。上一节已核 sample bind 的 disposer `627F0` 只释放捕获值，不调用 `81300` flush。直接 queue 析构的 `260C20 / 265C80 / 260DA0` 也覆盖 delayed／work／incoming 释放。因此现已确认设备线程退出会销毁尚未执行的延迟 sample 任务；没有把销毁记成执行或设备输出恢复。
+
+`1350` 在 engine `+56` 创建 type 1 `MappingEngineMainThread`；设备基类析构 `547E0` 只销毁自己的设备线程并减 `+16` 当前 runner 引用。上一节已投 main runner 的事件拥有 callback／payload，native `3E4C0 / 3E520` 只检查 engine 全局存活门。设备移除与 join 没有清空独立 main runner，也没有为 Host 的同身份重连消费者增加代次检查。
+
+同包 `ffi.js` 实际导出 `CanUseAnneCallback() = true`，当前 Host 据此创建并保留 `cbAnalogKeyEvent` buffer。`callback.js` 保留 CIF，Anne 参数直接进入用户 callback，异常走现有 error callback。addon `6D80` 记录 JS 线程 ID，建立环境队列 `+64`、计数 `+96` 和 `uv_async +104`；`94C0` 创建 trampoline `A0F0`，保留 error／callback 引用 `+56/+80`、环境 `+120` 及 Anne 标志 `+128`。同线程直接调用 `8C20`；跨线程分配 128 字节 work、排队、`uv_async_send`，并等待 `uv_cond_wait`。`93E0` 取出任务、执行 callback 后 signal；投递方随后销毁 condition／mutex 并释放 work。完整所选 owner 没有设备身份、连接代次或按设备取消门。
+
+buffer finalizer `A440 → A480 → 87D0` 删除两个 NAPI 引用并释放 closure。环境 finalizer `7250 / 7400` 则申请 `uv_close`，关闭回调 `2750` 才置全局门 `3AF20` 并释放队列存储；`7B20` 的存储清理没有证明已唤醒在途等待者。loader 还保留 native resolver、`FFI_NAPI_RZ_PREBUILD` 和 prebuild 选择；这里核实的是当前安装包候选的来源、字节与调用链，实际运行时选中项仍未验证。
+
+[9 项专属静态测试](../../../tools/test_host.py)覆盖来源变化、不完整任务捕获、runner／heap／disposer 偏移、完整析构／等待／finalizer 边界、嵌套任务与 addon 引用边、实际虚槽混淆，以及 Anne／CIF／loader／Host callback AST 变化，并复核 JSON 往返与输入快照。后续仅需接实际 engine／main runner 的完整关闭顺序及所需 NAPI／libuv 环境关闭交界；本专题不展开全部 addon 框架。新增静态捕获与临时会话的保留／清理由统一批次收据记录。本专题未改 Rust／UI，未执行官方 JS／DLL／设备；独立实现、接线、实际对照与运行时验收继续保持未完成或未验证。
 
 ## 验证与未验证范围
 

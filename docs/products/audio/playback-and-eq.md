@@ -191,7 +191,7 @@ Stereo 写入为 batch start → 每槽 band → 每槽 order metadata → batch
 
 ## 参数均衡器与效果顺序
 
-1422/1446 的参数 EQ 属于麦克风设备，不是上表十段播放 EQ。当前完整 feature 为模块 65561，1422 `5561.bee7bca633d9da9fd151.js` bytes `[549,9915)`；profile 映射为模块 23374，`3828.c5e55b0ac9b8ddaac249.js` bytes `[549,1098)`。
+1422/1446 的参数 EQ 属于麦克风设备，不是上表十段播放 EQ。1422 当前 MW 的完整 feature 为模块 65561，[5561.957083004d3d254a5d21.js](../../../.analysis/inputs/frontend/audio-mw-1422-current-refresh-ec3db4b29c5a/raw/apps.razer.com/synapse/products/1422/mw/5561.957083004d3d254a5d21.js) bytes `[549,9915)`；profile 映射为模块 23374，[3828.1535d71440a3698c6ec4.js](../../../.analysis/inputs/frontend/audio-mw-1422-current-refresh-ec3db4b29c5a/raw/apps.razer.com/synapse/products/1422/mw/3828.1535d71440a3698c6ec4.js) bytes `[549,1098)`。旧 `seiren_eq` 的 `5561.bee7.../3828.c5e...` 保留其原快照；1446 仍按自身来源分别验收。
 
 | 对象 | UI/领域含义 | 固件编码或顺序 |
 | --- | --- | --- |
@@ -207,18 +207,31 @@ Stereo 写入为 batch start → 每槽 band → 每槽 order metadata → batch
 
 源码检查单 band 的 status，但完整预设流程没有传递清 status、选 preset、band 循环及 HPF 的全部返回；vocal bass/exciter 返回失败会阻断后续阶段。HPF setter 的 `true` 也只表示 await 未抛出，getter 在失败时保留内部初值。`getEQActiveBands` 使用 status 值作为 getter 的 band 实参，而不是循环下标；不能把此方法改写成自行推测的正确读取顺序或用它证明当前页面已读到完整 EQ。
 
+1422 的当前链由统一音频收据的 `seiren_native_dsp` 单独记录，入口为 `audit-family-function --family audio --function mw --query audio-seiren-native-dsp --product 1422`。它沿实际 adapter／基类的 import/export 到 `rzDevice` HID，**EQ、HPF 与 vocal 不进入 MarieNativeDLL**；共享音量／monitor 的原生链另见[麦克风专题](microphone-and-preview.md#1422-monitor-的当前原生请求边界)。本查询复用已确认的当前 UI reducer、runner 与 HID 应答／释放 owner，只补充参数链和所选原生共享边界，共保留 92 个 AST owner、18 个既有原生函数；不是整产品完成状态。
+
+| 当前 helper | 读取命令 `[长度,class,id]` | 写入命令 | 参数／返回消费者 |
+| --- | --- | --- | --- |
+| preset | `[2,8,130]` | `[2,8,2]` | profile byte 与 preset byte；单 band／独立 vocal 修改先读取 profile 0 的实际 preset |
+| HPF | `[2,8,149]` | `[2,8,21]` | profile 1；payload 长度不足 2 抛错，只有 SUCCESS 才形成 jsonData |
+| parametric setting | `[9,8,154]` | `[9,8,26]` | 固定九字段布局；不足 9 字节抛错，频率大端、gain 符号扩展；返回保留固件 gain/Q 单位 |
+| parametric status | `[11,8,161]` | `[11,8,33]` | profile 后跟 status 列表；不足 11 字节抛错，不能借返回数量推断当前页面已读回 |
+
+setting/status setter 也解析本次实际 set response，没有附加 getter。UI gain 的范围为 -12..12、0.1 步长，源码按 `abs(10*gain%1)>1e-4` 拒绝不满足的值；Q 乘 10。HPF descriptor 要求整数 0..5；setter 不检查应答 status，getter 失败的内部初值为 `{isEnabled:true,value:3}`，该值不能当作实测。当前 `getEQActiveBands` 连 status 的 profile 实参也未提供，且 init/runtime 没有调用它；本地 profile、固件 parser 结果与页面消费者分别保留。
+
+当前命令、parser、runner 和 finally mutex 释放已有完整静态 owner；host 的 `doRzDeviceAction` 到实际原生 HID 模块、连接切换及完整取消／释放仍待闭合。`source_chain_complete=false`，独立 Rust 迁移、官方实际结果、真实设备写回和窗口验收未在本查询执行。
+
 ## Seiren 实际 EQ 页面与当前 Rust 接线
 
 本节只覆盖 1422/1446 的实际 mounted EQ 页面。两款均由 UI 模块 6007 挂载，但必须分别读取自己的主入口、产品配置、middleware 与资源，不能把同名组件当作型号兼容性证据。
 
 | PID | 实际 UI 原件 | 完整 EQ factory（UTF-8 bytes） | 产品配置中的页面预设 |
 | --- | --- | --- | --- |
-| 1422 | [684.f6b88b50.chunk.js](../../../.analysis/inputs/frontend/audio-1422-current/raw/apps.razer.com/synapse/products/1422/ui/static/js/684.f6b88b50.chunk.js) | `[55022,94170)` | [main.61ab07b9.js](../../../.analysis/inputs/frontend/audio-1422-current/raw/apps.razer.com/synapse/products/1422/ui/static/js/main.61ab07b9.js) 模块 8193，五项数组 `[209344,209396)` |
+| 1422 | [890.5af8124b.chunk.js](../../../.analysis/inputs/frontend/audio-1422-snapshot-ed4fa81d/raw/apps.razer.com/synapse/products/1422/ui/static/js/890.5af8124b.chunk.js) | `[367296,406295)` | [main.ed4fa81d.js](../../../.analysis/inputs/frontend/audio-1422-snapshot-ed4fa81d/raw/apps.razer.com/synapse/products/1422/ui/static/js/main.ed4fa81d.js) 模块 8193 的实际 `presets` 导出；当前完整挂载见 [1422](products/1422.md) |
 | 1446 | [684.9501aa81.chunk.js](../../../.analysis/inputs/frontend/audio-1446-current/raw/apps.razer.com/synapse/products/1446/ui/static/js/684.9501aa81.chunk.js) | `[67423,106618)` | [main.9f98c3ff.js](../../../.analysis/inputs/frontend/audio-1446-current/raw/apps.razer.com/synapse/products/1446/ui/static/js/main.9f98c3ff.js) 模块 8193，五项数组 `[211862,211914)` |
 
 当前页面的五个预设是 `podcast/arena/fpscallout/studio/custom`；`instrument` 只出现在上述 MW/API 映射，不能凭协议映射给页面增加第六个按钮。[Rust EQ model](../../../crates/razer-pages/src/features/audio/seiren/audio_seiren_eq_model.rs) 的 `PRESETS` 与这两个实际数组一致。各预设的选中 band、band 列表和 HPF 分别保存，不能把“切预设”简化为改变标题或共用第一组 band。
 
-已逐段核对的页面行为及当前所有者如下。这些是静态语义与接线结论，不代表设备效果已经实测一致。
+下表的 1422 细部区间及后列 CSS 顺序来自原 `684.f6b88b50` UI 快照；当前 `ed4fa81d` 已完成实际 mount、EQ factory／预设导出及底栏 meter 消费者核对，剩余细部、视觉和 Rust 差异仍须按新原件复核。1446 与 Rust 文件分别保留各自核对范围。这些静态语义与接线记录不代表设备效果已经实测一致。
 
 | 行为 | 当前官方 mounted owner | 当前 Rust 所有者与核对结果 |
 | --- | --- | --- |
@@ -242,7 +255,7 @@ Stereo 写入为 batch start → 每槽 band → 每槽 order metadata → batch
 
 ### 验证与索引边界
 
-本轮只进行了静态核验：引用的官方原件、CSS、向导资源和获取收据共 80 份身份匹配，保留的 92 个完整 module body、128 个完整 function owner 与原件字节及 body SHA-256 一致，36 份完整 JS 静态解析无错误。其中也包括 [麦克风文档](microphone-and-preview.md#1446-mic-页面与映射) 使用的两个 MW feature；这些数量不表示整个输入闭包、整个音频族或全部设备分支完成。两款 UI 获取收据仍分别有 35/47 项未决闭包，完整设备与主机源码的版本审计仍需继续。
+原有静态核验记录覆盖 80 份官方原件、CSS、向导资源和获取收据，92 个完整 module body、128 个完整 function owner 及 36 份完整 JS；它们属于原快照，不能自动代表当前版本。1422 当前 `seiren_eq_current_ui` 独立保留 155 个 AST owner，覆盖来源选择、实际挂载、meter 及录音／向导消费者，完整 capture 仍缺失；其获取收据仍有 31 项失败、37 项未决闭包。1446 原 UI 收据的 47 项闭包未决也未因此消除。完整设备与主机源码的版本审计继续分别推进。
 
 `audio-MapAudio-audit.json` 的原件身份和完整 owner 可定位上述证据；其中 `rust_implementation/connected_local_chains` 仍含已不存在的 `seiren_eq_native.rs` 和旧 ABI adapter 描述，`rust_ui_implementation` 也只是先前文件快照。这些旧 Rust 身份不能作当前接线或完成依据，必须以本节实际文件重新生成后再核验。本文未把旧报告中的“已接线”标签或 query 无失败计数当作验收结论。
 

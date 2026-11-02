@@ -8,7 +8,7 @@
 
 `setMicVolume/setHPVolume` 先写 level，再写 mute 的反值 `!isEnabled`。level 返回 `false` 仍继续 mute；抛出异常会跳出 catch。最终 `isSetLevelSuccess && isSetEnableSuccess` 才是外层结果，实际每次调用的返回仍需保留。设备身份分别是原版 `DeviceId_MarieMic` 262145、`DeviceId_MarieHP` 524289，不能换成 UI 行号。
 
-monitor 也按 level → enable 顺序。若 Stream Mixer 实际模式为 1，源码跳过 monitor 写入并返回 `true`；这不是一次 setter 应答。restore 中 monitor 有每次 restore 的 guard，NoSave mic/HP 不从 profile 重放。当前 1422 的完整函数在 MW `8539.79323eca355460a8ff0d.js`：实读 `[1694310,1695123)`，HP `[1708671,1709152)`、mic `[1709152,1709635)`、monitor `[1709635,1710249)`。
+monitor 也按 level → enable 顺序。若 Stream Mixer 实际模式为 1，源码跳过 monitor 写入并返回 `true`；这不是一次 setter 应答。restore 中 monitor 有每次 restore 的 guard，NoSave mic/HP 不从 profile 重放。旧 `seiren_eq` 的 1422 MW `8539.79323eca355460a8ff0d.js` 保留实读 `[1694310,1695123)`，HP `[1708671,1709152)`、mic `[1709152,1709635)`、monitor `[1709635,1710249)`；这些区间不代表当前 MW，当前来源与结果见下文“1422 当前 MW 请求与结果”。
 
 其他音频产品的 mic 路径须区分 `simpleService`、`rzDevice`、THX generic/v2/v3 与系统静音。1439 的 `audioBasicFeature` 明确 `isHwMicMuteOnly:true`；1465 明确为 `false`。2657 等耳塞的 basic audio 也是 hardware-mic-mute-only，不能把 OS 静音和硬件静音双写为一项通用动作。
 
@@ -20,29 +20,88 @@ monitor 也按 level → enable 顺序。若 Stream Mixer 实际模式为 1，�
 
 ## 页面实时预览
 
-1422 当前 UI `684.f6b88b50.chunk.js` 中 footer 所有者 `[349190,353043)`，实时预览 `[339375,349157)`。1446 自身 `684.9501aa81.chunk.js` 中分别为 `[361700,365553)`、`[351885,361667)`。1422 的 footer 在 EQ、Effects 和 Stream Mix 挂载；1446 还包含 MIC。两款根 render 都只排除 Lighting 和 Help，不能将 1422 的三页名单共用给 1446。只有浏览器音频准备、设备 ready、当前窗口 active 且 visibility 为 visible 时允许捕获。采样率来自产品 `supportedMicSamplingRates`（缺项时原版使用 48/96 kHz）；切换属于独立 `ON_SET_SAMPLING_RATE_VALUE`，不归混音 preset。
+1422 的当前 UI 已由统一选择器定位到 `snapshot-ed4fa81d`：`890.5af8124b.chunk.js` 中 footer 为 `[189986,193834)`，实时预览 hook 为 `[180236,189953)`，根 render 为 `[273101,275276)`；实际 mount 与来源见 [1422](products/1422.md)。1446 自身保留的 `684.9501aa81.chunk.js` 中 footer／预览分别为 `[361700,365553)`、`[351885,361667)`。1422 的 footer 在 EQ、Effects 和 Stream Mix 挂载；1446 还包含 MIC。两款根 render 都只排除 Lighting 和 Help，不能将 1422 的三页名单共用给 1446。只有浏览器音频准备、设备 ready、当前窗口 active 且 visibility 为 visible 时允许捕获。采样率来自产品 `supportedMicSamplingRates`（缺项时原版使用 48/96 kHz）；切换属于独立 `ON_SET_SAMPLING_RATE_VALUE`，不归混音 preset。
 
 实时预览不是设备 setter：它取得真实麦克风 stream，关闭 echo cancellation/noise suppression/AGC，建立 AudioContext、gain 与 analysers，再绘制波形。启动使用 generation 计数；旧 `getUserMedia` 完成后若代次不同立即 stop tracks。关闭、不可见、切设备与 unmount 增加代次，清 retry/interval/animation frame，disconnect nodes、stop tracks、close context、清 ring buffer 与历史电平。
 
-控件同时使用硬件 meter 与 PCM：有效外部百分比映射到 dB，并以本机 analyser 校准；外部数据不足时使用 analyser。图形的 6 秒历史、-3/-12/-18/-60 dB 辅助线、平滑与峰值标记属于显示，不证明 EQ/DSP 已生效。捕获失败的重试最多执行源码计数规定的分支，不能显示设备已连接或生成模拟波形。
+控件同时使用硬件 meter 与 PCM。当前 1422 从 `micReducer.levelMeter` 选择配置中的 `DeviceId_MarieMic` 条目，缺失时尝试 `DeviceId_Microphone`；取非空数组首值并夹到 `0..100`，缺条目／数组传 `undefined`。非空数组首值为 null／undefined 时原版以 0 呈现，此 UI 回退不等于设备实测值。正数且为 number 的外部百分比映射为 `percent / 100 * 60 - 60` dB，并以本机 analyser 校准；零值、缺失和无效外部值进入 analyser RMS 分支，不能标为设备已测得零。图形的 6 秒历史、-3/-12/-18/-60 dB 辅助线、平滑与峰值标记属于显示，不证明 EQ/DSP 已生效。捕获失败的重试最多执行源码计数规定的分支，不能显示设备已连接或生成模拟波形。
 
 ## 录音与回放路由
 
-1422 UI 模块 9374，`38.d64aff18.chunk.js` bytes `[51422,58031)`；1446 是自身 `287.d23d42d9.chunk.js` 的同模块 `[146833,153442)`。录音优先选真实枚举中带 `Service (Do not use)` 的 input，找不到时使用系统捕获选择；按当前 sampling rate、单声道关闭 echo/noise processing。MediaRecorder 按实际支持顺序选择 pcm/L16/wav/webm/mp4，停止后以实际 MIME 和字节形成录音，stop tracks。空录音不启用播放。
+1422 当前底栏实际导入 `9374.A`，其完整 factory 位于 `494.836bb922.chunk.js` `[152469,159073)`，连接后的录音组件为 `[152795,159072)`；当前完整调用者归 `seiren_eq_current_ui / recording_and_wizard`。1446 保留自己的 `287.d23d42d9.chunk.js` 同模块 `[146833,153442)`，不能借用 1422 的新版 owner 代替核验。
 
-播放独立查找对应 service output，建立 blob URL，发送 `{switchstate:1}`，等待 UI 消费 `MW_UPDATE_MIC_RETURN_SWITCH_TO_UI`，在可用时 `setSinkId`，再启动音频。源码还有 BroadcastChannel 和手动 reducer 通知分支，超时后继续的行为不能算硬件 return-switch 确认。真正的 return-switch 设置仍需协议应答；不能把 Redux 值当 ACK。
+开始录音优先选实际枚举中带 `Service (Do not use)` 的 input，未找到时使用系统捕获选择；采用开始时的 samplingRate、单声道并关闭 echo/noise processing。MediaRecorder 按实际支持顺序选 pcm/L16/wav/webm/mp4。停止按钮调用 `MediaRecorder.stop()`、清 recording 标志并等待 100 ms；录音字节仍由后续 `onstop → Blob → FileReader.onloadend → Uint8Array` 生成，不能把按钮等待当作字节已交付。非空录音保留实际 MIME；空 Blob 不替换已有 clip。该实际组件只有内存 clip，没有保存文件动作。
 
-停止、ended、播放异常与 unmount 都发送 `{switchstate:0}`。停止还 pause、回到时间 0、撤销 blob URL、移除 ended listener；unmount 释放捕获 tracks 与播放资源。源码部分异步等待和 monitor interval 的生命周期并不都由完整取消任务包住，应逐项记录其实际释放，不宣称存在源码未提供的取消屏障。
+播放另行枚举 service output、建立 Blob URL，并分发 `ON_MIC_RETURN_SWITCH({switchstate:1})`。当前 main 的实际 `micRecordingReducer` `[440741,442174)` **在发送 MW 请求前已乐观写入 `micReturnSwitch.switchstate=1`**。播放器只轮询该字段，最多 2 秒、间隔 50 ms，不检查 `processingSuccess`；超时仍继续。BroadcastChannel 不可用时还有 200 ms 后手工注入 reducer 值的分支。因此这些等待与字段不能称为真实硬件 ACK。可用时设置 sink，再启动 audio；1422 的当前 MW、协议及结果消费者见下文，真实设备效果仍未验证。
+
+Stop、ended、播放异常与 unmount 分发 `{switchstate:0}`。Stop pause、归零、撤销 URL 并移除 ended listener；ended 还清理自身 playback monitor。unmount 停当前 tracks、pause、撤销 URL，并不显式停止 MediaRecorder 或等待 FileReader／播放序列结束。与实时预览不同，当前录音 `getUserMedia`、FileReader 和播放等待没有代次屏障；samplingRate 更新只影响后续开始，并无据此自动停止现有录音的 effect。现有释放不能外推为所有迟到结果已取消。
 
 ## 麦克风设置向导
 
-同一 `684.f6b88b50.chunk.js` 完整向导 `[366649,383572)` 与 PCM capture `[353065,363586)`。进入时只保存一次快照：mic volume、noise gate、AI suppression、compressor、limiter、reverb、选中 EQ、vocal bass/exciter；100 ms 后应用源码测量默认值。Cancel 和关闭按钮用该快照逐项经原动作恢复，再关闭。Finish 将测量得到的 mic gain/noise gate 和用户选择的用途/距离参数提交，然后关闭；这些动作会产生真实设备/DSP 工作，不能只改向导 UI。
+1422 当前完整向导位于 `890.5af8124b.chunk.js` `[207308,224221)`，PCM capture hook 为 `[193856,204245)`。当前根的 `isMicSetupOpen` 独立条件 `[275229,275272)` 直接挂载该向导。进入时保存一次 mic volume、noise gate、AI suppression、compressor、limiter、reverb、选中 EQ、vocal bass/exciter 快照，然后延时 100 ms 提交测量默认设置；其 effect 清理只取消这个 timeout，不代表自动执行 Cancel。默认设置、用户草稿和真实设备结果分别保留。
 
-1446 的完整向导是自身 `684.9501aa81.chunk.js` `[379159,396082)`，PCM capture 为 `[365575,376096)`。1422 根 render `[432538,434713)`、1446 `[445101,447401)` 均将 `isMicSetupOpen` 向导作为根节点的独立兄弟挂载，位于 footer 条件之外。这两个范围是静态 AST 的完整 `method_definition` 边界。根还在设备未 ready 时显示 `processing-layout`；不能把遮罩、footer 是否挂载、PCM 是否已取得以及向导是否打开合并成一个 ready 状态。
+Cancel 和关闭按钮先逐项分发快照恢复，再关闭。最终按钮的实际词条是 `APPLY`：它提交已算出的 mic gain／noise gate，重放用途及距离选项动作后关闭，不等待设备应答。`RESTART` 重置向导选择并重新应用测量默认值。APPLY、恢复或窗口已关闭均不能证明设备动作成功；1422 当前 MW 的实际 setter、持久化与结果消费已按下节保留，原生依赖和实际结果对照尚未闭合。
 
-语音/环境分别最多捕获 10 秒，记录其当前测试类型后分发分析。选择设备会排除 default、stream/playback mix、service、Mic (Dry)；优先当前设备名且带 microphone 的真实输入，再用源码规定的实际枚举候选。语音分析在无有效音频或 metric 小于 -100 时不提交增益；环境录音过短仅输出源码警告。gain/noise 算法分别位于模块 9909/596，不能用固定推荐值替代采样。
+1446 的完整向导是自身 `684.9501aa81.chunk.js` `[379159,396082)`，PCM capture 为 `[365575,376096)`。1422 当前根 render `[273101,275276)`、1446 `[445101,447401)` 均将 `isMicSetupOpen` 向导作为根节点的独立兄弟挂载，位于 footer 条件之外。这两个范围是静态 AST 的完整 `method_definition` 边界。根还在设备未 ready 时显示 `processing-layout`；不能把遮罩、footer 是否挂载、PCM 是否已取得以及向导是否打开合并成一个 ready 状态。
 
-PCM capture 拥有 loading/recording/error、tracks、AudioContext、worklet、splitter、analysers、计时器及 animation frame。开始失败逐项 disconnect/stop/close；worklet blob 在 finally 撤销。停止按真实 context sample rate 合并第一通道 PCM 后调用完成消费者，再清状态；unmount 取消计时并释放节点/stream/context。不得执行厂商 JS 来“验证”该流程，本轮仅静态读其完整函数。
+语音／环境均传入 48 kHz 与 10,000 ms。首次未选设备时，getUserMedia 后再枚举输入回传调用方，选定 ID 供后续开始；过滤 default、stream/playback mix、service、Mic (Dry)，优先当前设备名及 microphone 标签的真实候选。10 秒 timeout 安装于媒体 source 建立后、worklet 就绪前，不能描述为取得首个 PCM 后才开始计时；两次开始间还有 750 ms 冷却。
+
+当前算法经实际 `5045` barrel 接到 `481.3a0b785c.chunk.js` 的 gain 模块 `9909` `[76043,77247)`、noise 模块 `596` `[990,2384)`。语音使用 50 ms 窗／25 ms hop、95百分位、-50 dB gate、目标 -10 dB 和最大 36 dB 步进；无有效 metric 或小于 -100 不提交增益。环境使用 100 ms 窗／步进、30百分位、-70 dB absolute threshold 和 5 dB floor margin，再由当前消费函数取整并限制推荐 threshold 不高于 -65 dB。短环境录音只记录源码警告。完成回调在分析函数返回后仍将 speech／environment 标志设为 true，包括函数内部捕获错误或无有效语音早退；该标志仅用于 Next 按钮，不能冒充推荐值或设备成功。
+
+PCM hook 保存 loading／recording／error、stream、AudioContext、worklet、splitter、analysers、计时与动画任务。开始失败按实际分支 disconnect／stop／close，worklet Blob URL 在 finally 撤销；停止拼接 `ch1`，使用真实 AudioContext sampleRate，仅有 block 时才通知完成。unmount 释放当前持有资源。该 hook 使用 busy 布尔值，没有在 getUserMedia／addModule 后检查请求代次；切采样率、设备或卸载的迟到完成不能借用实时预览 hook 的保护来解释。这里已保留这些实际边界，没有运行厂商 JavaScript 或浏览器捕获。
+
+## 1422 当前 MW 请求与结果
+
+当前 MW 来自 [audio-mw-1422-current-refresh-ec3db4b29c5a-2 获取收据](../../../.analysis/inputs/frontend/audio-mw-1422-current-refresh-ec3db4b29c5a-2/acquisition.json)，稳定获取时间为 2026-10-31 UTC；实际使用 `main.17d04e5b80cdddba1d28.js`、`8539.d6d44ef45211a685e499.js` 及其真实 lazy 依赖。查询 `audio-seiren-current-mw` 的结果归入 [统一音频收据](../../../.analysis/results/frontend/audio-MapAudio-audit.json) 的 `seiren_current_mw`，复用当前 UI 的六个向导动作 owner；不覆盖旧 `seiren_eq` 或当前 `seiren_eq_current_ui`。本范围保留 233 个完整 AST owner 和 20 个既有原生完整函数；MW 的完整 capture 仍缺失，111 项获取失败、116 项闭包未决分别保留。
+
+当前 `genericFeature` 实际注册 `marie_fw`、`audio_streamMixer`、`parametricEQ`；查询核对真实 lazy 目标、chunk、导出、物理 adapter 构造及父协议。下表为实际 helper 取到的三字节命令 `[长度, class, id]`，不能用 getter 入口替代 setter 证据：
+
+| 请求 | 读取 | 写入 |
+| --- | --- | --- |
+| return switch | `[2,8,162]` | `[2,8,34]` |
+| noise gate | `[9,8,155]` | `[9,8,27]` |
+| AI suppression | `[2,8,156]` | `[2,8,28]` |
+| compressor | `[9,8,157]` | `[9,8,29]` |
+| reverb | `[3,8,159]` | `[3,8,31]` |
+| audio input control | `[3,8,150]` | `[3,8,22]` |
+| parametric EQ setting | `[9,8,154]` | `[9,8,26]` |
+| parametric EQ status | `[11,8,161]` | `[11,8,33]` |
+
+return switch 是 `Storage_NoSave`，使用 firmware profile 0。实际 feature 等待 `setReturnSwitchStatus(0,t)` 后直接返回 true，不检查返回的 status／jsonData；抛出的协议错误转 false。postExecute 广播请求的 switchstate，不附加 success/error；UI 清 processing，并以缺失的 success 得到 false。当前 HID 父协议保留 report ID、transaction 1..31、checksum、mutex／navigator lock、应答 transaction/class/id/status 校验、重试及 finally 释放。底层解析、feature 布尔值、完成通知和 UI 乐观值因此仍是不同事实。
+
+mic gain 的两个 NoSave 事件调用实际 AudioMarie 的 `SetDeviceVolume(container,262145,value)`，随后调用 `SetDeviceMute(container,262145,!isEnabled)`；前一步返回 false 仍执行后一步，异常才中断。getRuntimeData 按 HP volume → HP mute → mic volume → mic mute 读取；volume/mute 通知是独立观察，不是 setter 自动读回。当前 root manifest 将 MarieNativeDLL 1.0.15.0 绑定到 SHA 前缀 `15e390ee` 的[既有原生捕获](../../../.analysis/results/native/15e390ee64e73aa7b9443feb2ec3d90629a494ce08916d0021554c6fcc31217a/capture.json)。选择的完整函数已沿 container／worker 到 endpoint COM volume/mute；mic 分支还更新 monitor routing 和 TUSBAUDIO 控制，部分下层返回值被忽略。getter 失败产生的零／false 不能当作实测；94 条未展开 direct edge 和 36 个 indirect/import 调用点仍待后续核实。
+
+DSP 以 firmware profile 1 操作 gate／AI／compressor／limiter／reverb（module 2..6）。gate 先读取 enable，启用时再读／比较参数并以 mode 1 写入；九字节参数保留 threshold 的有符号偏移、release 的大端 u16 和 decay 的有符号十分位。getter 的源码默认值不是设备观测。向导 compressor `{isEnabled:false}`、reverb `{isEnabled:false,value:0}` 是部分 payload；UI 合并本地状态但原样广播 payload，MW profile 校验可拒绝缺字段更新，而设备 disable 仍执行。
+
+profile 版本递增和 localStorage 保存先于设备执行；失败不回滚。通用 runner 保存 execute 的 false，但只要未抛错，仍执行 postExecute 并置 `status=completed`；完成通知不检查该布尔值。restore 也可在 execute 返回 false 后发布复制的 profile。Cancel 只是逐项重放普通动作，没有整组事务。当前 `eqEffectReducer` 合并所有本地 key，却仅对 `Object.keys(payload)[0]` 发硬件事件；向导同时提供 bass/exciter 时只发第一个 bass，不能把本地 exciter 变化记为已写入。
+
+所有 `marie_fw` 动作共用 `NORMAL_SKIPPABLE` 队列，新的待执行动作可跳过其他 DSP 控件的旧任务。取消在 execute 返回后、postExecute 前检查，不中止在途 HID／native 调用；settlement 释放 task ID。manager shutdown 只调用 feature 自有 shutdown，AudioMarie 的 beforeUnload 另行注销并 terminate。本节仅完成上述有界源码观察；`source_chain_complete=false`，原生端点／驱动依赖、参数 EQ 下层、实际 DLL／设备对照及 Rust 接线验收继续保持未完成。
+
+### 1422 Monitor 的当前原生请求边界
+
+`seiren_native_dsp` 在上述 MW 收据之后补查参数 EQ／HPF／vocal 的实际 HID 链及共享 monitor 请求；前者详见[参数均衡器](playback-and-eq.md#参数均衡器与效果顺序)。原生部分复用 18 个完整函数，不重做捕获：Marie 的 `0x4e3a0/0x4e430` 以及当前 Driver_PID058E 6.10.4.0 包中的 [Pro API x64 捕获](../../../.analysis/results/native/13a8ec4632963852469482e80b8e1ab63641919c7a490c568bb9dbcd3372efae/capture.json)。包及嵌套成员的实际字节由[既有提取收据](../../../.analysis/results/native-packages/b865d116e4260cc895f68dd6013dd653ce4625982dd0dd816aac2f66b1fad8ce/inspection.json)核对；没有运行安装程序或 DLL。
+
+实际 x64 调用有九个参数：handle、entity、request、selector、channel、payload 指针、长度、已传输字节数指针、timeout。Hex-Rays 给出的三参数调用遗漏了寄存器和栈实参，不能用作 ABI。mute 请求为 entity 10、request 1、selector 1、channel 0、单字节 `enabled==0`；volume 为 entity 10、request 1、selector 2，依次写 channel 1/2/3，每次同一两字节值、timeout 100。volume 即使第一／第二次返回非零仍继续后续通道，最后合并为 E_FAIL；没有部分写入回滚或自动读回。两字节值由原版 binary32／log10f 顺序形成，最终 CPU 位值与异常行为仍未实际比较，不能用理想公式或 Python double 替代。
+
+当前 API 的 Set／Get 入口分别为 `0x17e0/0x1770`，汇编把不同 direction 传入共享 `0x9eb0`，然后走 `0xa150/0xa060`。24 字节头含三个 dword 1、request byte 与零填充、`wValue=(selector<<8)|channel`、`wIndex=entity<<8`、timeout；实际 IOCTL 为 Set `0x80882081`／Get `0x80882086`。数据缓冲另传；返回的 bytesTransferred 未在 Marie setter 检查，调用返回成功不能冒充设备参数已独立读回。
+
+I/O 通过设备共享 OVERLAPPED 和 event，内部等待参数仍为 `0xffffffff`，不能把头内 100 当总等待上限。pending 分支每 1000 ms 继续等待；取消先 `CancelIo`，再等真实终态并更新结果，之后释放设备锁和外层 map 锁。event 由设备 owner 复用，不在单次请求结束时关闭。Marie 析构有关闭 device、FreeLibrary、清导出指针及释放 endpoint 的顺序；完整通知静止和所有虚调用仍未证明。
+
+Marie 从 `CLSID {D132049C-EE3B-4647-AC9E-E754FA90FD46}/InprocServer32` 定位 API，再解析导出并要求 API 5.14；当前包的 x64 原件为 API 5.15。后续 `driver_lifecycle` 已核配置、注册声明和版本兼容，关闭／通知与端点恢复的实际所有者见[当前关闭链](#1422-driver关闭与通知静止)；实际注册路径和加载模块仍未观测。EQ/HPF/vocal 的 HID 链不能据此改成官方 DLL 后端；实际 DLL／设备结果、Rust 对照及整链完成仍为未验证。
+
+### 1422 Windows endpoint 与通知消费者
+
+查询 `audio-endpoint-local-chain` 将结果保存在[统一音频收据](../../../.analysis/results/frontend/audio-MapAudio-audit.json)的 `endpoint_local_chain`。它核对当前 1422 UI／MW 获取身份，接续 `seiren_current_mw` 的端点缺项并引用 `seiren_native_dsp` 已核 monitor 契约；复用 26 个原生完整函数、21 个前端所有者和 30 处关键汇编核对，没有重新捕获或执行 DLL。本节只覆盖该版本的端点分支，完整 MW 捕获仍缺失。
+
+`AcquireWindowsAudioControls 0x500b0 → GetEndpoint 0x51b60` 按 Microphone capture → Service capture → Headphones render 顺序查找。枚举仅含 active 状态，读取真实 endpoint ID 及 `PKEY_Device_FriendlyName`，按枚举顺序选取首个同时包含 `Razer Seiren V3 Pro` 和角色名称的区分大小写子串匹配；不使用 container ID 选择端点。最多尝试 10 次，失败轮次 Sleep 1000 ms；停止重试只要求 mic／HP 指针存在，不要求 Service。Service 初始化后实际向接口 `+56` 传入 binary32 scalar `1.0`，忽略 HRESULT 并缓存 100；该 XMM1 浮点实参在伪代码中缺失，不能把 GUID 参数误作音量。
+
+`CMmEndpointVolume::Init 0x3e890` 仅在 `CO_E_NOTINITIALIZED` 后调用 CoInitialize 再试。GetDevice 成功后调用 Activate，但忽略 Activate 的 HRESULT 并返回 S_OK。wrapper 构造的 volume 100／mute 0 属于初值；注册时 GetMasterVolumeLevelScalar 成功才用 `roundf(scalar*100)` 更新 volume，GetMute 的 HRESULT 未检查。注册通知的 HRESULT 也未由 acquisition owner 检查，初始读取不自动发布设备事件。上述成功值和初值均不能代替已观测的端点状态。
+
+实际 callback 虚表将 OnNotify 指向 `0x3ec30`。它忽略本 DLL 使用的 context GUID `388da4d6-4320-4a83-a629-59089301f089`，对其他通知以截断方式计算 `int(binary32_scalar*100)`，先发布变化的 volume，再发布变化的 mute。两者代码分别为 1／2，payload 顺序为 device ID、mute、level；mic／HP 的实际 ID 为 262145／524289，mic 还调用已核 monitor 路由链。真实虚表继续接到 `0xa9a0 → 0x5d90`，构造 `deviceCamyChanged`、containerId、deviceVolume／deviceMute、deviceId、mute、level JSON，FFI callback 返回后释放该字符串。自身 setter 使用同一 GUID，且可在忽略 COM 写入结果后直接修改缓存，因此这些通知不是 setter 的自动应答或读回。
+
+AudioMarie 只接收当前 containerId 的事件。StreamMixer 的实际回调分别发布 `MW_UPDATE_MIC_TO_UI`／`MW_CHANGE_VOLUME_TO_UI`，静音事件另通过 Promise.allSettled 启停电平计及后台录音，再更新 UI；这些消费者和当前 mic／volume reducer 均保留完整所有者。监听任务按 onEvent → meter enable、offEvent → meter disable 顺序执行；terminate 先移除 host listener，再请求 DeviceTerminate，beforeUnload 不等待该请求完成。
+
+普通 `ReleaseWindowsAudioControls 0x50fc0` 只释放 mic／HP：尝试注销通知，不检查 HRESULT，随后清除本地 callback 和 owner 指针并析构。callback 清除后，析构不再重试失败的注销；Service wrapper 由 device 析构另行释放。OnNotify 在端点 mutex 内调用消费者，device callback 另在独立 mutex 下复制后于锁外调用；callback 的 AddRef／Release 均固定返回 1。这些事实不足以证明通知已经全部静止，不能据此声明所有重连／关闭竞态已闭合。后续 Host／worker 与[关闭链](#1422-driver关闭与通知静止)专题接续其静态语义；实际加载路径、真实 DLL／设备对照及 Rust／UI 接线仍分别未验证，`source_chain_complete=false`。
 
 ## 固件效果与参数区别
 
@@ -92,7 +151,7 @@ CSS 加载顺序见 [EQ 页面](playback-and-eq.md#seiren-实际-eq-页面与当
 
 每个 PID 均使用自身实际目录的 14 个向导/录音资源：五个用途、三个环境、两个距离 AVIF，以及测量录音、录音、播放、停止 SVG。本轮对这 28 份原件的长度和 SHA-256 已与收据核对；共享 runtime key 不等于可借用另一型号图片，也不证明安装缓存中的转换像素或运行时加载已验收。
 
-音频输入、语音/环境样本和录音内容均为本机能力；不需要账户、云目录或网络。官方原件与完整调用者可由 `audio-MapAudio-audit.json` 的 `seiren_eq.products[].complete_function_owners/complete_modules` 定位；其中旧 Rust 身份与 footer 范围说明仍需刷新，不能覆盖本次直接读取的 1446 MIC 证据，详见 [索引边界](playback-and-eq.md#验证与索引边界)。
+音频输入、语音／环境样本和录音内容均为本机能力。1422 当前 mount、底栏、电平、录音／向导、分析参数及完整 callback 属于 `audio-MapAudio-audit.json / seiren_eq_current_ui`；原 `seiren_eq.products[].complete_function_owners/complete_modules` 保留其旧 UI、MW 和 Rust 快照。两层来源及验收分别判断，不能覆盖直接读取的 1446 MIC 证据，详见 [索引边界](playback-and-eq.md#验证与索引边界)。
 
 源码获取、逆向语义、独立实现、UI/服务接线、静态/模拟验证与实际 DLL/设备对照分别记录。本轮仅静态读取与字节/语法核验，没有执行厂商 JS、应用、官方 DLL 或设备。尚需对每款实际 DLL 分别完成 HP/mic 读取顺序、meter/volume/mute 通知、sampling/mode 重配、return switch、所有 DSP 设置、失败、取消、恢复及释放的功能结果比对；PCM/系统音频行为还需当前设备与端点实测。没有设备时纯逻辑、模拟传输与有来源回放可先验证，但这些实际对照仍保持未验证，不能用模拟一致或双方均未连接结案。
 
@@ -422,3 +481,35 @@ setter 导出 `0x17dc0` 经 `0x57f0 → 0x59e0 → 0x32dfa`，保留 mute bool �
 实际写入 `0x37b34` 先比较 volume，变更时经接口 `+56` 写 scalar，成功后才更新 byte `+100`；再比较 mute，变更时经 `+112` 写 mute，成功才更新 byte `+101`。浮点实参由完整汇编的 `cvtsi2ss/divss XMM1` 传入，Hex-Rays 的整数函数签名遗漏了该实参，不能直接拿伪代码生成 ABI。前一步成功、后一步失败会保留已完成的音量变化，未见整组回滚或自动读回；两字段不变时本层可直接返回成功而不发写入。
 
 关闭沿 `0x38fde` 清设备表、释放监听器并失效弱引用；设备析构 `0x36fea` 再清两种监听持有者、线程引用、字符串和音量接口。间接的 CFG 跳转仍须与实际虚表消费者共同核对，不能把释放语句存在等同于已确认所有在途通知静止。此链的 OS 音量行为与厂商设备固件写回分别验收，不应将系统 endpoint 成功当作另一条 HID／DSP 链通过。
+
+## 1422 端点通知注册、异步执行与释放边界
+
+当前 PID1422 的通知链沿用 [统一音频收据](../../../.analysis/results/frontend/audio-MapAudio-audit.json) 的 `endpoint_notification_chain`。本批复用了 Host 4.0.896、MarieNativeDLL 1.0.15.0、ffi-napi-rz 1.0.11 及两轮 MW 部署复核；没有重新获取整套前端、DSP 或其他产品捕获。MW owner 的两轮部署均返回 HTTP 200，字节 SHA-256 为 `fc7ad62d2db2f6adc447b0129d8e6ea62012b9d5d80381d5f0103234f2b1c48c`，但完整依赖闭包仍单独保持未闭合。
+
+包装器初始化顺序是 `ConfigureFFI → isInit=true → GetDLLVersion → SetNodeFFIEvent → DeviceInitialize`。`DeviceInitialize` 的 false 不会清除 `isInit`；`DeviceTerminate` 先移除 Host listener，再把按 container ID 的移除任务放入 Marie worker，导出返回不等待设备节点真正摘链。`beforeunload` 直接调用 terminate，未等待该 Promise。重复初始化在已有节点仍可直接返回成功，未观察到连接代次，因此旧移除任务与同 container 的新初始化不能当作严格的 stale-generation 屏障。
+
+Host 按 channel 保留唯一 callback buffer。已有 callback 时只更新 URL 列表并返回成功；首次注册即使 native `SetNodeFFIEvent` 返回 false 仍缓存 callback。投递时 callback 从当前 channel map 取库，解析借用 JSON 字符串，再向仍存活、未崩溃且 URL 在当前列表中的窗口发送。MW `handleEvent` 只检查 `containerId`，没有额外 generation。`FreeFFI` 是空动作，不能把返回成功解释为 callback 停止或 map 清理。
+
+Marie worker 在同一 mutex 下取任务、移出队列后解锁执行，再释放任务对象；优先级为 +208、+288、+248，当前初始化与终止都走 +248。初始化任务可等待 future 最多 30 秒，但超时不取消底层任务；终止只排入移除任务。worker 停止时设置 running=false、唤醒并 join，剩余队列对象直接销毁，不会自然执行所有 pending 任务。
+
+设备移除按大小写不敏感的 container ID 摘除全部匹配节点，最后一个 strong reference 释放才进入设备析构。meter 线程析构等待 1000 ms，超时仍关闭线程句柄并继续清理。设备回调在独立 mutex 中复制到局部后锁外执行；清空 callback 槽位不能撤销已经复制的回调，复制的是原始 `CCamyDevice` 指针。端点通知自身 GUID 被忽略，volume 先于 mute 分发；callback 的 AddRef/Release 返回常量 1，注销 HRESULT 被忽略，未形成完整的 in-flight barrier。JSON 只在同步 FFI callback 返回前有效。
+
+因此本批确认了“注册、转发、入队、执行、复制、清理”各边界的静态语义，但没有把 listener 移除、native 任务完成、设备析构、Host buffer、NAPI/libuv callback 和窗口事件发送合并成一个已排空状态。其他产品／固件／传输分支、独立 Rust/UI 接线、官方 DLL／设备结果对照和运行时验收仍为 Unverified。
+
+### 1422 Driver关闭与通知静止
+
+查询 `audio-driver-close-quiescence` 的结果归入[统一音频收据](../../../.analysis/results/frontend/audio-MapAudio-audit.json)的 `driver_close_quiescence`。本节只补 PID1422 当前 MW → endpoint 变更监听 → 延迟重取 → 析构链，新增 19 个完整 Marie 函数；上游三个专题的 55 个唯一 Marie、21 个 driver、4 个 addon 函数复用原收据并重新核对实际 PE 字节，不重复捕获或扩展 DSP。新链保留 24 个完整语义边界、13 条实际调用边、12 处指令核对与 4 张真实表；这些是静态证据计数。
+
+驱动配置仍以当前 Driver_PID058E 6.10.4.0 包的 custom.ini／安装声明为准：注册 CLSID 指向实际注册模块路径，API 5.15 接受 Marie 的 5.14 请求。实际机器注册表、已加载模块、安装和 DLL 执行均未观测，本节没有运行安装程序。原件及版本由[Marie 捕获](../../../.analysis/results/native/15e390ee64e73aa7b9443feb2ec3d90629a494ce08916d0021554c6fcc31217a/capture.json)和[Pro API 捕获](../../../.analysis/results/native/13a8ec4632963852469482e80b8e1ab63641919c7a490c568bb9dbcd3372efae/capture.json)分别维护。
+
+| 实际链 | 本批确认的边界 |
+| --- | --- |
+| listener 注册与调用 | device 的 enumerator 位于 `+680`，`IMMNotificationClient` 子对象位于 `+688`；初始化实际调 enumerator 槽 `+48`，忽略 HRESULT，先置注册标志再安装 callable。原表 `0x6eed8` 把 state／added／removed 分别接到 `0x57230/0x571d0/0x57170`，传代码 3／1／2 和借用的 endpoint-ID 指针，长度为 8；不转发新 state，不按 endpoint／container／连接代次筛选。default／property 两槽直接返回 0，AddRef／Release 仍为常量 1 |
+| 延迟通知 | `0x53250` 只记录事件代码，并把含原始 device 指针的 lambda 存入同一 timer，`0x5a0c0` 每次重设相对时间 `-30000000`，即 3 秒。FireTimer `0x5a160` → timer 槽 `+8` → callable 槽 `+16` → `0x533a0` → 重取端点；复制 lambda 没有新增共享 device 所有权或代次检查 |
+| 端点重取 | [Reacquire `0x51850`](../../../.analysis/results/native/15e390ee64e73aa7b9443feb2ec3d90629a494ce08916d0021554c6fcc31217a/functions/51850.json) 在 mic／HP wrapper 均存在时只发重配完成信号并返回；缺失时先等重配握手最多 10 秒，超时仍置标志并广播，再 Sleep 1000 ms、获取端点、按 mic → HP 重放字典中的 volume／mute。重放前没有独立的新鲜读取，也未检查这四个 setter 结果，不能把返回 0 记为设备恢复确认 |
+
+完整析构顺序是 meter 停止标志／唤醒、最多等 1000 ms 后继续 → 禁用 meter 并清 device callback → 摘除并析构 timer → 释放 mic／HP 通知 → 禁用／detach mixer 并关闭 API device → FreeLibrary 与清导出表 → 清 endpoint-change callable → 注销变更 listener、Release enumerator → 释放 Service wrapper 和其余容器。API close 继续复用已核的句柄／槽位检查和设备析构链；其存在不证明所有其他 driver 通知已经退出。
+
+两个实际顺序限制须保留：[timer 析构 `0x57290`](../../../.analysis/results/native/15e390ee64e73aa7b9443feb2ec3d90629a494ce08916d0021554c6fcc31217a/functions/57290.json) **先销毁／清空 callable**，随后才停 timer、`WaitForThreadpoolTimerCallbacks(cancel_pending=true)` 和 Close；该等待只针对原生 timer 回调，不排空 Host／FFI／JS 队列。[listener 析构 `0x57340`](../../../.analysis/results/native/15e390ee64e73aa7b9443feb2ec3d90629a494ce08916d0021554c6fcc31217a/functions/57340.json) 位于 API 卸载之后，真实汇编把 `device+688` 传给槽 `+56`，忽略注销 HRESULT 后清注册标志，再 Release enumerator。不能凭等待或注销调用存在便宣称已形成安全的全会话静止屏障。
+
+此前 DeviceTerminate 只入队、初始化 30 秒超时不取消任务、相同 container 可复用待移除对象、meter 超时继续析构、已复制 raw callback 仍可调用、Host 保留 callback map 且没有 generation 的事实均保持原样。`AudioDriverCloseQuiescenceTests` 的 12 项测试覆盖表／参数、原指令、超时、调用与析构顺序反例、当前来源和快照；它们不代替并发 OS 回调或官方 DLL 的实际功能结果。完整 MW 获取闭包、其他 driver 通知／产品分支、独立 Rust／UI 接线和实际 DLL／设备对照仍未完成；本批没有创建临时副本或分析会话。

@@ -359,9 +359,180 @@ class IncrementalCaptureTests(unittest.TestCase):
     def test_input_root_rejects_missing_and_unretained_inputs(self):
         outside = self.root / "unretained.js"
         self.write(outside, b"outside()")
-        for inputs in ([], [outside], [self.input / "raw/missing.js"]):
+        host_source = self.root / ".analysis/inputs/host-current/main.js"
+        self.write(host_source, b"hostOnly()")
+        for inputs in ([], [outside], [self.input / "raw/missing.js"], [host_source]):
             with self.subTest(inputs=inputs), self.assertRaisesRegex(ValueError, "missing or outside"):
                 frontend.input_root(self.input, inputs)
+
+    def test_input_root_accepts_verified_revalidation_blob_without_copying_it(self):
+        raw = b"currentManifest()"
+        blob = self.root / ".analysis/inputs/frontend-revalidation/blobs" / hashlib.sha256(raw).hexdigest()
+        self.write(blob, raw)
+        self.assertEqual(frontend.input_root(self.input, [self.source, blob]), self.root / ".analysis/inputs")
+        self.assertEqual(frontend.input_root(self.input, [blob]), blob.parent)
+        self.assertEqual(blob.read_bytes(), raw)
+
+    def test_input_root_rejects_changed_or_unowned_revalidation_blob(self):
+        raw = b"currentManifest()"
+        root = self.root / ".analysis/inputs/frontend-revalidation/blobs"
+        blob = root / hashlib.sha256(raw).hexdigest()
+        self.write(blob, raw + b"changed()")
+        with self.assertRaisesRegex(ValueError, "differs from its blob identity"):
+            frontend.input_root(self.input, [self.source, blob])
+        for outside in (root / "manifest.js", root / "nested" / hashlib.sha256(raw).hexdigest()):
+            self.write(outside, raw)
+            with self.subTest(path=outside), self.assertRaisesRegex(ValueError, "missing or outside"):
+                frontend.input_root(self.input, [outside])
+
+
+class CaptureCommandTests(unittest.TestCase):
+    def test_validate_uses_repeated_exact_acquired_javascript_inputs_in_unpack_cwd(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+
+            def write(name, raw):
+                path = root / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(raw)
+                return {"path": name, "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()}
+
+            blob_raw = b"export const current=1;"
+            scripts = [
+                {**write(".analysis/inputs/frontend/shared/raw/site/runtime.js", b"source();"),
+                 "url": "https://apps.razer.com/synapse/shared/runtime.js"},
+                {**write(".analysis/inputs/frontend-revalidation/blobs/" + hashlib.sha256(blob_raw).hexdigest(), blob_raw),
+                 "url": "https://apps.razer.com/synapse/shared/current.mjs?version=2"},
+            ]
+            css = {**write(".analysis/inputs/frontend/shared/raw/site/styles.css", b"body{}"),
+                   "url": "https://apps.razer.com/synapse/shared/styles.css"}
+            write(".analysis/inputs/frontend/unrelated/raw/extra.js", b"unrelated();")
+            write(".analysis/inputs/frontend/synthetic/acquisition.json",
+                  json.dumps({"files": [*scripts, css]}).encode())
+            tool = root / write("tools/wakaru.exe", b"static analyzer fixture")["path"]
+
+            def analyzer(argv, **kwargs):
+                if "--unpack" in argv:
+                    Path(argv[argv.index("-o") + 1]).mkdir(parents=True)
+                return SimpleNamespace(returncode=0)
+
+            with patch.object(analysis, "ROOT", root), patch.object(analysis, "wakaru", return_value=tool), \
+                    patch.object(analysis.subprocess, "run", side_effect=analyzer) as run, \
+                    patch.object(frontend, "recover_frontend", return_value=[{"status": "reused"}]) as recover:
+                analysis.analyze_frontend(SimpleNamespace(input=".analysis/inputs/frontend/synthetic", workers=2),
+                                          refresh_ledger=False)
+            self.assertEqual(run.call_count, 2)
+            unpack, validate = run.call_args_list
+            common_root = root / ".analysis/inputs"
+            self.assertEqual(unpack.kwargs["cwd"], common_root)
+            self.assertEqual(validate.kwargs["cwd"], unpack.kwargs["cwd"])
+            argv = validate.args[0]
+            self.assertEqual(argv[1:3], ["debug", "validate"])
+            inputs = [argv[index + 1] for index, value in enumerate(argv) if value == "--input"]
+            expected = [os.path.relpath(root / source["path"], common_root) for source in scripts]
+            self.assertEqual(inputs, expected)
+            self.assertEqual(unpack.args[0][1:unpack.args[0].index("--unpack")], expected)
+            self.assertEqual([(validate.kwargs["cwd"] / value).resolve() for value in inputs],
+                             [root / source["path"] for source in scripts])
+            self.assertTrue(all((validate.kwargs["cwd"] / value).is_file() for value in inputs))
+            recover.assert_called_once()
+
+
+class CaptureOriginalTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name).resolve() / "workspace"
+        self.root.mkdir()
+        change = patch.object(analysis, "ROOT", self.root)
+        change.start()
+        self.addCleanup(change.stop)
+        self.input = self.root / ".analysis/inputs/frontend/synthetic"
+
+    def original(self, name, raw=b"source()"):
+        path = self.root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(raw)
+        return {"path": name, "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()}
+
+    def capture(self, originals, recorded, *, cwd=".analysis/inputs", stage="unpack", exit_code=0,
+                argv=None):
+        return {"original_inputs": originals, "commands": [{"stage": stage, "exit_code": exit_code,
+            "cwd": cwd, "argv": argv if argv is not None else ["wakaru.exe", recorded, "--unpack"]}]}
+
+    def test_actual_unpack_cwd_links_cross_deployment_and_extensionless_originals(self):
+        raw = b"currentManifest()"
+        originals = [
+            self.original(".analysis/inputs/frontend/shared/raw/site/runtime.js"),
+            self.original(".analysis/inputs/frontend-revalidation/blobs/" + hashlib.sha256(raw).hexdigest(), raw),
+        ]
+        for source in originals:
+            recorded = source["path"].removeprefix(".analysis/inputs/").replace("/", "\\")
+            with self.subTest(source=source["path"]):
+                captured = self.capture(originals, recorded)
+                self.assertEqual(frontend.capture_original(captured, self.input, recorded), source)
+        self.assertFalse((self.input / "raw").exists())
+
+    def test_legacy_raw_relative_owner_and_duplicate_resolution_are_accepted(self):
+        source = self.original(".analysis/inputs/frontend/synthetic/raw/site/runtime.js")
+        captured = self.capture([source], "site/runtime.js", cwd=".analysis/inputs/frontend/synthetic/raw")
+        for commands in ([], captured["commands"]):
+            with self.subTest(commands=commands):
+                self.assertEqual(frontend.capture_original(
+                    {**captured, "commands": commands}, self.input, "site/runtime.js"), source)
+
+    def test_command_owner_requires_successful_unpack_and_exact_argument(self):
+        source = self.original(".analysis/inputs/frontend/shared/raw/site/runtime.js")
+        recorded = source["path"].removeprefix(".analysis/inputs/")
+        examples = [
+            {"stage": "validate"},
+            {"exit_code": 1},
+            {"argv": ["wakaru.exe", "runtime.js", "--unpack"]},
+        ]
+        for options in examples:
+            with self.subTest(options=options), self.assertRaises(ValueError):
+                frontend.capture_original(self.capture([source], recorded, **options), self.input, recorded)
+
+    def test_undeclared_owner_cannot_borrow_identical_original_with_same_basename(self):
+        self.original(".analysis/inputs/frontend/synthetic/raw/site/runtime.js")
+        other = self.original(".analysis/inputs/frontend/shared/raw/site/runtime.js")
+        with self.assertRaises(ValueError):
+            frontend.capture_original({"original_inputs": [other], "commands": []}, self.input, "site/runtime.js")
+
+    def test_distinct_declared_owners_under_raw_and_unpack_cwd_are_ambiguous(self):
+        originals = [self.original(".analysis/inputs/frontend/synthetic/raw/site/runtime.js"),
+                     self.original(".analysis/inputs/frontend/shared/raw/site/runtime.js")]
+        captured = self.capture(originals, "site/runtime.js", cwd=".analysis/inputs/frontend/shared/raw")
+        with self.assertRaisesRegex(ValueError, "ambiguous"):
+            frontend.capture_original(captured, self.input, "site/runtime.js")
+
+    def test_absolute_drive_and_unc_owner_paths_are_rejected(self):
+        source = self.original(".analysis/inputs/frontend/synthetic/raw/site/runtime.js")
+        paths = [str(self.root / source["path"]), "C:/runtime.js", "C:runtime.js", r"\\server\share\runtime.js"]
+        for recorded in paths:
+            with self.subTest(recorded=recorded), self.assertRaises(ValueError):
+                frontend.capture_original(self.capture([source], recorded), self.input, recorded)
+
+    def test_declared_owner_outside_retained_frontend_boundary_is_rejected(self):
+        for name in ("unretained.js", ".analysis/inputs/host-current/main.js"):
+            source = self.original(name)
+            recorded = os.path.relpath(self.root / name, self.input / "raw")
+            with self.subTest(name=name), self.assertRaisesRegex(ValueError, "missing or outside"):
+                frontend.capture_original({"original_inputs": [source], "commands": []}, self.input, recorded)
+
+    def test_unpack_cwd_cannot_escape_workspace_even_when_argument_returns_to_declared_source(self):
+        source = self.original(".analysis/inputs/frontend/shared/raw/site/runtime.js")
+        recorded = "workspace/" + source["path"]
+        captured = self.capture([source], recorded, cwd="..")
+        with self.assertRaisesRegex(ValueError, "working directory"):
+            frontend.capture_original(captured, self.input, recorded)
+
+    def test_blob_filename_must_match_actual_bytes_even_with_matching_receipt_identity(self):
+        name = ".analysis/inputs/frontend-revalidation/blobs/" + hashlib.sha256(b"original()").hexdigest()
+        source = self.original(name, b"changed()")
+        recorded = name.removeprefix(".analysis/inputs/")
+        with self.assertRaisesRegex(ValueError, "blob identity"):
+            frontend.capture_original(self.capture([source], recorded), self.input, recorded)
 
 
 class InlineEntrypointTests(unittest.TestCase):

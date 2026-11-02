@@ -15,6 +15,1690 @@ import host
 from test_host import pe_fixture
 
 
+class SourceCaptureModuleTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name).resolve()
+        change = patch.object(analysis, "ROOT", self.root)
+        change.start()
+        self.addCleanup(change.stop)
+
+    def write(self, name, raw):
+        path = self.root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(raw)
+        return {"path": name, "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()}
+
+    def fixture(self, *, host_capture=False, legacy_raw=False, ranges=((0, 9),)):
+        if host_capture:
+            source_name = ".analysis/inputs/host-current/asar/main.js"
+            recorded, cwd = source_name, "."
+            schema = {"application_js_inputs": 1, "integration_dependency_js_inputs": 0,
+                      "target_execution": False}
+        else:
+            source_name = (".analysis/inputs/frontend/" + ("synthetic" if legacy_raw else "shared")
+                           + "/raw/site/runtime.js")
+            recorded = "site/runtime.js" if legacy_raw else source_name.removeprefix(".analysis/inputs/")
+            cwd = ".analysis/inputs/frontend/synthetic/raw" if legacy_raw else ".analysis/inputs"
+            schema = {"input": ".analysis/inputs/frontend/synthetic"}
+        source = self.write(source_name, b"source();")
+        output = self.write(".analysis/results/frontend/synthetic/modules/module.js", b"source();\n")
+        provenance = self.write(".analysis/results/frontend/synthetic/modules/provenance.json",
+            json.dumps({"modules": {"module.js": {"input": recorded.replace("/", "\\"),
+                "ranges": ranges, "extraction": "structural"}}}).encode())
+        commands = [] if legacy_raw else [{"stage": "unpack", "exit_code": 0, "cwd": cwd,
+            "argv": ["wakaru.exe", recorded.replace("/", "\\"), "--unpack"]}]
+        return {**schema, "original_inputs": [source], "outputs": [output, provenance],
+                "commands": commands}, source
+
+    def test_frontend_cross_directory_original_preserves_recorded_unpack_resolution(self):
+        captured, source = self.fixture()
+        modules = families.source_capture_modules(captured, source)
+        self.assertEqual(len(modules), 1)
+        module = modules[0]
+        self.assertEqual(module["original"], source)
+        self.assertEqual(module["original_ranges"], [[0, 9]])
+        self.assertEqual(module["output"], captured["outputs"][0])
+        self.assertEqual(module["provenance"], captured["outputs"][1])
+        self.assertEqual(module["input_resolution"], {"cwd": ".analysis/inputs",
+            "argument": "frontend/shared/raw/site/runtime.js"})
+
+    def test_legacy_raw_owner_keeps_absent_unpack_resolution(self):
+        captured, source = self.fixture(legacy_raw=True)
+        module, = families.source_capture_modules(captured, source)
+        self.assertEqual(module["original"], source)
+        self.assertIsNone(module["input_resolution"])
+
+    def test_original_and_output_must_be_declared_in_the_capture(self):
+        for field in ("original_inputs", "outputs"):
+            captured, source = self.fixture()
+            captured[field] = [] if field == "original_inputs" else captured[field][1:]
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                families.source_capture_modules(captured, source)
+
+    def test_changed_output_bytes_are_rejected_without_changing_size(self):
+        captured, source = self.fixture()
+        path = self.root / captured["outputs"][0]["path"]
+        path.write_bytes(b"change();\n")
+        with self.assertRaisesRegex(ValueError, "output differs"):
+            families.source_capture_modules(captured, source)
+
+    def test_original_ranges_are_nonempty_integer_spans_inside_the_declared_original(self):
+        invalid = (None, [], [[0]], [[0, 0]], [[-1, 9]], [[0, 10]], [[0, 9.0]], [[False, 9]])
+        for host_capture in (False, True):
+            for ranges in invalid:
+                captured, source = self.fixture(host_capture=host_capture, ranges=ranges)
+                with self.subTest(host_capture=host_capture, ranges=ranges), self.assertRaises(ValueError):
+                    families.source_capture_modules(captured, source)
+
+    def test_host_asar_schema_and_both_existing_unpack_path_forms_still_link(self):
+        for relative_to_asar in (False, True):
+            captured, source = self.fixture(host_capture=True)
+            if relative_to_asar:
+                provenance_path = self.root / captured["outputs"][1]["path"]
+                provenance = json.loads(provenance_path.read_bytes())
+                provenance["modules"]["module.js"]["input"] = "main.js"
+                captured["outputs"][1] = self.write(captured["outputs"][1]["path"],
+                    json.dumps(provenance).encode())
+                captured["commands"][0].update(cwd=".analysis/inputs/host-current/asar",
+                    argv=["wakaru.exe", "main.js", "--unpack"])
+            with self.subTest(relative_to_asar=relative_to_asar):
+                module, = families.source_capture_modules(captured, source)
+                self.assertEqual(module["original"], source)
+                self.assertEqual(module["original_ranges"], [[0, 9]])
+                self.assertEqual(module["input_resolution"], {
+                    "cwd": ".analysis/inputs/host-current/asar" if relative_to_asar else ".",
+                    "argument": "main.js" if relative_to_asar else source["path"]})
+
+
+class AudioSeirenCurrentUiTests(unittest.TestCase):
+    def test_current_ui_review_is_reachable_through_the_maintained_dispatch(self):
+        import argparse
+        parser = argparse.ArgumentParser()
+        families.add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["audit-family-function", "--family", "audio", "--function", "ui",
+                                  "--query", "audio-seiren-eq", "--product", "1422"])
+        with patch.object(families, "audit_audio_seiren_current_ui") as current:
+            families.audit_family_function(args)
+        current.assert_called_once_with(args)
+
+    @classmethod
+    def setUpClass(cls):
+        import frontend
+        root = analysis.ROOT / ".analysis/inputs/frontend"
+        if not (root / "audio-1422-current/acquisition.json").is_file():
+            raise unittest.SkipTest("Retained Seiren UI inputs are unavailable")
+        audit = host.HostLocalAudit()
+        selected = frontend.current_source_selection("https://apps.razer.com/synapse/products/1422/ui/", audit,
+            candidates=[root / "audio-1422-current/acquisition.json", *sorted(root.glob("audio-1422-snapshot-*/acquisition.json"))])
+        cls.selection = selected
+        cls.original_bytes = [(Path(item["path"]).name, audit.read(item)) for item in selected["originals"]
+                              if item["path"].endswith(".js")]
+
+    def analyze(self, transform=lambda name, raw: raw):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name).resolve()
+        patched = patch.object(analysis, "ROOT", root)
+        patched.start()
+        self.addCleanup(patched.stop)
+        audit = host.HostLocalAudit()
+        originals = []
+        for name, original in self.original_bytes:
+            raw = transform(name, original)
+            path = root / ".analysis/inputs/frontend/seiren-fixture" / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(raw)
+            originals.append({"path": path.relative_to(root).as_posix(), "bytes": len(raw),
+                              "sha256": hashlib.sha256(raw).hexdigest()})
+        return audit, families.audio_seiren_current_ui_chain(audit, originals)
+
+    def test_current_mount_pages_meter_and_cleanup_owners_are_complete_original_slices(self):
+        audit, result = self.analyze()
+        self.assertEqual([page["name"] for page in result["pages"]],
+                         ["TAB_EQ", "TAB_EFFECTS", "STREAM_MIXER_HEADER", "TAB_LIGHTING", "HELP"])
+        self.assertEqual(result["footer_excluded_pages"], ["TAB_LIGHTING", "HELP"])
+        self.assertEqual(result["microphone_device_enum"], "DeviceId_MarieMic")
+        self.assertEqual(result["supported_sampling_rates"], [48000, 96000])
+        self.assertFalse(result["whole_product_complete"])
+        self.assertEqual(result["official_dll_comparison"], "not_executed")
+        for owner in audit.owners.values():
+            raw = audit.read(owner["original"])[owner["byte_start"]:owner["byte_end"]]
+            self.assertEqual(raw.decode(), owner["body"])
+            self.assertEqual(hashlib.sha256(raw).hexdigest(), owner["body_sha256"])
+        waveform = audit.owners[result["roles"]["waveform"]]["body"]
+        self.assertIn("getTracks().forEach", waveform)
+        self.assertIn("cancelAnimationFrame", waveform)
+        self.assertEqual(audit.final_snapshot(), [])
+
+    def test_minified_component_alias_changes_keep_the_actual_lexical_consumers(self):
+        import re
+        def aliases(name, raw):
+            for old, new in ((b"Un", b"CurrentFooter"), (b"Pn", b"CurrentWaveform"), (b"Fa", b"ReadyProduct")):
+                raw = re.sub(rb"\b" + old + rb"\b", new, raw)
+            return raw
+        audit, result = self.analyze(aliases)
+        self.assertIn("CurrentFooter=", audit.owners[result["roles"]["footer"]]["body"])
+        self.assertIn("CurrentWaveform=", audit.owners[result["roles"]["waveform"]]["body"])
+
+    def test_unmounted_ready_product_cannot_borrow_a_declared_export(self):
+        with self.assertRaisesRegex(ValueError, "no statically resolved mounted JSX"):
+            self.analyze(lambda name, raw: raw.replace(b"a.bind(a,2975)", b"a.bind(a,2976)"))
+
+    def test_unrequested_product_chunk_cannot_prove_a_lazy_mount(self):
+        with self.assertRaisesRegex(ValueError, "does not request its target"):
+            self.analyze(lambda name, raw: raw.replace(b"a.e(890)", b"a.e(891)"))
+
+    def test_missing_eq_factory_is_not_satisfied_by_another_page(self):
+        with self.assertRaisesRegex(ValueError, "factory 6008 is absent"):
+            self.analyze(lambda name, raw: raw.replace(b"Promise.resolve().then(s.bind(s,6007))",
+                                                     b"Promise.resolve().then(s.bind(s,6008))"))
+
+    def test_a_different_reducer_does_not_prove_the_microphone_meter_consumer(self):
+        with self.assertRaisesRegex(ValueError, "footer meter selector"):
+            self.analyze(lambda name, raw: raw.replace(b"levelMeter:e.micReducer.levelMeter",
+                                                     b"levelMeter:e.headphoneReducer.levelMeter"))
+
+    def test_missing_meter_cannot_be_claimed_as_observed_zero(self):
+        with self.assertRaisesRegex(ValueError, "distinguishes absent and observed"):
+            self.analyze(lambda name, raw: raw.replace(b":void 0,V=F", b":0,V=F"))
+
+    def test_changed_footer_visibility_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "page exclusion changed"):
+            self.analyze(lambda name, raw: raw.replace(b"this.state.active_view!==M._$r",
+                                                     b"this.state.active_view===M._$r"))
+
+    def test_recorder_wizard_callbacks_keep_ui_results_separate_from_device_confirmation(self):
+        audit, result = self.analyze()
+        reviewed = result["recording_and_wizard"]
+        self.assertTrue(reviewed["bounded_recording_and_wizard_ui_complete"])
+        self.assertEqual(reviewed["file_save_action"], "absent_in_mounted_component")
+        self.assertEqual(reviewed["device_write_completion"], "not_established_by_ui")
+        self.assertEqual(reviewed["return_switch_action"], "ON_MIC_RETURN_SWITCH")
+        self.assertEqual(reviewed["measurement_analyses"]["analyzeMicGain"]["module_id"], 9909)
+        self.assertEqual(reviewed["measurement_analyses"]["analyzeNoiseGate"]["module_id"], 596)
+        for role in ("record_start", "record_onstop", "record_onloadend", "record_unmount", "recording_reducer", "play_start",
+                     "play_stop", "wizard_snapshot", "wizard_restore", "wizard_apply", "measurement_start",
+                     "measurement_stop", "measurement_unmount", "measurement_worklet"):
+            self.assertIn(reviewed["roles"][role], audit.owners)
+        self.assertIn("no generation guard", reviewed["semantics"]["recording_late_results"])
+
+    def test_wizard_must_be_mounted_by_its_actual_root_condition(self):
+        with self.assertRaisesRegex(ValueError, "root wizard condition"):
+            self.analyze(lambda name, raw: raw.replace(b"this.props.isMicSetupOpen&&(0,E.jsx)(ha,{})",
+                                                     b"this.props.otherPopupOpen&&(0,E.jsx)(ha,{})"))
+
+    def test_cancel_must_restore_before_closing_the_wizard(self):
+        with self.assertRaisesRegex(ValueError, "cancel no longer restores then closes"):
+            self.analyze(lambda name, raw: raw.replace(b"V=()=>{m(),F()}", b"V=()=>{F(),m()}"))
+
+    def test_worklet_url_cleanup_cannot_be_inferred_from_another_audio_owner(self):
+        with self.assertRaisesRegex(ValueError, "worklet URL cleanup changed"):
+            self.analyze(lambda name, raw: raw.replace(b"finally{L&&URL.revokeObjectURL(L)}", b"finally{}"))
+
+    def test_unreferenced_gain_function_cannot_satisfy_the_actual_barrel_dependency(self):
+        with self.assertRaisesRegex(ValueError, "analyzeMicGain reexported function"):
+            self.analyze(lambda name, raw: raw.replace(b"i(r(9909),e)", b"i(r(9999),e)"))
+
+    def test_declared_recorder_does_not_replace_a_missing_imported_export(self):
+        with self.assertRaisesRegex(ValueError, "export 9374.B is absent"):
+            self.analyze(lambda name, raw: raw.replace(b"children:(0,E.jsx)(jn.A,{})",
+                                                     b"children:(0,E.jsx)(jn.B,{})"))
+
+    def test_changed_recording_reducer_cannot_reuse_the_optimistic_confirmation_conclusion(self):
+        with self.assertRaisesRegex(ValueError, "audited optimistic request state"):
+            self.analyze(lambda name, raw: raw.replace(b"micReturnSwitch:{switchstate:",
+                                                     b"returnSwitchDraft:{switchstate:"))
+
+
+class AudioDriverLifecycleDispatchTests(unittest.TestCase):
+    def test_query_routes_without_replaying_endpoint_dsp_or_camera_audits(self):
+        import argparse
+        parser = argparse.ArgumentParser()
+        families.add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["audit-family-function", "--family", "audio", "--function", "mw",
+            "--query", "audio-driver-lifecycle", "--product", "1422"])
+        with patch.object(families, "audit_audio_driver_lifecycle") as selected, \
+                patch.object(families, "audit_audio_endpoint_local_chain") as endpoint, \
+                patch.object(families, "audit_audio_seiren_native_dsp") as dsp, \
+                patch.object(families, "audit_camera_image_host_chain") as camera:
+            families.audit_family_function(args)
+        selected.assert_called_once_with(args)
+        for shared in (endpoint, dsp, camera):
+            shared.assert_not_called()
+
+    def test_scope_product_and_production_preparation_are_rejected(self):
+        import argparse
+        for family, function in (("accessories", "mw"), ("audio", "main")):
+            with self.subTest(family=family, function=function), \
+                    patch.object(families, "audit_audio_driver_lifecycle") as selected, \
+                    self.assertRaisesRegex(ValueError, "current audio middleware scope"):
+                families.audit_family_function(argparse.Namespace(family=family, function=function,
+                    query="audio-driver-lifecycle"))
+            selected.assert_not_called()
+        for products, prepare in (([1422], True), ([1423], False), ([1422, 1423], False)):
+            with self.subTest(products=products, prepare=prepare), \
+                    self.assertRaisesRegex(ValueError, "PID1422 without production preparation"):
+                families.audit_audio_driver_lifecycle(argparse.Namespace(family="audio", function="mw",
+                    product=products, prepare=prepare))
+
+    def test_failure_and_changed_snapshot_preserve_unresolved_facts(self):
+        import argparse
+        for changed in (False, True):
+            with self.subTest(changed=changed), \
+                    patch.object(families, "collect_audio_driver_lifecycle", **({"return_value": {}} if changed
+                        else {"side_effect": ValueError("missing current audio driver owner")})), \
+                    patch.object(host.HostLocalAudit, "final_snapshot", return_value=["audio-owner"] if changed else []), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"), \
+                    self.assertRaisesRegex(ValueError, "audio driver lifecycle observation remains unresolved"):
+                families.audit_audio_driver_lifecycle(argparse.Namespace(family="audio", function="mw",
+                    product=[1422], prepare=False))
+            report, _, _, section = publish.call_args.args
+            self.assertEqual(section, "driver_lifecycle")
+            self.assertFalse(report["bounded_observation_complete"])
+            self.assertFalse(report["source_chain_complete"])
+            self.assertEqual(report["snapshot_stable"], not changed)
+            self.assertIn("audio-owner" if changed else "missing current audio driver owner", report["failures"][0])
+            self.assertFalse(report["target_execution"])
+            self.assertEqual(report["official_dll_comparison"], "not_executed")
+
+
+class CameraMediaPreviewDispatchTests(unittest.TestCase):
+    def test_query_routes_without_replaying_other_camera_chains(self):
+        import argparse
+        parser = argparse.ArgumentParser()
+        families.add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["audit-family-function", "--family", "accessories", "--function", "main",
+            "--query", "camera-media-preview-chain", "--product", "3595", "--product", "3596"])
+        with patch.object(families, "audit_camera_media_preview_chain") as selected, \
+                patch.object(families, "audit_camera_device_lifecycle") as lifecycle, \
+                patch.object(families, "audit_camera_image_properties") as image:
+            families.audit_family_function(args)
+        selected.assert_called_once_with(args)
+        lifecycle.assert_not_called()
+        image.assert_not_called()
+
+    def test_scope_products_and_production_preparation_are_rejected(self):
+        import argparse
+        for family, function in (("audio", "main"), ("accessories", "mw")):
+            with self.subTest(family=family, function=function), \
+                    patch.object(families, "audit_camera_media_preview_chain") as selected, \
+                    self.assertRaisesRegex(ValueError, "current accessories main scope"):
+                families.audit_family_function(argparse.Namespace(family=family, function=function,
+                    query="camera-media-preview-chain"))
+            selected.assert_not_called()
+        for products, prepare in (([3595], False), ([3596], False), ([3595, 3596, 3594], False), ([3595, 3596], True)):
+            with self.subTest(products=products, prepare=prepare), \
+                    self.assertRaisesRegex(ValueError, "PID3595 and PID3596 without production preparation"):
+                families.audit_camera_media_preview_chain(argparse.Namespace(family="accessories", function="main",
+                    product=products, prepare=prepare))
+
+    def test_success_updates_only_the_media_preview_section(self):
+        import argparse
+        with patch.object(families, "collect_camera_media_preview_chain", return_value={"failures": []}) as selected, \
+                patch.object(families, "collect_camera_device_lifecycle") as lifecycle, \
+                patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+            report = families.audit_camera_media_preview_chain(argparse.Namespace(family="accessories", function="main",
+                product=[3595, 3596], prepare=False))
+        selected.assert_called_once()
+        lifecycle.assert_not_called()
+        self.assertIs(publish.call_args.args[0], report)
+        self.assertEqual(publish.call_args.args[1], families.a.ROOT / ".analysis/results/frontend/accessories-camera-local-pages-audit.json")
+        self.assertEqual(publish.call_args.args[3], "media_preview_chain")
+        self.assertTrue(report["bounded_observation_complete"])
+        self.assertTrue(report["snapshot_stable"])
+        self.assertFalse(report["source_chain_complete"])
+        self.assertFalse(report["whole_product_complete"])
+        self.assertFalse(report["target_execution"])
+        self.assertEqual(report["official_dll_comparison"], "not_executed")
+
+    def test_failed_collection_or_changed_snapshot_preserves_unresolved_facts(self):
+        import argparse
+        for mode in ("exception", "returned_failure", "changed"):
+            configured = ({"side_effect": ValueError("unresolved preview owner")} if mode == "exception" else {
+                "return_value": {"failures": ["unresolved preview owner"] if mode == "returned_failure" else []}})
+            with self.subTest(mode=mode), \
+                    patch.object(families, "collect_camera_media_preview_chain", **configured), \
+                    patch.object(host.HostLocalAudit, "final_snapshot", return_value=["preview-owner"] if mode == "changed" else []), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"), \
+                    self.assertRaisesRegex(ValueError, "camera media preview observation remains unresolved"):
+                families.audit_camera_media_preview_chain(argparse.Namespace(family="accessories", function="main",
+                    product=[3595, 3596], prepare=False))
+            report = publish.call_args.args[0]
+            self.assertEqual(publish.call_args.args[3], "media_preview_chain")
+            self.assertFalse(report["bounded_observation_complete"])
+            self.assertFalse(report["source_chain_complete"])
+            self.assertEqual(report["snapshot_stable"], mode != "changed")
+            self.assertIn("preview-owner" if mode == "changed" else "unresolved preview owner", report["failures"][0])
+            self.assertFalse(report["target_execution"])
+
+
+class CameraDeviceLifecycleDispatchTests(unittest.TestCase):
+    def test_success_updates_only_the_selected_lifecycle_section(self):
+        import argparse
+        with patch.object(families, "collect_camera_device_lifecycle", return_value={"failures": []}) as selected, \
+                patch.object(families, "collect_camera_image_host_chain") as host_chain, \
+                patch.object(families, "collect_audio_driver_lifecycle") as audio, \
+                patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+            result = families.audit_camera_device_lifecycle(argparse.Namespace(family="accessories", function="main",
+                product=[3595, 3596], prepare=False))
+        selected.assert_called_once()
+        host_chain.assert_not_called()
+        audio.assert_not_called()
+        report, destination, _, section = publish.call_args.args
+        self.assertIs(result, report)
+        self.assertEqual(section, "device_lifecycle")
+        self.assertEqual(destination, families.a.ROOT / ".analysis/results/frontend/accessories-camera-local-pages-audit.json")
+        self.assertTrue(report["bounded_observation_complete"])
+        self.assertTrue(report["snapshot_stable"])
+        self.assertFalse(report["source_chain_complete"])
+        self.assertFalse(report["whole_product_complete"])
+        self.assertFalse(report["target_execution"])
+        self.assertEqual(report["official_dll_comparison"], "not_executed")
+
+    def test_query_routes_without_replaying_properties_host_or_audio(self):
+        import argparse
+        parser = argparse.ArgumentParser()
+        families.add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["audit-family-function", "--family", "accessories", "--function", "main",
+            "--query", "camera-device-lifecycle", "--product", "3595", "--product", "3596"])
+        with patch.object(families, "audit_camera_device_lifecycle") as selected, \
+                patch.object(families, "audit_camera_image_properties") as image, \
+                patch.object(families, "audit_camera_image_host_chain") as host_chain, \
+                patch.object(families, "audit_audio_driver_lifecycle") as audio:
+            families.audit_family_function(args)
+        selected.assert_called_once_with(args)
+        for shared in (image, host_chain, audio):
+            shared.assert_not_called()
+
+    def test_scope_product_and_production_preparation_are_rejected(self):
+        import argparse
+        for family, function in (("audio", "main"), ("accessories", "mw")):
+            with self.subTest(family=family, function=function), \
+                    patch.object(families, "audit_camera_device_lifecycle") as selected, \
+                    self.assertRaisesRegex(ValueError, "current accessories main scope"):
+                families.audit_family_function(argparse.Namespace(family=family, function=function,
+                    query="camera-device-lifecycle"))
+            selected.assert_not_called()
+        for products, prepare in (([3595], False), ([3596], False), ([3595, 3596, 3597], False), ([3595, 3596], True)):
+            with self.subTest(products=products, prepare=prepare), \
+                    self.assertRaisesRegex(ValueError, "PID3595 and PID3596 without production preparation"):
+                families.audit_camera_device_lifecycle(argparse.Namespace(family="accessories", function="main",
+                    product=products, prepare=prepare))
+
+    def test_failed_collection_or_changed_snapshot_preserves_unresolved_facts(self):
+        import argparse
+        for mode in ("exception", "returned_failure", "changed"):
+            returned = {"failures": ["unresolved current camera owner"]} if mode == "returned_failure" else {}
+            configured = {"side_effect": ValueError("unresolved current camera owner")} if mode == "exception" else {
+                "return_value": returned}
+            with self.subTest(mode=mode), \
+                    patch.object(families, "collect_camera_device_lifecycle", **configured), \
+                    patch.object(host.HostLocalAudit, "final_snapshot", return_value=["camera-owner"] if mode == "changed" else []), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"), \
+                    self.assertRaisesRegex(ValueError, "camera device lifecycle observation remains unresolved"):
+                families.audit_camera_device_lifecycle(argparse.Namespace(family="accessories", function="main",
+                    product=[3595, 3596], prepare=False))
+            report, _, _, section = publish.call_args.args
+            self.assertEqual(section, "device_lifecycle")
+            self.assertFalse(report["bounded_observation_complete"])
+            self.assertFalse(report["source_chain_complete"])
+            self.assertEqual(report["snapshot_stable"], mode != "changed")
+            self.assertIn("camera-owner" if mode == "changed" else "unresolved current camera owner", report["failures"][0])
+            self.assertFalse(report["target_execution"])
+            self.assertEqual(report["official_dll_comparison"], "not_executed")
+
+
+class CameraImageHostChainDispatchTests(unittest.TestCase):
+    def test_query_routes_to_its_own_collector_without_replaying_image_properties(self):
+        import argparse
+        parser = argparse.ArgumentParser()
+        families.add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["audit-family-function", "--family", "accessories", "--function", "main",
+            "--query", "camera-image-host-chain", "--product", "3595", "--product", "3596"])
+        with patch.object(families, "audit_camera_image_host_chain") as selected, \
+                patch.object(families, "audit_camera_image_properties") as image, \
+                patch.object(families, "audit_camera_properties_lifecycle") as lifecycle:
+            families.audit_family_function(args)
+        selected.assert_called_once_with(args)
+        image.assert_not_called()
+        lifecycle.assert_not_called()
+
+    def test_scope_and_production_preparation_are_rejected(self):
+        import argparse
+        for family, function in (("audio", "main"), ("accessories", "mw")):
+            with self.subTest(family=family, function=function), \
+                    patch.object(families, "audit_camera_image_host_chain") as selected, \
+                    self.assertRaisesRegex(ValueError, "current accessories main scope"):
+                families.audit_family_function(argparse.Namespace(family=family, function=function,
+                    query="camera-image-host-chain"))
+            selected.assert_not_called()
+        for products, prepare in (([3595], False), ([3596], False), ([3595, 3596, 3597], False), ([3595, 3596], True)):
+            with self.subTest(products=products, prepare=prepare), \
+                    self.assertRaisesRegex(ValueError, "PID3595 and PID3596 without production preparation"):
+                families.audit_camera_image_host_chain(argparse.Namespace(family="accessories", function="main",
+                    product=products, prepare=prepare))
+
+    def test_failure_and_changed_snapshot_cannot_be_published_as_completion(self):
+        import argparse
+        for changed in (False, True):
+            with self.subTest(changed=changed), \
+                    patch.object(families, "collect_camera_image_host_chain", **({"return_value": {}} if changed
+                        else {"side_effect": ValueError("missing current camera host owner")})), \
+                    patch.object(host.HostLocalAudit, "final_snapshot", return_value=["camera-owner"] if changed else []), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"), \
+                    self.assertRaisesRegex(ValueError, "camera IMAGE host observation remains unresolved"):
+                families.audit_camera_image_host_chain(argparse.Namespace(family="accessories", function="main",
+                    product=[3595, 3596], prepare=False))
+            report, _, _, section = publish.call_args.args
+            self.assertEqual(section, "image_host_chain")
+            self.assertFalse(report["bounded_observation_complete"])
+            self.assertFalse(report["source_chain_complete"])
+            self.assertEqual(report["snapshot_stable"], not changed)
+            self.assertIn("camera-owner" if changed else "missing current camera host owner", report["failures"][0])
+            self.assertFalse(report["target_execution"])
+            self.assertEqual(report["official_dll_comparison"], "not_executed")
+
+
+class CameraAndHanboChainDispatchTests(unittest.TestCase):
+    def test_new_accessories_queries_route_without_replaying_old_capture_audits(self):
+        import argparse
+        for query, publisher, products in (
+                ("camera-image-properties", "audit_camera_image_properties", [3595, 3596]),
+                ("hanbo-gpu-temperature-chain", "audit_hanbo_gpu_temperature_chain", [3893]),
+                ("hanbo-system-monitor-versions", "audit_hanbo_system_monitor_versions", [3893])):
+            parser = argparse.ArgumentParser()
+            families.add_commands(parser.add_subparsers(dest="command", required=True))
+            command = ["audit-family-function", "--family", "accessories", "--function", "main", "--query", query]
+            for product in products:
+                command.extend(["--product", str(product)])
+            args = parser.parse_args(command)
+            with self.subTest(query=query), patch.object(families, publisher) as selected, \
+                    patch.object(families, "audit_hanbo_local_runtime") as hanbo, \
+                    patch.object(families, "audit_camera_local_pages") as camera:
+                families.audit_family_function(args)
+            selected.assert_called_once_with(args)
+            hanbo.assert_not_called()
+            camera.assert_not_called()
+
+    def test_new_accessories_queries_reject_unrelated_family_and_middleware(self):
+        import argparse
+        for query, publisher in (("camera-image-properties", "audit_camera_image_properties"),
+                                 ("hanbo-gpu-temperature-chain", "audit_hanbo_gpu_temperature_chain"),
+                                 ("hanbo-system-monitor-versions", "audit_hanbo_system_monitor_versions")):
+            for family, function in (("audio", "main"), ("accessories", "mw")):
+                args = argparse.Namespace(family=family, function=function, query=query)
+                with self.subTest(query=query, family=family, function=function), \
+                        patch.object(families, publisher) as selected, \
+                        self.assertRaisesRegex(ValueError, "current accessories main scope"):
+                    families.audit_family_function(args)
+                selected.assert_not_called()
+
+
+class HanboSystemMonitorVersionsDispatchTests(unittest.TestCase):
+    def test_product_scope_and_production_preparation_are_rejected_before_collection(self):
+        import argparse
+        for products, prepare in (([3900], False), ([3893, 3900], False), ([3893], True)):
+            with self.subTest(products=products, prepare=prepare), \
+                    patch.object(families, "collect_hanbo_system_monitor_versions") as collect, \
+                    self.assertRaisesRegex(ValueError, "accessories/main PID3893 without preparation"):
+                families.audit_hanbo_system_monitor_versions(argparse.Namespace(family="accessories", function="main",
+                    product=products, prepare=prepare, query="hanbo-system-monitor-versions"))
+            collect.assert_not_called()
+
+    def test_success_publishes_only_the_selected_system_monitor_section(self):
+        import argparse
+        with patch.object(families, "collect_hanbo_system_monitor_versions", return_value={"failures": []}) as collect, \
+                patch.object(families, "collect_hanbo_gpu_temperature_chain") as gpu, \
+                patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+            report = families.audit_hanbo_system_monitor_versions(argparse.Namespace(family="accessories", function="main",
+                product=[3893], prepare=False, query="hanbo-system-monitor-versions"))
+        collect.assert_called_once()
+        gpu.assert_not_called()
+        self.assertIs(publish.call_args.args[0], report)
+        self.assertEqual(publish.call_args.args[1], families.a.ROOT / ".analysis/results/frontend/accessories-main-audit.json")
+        self.assertEqual(publish.call_args.args[3], "hanbo_system_monitor_versions")
+        self.assertTrue(report["bounded_observation_complete"])
+        self.assertTrue(report["snapshot_stable"])
+        self.assertFalse(report["source_chain_complete"])
+        self.assertFalse(report["target_execution"])
+        self.assertEqual(report["runtime_acceptance"], "unverified")
+
+    def test_collection_failure_or_changed_snapshot_remains_unresolved(self):
+        import argparse
+        for mode in ("exception", "returned_failure", "changed"):
+            configured = ({"side_effect": ValueError("unresolved monitor owner")} if mode == "exception" else {
+                "return_value": {"failures": ["unresolved monitor owner"] if mode == "returned_failure" else []}})
+            with self.subTest(mode=mode), \
+                    patch.object(families, "collect_hanbo_system_monitor_versions", **configured), \
+                    patch.object(host.HostLocalAudit, "final_snapshot", return_value=["monitor-owner"] if mode == "changed" else []), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"), \
+                    self.assertRaisesRegex(ValueError, "Hanbo system monitor versions observation remains unresolved"):
+                families.audit_hanbo_system_monitor_versions(argparse.Namespace(family="accessories", function="main",
+                    product=[3893], prepare=False, query="hanbo-system-monitor-versions"))
+            report = publish.call_args.args[0]
+            self.assertEqual(publish.call_args.args[3], "hanbo_system_monitor_versions")
+            self.assertFalse(report["bounded_observation_complete"])
+            self.assertFalse(report["source_chain_complete"])
+            self.assertEqual(report["snapshot_stable"], mode != "changed")
+            self.assertIn("monitor-owner" if mode == "changed" else "unresolved monitor owner", report["failures"][0])
+            self.assertFalse(report["target_execution"])
+
+
+class AudioEndpointNotificationDispatchTests(unittest.TestCase):
+    QUERY = "audio-endpoint-notification-chain"
+    COLLECTOR = "collect_audio_endpoint_notification_chain"
+    WRAPPER = "audit_audio_endpoint_notification_chain"
+    SECTION = "endpoint_notification_chain"
+    UNRESOLVED = "audio endpoint notification observation remains unresolved"
+
+    def test_query_routes_without_replaying_endpoint_or_driver_collectors(self):
+        import argparse
+        parser = argparse.ArgumentParser()
+        families.add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["audit-family-function", "--family", "audio", "--function", "mw",
+            "--query", self.QUERY, "--product", "1422"])
+        with patch.object(families, self.WRAPPER) as selected, \
+                patch.object(families, "audit_audio_endpoint_local_chain") as endpoint, \
+                patch.object(families, "audit_audio_driver_lifecycle") as driver:
+            families.audit_family_function(args)
+        selected.assert_called_once_with(args)
+        endpoint.assert_not_called()
+        driver.assert_not_called()
+
+    def test_scope_products_and_production_preparation_are_rejected(self):
+        import argparse
+        for family, function in (("accessories", "mw"), ("audio", "main")):
+            with self.subTest(family=family, function=function), \
+                    patch.object(families, self.WRAPPER) as selected, \
+                    self.assertRaisesRegex(ValueError, "current audio middleware scope"):
+                families.audit_family_function(argparse.Namespace(family=family, function=function,
+                    query=self.QUERY))
+            selected.assert_not_called()
+        for products, prepare in (([1423], False), ([1422, 1423], False), ([1422], True)):
+            with self.subTest(products=products, prepare=prepare), \
+                    self.assertRaisesRegex(ValueError, "PID1422 without production preparation"):
+                getattr(families, self.WRAPPER)(argparse.Namespace(family="audio", function="mw",
+                    product=products, prepare=prepare))
+
+    def test_success_updates_only_the_selected_section(self):
+        import argparse
+        with patch.object(families, self.COLLECTOR, return_value={"failures": []}) as selected, \
+                patch.object(families, "collect_audio_endpoint_local_chain") as endpoint, \
+                patch.object(families, "collect_audio_driver_lifecycle") as driver, \
+                patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+            report = getattr(families, self.WRAPPER)(argparse.Namespace(family="audio", function="mw",
+                product=[1422], prepare=False))
+        selected.assert_called_once()
+        endpoint.assert_not_called()
+        driver.assert_not_called()
+        self.assertIs(publish.call_args.args[0], report)
+        self.assertEqual(publish.call_args.args[1], families.a.ROOT / ".analysis/results/frontend/audio-MapAudio-audit.json")
+        self.assertEqual(publish.call_args.args[3], self.SECTION)
+        self.assertTrue(report["bounded_observation_complete"])
+        self.assertTrue(report["snapshot_stable"])
+        self.assertFalse(report["source_chain_complete"])
+        self.assertFalse(report["whole_product_complete"])
+        self.assertFalse(report["target_execution"])
+        self.assertEqual(report["official_dll_comparison"], "not_executed")
+
+    def test_failed_collection_or_changed_snapshot_preserves_unresolved_facts(self):
+        import argparse
+        for mode in ("exception", "returned_failure", "changed"):
+            configured = ({"side_effect": ValueError("unresolved notification owner")} if mode == "exception" else {
+                "return_value": {"failures": ["unresolved notification owner"] if mode == "returned_failure" else []}})
+            with self.subTest(mode=mode), \
+                    patch.object(families, self.COLLECTOR, **configured), \
+                    patch.object(host.HostLocalAudit, "final_snapshot", return_value=["notification-owner"] if mode == "changed" else []), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"), \
+                    self.assertRaisesRegex(ValueError, self.UNRESOLVED):
+                getattr(families, self.WRAPPER)(argparse.Namespace(family="audio", function="mw",
+                    product=[1422], prepare=False))
+            report = publish.call_args.args[0]
+            self.assertEqual(publish.call_args.args[3], self.SECTION)
+            self.assertFalse(report["bounded_observation_complete"])
+            self.assertFalse(report["source_chain_complete"])
+            self.assertEqual(report["snapshot_stable"], mode != "changed")
+            self.assertIn("notification-owner" if mode == "changed" else "unresolved notification owner", report["failures"][0])
+            self.assertFalse(report["target_execution"])
+
+
+class AudioDriverCloseQuiescenceDispatchTests(AudioEndpointNotificationDispatchTests):
+    QUERY = "audio-driver-close-quiescence"
+    COLLECTOR = "collect_audio_driver_close_quiescence"
+    WRAPPER = "audit_audio_driver_close_quiescence"
+    SECTION = "driver_close_quiescence"
+    UNRESOLVED = "audio driver close quiescence observation remains unresolved"
+
+
+class AudioEndpointLocalChainDispatchTests(unittest.TestCase):
+    def test_endpoint_query_routes_without_replaying_dsp_or_legacy_audits(self):
+        import argparse
+        parser = argparse.ArgumentParser()
+        families.add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["audit-family-function", "--family", "audio", "--function", "mw",
+                                  "--query", "audio-endpoint-local-chain", "--product", "1422"])
+        with patch.object(families, "audit_audio_endpoint_local_chain") as selected, \
+                patch.object(families, "audit_audio_seiren_native_dsp") as dsp, \
+                patch.object(families, "audit_audio_seiren_eq") as legacy:
+            families.audit_family_function(args)
+        selected.assert_called_once_with(args)
+        dsp.assert_not_called()
+        legacy.assert_not_called()
+
+    def test_endpoint_query_rejects_other_scope_and_production_preparation(self):
+        import argparse
+        for family, function in (("mouse", "mw"), ("audio", "ui")):
+            args = argparse.Namespace(family=family, function=function, query="audio-endpoint-local-chain")
+            with self.subTest(family=family, function=function), \
+                    patch.object(families, "audit_audio_endpoint_local_chain") as selected, \
+                    self.assertRaisesRegex(ValueError, "current audio middleware scope"):
+                families.audit_family_function(args)
+            selected.assert_not_called()
+        for products, prepare in (([1422], True), ([1422, 1423], False), ([1423], False)):
+            with self.subTest(products=products, prepare=prepare), \
+                    self.assertRaisesRegex(ValueError, "PID1422 without production preparation"):
+                families.audit_audio_endpoint_local_chain(argparse.Namespace(product=products, prepare=prepare))
+
+    def test_endpoint_publisher_preserves_failure_and_changed_input_facts(self):
+        import argparse
+        import host
+        for changed in (False, True):
+            with self.subTest(changed=changed), \
+                    patch.object(families, "collect_audio_endpoint_local_chain", **(
+                        {"return_value": {}} if changed else {"side_effect": ValueError("missing endpoint owner")})), \
+                    patch.object(host.HostLocalAudit, "final_snapshot", return_value=["endpoint.dll"] if changed else []), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"), \
+                    self.assertRaisesRegex(ValueError, "audio endpoint observation remains unresolved"):
+                families.audit_audio_endpoint_local_chain(argparse.Namespace(product=[1422], prepare=False))
+            report, _, _, section = publish.call_args.args
+            self.assertEqual(section, "endpoint_local_chain")
+            self.assertFalse(report["bounded_observation_complete"])
+            self.assertEqual(report["snapshot_stable"], not changed)
+            self.assertIn("endpoint.dll" if changed else "missing endpoint owner", report["failures"][0])
+            self.assertFalse(report["target_execution"])
+            self.assertEqual(report["official_dll_comparison"], "not_executed")
+
+
+class AudioSeirenNativeDspDispatchTests(unittest.TestCase):
+    def test_current_dsp_query_routes_without_legacy_preparation(self):
+        import argparse
+        parser = argparse.ArgumentParser()
+        families.add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["audit-family-function", "--family", "audio", "--function", "mw",
+                                  "--query", "audio-seiren-native-dsp", "--product", "1422"])
+        with patch.object(families, "audit_audio_seiren_native_dsp") as current, \
+                patch.object(families, "audit_audio_seiren_eq") as legacy:
+            families.audit_family_function(args)
+        current.assert_called_once_with(args)
+        legacy.assert_not_called()
+
+    def test_current_dsp_query_rejects_other_family_or_ui_scope(self):
+        import argparse
+        for family, function in (("mouse", "mw"), ("audio", "ui")):
+            args = argparse.Namespace(family=family, function=function, query="audio-seiren-native-dsp")
+            with self.subTest(family=family, function=function), \
+                    patch.object(families, "audit_audio_seiren_native_dsp") as current, \
+                    self.assertRaisesRegex(ValueError, "current audio middleware scope"):
+                families.audit_family_function(args)
+            current.assert_not_called()
+
+
+class AudioSeirenCurrentMwDispatchTests(unittest.TestCase):
+    def test_current_mw_query_routes_without_legacy_data_preparation(self):
+        import argparse
+        parser = argparse.ArgumentParser()
+        families.add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["audit-family-function", "--family", "audio", "--function", "mw",
+                                  "--query", "audio-seiren-current-mw", "--product", "1422"])
+        with patch.object(families, "audit_audio_seiren_current_mw") as current, \
+                patch.object(families, "audit_audio_seiren_eq") as legacy:
+            families.audit_family_function(args)
+        current.assert_called_once_with(args)
+        legacy.assert_not_called()
+
+    def test_current_mw_query_rejects_other_family_or_ui_scope(self):
+        import argparse
+        for family, function in (("mouse", "mw"), ("audio", "ui")):
+            args = argparse.Namespace(family=family, function=function, query="audio-seiren-current-mw")
+            with self.subTest(family=family, function=function), \
+                    patch.object(families, "audit_audio_seiren_current_mw") as current, \
+                    self.assertRaisesRegex(ValueError, "current audio middleware scope"):
+                families.audit_family_function(args)
+            current.assert_not_called()
+
+
+class AudioSeirenCurrentMwTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        if not (analysis.ROOT / ".analysis/results/frontend/audio-MapAudio-audit.json").is_file():
+            raise unittest.SkipTest("Retained Seiren UI/MW evidence is unavailable")
+        cls.audit = host.HostLocalAudit()
+        cls.result = families.collect_audio_seiren_current_mw(cls.audit)
+        cls.original_bytes = {"mw": {}, "ui": {}}
+        for owner in cls.audit.owners.values():
+            original = owner["original"]
+            for layer in cls.original_bytes:
+                if "/1422/" + layer + "/" in original["path"] and original["path"].endswith(".js"):
+                    cls.original_bytes[layer][original["path"]] = cls.audit.read(original)
+
+    def owner(self, role):
+        return self.audit.owners[self.result["chain"]["roles"][role]]
+
+    def analyze(self, role, before, after):
+        owner = self.owner(role)
+        self.assertIn(before, owner["body"])
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name).resolve()
+        patched = patch.object(analysis, "ROOT", root)
+        patched.start()
+        self.addCleanup(patched.stop)
+        audit = host.HostLocalAudit()
+        originals = {"mw": [], "ui": []}
+        for layer, sources in self.original_bytes.items():
+            for relative, original in sources.items():
+                raw = original
+                if relative == owner["original"]["path"]:
+                    changed = owner["body"].replace(before, after, 1).encode()
+                    raw = original[:owner["byte_start"]] + changed + original[owner["byte_end"]:]
+                path = root / ".analysis/inputs/frontend/seiren-fixture" / layer / Path(relative).name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(raw)
+                originals[layer].append({"path": path.relative_to(root).as_posix(), "bytes": len(raw),
+                                         "sha256": hashlib.sha256(raw).hexdigest()})
+        return families.audio_seiren_current_mw_chain(audit, originals["mw"], originals["ui"])
+
+    def test_current_sources_and_native_dependencies_keep_incomplete_semantics_explicit(self):
+        selected = self.result["source_sets"]["mw"]
+        self.assertEqual(selected["canonical_entry_url"], "https://apps.razer.com/synapse/products/1422/mw/")
+        self.assertIsNone(selected["capture"])
+        self.assertIn("complete_capture_unavailable", selected["capture_failures"])
+        self.assertTrue(selected["failed_acquisition"])
+        self.assertTrue(selected["unresolved_acquisition"])
+        self.assertFalse(self.result["source_chain_complete"])
+        self.assertFalse(self.result["chain"]["source_chain_complete"])
+        self.assertFalse(self.result["whole_product_complete"])
+        native = self.result["native_gain"]
+        self.assertEqual(native["resource"]["resourceName"], "MarieNativeDLL")
+        self.assertFalse(native["whole_native_semantics_complete"])
+        self.assertEqual(native["official_dll_comparison"], "not_executed")
+        self.assertEqual(len(native["slice"]["complete_functions"]), 20)
+        self.assertTrue(native["slice"]["unexpanded_direct_edges"])
+        self.assertTrue(native["slice"]["indirect_or_import_calls"])
+
+    def test_command_selection_uses_actual_distinct_get_set_helpers(self):
+        self.assertEqual({name: row["command"] for name, row in self.result["chain"]["hid_commands"].items()}, {
+            "getReturnSwitchStatus": [2, 8, 162], "setReturnSwitchStatus": [2, 8, 34],
+            "getNoiseGate": [9, 8, 155], "setNoiseGate": [9, 8, 27],
+            "getAINoiseSuppression": [2, 8, 156], "setAINoiseSuppression": [2, 8, 28],
+            "getMicCompressor": [9, 8, 157], "setMicCompressor": [9, 8, 29],
+            "getMicReverb": [3, 8, 159], "setMicReverb": [3, 8, 31],
+            "getAudioInputControlState": [3, 8, 150], "setAudioInputControlState": [3, 8, 22],
+            "getParametricEQSetting": [9, 8, 154], "setParametricEQSetting": [9, 8, 26],
+            "getParametricEQStatus": [11, 8, 161], "setParametricEQStatus": [11, 8, 33]})
+        self.assertIn("yield e.setReturnSwitchStatus(0,t),!0", self.owner("setMicReturnSwitch")["body"])
+        self.assertEqual(self.result["chain"]["events"]["ON_MIC_RETURN_SWITCH"]["storage"], "Storage_NoSave")
+        task = self.owner("manager_taskRunnerSetDevice")["body"]
+        self.assertLess(task.index("a.result=n"), task.index("r.signal.aborted"))
+        self.assertLess(task.index("o.postExecute(e)"), task.index('a.value.status="completed"'))
+        self.assertIn("payload:t.payload", self.owner("ui_micEQEffectsReducer")["body"])
+
+    def test_all_retained_owners_reproduce_original_utf8_bytes(self):
+        for owner in self.audit.owners.values():
+            raw = self.audit.read(owner["original"])[owner["byte_start"]:owner["byte_end"]]
+            self.assertEqual(raw.decode(), owner["body"])
+            self.assertEqual(hashlib.sha256(raw).hexdigest(), owner["body_sha256"])
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_orphan_feature_cannot_borrow_a_still_declared_factory(self):
+        with self.assertRaisesRegex(ValueError, "feature lazy target changed"):
+            self.analyze("marie_fw_request", "i.bind(i,43828)", "i.bind(i,43829)")
+
+    def test_return_switch_cannot_silently_change_profile_storage(self):
+        with self.assertRaisesRegex(ValueError, "storage policy changed"):
+            self.analyze("descriptor_ON_MIC_RETURN_SWITCH", "Storage_NoSave", "Storage_Profile")
+
+    def test_protocol_setter_cannot_reuse_getter_command_evidence(self):
+        with self.assertRaisesRegex(ValueError, "audited command selection changed"):
+            self.analyze("adapter_setReturnSwitchStatus", "o.P6", "o.f_")
+
+    def test_false_execute_result_cannot_be_replaced_by_completed_notice(self):
+        with self.assertRaisesRegex(ValueError, "task_result_boundary"):
+            self.analyze("manager_taskRunnerSetDevice", "a.result=n", "a.result=!0")
+
+    def test_local_vocal_payload_does_not_prove_a_second_hardware_action(self):
+        with self.assertRaisesRegex(ValueError, "vocal_first_key"):
+            self.analyze("ui_eqEffectReducer", "Object.keys(t.payload)[0]", "Object.keys(t.payload)[1]")
+
+    def test_native_set_order_and_actual_constructor_are_checked(self):
+        with self.assertRaisesRegex(ValueError, "volume/mute order changed"):
+            self.analyze("mixer_setMicVolume", "i.setMicrophoneVolume(n)",
+                         "i.setMicrophoneMute(!o),i.setMicrophoneVolume(n)")
+        with self.assertRaisesRegex(ValueError, "native owner"):
+            self.analyze("native_constructor", "T=O", "T=T")
+
+    def test_publication_separates_stable_observation_from_unfinished_source_chain(self):
+        import argparse
+        args = argparse.Namespace(product=[1422], prepare=False)
+        for changed in ([], ["changed-source.js"]):
+            with self.subTest(changed=changed):
+                audit = host.HostLocalAudit()
+                with patch.object(host, "HostLocalAudit", return_value=audit), \
+                        patch.object(audit, "final_snapshot", return_value=changed), \
+                        patch.object(families, "collect_audio_seiren_current_mw", return_value={"source_chain_complete": False}), \
+                        patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+                    if changed:
+                        with self.assertRaisesRegex(ValueError, "observation remains unresolved"):
+                            families.audit_audio_seiren_current_mw(args)
+                    else:
+                        families.audit_audio_seiren_current_mw(args)
+                report = publish.call_args.args[0]
+                self.assertEqual(report["bounded_observation_complete"], not changed)
+                self.assertFalse(report["source_chain_complete"])
+                self.assertFalse(report["target_execution"])
+
+
+class AudioDriverLifecycleTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        receipt = analysis.ROOT / ".analysis/results/frontend/audio-MapAudio-audit.json"
+        if not receipt.is_file():
+            raise unittest.SkipTest("Retained current PID1422 driver evidence is unavailable")
+        cls.audit = host.HostLocalAudit()
+        cls.result = families.collect_audio_driver_lifecycle(cls.audit)
+
+    def changed_source(self, role, before, after):
+        owners = {key: dict(self.audit.owners[value]) for key, value in self.result["roles"].items()}
+        self.assertIn(before, owners[role]["body"])
+        owners[role]["body"] = owners[role]["body"].replace(before, after, 1)
+        return families.audio_driver_source_contract(owners)
+
+    def test_current_package_host_and_runtime_boundaries_are_separate(self):
+        result = self.result
+        self.assertEqual(result["kind"], "current_audio_driver_lifecycle")
+        self.assertEqual(result["product_id"], 1422)
+        self.assertEqual(result["host_release"]["version"], "4.0.896")
+        self.assertTrue(all(row["member_offset_verified"] for row in result["host_release"]["members"]))
+        self.assertTrue(result["selected_driver_semantics_reviewed"])
+        self.assertTrue(result["source_contract"]["independently_reviewed_audio_route"])
+        for key in ("source_chain_complete", "whole_product_complete", "target_execution", "real_device_operations"):
+            self.assertFalse(result[key])
+        self.assertEqual(result["official_dll_comparison"], "not_executed")
+        self.assertEqual(result["runtime_acceptance"], "unverified")
+        self.assertEqual(result["configuration"]["actual_registered_path"], "unobserved")
+        self.assertEqual(result["native_contract"]["selection"]["actual_loaded_module"], "unobserved")
+        self.assertEqual(result["temporary_artifacts_created"], [])
+
+    def test_audio_route_and_preload_capability_cannot_be_replaced_by_another_owner(self):
+        self.assertEqual(self.result["source_contract"]["route"][1], "MW 80995.oE")
+        for role, before, after in (
+            ("native_callDLLApi", "yield(0,E.oE)", "yield(0,E.I3)"),
+            ("preload_support", "supportElectron20:!0", "supportElectron20:!1"),
+            ("preload_async", 'e.invoke("ffiPreloadAsync",t,i)', 'e.invoke("ffiSubPreloadAsync",t,i)'),
+            ("mw_bridge", "{apiElectron:A}=window", "{apiElectron:A}=window.top")):
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "current source contract changed"):
+                self.changed_source(role, before, after)
+        self.assertEqual(self.result["source_contract"]["initialization_order"],
+            ["ConfigureFFI", "isInit=true", "GetDLLVersion", "SetNodeFFIEvent", "DeviceInitialize"])
+        self.assertFalse(self.result["source_contract"]["device_initialize_result_controls_isInit"])
+
+    def test_current_package_configuration_guid_registration_files_and_order_are_bound(self):
+        members = self.result["package"]["members"]
+        raw = {name: self.audit.read(members[name]) for name in ("custom.ini", "tlsetupfx_drv.xml", "RazerSeirenV3Pro.inf")}
+        contract = self.result["configuration"]
+        self.assertEqual(contract["interface_guid"], "{D132049C-EE3B-4647-AC9E-E754FA90FD46}")
+        self.assertEqual(contract["registration_files"], ["RazerSeirenV3Proapi.dll", "RazerSeirenV3Proapi_x64.dll",
+            "RazerSeirenV3Proasio.dll", "RazerSeirenV3Proasio_x64.dll"])
+        self.assertTrue(contract["registration_precedes_driver_install"])
+        for filename, before, after in (
+            ("custom.ini", b"D132049C", b"D132049D"),
+            ("tlsetupfx_drv.xml", b"RazerSeirenV3Proapi_x64.dll", b"OtherDriver.dll")):
+            altered = dict(raw)
+            self.assertIn(before, altered[filename])
+            altered[filename] = altered[filename].replace(before, after, 1)
+            with self.subTest(filename=filename), self.assertRaisesRegex(ValueError, "configuration"):
+                families.audio_driver_configuration_contract(*(altered[name] for name in raw))
+        import xml.etree.ElementTree as ET
+        root = ET.fromstring(raw["tlsetupfx_drv.xml"])
+        install = root.find("./Task[@Id='Install']")
+        register = install.find("./Action[@Id='RegisterInProcessServer']")
+        install.remove(register)
+        install.append(register)
+        with self.assertRaisesRegex(ValueError, "registration order changed"):
+            families.audio_driver_configuration_contract(raw["custom.ini"], ET.tostring(root), raw["RazerSeirenV3Pro.inf"])
+
+    def test_api_5_14_request_is_compatible_with_unsigned_minor_5_15(self):
+        contract = self.result["native_contract"]["api_compatibility"]
+        self.assertEqual(contract["comparison"], "major == 5 && unsigned minor <= 15")
+        self.assertEqual(contract["package_api_version"], "5.15")
+        self.assertTrue(contract["request_5_14_accepted"])
+        driver = copy.deepcopy(self.result["driver"])
+        instruction = next(row for function in driver["complete_functions"]
+            for row in function["capture"]["assembly"] if row["rva"] == "0x185a")
+        instruction["bytes"] = "0f94c0"
+        with self.assertRaisesRegex(ValueError, "physical lifecycle ABI changed"):
+            families.audio_driver_native_contract(self.result["marie"], driver)
+
+    def test_enqueue_ack_and_meter_timeout_do_not_prove_termination(self):
+        contract = self.result["native_contract"]["termination"]
+        self.assertTrue(contract["export_returns_after_enqueue"])
+        self.assertFalse(contract["waits_for_container_removal"])
+        self.assertEqual(contract["meter_thread_wait_ms"], 1000)
+        self.assertTrue(contract["timeout_still_closes_thread_handle_and_continues"])
+        self.assertFalse(contract["whole_callback_and_pending_task_quiescence_proven"])
+        marie = copy.deepcopy(self.result["marie"])
+        function = next(row["capture"] for row in marie["complete_functions"] if row["capture"]["rva"] == "0x34790")
+        function["pseudocode"]["lines"].append({"text": "WaitForSingleObject(task, INFINITE);"})
+        with self.assertRaisesRegex(ValueError, "queued termination waiting boundary changed"):
+            families.audio_driver_native_contract(marie, self.result["driver"])
+
+    def test_driver_device_must_close_before_api_unload_and_clear(self):
+        contract = self.result["native_contract"]["termination"]
+        self.assertTrue(contract["driver_device_closed_before_api_unload"])
+        self.assertTrue(contract["api_function_table_cleared"])
+        self.assertTrue(contract["driver_close_validates_slot_and_exact_handle"])
+        marie = copy.deepcopy(self.result["marie"])
+        function = next(row["capture"] for row in marie["complete_functions"] if row["capture"]["rva"] == "0x4bef0")
+        lines = function["pseudocode"]["lines"]
+        first = next(row for row in lines if "TUSBAUDIO_CloseDevice(*(unsigned int *)" in row["text"])
+        second = next(row for row in lines if "FreeLibrary(hLibModule);" in row["text"])
+        first["text"], second["text"] = second["text"], first["text"]
+        with self.assertRaisesRegex(ValueError, "module/device close order changed"):
+            families.audio_driver_native_contract(marie, self.result["driver"])
+
+    def test_physical_destructor_tables_and_timeout_are_verified(self):
+        for module, role in (("marie", "terminate_lambda"), ("marie", "device_refcount"), ("driver", "device_vtable")):
+            altered = copy.deepcopy(self.result[module])
+            region = next(row for row in altered["verified_data_regions"] if row["role"] == role)
+            region["raw_hex"] = "00" * region["bytes"]
+            args = (altered, self.result["driver"]) if module == "marie" else (self.result["marie"], altered)
+            with self.subTest(module=module, role=role), self.assertRaisesRegex(ValueError, "lifecycle vtable changed"):
+                families.audio_driver_native_contract(*args)
+        self.assertEqual(len(self.result["native_contract"]["instruction_assertions"]), 14)
+
+    def test_wrapper_listener_removal_and_host_mutex_are_not_callback_quiescence(self):
+        source = self.result["source_contract"]
+        self.assertFalse(source["native_callback_unregistered_by_wrapper"])
+        self.assertFalse(source["free_ffi_releases_maps"])
+        self.assertFalse(source["unload_awaits_termination"])
+        self.assertFalse(source["whole_session_quiescence_proven"])
+        for role, before, after in (
+            ("host_async", "finally{r&&r()}", "finally{}"),
+            ("native_handleBeforeUnload", "this.terminate()", "await this.terminate()")):
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "current source contract changed|unload waiting"):
+                self.changed_source(role, before, after)
+
+    def test_sources_native_chunks_section_dependencies_and_roundtrip_are_reproducible(self):
+        for dependency in self.result["upstream_sections"]:
+            self.assertNotIn(dependency["receipt"], self.audit.artifacts)
+            section = json.loads((analysis.ROOT / dependency["receipt"]).read_bytes())[dependency["section"]]
+            self.assertEqual(hashlib.sha256(json.dumps(section, ensure_ascii=False, sort_keys=True,
+                separators=(",", ":")).encode()).hexdigest(), dependency["canonical_sha256"])
+        for owner in self.audit.owners.values():
+            self.assertEqual(host.verify_profiles_owner(self.audit, owner).text.decode(), owner["body"])
+        self.assertEqual([len(self.result[name]["complete_functions"]) for name in ("marie", "driver")], [17, 21])
+        for name in ("marie", "driver"):
+            self.assertTrue(self.result[name]["all_selected_pseudocode_captured"])
+            self.assertTrue(all(row["input_chunks_verified"] for row in self.result[name]["complete_functions"]))
+        report = {**self.result, "complete_source_owners": list(self.audit.owners.values()),
+                  "verified_artifacts": list(self.audit.artifacts.values())}
+        self.assertEqual(json.loads(json.dumps(report, ensure_ascii=False)), report)
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+
+class AudioEndpointNotificationChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        if not (analysis.ROOT / ".analysis/results/frontend/audio-MapAudio-audit.json").is_file():
+            raise unittest.SkipTest("Retained current PID1422 endpoint notification evidence is unavailable")
+        cls.audit = host.HostLocalAudit()
+        cls.result = families.collect_audio_endpoint_notification_chain(cls.audit)
+
+    def changed_source(self, role, before, after):
+        owners = {key: dict(self.audit.owners[value]) for key, value in self.result["roles"].items()}
+        self.assertIn(before, owners[role]["body"])
+        owners[role]["body"] = owners[role]["body"].replace(before, after, 1)
+        owners[role]["body_sha256"] = hashlib.sha256(owners[role]["body"].encode()).hexdigest()
+        return families._audio_endpoint_notification_source_contract(owners)
+
+    def changed_native(self, rva, before, after):
+        native = copy.deepcopy(self.result["native"])
+        function = next(row["capture"] for row in native["complete_functions"] if row["capture"]["rva"] == rva)
+        line = next(row for row in function["pseudocode"]["lines"] if before in row["text"])
+        line["text"] = line["text"].replace(before, after, 1)
+        return families._audio_endpoint_notification_native_contract(native)
+
+    def test_selected_notification_review_keeps_all_other_delivery_stages_unverified(self):
+        result = self.result
+        self.assertEqual(result["kind"], "current_audio_endpoint_notification_chain")
+        self.assertEqual(result["product_id"], 1422)
+        self.assertTrue(result["selected_notification_semantics_reviewed"])
+        self.assertEqual(result["host_release"]["version"], "4.0.896")
+        self.assertEqual([row["query"] for row in result["upstream_sections"]], ["endpoint_local_chain", "driver_lifecycle"])
+        for key in ("source_chain_complete", "whole_product_complete", "target_execution", "real_device_operations"):
+            self.assertFalse(result[key])
+        self.assertFalse(result["native_contract"]["notification"]["complete_inflight_barrier_proven"])
+        self.assertEqual(result["official_dll_comparison"], "not_executed")
+        self.assertEqual(result["runtime_acceptance"], "unverified")
+        self.assertEqual(result["temporary_artifacts_created"], [])
+
+    def test_current_source_bytes_and_two_round_deployment_remain_separate_from_dependency_closure(self):
+        proof = self.result["deployment_revalidation"]
+        self.assertFalse(proof["full_dependency_closure_reviewed"])
+        original = proof["owner"]["retained_original"]
+        self.assertEqual(original["sha256"], "fc7ad62d2db2f6adc447b0129d8e6ea62012b9d5d80381d5f0103234f2b1c48c")
+        self.assertEqual([(row["round"], row["http_status"], row["sha256"]) for row in proof["owner"]["rounds"]],
+            [(1, 200, original["sha256"]), (2, 200, original["sha256"])])
+        self.assertIsNone(self.result["source_set"]["capture"])
+        self.assertIn("complete_capture_unavailable", self.result["source_set"]["capture_failures"])
+
+    def test_host_callback_cache_url_lookup_and_container_filter_changes_are_rejected(self):
+        for role, before, after in (
+                ("host_callback", "r=a.SetNodeFFIEvent(h),this.ffiCallbackMap.set(o,h)", "r=a.SetNodeFFIEvent(h),r&&this.ffiCallbackMap.set(o,h)"),
+                ("host_callback", "a=t.ffiPreloadMain.ffiLibMap.get(o)", "a=this.ffiLibMap.get(o)"),
+                ("host_callback", "a.urlList.includes(e.getURL())", "a.urlList.includes(i)"),
+                ("native_handleEvent", "this.deviceContainerId!==", "this.deviceContainerId===")):
+            with self.subTest(role=role, before=before), self.assertRaisesRegex(ValueError, "complete source boundary changed"):
+                self.changed_source(role, before, after)
+        source = self.result["source_contract"]
+        self.assertTrue(source["callback_false_result_still_cached"])
+        self.assertFalse(source["connection_generation_checked"])
+        self.assertFalse(source["free_ffi_releases_maps"])
+
+    def test_registration_default_callback_and_listener_removal_cannot_be_recast_as_drain(self):
+        for role, before, after in (
+                ("native_setNodeFFIEvent", '{action:"SetNodeFFIEvent"}', '{action:"SetNodeFFIEvent",payload:{useNewCallback:!0}}'),
+                ("ffi_callback_factory", "isAnneCallback = false", "isAnneCallback = true"),
+                ("native_terminate", "this.removeListener()", "await this.removeListener()"),
+                ("native_handleBeforeUnload", "this.terminate()", "await this.terminate()"),
+                ("host_async", 'case"FreeFFI":return!0', 'case"FreeFFI":return!1')):
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "complete source boundary changed"):
+                self.changed_source(role, before, after)
+        self.assertFalse(self.result["source_contract"]["pid1422_anne_callback_requested"])
+        self.assertFalse(self.result["source_contract"]["before_unload_awaits_terminate"])
+
+    def test_worker_priority_move_and_unlock_before_invoke_are_bound_to_complete_functions(self):
+        self.assertEqual(self.result["native_contract"]["worker"]["queue_count_priority_offsets"], [208, 288, 248])
+        for rva, before, after in (("0x5a9c0", "v13 = 2", "v13 = 1"),
+                ("0x5a9c0", "*(_QWORD *)v17 = 0", "*(_QWORD *)v17 = v8"),
+                ("0x5a9c0", "Mtx_unlock((_Mtx_t)(v1 + 16))", "Mtx_lock((_Mtx_t)(v1 + 16))"),
+                ("0x5b4f0", "+ 16LL", "+ 24LL")):
+            with self.subTest(rva=rva), self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+                self.changed_native(rva, before, after)
+
+    def test_initialization_wait_reuse_and_termination_enqueue_do_not_claim_cancellation(self):
+        worker = self.result["native_contract"]["worker"]
+        self.assertEqual(worker["initialize_wait_seconds"], 30)
+        self.assertFalse(worker["initialize_timeout_cancels_task"])
+        self.assertFalse(worker["terminate_waits_for_removal"])
+        self.assertFalse(worker["ordinary_terminate_stops_worker"])
+        for rva, before, after in (("0x33ad0", "v20 = 30", "v20 = 0"),
+                ("0x34ca0", "v8 = 1", "v8 = 0"), ("0x34790", "result = 1", "result = 0"),
+                ("0x5c610", "lstrcmpiW(v8, a2)", "lstrcmpW(v8, a2)")):
+            with self.subTest(rva=rva), self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+                self.changed_native(rva, before, after)
+
+    def test_stop_joins_worker_and_disposes_pending_type1_tasks_without_executing_them(self):
+        for rva, before, after in (("0x5a3e0", "*(_BYTE *)(a1 + 168) = 0", "*(_BYTE *)(a1 + 168) = 1"),
+                ("0x5b1e0", "sub_180037BE0", "sub_18005B4F0"),
+                ("0x37be0", "sub_180038DD0", "sub_18005B4F0")):
+            with self.subTest(rva=rva), self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+                self.changed_native(rva, before, after)
+        self.assertIn("without invocation", self.result["native_contract"]["worker"]["stop"])
+
+    def test_copied_raw_device_callback_and_meter_timeout_remain_independent_of_clear(self):
+        lifetime = self.result["native_contract"]["device_lifetime"]
+        self.assertTrue(lifetime["meter_timeout_still_continues_destructor"])
+        self.assertIn("raw CCamyDevice pointer", lifetime["callback_capture"])
+        for rva, before, after in (("0xa9b0", "a2[1] = *(_QWORD *)(a1 + 8)", "a2[1] = 0"),
+                ("0x509d0", "Mtx_unlock((_Mtx_t)v12)", "Mtx_lock((_Mtx_t)v12)"),
+                ("0x50cd0", "Mtx_unlock", "Mtx_lock"),
+                ("0x51180", "a1 + 600", "a1 + 608"),
+                ("0x4a50", "0x3E8u", "0xFFFFFFFFu")):
+            with self.subTest(rva=rva), self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+                self.changed_native(rva, before, after)
+
+    def test_actual_worker_calls_callback_calls_and_indirect_slots_cannot_be_substituted(self):
+        for rva in ("0x5b52b", "0x6463", "0x5af63"):
+            native = copy.deepcopy(self.result["native"])
+            row = next(row for function in native["complete_functions"] for row in function["capture"]["assembly"] if row["rva"] == rva)
+            row["bytes"] = "90" * (len(row["bytes"]) // 2)
+            with self.subTest(rva=rva), self.assertRaisesRegex(ValueError, "physical worker/callback ABI changed|actual native edge changed"):
+                families._audio_endpoint_notification_native_contract(native)
+        for role in ("initialize_lambda", "terminate_lambda", "device_refcount", "device_callback_vtable"):
+            native = copy.deepcopy(self.result["native"])
+            row = next(row for row in native["verified_data_regions"] if row["role"] == role)
+            row["raw_hex"] = "00" * row["bytes"]
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "actual native slot changed"):
+                families._audio_endpoint_notification_native_contract(native)
+
+    def test_shared_addon_queue_is_reused_and_does_not_become_device_generation_protection(self):
+        dependency = self.result["shared_addon_dependency"]
+        self.assertEqual(dependency["pointer"], "/verified_contract/addon")
+        self.assertEqual(dependency["provenance"]["version"], "1.0.11")
+        self.assertEqual(self.result["addon_native"]["original"]["sha256"], dependency["provenance"]["original"]["sha256"])
+        self.assertEqual({row["capture"]["rva"] for row in self.result["addon_native"]["complete_functions"]},
+            {"0x94c0", "0xa0f0", "0x93e0", "0x8c20"})
+        self.assertIn("waits on a condition", dependency["semantics"])
+        self.assertIn("not device cancellation", dependency["finalization_and_limits"])
+
+    def test_complete_owner_byte_roundtrip_and_final_snapshot_are_reproducible(self):
+        for row in self.audit.owners.values():
+            raw = self.audit.read(row["original"])[row["byte_start"]:row["byte_end"]]
+            self.assertEqual(raw.decode(), row["body"])
+            self.assertEqual(hashlib.sha256(raw).hexdigest(), row["body_sha256"])
+        contract = self.result["native_contract"]
+        self.assertEqual(len(contract["verified_complete_boundary_hashes"]), 36)
+        self.assertEqual(len(contract["verified_reference_edges"]), 21)
+        self.assertEqual(len(contract["verified_instruction_anchors"]), 12)
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+
+class AudioDriverCloseQuiescenceTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.result = families.collect_audio_driver_close_quiescence(cls.audit)
+        cls.previous = json.loads((analysis.ROOT / ".analysis/results/frontend/audio-MapAudio-audit.json").read_bytes())
+        cls.raw = cls.audit.read(cls.result["native"]["original"])
+        cls.reused = [cls.previous["driver_lifecycle"]["marie"], cls.previous["endpoint_notification_chain"]["native"],
+            cls.previous["endpoint_local_chain"]["native"]]
+
+    def verify_native(self, native=None, reused=None):
+        return families._audio_driver_close_quiescence_native_contract(self.raw,
+            self.result["native"] if native is None else native, self.reused if reused is None else reused)
+
+    def changed_body(self, rva, before, after, *, reused=False):
+        native, previous = copy.deepcopy(self.result["native"]), copy.deepcopy(self.reused)
+        rows = [row for module in (previous if reused else [native]) for row in module["complete_functions"]
+            if row["capture"]["rva"] == rva]
+        self.assertTrue(rows)
+        for row in rows:
+            line = next(line for line in row["capture"]["pseudocode"]["lines"] if before in line["text"])
+            line["text"] = line["text"].replace(before, after, 1)
+        return self.verify_native(native, previous)
+
+    def test_current_scope_reuses_prior_owners_without_promoting_quiescence(self):
+        result = self.result
+        self.assertEqual((result["kind"], result["query"], result["product_id"]),
+            ("current_audio_driver_close_quiescence", "audio-driver-close-quiescence", 1422))
+        self.assertEqual(result["host_release"]["version"], "4.0.896")
+        self.assertTrue(result["selected_close_semantics_reviewed"])
+        self.assertEqual({key: result["reused_native"][key] for key in
+            ("marie_unique_functions", "driver_functions", "addon_functions", "new_marie_functions")},
+            {"marie_unique_functions": 55, "driver_functions": 21, "addon_functions": 4, "new_marie_functions": 19})
+        old = {row["capture"]["rva"] for module in self.reused for row in module["complete_functions"]}
+        self.assertFalse(old.intersection(row["capture"]["rva"] for row in result["native"]["complete_functions"]))
+        for key in ("source_chain_complete", "whole_product_complete", "target_execution", "real_device_operations"):
+            self.assertFalse(result[key])
+        self.assertFalse(result["native_contract"]["destruction"]["complete_session_quiescence_proven"])
+        self.assertEqual(result["official_dll_comparison"], "not_executed")
+
+    def test_actual_com_table_preserves_three_events_and_two_noop_slots(self):
+        contract = self.result["native_contract"]
+        listener = contract["listener"]
+        self.assertEqual(listener["events"], {"state_changed": 3, "added": 1, "removed": 2})
+        self.assertEqual((listener["device_subobject_offset"], listener["com_callback_offset"]), (672, 688))
+        self.assertEqual(contract["verified_indirect_slots"]["endpoint_change_listener"],
+            ["0x573f0", "0x40880", "0x40880", "0x57230", "0x571d0", "0x57170", "0x16b0", "0x16b0"])
+        self.assertFalse(listener["filter_by_endpoint_or_container_or_generation"])
+        self.assertEqual(listener["payload"], "borrowed endpoint-ID pointer; size8; new state not forwarded")
+        for rva, before, after in (("0x57230", "v6 = 3", "v6 = 4"), ("0x57170", "v5 = 8", "v5 = 4")):
+            with self.subTest(rva=rva), self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+                self.changed_body(rva, before, after)
+
+    def test_listener_registration_flag_and_ignored_hresult_remain_physical_facts(self):
+        listener = self.result["native_contract"]["listener"]
+        self.assertEqual(listener["addref_release"], "constant1")
+        self.assertFalse(listener["unregister_is_inflight_barrier"])
+        native = copy.deepcopy(self.result["native"])
+        row = next(row for row in native["verified_data_regions"] if row["role"] == "endpoint_change_listener")
+        row["raw_hex"] = "00" * row["bytes"]
+        row["sha256"] = hashlib.sha256(bytes(row["bytes"])).hexdigest()
+        with self.assertRaisesRegex(ValueError, "data region differs"):
+            self.verify_native(native)
+        with self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+            self.changed_body("0x57340", "*(_DWORD *)(a1 + 24) = 0", "*(_DWORD *)(a1 + 24) = 1")
+
+    def test_events_reset_one_shot_three_second_timer_without_device_ownership(self):
+        delayed = self.result["native_contract"]["delayed_reacquire"]
+        self.assertEqual((delayed["due_time_100ns"], delayed["delay_ms"]), (-30000000, 3000))
+        self.assertFalse(delayed["device_ownership_added_by_lambda_copy"])
+        self.assertFalse(delayed["generation_guard"])
+        for rva, before, after in (("0x5a0c0", "-30000000LL", "-10000000LL"),
+                ("0x533b0", "a2[1] = *(_QWORD *)(a1 + 8)", "a2[1] = 0")):
+            with self.subTest(rva=rva), self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+                self.changed_body(rva, before, after)
+
+    def test_timer_clears_callable_before_wait_and_does_not_drain_host_queue(self):
+        delayed = self.result["native_contract"]["delayed_reacquire"]
+        self.assertEqual(delayed["timer_destructor"], ["destroy/clear stored callable", "SetThreadpoolTimer(NULL)",
+            "WaitForThreadpoolTimerCallbacks(cancel_pending=true)", "CloseThreadpoolTimer"])
+        self.assertTrue(delayed["callable_cleared_before_timer_callbacks_wait"])
+        self.assertFalse(delayed["native_timer_wait_reaches_host_ffi_queue"])
+        with self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+            self.changed_body("0x57290", "WaitForThreadpoolTimerCallbacks(*((PTP_TIMER *)Block + 1), 1)",
+                "WaitForThreadpoolTimerCallbacks(*((PTP_TIMER *)Block + 1), 0)")
+
+    def test_reacquisition_timeout_and_cached_replay_cannot_be_readback(self):
+        delayed = self.result["native_contract"]["delayed_reacquire"]
+        self.assertFalse(delayed["replayed_values_are_fresh_device_observation"])
+        self.assertFalse(delayed["replay_results_checked"])
+        for rva, before, after in (("0x51290", "10000000000LL", "1000000000LL"),
+                ("0x51850", "if ( a1[72] && a1[73] )", "if ( a1[72] || a1[73] )"),
+                ("0x51850", "Sleep(0x3E8u)", "Sleep(0x64u)")):
+            with self.subTest(rva=rva), self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+                self.changed_body(rva, before, after)
+
+    def test_api_unload_precedes_listener_unregister_in_complete_destructor(self):
+        destruction = self.result["native_contract"]["destruction"]
+        self.assertFalse(destruction["endpoint_listener_unregistered_before_api_unload"])
+        self.assertFalse(destruction["endpoint_unregister_hresult_checked"])
+        self.assertFalse(destruction["global_ffi_callback_unregistered"])
+        with self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+            self.changed_body("0x4bef0", "sub_180057340(a1 + 672)", "sub_180057340(a1 + 688)", reused=True)
+
+    def test_meter_inflight_and_queued_termination_keep_their_original_boundaries(self):
+        contract = self.result["native_contract"]
+        self.assertTrue(contract["destruction"]["meter_timeout_still_continues_destruction"])
+        self.assertFalse(contract["destruction"]["endpoint_callback_copy_owns_device"])
+        self.assertFalse(contract["reconnect"]["terminate_export_waits_for_removal"])
+        self.assertTrue(contract["reconnect"]["initialize_can_reuse_pending_removal_object"])
+        self.assertFalse(contract["reconnect"]["ordinary_terminate_joins_global_worker"])
+        self.assertFalse(contract["reconnect"]["initialize_timeout_cancels_task"])
+        with self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+            self.changed_body("0x4a50", "0x3E8u", "0xFFFFFFFFu", reused=True)
+        with self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+            self.changed_body("0x4cd0", "v2 + 19) < 0xFFFFFFu", "v2 + 19) < 0xFFFFFFFFu")
+
+    def test_physical_instructions_and_actual_direct_edges_cannot_be_forged(self):
+        contract = self.result["native_contract"]
+        self.assertEqual((len(contract["verified_complete_boundary_hashes"]), len(contract["verified_reference_edges"]),
+            len(contract["verified_instruction_anchors"])), (24, 13, 12))
+        for rva in ("0x57372", "0x5a166", "0x5a0f6"):
+            native = copy.deepcopy(self.result["native"])
+            row = next(row for function in native["complete_functions"] for row in function["capture"]["assembly"] if row["rva"] == rva)
+            row["bytes"] = "90" * (len(row["bytes"]) // 2)
+            with self.subTest(rva=rva), self.assertRaisesRegex(ValueError, "instruction differs"):
+                self.verify_native(native)
+
+    def test_current_host_listener_removal_has_no_native_generation_barrier(self):
+        source = self.result["source_contract"]
+        self.assertFalse(source["connection_generation_checked"])
+        self.assertFalse(source["free_ffi_releases_maps"])
+        self.assertFalse(source["before_unload_awaits_terminate"])
+        owners = {role: dict(self.audit.owners[owner]) for role, owner in self.result["roles"].items()}
+        row = owners["host_callback"]
+        row["body"] = row["body"].replace("a.urlList.includes(e.getURL())", "a.urlList.includes(i)", 1)
+        row["body_sha256"] = hashlib.sha256(row["body"].encode()).hexdigest()
+        with self.assertRaisesRegex(ValueError, "complete source boundary changed"):
+            families._audio_endpoint_notification_source_contract(owners)
+
+    def test_dependency_receipts_keep_failures_and_registration_separate_from_runtime(self):
+        for dependency in self.result["upstream_sections"]:
+            section = self.previous[dependency["section"]]
+            self.assertEqual(hashlib.sha256(json.dumps(section, ensure_ascii=False, sort_keys=True,
+                separators=(",", ":")).encode()).hexdigest(), dependency["canonical_sha256"])
+        self.assertTrue(self.result["reused_native"]["existing_capture_failures_retained"])
+        self.assertTrue(self.result["native"]["capture_failures"])
+        registration = self.result["registration_contract"]
+        self.assertFalse(registration["installer_executed"])
+        self.assertEqual(registration["actual_registered_path"], "unobserved")
+        self.assertFalse(self.result["native_contract"]["reconnect"]["other_driver_notification_branches_reviewed"])
+
+    def test_complete_owner_roundtrip_snapshot_and_no_temporary_resources(self):
+        self.assertEqual(len(self.audit.owners), 13)
+        for row in self.audit.owners.values():
+            self.assertEqual(host.verify_profiles_owner(self.audit, row).text.decode(), row["body"])
+        self.assertTrue(all(row["input_chunks_verified"] for row in self.result["native"]["complete_functions"]))
+        self.assertEqual(json.loads(json.dumps(self.result, ensure_ascii=False)), self.result)
+        self.assertEqual(self.result["temporary_artifacts_created"], [])
+        self.assertEqual(self.result["analysis_sessions_created"], [])
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+
+class AudioEndpointLocalChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        if not (analysis.ROOT / ".analysis/results/frontend/audio-MapAudio-audit.json").is_file():
+            raise unittest.SkipTest("Retained current audio endpoint evidence is unavailable")
+        cls.audit = host.HostLocalAudit()
+        cls.result = families.collect_audio_endpoint_local_chain(cls.audit)
+
+    def owner(self, role):
+        return self.audit.owners[self.result["roles"][role]]
+
+    def source_contract(self, role, before, after):
+        owners = {key: dict(self.owner(key)) for key in self.result["roles"]}
+        self.assertIn(before, owners[role]["body"])
+        owners[role]["body"] = owners[role]["body"].replace(before, after, 1)
+        return families.audio_endpoint_source_contract(owners)
+
+    def native_instruction(self, rva, changed):
+        native = copy.deepcopy(self.result["native"])
+        instruction = next(row for function in native["complete_functions"]
+                           for row in function["capture"]["assembly"] if row["rva"] == rva)
+        instruction["bytes"] = changed
+        return families.audio_endpoint_native_contract(native)
+
+    def test_current_bounded_chain_is_separate_from_runtime_and_whole_product(self):
+        result = self.result
+        self.assertEqual(result["kind"], "current_audio_endpoint_local_chain")
+        self.assertEqual(result["product_id"], 1422)
+        self.assertEqual(result["upstream_mw"]["query"], "seiren_current_mw")
+        self.assertEqual(result["upstream_monitor"]["pointer"], "/monitor_driver/contract")
+        self.assertTrue(result["selected_endpoint_semantics_reviewed"])
+        self.assertFalse(result["source_chain_complete"])
+        self.assertFalse(result["whole_product_complete"])
+        self.assertFalse(result["target_execution"])
+        self.assertEqual(result["official_dll_comparison"], "not_executed")
+        self.assertEqual(result["temporary_artifacts_created"], [])
+        for source in result["source_sets"].values():
+            self.assertIsNone(source["capture"])
+            self.assertIn("complete_capture_unavailable", source["capture_failures"])
+
+    def test_selection_uses_active_friendly_names_and_service_is_not_retry_requirement(self):
+        native = self.result["native_contract"]
+        selected = native["selection"]
+        self.assertEqual(selected["active_state_mask"], 1)
+        self.assertFalse(selected["container_id_used_for_matching"])
+        self.assertEqual(selected["attempts"], 10)
+        self.assertEqual([(row["name"], row["flow"], row["device_id"]) for row in selected["endpoints"]],
+            [("Microphone", "capture", 262145), ("Service", "capture", 262146), ("Headphones", "render", 524289)])
+        self.assertEqual(selected["successful_retry_stop_requires"], ["Microphone", "Headphones"])
+        self.assertEqual(native["initial_reads"]["service_scalar_write"], 1.0)
+        self.assertFalse(native["initial_reads"]["service_write_hresult_checked"])
+        self.assertFalse(native["initial_reads"]["constructor_cache"]["device_observation"])
+
+    def test_initial_read_rounding_notification_truncation_and_result_failures_remain_distinct(self):
+        native = self.result["native_contract"]
+        self.assertEqual(native["initial_reads"]["volume_conversion"], "roundf(binary32_scalar * 100)")
+        self.assertEqual(native["notification"]["volume_conversion"], "truncate binary32_scalar * 100")
+        self.assertTrue(native["notification"]["same_context_ignored"])
+        self.assertFalse(native["notification"]["initial_getters_emit_notifications"])
+        self.assertEqual(native["notification"]["dispatch_order"], ["changed_volume", "changed_mute"])
+        self.assertEqual(native["notification"]["payload_order"], ["device_id", "mute", "level"])
+        for key in ("activate_hresult_checked", "mute_hresult_checked", "notification_registration_hresult_checked_by_owner"):
+            self.assertFalse(native["initial_reads"][key])
+        self.assertFalse(self.result["source_contract"]["setter_readback"])
+
+    def test_event_container_subscription_and_unload_contracts_reject_silent_changes(self):
+        for role, before, after in (
+            ("native_handleEvent", "this.deviceContainerId!==", "this.deviceContainerId==="),
+            ("mixer_handleAddLevelMeterListener", 'type:"MW_UPDATE_MIC_TO_UI"', 'type:"MW_CHANGE_VOLUME_TO_UI"'),
+            ("mixer_stopStreamMixerRecording", ".offEvent(e)", ".onEvent(e)"),
+            ("native_handleBeforeUnload", "this.terminate()", "await this.terminate()")):
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "endpoint source contract changed|asynchronous boundary"):
+                self.source_contract(role, before, after)
+        self.assertEqual(self.result["source_contract"]["runtime_getter_order"],
+                         ["headphones_volume", "headphones_mute", "microphone_volume", "microphone_mute"])
+        self.assertFalse(self.result["source_contract"]["unload_awaits_termination"])
+
+    def test_actual_com_slots_float_argument_and_callback_call_are_byte_bound(self):
+        for rva, changed in (("0x3ea65", "ff5020"), ("0x3eb34", "ff5078"),
+                             ("0x5047d", "0f28d6"), ("0x6463", "ff151f030800")):
+            with self.subTest(rva=rva), self.assertRaisesRegex(ValueError, "physical COM/callback ABI changed"):
+                self.native_instruction(rva, changed)
+        self.assertEqual(len(self.result["native_contract"]["instruction_assertions"]), 30)
+
+    def test_actual_callback_vtable_guid_property_key_and_service_scalar_are_verified(self):
+        for role in ("endpoint_callback_vtable", "microphone_callback_vtable", "event_context",
+                     "friendly_name_key", "service_initial_scalar"):
+            native = copy.deepcopy(self.result["native"])
+            region = next(row for row in native["verified_data_regions"] if row["role"] == role)
+            region["raw_hex"] = "00" * region["bytes"]
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "data contract changed|actual callback vtable changed"):
+                families.audio_endpoint_native_contract(native)
+        self.assertEqual(self.result["native_contract"]["callback_tables"]["endpoint_callback_vtable"][3], "0x3ec30")
+        self.assertEqual(self.result["native_contract"]["callback_tables"]["device_callback_vtable"][2], "0xa9a0")
+
+    def test_ignored_activation_result_and_release_cannot_be_recast_as_safe_completion(self):
+        native = copy.deepcopy(self.result["native"])
+        function = next(row["capture"] for row in native["complete_functions"] if row["capture"]["rva"] == "0x3e890")
+        line = next(row for row in function["pseudocode"]["lines"] if "&unk_18006E048" in row["text"])
+        line["text"] += "\n      if ( activation_result < 0 ) return activation_result;"
+        with self.assertRaisesRegex(ValueError, "ignored Activate result boundary changed"):
+            families.audio_endpoint_native_contract(native)
+        release = self.result["native_contract"]["release"]
+        self.assertEqual(release["ordinary_release_owner_offsets"], [576, 584])
+        self.assertEqual(release["service_release"], "device destructor")
+        self.assertFalse(release["unregister_hresult_checked"])
+        self.assertFalse(release["destructor_retries_failed_unregistration_after_callback_clear"])
+        self.assertEqual(release["callback_addref_release_return"], 1)
+        self.assertFalse(release["callback_quiescence_proven"])
+
+    def test_complete_source_native_bytes_and_roundtrip_are_reproducible(self):
+        for owner in self.audit.owners.values():
+            raw = self.audit.read(owner["original"])[owner["byte_start"]:owner["byte_end"]]
+            self.assertEqual(raw.decode(), owner["body"])
+            self.assertEqual(hashlib.sha256(raw).hexdigest(), owner["body_sha256"])
+        self.assertEqual(len(self.result["native"]["complete_functions"]), 26)
+        self.assertTrue(all(row["input_chunks_verified"] for row in self.result["native"]["complete_functions"]))
+        report = {**self.result, "complete_owners": list(self.audit.owners.values()),
+                  "verified_artifacts": list(self.audit.artifacts.values())}
+        self.assertEqual(json.loads(json.dumps(report, ensure_ascii=False)), report)
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+
+class AudioSeirenNativeDspTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        if not (analysis.ROOT / ".analysis/results/frontend/audio-MapAudio-audit.json").is_file():
+            raise unittest.SkipTest("Retained current Seiren evidence is unavailable")
+        cls.audit = host.HostLocalAudit()
+        cls.result = families.collect_audio_seiren_native_dsp(cls.audit)
+        cls.original_bytes = {owner["original"]["path"]: cls.audit.read(owner["original"])
+                              for owner in cls.audit.owners.values()
+                              if "/1422/mw/" in owner["original"]["path"]}
+
+    def owner(self, role):
+        return self.audit.owners[self.result["chain"]["roles"][role]]
+
+    def analyze(self, role, before, after):
+        owner = self.owner(role)
+        self.assertIn(before, owner["body"])
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name).resolve()
+        patched = patch.object(analysis, "ROOT", root)
+        patched.start()
+        self.addCleanup(patched.stop)
+        originals = []
+        for relative, original in self.original_bytes.items():
+            raw = original
+            if relative == owner["original"]["path"]:
+                changed = owner["body"].replace(before, after, 1).encode()
+                raw = original[:owner["byte_start"]] + changed + original[owner["byte_end"]:]
+            path = root / ".analysis/inputs/frontend/seiren-dsp-fixture" / Path(relative).name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(raw)
+            originals.append({"path": path.relative_to(root).as_posix(), "bytes": len(raw),
+                              "sha256": hashlib.sha256(raw).hexdigest()})
+        return families.audio_seiren_native_dsp_chain(host.HostLocalAudit(), originals)
+
+    def test_real_eq_hpf_and_vocal_use_hid_with_exact_preset_profile_identities(self):
+        chain = self.result["chain"]
+        self.assertEqual([(row["preset_id"], row["profile_id"]) for row in chain["preset_profiles"]],
+                         [(6, 1), (7, 2), (8, 3), (9, 4), (10, 5), (16, 6)])
+        self.assertEqual(chain["hid_commands"]["getEQPreset"], [2, 8, 130])
+        self.assertEqual(chain["hid_commands"]["setEQPreset"], [2, 8, 2])
+        self.assertEqual(chain["hid_commands"]["getMicrophoneHPF"], [2, 8, 149])
+        self.assertEqual(chain["hid_commands"]["setMicrophoneHPF"], [2, 8, 21])
+        self.assertIn("HID via rzDevice", chain["physical_dsp_transport"])
+        self.assertFalse(self.result["source_chain_complete"])
+        self.assertFalse(self.result["target_execution"])
+        self.assertEqual(self.result["official_dll_comparison"], "not_executed")
+
+    def test_source_result_readback_and_release_boundaries_remain_distinct(self):
+        setter = self.owner("setParametricEQ")["body"]
+        calls = ["setParametricEQStatus", "setEQPreset", "this.setEQBand", "setEqVocalBass", "setEqVocalExciter", "setHighPassFilter"]
+        self.assertEqual([setter.index(name) for name in calls], sorted(setter.index(name) for name in calls))
+        self.assertNotIn("rzDevice", self.owner("initDataFromDevice")["body"])
+        self.assertNotIn("getEQActiveBands", self.owner("getRuntimeData")["body"])
+        self.assertIn('action:"hid.releaseMutex"', self.owner("hid_releaseHIDMutex")["body"])
+        self.assertIn("getParametricEQSetting(0,0,t.jsonData.parametricEQStatuses[r])", self.owner("getEQActiveBands")["body"])
+        self.assertIn("t=!0", self.owner("setHighPassFilter")["body"])
+        self.assertNotIn(".status", self.owner("setHighPassFilter")["body"])
+
+    def test_owner_slices_and_native_chunks_retain_actual_verified_inputs(self):
+        for owner in self.audit.owners.values():
+            raw = self.audit.read(owner["original"])[owner["byte_start"]:owner["byte_end"]]
+            self.assertEqual(raw.decode(), owner["body"])
+            self.assertEqual(hashlib.sha256(raw).hexdigest(), owner["body_sha256"])
+        for name in ("marie", "driver"):
+            self.assertTrue(all(row["input_chunks_verified"] for row in self.result["monitor_driver"][name]["complete_functions"]))
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_hpf_setter_cannot_borrow_the_getter_command(self):
+        with self.assertRaisesRegex(ValueError, "command selection changed"):
+            self.analyze("adapter_setMicrophoneHPF", "R.d7", "R.b8")
+
+    def test_signed_gain_and_big_endian_frequency_parsers_are_checked(self):
+        for before, after in (("t.data[6]<<24>>24", "t.data[6]<<24>>>24"),
+                              ("t.data[4]<<8|t.data[5]", "t.data[5]<<8|t.data[4]")):
+            with self.subTest(before=before), self.assertRaisesRegex(ValueError, "parser_getParametricEQSetting"):
+                self.analyze("parser_getParametricEQSetting", before, after)
+
+    def test_source_hpf_failure_default_and_ignored_set_status_cannot_be_reinterpreted(self):
+        with self.assertRaisesRegex(ValueError, "getHighPassFilter"):
+            self.analyze("getHighPassFilter", "{isEnabled:!0,value:3}", "{isEnabled:!1,value:0}")
+        with self.assertRaisesRegex(ValueError, "setHighPassFilter"):
+            self.analyze("setHighPassFilter", "t=!0", 't="SUCCESS"===n.status')
+
+    def test_gain_limits_storage_and_full_status_clear_are_not_silent_changes(self):
+        for role, before, after in (("gain_conversion", "e<-12||e>12", "e<-15||e>15"),
+            ("descriptor_ON_SET_PARAMETRIC_EQ_SETTINGS", "Storage_Global", "Storage_Profile"),
+            ("setParametricEQ", "[0,0,0,0,0,0,0,0,0,0]", "[0,0,0,0,0,0,0,0,0,1]")):
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "changed"):
+                self.analyze(role, before, after)
+
+    def test_physical_monitor_arguments_include_all_channels_and_distinct_driver_directions(self):
+        native = self.result["monitor_driver"]
+        contract = native["contract"]
+        self.assertEqual(contract["mute"], {"entity": 10, "request": 1, "selector": 1, "channels": [0], "payload_bytes": 1, "timeout": 100})
+        self.assertEqual(contract["volume"], {"entity": 10, "request": 1, "selector": 2, "channels": [1, 2, 3], "payload_bytes": 2, "timeout": 100})
+        self.assertEqual(contract["ioctl_set"], "0x80882081")
+        self.assertEqual(contract["ioctl_get"], "0x80882086")
+        for module, rva, changed in (("marie", "0x4e60e", "c644242001"), ("driver", "0x1837", "41b001"),
+                                    ("driver", "0xa1ff", "ba86208880")):
+            with self.subTest(module=module, rva=rva):
+                altered = copy.deepcopy(native[module])
+                row = next(row for function in altered["complete_functions"] for row in function["capture"]["assembly"] if row["rva"] == rva)
+                row["bytes"] = changed
+                with self.assertRaisesRegex(ValueError, "physical ABI changed"):
+                    families.audio_seiren_monitor_contract(altered if module == "marie" else native["marie"],
+                        altered if module == "driver" else native["driver"])
+
+    def test_snapshot_change_prevents_bounded_observation_completion(self):
+        import argparse
+        audit = host.HostLocalAudit()
+        with patch.object(host, "HostLocalAudit", return_value=audit), \
+                patch.object(audit, "final_snapshot", return_value=["changed-source"]), \
+                patch.object(families, "collect_audio_seiren_native_dsp", return_value={"source_chain_complete": False}), \
+                patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+            with self.assertRaisesRegex(ValueError, "observation remains unresolved"):
+                families.audit_audio_seiren_native_dsp(argparse.Namespace(product=[1422], prepare=False))
+        self.assertFalse(publish.call_args.args[0]["bounded_observation_complete"])
+
+
+class GamepadCurrentModeSocdTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        if not (analysis.ROOT / ".analysis/inputs/frontend/gamepad-4115-current/acquisition.json").is_file():
+            raise unittest.SkipTest("Retained current 4115 inputs are unavailable")
+        cls.audit = host.HostLocalAudit()
+        cls.result = families.collect_gamepad_current_mode_socd(cls.audit)
+        cls.owners = {owner["id"]: owner for owner in cls.result["complete_source_owners"]}
+
+    def owner(self, role):
+        return self.owners[self.result["roles"][role]]
+
+    def test_cli_dispatch_reaches_the_bounded_4115_query(self):
+        import argparse
+        parser = argparse.ArgumentParser()
+        families.add_commands(parser.add_subparsers(dest="command"))
+        args = parser.parse_args(["audit-family-function", "--family", "gamepad", "--function", "mw",
+                                  "--query", "gamepad-mode-socd", "--product", "4115"])
+        with patch.object(families, "audit_gamepad_current_mode_socd", return_value="published") as query:
+            self.assertEqual(families.audit_family_function(args), "published")
+        query.assert_called_once_with(args)
+
+    def test_current_selection_preserves_capture_limits_and_real_mounted_arcade_consumer(self):
+        selected = self.result["source_sets"][1]
+        self.assertEqual(selected["current_source_selection"]["canonical_entry_url"],
+                         "https://apps.razer.com/synapse/products/4115/mw/")
+        self.assertEqual(selected["acquisition"], selected["current_source_selection"]["acquisition"])
+        self.assertNotEqual(selected["name"], "gamepad-mw-4115-current")
+        self.assertIsNone(selected["capture"])
+        self.assertIn("complete_capture_unavailable", selected["capture_failures"])
+        self.assertEqual(self.result["mounted_consumers"]["socd"]["mounts"][0]["props"],
+                         {"isArcadeController": "!0"})
+        self.assertIn("TAB_CUSTOMIZE", self.result["exports"]["customize_tab_label"]["binding"]["body"])
+        self.assertFalse(self.result["whole_page_complete"])
+        self.assertEqual(self.result["actual_dll_comparison"], "unverified")
+
+    def test_complete_owners_reproduce_current_original_byte_ranges(self):
+        for owner in self.owners.values():
+            raw = (analysis.ROOT / owner["original"]["path"]).read_bytes()
+            self.assertEqual(hashlib.sha256(raw).hexdigest(), owner["original"]["sha256"])
+            body = raw[owner["byte_start"]:owner["byte_end"]]
+            self.assertEqual(body.decode(), owner["body"])
+            self.assertEqual(hashlib.sha256(body).hexdigest(), owner["body_sha256"])
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_protocol_uses_distinct_get_set_ids_and_no_invented_postwrite_read(self):
+        self.assertEqual(self.result["protocol"], {
+            "getControllerModeSwitch": [2, 12, 156], "setControllerModeSwitch": [2, 12, 28],
+            "getControllerSOCDCleaningOption": [2, 12, 155], "setControllerSOCDCleaningOption": [2, 12, 27]})
+        self.assertNotIn("getControllerModeSwitch", self.owner("mode_feature_setter")["body"])
+        self.assertIn('"safe"===e.mode?0:1', self.owner("mode_feature_setter")["body"])
+
+    def test_shape_review_accepts_lexical_rename_but_rejects_changed_mode_or_storage_semantics(self):
+        import re
+        owner = copy.deepcopy(self.owner("mode_feature_setter"))
+        owner["body"] = re.sub(r"\be\b", "selection", owner["body"])
+        families.verify_gamepad_mode_socd_owner(self.audit.parser, "mode_feature_setter", owner)
+        for role, before, after in (
+            ("mode_feature_setter", '"safe"===e.mode?0:1', '"safe"===e.mode?1:0'),
+            ("mode_descriptor", "Storage_Global", "Storage_Profile"),
+            ("socd_descriptor", "restoreDeviceData", "unusedRestoreDeviceData"),
+            ("mode_ui", 't!==a.toLowerCase()', 't===a.toLowerCase()'),
+            ("socd_class", "initFromDevice", "alwaysReadFromDevice"),
+        ):
+            with self.subTest(role=role):
+                owner = copy.deepcopy(self.owner(role))
+                self.assertIn(before, owner["body"])
+                owner["body"] = owner["body"].replace(before, after)
+                with self.assertRaisesRegex(ValueError, "requires semantic review"):
+                    families.verify_gamepad_mode_socd_owner(self.audit.parser, role, owner)
+
+    def test_orphan_loader_and_hardware_event_target_changes_cannot_reuse_the_old_conclusion(self):
+        for role, before, after in (
+            ("mode_loader", "58255", "99999"),
+            ("socd_loader", "84470", "99999"),
+            ("hardware_socd", "controllerDPadSOCD", "controllerModeSwitch"),
+            ("slot_projection", "0===o", "2===o"),
+            ("mode_decoder", "data[1]", "data[0]"),
+            ("factory_58255", "n(77846)", "n(99999)"),
+        ):
+            with self.subTest(role=role):
+                owner = copy.deepcopy(self.owner(role))
+                self.assertIn(before, owner["body"])
+                owner["body"] = owner["body"].replace(before, after)
+                with self.assertRaisesRegex(ValueError, "requires semantic review"):
+                    families.verify_gamepad_mode_socd_owner(self.audit.parser, role, owner)
+
+    def test_false_execute_and_completed_log_remain_separate_from_success(self):
+        owner = copy.deepcopy(self.owner("taskRunnerSetDevice"))
+        self.assertIn('a.result=null!=o&&o', owner["body"])
+        self.assertIn('a.value.status="completed"', owner["body"])
+        owner["body"] = owner["body"].replace('a.result=null!=o&&o', 'a.result=!0')
+        with self.assertRaisesRegex(ValueError, "requires semantic review"):
+            families.verify_gamepad_mode_socd_owner(self.audit.parser, "taskRunnerSetDevice", owner)
+
+
 class CurrentLightingFamilySourceTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -482,6 +2166,735 @@ class PromiseParameterBindingTests(unittest.TestCase):
         ):
             with self.subTest(source=source), self.assertRaises(ValueError):
                 families.javascript_promise_parameter_uses(source, self.parser, 'write')
+
+
+class CameraImagePropertyChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        if not (analysis.ROOT / ".analysis/inputs/frontend/accessories-3595-current-refresh-ec3db4b29c5a/acquisition.json").is_file():
+            raise unittest.SkipTest("Retained refreshed V2/X camera inputs are unavailable")
+        cls.audit = host.HostLocalAudit()
+        cls.result = families.collect_camera_image_properties(cls.audit)
+        cls.products = {row["product_id"]: row for row in cls.result["products"]}
+
+    def owner(self, role, pid=3595):
+        return self.audit.owners[self.products[pid]["roles"][role]]
+
+    def analyze(self, role, before, after):
+        owner = self.owner(role)
+        self.assertIn(before, owner["body"])
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name).resolve()
+        patched = patch.object(analysis, "ROOT", root)
+        patched.start()
+        self.addCleanup(patched.stop)
+        sources = {row["original"]["path"]: row["original"] for row in self.audit.owners.values()
+                   if "/3595/" in row["original"]["path"]}
+        layers = {"ui": [], "mw": []}
+        for relative, source in sources.items():
+            raw = self.audit.read(source)
+            if relative == owner["original"]["path"]:
+                changed = owner["body"].replace(before, after, 1).encode()
+                raw = raw[:owner["byte_start"]] + changed + raw[owner["byte_end"]:]
+            layer = "ui" if "/3595/ui/" in relative else "mw"
+            path = root / ".analysis/inputs/frontend/camera-image-fixture" / layer / Path(relative).name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(raw)
+            layers[layer].append({"path": path.relative_to(root).as_posix(), "bytes": len(raw),
+                                  "sha256": hashlib.sha256(raw).hexdigest()})
+        return families.camera_image_property_chain(host.HostLocalAudit(), 3595, layers["ui"], layers["mw"])
+
+    def test_current_mount_and_product_differences_use_refreshed_inputs(self):
+        self.assertEqual(self.products[3595]["white_balance_range"], {"min": 2800, "max": 7500})
+        self.assertEqual(self.products[3596]["white_balance_range"], {"min": 2800, "max": 6500})
+        self.assertTrue(self.products[3595]["preview_off_editing"])
+        self.assertFalse(self.products[3596]["preview_off_editing"])
+        for pid, row in self.products.items():
+            self.assertEqual(row["event"], "ON_SET_IMAGE_PRESETS")
+            self.assertEqual(row["mounted_props"]["supportSharpness"], "!1")
+            self.assertEqual(row["mounted_props"]["supportGain"], "!1")
+            for selected in row["source_sets"].values():
+                self.assertIn("refresh", selected["name"])
+                self.assertIsNone(selected["capture"])
+                self.assertIn("complete_capture_unavailable", selected["capture_failures"])
+            self.assertIn("refresh", self.owner("image_settings", pid)["original"]["path"])
+        self.assertFalse(self.result["source_chain_complete"])
+        self.assertFalse(self.result["whole_page_complete"])
+        self.assertFalse(self.result["target_execution"])
+        self.assertEqual(self.result["official_dll_comparison"], "not_executed")
+
+    def test_real_preset_runner_result_and_lifecycle_are_separate(self):
+        for pid, row in self.products.items():
+            self.assertEqual(row["write_order"], ["brightness", "contrast", "saturation", "whiteBalance", "sharpness", "gain"])
+            self.assertIn('currentCameraSettings:E.payload', self.owner("cache_response_reducer", pid)["body"])
+            self.assertIn("getAdvancedCameraSettingsCache", self.owner("ui_cache_request", pid)["body"])
+            self.assertNotIn("getWhiteBalance", self.owner("image_result_consumer", pid)["body"])
+            self.assertIn('return{}', self.owner("adapter_setSaturation", pid)["body"])
+            self.assertIn('this.terminate()', self.owner("adapter_destroy", pid)["body"])
+            self.assertNotIn('await', self.owner("adapter_destroy", pid)["body"])
+        self.assertEqual(self.result["native_contract"]["properties"],
+                         {"brightness": 0, "contrast": 1, "saturation": 3, "whiteBalance": 7})
+        self.assertEqual(self.result["native_contract"]["release_vtable_offset"], 16)
+
+    def test_complete_original_slices_native_chunks_and_json_roundtrip(self):
+        for owner in self.audit.owners.values():
+            body = self.audit.read(owner["original"])[owner["byte_start"]:owner["byte_end"]]
+            self.assertEqual(body.decode(), owner["body"])
+            self.assertEqual(hashlib.sha256(body).hexdigest(), owner["body_sha256"])
+        self.assertTrue(all(row["input_chunks_verified"] for row in self.result["native"]["complete_functions"]))
+        complete = {**self.result, "complete_owners": list(self.audit.owners.values()),
+                    "verified_artifacts": list(self.audit.artifacts.values())}
+        self.assertEqual(json.loads(json.dumps(complete, ensure_ascii=False)), complete)
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_hidden_controls_and_cross_product_white_balance_range_are_rejected(self):
+        for role, before, after, error in (("mounted_pages", "supportSharpness:!1", "supportSharpness:!0", "mounted props"),
+            ("device_info", "max:7500", "max:6500", "white-balance range")):
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, error):
+                self.analyze(role, before, after)
+
+    def test_preset_write_order_and_early_cancel_contract_are_checked(self):
+        for before, after, error in (('["brightness","contrast","saturation","whiteBalance","sharpness","gain"]',
+            '["contrast","brightness","saturation","whiteBalance","sharpness","gain"]', "completion and cancellation"),
+            (".signal.aborted", ".signal.cancelled", "completion and cancellation")):
+            with self.subTest(before=before), self.assertRaisesRegex(ValueError, error):
+                self.analyze("image_runner", before, after)
+
+    def test_ignored_false_ack_and_log_only_consumer_cannot_be_claimed_as_readback(self):
+        with self.assertRaisesRegex(ValueError, "ignored setter acknowledgements"):
+            self.analyze("image_runner", 'yield t.setBrightness(i[n],!1)',
+                'if(!(yield t.setBrightness(i[n],!1)))throw new Error("failed")')
+        with self.assertRaisesRegex(ValueError, "log-only result consumer"):
+            self.analyze("image_result_consumer", "console.log", "rzDevice.getWhiteBalance")
+
+    def test_empty_native_pointer_parser_is_not_reinterpreted_as_array(self):
+        with self.assertRaisesRegex(ValueError, "getter parse boundary getWhiteBalance"):
+            self.analyze("adapter_getWhiteBalance", "?{}:", "?[]:")
+
+    def test_native_property_ids_flags_hresult_and_release_are_byte_bound(self):
+        native = self.result["native"]
+        for rva, changed in (("0x5a898", "ba06000000"), ("0x4bd4e", "4183f102"), ("0x4be39", "ff5020")):
+            with self.subTest(rva=rva):
+                altered = copy.deepcopy(native)
+                instruction = next(row for function in altered["complete_functions"] for row in function["capture"]["assembly"]
+                                   if row["rva"] == rva)
+                instruction["bytes"] = changed
+                with self.assertRaisesRegex(ValueError, "native property ABI changed"):
+                    families.camera_image_native_contract(altered)
+        altered = copy.deepcopy(native)
+        altered["verified_data_regions"][0]["raw_hex"] = "00" * 16
+        with self.assertRaisesRegex(ValueError, "VideoProcAmp IID changed"):
+            families.camera_image_native_contract(altered)
+        altered = copy.deepcopy(native)
+        setter = next(row["capture"] for row in altered["complete_functions"] if row["capture"]["rva"] == "0x4bce0")
+        line = next(row for row in setter["pseudocode"]["lines"] if "v9 >= 0" in row["text"])
+        line["text"] = line["text"].replace("v9 >= 0", "v9 == 0")
+        with self.assertRaisesRegex(ValueError, "HRESULT/result boundary changed"):
+            families.camera_image_native_contract(altered)
+
+    def test_changed_snapshot_cannot_publish_success(self):
+        import argparse
+        audit = host.HostLocalAudit()
+        with patch.object(host, "HostLocalAudit", return_value=audit), \
+                patch.object(audit, "final_snapshot", return_value=["changed-source"]), \
+                patch.object(families, "collect_camera_image_properties", return_value={"source_chain_complete": False}), \
+                patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+            with self.assertRaisesRegex(ValueError, "observation remains unresolved"):
+                families.audit_camera_image_properties(argparse.Namespace(family="accessories", function="main", product=[3595, 3596], prepare=False))
+        self.assertFalse(publish.call_args.args[0]["bounded_observation_complete"])
+        self.assertEqual(publish.call_args.args[3], "image_properties")
+
+
+class CameraImageHostChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        receipt = analysis.ROOT / ".analysis/results/frontend/accessories-camera-local-pages-audit.json"
+        if not receipt.is_file():
+            raise unittest.SkipTest("Retained camera IMAGE host dependency is unavailable")
+        cls.audit = host.HostLocalAudit()
+        cls.result = families.collect_camera_image_host_chain(cls.audit)
+
+    def source_contract(self, role, before, after):
+        owners = {key: dict(self.audit.owners[value]) for key, value in self.result["roles"].items()}
+        self.assertIn(before, owners[role]["body"])
+        owners[role]["body"] = owners[role]["body"].replace(before, after, 1)
+        return families.camera_image_host_source_contract(owners)
+
+    def test_actual_current_host_path_is_main_process_and_completion_remains_bounded(self):
+        result = self.result
+        self.assertEqual(result["host_release"]["version"], "4.0.896")
+        self.assertEqual([row["product_id"] for row in result["products"]], [3595, 3596])
+        self.assertEqual(result["kind"], "current_camera_image_host_chain")
+        self.assertEqual(result["upstream_image"]["section"], "image_properties")
+        self.assertIn("FFIPreloadMain.callDLLAsync", result["source_contract"]["route"][-2])
+        self.assertNotIn("FFIProcess", " ".join(result["source_contract"]["route"]))
+        self.assertTrue(result["selected_host_semantics_reviewed"])
+        for key in ("source_chain_complete", "whole_page_complete", "whole_product_complete", "target_execution", "real_device_operations"):
+            self.assertFalse(result[key])
+        self.assertEqual(result["official_dll_comparison"], "not_executed")
+        self.assertEqual(result["runtime_acceptance"], "unverified")
+        self.assertEqual(result["temporary_artifacts_created"], [])
+        self.assertTrue(all(row["member_offset_verified"] for row in result["host_release"]["members"]))
+
+    def test_output_receipt_is_a_section_dependency_not_an_immutable_artifact(self):
+        dependency = self.result["upstream_image"]
+        self.assertNotIn(dependency["receipt"], self.audit.artifacts)
+        upstream = json.loads((analysis.ROOT / dependency["receipt"]).read_bytes())[dependency["section"]]
+        digest = hashlib.sha256(json.dumps(upstream, ensure_ascii=False, sort_keys=True,
+            separators=(",", ":")).encode()).hexdigest()
+        self.assertEqual(dependency["section"], "image_properties")
+        self.assertEqual(dependency["canonical_sha256"], digest)
+
+    def test_bridge_cannot_silently_switch_to_other_ffi_owner(self):
+        for role, before, after in (
+            ("preload_async", 'e.invoke("ffiPreloadAsync",t,i)', 'e.invoke("ffiSubPreloadAsync",t,i)'),
+            ("host_async_dispatch", "eo.callDLLAsync(e,o,n)", "oo.callDLLAsync(e,o,n)"),
+            ("mw_3595_async_export", "r.doDLLMainActionAsync(e,t)", "r.doDLLSubProcessActionAsync(e,t)"),
+            ("mw_3596_electron_bridge", "window.top", "window")):
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "host source contract changed"):
+                self.source_contract(role, before, after)
+
+    def test_failed_native_initialization_is_not_promoted_to_device_success(self):
+        source, native = self.result["source_contract"]["initialization"], self.result["native_contract"]["initialization"]
+        self.assertTrue(source["isInit_set_before_device_success"])
+        self.assertFalse(source["device_initialize_success_required_before_set_event"])
+        self.assertEqual((source["wrapper_attempts"], source["retry_delay_ms"]), (10, 100))
+        self.assertEqual((native["attempts_per_export"], native["retry_delay_ms"]), (30, 1000))
+        self.assertTrue(native["container_lookup_reuses_existing_owner"])
+        self.assertEqual(native["selected_product_classes"], {"3595": "CRzDeviceAccess", "3596": "CRzDeviceAccess_0E0C"})
+        with self.assertRaisesRegex(ValueError, "host source contract changed"):
+            self.source_contract("mw_3595_adapter_init", "this.isInit=!0", "this.isInit=!!deviceInitialized")
+
+    def test_pointer_copy_failure_error_argument_and_finally_remain_explicit(self):
+        result = self.result["source_contract"]["result"]
+        self.assertFalse(result["copy_failure_still_frees_pointer"])
+        self.assertFalse(result["ffi_error_parameter_checked"])
+        self.assertFalse(result["exceptions_rethrown"])
+        self.assertFalse(result["setter_readback_added"])
+        for before, after in (("o=s.readCString(),r=!0", "r=!0,o=s.readCString()"),
+                              ("(e,a)=>{n(a)}", "(e,a)=>{e?reject(e):n(a)}"),
+                              ("e.FreeMalloc(s)", "e.FreeMalloc(o)")):
+            with self.subTest(before=before), self.assertRaisesRegex(ValueError, "host source contract changed"):
+                self.source_contract("host_invoke", before, after)
+
+    def test_native_callback_is_borrowed_and_not_a_property_confirmation(self):
+        callback = self.result["native_contract"]["callback"]
+        self.assertEqual(callback["global_pointer_rva"], "0xd5f78")
+        self.assertEqual(callback["event"], "displayCameraPropertiesDialogClosed")
+        self.assertEqual(callback["payload_fields"], ["event", "containerId"])
+        self.assertFalse(callback["event_confirms_image_write"])
+        self.assertFalse(callback["pointer_cleared_by_device_terminate"])
+        for role, before, after in (
+            ("host_callback", "a.urlList.includes(e.getURL())", "true"),
+            ("mw_3596_adapter_handleEvent", "this.containerId===(null==t?void 0:t.containerId)&&", "true&&"),
+            ("preload_response", "e.removeListener(t,n)", "e.removeAllListeners(t)")):
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "host source contract changed"):
+                self.source_contract(role, before, after)
+
+    def test_release_acknowledgement_is_not_session_quiescence(self):
+        ownership = self.result["source_contract"]["ownership"]
+        self.assertTrue(ownership["mutex_released_in_finally"])
+        self.assertTrue(ownership["free_ffi_branch_returns_true"])
+        for key in ("free_ffi_releases_library_or_callback", "termination_unregisters_native_callback",
+                    "unload_awaits_termination", "connection_generation_checked", "whole_session_quiescence_proven"):
+            self.assertFalse(ownership[key])
+        for role, before, after in (
+            ("host_async", 'case"FreeFFI":return!0', 'case"FreeFFI":return this.ffiLibMap.delete(n)'),
+            ("host_async", "finally{r&&r()}", "finally{}"),
+            ("mw_3595_adapter_destroy", "this.terminate()", "await this.terminate()")):
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "host source contract changed|unload waiting"):
+                self.source_contract(role, before, after)
+        native = self.result["native_contract"]["release"]
+        self.assertEqual(native["thread_join_timeout_ms"], "INFINITE")
+        self.assertTrue(native["thread_handle_closed_after_join"])
+        self.assertTrue(native["dialog_close_can_emit_event"])
+        self.assertFalse(native["whole_callback_and_task_quiescence_proven"])
+
+    def test_physical_native_callback_release_and_thread_join_are_byte_bound(self):
+        for rva, changed in (("0x57500", "48890571ea0700"), ("0x4b720", "ff5018"),
+                             ("0x69d7a", "33d2"), ("0x3e367", "ffd0")):
+            native = copy.deepcopy(self.result["native"])
+            instruction = next(row for function in native["complete_functions"]
+                for row in function["capture"]["assembly"] if row["rva"] == rva)
+            instruction["bytes"] = changed
+            with self.subTest(rva=rva), self.assertRaisesRegex(ValueError, "host native ABI changed"):
+                families.camera_image_host_native_contract(native)
+        self.assertEqual(len(self.result["native_contract"]["byte_assertions"]), 18)
+
+    def test_complete_owners_native_chunks_and_json_roundtrip_are_reproducible(self):
+        for owner in self.audit.owners.values():
+            node = host.verify_profiles_owner(self.audit, owner)
+            self.assertEqual(node.text.decode(), owner["body"])
+        self.assertEqual(len(self.result["native"]["complete_functions"]), 13)
+        self.assertTrue(all(row["input_chunks_verified"] for row in self.result["native"]["complete_functions"]))
+        self.assertTrue(self.result["native"]["all_selected_pseudocode_captured"])
+        report = {**self.result, "complete_source_owners": list(self.audit.owners.values()),
+                  "verified_artifacts": list(self.audit.artifacts.values())}
+        self.assertEqual(json.loads(json.dumps(report, ensure_ascii=False)), report)
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+
+class CameraMediaPreviewChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.result = families.collect_camera_media_preview_chain(cls.audit)
+        cls.products = {row["product_id"]: row for row in cls.result["products"]}
+
+    def body(self, pid, role):
+        return self.audit.owners[self.products[pid]["roles"][role]]["body"]
+
+    def mutate(self, pid, role, before, after):
+        key = self.products[pid]["roles"][role]
+        changed = dict(self.audit.owners[key])
+        self.assertIn(before, changed["body"])
+        changed["body"] = changed["body"].replace(before, after, 1)
+        owners = {**self.audit.owners, key: changed}
+        return families.camera_media_preview_source_contract(self.result["products"], owners)
+
+    def test_refreshed_owner_identity_and_actual_product_props_are_separate(self):
+        expected = {3595: ("62a03244bbf292947383bd287eed289ef32c23d924c8f0189aa7f8efb67d6560",
+                (5725229, 5733337), (5715823, 5722590)),
+            3596: ("082c24e92ca502c579c43d89b8c067878aee594e5030974f0e94e2cc7984ad8f",
+                (5715203, 5723311), (5705888, 5712658))}
+        for pid, (digest, preview, picker) in expected.items():
+            product = self.products[pid]
+            self.assertEqual(product["media_original"]["sha256"], digest)
+            for role, bounds in (("preview", preview), ("source_picker", picker)):
+                owner = self.audit.owners[product["roles"][role]]
+                self.assertEqual((owner["byte_start"], owner["byte_end"]), bounds)
+                self.assertEqual(owner["original"]["sha256"], digest)
+            self.assertEqual(product["roles"]["mounted_preview"], product["roles"]["preview"])
+        self.assertTrue(self.products[3595]["capability_probe_enabled_by_mounted_page"])
+        self.assertFalse(self.products[3596]["capability_probe_enabled_by_mounted_page"])
+        self.assertEqual(self.products[3596]["mounted_picker_props"]["checkUSBCapacity"], "!1")
+        revalidation = self.result["deployment_revalidation"]
+        self.assertEqual(revalidation["observation_count"], 32)
+        self.assertFalse(revalidation["proves_complete_dependency_acquisition"])
+
+    def test_actions_resolve_to_real_static_events_and_the_actual_reducer(self):
+        expected = {"B_": "SET_IS_VIDEO_PLAYED", "ur": "SET_IS_VIDEO_LOADING", "kq": "SET_STOP_VIDEO_TRIGGER",
+            "zy": "SET_HAS_VIDEO_RESTART", "F4": "REFRESH_CAMERA", "RI": "GET_CAMERA_HARDWARE_ID",
+            "SO": "CAMERA_TURN_OFF_COMPLETED", "ku": "SET_IS_USED_BY_OTHER_APP",
+            "Ty": "SET_RECONNECT_CAMERA", "WD": "SET_IS_PREVIEW_ENABLED", "$P": "SET_RESOLUTION",
+            "Ag": "SET_CAMERA_DEVICE_LIST", "HG": "SWITCH_CAMERA_OUTPUT"}
+        for product in self.products.values():
+            actions = {row["export"]: row for row in product["actions"]}
+            self.assertEqual(len(actions), 22)
+            for exported, label in expected.items():
+                self.assertEqual(actions[exported]["event"], label)
+            for row in actions.values():
+                self.assertEqual(json.loads(self.audit.owners[row["event_owner"]]["body"]), row["event"])
+                self.assertEqual("reducer" in row, row["event"] != "CAMERA_TURN_OFF_COMPLETED")
+            toggle = self.audit.owners[actions["WD"]["reducer"]]["body"]
+            self.assertIn('type:"ON_SET_IS_PREVIEW"', toggle)
+            self.assertIn('isPreview:E.payload', toggle)
+
+    def test_lexical_references_and_all_complete_ast_boundaries_are_reproducible(self):
+        for product in self.products.values():
+            for row in product["bindings"]:
+                if "reference_byte" not in row:
+                    continue
+                binding = row["binding"]
+                current = self.audit.binding("media_preview_binding_check", row["original"],
+                    binding["name"], row["reference_byte"])
+                self.assertEqual(current["start_byte"], binding["start_byte"])
+                self.assertEqual(current["end_byte"], binding["end_byte"])
+        for owner in list(self.audit.owners.values()):
+            self.assertEqual(host.verify_profiles_owner(self.audit, owner).text.decode(), owner["body"])
+
+    def test_enabled_late_guard_is_not_generation_or_post_play_cancellation(self):
+        value = self.result["source_contract"]["late_acquisition"]
+        self.assertTrue(value["checks_enabled_ref"])
+        for name in ("checks_connection_generation", "checks_mount_identity", "aborts_pending_get_user_media",
+                     "checks_again_after_play_promise"):
+            self.assertFalse(value[name])
+        for pid in self.products:
+            with self.subTest(pid=pid), self.assertRaisesRegex(ValueError, "late acquisition guard"):
+                self.mutate(pid, "preview", 'p.current=o', 'p.current=o;const generation=0')
+
+    def test_play_rejection_does_not_silently_become_a_track_release_claim(self):
+        value = self.result["source_contract"]["play_failure"]
+        self.assertFalse(value["stops_acquired_tracks"])
+        self.assertFalse(value["clears_src_object"])
+        for pid in self.products:
+            with self.subTest(pid=pid), self.assertRaisesRegex(ValueError, "play failure release"):
+                self.mutate(pid, "play_rejection", 'C(!1)', 'C(!1),h()')
+
+    def test_probe_and_stopping_order_keep_their_actual_exception_boundaries(self):
+        value = self.result["source_contract"]["capability_probe"]
+        self.assertTrue(value["capabilities_read_precedes_stop"])
+        self.assertFalse(value["finally_releases_tracks"])
+        stop = self.result["source_contract"]["stop"]
+        self.assertEqual(stop["notification_delay_ms"], 1000)
+        self.assertTrue(stop["missing_video_returns_before_notification"])
+        self.assertFalse(stop["track_ended_acknowledgement"])
+        self.assertFalse(stop["pending_acquisition_drained"])
+        for pid, role, old, changed in ((3595, "capability_probe", 'catch(_)', 'finally{}catch(_)'),
+                (3596, "stop", '(1e3).then(', '(0).then('),
+                (3595, "stop", 'e.srcObject=null,e.pause()', 'e.pause(),e.srcObject=null')):
+            with self.subTest(pid=pid, role=role), self.assertRaises(ValueError):
+                self.mutate(pid, role, old, changed)
+
+    def test_source_picker_capture_is_disabled_by_the_real_x_mount(self):
+        self.assertTrue(self.result["source_contract"]["capability_probe"]["separate_from_preview_stream"])
+        for pid in self.products:
+            body = self.body(pid, "source_picker")
+            self.assertIn('cameraHardwareDeviceId_', body)
+            self.assertIn('currentPreviewCameraHardwareId', body)
+            self.assertIn('reconnectCamera', body)
+        self.assertIn('checkUSBCapacity:!1', self.body(3596, "camera_page"))
+        self.assertNotIn('checkUSBCapacity:!1', self.body(3595, "camera_page"))
+
+    def test_host_focus_visibility_and_style_hiding_are_distinct_from_stop(self):
+        value = self.result["source_contract"]["focus"]
+        self.assertTrue(value["host_tab_gate_before_capture"])
+        self.assertFalse(value["all_hidden_playing_streams_proven_stopped"])
+        self.assertTrue(self.result["source_contract"]["product_mount"]["preview_retained_when_help_hidden_by_style"])
+        for pid in self.products:
+            self.assertIn('extraStyle:e?null:{display:"none"}', self.body(pid, "product_render"))
+            with self.subTest(pid=pid), self.assertRaisesRegex(ValueError, "focus_status"):
+                self.mutate(pid, "focus_status", 'action:"getWindowStatus"', 'action:"getFocusTab"')
+
+    def test_preview_toggle_persists_configuration_and_does_not_start_native_stream(self):
+        value = self.result["source_contract"]["persistence"]
+        self.assertTrue(value["preview_toggle_maker_only_saves_is_preview"])
+        self.assertFalse(value["native_start_stop_called_by_toggle"])
+        for pid in self.products:
+            with self.subTest(pid=pid), self.assertRaisesRegex(ValueError, "persistence/native boundary"):
+                self.mutate(pid, "preview_persistence", 'if(i)', 'device.startCamera();if(i)')
+
+    def test_stop_message_lock_timeout_and_post_wait_abort_are_not_quiescence(self):
+        value = self.result["source_contract"]["stop_lock"]
+        self.assertEqual(value["promise_timeout_ms"], 5000)
+        self.assertEqual(value["callers"], ["watermark", "mjpegQuality", "hdr", "ldc"])
+        self.assertTrue(value["web_lock_if_available"])
+        self.assertFalse(value["abort_rechecked_after_wait"])
+        self.assertFalse(value["notification_proves_tracks_ended"])
+        for pid in self.products:
+            for name in value["callers"]:
+                with self.subTest(pid=pid, caller=name), self.assertRaisesRegex(ValueError, "post-lock cancellation"):
+                    self.mutate(pid, "stop_lock_caller_" + name, 's.result=!0', 'if(a.signal.aborted)throw Error();s.result=!0')
+
+    def test_physical_matching_and_unawaited_cleanup_keep_their_own_owner(self):
+        value = self.result["source_contract"]["physical_removal"]
+        self.assertTrue(value["matches_container_and_product"])
+        self.assertTrue(value["ignore_flag_can_skip_cleanup"])
+        self.assertFalse(value["cleanup_awaits_adapter_terminate"])
+        self.assertTrue(value["also_calls_before_unload_handler"])
+        self.assertFalse(value["host_callback_drain_proven"])
+        for pid in self.products:
+            with self.subTest(pid=pid), self.assertRaisesRegex(ValueError, "physical_removal_consumer"):
+                self.mutate(pid, "physical_removal_consumer", 'e.deviceContainerId===f.wI.CONTAINER_ID', 'true')
+
+    def test_current_identity_stays_pending_and_native_lifecycle_is_reused(self):
+        value = self.result["source_contract"]["identity"]
+        self.assertEqual((value["lookup_attempts"], value["retry_delay_ms"]), (9, 1000))
+        self.assertTrue(value["exact_container_comparison"])
+        self.assertFalse(value["kimberly_host_identity_implementation_reviewed"])
+        self.assertEqual(self.result["reused_native_function_count"], 42)
+        self.assertEqual(self.result["new_native_captures"], 0)
+        for pid in self.products:
+            with self.subTest(pid=pid), self.assertRaisesRegex(ValueError, "hardware_id_request"):
+                self.mutate(pid, "hardware_id_request", 'e.value.containerId===D.wI.CONTAINER_ID', 'true')
+        self.assertEqual([row["section"] for row in self.result["upstream_sections"]],
+            ["image_properties", "image_host_chain", "device_lifecycle"])
+
+    def test_tampered_complete_owner_is_rejected_and_snapshot_stays_stable(self):
+        owner = self.audit.owners[self.products[3595]["roles"]["preview"]]
+        for changed in ({"body": '()=>true'}, {"byte_start": owner["byte_start"] + 1}):
+            with self.subTest(changed=changed), self.assertRaises(ValueError):
+                host.verify_profiles_owner(self.audit, {**owner, **changed})
+        self.assertEqual(self.audit.final_snapshot(), [])
+        report = {**self.result, "complete_source_owners": list(self.audit.owners.values())}
+        self.assertEqual(json.loads(json.dumps(report, ensure_ascii=False)), report)
+        self.assertFalse(report["source_chain_complete"])
+        self.assertFalse(report["target_execution"])
+        self.assertEqual(report["official_dll_comparison"], "not_executed")
+        self.assertEqual(report["temporary_artifacts_created"], [])
+
+
+class CameraKimberlyIdentityTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.result = families.collect_camera_kimberly_identity_chain(cls.audit)
+        cls.owners = {role: cls.audit.owners[key] for role, key in cls.result["roles"].items()}
+        cls.raw = cls.audit.read(cls.result["native"]["original"])
+
+    def test_current_action_host_export_and_browser_result_keep_their_identities(self):
+        value = self.result["source_contract"]
+        self.assertEqual((value["lookup_attempts"], value["retry_delay_ms"]), (9, 1000))
+        self.assertEqual(value["native_arguments"], ["browser deviceId", "origin"])
+        self.assertEqual(value["published_value"], "matching browser deviceId, not native container")
+        self.assertTrue(value["selects_result_by_exact_current_container"])
+        self.assertFalse(value["enumeration_repeated_on_retry"])
+        self.assertFalse(value["request_generation_or_abort_guard"])
+        self.assertFalse(value["host"]["result"]["copy_failure_still_frees_pointer"])
+
+    def test_current_mf_hmac_salt_and_initialized_instance_are_separate_dependencies(self):
+        value = self.result["native_contract"]
+        self.assertEqual(value["mapping"]["hash_key"], "origin UTF-8 bytes")
+        self.assertEqual(value["mapping"]["hash_input"], "full MF symbolic link in UTF-8 followed by unmodified preference salt")
+        self.assertEqual(value["mapping"]["algorithm"], "HMAC-SHA256")
+        self.assertEqual(value["mapping"]["result"], "64 lowercase hex digits")
+        self.assertTrue(value["mapping"]["requires_initialized_native_instance"])
+        self.assertEqual(value["mapping"]["native_path_comparison"], "exact UTF-16 prefix before #{")
+        self.assertEqual(value["salt"]["json_path"], ["electron", "media", "device_id_salt"])
+        self.assertFalse(value["salt"]["negative_result_cached"])
+        self.assertFalse(value["salt"]["creates_or_replaces_salt"])
+
+    def test_empty_identity_allocation_and_original_failure_cleanup_are_not_success(self):
+        value = self.result["native_contract"]
+        self.assertIn("empty string", value["mapping"]["no_match_or_empty_input"])
+        self.assertEqual(value["mapping"]["allocation_failure"], "null pointer")
+        self.assertFalse(value["mapping"]["null_native_arguments_are_validated"])
+        self.assertFalse(value["lifetime"]["mf_early_failure_guarantees_balanced_shutdown"])
+        self.assertFalse(value["lifetime"]["failed_second_allocated_string_frees_first"])
+        self.assertFalse(value["lifetime"]["algorithm_provider_closed_when_nonnull"])
+        self.assertEqual(value["lifetime"]["release"], "FreeMalloc -> thunk -> HeapFree")
+
+    def test_changed_device_id_origin_abi_exact_match_or_result_consumer_is_rejected(self):
+        for role, old, new in (("identity_3595_adapter", 'actionArgs:[t,i]', 'actionArgs:[i,t]'),
+                ("identity_3596_abi", '["pointer",', '["string",'),
+                ("identity_3595_request", 'e.value.containerId===D.wI.CONTAINER_ID', 'true'),
+                ("identity_3596_response", 'cameraHardwareId:E.payload', 'cameraHardwareId:cached'),
+                ("identity_3595_action_event", 'GET_CAMERA_HARDWARE_ID', 'GET_DEVICE_ID')):
+            owners = {**self.owners, role: dict(self.owners[role])}
+            self.assertIn(old, owners[role]["body"])
+            owners[role]["body"] = owners[role]["body"].replace(old, new, 1)
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "Kimberly identity source contract"):
+                families.camera_kimberly_identity_source_contract(owners)
+
+    def test_complete_native_identity_helpers_and_failure_branches_cannot_be_rewritten(self):
+        for rva, old, new in (("0x3ee40", 'v81 == v10', 'v81 <= v10'),
+                ("0x1b880", 'if ( !phAlgorithm[0] )', 'if ( phAlgorithm[0] )'),
+                ("0x1ac00", 'device_id_salt', 'device_id_hash'),
+                ("0x1be10", 'MFStartup(0x20070u, 0)', 'MFStartup(0x20070u, 1)')):
+            native = copy.deepcopy(self.result["native"])
+            body = next(row["capture"] for row in native["complete_functions"] if row["capture"]["rva"] == rva)
+            row = next(row for row in body["pseudocode"]["lines"] if old in row["text"])
+            row["text"] = row["text"].replace(old, new, 1)
+            with self.subTest(rva=rva), self.assertRaisesRegex(ValueError, "complete helper boundary"):
+                families.camera_kimberly_identity_native_contract(native, self.raw)
+
+    def test_missing_complete_function_actual_call_edge_or_export_is_rejected(self):
+        native = copy.deepcopy(self.result["native"])
+        native["complete_functions"] = [row for row in native["complete_functions"] if row["capture"]["rva"] != "0x1ac00"]
+        with self.assertRaisesRegex(ValueError, "complete helper scope"):
+            families.camera_kimberly_identity_native_contract(native, self.raw)
+        native = copy.deepcopy(self.result["native"])
+        native["direct_edges"] = [row for row in native["direct_edges"]
+            if not (row["from"] == "0x18003ee40" and row["function"] == "0x18001b880")]
+        with self.assertRaisesRegex(ValueError, "actual helper call edge"):
+            families.camera_kimberly_identity_native_contract(native, self.raw)
+        native = copy.deepcopy(self.result["native"])
+        native["exports"][0]["rva"] = "0x5edd0"
+        with self.assertRaisesRegex(ValueError, "current export"):
+            families.camera_kimberly_identity_native_contract(native, self.raw)
+
+    def test_native_machine_code_and_rehashed_region_mutations_disagree_with_actual_pe(self):
+        native = copy.deepcopy(self.result["native"])
+        row = next(row for item in native["complete_functions"] for row in item["capture"]["assembly"] if row["rva"] == "0x3f250")
+        row["bytes"] = "e82cc6fdff"
+        with self.assertRaisesRegex(ValueError, "instruction differs from PE"):
+            families.camera_kimberly_identity_native_contract(native, self.raw)
+        native = copy.deepcopy(self.result["native"])
+        row = next(row for row in native["verified_data_regions"] if row["role"] == "hex_digits")
+        row["raw_hex"] = b"0123456789ABCDEF".hex()
+        row["sha256"] = hashlib.sha256(bytes.fromhex(row["raw_hex"])).hexdigest()
+        with self.assertRaisesRegex(ValueError, "data region differs from PE"):
+            families.camera_kimberly_identity_native_contract(native, self.raw)
+
+    def test_current_acquisition_change_cannot_reuse_the_selected_identity_semantics(self):
+        import frontend
+        with patch.object(frontend, "current_source_selection", return_value={"acquisition": {"path": "old/acquisition.json"}}), \
+                self.assertRaisesRegex(ValueError, "current acquisition changed"):
+            families.collect_camera_kimberly_identity_chain(host.HostLocalAudit())
+
+    def test_complete_owners_snapshot_and_json_keep_local_review_separate_from_acceptance(self):
+        for owner in self.audit.owners.values():
+            self.assertEqual(host.verify_profiles_owner(self.audit, owner).text.decode(), owner["body"])
+        self.assertEqual(self.audit.final_snapshot(), [])
+        self.assertEqual(len(self.result["native"]["complete_functions"]), 16)
+        self.assertEqual(self.result["native_contract"]["verified_instruction_count"], 3138)
+        self.assertEqual(len(self.result["native_contract"]["required_direct_edges"]), 14)
+        self.assertEqual(self.result["new_native_captures"], 0)
+        self.assertEqual(json.loads(json.dumps(self.result, ensure_ascii=False)), self.result)
+        for key in ("source_chain_complete", "whole_product_complete", "target_execution", "real_device_operations"):
+            self.assertFalse(self.result[key])
+        self.assertEqual(self.result["official_dll_comparison"], "not_executed")
+        self.assertEqual(self.result["temporary_artifacts_created"], [])
+
+
+class CameraKimberlyIdentityDispatchTests(unittest.TestCase):
+    def test_query_routes_without_replaying_camera_preview_or_device_queries(self):
+        import argparse
+        parser = argparse.ArgumentParser()
+        families.add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["audit-family-function", "--family", "accessories", "--function", "main",
+            "--query", "camera-kimberly-identity-chain", "--product", "3595", "--product", "3596"])
+        with patch.object(families, "audit_camera_kimberly_identity_chain") as selected, \
+                patch.object(families, "audit_camera_media_preview_chain") as preview, \
+                patch.object(families, "audit_camera_device_lifecycle") as device:
+            families.audit_family_function(args)
+        selected.assert_called_once_with(args)
+        preview.assert_not_called()
+        device.assert_not_called()
+
+    def test_scope_products_and_production_preparation_are_rejected(self):
+        import argparse
+        for family, function in (("audio", "main"), ("accessories", "mw")):
+            with self.subTest(family=family, function=function), self.assertRaisesRegex(ValueError, "current accessories main scope"):
+                families.audit_family_function(argparse.Namespace(family=family, function=function, query="camera-kimberly-identity-chain"))
+        for products, prepare in (([3595], False), ([3596], False), ([3595, 3596, 3594], False), ([3595, 3596], True)):
+            with self.subTest(products=products, prepare=prepare), self.assertRaisesRegex(ValueError, "PID3595 and PID3596 without production preparation"):
+                families.audit_camera_kimberly_identity_chain(argparse.Namespace(family="accessories", function="main", product=products, prepare=prepare))
+
+    def test_success_updates_only_the_kimberly_identity_section(self):
+        import argparse
+        with patch.object(families, "collect_camera_kimberly_identity_chain", return_value={"failures": []}) as selected, \
+                patch.object(families, "collect_camera_media_preview_chain") as preview, \
+                patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+            report = families.audit_camera_kimberly_identity_chain(argparse.Namespace(family="accessories", function="main", product=[3595, 3596], prepare=False))
+        selected.assert_called_once()
+        preview.assert_not_called()
+        self.assertIs(publish.call_args.args[0], report)
+        self.assertEqual(publish.call_args.args[3], "kimberly_identity_chain")
+        self.assertTrue(report["bounded_observation_complete"])
+        self.assertTrue(report["snapshot_stable"])
+        self.assertFalse(report["source_chain_complete"])
+        self.assertEqual(report["official_dll_comparison"], "not_executed")
+
+    def test_failure_or_changed_snapshot_is_preserved_in_the_existing_receipt(self):
+        import argparse
+        for mode in ("exception", "returned_failure", "changed"):
+            configured = ({"side_effect": ValueError("unresolved identity helper")} if mode == "exception" else {
+                "return_value": {"failures": ["unresolved identity helper"] if mode == "returned_failure" else []}})
+            with self.subTest(mode=mode), patch.object(families, "collect_camera_kimberly_identity_chain", **configured), \
+                    patch.object(host.HostLocalAudit, "final_snapshot", return_value=["identity-owner"] if mode == "changed" else []), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"), \
+                    self.assertRaisesRegex(ValueError, "Kimberly identity observation remains unresolved"):
+                families.audit_camera_kimberly_identity_chain(argparse.Namespace(family="accessories", function="main", product=[3595, 3596], prepare=False))
+            report = publish.call_args.args[0]
+            self.assertEqual(publish.call_args.args[3], "kimberly_identity_chain")
+            self.assertFalse(report["bounded_observation_complete"])
+            self.assertEqual(report["snapshot_stable"], mode != "changed")
+            self.assertIn("identity-owner" if mode == "changed" else "unresolved identity helper", report["failures"][0])
+
+
+class CameraDeviceLifecycleTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.result = families.collect_camera_device_lifecycle(cls.audit)
+        cls.owners = {role: cls.audit.owners[key] for role, key in cls.result["roles"].items()}
+
+    def test_browser_selection_keeps_label_group_and_native_identity_boundaries(self):
+        value = self.result["source_contract"]["browser_selection"]
+        self.assertEqual(value["label_substrings"], ["1532:0e0a", "1532:0e0b", "1532:0e0c"])
+        self.assertTrue(value["requested_id_checked_only_after_label_match"])
+        self.assertIn("last matching video wins", value["fallback"])
+        self.assertFalse(value["clears_prior_device_id_before_enumeration"])
+        self.assertFalse(value["connect_device_result_proves_native_open"])
+        self.assertFalse(value["browser_identity_is_native_container_id"])
+
+    def test_directshow_open_retains_its_actual_matching_and_error_boundaries(self):
+        value = self.result["native_contract"]
+        self.assertEqual(value["enumeration"]["vendor_id"], 0x1532)
+        self.assertEqual(value["enumeration"]["native_product_ids"], [0x0e0a, 0x0e0b, 0x0e0c])
+        self.assertEqual(value["enumeration"]["container_match"], "exact length and bytes")
+        self.assertTrue(value["enumeration"]["enumerate_export_ignores_refresh_failure"])
+        self.assertEqual(value["open"]["device_path_match"], "wide string substring")
+        self.assertFalse(value["open"]["bind_to_object_hresult_checked"])
+        self.assertTrue(value["open"]["success_requires_non_null_filter"])
+        self.assertTrue(value["open"]["matching_branch_skips_property_bag_release_and_variant_clear"])
+        self.assertTrue(value["open"]["manager_retains_only_after_connect_success"])
+
+    def test_actual_product_refcount_and_destructor_slots_are_separately_resolved(self):
+        value = self.result["native_contract"]
+        self.assertEqual(value["open"]["product_classes"], {"3595": "CRzDeviceAccess", "3596": "CRzDeviceAccess_0E0C"})
+        self.assertEqual(value["vtable_targets"]["base_refcount"], ["0x35020", "0x35000", "0x42f30"])
+        self.assertEqual(value["vtable_targets"]["x_refcount"], ["0x35020", "0x35000", "0x42f60"])
+        self.assertEqual(value["vtable_targets"]["base_deleting_destructor"], ["0x4adf0"])
+        self.assertEqual(value["vtable_targets"]["x_deleting_destructor"], ["0x4adf0"])
+        self.assertTrue(value["ownership"]["lookup_drops_temporary_strong_reference_before_return"])
+        self.assertTrue(value["ownership"]["lookup_returns_borrowed_raw_pointer"])
+
+    def test_normal_worker_join_does_not_claim_concurrent_calls_or_media_are_stopped(self):
+        value = self.result["native_contract"]
+        self.assertTrue(value["ownership"]["disconnect_filter_release_precedes_worker_stop"])
+        self.assertTrue(value["ownership"]["worker_created_before_filter_open"])
+        self.assertEqual(value["ownership"]["join_wait_ms"], "INFINITE")
+        self.assertTrue(value["ownership"]["pending_queues_disposed_by_destructor"])
+        self.assertFalse(value["ownership"]["queue_disposal_proves_each_hardware_operation_canceled"])
+        self.assertFalse(value["reconnect"]["property_calls_are_queued_to_worker"])
+        self.assertFalse(value["reconnect"]["terminate_uses_the_same_instance_mutex"])
+        self.assertFalse(value["reconnect"]["generation_guard_or_callback_quiescence_proven"])
+        self.assertFalse(value["stream"]["native_exports_confirm_media_tracks_started_or_stopped"])
+
+    def test_changed_real_selector_fallback_label_and_native_call_are_rejected(self):
+        for role, old, changed in (("mw_3595_device_select", "i.groupId===t.groupId", "i.deviceId===t.deviceId"),
+                ("mw_3596_device_products", "1532:0e0c", "1532:0e0d"),
+                ("mw_3595_connect_device", "{result:!0,error:", "this.callDLLApi({result:!0,error:")):
+            owners = {**self.owners, role: dict(self.owners[role])}
+            owners[role]["body"] = owners[role]["body"].replace(old, changed, 1)
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "Camera (device|connectDevice)"):
+                families.camera_device_source_contract(owners)
+
+    def test_complete_ast_owner_rejects_body_or_byte_range_tampering(self):
+        for changed in ({"body": "getDevice(){return true}"}, {"byte_start": self.owners["mw_3595_device_select"]["byte_start"] + 1}):
+            owner = {**self.owners["mw_3595_device_select"], **changed}
+            with self.subTest(changed=changed), self.assertRaises(ValueError):
+                host.verify_profiles_owner(host.HostLocalAudit(), owner)
+
+    def test_physical_native_branch_bind_thread_and_refcount_bytes_are_bound(self):
+        for rva, raw in (("0x3dabf", "c78424900000000d0e0b0e"), ("0x4b2d0", "ff5048"),
+                         ("0x4b366", "eb00"), ("0x3bc43", "498bc4"), ("0x69d7a", "33d2")):
+            native = copy.deepcopy(self.result["native"])
+            row = next(row for item in native["complete_functions"] for row in item["capture"]["assembly"] if row["rva"] == rva)
+            row["bytes"] = raw
+            with self.subTest(rva=rva), self.assertRaisesRegex(ValueError, "physical lifecycle ABI"):
+                families.camera_device_native_contract(native)
+        self.assertEqual(len(self.result["native_contract"]["instruction_assertions"]), 39)
+
+    def test_vtable_and_container_property_are_bound_to_the_original_pe(self):
+        for role in ("base_refcount", "x_refcount", "x_deleting_destructor", "DEVPKEY_Device_ContainerId"):
+            native = copy.deepcopy(self.result["native"])
+            row = next(row for row in native["verified_data_regions"] if row["role"] == role)
+            row["raw_hex"] = "00" + row["raw_hex"][2:]
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "vtable|identity"):
+                families.camera_device_native_contract(native)
+
+    def test_changed_release_order_is_rejected_without_relaxing_the_result(self):
+        native = copy.deepcopy(self.result["native"])
+        function = next(item["capture"] for item in native["complete_functions"] if item["capture"]["rva"] == "0x4b680")
+        lines = function["pseudocode"]["lines"]
+        clear = next(i for i, row in enumerate(lines) if "a1 + 64) = 0" in row["text"])
+        stop = next(i for i, row in enumerate(lines) if "return sub_18004A9B0" in row["text"])
+        lines[clear], lines[stop] = lines[stop], lines[clear]
+        with self.assertRaisesRegex(ValueError, "release order"):
+            families.camera_device_native_contract(native)
+
+    def test_complete_functions_call_edges_snapshot_and_json_remain_reproducible(self):
+        native = self.result["native"]
+        self.assertEqual(len(native["complete_functions"]), 42)
+        self.assertTrue(native["all_selected_pseudocode_captured"])
+        self.assertTrue(all(item["input_chunks_verified"] for item in native["complete_functions"]))
+        edges = {(row["from"], row["function"]) for row in native["direct_edges"]}
+        for parent, child in ((0x3bc50, 0x3d4f0), (0x3bc50, 0x4aee0), (0x4adf0, 0x4ae30),
+                              (0x4ae30, 0x4a3d0), (0x4b680, 0x4a9b0), (0x4a9b0, 0x69d64)):
+            self.assertIn((hex(0x180000000 + parent), hex(0x180000000 + child)), edges)
+        for owner in self.audit.owners.values():
+            node = host.verify_profiles_owner(self.audit, owner)
+            self.assertEqual(node.text.decode(), owner["body"])
+        report = {**self.result, "complete_source_owners": list(self.audit.owners.values())}
+        self.assertEqual(json.loads(json.dumps(report, ensure_ascii=False)), report)
+        self.assertEqual(self.audit.final_snapshot(), [])
+        self.assertFalse(report["source_chain_complete"])
+        self.assertFalse(report["target_execution"])
+        self.assertEqual(report["official_dll_comparison"], "not_executed")
 
 
 class CameraLifecycleOwnerTests(unittest.TestCase):
@@ -2812,6 +5225,295 @@ class HanboRuntimeFlagTests(unittest.TestCase):
                 self.inspect(reducer=self.reducer.replace(before, after))
 
 
+class HanboSystemMonitorVersionsTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        native_contract = families._hanbo_system_monitor_versions_native_contract
+        source_contract = families._hanbo_system_monitor_versions_source_contract
+
+        def native(modules):
+            cls.native = modules
+            return native_contract(modules)
+
+        def source(owners):
+            cls.owners = owners
+            return source_contract(owners)
+
+        with patch.object(families, "_hanbo_system_monitor_versions_native_contract", side_effect=native), \
+                patch.object(families, "_hanbo_system_monitor_versions_source_contract", side_effect=source):
+            cls.result = families.collect_hanbo_system_monitor_versions(cls.audit)
+
+    def changed_native(self, name, rva, before, after, *, assembly=False):
+        modules = copy.deepcopy(self.native)
+        row, = [row for row in modules[name]["complete_selected_functions"]
+            if int(row["capture"]["rva"], 0) == rva]
+        lines = row["capture"]["assembly"] if assembly else row["capture"]["pseudocode"]["lines"]
+        line = next(line for line in lines if before in line["text"])
+        line["text"] = line["text"].replace(before, after, 1)
+        return families._hanbo_system_monitor_versions_native_contract(modules)
+
+    def changed_source(self, role, before, after):
+        owners = copy.deepcopy(self.owners)
+        self.assertIn(before, owners[role]["body"])
+        owners[role]["body"] = owners[role]["body"].replace(before, after, 1)
+        return families._hanbo_system_monitor_versions_source_contract(owners)
+
+    def test_current_versions_are_actual_declared_pe_inputs_with_separate_acceptance(self):
+        result = self.result
+        self.assertEqual(result["host_release"]["version"], "4.0.896")
+        self.assertEqual(result["versions"], {name: "1.0.30.0" for name in
+            ("RzSystemCommon", "RzSystemService", "RzDLLService")})
+        self.assertEqual({name: len(module["functions"]) for name, module in result["native"].items()},
+            {"RzSystemCommon": 38, "RzSystemService": 21, "RzDLLService": 6})
+        self.assertEqual({name: len(module["functions"]) for name, module in result["legacy_native"].items()},
+            {"RzSystemCommon": 34, "RzSystemService": 12, "RzDLLService": 3})
+        for key in ("source_chain_complete", "whole_product_complete", "target_execution",
+                "real_device_operations", "actual_installed_or_loaded_versions_observed"):
+            self.assertFalse(result[key])
+        self.assertEqual(result["actual_dll_comparison"], "unverified")
+
+    def test_common_comparison_limits_equality_to_complete_selected_bodies(self):
+        comparisons = self.result["common_version_comparisons"]
+        self.assertEqual(len(comparisons), 34)
+        self.assertEqual({row["legacy_rva"] for row in comparisons
+            if not row["machine_address_normalized_pseudocode_equal"]}, {"0x619c0", "0x61de0"})
+        self.assertEqual(self.result["native_contract"]["common"]["numeric_missing"], "null")
+        with self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+            self.changed_native("RzSystemCommon", 0x6d360, "if ( !v6 || !v21 )", "if ( !v6 || v21 <= 0 )")
+
+    def test_current_pipe_marker_search_is_actual_strstr_but_not_cross_call_reassembly(self):
+        common = self.result["native_contract"]["common"]
+        self.assertTrue(common["also_searches_current_read_region_with_strstr"])
+        self.assertFalse(common["search_includes_preceding_reads"])
+        self.assertTrue(common["clears_buffer_at_read_helper_entry"])
+        self.assertTrue(common["receiver_retains_offset_when_incomplete"])
+        for rva, before, after in ((0x60e10, "return strstr(a1, a2)", "return 0"),
+                (0x61e00, "v20 = 500", "v20 = 50"),
+                (0x61e00, 'Push(v29, "<EOF>")', 'Push(v19, "<EOF>")')):
+            with self.subTest(rva=hex(rva)), self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+                self.changed_native("RzSystemCommon", rva, before, after)
+
+    def test_received_flag_cache_callbacks_and_device_stop_do_not_prove_freshness_or_quiescence(self):
+        common = self.result["native_contract"]["common"]
+        self.assertTrue(common["message_flag_set_before_json_parse"])
+        self.assertFalse(common["parse_is_transactional"])
+        self.assertFalse(common["cache_callback_is_fresh_device_observation"])
+        self.assertFalse(common["window_thread_joined"])
+        self.assertTrue(common["pipe_receiver_joined"])
+        self.assertEqual(common["device_terminate"], "logging_only")
+        with self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+            self.changed_native("RzSystemCommon", 0x66cc0, "CloseHandle(hObject)", "WaitForSingleObject(hObject, 0)")
+
+    def test_refresh_failure_counts_reinitialize_without_clearing_count_and_disable_at_ten(self):
+        service = self.result["native_contract"]["service"]
+        self.assertEqual(service["refresh_failure_reinitialize_counts"], [3, 6, 9])
+        self.assertEqual(service["disable_at_consecutive_failures"], 10)
+        self.assertFalse(service["reinitialization_resets_failure_count"])
+        self.assertTrue(service["normal_update_resets_failure_count"])
+        self.assertFalse(service["refresh_result_changes_export_success_directly"])
+        for before, after in (("if ( v2 < 10 )", "if ( v2 < 11 )"),
+                ("if ( v2 == 3 * (v2 / 3) )", "if ( v2 == 2 * (v2 / 2) )"),
+                ("_InterlockedExchange(&dword_180072760, 0)", "_InterlockedExchange(&dword_180072760, 1)")):
+            with self.subTest(before=before), self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+                self.changed_native("RzSystemService", 0x18340, before, after)
+
+    def test_actual_seh_scope_and_assembly_cover_handler_omitted_from_pseudocode(self):
+        service = self.result["native_contract"]["service"]
+        self.assertEqual(service["refresh_exception_filter_codes"], ["0xc0000005", "0xc0000006",
+            "0xc000001d", "0xc000008c", "0xc0000094", "0xc0000096", "0xc00000fd"])
+        spans = service["verified_seh_spans"]
+        self.assertEqual(struct.unpack("<III", bytes.fromhex(spans[0]["raw_hex"])), (0x141d0, 0x14209, 0x6542c))
+        self.assertEqual(struct.unpack("<IIIIII", bytes.fromhex(spans[1]["raw_hex"])[8:]),
+            (0x50523, 1, 0x141dd, 0x141f5, 0x514a0, 0x141f5))
+        with self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+            self.changed_native("RzSystemService", 0x141d0, "xor     al, al", "mov     al, 1", assembly=True)
+
+    def test_service_window_wait_preserves_timeout_failure_and_wait_failed_limitation(self):
+        service = self.result["native_contract"]["service"]
+        self.assertEqual((service["window_wait_step_ms"], service["window_wait_timeout_ms"]), (200, 5000))
+        self.assertTrue(service["sdk_released_before_window_wait"])
+        self.assertTrue(service["window_timeout_keeps_owner_and_initialized_flag"])
+        self.assertFalse(service["wait_failure_distinguished_from_signaled"])
+        self.assertFalse(service["preload_or_thread_creation_failure_prevents_initialized_flag"])
+        with self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+            self.changed_native("RzSystemService", 0x39e80,
+                "WaitForSingleObject(hObject, 0xC8u) != 258", "WaitForSingleObject(hObject, 0xC8u) == 0")
+
+    def test_current_server_consumes_terminate_false_before_unload(self):
+        server = self.result["native_contract"]["server"]
+        self.assertTrue(server["terminate_false_skips_free_library"])
+        self.assertFalse(server["terminate_false_removes_module_from_map"])
+        self.assertTrue(server["missing_terminate_allows_free_library"])
+        with self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+            self.changed_native("RzDLLService", 0x32280,
+                "if ( !Terminate || Terminate() )", "if ( !Terminate || !Terminate() )")
+
+    def test_server_release_order_and_forced_worker_stop_do_not_promote_queue_drain(self):
+        server = self.result["native_contract"]["server"]
+        self.assertTrue(server["module_release_precedes_pool_shutdown_flag_and_worker_stop"])
+        self.assertFalse(server["complete_server_task_and_callback_quiescence_proven"])
+        self.assertEqual((server["worker_wait_ms"], server["force_terminate_followup_wait_ms"]), (10000, 1000))
+        with self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+            self.changed_native("RzDLLService", 0x39580, "byte_14009EB74 = 1", "byte_14009EB74 = 0")
+
+    def test_current_hanbo_filters_info_fields_and_keeps_zero_projection_as_source_fallback(self):
+        source = self.result["source_contract"]
+        self.assertEqual(source["data_type_mask"], 0x300000)
+        self.assertEqual(source["callback_filters"], {"dllName": "RzSystemCommon",
+            "dllFunc": "HardwareMonitorCallback", "status": "SUCCESS"})
+        self.assertTrue(source["projection"]["missing_measurements_default_to_zero_in_source"])
+        self.assertFalse(source["projection"]["zero_projection_is_confirmed_hardware_observation"])
+        self.assertFalse(source["projection"]["hanbo_checks_projection_status_before_forwarding"])
+        for role, before, after in (("hanbo_subscription", "[Ye.vC.CPU_Info,Ye.vC.GPU_Info]", "[]"),
+                ("system_info_projection", "if(0!==v.initStatus)return v", "if(0===v.initStatus)return v"),
+                ("shared_monitor_filter", '"RzSystemCommon"===t.dllName', '"Other"===t.dllName')):
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "complete source boundary changed"):
+                self.changed_source(role, before, after)
+
+    def test_current_server_start_probe_order_is_distinct_from_old_register_first(self):
+        source = self.result["source_contract"]
+        self.assertTrue(source["server_start_precedes_subscription"])
+        self.assertEqual(source["server_probe_delays_ms"], [100, 200, 400, 700, 1100])
+        self.assertTrue(source["registers_after_all_server_probes_fail"])
+        with self.assertRaisesRegex(ValueError, "complete source boundary changed"):
+            self.changed_source("shared_start_stop", "n<5", "n<10")
+
+    def test_product_stop_and_current_host_retention_remain_separate_from_common_terminate(self):
+        source = self.result["source_contract"]
+        self.assertFalse(source["stop_awaits_device_terminate"])
+        self.assertFalse(source["stop_calls_common_terminate"])
+        self.assertFalse(source["host_callback_map_released_on_product_stop"])
+        self.assertTrue(source["current_host_ffi_bodies_equal_legacy"])
+        self.assertEqual(len(self.result["roles"]), 17)
+        self.assertEqual(self.audit.final_snapshot(), [])
+        with self.assertRaisesRegex(ValueError, "complete source boundary changed"):
+            self.changed_source("shared_start_stop", ",e.terminate()", ",yield e.terminate()")
+
+
+class HanboGpuTemperatureChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.sdk = {rva: json.loads((analysis.ROOT / ".analysis/results/native" /
+            "c67f23ef5fd6e5a1db8f96d9a0509447f9657969e7a2c7fed7b293b72240cfb7/functions" /
+            (format(rva, "x") + ".json")).read_bytes()) for rva in families.hanbo_gpu_temperature_roles()}
+        cls.services = {}
+        for version, digest in (("1.0.29.0", "605eea0c35225bac06b8d9a6f93a7c57d8d4b7a3058a8e718fd032c39e77bbf3"),
+                ("1.0.30.0", "645d8ffdcaefe57b06ab4dd9888a7ce028fe25052f87762c23c452d3936a3cf8")):
+            cls.services[version] = {rva: json.loads((analysis.ROOT / ".analysis/results/native" / digest /
+                "functions" / (format(rva, "x") + ".json")).read_bytes())
+                for rva in families.hanbo_gpu_temperature_service_roles(version)}
+        sentinel = struct.unpack("<f", bytes.fromhex("0c139af9"))[0]
+        cls.constants = {"q8_8_scale": 1 / 256, "sensor_valid_above": sentinel,
+            "initial_current": sentinel, "initial_minimum": -sentinel, "initial_maximum": sentinel}
+
+    def project(self, *, sdk=None, service=None, constants=None, version="1.0.29.0"):
+        return families.hanbo_gpu_temperature_projection(sdk if sdk is not None else self.sdk,
+            service if service is not None else self.services[version],
+            constants if constants is not None else self.constants, service_version=version)
+
+    def replaced(self, bodies, rva, before, after):
+        candidate = dict(bodies)
+        candidate[rva] = dict(bodies[rva])
+        lines = bodies[rva]["pseudocode"]["lines"]
+        self.assertTrue(any(before in row["text"] for row in lines), before)
+        candidate[rva]["pseudocode"] = dict(bodies[rva]["pseudocode"],
+            lines=[dict(row, text=row["text"].replace(before, after)) for row in lines])
+        return candidate
+
+    def test_current_and_retained_service_share_selected_semantics(self):
+        old = self.project()
+        current = self.project(version="1.0.30.0")
+        self.assertEqual(old.pop("service_version"), "1.0.29.0")
+        self.assertEqual(current.pop("service_version"), "1.0.30.0")
+        self.assertEqual(old, current)
+        self.assertEqual(old["target"], 1)
+        self.assertEqual(old["sensor_identifier"], 0x4002001)
+        self.assertEqual(old["fields"], {"raw": 336, "current": 348, "minimum": 352, "maximum": 356, "multiplier": 360})
+        self.assertFalse(old["failed_refresh_clears_existing_sensor"])
+        self.assertFalse(old["failed_refresh_is_new_observation"])
+        self.assertNotEqual(old["sensor_valid_above"], old["service_valid_above"])
+        self.assertEqual(json.loads(json.dumps(old, sort_keys=True)), old)
+
+    def test_target_sensor_kind_extrema_and_success_gate_changes_fail(self):
+        for before, after in (("         1,", "         2,"),
+                ("|= 0x4002000u", "|= 0x4402000u"),
+                ("if ( v8 > v7[89] )", "if ( v8 < v7[89] )"),
+                ("if ( v7[88] > v8 )", "if ( v7[88] < v8 )"),
+                ("v7[87] = v385 * v7[90]", "v7[87] = 0"),
+                ("if ( !*(_QWORD *)(a1 + 944) )", "if ( *(_QWORD *)(a1 + 944) )")):
+            with self.subTest(before=before), self.assertRaises(ValueError):
+                self.project(sdk=self.replaced(self.sdk, 0x1f53d0, before, after))
+
+    def test_sleep_q8_8_enabled_type_mask_and_thermal_positive_boundaries_fail(self):
+        cases = ((0x11f2c0, "== -220", "== -1"),
+            (0x11d3e0, "!_bittest(&v15, v18)", "_bittest(&v15, v18)"),
+            (0x11d3e0, "(v20[v8 + 10] & 0xFF00) == 0xFF00", "v20[v8 + 10] == 0"),
+            (0x11d3e0, "* 0.00390625", "* 0.0078125"),
+            (0x11d2d0, "i[1] != v7 || *i <= 0", "i[1] != v7 || *i < 0"),
+            (0x11d2d0, "v7 = 1", "v7 = 8"))
+        for rva, before, after in cases:
+            with self.subTest(rva=rva, before=before), self.assertRaises(ValueError):
+                self.project(sdk=self.replaced(self.sdk, rva, before, after))
+
+    def test_actual_result_consumers_are_checked_in_both_versions(self):
+        for version, iterator, getter, current in (("1.0.29.0", 0x17300, 0x5410, "v121"),
+                ("1.0.30.0", 0x17570, 0x5420, "v131")):
+            for rva, before, after in ((iterator, current + " > -4294967300.0", current + " >= -4294967300.0"),
+                    (iterator, "round(" + current + " * 100.0) / 100.0", "0.0"),
+                    (getter, "SysFreeString((BSTR)Source)", "keep(Source)")):
+                with self.subTest(version=version, before=before), self.assertRaises(ValueError):
+                    self.project(version=version, service=self.replaced(self.services[version], rva, before, after))
+
+    def test_native_release_and_complete_owner_boundaries_fail(self):
+        for rva, before, after in ((0xa280, "*(_QWORD *)v3 + 40LL", "*(_QWORD *)v3 + 88LL"),
+                (0x5a70, "FreeLibrary(v4)", "keep(v4)"), (0xe990, "j_free(Block)", "keep(Block)")):
+            with self.subTest(rva=rva), self.assertRaises(ValueError):
+                self.project(sdk=self.replaced(self.sdk, rva, before, after))
+        for field, value in (("assembly", []), ("chunks", []), ("rva", "0x627d1")):
+            sdk = dict(self.sdk)
+            sdk[0x627d0] = dict(sdk[0x627d0], **{field: value})
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                self.project(sdk=sdk)
+        for field, value in (("q8_8_scale", 1 / 128), ("initial_current", 0), ("initial_minimum", 0)):
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                self.project(constants=dict(self.constants, **{field: value}))
+        with self.assertRaises(ValueError):
+            self.project(version="1.0.31.0", service=self.services["1.0.30.0"])
+
+    def extraction_fixture(self):
+        original = {"path": ".analysis/inputs/example/cpuidsdk64.dll", "bytes": 7, "sha256": "a" * 64,
+            "container": ".analysis/inputs/example/package.exe", "container_sha256": "b" * 64}
+        package = {"path": original["container"], "sha256": original["container_sha256"]}
+        extraction = {"target_execution": False, "containers": [{"input": package["path"],
+            "sha256": package["sha256"], "extracted": True, "extraction_exit_code": 0,
+            "input_bytes_unchanged": True, "files": [dict(original)]}]}
+        return original, package, extraction
+
+    def test_extraction_metadata_extension_preserves_actual_identity(self):
+        original, package, extraction = self.extraction_fixture()
+        original["extraction_receipt"] = {"path": ".analysis/results/example/inspection.json", "sha256": "c" * 64}
+        self.assertIs(families.hanbo_sensor_extraction_member(original, package, extraction), extraction["containers"][0])
+        self.assertNotEqual(original, extraction["containers"][0]["files"][0])
+
+    def test_extraction_changed_byte_or_parent_identity_missing_or_duplicate_fail(self):
+        for key, value in (("path", ".analysis/inputs/other.dll"), ("bytes", 8), ("sha256", "d" * 64),
+                ("container", ".analysis/inputs/other.exe"), ("container_sha256", "e" * 64)):
+            original, package, extraction = self.extraction_fixture()
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                families.hanbo_sensor_extraction_member(dict(original, **{key: value}), package, extraction)
+        for kind in ("missing", "duplicate", "parent", "failed", "executed"):
+            original, package, extraction = self.extraction_fixture()
+            container = extraction["containers"][0]
+            if kind == "missing": container["files"] = []
+            elif kind == "duplicate": container["files"].append(dict(original))
+            elif kind == "parent": container["sha256"] = "f" * 64
+            elif kind == "failed": container["extraction_exit_code"] = 1
+            else: extraction["target_execution"] = True
+            with self.subTest(kind=kind), self.assertRaises(ValueError):
+                families.hanbo_sensor_extraction_member(original, package, extraction)
+
+
 class DriverInstallSelectionTests(unittest.TestCase):
     def test_signed_version_boundaries_and_failed_version_are_distinct(self):
         for value, expected in ((None, "legacy"), (0x00060003, "legacy"), (0x0009ffff, "legacy"),
@@ -2914,6 +5616,194 @@ class DriverInstallSelectionTests(unittest.TestCase):
         args.query = "keyboard-driver-request-lifecycle"
         with self.assertRaisesRegex(ValueError, "requires the driver-install-selection query"):
             families.audit_family_function(args)
+
+
+class CommonDriverInstallSelectionTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_common_driver_install_selection(cls.audit)
+        package = cls.report["provenance"]["official_package"]
+        cls.raw = cls.audit.read(package)
+        cls.header, cls.strings = families.driver_install_nsis_header(cls.raw, 0x9000)
+        cls.bodies = {label: {int(row["rva"], 16): json.loads(
+            (analysis.ROOT / row["artifact"]["path"]).read_bytes()) for row in native["functions"]}
+            for label, native in cls.report["native"].items()}
+
+    def proof(self, bodies=None):
+        selected = self.bodies if bodies is None else bodies
+        return families._common_driver_install_selection_proof(
+            selected["installer"], selected["system_plugin"], selected["exec_plugin"])
+
+    def test_current_static_result_preserves_independent_unverified_stages(self):
+        report = self.report
+        self.assertEqual(json.loads(json.dumps(report, ensure_ascii=False, allow_nan=False)), report)
+        self.assertEqual(report["kind"], "current_common_driver_install_selection")
+        self.assertEqual(report["provenance"]["release_version"], "4.0.896")
+        self.assertEqual([(row["all_functions"], row["selected_functions"])
+                          for row in report["native_verification"].values()], [(105, 11), (62, 13), (17, 4)])
+        self.assertTrue(report["selected_static_semantics_reviewed"])
+        for name in ("source_chain_complete", "whole_product_complete", "installed_branch_observed",
+                     "native_machine_qualified", "target_execution", "real_device_operations", "product_code_modified"):
+            self.assertFalse(report[name])
+        for name in ("ui_backend_wiring", "actual_dll_comparison", "runtime_acceptance"):
+            self.assertEqual(report[name], "unverified")
+        self.assertEqual((report["new_native_captures"], report["new_analysis_sessions"]), (0, 0))
+        self.assertEqual(report["temporary_files_created"], [])
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_signed_version_failure_and_jump_boundaries(self):
+        for value, branch in ((None, "legacy"), (0x00060003, "legacy"), (0x0009ffff, "legacy"),
+                (0x000a0000, "universal"), (0x000a0001, "universal"), (0x7fffffff, "universal"),
+                (0x80000000, "legacy"), (0xffffffff, "legacy")):
+            with self.subTest(value=value):
+                selected = families.common_driver_install_selection_branch(value)
+                self.assertEqual(selected["selected_branch"], branch)
+                self.assertEqual(selected["first_extraction_entry"], 44 if branch == "legacy" else 39)
+                self.assertEqual(selected["version_observed"], value is not None)
+        for value in (True, -1, 0x100000000, "655360", 655360.0):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                families.common_driver_install_selection_branch(value)
+
+    def test_architecture_gate_ors_actual_outputs_without_native_qualification(self):
+        for machine, wow64, expected in ((None, None, 0), (0, 0, 0), (0x14c, 0, 0x14c),
+                                       (0, 1, 1), (0x14c, 1, 0x14d)):
+            with self.subTest(machine=machine, wow64=wow64):
+                result = families.common_driver_install_architecture_gate(machine, wow64)
+                self.assertEqual(result["aggregate"], expected)
+                self.assertEqual(result["dpinst_requested"], expected != 0)
+                self.assertEqual(result["both_outputs_observed"], machine is not None and wow64 is not None)
+                self.assertEqual(result["zero_jump_entry"], 85)
+                self.assertFalse(result["native_machine_output_checked"])
+                self.assertFalse(result["installed_architecture_verified"])
+        for machine, wow64 in ((True, 0), (-1, 0), (0x10000, 0), (0, True), (0, 0x100000000)):
+            with self.subTest(machine=machine, wow64=wow64), self.assertRaises(ValueError):
+                families.common_driver_install_architecture_gate(machine, wow64)
+
+    def test_both_official_sys_names_keep_distinct_retained_bytes_and_wdf_bindings(self):
+        branches = self.report["selection"]["branches"]
+        self.assertEqual([row["entry_range"] for row in branches], [[39, 42], [44, 48]])
+        self.assertTrue(all(row["continuation_entry"] == 49 for row in branches))
+        files = [next(row for row in branch["files"] if row["filename"] == "RzCommon.sys") for branch in branches]
+        self.assertEqual([row["data_relative_offset"] for row in files], [930991, 975111])
+        self.assertNotEqual(files[0]["block"]["sha256"], files[1]["block"]["sha256"])
+        self.assertTrue(files[0]["retained_original"]["path"].endswith("/RzCommon.sys"))
+        self.assertTrue(files[1]["retained_original"]["path"].endswith("/RzCommon_1.sys"))
+        drivers = self.report["driver_branches"]
+        self.assertEqual([(row["file_version"], row["wdf_binding_version"], row["wdf_function_count"],
+                           row["functions_captured"]) for row in drivers],
+                         [("1.0.0.76", [1, 15, 0], 444, 121), ("1.0.0.71", [1, 9, 7600], 396, 105)])
+        self.assertTrue(all(row["capture_complete"] and not row["capture_failures"] for row in drivers))
+        self.assertTrue(all(not row["whole_driver_semantics_reviewed_by_this_query"] for row in drivers))
+
+    def test_inf_contract_and_wide_version_apis_are_actual_package_boundaries(self):
+        infs = self.report["inf_contracts"]
+        self.assertEqual([row["coinstaller_for_nt61"] for row in infs], [False, True])
+        self.assertTrue(all(row["hardware_id"] == "RAZER\\DeviceContol" for row in infs))
+        self.assertTrue(all(row["service_binary"] == "%12%\\RzCommon.sys" for row in infs))
+        self.assertEqual([(row["table_index"], row["symbol"]) for row in self.report["version_api_table"]],
+                         [(10, "GetFileVersionInfoSizeW"), (11, "GetFileVersionInfoW"), (12, "VerQueryValueW")])
+        proof = self.proof()
+        self.assertEqual(len(proof["instruction_anchors"]), 9)
+        self.assertEqual(len(proof["actual_edges"]), 20)
+        self.assertTrue(proof["positive_stack_warning_retained"])
+        self.assertEqual(proof["system_call_bridge_rva"], "0x2b98")
+        self.assertEqual(proof["dynamic_abi_execution"], "unverified")
+
+    def test_exec_text_coercion_reboot_bit_and_absence_do_not_prove_success(self):
+        for text, numeric, reboot in (("0", 0, False), ("1073741824", 0x40000000, True),
+                ("2147483648", 0x80000000, False), ("-1", 0xffffffff, True),
+                ("error", 0, False), ("timeout", 0, False), ("0x40000000tail", 0x40000000, True),
+                ("010", 8, False), ("08", 8, False), ("4294967296", 0, False), ("+1", 0, False), (" 1", 0, False)):
+            with self.subTest(text=text):
+                result = families.common_driver_install_result(text)
+                self.assertEqual(result["stack_text"], text)
+                self.assertTrue(result["stack_value_observed"])
+                self.assertEqual(result["numeric_u32"], numeric)
+                self.assertEqual(result["reboot_bit"], 0x40000000 if reboot else 0)
+                self.assertEqual(result["requested_exit_code"], 3010 if reboot else None)
+                self.assertFalse(result["installation_success_proven"])
+        absent = families.common_driver_install_result(None)
+        self.assertFalse(absent["stack_value_observed"])
+        self.assertIsNone(absent["numeric_u32"])
+        self.assertIsNone(absent["reboot_bit"])
+        for invalid in (True, 0, 3010, b"0"):
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                families.common_driver_install_result(invalid)
+
+    def test_changed_signed_jump_architecture_target_and_result_mask_are_rejected(self):
+        for index, operand, value in ((38, 6, 1), (38, 4, 44), (79, 3, 85), (87, 3, 281), (88, 4, 90)):
+            header = copy.deepcopy(self.header)
+            header["entries"][index][operand] = value
+            with self.subTest(index=index, operand=operand), \
+                    patch.object(families, "driver_install_nsis_header", return_value=(header, self.strings)), \
+                    self.assertRaisesRegex(ValueError, "selected instruction differs"):
+                families.common_driver_install_selection_snapshot(self.raw)
+
+    def test_changed_unicode_threshold_signature_or_command_are_rejected(self):
+        original = host.nsis_unicode_string
+        for offset in (355, 724, 764, 824):
+            def changed(strings, selected, target=offset):
+                result = original(strings, selected)
+                return [{"kind": "literal", "value": "changed"}] if selected == target else result
+            with self.subTest(offset=offset), patch.object(host, "nsis_unicode_string", side_effect=changed), \
+                    self.assertRaisesRegex(ValueError, "selected string differs"):
+                families.common_driver_install_selection_snapshot(self.raw)
+
+    def test_changed_current_release_package_identity_cannot_start_native_review(self):
+        release = copy.deepcopy(host.verified_host_release_receipt())
+        package = next(row for row in release["files"] if row["path"].endswith("/RzComDriver_v23.0.6.0.exe"))
+        package["sha256"] = "0" * 64
+        with patch.object(host, "verified_host_release_receipt", return_value=release), \
+                patch.object(families, "driver_install_selection_native_reference") as native, \
+                self.assertRaisesRegex(ValueError, "requires source and semantic review"):
+            families.collect_common_driver_install_selection(host.HostLocalAudit())
+        native.assert_not_called()
+
+    def test_changed_extraction_execution_or_member_identity_are_rejected(self):
+        reference = self.report["provenance"]["extraction_receipt"]
+        for kind in ("target", "list_failure", "member"):
+            audit = host.HostLocalAudit()
+            original = audit.artifact
+            def changed(path, expected=None):
+                raw = original(path, expected)
+                if analysis.rel(path) != reference["path"]:
+                    return raw
+                document = json.loads(raw)
+                if kind == "target":
+                    document["target_execution"] = True
+                elif kind == "list_failure":
+                    document["containers"][0]["list_exit_code"] = 1
+                else:
+                    for row in document["containers"][0]["files"]:
+                        row["sha256"] = "0" * 64
+                return json.dumps(document).encode()
+            with self.subTest(kind=kind), patch.object(audit, "artifact", side_effect=changed), \
+                    self.assertRaisesRegex(ValueError, "extraction is incomplete|retained member identity differs"):
+                families._common_driver_install_selection_inputs(audit)
+
+    def test_changed_complete_owner_semantics_are_rejected(self):
+        for label, rva in (("installer", 0x1434), ("installer", 0x6467),
+                           ("system_plugin", 0x2655), ("exec_plugin", 0x1096)):
+            bodies = copy.deepcopy(self.bodies)
+            bodies[label][rva]["pseudocode"]["lines"][0]["text"] += " changed"
+            with self.subTest(label=label, rva=rva), self.assertRaisesRegex(ValueError, "owner differs"):
+                self.proof(bodies)
+
+    def test_changed_actual_signed_instruction_and_call_edges_are_rejected(self):
+        bodies = copy.deepcopy(self.bodies)
+        line = next(row for body in bodies["installer"].values() for row in body["assembly"]
+                    if row["rva"] == "0x1a92")
+        line["bytes"] = "7d08"
+        with self.assertRaisesRegex(ValueError, "interpreter instruction differs"):
+            self.proof(bodies)
+        for label, owner, address in (("installer", 0x1389, "0x401434"),
+                ("system_plugin", 0x1817, "0x10002b98"), ("exec_plugin", 0x1000, "0x10001096")):
+            bodies = copy.deepcopy(self.bodies)
+            for row in bodies[label][owner]["assembly"]:
+                row["xrefs_from"] = [xref for xref in row.get("xrefs_from", []) if xref["to"] != address]
+            with self.subTest(label=label), self.assertRaisesRegex(ValueError, "actual owner edge differs"):
+                self.proof(bodies)
 
 
 if __name__ == "__main__":

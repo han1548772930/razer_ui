@@ -1613,6 +1613,8 @@ def audit_family_function(args):
         return audit_gamepad_triggers(args)
     if getattr(args, "query", None) == "gamepad-input":
         return audit_gamepad_input(args)
+    if getattr(args, "query", None) == "gamepad-mode-socd":
+        return audit_gamepad_current_mode_socd(args)
     if getattr(args, "query", None) == "gamepad-thumbsticks":
         return audit_gamepad_thumbsticks(args)
     if getattr(args, "query", None) == "gamepad-lighting":
@@ -1639,6 +1641,30 @@ def audit_family_function(args):
         return audit_chroma_text_inputs(args)
     if getattr(args, "query", None) == "audio-seiren-eq":
         return audit_audio_seiren_eq(args)
+    if getattr(args, "query", None) == "audio-seiren-current-mw":
+        if args.family != "audio" or args.function != "mw":
+            raise ValueError("audio-seiren-current-mw requires the current audio middleware scope")
+        return audit_audio_seiren_current_mw(args)
+    if getattr(args, "query", None) == "audio-seiren-native-dsp":
+        if args.family != "audio" or args.function != "mw":
+            raise ValueError("audio-seiren-native-dsp requires the current audio middleware scope")
+        return audit_audio_seiren_native_dsp(args)
+    if getattr(args, "query", None) == "audio-endpoint-local-chain":
+        if args.family != "audio" or args.function != "mw":
+            raise ValueError("audio-endpoint-local-chain requires the current audio middleware scope")
+        return audit_audio_endpoint_local_chain(args)
+    if getattr(args, "query", None) == "audio-endpoint-notification-chain":
+        if args.family != "audio" or args.function != "mw":
+            raise ValueError("audio-endpoint-notification-chain requires the current audio middleware scope")
+        return audit_audio_endpoint_notification_chain(args)
+    if getattr(args, "query", None) == "audio-driver-lifecycle":
+        if args.family != "audio" or args.function != "mw":
+            raise ValueError("audio-driver-lifecycle requires the current audio middleware scope")
+        return audit_audio_driver_lifecycle(args)
+    if getattr(args, "query", None) == "audio-driver-close-quiescence":
+        if args.family != "audio" or args.function != "mw":
+            raise ValueError("audio-driver-close-quiescence requires the current audio middleware scope")
+        return audit_audio_driver_close_quiescence(args)
     if getattr(args, "query", None) == "audio-leviathan":
         return audit_audio_leviathan(args)
     if getattr(args, "query", None) == "audio-demo":
@@ -1655,8 +1681,36 @@ def audit_family_function(args):
         return audit_camera_properties_lifecycle(args)
     if getattr(args, "query", None) == "camera-source-review":
         return audit_camera_source_review(args)
+    if getattr(args, "query", None) == "camera-image-properties":
+        if args.family != "accessories" or args.function != "main":
+            raise ValueError("camera-image-properties requires the current accessories main scope")
+        return audit_camera_image_properties(args)
+    if getattr(args, "query", None) == "camera-image-host-chain":
+        if args.family != "accessories" or args.function != "main":
+            raise ValueError("camera-image-host-chain requires the current accessories main scope")
+        return audit_camera_image_host_chain(args)
+    if getattr(args, "query", None) == "camera-device-lifecycle":
+        if args.family != "accessories" or args.function != "main":
+            raise ValueError("camera-device-lifecycle requires the current accessories main scope")
+        return audit_camera_device_lifecycle(args)
+    if getattr(args, "query", None) == "camera-media-preview-chain":
+        if args.family != "accessories" or args.function != "main":
+            raise ValueError("camera-media-preview-chain requires the current accessories main scope")
+        return audit_camera_media_preview_chain(args)
+    if getattr(args, "query", None) == "camera-kimberly-identity-chain":
+        if args.family != "accessories" or args.function != "main":
+            raise ValueError("camera-kimberly-identity-chain requires the current accessories main scope")
+        return audit_camera_kimberly_identity_chain(args)
     if getattr(args, "query", None) == "hanbo-local-runtime":
         return audit_hanbo_local_runtime(args)
+    if getattr(args, "query", None) == "hanbo-gpu-temperature-chain":
+        if args.family != "accessories" or args.function != "main":
+            raise ValueError("hanbo-gpu-temperature-chain requires the current accessories main scope")
+        return audit_hanbo_gpu_temperature_chain(args)
+    if getattr(args, "query", None) == "hanbo-system-monitor-versions":
+        if args.family != "accessories" or args.function != "main":
+            raise ValueError("hanbo-system-monitor-versions requires the current accessories main scope")
+        return audit_hanbo_system_monitor_versions(args)
     if not re.fullmatch(r"[A-Za-z0-9_-]+", args.function):
         raise ValueError("Function must be a simple source chunk name")
     ids = args.product or candidates(a.builtin_data_path("razer-pages", FAMILY_CANDIDATES[args.family]))
@@ -1824,8 +1878,40 @@ def source_capture_modules(captured, source):
     provenance_path = a.ROOT / provenance_row["path"]
     provenance = json.loads(provenance_path.read_bytes())
     if "input" in captured:
-        raw_root = (a.ROOT / captured["input"] / "raw").resolve()
-        command_root = raw_root
+        import frontend
+        input_dir = a.ROOT / captured["input"]
+        frontend.input_root(input_dir, [a.ROOT / source["path"]])
+        result, resolved = [], {}
+        for name, module in provenance["modules"].items():
+            if not module.get("input"):
+                continue
+            recorded = module["input"].replace("\\", "/")
+            if recorded not in resolved:
+                original = frontend.capture_original(captured, input_dir, recorded, originals=sources)
+                resolution = next(({"cwd": command.get("cwd", a.rel(input_dir / "raw")),
+                    "argument": recorded} for command in captured.get("commands", [])
+                    if command.get("stage") == "unpack" and command.get("exit_code") == 0
+                    and recorded in {str(value).replace("\\", "/") for value in command.get("argv", [])}
+                    and (a.ROOT / command.get("cwd", a.rel(input_dir / "raw")) / recorded).resolve()
+                    == (a.ROOT / original["path"]).resolve()), None)
+                resolved[recorded] = (original, resolution)
+            original, resolution = resolved[recorded]
+            if original["path"] != source["path"]:
+                continue
+            output = outputs.get(a.rel(provenance_path.parent / name))
+            if output is None or not valid(output):
+                raise ValueError("Complete parser output differs from its receipt")
+            ranges = module["ranges"]
+            if (not isinstance(ranges, list) or not ranges or any(not isinstance(span, list) or len(span) != 2
+                    or any(type(offset) is not int for offset in span)
+                    or not 0 <= span[0] < span[1] <= source["bytes"] for span in ranges)):
+                raise ValueError("Complete parser module has invalid original ranges")
+            result.append({"output": output, "original": {key: source[key] for key in ("path", "bytes", "sha256")},
+                "original_ranges": ranges, "extraction": module["extraction"],
+                "provenance": provenance_row, "input_resolution": resolution})
+        if not result:
+            raise ValueError("No complete parser module links to the original")
+        return result
     elif (type(captured.get("application_js_inputs")) is int
           and type(captured.get("integration_dependency_js_inputs")) is int
           and captured["application_js_inputs"] + captured["integration_dependency_js_inputs"] == len(sources)
@@ -1857,8 +1943,13 @@ def source_capture_modules(captured, source):
         output = outputs.get(a.rel(provenance_path.parent / name))
         if output is None or not valid(output):
             raise ValueError("Complete parser output differs from its receipt")
+        ranges = module["ranges"]
+        if (not isinstance(ranges, list) or not ranges or any(not isinstance(span, list) or len(span) != 2
+                or any(type(offset) is not int for offset in span)
+                or not 0 <= span[0] < span[1] <= source["bytes"] for span in ranges)):
+            raise ValueError("Complete parser module has invalid original ranges")
         result.append({"output": output, "original": {key: source[key] for key in ("path", "bytes", "sha256")},
-                       "original_ranges": module["ranges"], "extraction": module["extraction"],
+                       "original_ranges": ranges, "extraction": module["extraction"],
                        "provenance": provenance_row, "input_resolution": resolution})
     if not result:
         raise ValueError("No complete parser module links to the original")
@@ -12614,8 +12705,3290 @@ def audit_audio_help_reset(args):
         raise ValueError("Current Help reset source chains remain unresolved")
 
 
+def audio_seiren_recording_wizard_chain(audit, originals, source, render, footer, main_source):
+    """Follow current mounted recorder and wizard callbacks without executing JS."""
+    import host
+
+    def one(values, label):
+        values = list(values)
+        if len(values) != 1:
+            raise ValueError("Current Seiren recording has no unique " + label)
+        return values[0]
+
+    def retain(role, original, node):
+        return audit.retain_range("seiren_current_" + role, original, node.start_byte, node.end_byte, node.type)
+
+    def binding(original, reference, role):
+        if reference.type != "identifier":
+            raise ValueError("Current Seiren recording callback is not lexical: " + role)
+        result = audit.binding("seiren_current_" + role, original, reference.text.decode(), reference.start_byte)
+        return host._help_binding_node(audit, original, result)
+
+    def field(obj, name):
+        return one((node.child_by_field_name("value") for node in obj.named_children if node.type == "pair"
+                    and node.child_by_field_name("key").text == name.encode()), name)
+
+    def calls(root, name):
+        result = []
+        for node in host._help_nodes(root):
+            if node.type != "call_expression":
+                continue
+            callee = node.child_by_field_name("function")
+            while callee.type in {"parenthesized_expression", "sequence_expression"}:
+                callee = callee.named_children[-1]
+            if callee.type == "member_expression" and callee.child_by_field_name("property").text == name.encode():
+                result.append(node)
+        return result
+
+    recording_container = one((node.parent for node in host._help_nodes(footer) if node.type == "pair"
+        and node.child_by_field_name("key").text == b"className"
+        and node.child_by_field_name("value").text == b'"mic-recording-playback-control"'), "recorder container")
+    recording_reference = field(recording_container, "children").child_by_field_name("arguments").named_children[0]
+    if recording_reference.type != "member_expression":
+        raise ValueError("Current Seiren recorder is not an imported component")
+    recording_source, factory, _ = host.javascript_import_namespace(audit, originals, source,
+        recording_reference.child_by_field_name("object"), role="seiren_current_recorder_import")
+    module_id = host._help_factory(factory)["module_id"]
+    exported = audit.webpack_export("seiren_current_recorder", originals, module_id,
+        recording_reference.child_by_field_name("property").text.decode())
+    recorder = host._help_binding_node(audit, recording_source, exported["binding"])
+    roles = {"recorder": retain("recorder_component", recording_source, recorder)}
+    buttons = {}
+    for name in ("record", "play"):
+        button = one((node.parent for node in host._help_nodes(recorder) if node.type == "pair"
+            and node.child_by_field_name("key").text == b"className"
+            and ("mic-recording-playback__" + name + "-btn").encode() in node.child_by_field_name("value").text), name + " button")
+        handler = field(button, "onClick")
+        buttons[name] = handler
+        roles[name + "_button"] = retain(name + "_button", recording_source, button)
+        roles[name + "_handler"] = retain(name + "_handler", recording_source, handler)
+    record_branches = one((node for node in host._help_nodes(buttons["record"]) if node.type == "ternary_expression"), "record start/stop branch")
+    record_start_call = one((node for node in host._help_nodes(record_branches.child_by_field_name("alternative"))
+                            if node.type == "call_expression"), "record start call")
+    record_start = binding(recording_source, record_start_call.child_by_field_name("function"), "record_start")
+    roles["record_start"] = retain("record_start", recording_source, record_start)
+    play = buttons["play"]
+    if play.type != "ternary_expression":
+        raise ValueError("Current Seiren playback lost its start/stop branch")
+    stop = binding(recording_source, play.child_by_field_name("consequence"), "play_stop")
+    roles["play_stop"] = retain("play_stop", recording_source, stop)
+    roles["play_start"] = retain("play_start", recording_source, play.child_by_field_name("alternative"))
+    for member in ("ondataavailable", "onstop", "onloadend"):
+        assignment = one((node for node in host._help_nodes(record_start) if node.type == "assignment_expression"
+            and node.child_by_field_name("left").type == "member_expression"
+            and node.child_by_field_name("left").child_by_field_name("property").text == member.encode()), member)
+        roles["record_" + member] = retain("record_" + member, recording_source, assignment)
+    roles["record_unmount"] = retain("record_unmount", recording_source, one(calls(recorder, "useEffect"), "recorder cleanup effect"))
+    record_action = one((node for node in host._help_nodes(recorder) if node.type == "pair"
+                        and node.child_by_field_name("key").text == b"setMicReturnSwitch"), "return-switch action")
+    action = binding(recording_source, record_action.child_by_field_name("value"), "record_return_switch_action")
+    roles["return_switch_action"] = retain("record_return_switch_action", recording_source, action)
+    action_payload = one((node.child_by_field_name("value") for node in host._help_nodes(action)
+        if node.type == "pair" and node.child_by_field_name("key").text == b"type"), "return-switch action identity")
+    _, action_value = host._help_runtime_value(audit, originals, recording_source, action_payload)
+    return_switch_action = json.loads(action_value.text)
+    if return_switch_action != "ON_MIC_RETURN_SWITCH":
+        raise ValueError("Current Seiren recording return-switch action changed")
+    reducer_slot = one((node for node in host._help_nodes(audit.tree(main_source).root_node) if node.type == "pair"
+                        and node.child_by_field_name("key").text == b"micRecordingReducer"), "mounted recording reducer slot")
+    reducer = binding(main_source, reducer_slot.child_by_field_name("value"), "recording_reducer")
+    roles["recording_reducer"] = retain("recording_reducer", main_source, reducer)
+    roles["recording_reducer_slot"] = retain("recording_reducer_slot", main_source, reducer_slot)
+    if not all(token in reducer.text for token in (b"micReturnSwitch:{switchstate:", b"processingSuccess:!1", b".postMessage(")):
+        raise ValueError("Current Seiren recording reducer no longer retains the audited optimistic request state")
+
+    wizard_guard = one((node for node in host._help_nodes(render) if node.type == "binary_expression"
+        and node.child_by_field_name("left").text == b"this.props.isMicSetupOpen"), "root wizard condition")
+    if wizard_guard.parent.type != "array":
+        raise ValueError("Current Seiren wizard is not an independent root child")
+    wizard_call = wizard_guard.child_by_field_name("right")
+    wizard_reference = wizard_call.child_by_field_name("arguments").named_children[0]
+    wizard = binding(source, wizard_reference, "wizard_component")
+    roles["wizard_guard"] = retain("wizard_guard", source, wizard_guard)
+    roles["wizard"] = retain("wizard_component", source, wizard)
+    handlers, semantic_buttons = {}, {"CANCEL", "BEGIN", "RESTART", "APPLY", "BACK", "NEXT"}
+    for pair in host._help_nodes(wizard):
+        if pair.type != "pair" or pair.child_by_field_name("key").text != b"text":
+            continue
+        value = pair.child_by_field_name("value")
+        if value.type != "member_expression":
+            continue
+        try:
+            _, key = host._help_runtime_value(audit, originals, source, value)
+        except ValueError:
+            continue
+        if key.type != "string" or json.loads(key.text) not in semantic_buttons:
+            continue
+        key = json.loads(key.text)
+        parent = pair.parent
+        while parent is not None:
+            if parent.type == "object" and any(node.type == "pair" and node.child_by_field_name("key").text == b"onClick"
+                                                for node in parent.named_children):
+                break
+            parent = parent.parent
+        if parent is None:
+            raise ValueError("Current Seiren wizard label has no actual button handler")
+        handler = field(parent, "onClick")
+        handlers[key] = binding(source, handler, "wizard_" + key.lower())
+        roles["wizard_" + key.lower()] = retain("wizard_" + key.lower(), source, handlers[key])
+    if set(handlers) != semantic_buttons:
+        raise ValueError("Current Seiren wizard action buttons changed")
+    cancel_calls = [node.child_by_field_name("function") for node in host._help_nodes(handlers["CANCEL"])
+                    if node.type == "call_expression" and node.child_by_field_name("function").type == "identifier"]
+    if len(cancel_calls) != 2:
+        raise ValueError("Current Seiren wizard cancel no longer restores then closes")
+    restore, close = [binding(source, reference, "wizard_cancel_dependency") for reference in cancel_calls]
+    if b".current" not in restore.text or b"setMicSetupOpen(!1)" not in close.text:
+        raise ValueError("Current Seiren wizard cancel no longer restores then closes")
+    roles["wizard_restore"] = retain("wizard_restore", source, restore)
+    roles["wizard_close"] = retain("wizard_close", source, close)
+    effect = one(calls(wizard, "useEffect"), "wizard initialization effect")
+    timers = [node for node in host._help_nodes(effect) if node.type == "call_expression"
+              and node.child_by_field_name("function").text == b"setTimeout"]
+    timer = one(timers, "wizard default-setting delay")
+    if timer.child_by_field_name("arguments").named_children[-1].text != b"100":
+        raise ValueError("Current Seiren wizard initialization delay changed")
+    roles["wizard_initialize"] = retain("wizard_initialize", source, effect)
+    initial_callbacks = []
+    for node in host._help_nodes(effect):
+        if node.type != "call_expression" or node.child_by_field_name("function").type != "identifier":
+            continue
+        reference = node.child_by_field_name("function")
+        if reference.text in {b"setTimeout", b"clearTimeout"}:
+            continue
+        declaration = binding(source, reference, "wizard_initialization_dependency")
+        initial_callbacks.append(declaration)
+    snapshot = one((node for node in initial_callbacks if b"micVolume:" in node.text and b"null===" in node.text), "wizard initial snapshot")
+    defaults = one((node for node in initial_callbacks if b".micGainDb" in node.text), "wizard measurement defaults")
+    roles["wizard_snapshot"] = retain("wizard_snapshot", source, snapshot)
+    roles["wizard_defaults"] = retain("wizard_defaults", source, defaults)
+    parameters = one((node.child_by_field_name("object") for node in host._help_nodes(defaults)
+                      if node.type == "member_expression" and node.child_by_field_name("property").text == b"micGainDb"), "wizard default parameter owner")
+    roles["wizard_default_parameters"] = retain("wizard_default_parameters", source, binding(source, parameters, "wizard_default_parameters"))
+    if b"Object.keys(" not in handlers["APPLY"].text or b"micGainPercent" not in handlers["APPLY"].text:
+        raise ValueError("Current Seiren wizard apply is not the measured-settings consumer")
+    selection_call = one((node for node in host._help_nodes(handlers["APPLY"]) if node.type == "call_expression"
+                          and node.child_by_field_name("function").type == "identifier"
+                          and node.child_by_field_name("arguments").named_child_count == 4), "wizard selection action mapper")
+    roles["wizard_selection_actions"] = retain("wizard_selection_actions", source,
+        binding(source, selection_call.child_by_field_name("function"), "wizard_selection_actions"))
+    complete = one((node for node in host._help_nodes(wizard) if node.type == "pair"
+                    and node.child_by_field_name("key").text == b"onRecordingComplete"), "measurement completion callback")
+    pcm_call = complete.parent.parent.parent
+    pcm = binding(source, pcm_call.child_by_field_name("function"), "measurement_pcm")
+    roles["measurement_pcm"] = retain("measurement_pcm", source, pcm)
+    roles["measurement_request"] = retain("measurement_request", source, pcm_call)
+    roles["measurement_complete"] = retain("measurement_complete", source, complete)
+    for member, role in (("startRecording", "measurement_start"), ("stopRecording", "measurement_stop")):
+        result = one((node for node in host._help_nodes(pcm) if node.type == "pair"
+                      and node.child_by_field_name("key").text == member.encode()), member + " return value")
+        declaration = binding(source, result.child_by_field_name("value"), role)
+        roles[role] = retain(role, source, declaration)
+    roles["measurement_unmount"] = retain("measurement_unmount", source, one(calls(pcm, "useEffect"), "measurement cleanup effect"))
+    worklet_literal = one((node for node in host._help_nodes(pcm) if node.type == "string"
+                          and b"registerProcessor('recorder-processor'" in node.text), "measurement worklet source")
+    roles["measurement_worklet"] = retain("measurement_worklet", source, worklet_literal)
+    decoded_worklet = json.loads(worklet_literal.text)
+    if audit.parser.parse(decoded_worklet.encode()).root_node.has_error:
+        raise ValueError("Current Seiren measurement worklet has an unresolved AST")
+    if b"finally{" not in pcm.text or b"revokeObjectURL" not in pcm.text:
+        raise ValueError("Current Seiren measurement worklet URL cleanup changed")
+    analyses = {}
+    for member in ("analyzeNoiseGate", "analyzeMicGain"):
+        reference = one((node for node in host._help_nodes(wizard) if node.type == "member_expression"
+                         and node.child_by_field_name("property").text == member.encode()), member + " consumer")
+        consumer = reference
+        while consumer.type != "assignment_expression":
+            consumer = consumer.parent
+            if consumer is None:
+                raise ValueError("Current Seiren analysis lost its completion consumer")
+        roles[member + "_consumer"] = retain(member + "_consumer", source, consumer)
+        analysis_call = reference
+        while analysis_call.type != "call_expression":
+            analysis_call = analysis_call.parent
+        configuration = analysis_call.child_by_field_name("arguments").named_children[-1]
+        roles[member + "_parameters"] = retain(member + "_parameters", source,
+            binding(source, configuration, member + "_parameters"))
+        barrel_source, barrel_factory, barrel_owner = host.javascript_import_namespace(audit, originals, source,
+            reference.child_by_field_name("object"), role="seiren_current_" + member + "_import")
+        targets = []
+        for call in host._help_nodes(barrel_factory):
+            if call.type != "call_expression" or call.child_by_field_name("function").type != "identifier":
+                continue
+            arguments = call.child_by_field_name("arguments").named_children
+            if len(arguments) != 1 or arguments[0].type != "number":
+                continue
+            host.javascript_require_binding(audit, barrel_source, call.child_by_field_name("function"))
+            for target_source, target_module, target_factory in audit.webpack_factories(originals, int(arguments[0].text)):
+                assignments = [node for node in host._help_nodes(target_factory) if node.type == "assignment_expression"
+                    and node.child_by_field_name("left").type == "member_expression"
+                    and node.child_by_field_name("left").child_by_field_name("property").text == member.encode()]
+                if len(assignments) == 1:
+                    targets.append({"barrel_owner": barrel_owner, "request_owner": retain(member + "_module_request", barrel_source, call),
+                        "module_id": int(arguments[0].text), "factory_owner": retain(member + "_factory", target_source, target_module),
+                        "function_owner": retain(member + "_function", target_source, assignments[0])})
+        analyses[member] = one(targets, member + " reexported function")
+    return {"roles": roles, "recording_export": exported, "return_switch_action": return_switch_action,
+        "measurement_analyses": analyses,
+        "semantics": {
+            "recording_storage": "The mounted recorder builds MIME-preserving in-memory bytes through MediaRecorder onstop and FileReader; it has no file-save action. Empty blobs do not replace the clip.",
+            "recording_late_results": "The full recording owner has no generation guard around enumerateDevices/getUserMedia/FileReader or the playback waits. Its sampling-rate selector changes future starts; it does not automatically stop an existing recording.",
+            "playback_confirmation": "ON_MIC_RETURN_SWITCH optimistically sets reducer switchstate=1 before sending the MW request. The player polls that field for up to 2000 ms with 50 ms intervals and proceeds even on timeout; it does not inspect processingSuccess. A BroadcastChannel-unavailable branch also injects reducer state after 200 ms. None of those UI values establish a device acknowledgement.",
+            "playback_cleanup": "Stop, ended and error dispatch switchstate=0, pause/reset/revoke URLs as defined. The ended callback clears its playback monitor; unmount stops tracks, pauses audio, revokes its URL and dispatches zero, but does not prove all pending waits or callbacks have been cancelled.",
+            "wizard_actions": "Cancel and close restore the initial snapshot before closing. APPLY submits measured gain/noise and selected actions, then closes without awaiting device acknowledgements. RESTART resets the wizard and reapplies measurement defaults.",
+            "wizard_initialization": "The snapshot is taken once, then defaults are scheduled after 100 ms. The effect cleanup cancels that timeout; the guard and dependency behavior are retained exactly, without inventing generic restore-on-unmount.",
+            "measurement": "Speech/environment starts request 10000 ms at 48000 Hz. The timeout is installed after the source is created and before worklet readiness; stop joins ch1 blocks using the actual AudioContext sample rate and invokes completion only when blocks exist.",
+            "measurement_late_results": "The PCM hook uses a busy boolean and a 750 ms restart cooldown, without a request-generation check after getUserMedia/addModule. Its cleanup releases currently held resources; late async completions, sample-rate/device changes and callbacks are not protected by the preview hook's separate generation mechanism.",
+            "measurement_result": "The UI completion callback marks speech/environment done after the selected analysis callback returns, including its caught errors or no-valid-audio early return. That navigation flag does not establish a recommendation, a device ACK or successful DSP write.",
+        },
+        "bounded_recording_and_wizard_ui_complete": True, "file_save_action": "absent_in_mounted_component",
+        "device_write_completion": "not_established_by_ui", "runtime_acceptance": "unverified",
+        "remaining_chains": ["Follow current MW/service handling of return-switch and wizard DSP actions separately.",
+                             "Compare actual browser/OS capture, late results, cancellation and device effects through the authorized validation workflow."]}
+
+
+def audio_seiren_current_ui_chain(audit, originals):
+    """Retain the mounted current Seiren UI and its microphone meter consumer."""
+    import host
+
+    def one(values, label):
+        values = list(values)
+        if len(values) != 1:
+            raise ValueError("Current Seiren UI has no unique " + label)
+        return values[0]
+
+    def nodes(node):
+        return host._help_nodes(node)
+
+    def retain(role, source, node):
+        return audit.retain_range(role, source, node.start_byte, node.end_byte, node.type)
+
+    def ancestor(node, kinds):
+        while node is not None and node.type not in kinds:
+            node = node.parent
+        if node is None:
+            raise ValueError("Current Seiren UI lost its complete lexical owner")
+        return node
+
+    def binding(source, reference, role):
+        if reference.type != "identifier":
+            raise ValueError("Current Seiren UI requires a lexical component binding")
+        result = audit.binding(role, source, reference.text.decode(), reference.start_byte)
+        return host._help_binding_node(audit, source, result)
+
+    def mounted_parent(component, source, role, kinds):
+        chain = host.javascript_component_mounts(audit, originals, source, component, role=role)
+        mount = one(chain["mounts"], role + " mount")
+        owner = audit.owners[mount["owner"]]
+        original = one((item for item in originals if item["path"] == owner["original"]["path"]), role + " original")
+        node = audit.tree(original).root_node.descendant_for_byte_range(owner["byte_start"], owner["byte_end"] - 1)
+        return chain, original, ancestor(node, kinds)
+
+    candidates = []
+    for source in originals:
+        if not source["path"].endswith(".js"):
+            continue
+        raw = audit.read(source)
+        for hit in re.finditer(rb"this\.brightnessOffSent", raw):
+            node = audit.tree(source).root_node.descendant_for_byte_range(hit.start(), hit.end() - 1)
+            candidates.append((source, ancestor(node, {"class_declaration"})))
+    source, product = one(candidates, "ready product class")
+    roles = {"ready_product": retain("seiren_current_ready_product", source, product)}
+    render, roles["product_render"] = audit.callable_member("seiren_current_product_render", source, product, "render")
+    for member in ("constructor", "componentDidMount", "componentDidUpdate", "componentWillUnmount"):
+        _, roles[member] = audit.callable_member("seiren_current_" + member, source, product, member)
+    product_mount, setup_source, setup = mounted_parent(product, source, "seiren_current_product", {"class_declaration"})
+    setup_mount, main_source, display = mounted_parent(setup, setup_source, "seiren_current_setup", {"variable_declarator"})
+    display_mount, main_again, shell = mounted_parent(display, main_source, "seiren_current_display", {"class_declaration"})
+    shell_mount, dom_source, dom_call = mounted_parent(shell, main_again, "seiren_current_shell", {"call_expression"})
+    dom_owner = audit.owners[one(shell_mount["mounts"], "DOM child")["owner"]]
+    dom_node = audit.tree(dom_source).root_node.descendant_for_byte_range(dom_owner["byte_start"], dom_owner["byte_end"] - 1)
+    dom_call = ancestor(dom_node.parent, {"call_expression"})
+    if (b'.createRoot(document.getElementById("root")).render' not in dom_call.text
+            or main_source["path"] != dom_source["path"]):
+        raise ValueError("Current Seiren UI is not connected to its actual root renderer")
+    roles["dom_root"] = retain("seiren_current_dom_root", dom_source, dom_call)
+    roles["setup"] = retain("seiren_current_setup_class", setup_source, setup)
+    roles["display"] = retain("seiren_current_display_modes", main_source, display)
+
+    branches = []
+    for pair in nodes(render):
+        if pair.type != "pair":
+            continue
+        key = pair.child_by_field_name("key")
+        if key.type != "computed_property_name" or key.named_child_count != 1:
+            continue
+        requested = [node for node in nodes(pair.child_by_field_name("value"))
+                     if node.type == "call_expression" and node.child_by_field_name("function").type == "member_expression"
+                     and node.child_by_field_name("function").child_by_field_name("property").text == b"bind"]
+        if not requested:
+            continue
+        request = one(requested, "page lazy target")
+        arguments = request.child_by_field_name("arguments").named_children
+        require = request.child_by_field_name("function").child_by_field_name("object")
+        host.javascript_require_binding(audit, source, require)
+        if (len(arguments) != 2 or arguments[0].text != require.text or arguments[1].type != "number"
+                or b"Promise.resolve().then(" not in pair.text):
+            raise ValueError("Current Seiren page is not a fixed preloaded-module lazy request")
+        name_source, name = host._help_runtime_value(audit, originals, source, key.named_children[0])
+        if name.type != "string":
+            raise ValueError("Current Seiren page identity is dynamic")
+        page_name = json.loads(name.text)
+        mid = int(arguments[1].text)
+        exported = audit.webpack_export("seiren_current_page_" + page_name, originals, mid, "default")
+        _, target_module, _ = one(audit.webpack_factories(originals, mid), "page module factory")
+        registration = target_module.parent.parent
+        if (registration.type != "array" or registration.named_children[0].type != "array"
+                or any(value.type != "number" for value in registration.named_children[0].named_children)):
+            raise ValueError("Current Seiren page target has no fixed chunk registration")
+        registered = [int(value.text) for value in registration.named_children[0].named_children]
+        loaded = one(product_mount["mounts"], "ready product mount")["lazy_import"]["chunk_ids"]
+        if not set(registered).intersection(loaded):
+            raise ValueError("Current Seiren page target was not loaded with the ready product")
+        branches.append({"name": page_name, "module_id": mid, "export": exported,
+                         "registered_chunks": registered, "preloaded_chunks": loaded,
+                         "owner": retain("seiren_current_page_mount_" + page_name, source, pair)})
+    if [item["name"] for item in branches] != ["TAB_EQ", "TAB_EFFECTS", "STREAM_MIXER_HEADER", "TAB_LIGHTING", "HELP"]:
+        raise ValueError("Current Seiren ready page order changed")
+
+    footer_pair = one((node for node in nodes(render) if node.type == "pair"
+                       and node.child_by_field_name("key").text == b"className"
+                       and node.child_by_field_name("value").text == b'"sticky-mic-controls-container"'), "microphone footer")
+    footer_object = footer_pair.parent
+    child = one((node for node in footer_object.named_children if node.type == "pair"
+                 and node.child_by_field_name("key").text == b"children"), "footer child").child_by_field_name("value")
+    footer_reference = child.child_by_field_name("arguments").named_children[0]
+    footer = binding(source, footer_reference, "seiren_current_footer")
+    roles["footer"] = retain("seiren_current_footer", source, footer)
+    footer_mount = ancestor(footer_object, {"call_expression"})
+    condition = footer_mount.parent
+    if condition.type != "binary_expression" or condition.child_by_field_name("right") != footer_mount:
+        raise ValueError("Current Seiren footer lost its page exclusion condition")
+    excluded = []
+    for comparison in nodes(condition.child_by_field_name("left")):
+        if comparison.type == "binary_expression" and comparison.child_by_field_name("left").text == b"this.state.active_view":
+            operator = comparison.child_by_field_name("operator")
+            if operator is None or operator.text != b"!==":
+                raise ValueError("Current Seiren footer page exclusion changed")
+            _, value = host._help_runtime_value(audit, originals, source, comparison.child_by_field_name("right"))
+            excluded.append(json.loads(value.text))
+    if excluded != ["TAB_LIGHTING", "HELP"]:
+        raise ValueError("Current Seiren footer excludes different pages")
+    roles["footer_condition"] = retain("seiren_current_footer_condition", source, condition)
+    projection = one((node for node in nodes(footer) if node.type == "pair"
+                      and node.child_by_field_name("key").text == b"levelMeter"
+                      and node.child_by_field_name("value").text.endswith(b".micReducer.levelMeter")), "footer meter selector")
+    roles["meter_selector"] = retain("seiren_current_meter_selector", source, projection.parent)
+    external = one((node for node in nodes(footer) if node.type == "pair"
+                    and node.child_by_field_name("key").text == b"externalLevelPercent"), "external meter argument")
+    waveform_call = ancestor(external, {"call_expression"})
+    waveform = binding(source, waveform_call.child_by_field_name("function"), "seiren_current_waveform")
+    roles["waveform"] = retain("seiren_current_waveform", source, waveform)
+    roles["waveform_call"] = retain("seiren_current_waveform_call", source, waveform_call)
+    meter_value = external.child_by_field_name("value")
+    meter_links = []
+    while meter_value.type == "identifier":
+        declaration = binding(source, meter_value, "seiren_current_external_meter_value")
+        owner = retain("seiren_current_external_meter_value", source, declaration)
+        if owner in meter_links:
+            raise ValueError("Current Seiren external meter value has a cyclic alias")
+        meter_links.append(owner)
+        meter_value = declaration.child_by_field_name("value")
+    if (meter_value.type != "ternary_expression" or b".levelMeter[0]" not in meter_value.text
+            or b"Math.min(100,Math.max(0," not in meter_value.text or not meter_value.text.endswith(b":void 0")):
+        raise ValueError("Current Seiren external meter no longer distinguishes absent and observed values")
+    if not all(token in waveform.text for token in (b"externalLevelPercent", b"getFloatTimeDomainData", b"getUserMedia", b"cancelAnimationFrame", b"getTracks().forEach")):
+        raise ValueError("Current Seiren waveform observation or cleanup owner changed")
+    enum = one((node for node in nodes(footer) if node.type == "member_expression"
+                and node.text.endswith(b".nametransformToDeviceId.Microphone")), "microphone enum identity")
+    _, enum_value = host._help_runtime_value(audit, originals, source, enum)
+    rates = one((node for node in nodes(footer) if node.type == "member_expression"
+                 and node.text.endswith(b".DeviceInfo.supportedMicSamplingRates")), "sampling rates")
+    _, rates_value = host._help_runtime_value(audit, originals, source, rates)
+    eq_source, _, eq_factory = one(audit.webpack_factories(originals, branches[0]["module_id"]), "EQ factory")
+    preset_references = [node for node in nodes(eq_factory) if node.type == "member_expression"
+                         and node.child_by_field_name("property").text == b"presets"]
+    preset_values = {tuple(static_js_literal(host._help_runtime_value(audit, originals, eq_source, node)[1].text.decode()))
+                     for node in preset_references}
+    presets = list(one(preset_values, "EQ preset source"))
+    if presets != ["podcast", "arena", "fpscallout", "studio", "custom"]:
+        raise ValueError("Current Seiren EQ preset branch changed")
+    roles["external_meter_values"] = meter_links
+    recording_wizard = audio_seiren_recording_wizard_chain(audit, originals, source, render, footer, main_source)
+    return {"roles": roles, "mount_chain": {"product": product_mount, "setup": setup_mount,
+            "display": display_mount, "shell": shell_mount}, "pages": branches,
+            "recording_and_wizard": recording_wizard,
+            "semantics": {
+                "meter_source": "The connected footer consumes micReducer.levelMeter; the configured microphone device-enum entry (then DeviceId_Microphone fallback) supplies levelMeter[0], clamped to 0..100. A missing entry/array yields undefined. A nullish first value in a nonempty array is rendered as zero; that UI fallback is not an observed device value.",
+                "waveform_source": "A positive numeric external level uses percent/100*60-60 dB; absent, zero or invalid external levels follow the browser analyser RMS branch. These visualization values are not device write acknowledgements.",
+                "preview_gate": "The footer combines browser-audio preparation, device readiness, active window/tab and visible document; its waveform hook also requires live-preview enabled.",
+                "preview_cleanup": "The retained waveform owner increments its request generation, stops late tracks, clears retry/interval/animation work, disconnects audio nodes and closes its AudioContext. Root listener removal and service switching are retained separately.",
+                "readiness": "Current root handlers consume MW_SET_DEVICE_READY_TO_UI on MW/window message channels and ON_SET_STREAM_MIXER_ENABLE; these source coercions and reducer actions do not prove the device or DSP is ready.",
+            },
+            "microphone_device_enum": json.loads(enum_value.text),
+            "supported_sampling_rates": static_js_literal(rates_value.text.decode()), "eq_presets": presets,
+            "footer_excluded_pages": excluded, "bounded_mount_and_meter_chain_complete": True,
+            "whole_product_complete": False, "rust_implementation": "not_reviewed",
+            "official_dll_comparison": "not_executed", "runtime_acceptance": "unverified"}
+
+
+def audio_seiren_current_mw_chain(audit, middleware, ui):
+    """Follow the current wizard requests through their actual MW consumers."""
+    import host
+
+    def one(values, label):
+        values = list(values)
+        if len(values) != 1:
+            raise ValueError("Current Seiren MW has no unique " + label)
+        return values[0]
+
+    roles = {}
+
+    def keep(role, source, node):
+        key = audit.retain_range("seiren_current_mw_" + role, source, node.start_byte, node.end_byte, node.type)
+        roles[role] = key
+        return key
+
+    def module(number, files=middleware):
+        source, node, factory = one(audit.webpack_factories(files, number), "module " + str(number))
+        keep("module_" + str(number), source, node)
+        return source, factory
+
+    def bound(source, node, role):
+        if node.type != "identifier":
+            raise ValueError("Current Seiren MW dependency is not lexical: " + role)
+        declaration = host._help_binding_node(audit, source,
+            audit.binding("seiren_current_mw_" + role, source, node.text.decode(), node.start_byte))
+        keep(role, source, declaration)
+        return declaration
+
+    def pair(root, name, label=None):
+        return one((node for node in host._help_nodes(root) if node.type == "pair"
+                    and node.child_by_field_name("key").text == name.encode()), label or name)
+
+    def member(source, root, name, role):
+        node, key = audit.callable_member("seiren_current_mw_" + role, source, root, name)
+        roles[role] = key
+        return node
+
+    def exported(number, name, role, files=middleware):
+        source, _ = module(number, files)
+        result = audit.webpack_export("seiren_current_mw_" + role, files, number, name)
+        node = host._help_binding_node(audit, source, result["binding"])
+        visited = set()
+        while node.type == "variable_declarator" and node.child_by_field_name("value").type == "identifier":
+            if node.start_byte in visited:
+                raise ValueError("Current Seiren MW export alias cycle")
+            visited.add(node.start_byte)
+            keep(role + "_alias", source, node)
+            node = bound(source, node.child_by_field_name("value"), role + "_target")
+        keep(role, source, node)
+        return source, node
+
+    def imported(source, reference, role, files=middleware):
+        imported_source, factory, _ = host.javascript_import_namespace(audit, files, source,
+            reference.child_by_field_name("object"), role="seiren_current_mw_" + role)
+        return exported(host._help_factory(factory)["module_id"],
+                        reference.child_by_field_name("property").text.decode(), role, files)
+
+    def lazy_feature(source, root, name, number, export):
+        request = pair(root, name).child_by_field_name("value")
+        keep(name + "_request", source, request)
+        bindings = [node for node in host._help_nodes(request) if node.type == "call_expression"
+                    and node.child_by_field_name("function").type == "member_expression"
+                    and node.child_by_field_name("function").child_by_field_name("property").text == b"bind"]
+        call = one(bindings, name + " actual lazy target")
+        args = call.child_by_field_name("arguments").named_children
+        if len(args) != 2 or args[1].type != "number" or int(args[1].text) != number:
+            raise ValueError("Current Seiren MW feature lazy target changed: " + name)
+        host.javascript_require_binding(audit, source, args[0])
+        if call.child_by_field_name("function").child_by_field_name("object").text != args[0].text:
+            raise ValueError("Current Seiren MW lazy target binds another require")
+        if export != "default" and not any(node.type == "member_expression"
+                and node.child_by_field_name("property").text == export.encode() for node in host._help_nodes(request)):
+            raise ValueError("Current Seiren MW feature export changed: " + name)
+        target_source, target = exported(number, export, name)
+        _, target_module, _ = one(audit.webpack_factories(middleware, number), name + " factory")
+        registered = target_module.parent.parent
+        chunks = [int(node.child_by_field_name("arguments").named_children[0].text)
+            for node in host._help_nodes(request) if node.type == "call_expression"
+            and node.child_by_field_name("function").type == "member_expression"
+            and node.child_by_field_name("function").child_by_field_name("property").text == b"e"]
+        if chunks and (registered.type != "array" or not set(chunks).intersection(
+                int(node.text) for node in registered.named_children[0].named_children)):
+            raise ValueError("Current Seiren MW feature does not request its registered chunk")
+        return target_source, target
+
+    main = one((source for source in middleware if Path(source["path"]).name.startswith("main.")
+                and source["path"].endswith(".js")), "MW entry main")
+    registrations = [node for node in host._help_nodes(audit.tree(main).root_node) if node.type == "call_expression"
+        and node.child_by_field_name("function").type == "member_expression"
+        and node.child_by_field_name("function").child_by_field_name("property").text == b"useFeature"]
+    generic = one((node for node in registrations if [arg.text for arg in
+        node.child_by_field_name("arguments").named_children[:2]] == [b'"genericFeature"', b'"config"']), "generic feature registration")
+    keep("product_generic_registration", main, generic)
+    for feature in ("marie_fw", "audio_streamMixer", "parametricEQ"):
+        if not any(node.type == "pair" and node.child_by_field_name("key").text == b"featureKey"
+                   and node.child_by_field_name("value").text == json.dumps(feature).encode()
+                   for node in host._help_nodes(generic)):
+            raise ValueError("Current Seiren MW feature is not registered: " + feature)
+    device_registration = one((node for node in registrations if [arg.text for arg in
+        node.child_by_field_name("arguments").named_children[:2]] == [b'"rzDeviceType"', b'"rzDevice25AudioMarieT1"']), "physical device registration")
+    keep("product_adapter_registration", main, device_registration)
+    manager_source, manager = module(33422)
+    fw_source, firmware = lazy_feature(manager_source, manager, "marie_fw", 43828, "Marie_FW")
+    mixer_source, mixer = lazy_feature(manager_source, manager, "audio_streamMixer", 16504, "Audio_StreamMixer")
+    eq_source, eq = lazy_feature(manager_source, manager, "parametricEQ", 65561, "ParametricEQFeature")
+    # The shared manager owns persistence, skippable queues, response notices and restore.
+    for number in (55868, 52671, 81988, 67617):
+        module(number)
+    manager_class = one((node for node in host._help_nodes(manager) if node.type == "class_declaration"), "generic manager class")
+    for name in ("addFeature", "restoreDeviceData", "shutdown", "handleEvent", "taskMakerHandler",
+                 "taskRunnerSetDevice", "onTaskRunnerSetDeviceComplete"):
+        member(manager_source, manager_class, name, "manager_" + name)
+
+    descriptors = {}
+    feature_map = pair(firmware, "ON_MIC_RETURN_SWITCH").parent
+    event_methods = {
+        "ON_MIC_RETURN_SWITCH": "setMicReturnSwitch", "ON_SET_NOISE_GATE": "setNoiseGate",
+        "ON_SET_AI_NOISE_SUPPRESSION": "setAINoiseSuppression", "ON_SET_MIC_COMPRESSOR": "setMicCompressor",
+        "ON_SET_MIC_LIMITER": "setMicLimiter", "ON_SET_MIC_REVERB": "setMicReverb",
+        "ON_SET_VOCAL_BASS": "setVocalBass", "ON_SET_VOCAL_EXCITER": "setVocalExciter",
+    }
+    for event, method_name in event_methods.items():
+        mapping = pair(feature_map, event)
+        descriptor = bound(fw_source, mapping.child_by_field_name("value"), "descriptor_" + event)
+        if json.dumps(event).encode() not in descriptor.text:
+            raise ValueError("Current Seiren MW descriptor event identity changed")
+        attribute = pair(descriptor, "eventAttributes").child_by_field_name("value")
+        storage = attribute.child_by_field_name("property").text.decode()
+        if storage != ("Storage_NoSave" if event == "ON_MIC_RETURN_SWITCH" else "Storage_Profile"):
+            raise ValueError("Current Seiren MW storage policy changed: " + event)
+        target = member(fw_source, firmware, method_name, method_name)
+        if not any(node.type == "member_expression" and node.child_by_field_name("property").text == method_name.encode()
+                   for node in host._help_nodes(pair(descriptor, "execute"))):
+            raise ValueError("Current Seiren MW descriptor executes another setter")
+        descriptors[event] = {"owner": roles["descriptor_" + event], "setter": roles[method_name],
+                              "storage": storage, "param_key": json.loads(pair(descriptor, "paramKey").child_by_field_name("value").text)}
+    for name in ("initDataFromDevice", "getRuntimeData", "getAudioInputControlState", "getNoiseGate",
+                 "getAINoiseSuppression", "getMicCompressor", "getMicLimiter", "getMicReverb",
+                 "mappingVocalGain", "setEqVocalBass", "setEqVocalExciter", "onDeviceEvent"):
+        member(fw_source, firmware, name, name)
+    for event in ("ON_SET_MIC_VOLUME_VALUE", "ON_SET_MIC_VOLUME_ENABLED"):
+        mapping = pair(mixer, event)
+        descriptor = bound(mixer_source, mapping.child_by_field_name("value"), "descriptor_" + event)
+        if b"Storage_NoSave" not in descriptor.text or b"setMicVolume" not in descriptor.text:
+            raise ValueError("Current Seiren MW mic gain no longer selects native NoSave volume")
+        descriptors[event] = {"owner": roles["descriptor_" + event], "storage": "Storage_NoSave", "param_key": "micVolume"}
+    for name in ("setMicVolume", "getRuntimeData", "handleAddLevelMeterListener", "init", "onDeviceEvent"):
+        member(mixer_source, mixer, name, "mixer_" + name)
+    _, mixer_factory = module(16504)
+    native, _ = audit.named_class("seiren_current_mw_AudioMarie", mixer_source, mixer_factory, "AudioMarie")
+    keep("native_wrapper", mixer_source, native)
+    allocation = one((node for node in host._help_nodes(mixer) if node.type == "assignment_expression"
+                     and node.child_by_field_name("left").text == b"this.audioDevice"), "native audio device allocation")
+    constructor = allocation.child_by_field_name("right")
+    if constructor.type != "new_expression":
+        raise ValueError("Current Seiren MW native audio owner is not constructed")
+    constructor = bound(mixer_source, constructor.child_by_field_name("constructor"), "native_constructor")
+    if constructor.type == "variable_declarator":
+        constructor = bound(mixer_source, constructor.child_by_field_name("value"), "native_constructor_target")
+    if constructor != native:
+        raise ValueError("Current Seiren MW mixer constructs another native owner")
+    for name in ("callDLLApi", "setDeviceVolume", "setDeviceMute", "getDeviceVolume", "getDeviceMute",
+                 "setMicrophoneVolume", "setMicrophoneMute",
+                 "handleEvent", "handleBeforeUnload", "terminate", "init"):
+        member(mixer_source, native, name, "native_" + name)
+    call_dll = audit.owners[roles["native_callDLLApi"]]["body"]
+    if "supportElectron20" not in call_dll:
+        raise ValueError("Current Seiren native IPC execution branch changed")
+    dispatch_source, dispatch = module(57011)
+    for export, name in (("QY", "broadcast_batch"), ("aX", "broadcast_single")):
+        exported(57011, export, name)
+    bridge_source, bridge = module(80995)
+    for export in ("oE", "I3", "dA"):
+        exported(80995, export, "native_or_hid_bridge_" + export)
+
+    adapter_source, adapter_factory = module(55861)
+    adapter_loaders = [node for node in host._help_nodes(adapter_factory) if node.type == "pair"
+                       and node.child_by_field_name("key").text == b"rzDevice25AudioMarieT1"
+                       and node.child_by_field_name("value").type == "arrow_function"]
+    loader = one(adapter_loaders, "actual Marie adapter lazy loader")
+    adapter_source, adapter = lazy_feature(adapter_source, loader, "rzDevice25AudioMarieT1", 80302, "default")
+    constructors = [node for node in host._help_nodes(adapter_factory) if node.type == "pair"
+                    and node.child_by_field_name("key").text == b"getRzDevice"
+                    and any(child.type == "member_expression"
+                            and child.child_by_field_name("property").text == b"rzDevice25AudioMarieT1"
+                            for child in host._help_nodes(node))]
+    keep("adapter_instance", one(audit.webpack_factories(middleware, 55861), "adapter factory")[0],
+         one(constructors, "actual Marie adapter constructor"))
+    protocol_source, protocol = module(66744)
+    parent_source, parent = module(83266)
+    inheritance = one((node for node in adapter.named_children if node.type == "class_heritage"), "Marie adapter inheritance")
+    actual_source, actual_parent = imported(adapter_source, one(inheritance.named_children, "Marie superclass"), "adapter_parent")
+    if actual_source["sha256"] != protocol_source["sha256"]:
+        raise ValueError("Current Seiren MW adapter inherits another protocol")
+    inherited = one((node for node in actual_parent.named_children if node.type == "class_heritage"), "audio protocol inheritance")
+    actual_source, _ = imported(protocol_source, one(inherited.named_children, "protocol superclass"), "protocol_parent")
+    if actual_source["sha256"] != parent_source["sha256"]:
+        raise ValueError("Current Seiren MW audio protocol inherits another base")
+    for name in ("_createDataSend", "sendCommand", "_getUSBTransferInResult"):
+        member(protocol_source, protocol, name, "hid_" + name)
+    for name in ("_getTransactionId", "_calculateChecksum", "releaseHIDMutex"):
+        matches = [(source, root) for source, root in ((protocol_source, protocol), (parent_source, parent))
+                   if any(node.type == "method_definition" and node.child_by_field_name("name").text == name.encode()
+                          for node in host._help_nodes(root))]
+        if matches:
+            source, root = matches[0]
+            member(source, root, name, "hid_" + name)
+    commands = {}
+    methods = ("getReturnSwitchStatus", "setReturnSwitchStatus", "getNoiseGate", "setNoiseGate",
+               "getAINoiseSuppression", "setAINoiseSuppression", "getMicCompressor", "setMicCompressor",
+               "getMicReverb", "setMicReverb", "getAudioInputControlState", "setAudioInputControlState",
+               "getParametricEQSetting", "setParametricEQSetting", "getParametricEQStatus", "setParametricEQStatus")
+    for name in methods:
+        wrapper = member(adapter_source, adapter, name, "adapter_" + name)
+        imported_call = one((node for node in host._help_nodes(wrapper) if node.type == "member_expression"
+            and node.child_by_field_name("object").type == "identifier"
+            and node.child_by_field_name("object").text != b"console"), name + " actual protocol helper")
+        helper_source, helper = imported(adapter_source, imported_call, "helper_" + name)
+        send = one((node for node in host._help_nodes(helper) if node.type == "call_expression"
+            and node.child_by_field_name("function").type == "member_expression"
+            and node.child_by_field_name("function").child_by_field_name("property").text == b"sendCommand"), name + " sendCommand")
+        arguments = send.child_by_field_name("arguments").named_children
+        command_source, command = host._help_runtime_value(audit, middleware, helper_source, arguments[0])
+        keep("command_" + name, command_source, command)
+        if command.type != "new_expression" or command.child_by_field_name("constructor").text != b"Uint8Array":
+            raise ValueError("Current Seiren MW command is not a fixed typed array")
+        value = command.child_by_field_name("arguments").named_children
+        triple = one(value, name + " command bytes")
+        if triple.type != "array" or len(triple.named_children) != 3:
+            raise ValueError("Current Seiren MW command triple changed")
+        values = [javascript_integer_literal(node.text.decode()) for node in triple.named_children]
+        desc_source, description = host._help_runtime_value(audit, middleware, helper_source, arguments[1])
+        keep("description_" + name, desc_source, description)
+        commands[name] = {"adapter": roles["adapter_" + name], "helper": roles["helper_" + name],
+                          "command": values, "description": json.loads(description.text)}
+        for call in host._help_nodes(helper):
+            if call.type != "call_expression" or call.child_by_field_name("function").type != "identifier":
+                continue
+            ref = call.child_by_field_name("function")
+            result = audit.binding("seiren_current_mw_response_" + name, helper_source, ref.text.decode(), ref.start_byte)
+            if result.get("resolution") == "declaration":
+                declaration = host._help_binding_node(audit, helper_source, result)
+                if b"jsonData" in declaration.text:
+                    keep("response_" + name, helper_source, declaration)
+
+    ui_main = one((source for source in ui if Path(source["path"]).name.startswith("main.")
+                   and source["path"].endswith(".js")), "UI entry main")
+    reducers = {}
+    for name in ("micReducer", "micRecordingReducer", "micEQEffectsReducer", "eqEffectReducer", "parametricEQReducer"):
+        slot = one((node for node in host._help_nodes(audit.tree(ui_main).root_node) if node.type == "pair"
+            and node.child_by_field_name("key").text == name.encode()
+            and node.child_by_field_name("value").type == "identifier"), "mounted " + name)
+        keep("ui_" + name + "_slot", ui_main, slot)
+        reducer = bound(ui_main, slot.child_by_field_name("value"), "ui_" + name)
+        reducers[name] = roles["ui_" + name]
+    for number in (6190, 3523, 5444):
+        module(number, ui)
+    body = lambda role: audit.owners[roles[role]]["body"]
+    contracts = {
+        "return_switch": ["yield e.setReturnSwitchStatus(0,t),!0"],
+        "native_volume_order": ["setMicrophoneVolume", "setMicrophoneMute", "isSetEnableSuccess&&t.isSetLevelSuccess"],
+        "task_result_boundary": ["a.result=n", 'a.value.status="completed"'],
+        "vocal_first_key": ["Object.keys(t.payload)[0]", 'type:"ON_SET_"+i.toLocaleUpperCase()'],
+        "partial_effect_payload": ["payload:t.payload"],
+    }
+    for label, role in (("return_switch", "setMicReturnSwitch"), ("native_volume_order", "mixer_setMicVolume"),
+                        ("task_result_boundary", "manager_taskRunnerSetDevice"), ("vocal_first_key", "ui_eqEffectReducer"),
+                        ("partial_effect_payload", "ui_micEQEffectsReducer")):
+        if not all(token in body(role) for token in contracts[label]):
+            raise ValueError("Current Seiren MW audited semantic boundary changed: " + label)
+    if body("mixer_setMicVolume").find("setMicrophoneVolume") > body("mixer_setMicVolume").find("setMicrophoneMute"):
+        raise ValueError("Current Seiren MW native volume/mute order changed")
+    expected_commands = {"getReturnSwitchStatus": [2, 8, 162], "setReturnSwitchStatus": [2, 8, 34],
+        "getNoiseGate": [9, 8, 155], "setNoiseGate": [9, 8, 27],
+        "getAINoiseSuppression": [2, 8, 156], "setAINoiseSuppression": [2, 8, 28],
+        "getMicCompressor": [9, 8, 157], "setMicCompressor": [9, 8, 29],
+        "getMicReverb": [3, 8, 159], "setMicReverb": [3, 8, 31],
+        "getAudioInputControlState": [3, 8, 150], "setAudioInputControlState": [3, 8, 22],
+        "getParametricEQSetting": [9, 8, 154], "setParametricEQSetting": [9, 8, 26],
+        "getParametricEQStatus": [11, 8, 161], "setParametricEQStatus": [11, 8, 33]}
+    if {name: row["command"] for name, row in commands.items()} != expected_commands:
+        raise ValueError("Current Seiren MW audited command selection changed")
+    return {"roles": roles, "events": descriptors, "hid_commands": commands, "ui_reducers": reducers,
+        "semantics": {
+            "return_switch": "Storage_NoSave; profile 0, switchstate 0/1 goes through actual Marie adapter and HID response parser. The feature returns true after an awaited setter without inspecting returned status/jsonData; protocol exceptions become false. postExecute broadcasts requested switchstate without success/error fields. The UI clears processing but processingSuccess remains false, independently of its optimistic switchstate.",
+            "native_mic_gain": "Wizard dB conversion produces the UI percentage. Both value/enabled events are Storage_NoSave and call native SetDeviceVolume(container,262145,value), then SetDeviceMute(container,262145,!isEnabled), even after a false level return. The conjunction is the feature result; getters and volume/mute events are independent observations, not setter readback.",
+            "noise_gate": "Profile storage precedes the skippable marie_fw device task. Firmware profile 1/module 2 controls enable; when enabled, current settings are read, compared and written with mode 1. Nine-byte noise replies preserve threshold signed offset, big-endian release time and signed tenths decay. A control getter failure can return false/default fields; these source defaults do not establish observations.",
+            "defaults_and_restore": "Wizard defaults and Cancel restoration dispatch the same ordinary events. Incomplete compressor/reverb defaults reach their setter as partial payloads: profile updateStorage validates required fields and may retain old settings, while device disable still executes. RestoreDeviceData publishes the copied profile even if execute returns false. No generic transaction, rollback or restoration-on-window-close is implied.",
+            "selection": "Current eqEffectReducer updates all supplied local keys but transmits only Object.keys(payload)[0]. The wizard selection that supplies vocal_bass and vocal_exciter together therefore sends only the first vocal_bass hardware event. Active parametric EQ uses its distinct full preset payload; each actual mapping and protocol helper remains separately retained.",
+            "generic_completion": "taskRunnerSetDevice preserves execute's boolean result but, absent a throw, sets value.status=completed and runs postExecute even when that boolean is false. Completion notices inspect value.status (or skipped), not result. A completed action notice is not a device success.",
+            "persistence": "Profile changes update the active serial-number profile, increment the version and save localStorage before device execution. Native mic volume and return-switch are NoSave. Persistence and runtime getter caches remain separate from actual readback; failures do not roll back prior storage.",
+            "cancellation": "All marie_fw actions share one NORMAL_SKIPPABLE queue: queued older work may be skipped in favor of the latest action. AbortController cancellation is checked by the generic runner after execute returns, before postExecute; it does not cancel the in-flight HID or native operation. Task settlement disposes IDs. Manager shutdown invokes only feature-owned shutdown methods; the native wrapper separately unregisters and terminates its initialized DLL owner.",
+        }, "bounded_request_and_response_owners_retained": True, "source_chain_complete": False,
+        "whole_product_complete": False,
+        "rust_implementation": "unverified", "official_dll_comparison": "not_executed", "runtime_acceptance": "unverified"}
+
+
+def collect_audio_seiren_current_mw(audit):
+    import base64
+    import frontend
+    root = a.ROOT / ".analysis/inputs/frontend"
+    selected = {}
+    for layer, pattern in (("mw", "audio-mw-1422-*"), ("ui", "audio-1422-*")):
+        selected[layer] = frontend.current_source_selection("https://apps.razer.com/synapse/products/1422/" + layer + "/", audit,
+            candidates=sorted(root.glob(pattern + "/acquisition.json")))
+    chain = audio_seiren_current_mw_chain(audit, selected["mw"]["originals"], selected["ui"]["originals"])
+    prior = json.loads((a.ROOT / ".analysis/results/frontend/audio-MapAudio-audit.json").read_bytes())["seiren_eq_current_ui"]
+    if prior["source_set"]["acquisition"] != selected["ui"]["acquisition"] or prior["failures"]:
+        raise ValueError("Current Seiren MW upstream UI source differs from the completed UI query")
+    upstream = prior["chain"]["recording_and_wizard"]
+    owner_map = {owner["id"]: owner for owner in prior["complete_owners"]}
+    for role in ("wizard_snapshot", "wizard_defaults", "wizard_default_parameters", "wizard_restore",
+                 "wizard_apply", "wizard_selection_actions"):
+        owner = owner_map[upstream["roles"][role]]
+        key = audit.retain_range("seiren_current_mw_upstream_" + role, owner["original"], owner["byte_start"], owner["byte_end"], owner["syntax"])
+        if audit.owners[key]["body_sha256"] != owner["body_sha256"]:
+            raise ValueError("Current Seiren MW upstream UI owner identity changed")
+        chain["roles"]["upstream_" + role] = key
+    acquisition = json.loads(audit.artifact(a.ROOT / selected["mw"]["acquisition"]["path"]))
+    manifests = [item for item in acquisition["files"] if item.get("path")
+                 and item.get("url", "").endswith("/1422/mw/manifest.json")]
+    if len(manifests) != 1:
+        raise ValueError("Current Seiren MW has no unique native resource manifest")
+    manifest = manifests[0]
+    resource = [item for item in json.loads(audit.read(manifest))["resourceManifest"]["resources"]
+                if item.get("resourceName") == "MarieNativeDLL"]
+    if len(resource) != 1:
+        raise ValueError("Current Seiren MW has no unique MarieNativeDLL resource")
+    resource = resource[0]
+    digest = resource["sha256"].lower()
+    if resource.get("integrity") != "sha256-" + base64.b64encode(bytes.fromhex(digest)).decode():
+        raise ValueError("Current Seiren MW native resource hash/integrity differ")
+    indexed = json.loads(audit.artifact(a.ROOT / ".analysis/inputs.json"))["inputs"]
+    candidates = [item for item in indexed if item.get("sha256") == digest and item.get("bytes") == resource["size"]]
+    native = next((item for item in candidates if (a.ROOT / item["path"]).is_file()), None)
+    if native is None:
+        raise ValueError("Current Seiren MW native gain resource is not retained")
+    native_chain = audit.native_slice(native, ["SetDeviceVolume", "SetDeviceMute", "GetDeviceVolume", "GetDeviceMute",
+        "DeviceInitialize", "DeviceTerminate"], depth=0,
+        rvas=(0x5630, 0x5660, 0x5690, 0x56c0, 0x348a0, 0x33ad0, 0x4d8a0, 0x4da90, 0x4dc60,
+              0x4f990, 0x4faa0, 0x4e3a0, 0x4e430, 0x4160))
+    if native_chain["failures"] or native_chain["decompiler_failures"]:
+        raise ValueError("Current Seiren selected native gain capture is incomplete")
+    return {"source_sets": {layer: {key: value[key] for key in ("name", "canonical_entry_url", "acquisition",
+                "deployment", "capture", "capture_failures", "candidate_decisions", "failed_acquisition", "unresolved_acquisition")}
+            for layer, value in selected.items()}, "chain": chain,
+        "upstream_ui": {"receipt": ".analysis/results/frontend/audio-MapAudio-audit.json", "query": "seiren_eq_current_ui",
+            "chain": "recording_and_wizard", "canonical_sha256": hashlib.sha256(json.dumps(prior, ensure_ascii=False,
+                sort_keys=True, separators=(",", ":")).encode()).hexdigest()},
+        "native_gain": {"manifest": manifest, "resource": resource, "slice": native_chain,
+            "semantics": "SetDeviceVolume/SetDeviceMute resolve the container, schedule CCamyDevice work and use endpoint volume/mute for device 262145. The mic branch also refreshes monitor routing through 0x4f990/0x4faa0 and TUSBAUDIO controls; the setter ignores those downstream return values. Native getter failures can yield zero/false; these values cannot by themselves establish a measured volume/mute. The complete selected bodies and unexpanded dependency edges are retained.",
+            "whole_native_semantics_complete": False, "official_dll_comparison": "not_executed"},
+        "remaining_chains": ["Resolve the native gain slice's retained indirect/import targets and unexpanded endpoint/driver dependencies against current official dependency receipts.",
+            "Resolve the retained ParametricEQFeature's remaining EQ/HPF/vocal dependencies beyond the selected adapter command helpers; this bounded query does not establish their complete semantics.",
+            "Perform actual DLL/device comparisons for return-switch, gain, DSP, restore, cancellation and release; no vendor target was executed by this static query."],
+        "target_execution": False, "source_chain_complete": False,
+        "whole_product_complete": False, "runtime_acceptance": "unverified"}
+
+
+def audit_audio_seiren_current_mw(args):
+    """Publish bounded current MW evidence without changing legacy runtime tables."""
+    import host
+    if (args.product or [1422]) != [1422] or getattr(args, "prepare", False):
+        raise ValueError("Current Seiren MW review is bounded to PID1422 without production preparation")
+    audit = host.HostLocalAudit()
+    report = {"recorded_at_utc": a.stamp(), "parser": audit.parser_versions, "product_id": 1422,
+              "failures": [], "target_execution": False, "production_data_regenerated": False,
+              "runtime_acceptance": "unverified", "source_chain_complete": False, "whole_product_complete": False}
+    try:
+        for name in ("tools/families.py", "tools/host.py", "tools/frontend.py", "tools/evidence.py"):
+            audit.artifact(a.ROOT / name)
+        report.update(collect_audio_seiren_current_mw(audit))
+    except (OSError, ValueError, KeyError, IndexError, TypeError, StopIteration) as error:
+        report["failures"].append(type(error).__name__ + ": " + str(error))
+    report["complete_owners"] = list(audit.owners.values())
+    report["complete_originals"] = list(audit.sources.values())
+    report["verified_artifacts"] = list(audit.artifacts.values())
+    report["changed_during_query"] = audit.final_snapshot()
+    report["snapshot_stable"] = not report["changed_during_query"]
+    report["failures"].extend("Source artifact changed: " + name for name in report["changed_during_query"])
+    report["bounded_observation_complete"] = not report["failures"] and report["snapshot_stable"]
+    destination = a.ROOT / ".analysis/results/frontend/audio-MapAudio-audit.json"
+    host.publish_host_static_query(report, destination, a, "seiren_current_mw")
+    print(json.dumps({"receipt": a.rel(destination), "query": "seiren_current_mw", "owners": len(audit.owners),
+                      "failures": report["failures"]}), flush=True)
+    if report["failures"]:
+        raise ValueError("Current Seiren MW observation remains unresolved")
+
+
+def audio_seiren_native_dsp_chain(audit, middleware):
+    """Resolve the current EQ/HPF/vocal owners and their real HID helpers."""
+    import host
+    roles = {}
+
+    def one(values, label):
+        values = list(values)
+        if len(values) != 1:
+            raise ValueError("Current Seiren DSP has no unique " + label)
+        return values[0]
+
+    def keep(role, source, node):
+        roles[role] = audit.retain_range("seiren_dsp_" + role, source, node.start_byte, node.end_byte, node.type)
+        return node
+
+    def factory(number):
+        source, node, body = one(audit.webpack_factories(middleware, number), "module " + str(number))
+        keep("module_" + str(number), source, node)
+        return source, body
+
+    def exported(number, name, role):
+        source, _ = factory(number)
+        binding = audit.webpack_export("seiren_dsp_" + role, middleware, number, name)["binding"]
+        node = host._help_binding_node(audit, source, binding)
+        visited = set()
+        while node.type == "variable_declarator" and node.child_by_field_name("value").type == "identifier":
+            if node.start_byte in visited:
+                raise ValueError("Current Seiren DSP export alias cycle")
+            visited.add(node.start_byte)
+            keep(role + "_alias", source, node)
+            ref = node.child_by_field_name("value")
+            node = host._help_binding_node(audit, source,
+                audit.binding("seiren_dsp_alias", source, ref.text.decode(), ref.start_byte))
+        return source, keep(role, source, node)
+
+    def member(source, root, name, role=None):
+        role = role or name
+        node, key = audit.callable_member("seiren_dsp_" + role, source, root, name)
+        roles[role] = key
+        return node
+
+    def pair(root, name):
+        return one((node for node in host._help_nodes(root) if node.type == "pair"
+                    and node.child_by_field_name("key").text == name.encode()), name)
+
+    eq_source, eq = exported(65561, "ParametricEQFeature", "eq_feature")
+    fw_source, firmware = exported(43828, "Marie_FW", "firmware_feature")
+    for name in ("initDataFromDevice", "getRuntimeData", "setParametricEQBand", "setEQBand", "getEQActiveBands",
+                 "uiToFwConversion", "setParametricEQ", "setHighPassFilter", "getHighPassFilter"):
+        member(eq_source, eq, name)
+    for name in ("setVocalBass", "setVocalExciter", "setEqVocalBass", "setEqVocalExciter", "mappingVocalGain"):
+        member(fw_source, firmware, name)
+    events = {}
+    for event, storage in (("ON_SET_PARAMETRIC_EQ_SETTINGS", "Storage_Global"),
+                           ("ON_SET_ACTIVE_PARAMETRIC_EQ", "Storage_Profile"),
+                           ("ON_SET_HIGH_PASS_FILTER", "Storage_Profile")):
+        target = pair(eq, event).child_by_field_name("value")
+        binding = audit.binding("seiren_dsp_descriptor", eq_source, target.text.decode(), target.start_byte)
+        descriptor = keep("descriptor_" + event, eq_source, host._help_binding_node(audit, eq_source, binding))
+        attribute = pair(descriptor, "eventAttributes").child_by_field_name("value")
+        if attribute.child_by_field_name("property").text.decode() != storage:
+            raise ValueError("Current Seiren DSP event storage changed: " + event)
+        events[event] = {"storage": storage, "owner": roles["descriptor_" + event],
+                         "event_key": json.loads(pair(descriptor, "eventKey").child_by_field_name("value").text)}
+
+    mapping_source, mapping = factory(23374)
+    rows = one((node for node in host._help_nodes(mapping) if node.type == "array" and node.named_children
+                and all(child.type == "object" for child in node.named_children)), "preset/profile mapping")
+    keep("preset_profile_rows", mapping_source, rows)
+    presets = []
+    for row in rows.named_children:
+        reference = pair(row, "presetId").child_by_field_name("value")
+        enum_source, enum = host._help_runtime_value(audit, middleware, mapping_source, reference)
+        keep("preset_enum_" + str(len(presets)), enum_source, enum)
+        presets.append({"name": json.loads(pair(row, "name").child_by_field_name("value").text),
+                        "preset_id": javascript_integer_literal(enum.text.decode()),
+                        "profile_id": javascript_integer_literal(pair(row, "profileId").child_by_field_name("value").text.decode())})
+    if presets != [{"name": name, "preset_id": preset, "profile_id": profile}
+                   for name, preset, profile in (("podcast", 6, 1), ("arena", 7, 2), ("fpscallout", 8, 3),
+                       ("studio", 9, 4), ("instrument", 10, 5), ("custom", 16, 6))]:
+        raise ValueError("Current Seiren DSP preset/profile identities changed")
+
+    adapter_source, adapter = exported(80302, "default", "adapter")
+    base_source, base = factory(83266)
+    member(base_source, base, "releaseHIDMutex", "hid_releaseHIDMutex")
+    commands = {}
+    for name in ("getEQPreset", "setEQPreset", "getMicrophoneHPF", "setMicrophoneHPF",
+                 "getParametricEQSetting", "setParametricEQSetting", "getParametricEQStatus", "setParametricEQStatus"):
+        source, root = (base_source, base) if name in ("getEQPreset", "setEQPreset", "getMicrophoneHPF", "setMicrophoneHPF") else (adapter_source, adapter)
+        wrapper = member(source, root, name, "adapter_" + name)
+        reference = one((node for node in host._help_nodes(wrapper) if node.type == "member_expression"
+                         and node.child_by_field_name("object").type == "identifier"), name + " imported helper")
+        _, module, _ = host.javascript_import_namespace(audit, middleware, source,
+            reference.child_by_field_name("object"), role="seiren_dsp_helper_" + name)
+        helper_source, helper = exported(host._help_factory(module)["module_id"],
+            reference.child_by_field_name("property").text.decode(), "helper_" + name)
+        send = one((node for node in host._help_nodes(helper) if node.type == "call_expression"
+            and node.child_by_field_name("function").type == "member_expression"
+            and node.child_by_field_name("function").child_by_field_name("property").text == b"sendCommand"), name + " transport")
+        args = send.child_by_field_name("arguments").named_children
+        command_source, command = host._help_runtime_value(audit, middleware, helper_source, args[0])
+        keep("command_" + name, command_source, command)
+        if command.type != "new_expression" or command.child_by_field_name("constructor").text != b"Uint8Array":
+            raise ValueError("Current Seiren DSP command is not a typed array")
+        value = one(command.child_by_field_name("arguments").named_children, name + " command")
+        commands[name] = [javascript_integer_literal(node.text.decode()) for node in value.named_children]
+        for call in host._help_nodes(helper):
+            if call.type == "call_expression" and call.child_by_field_name("function").type == "identifier":
+                ref = call.child_by_field_name("function")
+                binding = audit.binding("seiren_dsp_response", helper_source, ref.text.decode(), ref.start_byte)
+                if binding.get("resolution") == "declaration":
+                    node = host._help_binding_node(audit, helper_source, binding)
+                    if b"jsonData" in node.text:
+                        keep("parser_" + name, helper_source, node)
+    if commands != {"getEQPreset": [2, 8, 130], "setEQPreset": [2, 8, 2],
+        "getMicrophoneHPF": [2, 8, 149], "setMicrophoneHPF": [2, 8, 21],
+        "getParametricEQSetting": [9, 8, 154], "setParametricEQSetting": [9, 8, 26],
+        "getParametricEQStatus": [11, 8, 161], "setParametricEQStatus": [11, 8, 33]}:
+        raise ValueError("Current Seiren DSP command selection changed")
+    body = lambda role: audit.owners[roles[role]]["body"]
+    # These boundaries distinguish source quirks from invented readback or success.
+    contracts = {
+        "setParametricEQ": ("setParametricEQStatus(t,[0,0,0,0,0,0,0,0,0,0])", "setEQPreset(t,r)",
+                            "yield this.setEQBand(i,t)", "yield v.setEqVocalBass(i,u.vocalBass)",
+                            "yield v.setEqVocalExciter(i,u.vocalExciter)", "yield this.setHighPassFilter(e.highPassFilter),!0"),
+        "setHighPassFilter": ("setMicrophoneHPF(r,i?o:0)", "t=!0"),
+        "getHighPassFilter": ("{isEnabled:!0,value:3}", '"SUCCESS"!==r.status||!r.jsonData'),
+        "getEQActiveBands": ("getParametricEQStatus()", "getParametricEQSetting(0,0,t.jsonData.parametricEQStatuses[r])"),
+        "uiToFwConversion": ("gain:m(e.gain)", "qFactor:10*e.qFactor"),
+        "helper_setParametricEQSetting": ("a[0]=e", "a[4]=n.freq>>8&255", "a[5]=255&n.freq", "a[6]=255&n.gain", "a[7]=n.qFactor"),
+        "parser_getParametricEQSetting": ("t.data.length<9", "t.data[4]<<8|t.data[5]", "t.data[6]<<24>>24"),
+        "parser_getParametricEQStatus": ("t.data.length<11", "t.data.slice(1)"),
+        "parser_getMicrophoneHPF": ("t.data.length<2", "t.status===i.$g"),
+        "setEqVocalBass": ("band:8", "freq:300", "qFactor:7", "filterType:3"),
+        "setEqVocalExciter": ("band:9", "freq:6e3", "qFactor:7", "filterType:4"),
+        "mappingVocalGain": ("e/10-5", "256-Math.round(-10*t)"),
+    }
+    for role, tokens in contracts.items():
+        if not all(token in body(role) for token in tokens):
+            raise ValueError("Current Seiren DSP semantic boundary changed: " + role)
+    gain = one((node for node in host._help_nodes(audit.tree(eq_source).root_node)
+                if node.type == "function_declaration" and node.child_by_field_name("name").text == b"m"), "gain conversion")
+    keep("gain_conversion", eq_source, gain)
+    if not all(token in gain.text.decode() for token in ("e<-12||e>12", "Math.abs(t)>1e-4", "256-Math.round(-10*e)")):
+        raise ValueError("Current Seiren DSP gain range/step changed")
+    if "rzDevice" in body("initDataFromDevice") or "rzDevice" in body("getRuntimeData"):
+        raise ValueError("Current Seiren DSP initialization no longer publishes only local profile")
+    return {"roles": roles, "events": events, "preset_profiles": presets, "hid_commands": commands,
+        "physical_dsp_transport": "HID via rzDevice, not MarieNativeDLL", "source_chain_complete": False,
+        "semantics": {
+            "preset": "Profile1 disables ten statuses, selects preset, then sequentially writes bands to the mapped profile, bass8, exciter9 and HPF(profile1). Status/preset/band/HPF boolean results are not all propagated; bass/exciter failure stops later stages. No automatic getter or rollback is added.",
+            "readback": "Single-band and individual vocal changes first getEQPreset(0). getEQActiveBands is not used by init/runtime; it omits the status profile argument and supplies each status value as the setting band argument, not its index. init/runtime publish local profile data, not device observation.",
+            "encoding": "Nine-byte settings encode profile,direction,band,status,u16BE frequency,signed gain byte,Q byte,filter. UI gain is -12..12 with 0.1 step and tolerance1e-4, Q multiplies10. The parser leaves signed gain/Q in firmware units. Vocal amount maps amount-50 to signed byte; bass/exciter use bands8/9,300/6000Hz,Q7,filters3/4.",
+            "hpf": "The descriptor requires boolean enabled and integer value0..5. Setter sends profile1 and enabled?value:0 then returns true if await did not throw, independently of returned status. Getter failure returns source defaults enabled=true/value3, not measured state.",
+            "results": "Setting/status helpers parse the actual set response too; they do not issue an extra getter. Missing setting/status/HPF data below9/11/2 bytes throws; HPF jsonData requires SUCCESS. Current UI and generic runner consumers are reused from the upstream receipt and do not establish device success from local state or completed notices.",
+        }}
+
+
+def audio_endpoint_source_contract(owners):
+    """Keep endpoint notifications, UI caches and shutdown results distinct."""
+    checks = {
+        "native_handleEvent": ('this.deviceContainerId!==', 'this.eventEmitter.emit("event",e)'),
+        "native_init": ('A.response("deviceCamyChanged",this.handleEvent)', 'this.isInit=!0',
+                        'yield this.setNodeFFIEvent()', 'yield this.deviceInitialize()'),
+        "native_terminate": ('this.removeListener()', 'action:"DeviceTerminate"', 'this.isInit=!1'),
+        "native_handleBeforeUnload": ('this.terminate(),window.removeEventListener',
+                                     'this.eventEmitter.removeAllListeners("event")'),
+        "native_onEvent": ('this.eventEmitter.on("event",e)',),
+        "native_offEvent": ('this.eventEmitter.removeListener("event",e)',),
+        "mixer_startStreamMixerRecording": ('.onEvent(e)', '.setLevelMeterEnable(!0)'),
+        "mixer_stopStreamMixerRecording": ('.offEvent(e)', '.setLevelMeterEnable(!1)'),
+        "mixer_supportedTasks": ('onElapsed:this.startStreamMixerRecording(this.handleAddLevelMeterListener)',
+                                'onStop:this.stopStreamMixerRecording(this.handleAddLevelMeterListener)'),
+        "mixer_handleAddLevelMeterListener": ('case"deviceVolume"', 'case"deviceMute"',
+            'e.deviceId===T.enumMarieDeviceId.DeviceId_MarieHP',
+            'e.deviceId===T.enumMarieDeviceId.DeviceId_MarieMic',
+            'type:"MW_CHANGE_VOLUME_TO_UI"', 'type:"MW_UPDATE_MIC_TO_UI"',
+            '.setLevelMeterEnable(!1)', '.stopBackGroundRecording()',
+            '.setLevelMeterEnable(!0)', '.startBackGroundRecording()'),
+        "mixer_getRuntimeData": ('getDeviceVolume(T.enumMarieDeviceId.DeviceId_MarieHP)',
+            'getDeviceMute(T.enumMarieDeviceId.DeviceId_MarieHP)',
+            'getDeviceVolume(T.enumMarieDeviceId.DeviceId_MarieMic)',
+            'getDeviceMute(T.enumMarieDeviceId.DeviceId_MarieMic)'),
+        "ui_micReducer": ('micVolume:t.payload',),
+        "ui_volumeReducer": ('volume:{isEnabled:"boolean"===typeof n?n:e.volume.isEnabled',
+                             'value:"number"===typeof i?i:e.volume.value'),
+    }
+    for role, tokens in checks.items():
+        if role not in owners or not all(token in owners[role]["body"] for token in tokens):
+            raise ValueError("Current audio endpoint source contract changed: " + role)
+    responses = re.findall(r'e\.deviceId===T\.enumMarieDeviceId\.(DeviceId_MarieHP|DeviceId_MarieMic)'
+        r'(?:\?|&&)\(0,p\.aX\)\(\{type:"([^"]+)"', owners["mixer_handleAddLevelMeterListener"]["body"])
+    if responses != [("DeviceId_MarieHP", "MW_CHANGE_VOLUME_TO_UI"), ("DeviceId_MarieMic", "MW_UPDATE_MIC_TO_UI")] * 2:
+        raise ValueError("Current audio endpoint source contract changed: native notification response mapping")
+    runtime = owners["mixer_getRuntimeData"]["body"]
+    order = checks["mixer_getRuntimeData"]
+    if [runtime.index(token) for token in order] != sorted(runtime.index(token) for token in order):
+        raise ValueError("Current audio endpoint runtime getter order changed")
+    for role, first, second in (
+        ("mixer_startStreamMixerRecording", ".onEvent(e)", ".setLevelMeterEnable(!0)"),
+        ("mixer_stopStreamMixerRecording", ".offEvent(e)", ".setLevelMeterEnable(!1)"),
+        ("native_terminate", "this.removeListener()", 'action:"DeviceTerminate"')):
+        body = owners[role]["body"]
+        if body.index(first) >= body.index(second):
+            raise ValueError("Current audio endpoint subscription/release order changed: " + role)
+    if "await" in owners["native_handleBeforeUnload"]["body"]:
+        raise ValueError("Current audio endpoint unload no longer has its observed asynchronous boundary")
+    return {"runtime_getter_order": ["headphones_volume", "headphones_mute", "microphone_volume", "microphone_mute"],
+        "event_types": ["deviceVolume", "deviceMute"],
+        "device_ids": {"microphone": 262145, "headphones": 524289},
+        "ui_response_events": {"microphone": "MW_UPDATE_MIC_TO_UI", "headphones": "MW_CHANGE_VOLUME_TO_UI"},
+        "setter_readback": False, "unload_awaits_termination": False,
+        "semantics": "AudioMarie accepts only its exact containerId, then emits the native event. StreamMixer's registered callback maps mic/HP IDs to their UI response events; mute additionally starts/stops firmware metering and background recording through Promise.allSettled. These independent notifications and runtime getters do not confirm a preceding setter. onEvent precedes enabling the meter; offEvent precedes disabling it. terminate removes the host listener before requesting DeviceTerminate. beforeUnload starts termination without awaiting it and clears local listeners."}
+
+
+def audio_endpoint_native_contract(native):
+    """Check the selected Core Audio ownership and physical callback contract."""
+    import struct
+    bodies = {row["capture"]["rva"]: row["capture"] for row in native["complete_functions"]}
+    instructions = {int(row["rva"], 16): row for function in bodies.values() for row in function["assembly"]}
+    selected = {
+        "0x3e280": ("v4, a2, 1, &v31", "CoTaskMemFree(pv)", "+ 16LL"),
+        "0x3e5e0": ("&unk_18006E058, &pvar", "PropVariantClear(&pvar)", "return (unsigned int)v5"),
+        "0x3e890": ("Instance == -2147221008", "&unk_18006E048", "a1 + 24", "return 0"),
+        "0x3eaa0": ("roundf(v18 * 100.0)", "a1 + 112", "+ 24LL", "+ 32LL", "return v4"),
+        "0x3ec30": ("0x4A834320388DA4D6LL", "0x89F00193085929A6uLL", "a1 + 208",
+                     "*(float *)(a2 + 20) * 100.0", "*(_DWORD *)(a1 + 116) = (int)v7",
+                     "v13 = 1", "v11 = 2", "Mtx_unlock"),
+        "0x3e7b0": ("Block[26] = 0", "Block[3]", "+ 32LL", "Block[2]", "j_j_free(Block)"),
+        "0x40880": ("return 1",),
+        "0x40890": ("*a3 = a1", "*a3 = 0", "return 2147500037LL"),
+        "0x500b0": ('L"Microphone"', 'L"Service"', 'L"Headphones"', "v41 = 10",
+                     "if ( v29 && v30 )", "Sleep(0x3E8u)", "v18 + 116) = 100"),
+        "0x509d0": ("v38 = 262145", "v39 = a3", "v40 = a4", "sub_18004F990", "v32 = 1", "v33[0] = 2"),
+        "0x50cd0": ("v38 = 524289", "v39 = a3", "v40 = a4", "v32 = 1", "v33[0] = 2"),
+        "0x50fc0": ("a1 + 576", "a1 + 584", "sub_18003EAA0(v5", "sub_18003EAA0(v8"),
+        "0x51180": ("a1 + 184", "a1 + 600", "Mtx_unlock"),
+        "0x51b60": ('L"Razer Seiren V3 Pro", 19', "sub_18003E280", "sub_18003E5E0", "CoInitialize(0)"),
+        "0x52040": ("sub_18005E00C(0xD8u)", "*((_DWORD *)v2 + 29) = 100", "v2[26] = 0"),
+        "0x531b0": ("sub_180050CD0", "*a2, *a3, *a4"),
+        "0x53200": ("sub_1800509D0", "*a2, *a3, *a4"),
+        "0x34f30": ("SetupAudioDeviceEventHandler", "sub_180051180(v9, v27)"),
+        "0xa9a0": ("sub_180005D90(a1 + 8, *a2, *a3)",),
+        "0x5d90": ('"deviceCamyChanged"', '"containerId"', '"deviceVolume"', '"deviceMute"',
+                    '"deviceId"', '"mute"', '"level"', "v25 = *a3", "v29 = a3[1]", "v33 = a3[2]",
+                    "qword_180086778(v52)", "sub_180033A50(v67)"),
+        "0x34a30": ("qword_180086778 = a1", "return 1"),
+        "0x4d8a0": ("+ 56LL", "&qword_180068438", "v15 + 116) = a3"),
+        "0x4da90": ("+ 112LL", "&qword_180068438", "v14 + 112) = a3"),
+        "0x4bef0": ("sub_180050FC0(a1)", "a1 + 656", "a1 + 592", "a1 + 584", "a1 + 576"),
+        "0x5dd50": ("sub_18005DA10(a1, a2, a3, a4)",),
+        "0x5da10": ("_mm_cmpestri", "memcmp", "v6->m128i_i16[0] == v25"),
+    }
+    texts = {}
+    for rva, tokens in selected.items():
+        function = bodies.get(rva)
+        body = "\n".join(row["text"] for row in function["pseudocode"]["lines"]) if function else ""
+        if not all(token in body for token in tokens):
+            raise ValueError("Current audio endpoint native result/lifetime boundary changed: " + rva)
+        texts[rva] = body
+    if "a1 + 592" in texts["0x50fc0"]:
+        raise ValueError("Current audio endpoint Service release ownership changed")
+    init = texts["0x3e890"]
+    activation = init[init.index("&unk_18006E048"):init.index("return 0")]
+    if re.search(r"\bif\b", activation.replace("if ( (_QWORD)v19 )", "")):
+        raise ValueError("Current audio endpoint ignored Activate result boundary changed")
+    notification = texts["0x3ec30"]
+    if notification.index("v13 = 1") >= notification.index("v11 = 2"):
+        raise ValueError("Current audio endpoint volume/mute notification order changed")
+    checks = ((0x3e335, "41b801000000"), (0x3e33b, "ff5018"), (0x3e450, "ff5028"),
+        (0x3e620, "ff5028"), (0x3e708, "ff5028"), (0x3e75d, "ff15a56e0200"),
+        (0x3e9d4, "ff5028"), (0x3ea58, "41b801000000"), (0x3ea65, "ff5018"),
+        (0x3eb34, "ff5048"), (0x3eb49, "e8c1070200"), (0x3eb66, "ff5078"),
+        (0x3eb73, "ff5018"), (0x3eb87, "ff5020"), (0x3ecd4, "f3480f2ce8"),
+        (0x3ed03, "ff5010"), (0x3ed43, "ff5010"), (0x5017d, "f30f103573f20100"),
+        (0x5047d, "0f28ce"), (0x50480, "ff5038"),
+        (0x510fc, "e89fd9feff"), (0x51133, "e868d9feff"),
+        (0x3e806, "ff5020"), (0x3e842, "ff5010"), (0x3e85c, "ff5010"),
+        (0x4bf29, "e892500000"), (0x4c011, "488b8b50020000"),
+        (0x350eb, "488d0576610300"), (0x6463, "ff150f030800"),
+        (0x34a30, "48890d411d0500"))
+    assertions = []
+    for rva, expected in checks:
+        actual = instructions.get(rva)
+        if actual is None or actual["bytes"] != expected:
+            raise ValueError("Current audio endpoint physical COM/callback ABI changed at " + hex(rva))
+        assertions.append({"rva": hex(rva), "bytes": expected, "instruction": actual["text"]})
+    regions = {row["role"]: row for row in native["verified_data_regions"]}
+    data = {"endpoint_volume_iid": "822cdf5c1e84464597220cf74078229a",
+        "friendly_name_key": "4e255ca41cdffd4e802067d146a850e00e000000",
+        "event_context": "d6a48d382043834aa62959089301f089", "service_initial_scalar": "0000803f",
+        "product_name": ("Razer Seiren V3 Pro\0").encode("utf-16le").hex(),
+        "microphone_name": ("Microphone\0").encode("utf-16le").hex(),
+        "service_name": ("Service\0").encode("utf-16le").hex(),
+        "headphones_name": ("Headphones\0").encode("utf-16le").hex()}
+    for role, expected in data.items():
+        if role not in regions or regions[role]["raw_hex"] != expected:
+            raise ValueError("Current audio endpoint data contract changed: " + role)
+    base = int(native["image_base"], 16)
+    tables = {"endpoint_callback_vtable": (0x40890, 0x40880, 0x40880, 0x3ec30, 0x3e7b0),
+        "microphone_callback_vtable": (0x53220, 0x53220, 0x53200, 0x531f0, 0xa970),
+        "headphones_callback_vtable": (0x531d0, 0x531d0, 0x531b0, 0x531a0, 0xa970),
+        "device_callback_vtable": (0xa9b0, 0xa9b0, 0xa9a0, 0xa990, 0xa970)}
+    decoded = {}
+    for role, expected in tables.items():
+        raw = bytes.fromhex(regions.get(role, {}).get("raw_hex", ""))
+        actual = tuple(value - base for value in struct.unpack("<QQQQQ", raw)) if len(raw) == 40 else ()
+        if actual != expected:
+            raise ValueError("Current audio endpoint actual callback vtable changed: " + role)
+        decoded[role] = [hex(value) for value in actual]
+    return {"instruction_assertions": assertions, "callback_tables": decoded,
+        "selection": {"active_state_mask": 1, "match": "first case-sensitive friendly-name substring match in enumeration order",
+            "product_name": "Razer Seiren V3 Pro", "attempts": 10, "retry_sleep_ms": 1000,
+            "endpoints": [{"name": "Microphone", "flow": "capture", "owner_offset": 576, "device_id": 262145},
+                {"name": "Service", "flow": "capture", "owner_offset": 592, "device_id": 262146},
+                {"name": "Headphones", "flow": "render", "owner_offset": 584, "device_id": 524289}],
+            "successful_retry_stop_requires": ["Microphone", "Headphones"], "container_id_used_for_matching": False},
+        "initial_reads": {"volume_scalar_vtable_offset": 72, "volume_conversion": "roundf(binary32_scalar * 100)",
+            "mute_vtable_offset": 120, "mute_hresult_checked": False, "activate_hresult_checked": False,
+            "notification_registration_hresult_checked_by_owner": False,
+            "constructor_cache": {"volume": 100, "mute": 0, "device_observation": False},
+            "service_scalar_write": 1.0, "service_write_hresult_checked": False},
+        "notification": {"callback_rva": "0x3ec30", "event_context_guid": "388da4d6-4320-4a83-a629-59089301f089",
+            "same_context_ignored": True, "volume_conversion": "truncate binary32_scalar * 100",
+            "dispatch_order": ["changed_volume", "changed_mute"], "event_codes": {"deviceVolume": 1, "deviceMute": 2},
+            "payload_order": ["device_id", "mute", "level"], "callback_under_endpoint_mutex": True,
+            "initial_getters_emit_notifications": False, "callback_json_lifetime": "borrowed only during SetNodeFFIEvent callback"},
+        "release": {"ordinary_release_owner_offsets": [576, 584], "service_release": "device destructor",
+            "unregister_hresult_checked": False, "local_callback_cleared_after_unregister_attempt": True,
+            "destructor_retries_failed_unregistration_after_callback_clear": False,
+            "endpoint_com_release_vtable_offset": 16, "enumerator_release_vtable_offset": 16,
+            "callback_addref_release_return": 1, "callback_quiescence_proven": False},
+        "semantics": "GetEndpoint enumerates active Windows capture/render endpoints, reads PKEY_Device_FriendlyName, and selects the first exact-case substring match for product plus role. CoInitialize is attempted only after CO_E_NOTINITIALIZED. GetDevice success causes Init to return S_OK even if Activate fails. Registration reads volume with roundf and mute, then installs the callback; the acquisition owner ignores its HRESULT. Service is written to scalar 1.0 and caches 100 without checking the setter HRESULT; only mic+HP stop retries. OnNotify ignores this DLL's own event GUID, truncates the new scalar percentage, sends changed volume before changed mute, and invokes callbacks while holding the endpoint mutex. The mic consumer additionally refreshes monitor routing. Device event callbacks are copied under a separate mutex and invoked after releasing that mutex; JSON is freed after the FFI callback returns. Ordinary release clears only mic/HP through an unregister attempt, local callback clearing and deleting destructor; Service survives until device destruction. AddRef/Release return a constant 1, unregister failures are ignored and the destructor does not establish a complete in-flight callback barrier.",
+        "selected_endpoint_semantics_reviewed": True, "whole_native_semantics_complete": False,
+        "official_dll_comparison": "not_executed", "runtime_acceptance": "unverified"}
+
+
+def collect_audio_endpoint_local_chain(audit):
+    import frontend
+    import host
+    root = a.ROOT / ".analysis/inputs/frontend"
+    selected = {layer: frontend.current_source_selection("https://apps.razer.com/synapse/products/1422/" + layer + "/", audit,
+        candidates=sorted(root.glob(pattern + "/acquisition.json")))
+        for layer, pattern in (("mw", "audio-mw-1422-*"), ("ui", "audio-1422-*"))}
+    receipt = ".analysis/results/frontend/audio-MapAudio-audit.json"
+    previous = json.loads((a.ROOT / receipt).read_bytes())
+    upstream = previous["seiren_current_mw"]
+    monitor = previous["seiren_native_dsp"]
+    if (upstream["failures"] or not upstream["bounded_observation_complete"]
+            or monitor["failures"] or not monitor["bounded_observation_complete"]
+            or any(upstream["source_sets"][layer]["acquisition"] != value["acquisition"] for layer, value in selected.items())):
+        raise ValueError("Current audio endpoint upstream source identity differs or remains unresolved")
+    roles, owners = {}, {}
+    retained = {row["id"]: row for row in upstream["complete_owners"]}
+    for role in ("native_wrapper", "audio_streamMixer", "native_handleEvent", "native_init", "native_terminate",
+                 "native_handleBeforeUnload", "mixer_handleAddLevelMeterListener", "mixer_getRuntimeData", "ui_micReducer"):
+        owner = retained[upstream["chain"]["roles"][role]]
+        key = audit.retain_range("audio_endpoint_" + role, owner["original"], owner["byte_start"], owner["byte_end"], owner["syntax"])
+        if audit.owners[key]["body_sha256"] != owner["body_sha256"]:
+            raise ValueError("Current audio endpoint upstream source owner changed: " + role)
+        roles[role], owners[role] = key, audit.owners[key]
+    for parent, names in (("native_wrapper", ("onEvent", "offEvent")),
+                          ("audio_streamMixer", ("startStreamMixerRecording", "stopStreamMixerRecording"))):
+        owner = owners[parent]
+        source = owner["original"]
+        node = host._help_binding_node(audit, source, {"resolution": "declaration",
+            "start_byte": owner["byte_start"], "end_byte": owner["byte_end"]})
+        for name in names:
+            role = ("native_" if parent == "native_wrapper" else "mixer_") + name
+            _, key = audit.callable_member("audio_endpoint_" + role, source, node, name)
+            roles[role], owners[role] = key, audit.owners[key]
+        if parent == "audio_streamMixer":
+            assignments = [value for value in host._help_nodes(node) if value.type == "assignment_expression"
+                and value.child_by_field_name("left").text == b"this.supportedTasks"]
+            if len(assignments) != 1:
+                raise ValueError("Current audio endpoint has no unique meter task subscription owner")
+            value = assignments[0]
+            key = audit.retain_range("audio_endpoint_mixer_supportedTasks", source, value.start_byte, value.end_byte, value.type)
+            roles["mixer_supportedTasks"], owners["mixer_supportedTasks"] = key, audit.owners[key]
+    source = owners["ui_micReducer"]["original"]
+    reducers = [node for node in host._help_nodes(audit.tree(source).root_node) if node.type == "pair"
+        and node.child_by_field_name("key").text == b"volumeReducer"
+        and node.child_by_field_name("value").type == "function_expression"]
+    if len(reducers) != 1:
+        raise ValueError("Current audio endpoint has no unique mounted headphones reducer")
+    node = reducers[0]
+    key = audit.retain_range("audio_endpoint_ui_volumeReducer", source, node.start_byte, node.end_byte, node.type)
+    roles["ui_volumeReducer"], owners["ui_volumeReducer"] = key, audit.owners[key]
+    cases = [value for value in host._help_nodes(node) if value.type == "switch_case"
+             and b'volume:{isEnabled:"boolean"' in value.text]
+    if len(cases) != 1:
+        raise ValueError("Current audio endpoint has no unique headphones response case")
+    constant_source, constant = host._help_runtime_value(audit, selected["ui"]["originals"], source,
+        cases[0].child_by_field_name("value"))
+    if constant.type != "string" or json.loads(constant.text) != "MW_CHANGE_VOLUME_TO_UI":
+        raise ValueError("Current audio endpoint headphones response event changed")
+    roles["ui_volume_response_event"] = audit.retain_range("audio_endpoint_ui_volume_response_event",
+        constant_source, constant.start_byte, constant.end_byte, constant.type)
+    source_contract = audio_endpoint_source_contract(owners)
+    acquired = json.loads(audit.artifact(a.ROOT / selected["mw"]["acquisition"]["path"], selected["mw"]["acquisition"]))
+    manifest = upstream["native_gain"]["manifest"]
+    if not any(all(row.get(key) == manifest[key] for key in ("path", "bytes", "sha256")) for row in acquired["files"]):
+        raise ValueError("Current audio endpoint manifest is outside the selected MW acquisition")
+    resource = next(row for row in json.loads(audit.read(manifest))["resourceManifest"]["resources"]
+                    if row["resourceName"] == "MarieNativeDLL")
+    original = upstream["native_gain"]["slice"]["original"]
+    if original["sha256"] != resource["sha256"].lower() or original["bytes"] != resource["size"]:
+        raise ValueError("Current audio endpoint original differs from the selected MW resource")
+    if monitor["monitor_driver"]["marie"]["original"] != original:
+        raise ValueError("Current audio endpoint monitor dependency uses another native original")
+    native = audit.native_slice(original, ["SetNodeFFIEvent"], depth=0,
+        rvas=(0x3e280, 0x3e5e0, 0x3e7b0, 0x3e890, 0x3eaa0, 0x3ec30, 0x40880, 0x40890,
+              0x4bef0, 0x500b0, 0x509d0, 0x50cd0, 0x50fc0, 0x51180, 0x51b60, 0x52040,
+              0x531b0, 0x53200, 0x34f30, 0xa9a0, 0x5d90, 0x4d8a0, 0x4da90, 0x5dd50, 0x5da10),
+        regions=tuple({"role": role, "rva": rva, "bytes": size} for role, rva, size in (
+            ("endpoint_callback_vtable", 0x6e020, 40), ("microphone_callback_vtable", 0x6ee18, 40),
+            ("headphones_callback_vtable", 0x6ede0, 40), ("device_callback_vtable", 0x6b268, 40),
+            ("endpoint_volume_iid", 0x6e048, 16), ("friendly_name_key", 0x6e058, 20),
+            ("event_context", 0x68438, 16), ("service_initial_scalar", 0x6f3f8, 4),
+            ("product_name", 0x69788, 40), ("microphone_name", 0x6e930, 22),
+            ("service_name", 0x6e998, 16), ("headphones_name", 0x6e9c8, 22))))
+    if native["failures"] or native["decompiler_failures"]:
+        raise ValueError("Current audio endpoint selected native captures are incomplete")
+    contract = audio_endpoint_native_contract(native)
+    canonical = lambda value: hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True,
+        separators=(",", ":")).encode()).hexdigest()
+    return {"schema_version": 1, "kind": "current_audio_endpoint_local_chain", "product_id": 1422,
+        "source_sets": {layer: {key: row[key] for key in ("name", "acquisition", "capture", "capture_failures",
+            "failed_acquisition", "unresolved_acquisition", "candidate_decisions")} for layer, row in selected.items()},
+        "upstream_mw": {"receipt": receipt, "query": "seiren_current_mw", "canonical_sha256": canonical(upstream)},
+        "upstream_monitor": {"receipt": receipt, "query": "seiren_native_dsp", "pointer": "/monitor_driver/contract",
+            "canonical_sha256": canonical(monitor["monitor_driver"]["contract"])},
+        "roles": roles, "source_contract": source_contract, "native": native, "native_contract": contract,
+        "native_manifest": manifest, "native_resource": resource,
+        "remaining_local_chains": [
+            "The selected PID1422 endpoint selection, initial read/write, notification payload and mic/HP consumer branch are statically reviewed; other products, firmware branches and the separate driver configuration/registration chain are not covered.",
+            "Join the current host SetNodeFFIEvent/ConfigureFFI forwarding and worker ownership, prove all reconnect/termination races and notification quiescence. Constant callback AddRef/Release and ignored unregister HRESULT do not prove that callbacks have stopped.",
+            "The refreshed MW complete capture, whole-driver close semantics, independent Rust/UI/backend implementation, actual official DLL/device comparison and runtime acceptance remain separately unverified."],
+        "selected_endpoint_semantics_reviewed": True, "source_chain_complete": False, "whole_product_complete": False,
+        "rust_implementation": "not_reviewed", "official_dll_comparison": "not_executed", "runtime_acceptance": "unverified",
+        "target_execution": False, "temporary_artifacts_created": []}
+
+
+def _audio_endpoint_notification_source_contract(owners):
+    """Keep the selected current channel and listener lifetime boundaries intact."""
+    expected = {
+        "native_init": "4481df4933ac39b3e92f294588b8d398e9e6d68715ac572e336b5f8cb8699677",
+        "native_terminate": "c2603d0a6411ff5c2f36dd167545d413ee2b8b3a1c3a698b01a6ee200e3d814c",
+        "native_handleBeforeUnload": "eaf5cc02756ffeef2299f0e28d195b6cee705deff6c4f59bd59b25811ec93d3e",
+        "native_handleEvent": "0add76c44a3d18b63a8c9f10e78175922a854fad927a07e0c1d270c5a98cd2b8",
+        "native_setNodeFFIEvent": "9c3d7c5bb37d5d599ff663a611a544b07fa0ba58012eae4b99046ce2834b648b",
+        "native_callDLLApi": "d402a9d594cf8c4c95aafb4038bed21ed2c0dea28e8b539e56dd79a17ae5d390",
+        "host_configure": "0086413a70a6f077988f0a18c6110620284d623c3482385b864426238dcb6c3d",
+        "host_async": "5a470d198551ea14e9566cf554eb4e5061ebbb7fbba619b3ad1ea36f5c15e763",
+        "host_invoke": "89c7f9f11277410b95c5deec2397dc49393db97289a0494c2a0ddc9d80f39dfe",
+        "host_callback": "981d1befe5c8ea893749e03b6fdc9fb7d12bae562b56a0392b89c37df65de09d",
+        "host_free": "766af5cb4306dee2079fde3b409a4ea71c2ce88e0282cae1507a7b0e37ddef98",
+        "preload_response": "6c93d17865da59776ca87e9cb74e80c06fda9c6501e87219f18463af863666a4",
+        "ffi_callback_factory": "1a42fe205deb215330209cb0ccf70b89a72ea06e92f8a1b4141342c86d96f21c",
+    }
+    verified = []
+    for role, digest in expected.items():
+        row = owners[role]
+        if (row["body_sha256"] != digest
+                or hashlib.sha256(row["body"].encode()).hexdigest() != digest):
+            raise ValueError("Audio endpoint notification complete source boundary changed: " + role)
+        verified.append({"role": role, "owner_id": row["id"], "body_sha256": digest})
+    callback = owners["ffi_callback_factory"]
+    if (callback["original"]["sha256"] != "5fd0b9de82258d5ff7a6a6093a5e858807899cfcfc58e7d517707b738d0724b7"
+            or not all(value in callback["body"] for value in (
+                "typeof isAnneCallback !== 'boolean'", "isAnneCallback = false",
+                "if (!isAnneCallback) params = params[0]", "argPtr.deref()", "func.apply(null, args)"))):
+        raise ValueError("Audio endpoint notification actual callback argument owner changed")
+    return {"verified_complete_source_owners": verified,
+        "init_order": ["register_listener_if_missing", "ConfigureFFI", "isInit=true", "GetDLLVersion", "SetNodeFFIEvent", "DeviceInitialize"],
+        "callback_channel": "channelName plus dll-name suffix; init after terminate appends the suffix again",
+        "configure_existing_channel": "reuse library and append the sender URL if absent",
+        "callback_existing_channel": "return true and reuse retained callback without calling native SetNodeFFIEvent again",
+        "callback_false_result_still_cached": True,
+        "pid1422_anne_callback_requested": False,
+        "callback_buffer_retained_by": "Host ffiCallbackMap indexed by channel",
+        "forwarding": "parse borrowed string; look up current channel entry at delivery; send to each live, non-disposed webContents whose current URL occurs in current urlList",
+        "container_filter": "MW handleEvent checks containerId only, then emits event",
+        "connection_generation_checked": False,
+        "channel_mutex": "held through one async DLL result; does not serialize the native callback delivery queue",
+        "terminate_order": ["remove Host listener", "await DeviceTerminate export if isInit", "isInit=false"],
+        "before_unload_awaits_terminate": False,
+        "free_ffi_releases_maps": False,
+        "async_error_argument_observed": False,
+        "quiescence": "listener removal, export return, native task completion, callback return and JS event delivery are separate boundaries"}
+
+
+def _audio_endpoint_notification_native_contract(native):
+    """Bind the reviewed worker, actual function-object slots and callback copies."""
+    import struct
+    expected = {
+        0x34a30: "df03471eca7758d66b6abd5b9c276d346b2ace76501ff8710583beeb92f9d76e",
+        0x34ca0: "8e1028c64a7239c1a77d8336a6a2953b1e6e9c615619867d8f762b0b402f9a14",
+        0x35280: "95e479142377398c488f1757c85bc3305e450a112601279dae19999e268f0be6",
+        0x33ad0: "7afd8abd20e94a41b0900ea20925be141fea31a5f0ae92df5708770b7c43acc3",
+        0x375b0: "4043c789fc1787af8614b7a5c913848b2f30bb6e36d05a6237411f9a93a93788",
+        0x34790: "3125035c955114692fa143c10adc21d3ce385c0484742f446fa17b3114cb8dae",
+        0x37480: "cbc9379482846107b3ad9e320f34bd0066cb5e4e99073e92b24a3b7a12d7d1a1",
+        0x5a6e0: "ad208f7371dfd37f3d5429c87620d122c00d5e0dd2139d44aafd99f0434d14ea",
+        0x5a9c0: "5a8bca4f4e85aaab16af786173cf4535daa4ac9e8ee2b264bed5db4e9986bb82",
+        0x5b4f0: "ec0ff8d423d5693989e7524844406af6e34e051c86649b31dc0322880cb46de2",
+        0x5a170: "987e2e445654445ba391a7bc07688ea1a5fda31eb55335cfc9e4a4c7c6a0da5e",
+        0x5a3e0: "ffc1cb1f77bd119bf81fde0f768bb2720142eefb849972868ef1968a54da5e5d",
+        0x5b6e0: "a7560f2cb5d127800c80a813cbf2ac9c80365e7e68d0807aca8bc996cf26553d",
+        0x5b1e0: "ea5b1e80b1b597351a12d071543e53efe79d80875bcbec35b88c85d451a4a701",
+        0x37be0: "a9779ab7e8f891fe65bd8089faa29f53007509fd776af2a080e1bba2d47363d7",
+        0x38dd0: "904d5e1454103504f135e8f289cc104222993da0573cf5ccf2929dae4d97015c",
+        0x388d0: "40a97097daf503f511f14f809ef3761e82850774006c9627756e66720feb96fc",
+        0x38980: "d12a245bbf01396fef1ee05505df91350e9fc0e6124f6f5591809692df7daa3c",
+        0x38940: "aa145382726863292552549c22a2536f526b34217ae18b2318fb232570b20f0d",
+        0x389e0: "852ce50f39a7134c2867de0c939f8e027083266b2a8279e6ff0a055e4888b169",
+        0x34f30: "5196514e1995f2d68146887e93e7dce9f0d7efdeedd7ac55347dfd203628d7f4",
+        0x5c3f0: "1f30473c6747ab88a9ec09efaf730ce5b94d5a751efa6035e22957ee70f01d25",
+        0x5c610: "492956c06431dc084e74749e132c98d6a337ca9b0f707d6ce28ac7a2c11758d6",
+        0x37ca0: "f41640010f68ec40758621dda000529376ccf998ab626531d7700ca869ef94e5",
+        0x4a50: "be75c349d76e33666d332016fdc3261b8e78ad6df92257afdde5457f056937d7",
+        0x51180: "c62ce64867a47628e98f3a182024ed914867b1b63335a22f53e05ebe8d0ebf91",
+        0x509d0: "e10bf2be43df604e4455fea6733476cf0b9b7158efe29a2e450fb2b6e3191023",
+        0x50cd0: "153f769e24e9a0efc985c2d8eabaf9552dfe17395ea87424f893716e534ee31a",
+        0x53200: "c9907e37957a728dab1cfd1c1734196cdd6092f9f2a8c1596912f148716c818f",
+        0x531b0: "5f71c1d99dee66201156fb243cc7f179c373a227521445b58182b825deb28b60",
+        0xa9a0: "0d9f743c76a72faeef0d8ef82e38999033754760e11cd7ba6ad4e6a976ac329e",
+        0xa9b0: "e182e811698897f0d6468b85c89a373e21d488759e9b3bf3d8d25c368916e237",
+        0x5d90: "6cae351122707952feccb7421a969121f39f55221fa6861f4b52228e79322eee",
+        0x3ec30: "a4501a2454da2a741cd618a0aac2167329fed256de92e2a5ced1fcda1f12460c",
+        0x3eaa0: "7ded702ccbf66671c681cbea72df491afa35359d294df6fa803b819f1e38b7bd",
+        0x40880: "d7204b0fcb07c472d037ae08b6081dad55febcfeca831463b905d7ad5d431dbc",
+    }
+    functions = {int(row["capture"]["rva"], 16): row["capture"] for row in native["complete_functions"]}
+    verified = []
+    for rva, digest in expected.items():
+        function = functions.get(rva, {})
+        body = "\n".join(row["text"] for row in function.get("pseudocode", {}).get("lines", []))
+        if hashlib.sha256(body.encode()).hexdigest() != digest:
+            raise ValueError("Audio endpoint notification complete native boundary changed: " + hex(rva))
+        verified.append({"rva": hex(rva), "pseudocode_text_sha256": digest})
+    edges = []
+    for caller, callee in ((0x34ca0, 0x5c3f0), (0x34ca0, 0x33ad0), (0x35280, 0x5c3f0),
+            (0x35280, 0x34790), (0x33ad0, 0x37480), (0x33ad0, 0x5a6e0), (0x33ad0, 0x375b0),
+            (0x34790, 0x37480), (0x34790, 0x5a6e0), (0x5b6e0, 0x5a9c0),
+            (0x5a9c0, 0x5b4f0), (0x5a9c0, 0x38dd0), (0x5b1e0, 0x37be0),
+            (0x388d0, 0x5c610), (0x38980, 0x34f30), (0x34f30, 0x51180),
+            (0x37ca0, 0x4a50), (0x4a50, 0x51180), (0x53200, 0x509d0),
+            (0x531b0, 0x50cd0), (0xa9a0, 0x5d90)):
+        matches = []
+        for row in functions[caller]["assembly"]:
+            raw = bytes.fromhex(row["bytes"])
+            if len(raw) == 5 and raw[0] in (0xe8, 0xe9):
+                target = int(row["rva"], 16) + 5 + int.from_bytes(raw[1:], "little", signed=True)
+                if target == callee:
+                    matches.append({"caller": hex(caller), "site": row["rva"], "callee": hex(callee), "bytes": row["bytes"]})
+        if not matches:
+            raise ValueError("Audio endpoint notification actual native edge changed: " + hex(caller) + " -> " + hex(callee))
+        edges.extend(matches)
+    instructions = {row["rva"]: row for function in functions.values() for row in function["assembly"]}
+    anchors = {"0x5abb0": "488b83d0000000", "0x5ad24": "4883b92001000000",
+        "0x5ae44": "4c29aff8000000", "0x5abee": "80b9a800000000", "0x5b52b": "ff5010",
+        "0x5b598": "ff5028", "0x5a477": "4088b7a8000000", "0x5a4b5": "ff152dad0000",
+        "0x50b44": "ff5010", "0x50c91": "ff5010", "0x34a30": "48890d411d0500",
+        "0x6463": "ff150f030800"}
+    for rva, raw in anchors.items():
+        if instructions.get(rva, {}).get("bytes") != raw:
+            raise ValueError("Audio endpoint notification physical worker/callback ABI changed: " + rva)
+    tables = {"initialize_lambda": (0x389e0, 0x389a0, 0x38980),
+        "terminate_lambda": (0x38940, 0x38900, 0x388d0), "device_refcount": (0x37ca0, 0xb6a0),
+        "device_callback_vtable": (0xa9b0, 0xa9b0, 0xa9a0, 0xa990, 0xa970)}
+    regions = {row["role"]: row for row in native["verified_data_regions"]}
+    base = int(native["image_base"], 16)
+    for role, targets in tables.items():
+        raw = bytes.fromhex(regions[role]["raw_hex"])
+        if (len(raw) != 8 * len(targets)
+                or struct.unpack("<" + "Q" * len(targets), raw) != tuple(base + rva for rva in targets)):
+            raise ValueError("Audio endpoint notification actual native slot changed: " + role)
+    return {"verified_complete_boundary_hashes": verified, "verified_reference_edges": edges,
+        "verified_instruction_anchors": [{"rva": rva, "bytes": raw} for rva, raw in anchors.items()],
+        "verified_indirect_slots": {role: [hex(rva) for rva in targets] for role, targets in tables.items()},
+        "worker": {"queue_count_priority_offsets": [208, 288, 248], "selected_queue_count_offset": 248,
+            "task_ownership": "move owned packaged task into queue, move front into local, unlock before invocation, release after completion/error",
+            "task_function_slot": 16, "initialize_wait_seconds": 30, "initialize_timeout_cancels_task": False,
+            "terminate_waits_for_removal": False, "stop": "set running+168=false under mutex, signal, join, dispose queue owners; selected pending type1 entries are destroyed without invocation",
+            "ordinary_terminate_stops_worker": False},
+        "device_lifetime": {"identity": "case-insensitive containerId only; no connection generation",
+            "initialize_existing_device": "return true before queueing, without waiting for pending removal",
+            "remove": "detach all matching container nodes, drop strong references, destroy device only at last strong release",
+            "meter_thread_wait_ms": 1000, "meter_timeout_still_continues_destructor": True,
+            "callback_capture": "copy raw CCamyDevice pointer; no shared ownership added by callback copy",
+            "clear_callback": "replace original callback under separate mutex; already copied callback remains independently callable"},
+        "notification": {"endpoint_mutex_held_during_notification": True,
+            "device_callback_copy_under_mutex": True, "device_callback_invoked_after_unlock": True,
+            "callback_json": "borrowed string through synchronous FFI callback return, then freed",
+            "global_callback_install": "plain global pointer assignment; no unregister or in-flight wait",
+            "endpoint_addref_release_constant": 1, "unregister_hresult_checked": False,
+            "complete_inflight_barrier_proven": False}}
+
+
+def collect_audio_endpoint_notification_chain(audit):
+    """Continue the retained PID1422 chain without recapturing DSP or other products."""
+    import frontend
+    import host
+    receipt = ".analysis/results/frontend/audio-MapAudio-audit.json"
+    previous = json.loads((a.ROOT / receipt).read_bytes())
+    endpoint, driver = previous["endpoint_local_chain"], previous["driver_lifecycle"]
+    for row in (endpoint, driver):
+        if row["failures"] or not row["bounded_observation_complete"] or not row["snapshot_stable"]:
+            raise ValueError("Audio endpoint notification upstream evidence remains unresolved")
+    canonical = lambda value: hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True,
+        separators=(",", ":")).encode()).hexdigest()
+    selected = frontend.current_source_selection("https://apps.razer.com/synapse/products/1422/mw/", audit,
+        candidates=sorted((a.ROOT / ".analysis/inputs/frontend").glob("audio-mw-1422-*/acquisition.json")))
+    if any(row != selected["acquisition"] for row in (endpoint["source_sets"]["mw"]["acquisition"], driver["source_set"]["acquisition"])):
+        raise ValueError("Audio endpoint notification current MW acquisition changed")
+    sources, host_release = _audio_driver_host_sources(audit)
+    if host_release != driver["host_release"]:
+        raise ValueError("Audio endpoint notification current Host release changed")
+    retained = {row["id"]: row for row in driver["complete_source_owners"]}
+    roles, owners = {}, {}
+    for role in ("native_init", "native_terminate", "native_handleBeforeUnload", "native_handleEvent",
+            "native_setNodeFFIEvent", "native_callDLLApi", "host_configure", "host_async", "host_invoke",
+            "host_callback", "host_free", "preload_response"):
+        row = retained[driver["roles"][role]]
+        node = host.verify_profiles_owner(audit, row)
+        key = audit.retain_range("audio_endpoint_notification_" + role, row["original"], node.start_byte, node.end_byte, node.type)
+        roles[role], owners[role] = key, audit.owners[key]
+        if role.startswith("host_") and any(row["original"][name] != sources["electron/modules/ffi/FFIPreloadMain.js"][name]
+                for name in ("path", "bytes", "sha256")):
+            raise ValueError("Audio endpoint notification callback is outside current Host")
+    deployment_path = ".analysis/results/frontend-revalidation/61ca5a4f09b2b6e269bcf78bc6d1505866953e22a895b50794fe1b9037469b2d.json"
+    deployment_identity = {"path": deployment_path, "bytes": 34107,
+        "sha256": "61ca5a4f09b2b6e269bcf78bc6d1505866953e22a895b50794fe1b9037469b2d"}
+    deployment = json.loads(audit.artifact(a.ROOT / deployment_path, deployment_identity))
+    original = owners["native_init"]["original"]
+    observations = [row for row in deployment["observations"] if (row.get("retained_original") or {}).get("sha256") == original["sha256"]]
+    if (not deployment["passed"] or deployment["failures"] or len(observations) != 1
+            or deployment["source_sets"][0]["acquisition"] != selected["acquisition"]):
+        raise ValueError("Audio endpoint notification current owner deployment remains unresolved")
+    observation = observations[0]
+    if (len(observation["rounds"]) != 2 or observation["retained_original"]["path"] != original["path"]
+            or any(row.get("http_status") != 200 or row.get("sha256") != original["sha256"]
+                or row.get("bytes") != original["bytes"] for row in observation["rounds"])):
+        raise ValueError("Audio endpoint notification current owner deployment bytes changed")
+    audit.read(observation["retained_original"])
+    shared_receipt = ".analysis/results/host-current/local-audit.json"
+    shared = json.loads((a.ROOT / shared_receipt).read_bytes())["mapping_delayed_task_lifecycle"]
+    if shared["failures"] or not shared["bounded_observation_complete"] or not shared["snapshot_stable"]:
+        raise ValueError("Audio endpoint notification shared addon evidence remains unresolved")
+    ffi = shared["ffi_provenance"]
+    if ffi["version"] != "1.0.11" or ffi["original"]["sha256"] != "56c9941a5eb0c6de9d152278aca1ed0cc9e23903c3592ceb3a62208590f2c138":
+        raise ValueError("Audio endpoint notification shared addon identity changed")
+    callback_source = next(row for row in ffi["complete_source_originals"] if row["path"].endswith("/ffi-napi-rz/lib/callback.js"))
+    callback_bytes = audit.read(callback_source)
+    archive = host_release["members"][0]["archive"]
+    if (callback_source["container_sha256"] != archive["sha256"]
+            or audit.read(archive)[callback_source["offset"]:callback_source["offset"] + len(callback_bytes)] != callback_bytes):
+        raise ValueError("Audio endpoint notification callback source is outside current Host ASAR")
+    keys = audit.retain("audio_endpoint_notification_ffi_callback_factory", callback_source, "function Callback (", {"function_declaration"})
+    if len(keys) != 1:
+        raise ValueError("Audio endpoint notification callback factory is ambiguous")
+    roles["ffi_callback_factory"], owners["ffi_callback_factory"] = keys[0], audit.owners[keys[0]]
+    source_contract = _audio_endpoint_notification_source_contract(owners)
+    addon = audit.native_slice(ffi["original"], [], depth=0, rvas=(0x94c0, 0xa0f0, 0x93e0, 0x8c20))
+    addon_expected = {row["rva"]: row["pseudocode_text_sha256"] for row in shared["verified_contract"]["addon"]["verified_complete_boundary_hashes"]}
+    for row in addon["complete_functions"]:
+        function = row["capture"]
+        body = "\n".join(line["text"] for line in function["pseudocode"]["lines"])
+        if hashlib.sha256(body.encode()).hexdigest() != addon_expected[function["rva"]]:
+            raise ValueError("Audio endpoint notification retained addon callback body changed")
+    native_original = driver["marie"]["original"]
+    if native_original != endpoint["native"]["original"]:
+        raise ValueError("Audio endpoint notification upstream native originals differ")
+    native = audit.native_slice(native_original, ["SetNodeFFIEvent", "DeviceInitialize", "DeviceTerminate"], depth=0,
+        rvas=(0x33ad0, 0x375b0, 0x34790, 0x37480, 0x5a6e0, 0x5a9c0, 0x5b4f0, 0x5a170,
+            0x5a3e0, 0x5b6e0, 0x5b1e0, 0x37be0, 0x38dd0, 0x388d0, 0x38980, 0x38940, 0x389e0,
+            0x34f30, 0x5c3f0, 0x5c610, 0x37ca0, 0x4a50, 0x51180, 0x509d0, 0x50cd0, 0x53200,
+            0x531b0, 0xa9a0, 0xa9b0, 0x5d90, 0x3ec30, 0x3eaa0, 0x40880),
+        regions=tuple({"role": role, "rva": rva, "bytes": size} for role, rva, size in (
+            ("initialize_lambda", 0x6db18, 24), ("terminate_lambda", 0x6dae0, 24),
+            ("device_refcount", 0x6db50, 16), ("device_callback_vtable", 0x6b268, 40))))
+    for module in (native, addon):
+        if module["failures"] or module["decompiler_failures"] or not module["all_selected_pseudocode_captured"]:
+            raise ValueError("Audio endpoint notification selected native captures remain unresolved")
+    native_contract = _audio_endpoint_notification_native_contract(native)
+    return {"schema_version": 1, "kind": "current_audio_endpoint_notification_chain", "product_id": 1422,
+        "roles": roles, "source_set": {key: selected[key] for key in ("name", "acquisition", "capture", "capture_failures",
+            "failed_acquisition", "unresolved_acquisition", "candidate_decisions")}, "host_release": host_release,
+        "deployment_revalidation": {"receipt": deployment_identity, "owner": observation, "full_dependency_closure_reviewed": False},
+        "upstream_sections": [{"receipt": receipt, "query": query, "canonical_sha256": canonical(value)}
+            for query, value in (("endpoint_local_chain", endpoint), ("driver_lifecycle", driver))],
+        "shared_addon_dependency": {"receipt": shared_receipt, "query": "mapping_delayed_task_lifecycle",
+            "pointer": "/verified_contract/addon", "canonical_sha256": canonical(shared["verified_contract"]["addon"]),
+            "provenance": ffi, "semantics": shared["reviewed_semantics"]["ffi_queue"],
+            "finalization_and_limits": shared["reviewed_semantics"]["ffi_finalization_and_limits"]},
+        "source_contract": source_contract, "native": native, "native_contract": native_contract, "addon_native": addon,
+        "selected_notification_semantics_reviewed": True,
+        "remaining_local_chains": [
+            "The selected PID1422 Host channel forwarding, Marie worker execution, container removal and endpoint callback copies are statically reviewed. Queue FIFO is not a cross-generation barrier: Initialize may reuse an old object before a pending removal executes; timeouts do not cancel queued initialization.",
+            "Complete in-flight notification quiescence is not established: endpoint AddRef/Release are constant, unregister HRESULT is ignored, copied callbacks retain raw device pointers, meter timeout continues destruction, and Host callback buffers/event delivery have independent lifetimes. Generic NAPI/libuv concurrent environment teardown, actual runtime addon resolution and other driver notification branches remain unverified.",
+            "Current MW full dependency acquisition/capture closure, other products/firmware/transports, independent Rust implementation and UI/backend wiring, actual official DLL/device result comparison, restoration and runtime acceptance remain separate unfinished work."],
+        "source_chain_complete": False, "whole_product_complete": False, "target_execution": False,
+        "real_device_operations": False, "rust_implementation": "not_reviewed",
+        "official_dll_comparison": "not_executed", "runtime_acceptance": "unverified", "temporary_artifacts_created": []}
+
+
+def audit_audio_endpoint_notification_chain(args):
+    import host
+    if (args.family != "audio" or args.function != "mw" or (args.product or [1422]) != [1422]
+            or getattr(args, "prepare", False)):
+        raise ValueError("Current audio endpoint notification review requires PID1422 without production preparation")
+    audit = host.HostLocalAudit()
+    report = {"schema_version": 1, "kind": "current_audio_endpoint_notification_chain", "product_id": 1422,
+        "recorded_at_utc": a.stamp(), "parser": audit.parser_versions, "failures": [],
+        "bounded_observation_complete": False, "source_chain_complete": False, "whole_product_complete": False,
+        "target_execution": False, "real_device_operations": False, "rust_implementation": "not_reviewed",
+        "official_dll_comparison": "not_executed", "runtime_acceptance": "unverified"}
+    try:
+        for name in ("tools/families.py", "tools/host.py", "tools/frontend.py", "tools/evidence.py"):
+            audit.artifact(a.ROOT / name)
+        report.update(collect_audio_endpoint_notification_chain(audit))
+        report["bounded_observation_complete"] = not report["failures"]
+    except Exception as error:
+        report["failures"].append(type(error).__name__ + ": " + str(error))
+        report["bounded_observation_complete"] = False
+    changed = audit.final_snapshot()
+    if changed:
+        report["failures"].extend("Audio endpoint notification input changed during query: " + name for name in changed)
+        report["bounded_observation_complete"] = False
+    report.update(tool=identity(Path(__file__)), changed_during_query=changed, snapshot_stable=not changed,
+        complete_originals=list(audit.sources.values()), complete_source_owners=list(audit.owners.values()),
+        verified_artifacts=list(audit.artifacts.values()))
+    destination = a.ROOT / ".analysis/results/frontend/audio-MapAudio-audit.json"
+    host.publish_host_static_query(report, destination, a, "endpoint_notification_chain")
+    print(json.dumps({"receipt": a.rel(destination), "query": "endpoint_notification_chain", "owners": len(audit.owners),
+        "failures": report["failures"], "bounded_observation_complete": report["bounded_observation_complete"]}), flush=True)
+    if report["failures"]:
+        raise ValueError("Current audio endpoint notification observation remains unresolved")
+    return report
+
+
+def _audio_driver_close_quiescence_native_contract(raw, native, reused):
+    """Resolve the actual endpoint listener and timer against the retained close owners."""
+    import host
+    import struct
+    base, functions, regions, _, _ = host.verify_retained_native_pe(raw, native, "Audio driver close")
+    for retained in reused:
+        _, previous, _, _, _ = host.verify_retained_native_pe(raw, retained, "Audio driver close dependency")
+        for rva, function in previous.items():
+            if rva in functions and functions[rva] != function:
+                raise ValueError("Audio driver close reused complete owner differs: " + hex(rva))
+            functions[rva] = function
+    expected = {
+        0x16b0: "dd4eb050fb42ca8fb9b07959ff00dafb1135b9d5bed76c359693f2e0f7b1b705",
+        0x3f000: "8560e672813a14e2d6fc902989f3c709a3d651b999c08d880a8f1cb9f0df07c6",
+        0x4c80: "a1d62dd510b043a2fd9e627fcb5e59a09f12ebf4cca50e7a8dc3c3846728818b",
+        0x4cd0: "16780400183ac1cc412934578b3c0e4ea6f97e7cc88c31e6ef594459a023350b",
+        0x51290: "30c946086d65416ace852d8bbfc054bf6203a073575597557e696263c8eda185",
+        0x51850: "6e84105b9a419b3a5f8e65492254d8e97e4b284428df013fc82a92d2dceb0fae",
+        0x53250: "7694ba4d09cf2ec6afec0d010a3d94235df20d6b57a7c068f0a5820b4ec3ee5b",
+        0x53370: "2d0fa9a42feba17619a6178466ccc93d1f34e3c2f4de5899c09fb69479b95655",
+        0x533a0: "7a26e892f16318a72eed0e226bee110fb6981dcde01378b1333614c22744b5fd",
+        0x533b0: "a168faee33b5ada2055a42f11e5e82be0c8a95023e2b491c62e40ae9b5a65386",
+        0x57170: "0510bed63583f0e7ae2a8202591a1d170e26662f9c5c2703759e2910caf15963",
+        0x571d0: "8fc3da18b7063e14321c7d963a7723cd9c5774d46be235375ab6116b58c1957e",
+        0x57230: "605a800f913a9f41fe78ed551542234342af078a04e1f88eabcc99f6774a24d2",
+        0x57290: "b388fd8f78073f2734ad7e0488a47adead95ffbd332f3e385a8f64b0371f2bba",
+        0x57340: "09566666202f031b7488169f0ae53d5b0bd05021a666685175f8a8daea0f8a96",
+        0x573f0: "6f6a6e88552bf4ee6b7a3e482bc22baaf76cd95b91710fd341a371e25de2bac7",
+        0x5a0c0: "a9cac37a5944fcd917e41382bc203c325957079abd855941122d2206cebb74b4",
+        0x5a130: "740853698430419ac80c16fd5a64d859ae00fbfb46d0077298b78eeb3ce19625",
+        0x5a160: "49383ba6269dd08e2dfb3bb67175c19f72bdcf0ad7bc7d64ab4f86e9f0aa0a24",
+        0x4a50: "be75c349d76e33666d332016fdc3261b8e78ad6df92257afdde5457f056937d7",
+        0x4bef0: "5c8dab097f2d1bd2b24f31907cef40138d966708b093f240b994ac63af588404",
+        0x50fc0: "25e5ec59473ddf40a3f7eb62d5ee8663558116079868013df727bcbd21d3d717",
+        0x3e7b0: "d1d6cc1fc121180085979123093bd7bb24715b6afeefbc4038d1b330ea44cd6f",
+        0x4c0c0: "878f1de407191dfcc26aa19e27568ad28e899f221be851be2282270b6c09c340",
+    }
+    for rva, digest in expected.items():
+        body = "\n".join(row["text"] for row in functions.get(rva, {}).get("pseudocode", {}).get("lines", []))
+        if hashlib.sha256(body.encode()).hexdigest() != digest:
+            raise ValueError("Audio driver close complete native boundary changed: " + hex(rva))
+    tables = {"endpoint_change_listener": (0x573f0, 0x40880, 0x40880, 0x57230, 0x571d0, 0x57170, 0x16b0, 0x16b0),
+        "endpoint_change_lambda": (0x53370, 0x53370, 0x53250),
+        "delayed_reacquire_lambda": (0x533b0, 0x533b0, 0x533a0), "delayed_timer": (0x57290, 0x5a130)}
+    for role, targets in tables.items():
+        body = regions[role]
+        if len(body) != len(targets) * 8 or struct.unpack("<" + "Q" * len(targets), body) != tuple(base + rva for rva in targets):
+            raise ValueError("Audio driver close actual listener/timer table changed: " + role)
+    instructions = {row["rva"]: row for function in functions.values() for row in function["assembly"]}
+    anchors = {"0x4c648": "ff5030", "0x4c64b": "c7461801000000", "0x4c5a1": "488d0db8db0000",
+        "0x57357": "488d5110", "0x57372": "ff5038", "0x5a166": "48ff6008",
+        "0x572f4": "ba01000000", "0x572f9": "ff1521de0000", "0x57303": "ff151fde0000",
+        "0x5a0f6": "48c7442420803c36fe", "0x4bf15": "4889ab98020000", "0x4bfd6": "e865b30000"}
+    for rva, encoded in anchors.items():
+        if instructions.get(rva, {}).get("bytes") != encoded:
+            raise ValueError("Audio driver close physical callback/timeout boundary changed: " + rva)
+    edges = []
+    for caller, callee in ((0x4c80, 0x4cd0), (0x4c0c0, 0x53370), (0x53250, 0x533b0),
+            (0x53250, 0x3f000), (0x53250, 0x5a0c0), (0x533a0, 0x51850), (0x51850, 0x51290),
+            (0x51850, 0x500b0), (0x51850, 0x4d8a0), (0x51850, 0x4da90), (0x4bef0, 0x57340)):
+        matches = []
+        for row in functions[caller]["assembly"]:
+            body = bytes.fromhex(row["bytes"])
+            if len(body) == 5 and body[0] in (0xe8, 0xe9) and int(row["rva"], 16) + 5 + int.from_bytes(body[1:], "little", signed=True) == callee:
+                matches.append({"caller": hex(caller), "site": row["rva"], "callee": hex(callee), "bytes": row["bytes"]})
+        if not matches:
+            raise ValueError("Audio driver close actual reference edge changed: " + hex(caller))
+        edges.extend(matches)
+    return {"verified_complete_boundary_hashes": [{"rva": hex(rva), "pseudocode_text_sha256": digest} for rva, digest in expected.items()],
+        "verified_indirect_slots": {role: [hex(rva) for rva in targets] for role, targets in tables.items()},
+        "verified_instruction_anchors": [{"rva": rva, "bytes": body} for rva, body in anchors.items()], "verified_reference_edges": edges,
+        "listener": {"device_subobject_offset": 672, "com_callback_offset": 688, "enumerator_offset": 680,
+            "registration": "IMMDeviceEnumerator slot48 receives device+688; return HRESULT ignored, registered flag set to1 before installing the callable",
+            "events": {"state_changed": 3, "added": 1, "removed": 2}, "payload": "borrowed endpoint-ID pointer; size8; new state not forwarded",
+            "default_changed_and_property_changed": "actual slots return0 without invoking the consumer",
+            "filter_by_endpoint_or_container_or_generation": False, "addref_release": "constant1",
+            "unregister": "clear registered flag after slot56(device+688), ignore HRESULT, then Release enumerator",
+            "unregister_is_inflight_barrier": False},
+        "delayed_reacquire": {"due_time_100ns": -30000000, "delay_ms": 3000,
+            "event_action": "replace raw-device lambda and reset the same one-shot timer on each observed event",
+            "timer_dispatch": "FireTimer -> timer vtable slot8 -> stored callable slot16 -> ReacquireWindowsAudioControls",
+            "device_ownership_added_by_lambda_copy": False, "generation_guard": False,
+            "ready_path": "both mic/HP wrappers present: signal reconfiguration flag and return without reacquiring",
+            "missing_path": "wait up to10s for reconfiguration handshake, set/broadcast completion even after timeout, Sleep1000, acquire endpoints, replay cached mic then HP volume/mute",
+            "replayed_values_are_fresh_device_observation": False, "replay_results_checked": False,
+            "timer_destructor": ["destroy/clear stored callable", "SetThreadpoolTimer(NULL)", "WaitForThreadpoolTimerCallbacks(cancel_pending=true)", "CloseThreadpoolTimer"],
+            "callable_cleared_before_timer_callbacks_wait": True, "native_timer_wait_reaches_host_ffi_queue": False},
+        "destruction": {"device_order": ["meter stop flag/event; wait1000ms and continue on timeout", "disable meter and clear device callback",
+                "detach/destroy delayed timer", "release mic/HP notifications", "disable/detach mixer; close API device", "FreeLibrary; clear API table",
+                "clear endpoint-change callable", "unregister endpoint-change listener; release enumerator", "release Service wrapper and remaining owned containers"],
+            "endpoint_listener_unregistered_before_api_unload": False, "global_ffi_callback_unregistered": False,
+            "meter_timeout_still_continues_destruction": True, "endpoint_unregister_hresult_checked": False,
+            "endpoint_callback_copy_owns_device": False, "driver_close_cancels_all_outstanding_callbacks": False,
+            "complete_session_quiescence_proven": False},
+        "reconnect": {"container_identity_only": True, "initialize_can_reuse_pending_removal_object": True,
+            "initialize_timeout_cancels_task": False, "terminate_export_waits_for_removal": False,
+            "ordinary_terminate_joins_global_worker": False, "host_listener_removal_drains_native_or_js_callbacks": False,
+            "other_driver_notification_branches_reviewed": False}}
+
+
+def collect_audio_driver_close_quiescence(audit):
+    """Continue PID1422 close ownership using the existing complete captures."""
+    import frontend
+    import host
+    receipt = ".analysis/results/frontend/audio-MapAudio-audit.json"
+    previous = json.loads((a.ROOT / receipt).read_bytes())
+    expected = {"endpoint_local_chain": "2172e644f7998d519b7ace530648231335cc87e6459b72e19b82891ab90862d7",
+        "driver_lifecycle": "519a19ebff5fa2b550262ba88ecf133453264556ff295828635385be1e8639e6",
+        "endpoint_notification_chain": "5b6b930d2d065a90e53324e77ff003ee9df48b060dc03fa1d9311540c8140ba2"}
+    dependencies = []
+    for section, digest in expected.items():
+        value = previous[section]
+        actual = hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+        if (actual != digest or value["product_id"] != 1422 or value["failures"] or not value["bounded_observation_complete"]
+                or not value["snapshot_stable"] or value["target_execution"] or value["whole_product_complete"]):
+            raise ValueError("Audio driver close retained upstream section requires review: " + section)
+        dependencies.append({"receipt": receipt, "section": section, "canonical_sha256": digest})
+    endpoint, driver, notification = (previous[name] for name in expected)
+    selected = frontend.current_source_selection("https://apps.razer.com/synapse/products/1422/mw/", audit,
+        candidates=sorted((a.ROOT / ".analysis/inputs/frontend").glob("audio-mw-1422-*/acquisition.json")))
+    if selected["acquisition"] != notification["source_set"]["acquisition"] or selected["acquisition"] != driver["source_set"]["acquisition"]:
+        raise ValueError("Audio driver close current MW acquisition changed")
+    _, release = _audio_driver_host_sources(audit)
+    if release != driver["host_release"] or release != notification["host_release"]:
+        raise ValueError("Audio driver close current Host source changed")
+    retained = {row["id"]: row for row in notification["complete_source_owners"]}
+    owners, roles = {}, {}
+    for role, owner_id in notification["roles"].items():
+        row = retained[owner_id]
+        node = host.verify_profiles_owner(audit, row)
+        key = audit.retain_range("audio_driver_close_" + role, row["original"], node.start_byte, node.end_byte, node.type)
+        roles[role], owners[role] = key, audit.owners[key]
+    source_contract = _audio_endpoint_notification_source_contract(owners)
+    audit.artifact(a.ROOT / notification["deployment_revalidation"]["receipt"]["path"], notification["deployment_revalidation"]["receipt"])
+    audit.read(driver["package"]["manifest"])
+    audit.read(driver["package"]["container"])
+    extraction = driver["package"]["extraction_receipt"]
+    audit.artifact(a.ROOT / extraction["path"], extraction)
+    configuration = audio_driver_configuration_contract(*(audit.read(driver["package"]["members"][name])
+        for name in ("custom.ini", "tlsetupfx_drv.xml", "RazerSeirenV3Pro.inf")))
+    if configuration != driver["configuration"]:
+        raise ValueError("Audio driver close current registration declaration changed")
+    original = driver["marie"]["original"]
+    raw = audit.read(original)
+    reused = [driver["marie"], notification["native"], endpoint["native"]]
+    for module in [*reused, driver["driver"], notification["addon_native"]]:
+        audit.artifact(a.ROOT / module["capture"]["path"], module["capture"])
+        host.verify_retained_native_pe(audit.read(module["original"]), module, "Audio driver close upstream")
+        if module["target_execution"] or module["failures"] or module["decompiler_failures"]:
+            raise ValueError("Audio driver close selected upstream native evidence remains unresolved")
+    audio_driver_native_contract(driver["marie"], driver["driver"])
+    _audio_endpoint_notification_native_contract(notification["native"])
+    native = audit.native_slice(original, [], depth=0, rvas=(0x16b0, 0x3f000, 0x4c80, 0x4cd0, 0x51290,
+        0x51850, 0x53250, 0x53370, 0x533a0, 0x533b0, 0x57170, 0x571d0, 0x57230, 0x57290, 0x57340,
+        0x573f0, 0x5a0c0, 0x5a130, 0x5a160), regions=tuple({"role": role, "rva": rva, "bytes": size}
+            for role, rva, size in (("endpoint_change_listener", 0x6eed8, 64), ("endpoint_change_lambda", 0x6ee50, 24),
+                ("delayed_reacquire_lambda", 0x6ee88, 24), ("delayed_timer", 0x6eec0, 16))))
+    if native["failures"] or native["decompiler_failures"] or not native["all_selected_pseudocode_captured"]:
+        raise ValueError("Audio driver close selected new native evidence remains unresolved")
+    native_contract = _audio_driver_close_quiescence_native_contract(raw, native, reused)
+    reused_rvas = {row["capture"]["rva"] for module in reused for row in module["complete_functions"]}
+    if reused_rvas.intersection(row["capture"]["rva"] for row in native["complete_functions"]):
+        raise ValueError("Audio driver close duplicated an already reviewed native owner")
+    return {"schema_version": 1, "kind": "current_audio_driver_close_quiescence", "query": "audio-driver-close-quiescence",
+        "product_id": 1422, "roles": roles, "source_set": notification["source_set"], "host_release": release,
+        "deployment_revalidation": notification["deployment_revalidation"], "upstream_sections": dependencies,
+        "source_contract": source_contract, "registration_contract": configuration, "native": native, "native_contract": native_contract,
+        "reused_native": {"marie_unique_functions": len(reused_rvas), "driver_functions": len(driver["driver"]["complete_functions"]),
+            "addon_functions": len(notification["addon_native"]["complete_functions"]), "new_marie_functions": len(native["complete_functions"]),
+            "driver_original": driver["driver"]["original"], "addon_original": notification["addon_native"]["original"],
+            "all_reused_chunks_and_instructions_match_current_pe": True, "existing_capture_failures_retained": True},
+        "selected_close_semantics_reviewed": True, "source_chain_complete": False, "whole_product_complete": False,
+        "target_execution": False, "real_device_operations": False, "rust_implementation": "not_reviewed",
+        "official_dll_comparison": "not_executed", "runtime_acceptance": "unverified", "failures": [],
+        "temporary_artifacts_created": [], "analysis_sessions_created": [],
+        "remaining_local_chains": [
+            "The selected PID1422 endpoint listener, timer/reacquisition and complete owner-destructor order are statically reviewed. The source supplies no whole-session quiescence guarantee: callable clearing precedes timer drain; listener unregistration follows API unload; endpoint callbacks and meter timeout retain their separate limitations.",
+            "Container-only initialize/removal, uncancelled queued initialization, copied raw callbacks and Host/NAPI/libuv delivery remain separate generations/lifetimes. Actual registered path/loaded module, concurrent OS callbacks, other driver notification branches and generic framework teardown are unverified.",
+            "Complete MW dependency acquisition/capture, other products/firmware/transports, independent Rust and UI/backend wiring, behavior tests, actual official DLL/device comparison, restoration and runtime acceptance remain unfinished."]}
+
+
+def audit_audio_driver_close_quiescence(args):
+    import host
+    if (args.family != "audio" or args.function != "mw" or (args.product or [1422]) != [1422]
+            or getattr(args, "prepare", False)):
+        raise ValueError("Current audio driver close quiescence review requires PID1422 without production preparation")
+    audit = host.HostLocalAudit()
+    report = {"schema_version": 1, "kind": "current_audio_driver_close_quiescence", "product_id": 1422,
+        "recorded_at_utc": a.stamp(), "parser": audit.parser_versions, "failures": [],
+        "bounded_observation_complete": False, "source_chain_complete": False, "whole_product_complete": False,
+        "target_execution": False, "real_device_operations": False, "rust_implementation": "not_reviewed",
+        "official_dll_comparison": "not_executed", "runtime_acceptance": "unverified"}
+    try:
+        for name in ("tools/families.py", "tools/host.py", "tools/frontend.py", "tools/evidence.py"):
+            audit.artifact(a.ROOT / name)
+        report.update(collect_audio_driver_close_quiescence(audit))
+        report["bounded_observation_complete"] = not report["failures"]
+    except Exception as error:
+        report["failures"].append(type(error).__name__ + ": " + str(error))
+        report["bounded_observation_complete"] = False
+    changed = audit.final_snapshot()
+    if changed:
+        report["failures"].extend("Audio driver close input changed during query: " + name for name in changed)
+        report["bounded_observation_complete"] = False
+    report.update(tool=identity(Path(__file__)), changed_during_query=changed, snapshot_stable=not changed,
+        complete_originals=list(audit.sources.values()), complete_source_owners=list(audit.owners.values()),
+        verified_artifacts=list(audit.artifacts.values()))
+    destination = a.ROOT / ".analysis/results/frontend/audio-MapAudio-audit.json"
+    host.publish_host_static_query(report, destination, a, "driver_close_quiescence")
+    print(json.dumps({"receipt": a.rel(destination), "query": "driver_close_quiescence", "owners": len(audit.owners),
+        "failures": report["failures"], "bounded_observation_complete": report["bounded_observation_complete"]}), flush=True)
+    if report["failures"]:
+        raise ValueError("Current audio driver close quiescence observation remains unresolved")
+    return report
+
+
+def audio_driver_configuration_contract(ini_raw, setup_raw, inf_raw):
+    """Parse the retained PID1422 package's actual registration configuration."""
+    import configparser
+    import xml.etree.ElementTree as ET
+    ini = configparser.ConfigParser(interpolation=None)
+    ini.read_string("\n".join(ini_raw.decode("utf-8-sig").splitlines()))
+    guid = "{D132049C-EE3B-4647-AC9E-E754FA90FD46}"
+    if ini.get("DriverInterface", "InterfaceGUID") != guid:
+        raise ValueError("Audio driver configuration InterfaceGUID changed")
+    root = ET.fromstring(setup_raw)
+    registrations = [node.text for node in root.findall("./Component[@Id='Driver']/DriverPackage[@Id='Pkg']/FileSet[@Id='Register']/FileName")]
+    expected = ["RazerSeirenV3Proapi.dll", "RazerSeirenV3Proapi_x64.dll",
+                "RazerSeirenV3Proasio.dll", "RazerSeirenV3Proasio_x64.dll"]
+    if registrations != expected:
+        raise ValueError("Audio driver configuration registration file set changed")
+    tasks = {node.attrib["Id"]: [dict(action.attrib) for action in node.findall("Action")]
+             for node in root.findall("Task")}
+    for task, action in (("Install", "RegisterInProcessServer"), ("PrepareInstall", "UnregisterInProcessServer"),
+                         ("Uninstall", "UnregisterInProcessServer"), ("UninstallForUpdate", "UnregisterInProcessServer")):
+        selected = [row for row in tasks[task] if row["Id"] == action]
+        if selected != [{"Id": action, "ServerFiles": "Driver.Pkg.Register"}]:
+            raise ValueError("Audio driver configuration registration action changed: " + task)
+    if [node.text for node in root.findall("./ProcessorArchitectureSet/ProcessorArchitecture")] != ["x64"]:
+        raise ValueError("Audio driver configuration architecture changed")
+    text = inf_raw.decode("utf-16") if inf_raw.startswith(b"\xff\xfe") else inf_raw.decode("utf-8-sig")
+    declarations = [line.strip() for line in text.splitlines() if re.match(r'HKR,"","InterfaceGUID",', line.strip())]
+    if declarations != ['HKR,"","InterfaceGUID",%REG_SZ%,"' + guid + '"']:
+        raise ValueError("Audio driver INF interface declaration changed")
+    install = tasks["Install"]
+    if next(i for i, row in enumerate(install) if row["Id"] == "RegisterInProcessServer") >= next(
+            i for i, row in enumerate(install) if row["Id"] == "InstallDrivers"):
+        raise ValueError("Audio driver configuration registration order changed")
+    return {"interface_guid": guid, "architecture": "x64", "configuration_file": "custom.ini",
+        "registration_files": registrations, "tasks": tasks,
+        "registration_precedes_driver_install": True, "installer_executed": False,
+        "actual_registered_path": "unobserved", "actual_loaded_module": "unobserved"}
+
+
+def audio_driver_source_contract(owners):
+    """Review AudioMarie's own current route and its host result/lifetime boundary."""
+    checks = {
+        "native_constructor": ('this.channelName=O.channelStr', 'this.deviceContainerId=t',
+            '(null==A?void 0:A.supportElectron20)?this.supportElectron20=!0:this.supportElectron20=!1'),
+        "native_callDLLApi": ('this.supportElectron20?', 'yield(0,E.oE)(this.channelName,e)', '(0,E.I3)(this.channelName,e)'),
+        "native_init": ('this.channelName+="_"+I.jg(this.dllName)', 'action:"ConfigureFFI"', 'this.isInit=!0',
+            'yield this.getDLLVersion(),yield this.setNodeFFIEvent(),yield this.deviceInitialize()'),
+        "native_deviceInitialize": ('action:"DeviceInitialize",payload:{actionArgs:this.deviceContainerId}', 'return console.log('),
+        "native_setNodeFFIEvent": ('this.callDLLApi({action:"SetNodeFFIEvent"})',),
+        "native_terminate": ('this.removeListener()', 'action:"DeviceTerminate"', 'yield this.callDLLApi(e),this.isInit=!1', 'return!0'),
+        "native_handleBeforeUnload": ('this.terminate(),window.removeEventListener', 'this.eventEmitter.removeAllListeners("event")'),
+        "mw_bridge": ('{apiElectron:A}=window',),
+        "export_bridge": ('{apiElectron:r}=window.top',),
+        "async_export": ('yield r.doDLLMainActionAsync(e,t)', 'catch(i){console.warn(', 'return n'),
+        "legacy_export": ('r.doDLLAction(e,t)', 'return n'),
+        "preload_support": ('supportElectron20:!0',),
+        "preload_async": ('e.invoke("ffiPreloadAsync",t,i)',),
+        "preload_legacy": ('console.error(`doDLLAction deprecated',),
+        "preload_response": ('e.on(t,n)', '()=>{e.removeListener(t,n)}'),
+        "host_async_dispatch": ('n.handle("ffiPreloadAsync",async(e,o,n)=>eo.callDLLAsync(e,o,n))',),
+        "host_ffi_instance": ('new(require("./modules/ffi/FFIPreloadMain"))({dllRegistry:Ze})',),
+        "host_ffi_global": ('b.ffiPreloadMain=eo',),
+        "host_async": ('await this.ffiMutexMap.get(n).acquire()', 'case"FreeFFI":return!0',
+            'await this._callDLLFunctionAsync(e.libFFI,l,n,a)', 'finally{r&&r()}'),
+        "host_configure": ('r.urlList.includes(e)||r.urlList.push(e)', 'n.Library(i.payload.dllPath,i.payload.apiObj)',
+            'this.ffiLibMap.set(t,{urlList:[e],libFFI:a})'),
+        "host_invoke": ('e[t.action].async(...t.payload.actionArgs,(e,a)=>{n(a)})',
+            'e[t.action].async(t.payload.actionArgs,(e,a)=>{n(a)})',
+            's&&"function"==typeof s.readCString?(o=s.readCString(),r=!0):o=s', 'finally{r&&(s&&e.FreeMalloc?e.FreeMalloc(s):'),
+        "host_callback": ('n.Callback("void",["string"],c)', 'a.urlList.includes(e.getURL())', 'const i=JSON.parse(n)',
+            'r=a.SetNodeFFIEvent(h),this.ffiCallbackMap.set(o,h)'),
+        "host_free": ('_handleAction_FreeFFI=async(e,n,a)=>{}',),
+    }
+    for role, tokens in checks.items():
+        if role not in owners or not all(token in owners[role]["body"] for token in tokens):
+            raise ValueError("Audio driver current source contract changed: " + role)
+    for role, expected in (("mw_bridge", "{apiElectron:A}=window"), ("export_bridge", "{apiElectron:r}=window.top")):
+        if owners[role]["body"] != expected:
+            raise ValueError("Audio driver current source contract changed: " + role)
+    terminate, invoke = owners["native_terminate"]["body"], owners["host_invoke"]["body"]
+    if terminate.index("this.removeListener()") >= terminate.index('action:"DeviceTerminate"'):
+        raise ValueError("Audio driver listener release order changed")
+    if any(token in terminate for token in ('action:"FreeFFI"', 'action:"SetNodeFFIEvent"', "cancel")):
+        raise ValueError("Audio driver termination coverage changed")
+    if any(token in owners["host_async"]["body"] for token in ("AbortSignal", ".cancel", "ffiSubPreload")):
+        raise ValueError("Audio driver host cancellation boundary changed")
+    if "await" in owners["native_handleBeforeUnload"]["body"] or "yield" in owners["native_handleBeforeUnload"]["body"]:
+        raise ValueError("Audio driver unload waiting boundary changed")
+    if invoke.index("o=s.readCString()") >= invoke.index("r=!0"):
+        raise ValueError("Audio driver pointer-copy ownership order changed")
+    return {"route": ["AudioMarie supportElectron20=true", "MW 80995.oE", "apiElectron.doDLLMainActionAsync",
+        "preload ffiPreloadAsync", "Host FFIPreloadMain.callDLLAsync", "ffi-napi-rz async Marie export"],
+        "legacy_route": "MW 80995.I3 invokes doDLLAction; the current preload only logs deprecation",
+        "initialization_order": ["ConfigureFFI", "isInit=true", "GetDLLVersion", "SetNodeFFIEvent", "DeviceInitialize"],
+        "device_initialize_result_controls_isInit": False, "channel_suffix_reappended_after_terminate": True,
+        "host_per_channel_mutex": True, "libffi_error_argument_checked": False,
+        "pointer_release": "FreeMalloc only after readCString returns normally",
+        "free_ffi_releases_maps": False, "native_callback_unregistered_by_wrapper": False,
+        "unload_awaits_termination": False, "whole_session_quiescence_proven": False,
+        "independently_reviewed_audio_route": True}
+
+
+def audio_driver_native_contract(marie, driver):
+    """Bind registration, compatible API selection and close ownership to current bytes."""
+    modules = {name: {row["capture"]["rva"]: row["capture"] for row in value["complete_functions"]}
+               for name, value in (("marie", marie), ("driver", driver))}
+    required = {
+        "marie": {"0x2b50": ('LoadLibraryW(a2)', 'TUSBAUDIO_CheckApiVersion(5, 14)', 'FreeLibrary(hLibModule)'),
+            "0x3c90": ('HKEY_CLASSES_ROOT, L"CLSID"', 'L"InprocServer32"', 'RegQueryValueExW', 'Type - 1 > 1', 'RegCloseKey'),
+            "0x4c0c0": ('L"{D132049C-EE3B-4647-AC9E-E754FA90FD46}"', 'TUSBAUDIO_OpenDeviceByIndex(0, a1 + 92)',
+                'sub_180003F40', 'sub_180004420(v25, 1u)'),
+            "0x35280": ('sub_180034790((__int64)MultiByteStr)', 'device removed.', 'v7 = 1'),
+            "0x34790": ('sub_18005A6E0(qword_1800867C0, &v14)', 'result = 1'),
+            "0x5a6e0": ('Cnd_signal', 'a1 + 248', 'Mtx_unlock'),
+            "0x388d0": ('sub_18005C610(qword_1800867C0 + 296, v1)', 'return 1'),
+            "0x38980": ('sub_180034F30',),
+            "0x34f30": ('std::_Ref_count_obj2<CCamyDevice>', 'sub_18004C0C0'),
+            "0x5c610": ('lstrcmpiW(v8, a2)', '_InterlockedExchangeAdd', 'j_j_free(v3)'),
+            "0x37ca0": ('sub_180004A50(a1 + 16)',),
+            "0x4a50": ('SetEvent(v4)', 'WaitForSingleObject(v5, 0x3E8u) == 258',
+                'CloseHandle(*(HANDLE *)(a1 + 88))', 'sub_18004BEF0(*(_QWORD *)(a1 + 32))'),
+            "0x4bef0": ('TUSBAUDIO_CloseDevice(*(unsigned int *)(a1 + 92))', 'FreeLibrary(hLibModule)',
+                'memset(&TUSBAUDIO_GetApiVersion, 0, 0x288u)', 'sub_180003EA0'),
+            "0x3ea0": ('v6 = 77', 'v7 = 300', 'v3 + 584', 'a1[1] = 0'),
+            "0x4420": ('v7[0] = 77', 'v7[1] = 300', 'v7[2] = a2', 'v2 + 584')},
+        "driver": {"0x1230": ('sub_180010410(v9, hModule)', 'L"CLSID"', 'L"InprocServer32"', 'Filename, 1', 'v2 = 0'),
+            "0x1500": ('sub_180010410(v7, hModule)', 'sub_180003E20(&phkResult, sz)', 'v2 = 0'),
+            "0x10410": ('L"custom.ini"', 'L"DriverInterface"', 'L"InterfaceGUID"', 'CLSIDFromString'),
+            "0x4d90": ('GetModuleFileNameW',), "0x3da0": ('RegCreateKeyExW',),
+            "0x55f0": ('RegSetValueExW',), "0x3e20": ('RegDeleteKeyW', 'RegCloseKey'),
+            "0x1850": ('if ( a1 == 5 )', 'return a2 <= 0xF'), "0x1a60": ('return 327695',),
+            "0x20e0": ('sub_180010EF0(&CriticalSection)',), "0x1950": ('sub_18000A740(&CriticalSection)',),
+            "0x10ef0": ('*a3 = 0', 'sub_180010B20', 'sub_180009700', 'LeaveCriticalSection'),
+            "0x10b20": ('sub_180005020', 'sub_180009FC0', 'a1 + 208) = a3'),
+            "0x5020": ('sub_180005160', 'sub_180004800'),
+            "0x5160": ('CreateFileW(a2, dwDesiredAccess, dwShareMode, lpSecurityAttributes, 3u, 0x40000000u, 0)', 'CloseHandle'),
+            "0xa740": ('(unsigned __int16)a2', '(*(_QWORD *)v5 + 8LL)', 'LeaveCriticalSection'),
+            "0xa700": ('sub_180003B90(a1)',), "0x3b90": ('CloseHandle(v2)', 'a1 + 8) = 0'),
+            "0x95c0": ('sub_180009150',), "0x9150": ('CloseHandle(v4)', 'DeleteCriticalSection', 'sub_180002F70'),
+            "0x2f70": ('CloseHandle(v4)', 'a1 + 32) = 0')},
+    }
+    bodies = {}
+    for module, functions in required.items():
+        for rva, tokens in functions.items():
+            body = "\n".join(row["text"] for row in modules[module].get(rva, {}).get("pseudocode", {}).get("lines", []))
+            if not all(token in body for token in tokens):
+                raise ValueError("Audio driver native ownership contract changed: " + module + ":" + rva)
+            bodies[(module, rva)] = body
+    close = bodies[("marie", "0x4bef0")]
+    if close.index("TUSBAUDIO_CloseDevice(") >= close.index("FreeLibrary(hLibModule)"):
+        raise ValueError("Audio driver module/device close order changed")
+    if any(token in bodies[("marie", "0x34790")] for token in ("WaitForSingleObject", "sub_1800375B0")):
+        raise ValueError("Audio driver queued termination waiting boundary changed")
+    expected = {"driver": {"0x1852": "83f905", "0x1857": "83fa0f", "0x185a": "0f96c0", "0x1a60": "b80f000500",
+        "0xa82d": "ff5008", "0x9197": "ff15e3af0200", "0x107b7": "ff154b3c0200"},
+        "marie": {"0x2b98": "ff15b2240600", "0x3d9c": "ff157e120600", "0x4ae0": "bae8030000",
+            "0x4ae5": "ff155d060600", "0x4b46": "ff15fc040600", "0x34800": "e8db5e0200", "0x4bf82": "ff15f8900100"}}
+    assertions = []
+    for module, values in expected.items():
+        instructions = {row["rva"]: row for function in modules[module].values() for row in function["assembly"]}
+        for rva, raw in values.items():
+            if rva not in instructions or instructions[rva]["bytes"] != raw:
+                raise ValueError("Audio driver physical lifecycle ABI changed: " + module + ":" + rva)
+            assertions.append({"module": module, "rva": rva, "bytes": raw, "instruction": instructions[rva]["text"]})
+    tables = {"marie": {"initialize_lambda": (0x389e0, 0x389a0, 0x38980),
+        "terminate_lambda": (0x38940, 0x38900, 0x388d0), "device_refcount": (0x37ca0, 0xb6a0)},
+        "driver": {"device_vtable": (0x95c0, 0xa700)}}
+    import struct
+    for module, selected in tables.items():
+        regions = {row["role"]: row for row in (marie if module == "marie" else driver)["verified_data_regions"]}
+        for role, values in selected.items():
+            raw = bytes.fromhex(regions[role]["raw_hex"])
+            if struct.unpack("<" + "Q" * len(values), raw) != tuple(0x180000000 + value for value in values):
+                raise ValueError("Audio driver lifecycle vtable changed: " + module + ":" + role)
+    return {"api_compatibility": {"marie_requested_major": 5, "marie_requested_minor": 14,
+        "package_api_version": "5.15", "comparison": "major == 5 && unsigned minor <= 15", "request_5_14_accepted": True},
+        "registration": {"configuration": "module-adjacent custom.ini / DriverInterface / InterfaceGUID",
+            "key": "HKCR/CLSID/{D132049C-EE3B-4647-AC9E-E754FA90FD46}/InprocServer32",
+            "value": "actual registering module path", "type": "REG_SZ",
+            "unregister": "recursive CLSID key removal; missing key is accepted", "execution": "not_executed"},
+        "selection": {"marie_registry_access": "KEY_READ, caller process registry view", "accepted_value_types": ["REG_SZ", "REG_EXPAND_SZ"],
+            "expands_environment_strings": False, "open_device_index": 0, "matches_api_device_by_container": False,
+            "actual_registered_path": "unobserved", "actual_loaded_module": "unobserved"},
+        "termination": {"export_returns_after_enqueue": True, "export_ignores_enqueue_result": True,
+            "waits_for_container_removal": False,
+            "container_match": "case-insensitive", "meter_thread_wait_ms": 1000,
+            "timeout_still_closes_thread_handle_and_continues": True,
+            "driver_device_closed_before_api_unload": True, "api_function_table_cleared": True,
+            "driver_close_validates_slot_and_exact_handle": True, "driver_io_handle_closed": True,
+            "driver_event_handle_closed_in_device_destructor": True, "native_ffi_callback_unregistered": False,
+            "whole_callback_and_pending_task_quiescence_proven": False}, "instruction_assertions": assertions}
+
+
+def _audio_driver_host_sources(audit):
+    import host
+    indexed = json.loads(audit.artifact(a.ROOT / ".analysis/inputs.json"))
+    release = host.verified_host_release_receipt(index=indexed)
+    audit.artifact(a.ROOT / release["receipt"]["path"], release["receipt"])
+    for dependency in release["verified_dependencies"]:
+        audit.artifact(a.ROOT / dependency["path"], dependency)
+    available, originals = host.current_host_asar_members(audit, indexed, release), {row["path"]: row for row in indexed["inputs"]}
+    selected, ancestry = {}, []
+    for suffix in ("electron/main.js", "electron/preload.js", "electron/modules/ffi/FFIPreloadMain.js"):
+        candidates = [row for row in available if row["path"].endswith("/" + suffix)]
+        if len(candidates) != 1:
+            raise ValueError("Current audio driver host member is missing or ambiguous: " + suffix)
+        source = candidates[0]
+        archive = originals[source["container"]]
+        packages = [row for row in release["files"] if row.get("path") == archive["container"]
+            and row.get("sha256") == archive["container_sha256"] and row.get("manifest_identity_verified")]
+        raw, parent = audit.read(source), audit.read(archive)
+        if (len(packages) != 1 or source.get("unpacked") or type(source.get("offset")) is not int
+                or source["container_sha256"] != archive["sha256"]
+                or parent[source["offset"]:source["offset"] + len(raw)] != raw):
+            raise ValueError("Current audio driver host package/ASAR member bytes differ")
+        audit.artifact(a.ROOT / packages[0]["path"], packages[0])
+        selected[suffix] = source
+        ancestry.append({"member": source, "archive": archive, "package": packages[0], "member_offset_verified": True})
+    return selected, {"version": release["version"], "acquisition": release["receipt"], "members": ancestry}
+
+
+def camera_device_source_contract(owners):
+    """Review browser selection separately from the native container owner."""
+    result = camera_image_host_source_contract(owners)
+    for pid in (3595, 3596):
+        prefix = f"mw_{pid}_"
+        checks = {
+            "device_select": ('navigator.mediaDevices.enumerateDevices()', '"videoinput"===s.kind',
+                'n.push(s)', 'g(s.label)', 'if(!t)', 't===s.deviceId',
+                'if(void 0===this.deviceId)', '"audioinput"===i.kind&&i.groupId===t.groupId'),
+            "device_label": ('return!!t&&u.some', 't.includes(i)'),
+            "device_products": ('u=["1532:0e0a","1532:0e0b","1532:0e0c"]',),
+            "connect_device": ('{result:!0,error:""}',),
+        }
+        for role, tokens in checks.items():
+            if not all(token in owners[prefix + role]["body"] for token in tokens):
+                raise ValueError("Camera device source selection contract changed: " + prefix + role)
+        selected = owners[prefix + "device_select"]["body"]
+        if any(token in selected for token in ('this.deviceId=void 0', 'this.deviceId=undefined', 'AbortSignal')):
+            raise ValueError("Camera device retained identity/cancellation boundary changed")
+        if 'callDLLApi' in owners[prefix + "connect_device"]["body"]:
+            raise ValueError("Camera connectDevice native ownership boundary changed")
+    return {"host": result, "browser_selection": {
+        "label_substrings": ["1532:0e0a", "1532:0e0b", "1532:0e0c"],
+        "requested_id_checked_only_after_label_match": True,
+        "empty_requested_id_selects_first_label_match": True,
+        "fallback": "when deviceId remains undefined, select each video with an audio input in its group; last matching video wins",
+        "clears_prior_device_id_before_enumeration": False,
+        "connect_device_result_proves_native_open": False,
+        "browser_identity_is_native_container_id": False}}
+
+
+def camera_device_native_contract(native):
+    """Bind the selected factory, COM acquisition and normal destruction to PE bytes."""
+    import struct
+    functions = {row["capture"]["rva"]: row["capture"] for row in native["complete_functions"]}
+    checks = {
+        "0x3bb10": ('_InterlockedIncrement', 'v10 >= v7 && v10 <= v7', 'return v6'),
+        "0x3bc50": ('sub_18003BB10(a1, a2)', 'sub_18003D4F0(a1)', 'case 0xE0B:', 'case 0xE0C:',
+            'sub_18004AB30', 'sub_18004AEE0(v13, v6 + 32)', 'sub_180042F90', '_InterlockedExchangeAdd'),
+        "0x3d4f0": ('sub_18003D940()', 'sub_18004D130(*(_QWORD *)(v4 + v3)',
+            '_InterlockedExchangeAdd', 'sub_180041940'),
+        "0x3d940": ('CoCreateInstance', 'L"DevicePath"', 'L"vid_%04x", 5426', 'WORD2(v40) = 3596',
+            'sub_18003D6F0(v29, v50)', 'VariantClear(&pvarg)', 'return 1'),
+        "0x3d6f0": ('SetupDiOpenDeviceInterfaceW', 'SetupDiGetDeviceInterfaceDetailW',
+            'SetupDiGetDeviceRegistryPropertyW', 'SetupDiGetDevicePropertyW', 'StringFromGUID2',
+            'SetupDiDestroyDeviceInfoList(v5)'),
+        "0x4ab30": ('CRzDeviceAccess::`vftable', 'a1 + 64) = 0', 'a1 + 440) = 1',
+            'v5[1] = sub_18004A460', 'sub_18007E0BC', 'sub_18004F610'),
+        "0x4aee0": ('CoCreateInstance', 'L"DevicePath"', 'sub_180068650(v15, v16, v13, v14)',
+            '*(_QWORD *)v34 + 64LL', '*(_QWORD *)(a1 + 64) = v32', 'v21 = *(_QWORD *)(a1 + 64) != 0'),
+        "0x35020": ('a1 + 16))(a1 + 16, 0)',),
+        "0x35000": ('*(_QWORD *)a1 + 16LL))(a1, 1)',),
+        "0x42f30": ('std::_Ref_count_obj2<CRzDeviceAccess>', 'sub_18006AD2C(a1)'),
+        "0x42f60": ('std::_Ref_count_obj2<CRzDeviceAccess_0E0C>', 'sub_18006AD2C(a1)'),
+        "0x4adf0": ('sub_18004AE30()', '(a2 & 1)', 'sub_18006AD2C(lpMem)'),
+        "0x4ae30": ('sub_18004B680()', 'sub_18004A9B0(a1 + 280', 'sub_18004A3D0(a1 + 280)',
+            'sub_18000B7A0(a1 + 248)', 'sub_18000B9F0(a1 + 216)'),
+        "0x4b680": ('sub_18004D130(a1', '*(_QWORD *)v5 + 16LL', 'a1 + 64) = 0', 'sub_18004A9B0(a1 + 280'),
+        "0x4a9b0": ('*(_BYTE *)(a1 + 160) = 0', 'sub_180069CE4(a1 + 88)', 'GetCurrentThreadId()',
+            'sub_180069D64(v5, 0)', '*(_OWORD *)(a1 + 248) = 0'),
+        "0x4a460": ('CoInitialize(0) >= 0', 'sub_180069D14(a1 + 88, a1 + 8)',
+            'sub_18004F1B0(v4)', 'sub_18004F3D0(v13)', 'CoUninitialize()'),
+        "0x4f610": ('lpMem[1](*lpMem)', 'sub_18006AD2C(lpMem)'),
+        "0x7e0bc": ('CreateThread(', 'CloseHandle(v13)', 'FreeLibrary(v14)', 'sub_180081FA0(v10)'),
+        "0x69ce4": ('WakeAllConditionVariable(a1 + 1)',),
+        "0x69d14": ('SleepConditionVariableSRW(a1 + 1, (PSRWLOCK)(a2 + 16), 0xFFFFFFFF, 0)',),
+        "0x69d64": ('WaitForSingleObjectEx(*a1, 0xFFFFFFFF, 0)', 'CloseHandle(v2)', 'return 4'),
+        "0x4a3d0": ('sub_18004F2A0(a1 + 208)', 'sub_18004F4E0(a1 + 168)', 'sub_18007D88C()'),
+        "0x4f2a0": ('sub_18004F660(*v3)', '_InterlockedExchangeAdd', 'sub_18006AD2C(v8)'),
+        "0x4f4e0": ('sub_18004F830(*v3)', '_InterlockedExchangeAdd', 'sub_18006AD2C(v8)'),
+        "0x4f660": ('std::future_error', 'a1[193]', '*(_QWORD *)a1 + 40LL'),
+        "0x4f830": ('std::future_error', 'a1[225]', '*(_QWORD *)a1 + 40LL'),
+        "0x4f1b0": ('*(_QWORD *)v2 + 16LL', '*(_BYTE *)(a1 + 12) = v3'),
+        "0x4f3d0": ('*(_QWORD *)v2 + 16LL', 'sub_18000A2F0(a1 + 16'),
+        "0x4edf0": ('sub_18004AEE0((__int64)a1, a1 + 31)', 'sub_18003BB10', '*a1 + 344LL'),
+        "0x4c780": ('sub_18004AEE0(a1, (__int64 *)(a1 + 248))', 'sub_18004BE70(a1'),
+        "0x4ca20": ('sub_18004AEE0(a1, (__int64 *)(a1 + 248))', 'sub_18004BCE0(a1'),
+        "0x57830": ('sub_18004B680(v5)', 'sub_18004D130(v7)', 'sub_180041940', 'return 0'),
+        "0x5eb70": ('sub_18003D4F0', 'return 1'),
+        "0x58870": ('return sub_18003BB10(qword_1800D5F70, a1) != 0',),
+        "0x58940": ('return sub_18003BB10(qword_1800D5F70, a1) != 0',),
+        "0x57500": ('qword_1800D5F78 = a1', 'return 1'),
+    }
+    bodies = {}
+    for rva, tokens in checks.items():
+        body = "\n".join(row["text"] for row in functions.get(rva, {}).get("pseudocode", {}).get("lines", []))
+        if not all(token in body for token in tokens):
+            raise ValueError("Camera device native ownership contract changed: " + rva)
+        bodies[rva] = body
+    for rva, ordered in (("0x4b680", ('sub_18004D130(a1', '*(_QWORD *)v5 + 16LL', 'a1 + 64) = 0', 'sub_18004A9B0(a1 + 280')),
+                         ("0x4ae30", ('sub_18004B680()', 'sub_18004A9B0(a1 + 280', 'sub_18004A3D0(a1 + 280)'))):
+        if [bodies[rva].index(token) for token in ordered] != sorted(bodies[rva].index(token) for token in ordered):
+            raise ValueError("Camera device native release order changed: " + rva)
+    instructions = {row["rva"]: row for function in functions.values() for row in function["assembly"]}
+    expected = {"0x3da98": "41b932150000", "0x3dabf": "c78424900000000a0e0b0e", "0x3daca": "b80c0e0000",
+        "0x3de14": "e8d7f8ffff", "0x3d8ad": "ff15e56b0600", "0x3d910": "ff15526b0600",
+        "0x3bdf5": "488d050cbd0700", "0x3be06": "e825ed0000", "0x3bd8f": "488d05cab60700",
+        "0x3bda4": "e887ed0000", "0x3bdaa": "488d056fcf0700", "0x4ab4c": "488d0565d90600",
+        "0x3bf55": "e886ef0000", "0x4b286": "e8c5d30100", "0x4b2d0": "ff5040",
+        "0x4b2db": "49894740", "0x4b366": "eb6a", "0x4b385": "ff5010", "0x4b398": "ff15b2900500",
+        "0x4ad68": "488d0df1f6ffff", "0x4ad89": "4c8d0580480000", "0x4ad94": "e823330300",
+        "0x4a4ea": "ff15a0a00500", "0x4a808": "e8a3490000", "0x4a843": "e8884b0000",
+        "0x4a8e9": "ff15999c0500", "0x4adff": "e82c000000", "0x4b720": "ff5010",
+        "0x69d7a": "83caff", "0x69da8": "ff1592a30300", "0x4ee5f": "e87cc0ffff",
+        "0x3bc43": "498bc5", "0x4ab53": "488901", "0x3bdb1": "498906",
+        "0x3bdfc": "488903", "0x4ae4a": "e831080000", "0x4ae8d": "e83ef5ffff",
+        "0x4a3f8": "e8a34e0000", "0x4a420": "e8bb500000"}
+    for rva, raw in expected.items():
+        if rva not in instructions or instructions[rva]["bytes"] != raw:
+            raise ValueError("Camera device physical lifecycle ABI changed: " + rva)
+    tables = {"base_refcount": (0x35020, 0x35000, 0x42f30), "x_refcount": (0x35020, 0x35000, 0x42f60),
+              "base_deleting_destructor": (0x4adf0,), "x_deleting_destructor": (0x4adf0,)}
+    regions = {row["role"]: row for row in native["verified_data_regions"]}
+    for role, values in tables.items():
+        raw = bytes.fromhex(regions[role]["raw_hex"])
+        if struct.unpack("<" + "Q" * len(values), raw) != tuple(0x180000000 + value for value in values):
+            raise ValueError("Camera device lifecycle vtable changed: " + role)
+    guids = {"CLSID_SystemDeviceEnum": "105dbe62eb60d011bd3b00a0c911ce86",
+        "CLSID_VideoInputDeviceCategory": "10b30b86015dd011bd3b00a0c911ce86",
+        "IID_ICreateDevEnum": "22088429845bd011bd3b00a0c911ce86", "IID_IBaseFilter": "9568a856d40ace11b03a0020af0ba770",
+        "IID_IPropertyBag": "002a2755cb42ce11813500aa004bb851",
+        "DEVPKEY_Device_ContainerId": "06d27e8c8a3f2748b3abae9e1faefc6c02000000"}
+    if any(regions[role]["raw_hex"] != raw for role, raw in guids.items()):
+        raise ValueError("Camera device native COM/container identity changed")
+    if any('sub_180069584' in bodies[rva] for rva in ('0x57830', '0x4b680', '0x3d4f0')):
+        raise ValueError("Camera device concurrent destruction mutex boundary changed")
+    exports = {row["name"]: row["rva"] for row in native["exports"]}
+    if exports != {"DeviceInitialize": "0x57640", "DeviceTerminate": "0x57830", "EnumerateCameraList": "0x5eb70",
+                   "StartCamera": "0x58870", "StopCamera": "0x58940", "SetNodeFFIEvent": "0x57500", "FreeMalloc": "0x57510"}:
+        raise ValueError("Camera device current native exports changed")
+    return {"enumeration": {"vendor_id": 0x1532, "native_product_ids": [0x0e0a, 0x0e0b, 0x0e0c],
+        "record_bytes": 168, "container_source": "SetupDiGetDevicePropertyW DEVPKEY_Device_ContainerId / StringFromGUID2",
+        "container_match": "exact length and bytes", "enumerate_export_ignores_refresh_failure": True,
+        "refresh_removes_missing_instances": True, "failed_refresh_can_remove_all_registered_instances": True},
+        "open": {"product_classes": {"3595": "CRzDeviceAccess", "3596": "CRzDeviceAccess_0E0C"},
+            "already_registered_container_returns_success": True, "manager_retains_only_after_connect_success": True,
+            "device_path_match": "wide string substring", "bind_to_object_hresult_checked": False,
+            "success_requires_non_null_filter": True,
+            "matching_branch_skips_property_bag_release_and_variant_clear": True},
+        "ownership": {"manager_keeps_shared_ptr": True, "lookup_returns_borrowed_raw_pointer": True,
+            "lookup_drops_temporary_strong_reference_before_return": True,
+            "selected_device_destructor_rva": "0x4adf0", "normal_destructor": "0x4ae30",
+            "disconnect_filter_release_precedes_worker_stop": True,
+            "worker_created_before_filter_open": True, "worker_com_initialized_on_worker": True,
+            "stop_clears_active_wakes_and_joins": True, "join_wait_ms": "INFINITE",
+            "pending_queues_disposed_by_destructor": True,
+            "queue_disposal_proves_each_hardware_operation_canceled": False},
+        "reconnect": {"missing_filter_reopens_stored_path": True,
+            "selected_property_calls_execute_under_instance_mutex": True,
+            "property_calls_are_queued_to_worker": False,
+            "terminate_uses_the_same_instance_mutex": False,
+            "generation_guard_or_callback_quiescence_proven": False},
+        "stream": {"StartCamera_and_StopCamera_only_check_registered_container": True,
+            "native_exports_confirm_media_tracks_started_or_stopped": False},
+        "vtable_targets": {role: [hex(value) for value in values] for role, values in tables.items()},
+        "instruction_assertions": [{"rva": rva, "bytes": raw, "instruction": instructions[rva]["text"]} for rva, raw in expected.items()]}
+
+
+def _camera_media_preview_product(audit, pid, selected, device):
+    """Resolve media owners and their real actions within one current deployment."""
+    import host
+    roles, bindings, actions = {}, [], []
+    files = {layer: selected[layer]["originals"] for layer in ("ui", "mw")}
+
+    def check(value, label):
+        if not value:
+            raise ValueError("Camera media preview source differs: " + str(pid) + " " + label)
+
+    def one(values, label):
+        values = list(values)
+        check(len(values) == 1, label + " is absent or ambiguous")
+        return values[0]
+
+    def keep(role, source, node):
+        roles[role] = audit.retain_range(f"camera_media_preview_{pid}_{role}", source,
+            node.start_byte, node.end_byte, node.type)
+        return source, node
+
+    def find(layer, anchor, kinds, role, predicate=None):
+        found = {}
+        for source in files[layer]:
+            if not source["path"].endswith(".js"):
+                continue
+            raw = audit.read(source)
+            for hit in re.finditer(re.escape(anchor.encode()), raw):
+                node = audit.tree(source).root_node.descendant_for_byte_range(hit.start(), hit.end() - 1)
+                while node is not None and (node.type not in kinds or predicate and not predicate(node)):
+                    node = node.parent
+                if node is not None:
+                    found[(source["path"], node.start_byte)] = (source, node)
+        return keep(role, *one(found.values(), role))
+
+    def bind(source, ref, role):
+        binding = audit.binding(f"camera_media_preview_{pid}_{role}", source, ref.text.decode(), ref.start_byte)
+        check(binding["resolution"] in ("declaration", "destructuring_requires_value_analysis"), role + " lexical binding")
+        bindings.append({"role": role, "original": audit.sources[source["path"]], "reference_byte": ref.start_byte,
+            "binding": binding})
+        return keep(role, source, host._help_binding_node(audit, source, binding))
+
+    def resolve(layer, source, ref, role):
+        if ref.type == "member_expression":
+            _, factory, imported = host.javascript_import_namespace(audit, files[layer], source,
+                ref.child_by_field_name("object"), role=f"camera_media_preview_{pid}_{role}_import")
+            number, export = host._help_factory(factory)["module_id"], ref.child_by_field_name("property").text.decode()
+            value = audit.webpack_export(f"camera_media_preview_{pid}_{role}", files[layer], number, export)
+            source = one((row for row in files[layer] if row["path"] == value["original"]["path"]), role + " original")
+            node = host._help_binding_node(audit, source, value["binding"])
+            bindings.append({"role": role, "module": number, "export": export, "import": imported,
+                "binding": value["binding"], "original": audit.sources[source["path"]]})
+            keep(role, source, node)
+        else:
+            check(ref.type == "identifier", role + " callable reference")
+            source, node = bind(source, ref, role)
+        visited = set()
+        while node.type == "variable_declarator" and node.child_by_field_name("value") is not None and node.child_by_field_name("value").type == "identifier":
+            check(node.start_byte not in visited, role + " alias cycle")
+            visited.add(node.start_byte)
+            keep(role + "_alias", source, node)
+            source, node = bind(source, node.child_by_field_name("value"), role)
+        return keep(role, source, node)
+
+    def reference(node, text):
+        return one({item.text: item for item in host._help_nodes(node) if item.type in ("identifier", "member_expression")
+            and item.text == text.encode()}.values(), text + " reference")
+
+    def event(layer, source, expression, role):
+        origin, value = host._help_runtime_value(audit, files[layer], source, expression)
+        check(value.type == "string", role + " static event")
+        keep(role, origin, value)
+        return json.loads(value.text)
+
+    def callable_variable(node):
+        value = node.child_by_field_name("value")
+        return value is not None and value.type in ("call_expression", "arrow_function", "function_expression")
+
+    ui, preview = find("ui", "Video start already in progress, skipping", {"variable_declarator"}, "preview",
+        lambda node: callable_variable(node) and b"useSelector" in node.text)
+    _, picker = find("ui", "available videoResolutions", {"variable_declarator"}, "source_picker",
+        lambda node: callable_variable(node) and b"checkUSBCapacity" in node.text)
+    ns = "qI" if pid == 3595 else "vI"
+    focus_name, status_name, init_name = ("ZM", "jM", "xp") if pid == 3595 else ("uM", "CM", "Pp")
+    _, focus = bind(ui, reference(preview, focus_name), "focus_hook")
+    bind(ui, reference(focus, status_name), "focus_status")
+    bind(ui, reference(preview, init_name), "initialized_hook")
+    global_names = ("QM", "JM", "$M", "em", "Em") if pid == 3595 else ("cM", "LM", "PM", "pM", "MM")
+    for role, name in zip(("device_id", "constraints", "video_id", "starting", "initialize_timer"), global_names):
+        bind(ui, reference(preview, name), "global_" + role)
+    for name, role in (("U", "select_device"), ("h", "stop"), ("G", "start_focus_gate"),
+                       ("H", "request_cache"), ("g", "start")):
+        bind(ui, reference(preview, name), role)
+    _, play_catch = find("ui", "Errors when trying to play video", {"arrow_function"}, "play_rejection")
+    _, probe = find("ui", "available videoResolutions", {"variable_declarator"}, "capability_probe",
+        lambda node: callable_variable(node) and b"getUserMedia" in node.text and b"useSelector" not in node.text)
+    _, toolbar = find("ui", "ToolBar.releaseMediaStreams failed", {"class_declaration"}, "toolbar")
+    for name in ("releaseMediaStreams", "refresh", "componentDidMount"):
+        node, _ = audit.callable_member(f"camera_media_preview_{pid}_toolbar_{name}", ui, toolbar, name)
+        keep("toolbar_" + name, ui, node)
+    _, product_render = find("ui", "extraStyle:e?null:{display:\"none\"}", {"method_definition"}, "product_render")
+    product = product_render.parent
+    while product is not None and product.type not in ("class", "class_declaration"):
+        product = product.parent
+    check(product is not None, "mounted product class")
+    keep("mounted_product", ui, product)
+    for name in ("componentDidMount", "componentWillUnmount", "componentDidUpdate", "checkThirdPartySelected"):
+        node, _ = audit.callable_member(f"camera_media_preview_{pid}_product_{name}", ui, product, name)
+        keep("product_" + name, ui, node)
+    preview_mount = one((node for node in host._help_nodes(product_render) if node.type == "call_expression"
+        and node.child_by_field_name("arguments") is not None
+        and len(node.child_by_field_name("arguments").named_children) == 2
+        and node.child_by_field_name("arguments").named_children[1].text == b'{extraStyle:e?null:{display:"none"}}'), "actual preview mount")
+    _, mounted_preview = resolve("ui", ui, preview_mount.child_by_field_name("arguments").named_children[0], "mounted_preview")
+    check(mounted_preview == preview, "mount reaches selected preview")
+    picker_ref = one((node for node in host._help_nodes(audit.tree(ui).root_node) if node.type == "identifier"
+        and node.text == picker.child_by_field_name("name").text and node.start_byte > picker.end_byte), "mounted picker reference")
+    page = picker_ref
+    while page is not None and not (page.type == "variable_declarator" and callable_variable(page)):
+        page = page.parent
+    check(page is not None, "picker page owner")
+    keep("camera_page", ui, page)
+    picker_mount = one((node for node in host._help_nodes(page) if node.type == "call_expression"
+        and node.child_by_field_name("arguments") is not None
+        and len(node.child_by_field_name("arguments").named_children) == 2
+        and node.child_by_field_name("arguments").named_children[0].text == picker.child_by_field_name("name").text), "actual picker mount")
+    picker_props = {node.child_by_field_name("key").text.decode(): node.child_by_field_name("value").text.decode()
+        for node in picker_mount.child_by_field_name("arguments").named_children[1].named_children if node.type == "pair"}
+    check(picker_props == ({"isDisabled": "e", "supportCamoStudioActivation": "!0"} if pid == 3595
+        else {"checkUSBCapacity": "!1", "isDisabled": "E"}), "actual picker product props")
+    page_name = page.child_by_field_name("name").text
+    check(any(node.type == "call_expression" and node.child_by_field_name("arguments") is not None
+        and node.child_by_field_name("arguments").named_children
+        and node.child_by_field_name("arguments").named_children[0].text == page_name
+        for node in host._help_nodes(product)), "product mounts picker page")
+    _, reducer = find("ui", "isPreviewEnabled:E.payload", {"function_expression"}, "reducer")
+    cases = {}
+    for node in host._help_nodes(reducer):
+        if node.type == "switch_case":
+            label = event("ui", ui, node.child_by_field_name("value"), "reducer_event_" + str(node.start_byte))
+            check(label not in cases, "duplicate reducer event")
+            cases[label] = node
+    refs = {}
+    for owner in (preview, picker):
+        for ref in host._help_nodes(owner):
+            if ref.type == "member_expression" and ref.child_by_field_name("object").text == ns.encode():
+                refs.setdefault(ref.child_by_field_name("property").text.decode(), ref)
+    for exported, ref in refs.items():
+        role = "action_" + exported
+        source, action = resolve("ui", ui, ref, role)
+        value = one((node.child_by_field_name("value") for node in host._help_nodes(action)
+            if node.type == "pair" and node.child_by_field_name("key").text == b"type"), role + " event")
+        label = event("ui", source, value, role + "_event")
+        row = {"export": exported, "event": label, "owner": roles[role], "event_owner": roles[role + "_event"]}
+        if label != "CAMERA_TURN_OFF_COMPLETED":
+            check(label in cases, role + " actual reducer")
+            keep(role + "_reducer", ui, cases[label])
+            row["reducer"] = roles[role + "_reducer"]
+        actions.append(row)
+        if exported == "HG":
+            call = one((node for node in host._help_nodes(action) if node.type == "call_expression"
+                and node.child_by_field_name("function").type == "identifier"
+                and not node.child_by_field_name("arguments").named_children), "selection reset action")
+            bind(source, call.child_by_field_name("function"), "selection_reset_action")
+    for label in ("MW_SET_CAMERA_HARDWARE_ID", "MW_UPDATE_CAMERA_APPS_INSTALLED_STATE_TO_UI", "MW_SET_IS_PREVIEW_ENABLED"):
+        check(label in cases, "incoming " + label)
+        keep("incoming_" + label, ui, cases[label])
+
+    middleware, dispatch = find("mw", 'case"ON_SET_IS_PREVIEW"', {"switch_case"}, "preview_dispatch")
+    ref = reference(dispatch, "le.q8w")
+    resolve("mw", middleware, ref, "preview_persistence")
+    _, hardware = find("mw", '"GET_CAMERA_HARDWARE_ID"===', {"if_statement"}, "hardware_id_request")
+    _, broadcast = find("mw", "initUITurnOffCameraLocker.promiseObject.uiTurnOffMessage.resolve", {"function_declaration"}, "stop_message_consumer")
+    _, locker = find("mw", 'uiTurnOffMessage:{timeout:5e3}', {"variable_declarator"}, "stop_locker")
+    for prop in ("dn", "YW"):
+        ref = one({node.text: node for node in host._help_nodes(locker) if node.type == "member_expression"
+            and node.child_by_field_name("property").text == prop.encode()}.values(), "stop locker helper " + prop)
+        resolve("mw", middleware, ref, "stop_locker_" + prop)
+    _, init = find("mw", ".initUITurnOffCameraLocker=", {"function_declaration"}, "device_setup")
+    connect = one((node.child_by_field_name("function") for node in host._help_nodes(init)
+        if node.type == "call_expression" and node.text == b"An()"), "setup physical connection")
+    bind(middleware, connect, "connect_current_device")
+    api = audit.webpack_export(f"camera_media_preview_{pid}_shutdown", files["mw"], 87190, "Jt")
+    shutdown_source = one((row for row in files["mw"] if row["path"] == api["original"]["path"]), "shutdown original")
+    keep("device_shutdown", shutdown_source, host._help_binding_node(audit, shutdown_source, api["binding"]))
+    _, onload = find("mw", 'b.on("usb device disconnected",M)', {"assignment_expression"}, "physical_event_registration")
+    _, removed = bind(middleware, reference(onload, "M"), "physical_removal_consumer")
+    resolve("mw", middleware, reference(removed, "y.Zl"), "physical_invalidation")
+    resolve("mw", middleware, reference(removed, "l.nn"), "physical_cleanup")
+    retained = {row["id"]: row for row in device["complete_source_owners"]}
+    adapter_owner = retained[device["roles"][f"mw_{pid}_camera_adapter"]]
+    adapter = host.verify_profiles_owner(audit, adapter_owner)
+    for name in ("startCamera", "stopCamera", "getContainerIdFromDeviceId"):
+        node, _ = audit.callable_member(f"camera_media_preview_{pid}_adapter_{name}", adapter_owner["original"], adapter, name)
+        keep("adapter_" + name, adapter_owner["original"], node)
+    lock_callers = {}
+    raw = audit.read(middleware)
+    for hit in re.finditer(rb'initUITurnOffCameraLocker.requestLock\(\)', raw):
+        node = audit.tree(middleware).root_node.descendant_for_byte_range(hit.start(), hit.end() - 1)
+        while node is not None and node.type != "function_declaration":
+            node = node.parent
+        check(node is not None, "stop lock caller")
+        lock_callers[node.start_byte] = node
+    check(len(lock_callers) == 4, "actual stop lock callers")
+    for node in lock_callers.values():
+        name = one((name for name in ("watermark", "mjpegQuality", "hdr", "ldc")
+            if ("params:{" + name + ":").encode() in node.text), "stop lock caller parameter")
+        keep("stop_lock_caller_" + name, middleware, node)
+    constant = reference(broadcast, "i.kfX")
+    check(event("mw", middleware, constant, "stop_message_event") == "CAMERA_TURN_OFF_COMPLETED", "stop message identity")
+    response = one((node.child_by_field_name("value") for node in host._help_nodes(hardware)
+        if node.type == "pair" and node.child_by_field_name("key").text == b"type"), "hardware result event")
+    check(event("mw", middleware, response, "hardware_id_response_event") == "MW_SET_CAMERA_HARDWARE_ID", "hardware ID consumer")
+    return {"product_id": pid, "source_sets": {layer: {key: selected[layer][key] for key in (
+            "name", "acquisition", "canonical_entry_url", "capture_failures", "unresolved_acquisition", "failed_acquisition")}
+            for layer in ("ui", "mw")}, "roles": roles, "bindings": bindings, "actions": actions,
+        "media_original": audit.sources[ui["path"]], "mounted_picker_props": picker_props,
+        "capability_probe_enabled_by_mounted_page": pid == 3595, "selected_semantics_reviewed": True,
+        "source_chain_complete": False, "whole_page_complete": False, "target_execution": False}
+
+
+def camera_media_preview_source_contract(products, owners):
+    """Preserve the observed media failure and cancellation boundaries."""
+    for product in products:
+        pid, roles = product["product_id"], product["roles"]
+        bodies = {role: owners[key]["body"] for role, key in roles.items()}
+        def required(role, tokens):
+            if not all(token in bodies[role] for token in tokens):
+                raise ValueError("Camera media preview contract changed: " + str(pid) + " " + role)
+        required("preview", ('window.addEventListener("pagehide",e)', 'window.addEventListener("beforeunload",e)',
+            'window.removeEventListener("pagehide",e)', 'e(),', 'screenunlocked', 'systemresume',
+            'activeTabChanged', 'setTimeout', '2e3', '3e3', '1e3', '5e3', 'p.current=o', 'M.current=!0'))
+        required("start", ('o&&await G()', 'e&&await U()', 'navigator.mediaDevices.enumerateDevices()',
+            'e.srcObject=await navigator.mediaDevices.getUserMedia(', '!p.current', 'h(),void(',
+            'const o=e.play()', 'void 0!==o', 'await o.then(', '"OverconstrainedError"===_', 'g(!1)'))
+        required("stop", ('getTracks().forEach(function(e){e.stop()})', 'e.srcObject=null,e.pause()',
+            'e.removeAttribute("src"),e.load()', 'if(!e)return', '(1e3).then(', '.SO)()'))
+        required("play_rejection", ('C(!1)', 'console.error("Errors when trying to play video",e)'))
+        for role, ordered in (("start", ('getUserMedia(', '!p.current', 'const o=e.play()', 'await o.then(')),
+                              ("stop", ('getTracks().forEach', 'e.srcObject=null', 'e.pause()', 'e.load()', '(1e3).then(')),
+                              ("capability_probe", ('getCapabilities()', 'getTracks().forEach(e=>e.stop())'))):
+            offsets = [bodies[role].index(token) for token in ordered]
+            if offsets != sorted(offsets):
+                raise ValueError("Camera media preview acquisition/release order changed: " + role)
+        if any(token in bodies["play_rejection"] for token in ('stop()', 'h()', 'srcObject=null')):
+            raise ValueError("Camera media preview play failure release boundary changed")
+        if any(token in bodies["preview"] for token in ('AbortController', 'AbortSignal', 'generation')):
+            raise ValueError("Camera media preview late acquisition guard boundary changed")
+        required("source_picker", ('cameraHardwareDeviceId_', 'cameraHardwareId_', 'Camo', 'NVIDIA Broadcast',
+            'reconnectCamera', 'currentPreviewCameraHardwareId', 'checkUSBCapacity', 'isThirdPartySelected'))
+        required("capability_probe", ('getUserMedia({video:{deviceId:E[0].type}})', 'getVideoTracks()[0].getCapabilities()',
+            'getTracks().forEach(e=>e.stop())', 'catch(_){console.log("error",_)}'))
+        if 'finally' in bodies["capability_probe"]:
+            raise ValueError("Camera media preview capability probe release boundary changed")
+        required("focus_status", ('action:"getWindowStatus"', 'isVisible', 'isMinimized', 'action:"getFocusTab"'))
+        required("focus_hook", ('response("tab-message",async', 'case"focus"', 'case"changeActiveTab"', 'case"activeTabChanged"', 'a&&a()'))
+        required("preview_persistence", ('RzLockableStorage.getItem', 'isPreview:n', 'RzLockableStorage.setItem', 'if(i)'))
+        if any(token in bodies["preview_persistence"] for token in ('startCamera', 'stopCamera', 'enqueueTask')):
+            raise ValueError("Camera media preview persistence/native boundary changed")
+        required("hardware_id_request", ('navigator.mediaDevices.enumerateDevices()', 'const n=9',
+            'Promise.allSettled', 'e.label.includes("1532")', 'getContainerIdFromDeviceId(t.deviceId)',
+            'e.value.containerId===D.wI.CONTAINER_ID', '(1e3)'))
+        required("adapter_getContainerIdFromDeviceId", ('window.location.protocol+"//"+window.location.host',
+            'action:"GetContainerIdFromDeviceId"', 'actionArgs:[t,i]', 'return""'))
+        required("stop_message_consumer", ('e.type===i.kfX', 'initUITurnOffCameraLocker.promiseObject.uiTurnOffMessage.resolve(!0)'))
+        required("stop_locker", ('_cameraLock`', '{ifAvailable:!0}', 'uiTurnOffMessage.promise', 'uiTurnOffMessage:{timeout:5e3}'))
+        required("stop_locker_dn", ('clearTimeout(n[e].timeout)', 'timeout due to new init of promises', 'new Promise', 'setTimeout'))
+        required("stop_locker_YW", ('navigator.locks.request(e,n,o)', 'if(t)', 'new AbortController'))
+        for name in ("watermark", "mjpegQuality", "hdr", "ldc"):
+            role = "stop_lock_caller_" + name
+            required(role, ('signal.aborted', 'requestLock()).promises', 's.result=!0'))
+            if bodies[role].count('signal.aborted') != 1 or bodies[role].index('signal.aborted') > bodies[role].index('requestLock()'):
+                raise ValueError("Camera media preview post-lock cancellation boundary changed")
+        required("product_render", ('extraStyle:e?null:{display:"none"}', 'this.renderView()'))
+        required("product_componentWillUnmount", ('this.observer.unobserve(this.bodyFrame)',))
+        required("toolbar_releaseMediaStreams", ('document.querySelectorAll("video")', 'getTracks().forEach(e=>e.stop())', 'e.srcObject=null'))
+        required("physical_event_registration", ('b.on("usb device disconnected",M)',
+            'R.on(R.EVENT_DEVICE_REMOVE,M)', 'R.on(R.EVENT_DEVICE_DISCONNECT,M)', 'response("exitApp"'))
+        required("physical_removal_consumer", ('e.deviceContainerId===f.wI.CONTAINER_ID',
+            'e.productId===f.jf.rzDevice.productId', 'isUSBRemoveEventIgnored', '(0,y.Zl)(),(0,l.nn)()'))
+        required("physical_cleanup", ('p.jf.rzDevice.terminate(),', 'p.jf.rzDevice.handleBeforeUnload()',
+            'RzGenericFeatureManager.getInstance().shutdown()', 'rz_soft_reload', 'closeWindow(window.name)'))
+    return {"products": [3595, 3596], "browser_stream_owner_is_native_device_owner": False,
+        "late_acquisition": {"checks_enabled_ref": True, "checks_connection_generation": False,
+            "checks_mount_identity": False, "aborts_pending_get_user_media": False,
+            "checks_again_after_play_promise": False},
+        "play_failure": {"stops_acquired_tracks": False, "clears_src_object": False,
+            "records_error_and_clears_starting_and_local_played": True},
+        "capability_probe": {"separate_from_preview_stream": True, "normal_path_stops_tracks": True,
+            "capabilities_read_precedes_stop": True, "finally_releases_tracks": False},
+        "stop": {"operates_on_current_dom_src_object": True, "stops_tracks_before_pause_and_load": True,
+            "notification_delay_ms": 1000, "missing_video_returns_before_notification": True,
+            "track_ended_acknowledgement": False, "pending_acquisition_drained": False},
+        "focus": {"host_tab_gate_before_capture": True, "status_checks_visibility_and_minimized": True,
+            "all_hidden_playing_streams_proven_stopped": False},
+        "persistence": {"preview_toggle_maker_only_saves_is_preview": True, "native_start_stop_called_by_toggle": False},
+        "identity": {"lookup_attempts": 9, "retry_delay_ms": 1000, "exact_container_comparison": True,
+            "kimberly_host_identity_implementation_reviewed": False},
+        "stop_lock": {"promise_timeout_ms": 5000, "web_lock_if_available": True,
+            "callers": ["watermark", "mjpegQuality", "hdr", "ldc"],
+            "abort_rechecked_after_wait": False, "notification_proves_tracks_ended": False},
+        "product_mount": {"preview_retained_when_help_hidden_by_style": True,
+            "product_unmount_only_unobserves_intersection_observer": True},
+        "physical_removal": {"matches_container_and_product": True, "ignore_flag_can_skip_cleanup": True,
+            "cleanup_awaits_adapter_terminate": False, "also_calls_before_unload_handler": True,
+            "soft_reload_can_skip_window_close": True, "host_callback_drain_proven": False}}
+
+
+def collect_camera_media_preview_chain(audit):
+    """Continue the current camera receipt without recapturing native lifetimes."""
+    import frontend
+    receipt = ".analysis/results/frontend/accessories-camera-local-pages-audit.json"
+    previous = json.loads((a.ROOT / receipt).read_bytes())
+    canonical = lambda value: hashlib.sha256(json.dumps(value, ensure_ascii=False,
+        sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    for name in ("image_properties", "image_host_chain", "device_lifecycle"):
+        value = previous[name]
+        if value["failures"] or not value["bounded_observation_complete"] or not value["snapshot_stable"]:
+            raise ValueError("Camera media preview upstream evidence is unresolved: " + name)
+    device = previous["device_lifecycle"]
+    if device["product_ids"] != [3595, 3596] or len(device["native"]["complete_functions"]) != 42:
+        raise ValueError("Camera media preview upstream native/product scope differs")
+    for dependency in device["upstream_sections"]:
+        if dependency["canonical_sha256"] != canonical(previous[dependency["section"]]):
+            raise ValueError("Camera media preview upstream section identity differs")
+    audit.read(device["native"]["original"])
+    for function in device["native"]["complete_functions"]:
+        captured = json.loads(audit.artifact(a.ROOT / function["artifact"]["path"], function["artifact"]))
+        if captured != function["capture"] or not function["input_chunks_verified"]:
+            raise ValueError("Camera media preview reused native function differs")
+    revalidation_path = ".analysis/results/frontend-revalidation/9f1f9eabc98b3f9d9d5aa0e7da68dc5ffaa4d78edd1da1e1ee6f1d332e06ed9d.json"
+    revalidation_raw = audit.artifact(a.ROOT / revalidation_path, {"bytes": 80224,
+        "sha256": "9f1f9eabc98b3f9d9d5aa0e7da68dc5ffaa4d78edd1da1e1ee6f1d332e06ed9d"})
+    revalidation = json.loads(revalidation_raw)
+    if (not revalidation["passed"] or revalidation["failures"] or not revalidation["inputs_unchanged"]
+            or not revalidation["protected_originals_unchanged"] or revalidation["index_changed"]):
+        raise ValueError("Camera media preview deployment revalidation is unresolved")
+    for row in revalidation["protected_inputs"]:
+        if row["path"] != ".analysis/inputs.json":
+            audit.artifact(a.ROOT / row["path"], row)
+    products = []
+    expected = {3595: "62a03244bbf292947383bd287eed289ef32c23d924c8f0189aa7f8efb67d6560",
+                3596: "082c24e92ca502c579c43d89b8c067878aee594e5030974f0e94e2cc7984ad8f"}
+    for upstream in previous["image_properties"]["products"]:
+        pid, selected = upstream["product_id"], {}
+        if pid not in expected:
+            raise ValueError("Camera media preview current product requires separate review")
+        for layer, prefix in (("ui", f"accessories-{pid}-"), ("mw", f"accessories-mw-{pid}-")):
+            selected[layer] = frontend.current_source_selection(f"https://apps.razer.com/synapse/products/{pid}/{layer}/", audit,
+                candidates=sorted((a.ROOT / ".analysis/inputs/frontend").glob(prefix + "*/acquisition.json")))
+            if selected[layer]["acquisition"] != upstream["source_sets"][layer]["acquisition"]:
+                raise ValueError("Camera media preview current acquisition differs")
+        mains = [row for row in selected["ui"]["originals"] if Path(row["path"]).name.startswith("main.") and row["path"].endswith(".js")]
+        checks = [row for row in revalidation["observations"]
+            if (row.get("retained_original") or {}).get("sha256") == expected[pid]]
+        sources = [row for row in revalidation["source_sets"] if row["acquisition"] == selected["ui"]["acquisition"]]
+        if (len(mains) != 1 or mains[0]["sha256"] != expected[pid] or len(checks) != 1 or len(sources) != 1
+                or checks[0]["classification"] != "unchanged_reused"
+                or [row["round"] for row in checks[0]["rounds"]] != [1, 2]
+                or any((row["sha256"], row["bytes"]) != (mains[0]["sha256"], mains[0]["bytes"])
+                    or row["http_status"] != 200 for row in checks[0]["rounds"])):
+            raise ValueError("Camera media preview refreshed owner/two-round deployment differs")
+        products.append(_camera_media_preview_product(audit, pid, selected, device))
+    source_contract = camera_media_preview_source_contract(products, audit.owners)
+    return {"schema_version": 1, "kind": "current_camera_media_preview_chain", "products": products,
+        "source_contract": source_contract,
+        "deployment_revalidation": {"path": revalidation_path, "bytes": len(revalidation_raw),
+            "sha256": hashlib.sha256(revalidation_raw).hexdigest(), "observation_count": len(revalidation["observations"]),
+            "proves_complete_dependency_acquisition": False},
+        "upstream_sections": [{"receipt": receipt, "section": name, "canonical_sha256": canonical(previous[name])}
+            for name in ("image_properties", "image_host_chain", "device_lifecycle")],
+        "reused_native_function_count": 42, "new_native_captures": 0,
+        "remaining_local_chains": [
+            "Current Kimberly GetContainerIdFromDeviceId(deviceId, origin) host/system mapping needs its own current implementation evidence; neither the 3594 nor 3590 identity chain is substituted.",
+            "Browser capture/play promises have no complete generation, mount or cancellation guard; play rejection does not stop acquired tracks, and capability probing has no finally. Full physical removal, host tab disposal and pending callback/task quiescence remain separate owners.",
+            "Only the actual preview/source-picker and stop-lock consumers are reviewed here. Other mounted camera pages, product/firmware/transport branches and unexpanded local/native dependencies remain independently pending.",
+            "Independent Rust, UI/backend wiring, actual official DLL/device functional comparison and runtime acceptance remain unverified."],
+        "selected_media_preview_semantics_reviewed": True, "source_chain_complete": False,
+        "whole_page_complete": False, "whole_product_complete": False, "target_execution": False,
+        "real_device_operations": False, "rust_implementation": "not_reviewed", "official_dll_comparison": "not_executed",
+        "runtime_acceptance": "unverified", "temporary_artifacts_created": []}
+
+
+def audit_camera_media_preview_chain(args):
+    import host
+    if (args.family != "accessories" or args.function != "main" or getattr(args, "prepare", False)
+            or sorted(set(args.product or [3595, 3596])) != [3595, 3596]):
+        raise ValueError("camera-media-preview-chain requires PID3595 and PID3596 without production preparation")
+    audit = host.HostLocalAudit()
+    report = {"schema_version": 1, "recorded_at_utc": a.stamp(), "kind": "current_camera_media_preview_chain",
+        "parser": audit.parser_versions, "failures": [], "bounded_observation_complete": False,
+        "source_chain_complete": False, "whole_page_complete": False, "whole_product_complete": False,
+        "target_execution": False, "real_device_operations": False, "rust_implementation": "not_reviewed",
+        "official_dll_comparison": "not_executed", "runtime_acceptance": "unverified"}
+    try:
+        for name in ("tools/families.py", "tools/host.py", "tools/frontend.py", "tools/evidence.py"):
+            audit.artifact(a.ROOT / name)
+        report.update(collect_camera_media_preview_chain(audit))
+        report["bounded_observation_complete"] = not report["failures"]
+    except (OSError, ValueError, KeyError, IndexError, TypeError, StopIteration) as error:
+        report["failures"].append(str(error))
+    changed = audit.final_snapshot()
+    if changed:
+        report["failures"].extend("Camera media preview input changed during query: " + name for name in changed)
+        report["bounded_observation_complete"] = False
+    report.update(tool=identity(Path(__file__)), changed_during_query=changed, snapshot_stable=not changed,
+        complete_originals=list(audit.sources.values()), complete_source_owners=list(audit.owners.values()),
+        verified_artifacts=list(audit.artifacts.values()))
+    destination = a.ROOT / ".analysis/results/frontend/accessories-camera-local-pages-audit.json"
+    host.publish_host_static_query(report, destination, a, "media_preview_chain")
+    print(json.dumps({"receipt": a.rel(destination), "query": "media_preview_chain", "owners": len(audit.owners),
+        "failures": report["failures"], "bounded_observation_complete": report["bounded_observation_complete"]}), flush=True)
+    if report["failures"]:
+        raise ValueError("Current camera media preview observation remains unresolved")
+    return report
+
+
+def camera_kimberly_identity_source_contract(owners):
+    """Bind the current browser identity request to its existing main-host route."""
+    result = camera_image_host_source_contract(owners)
+    for pid in (3595, 3596):
+        prefix = f"identity_{pid}_"
+        checks = {
+            "request": ('"GET_CAMERA_HARDWARE_ID"', 'navigator.mediaDevices.enumerateDevices()',
+                'const n=9', 'Promise.allSettled', 'e.label.includes("1532")', '"videoinput"===e.kind',
+                'e.getContainerIdFromDeviceId(t.deviceId)', 'e.value.containerId===D.wI.CONTAINER_ID',
+                'type:i.VB1,payload:n.value.deviceId', '(1e3)'),
+            "adapter": ('window.location.protocol+"//"+window.location.host', 'if(this.isInit)',
+                'action:"GetContainerIdFromDeviceId",payload:{actionArgs:[t,i]}', 'return yield this.callDLLApi(o)', 'return""'),
+            "abi": ('GetContainerIdFromDeviceId:["pointer",["string","string"]]',),
+            "response": ('case j.VB1:return{...e,cameraHardwareId:E.payload}',),
+            "response_event": ('"MW_SET_CAMERA_HARDWARE_ID"',),
+            "select_device": ('_.length>1)', '.RI)()(E)', 'cameraHardwareId_', 'deviceId===e'),
+            "action_event": ('"GET_CAMERA_HARDWARE_ID"',),
+        }
+        for role, tokens in checks.items():
+            if not all(token in owners[prefix + role]["body"] for token in tokens):
+                raise ValueError("Kimberly identity source contract changed: " + prefix + role)
+        request = owners[prefix + "request"]["body"]
+        if any(token in request for token in ('AbortSignal', 'generation', 'signal.aborted')):
+            raise ValueError("Kimberly identity cancellation boundary changed")
+        if owners[prefix + "response_event"]["body"] != '"MW_SET_CAMERA_HARDWARE_ID"':
+            raise ValueError("Kimberly identity result event changed")
+    return {"host": result, "lookup_attempts": 9, "retry_delay_ms": 1000,
+        "origin": "window.location.protocol + // + window.location.host",
+        "native_arguments": ["browser deviceId", "origin"], "native_return": "allocated UTF-8 container string",
+        "requires_wrapper_is_init": True, "selects_result_by_exact_current_container": True,
+        "published_value": "matching browser deviceId, not native container",
+        "label_is_candidate_filter_not_identity_proof": True, "enumeration_repeated_on_retry": False,
+        "request_generation_or_abort_guard": False, "adds_device_write": False}
+
+
+def camera_kimberly_identity_native_contract(native, raw):
+    """Check identity helpers, their complete boundaries and actual current PE bytes."""
+    import host
+    _, functions, regions, instruction_count, _ = host.verify_retained_native_pe(raw, native, "Kimberly identity")
+    expected = {
+        0x5ef20: "e8a20d6616c54f58d652d23058a57e75a4b612dd2ab82b82a582e79982836441",
+        0x3ee40: "93d295d1641ca6a3596e4cea99cae02481177d29e351418fd80f004aa78fb168",
+        0x1be10: "6c175a7704a98ffd4a2480040d58a48fd04fb8d26997909281826969441d3f88",
+        0x1bd00: "a015eed94f705c5dcb1795d38f37d11d14f29a2efd445d5e90f5be4eed12a140",
+        0x1b880: "bd0b2c09b450be819d4729ad9903cb3873dc98b19f1f68f212121ac7733619b1",
+        0x1b5a0: "bde31a95f7670700d6efa31b3715f09dfdd6c02b2f801dc704f581b1355e9a9a",
+        0x1ac00: "0aabd5e07096b230758e19e860f7d091cfd331a1c131e5f4a51ed42067092d80",
+        0x1aab0: "13babe9e3e83c447d3c863ae0084f18077f43d83f4065e6827c767e0088936d9",
+        0x1d880: "83d9f3d9d1f24814c871f882c0fe7bf81167cdbfd8dae6d596d975884db13da6",
+        0x66d90: "b945f7a5c0d11d7f6c6ba332e06ad0e3ea93117e3816b914d2d5541b88d2ce90",
+        0x7e230: "f3678aaa6cf8879ca233e502c137cdce57502079a2e9e8c878430b937e327f18",
+        0x85c70: "062008835c7fad5993d0356daf9dc54bea19abd2ca48caff27ec02b662bbd87f",
+        0x7e1b0: "0f310c74a754e31de00d2ba2188d6842400c8e4031a48648d1e2248d75980389",
+        0x57510: "82b8111c1c543f88af44aed0016316adc4a771889e26d6283bdb2ab211885bad",
+        0x77800: "2c56a71dab4eb66e3c854a8c4b7a787d0ef9596a9ee21359aea73d9e56ae3374",
+        0x81fa0: "adca5113299d8889bf8e9b9ba13d9e9b6373e27893b3832d7c34f7d398f967a7"}
+    if set(functions) != set(expected):
+        raise ValueError("Kimberly identity complete helper scope changed")
+    for rva, digest in expected.items():
+        body = "\n".join(row["text"] for row in functions[rva]["pseudocode"]["lines"])
+        if hashlib.sha256(body.encode()).hexdigest() != digest:
+            raise ValueError("Kimberly identity complete helper boundary changed: " + hex(rva))
+    constants = {"path_delimiter": "#{".encode("utf-16le"), "hex_digits": b"0123456789abcdef",
+        "hash_algorithm": "SHA256".encode("utf-16le")}
+    if any(regions[role] != value for role, value in constants.items()):
+        raise ValueError("Kimberly identity protocol constant changed")
+    exports = {row["name"]: row["rva"] for row in native["exports"]}
+    if exports != {"GetContainerIdFromDeviceId": "0x5ef20", "FreeMalloc": "0x57510"}:
+        raise ValueError("Kimberly identity current export changed")
+    needed = ((0x5ef20, 0x3ee40), (0x5ef20, 0x7e230), (0x5ef20, 0x7e1b0), (0x7e230, 0x85c70),
+        (0x3ee40, 0x1be10), (0x3ee40, 0x1b880), (0x3ee40, 0x1bd00), (0x3ee40, 0x66d90),
+        (0x1b880, 0x1b5a0), (0x1b880, 0x1aab0), (0x1b880, 0x1d880), (0x1b5a0, 0x1ac00),
+        (0x57510, 0x77800), (0x77800, 0x81fa0))
+    edges = {(row["from"], row["function"]) for row in native["direct_edges"]}
+    if any((hex(0x180000000 + parent), hex(0x180000000 + child)) not in edges for parent, child in needed):
+        raise ValueError("Kimberly identity actual helper call edge is absent")
+    return {"verified_complete_boundary_hashes": [{"rva": hex(rva), "pseudocode_text_sha256": digest}
+            for rva, digest in expected.items()], "verified_instruction_count": instruction_count,
+        "required_direct_edges": [{"caller_rva": hex(parent), "target_rva": hex(child)} for parent, child in needed],
+        "mapping": {"requires_nonempty_device_id_and_origin": True, "media_record_bytes": 128,
+            "hash_input": "full MF symbolic link in UTF-8 followed by unmodified preference salt",
+            "hash_key": "origin UTF-8 bytes", "algorithm": "HMAC-SHA256", "result": "64 lowercase hex digits",
+            "digest_comparison": "exact byte length and bytes", "requires_initialized_native_instance": True,
+            "native_path_comparison": "exact UTF-16 prefix before #{", "container_field_offset": 216,
+            "device_path_field_offset": 248, "display_name_is_identity": False,
+            "no_match_or_empty_input": "empty string; export still allocates its terminator when allocation succeeds",
+            "allocation_failure": "null pointer", "null_native_arguments_are_validated": False,
+            "manager_instance_list_guard_or_generation_proven": False},
+        "salt": {"source": "CSIDL_LOCAL_APPDATA/Razer/RazerAppEngine/User Data/Default/Preferences",
+            "json_path": ["electron", "media", "device_id_salt"], "required_type": "string",
+            "cached_only_after_nonempty_read": True, "negative_result_cached": False,
+            "creates_or_replaces_salt": False, "missing_or_unreadable": "empty result; identity generation fails"},
+        "lifetime": {"normal_mf_cleanup": "release each IMFActivate, allocated strings, source array and attributes; MFShutdown",
+            "mf_early_failure_guarantees_balanced_shutdown": False,
+            "failed_second_allocated_string_frees_first": False,
+            "hash_destroyed_when_nonnull": True, "algorithm_provider_closed_when_nonnull": False,
+            "native_algorithm_close_branch": "calls BCryptCloseAlgorithmProvider only when provider handle is null",
+            "return_storage": "HeapAlloc copy of complete NUL-terminated result", "release": "FreeMalloc -> thunk -> HeapFree",
+            "native_mapping_is_device_write": False, "session_or_callback_quiescence_proven": False}}
+
+
+def collect_camera_kimberly_identity_chain(audit):
+    """Close only Kimberly's pending current deviceId-to-container mapping."""
+    import frontend
+    import host
+    receipt = ".analysis/results/frontend/accessories-camera-local-pages-audit.json"
+    previous = json.loads((a.ROOT / receipt).read_bytes())
+    names = ("image_properties", "image_host_chain", "device_lifecycle", "media_preview_chain")
+    canonical = lambda value: hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    for name in names:
+        value = previous[name]
+        if value["failures"] or not value["bounded_observation_complete"] or not value["snapshot_stable"]:
+            raise ValueError("Kimberly identity upstream observation is unresolved: " + name)
+        for dependency in value.get("upstream_sections", []):
+            if dependency["canonical_sha256"] != canonical(previous[dependency["section"]]):
+                raise ValueError("Kimberly identity upstream section changed: " + name)
+    image, main, device, media = (previous[name] for name in names)
+    if device["product_ids"] != [3595, 3596] or sorted(row["product_id"] for row in media["products"]) != [3595, 3596]:
+        raise ValueError("Kimberly identity upstream product scope changed")
+    for product in image["products"]:
+        pid = product["product_id"]
+        for layer, prefix in (("ui", f"accessories-{pid}-"), ("mw", f"accessories-mw-{pid}-")):
+            selected = frontend.current_source_selection(f"https://apps.razer.com/synapse/products/{pid}/{layer}/", audit,
+                candidates=sorted((a.ROOT / ".analysis/inputs/frontend").glob(prefix + "*/acquisition.json")))
+            if selected["acquisition"] != product["source_sets"][layer]["acquisition"]:
+                raise ValueError("Kimberly identity current acquisition changed")
+    indexed = json.loads(audit.artifact(a.ROOT / ".analysis/inputs.json"))
+    release = host.verified_host_release_receipt(index=indexed)
+    if release["receipt"] != main["host_release"]["acquisition"]:
+        raise ValueError("Kimberly identity current Host release changed")
+    audit.artifact(a.ROOT / release["receipt"]["path"], release["receipt"])
+    for dependency in release["verified_dependencies"]:
+        audit.artifact(a.ROOT / dependency["path"], dependency)
+    available = {row["path"]: row for row in host.current_host_asar_members(audit, indexed, release)}
+    for member in main["host_release"]["members"]:
+        source, archive, package = member["member"], member["archive"], member["official_package"]
+        raw, parent = audit.read(source), audit.read(archive)
+        if available.get(source["path"]) != source or parent[source["offset"]:source["offset"] + len(raw)] != raw:
+            raise ValueError("Kimberly identity current Host member differs")
+        audit.artifact(a.ROOT / package["path"], package)
+    roles, owners = {}, {}
+    def keep(role, owner):
+        node = host.verify_profiles_owner(audit, owner)
+        key = audit.retain_range("kimberly_identity_" + role, owner["original"], node.start_byte, node.end_byte, node.type)
+        roles[role], owners[role] = key, audit.owners[key]
+        return node
+    main_owners = {row["id"]: row for row in main["complete_source_owners"]}
+    for role, owner_id in main["roles"].items():
+        keep(role, main_owners[owner_id])
+    media_owners = {row["id"]: row for row in media["complete_source_owners"]}
+    for product in media["products"]:
+        pid, prefix = product["product_id"], f"identity_{product['product_id']}_"
+        for role, upstream in (("request", "hardware_id_request"), ("adapter", "adapter_getContainerIdFromDeviceId"),
+                ("response", "incoming_MW_SET_CAMERA_HARDWARE_ID"), ("response_event", "hardware_id_response_event"),
+                ("select_device", "select_device"), ("action", "action_RI"), ("action_event", "action_RI_event"),
+                ("action_reducer", "action_RI_reducer")):
+            keep(prefix + role, media_owners[product["roles"][upstream]])
+        init = main_owners[main["roles"][f"mw_{pid}_adapter_init"]]
+        tree = host.verify_profiles_owner(audit, init)
+        pairs = [node for node in host._help_nodes(tree) if node.type == "pair"
+            and node.child_by_field_name("key").text == b"GetContainerIdFromDeviceId"]
+        if len(pairs) != 1:
+            raise ValueError("Kimberly identity ABI is absent or ambiguous")
+        node = pairs[0]
+        key = audit.retain_range(prefix + "abi", init["original"], node.start_byte, node.end_byte, node.type)
+        roles[prefix + "abi"], owners[prefix + "abi"] = key, audit.owners[key]
+    source_contract = camera_kimberly_identity_source_contract(owners)
+    original = device["native"]["original"]
+    if original != main["native"]["original"]:
+        raise ValueError("Kimberly identity upstream native originals differ")
+    for manifest in image["native_manifests"]:
+        audit.read(manifest["installer"])
+        value = json.loads(audit.read(manifest["manifest"]))
+        resource = next(row for row in value["resources"] if row["resourceName"] == "RzNativeDLLGenericCamera")
+        if (resource != manifest["resource"] or resource["resourceVersion"] != "1.0.35.0"
+                or (resource["sha256"].lower(), resource["size"]) != (original["sha256"], original["bytes"])):
+            raise ValueError("Kimberly identity current product native manifest differs")
+    native = audit.native_slice(original, ["GetContainerIdFromDeviceId", "FreeMalloc"], depth=0,
+        rvas=(0x3ee40, 0x1be10, 0x1bd00, 0x1b880, 0x1b5a0, 0x1ac00, 0x1aab0, 0x1d880,
+            0x66d90, 0x7e230, 0x85c70, 0x7e1b0, 0x77800, 0x81fa0),
+        regions=tuple({"role": role, "rva": rva, "bytes": size} for role, rva, size in (
+            ("path_delimiter", 0xb48d8, 4), ("hex_digits", 0xba1f0, 16), ("hash_algorithm", 0xb4608, 12),
+            ("MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE", 0xb5ac8, 16),
+            ("MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_GUID", 0xb5ba0, 16),
+            ("MF_DEVSOURCE_ATTRIBUTE_FRIENDLY_NAME", 0xb5bd0, 16),
+            ("MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_SYMBOLIC_LINK", 0xb5bf8, 16))))
+    if native["failures"] or native["decompiler_failures"] or not native["all_selected_pseudocode_captured"]:
+        raise ValueError("Kimberly identity selected native capture is incomplete")
+    native_contract = camera_kimberly_identity_native_contract(native, audit.read(original))
+    return {"schema_version": 1, "kind": "current_camera_kimberly_identity_chain", "product_ids": [3595, 3596],
+        "roles": roles, "source_contract": source_contract, "native": native, "native_contract": native_contract,
+        "upstream_sections": [{"receipt": receipt, "section": name, "canonical_sha256": canonical(previous[name])} for name in names],
+        "host_release": {"version": release["version"], "acquisition": release["receipt"]},
+        "selected_identity_semantics_reviewed": True, "new_native_captures": 0,
+        "source_chain_complete": False, "whole_page_complete": False, "whole_product_complete": False,
+        "target_execution": False, "real_device_operations": False, "rust_implementation": "not_reviewed",
+        "official_dll_comparison": "not_executed", "runtime_acceptance": "unverified", "temporary_artifacts_created": [],
+        "remaining_local_chains": [
+            "The selected current Kimberly browser deviceId -> Host -> native MF/HMAC -> initialized container -> browser-result/FreeMalloc chain is statically reviewed. Native failure cleanup, pointer-copy failure and missing connection-generation guards retain the observed limitations; no session quiescence is claimed.",
+            "Full current UI/MW dependency acquisition, other mounted pages, other products/firmware/transports and unexpanded native dependencies remain independently pending.",
+            "Independent Rust, UI/backend wiring, actual official DLL/device functional comparison and runtime acceptance remain unverified."]}
+
+
+def audit_camera_kimberly_identity_chain(args):
+    import host
+    if (args.family != "accessories" or args.function != "main" or getattr(args, "prepare", False)
+            or sorted(set(args.product or [3595, 3596])) != [3595, 3596]):
+        raise ValueError("camera-kimberly-identity-chain requires PID3595 and PID3596 without production preparation")
+    audit = host.HostLocalAudit()
+    report = {"schema_version": 1, "recorded_at_utc": a.stamp(), "kind": "current_camera_kimberly_identity_chain",
+        "parser": audit.parser_versions, "failures": [], "bounded_observation_complete": False,
+        "source_chain_complete": False, "whole_page_complete": False, "whole_product_complete": False,
+        "target_execution": False, "real_device_operations": False, "rust_implementation": "not_reviewed",
+        "official_dll_comparison": "not_executed", "runtime_acceptance": "unverified"}
+    try:
+        for name in ("tools/families.py", "tools/host.py", "tools/frontend.py", "tools/evidence.py"):
+            audit.artifact(a.ROOT / name)
+        report.update(collect_camera_kimberly_identity_chain(audit))
+        report["bounded_observation_complete"] = not report["failures"]
+    except (OSError, ValueError, KeyError, IndexError, TypeError, StopIteration) as error:
+        report["failures"].append(str(error))
+    changed = audit.final_snapshot()
+    if changed:
+        report["failures"].extend("Kimberly identity input changed during query: " + name for name in changed)
+        report["bounded_observation_complete"] = False
+    report.update(tool=identity(Path(__file__)), changed_during_query=changed, snapshot_stable=not changed,
+        complete_originals=list(audit.sources.values()), complete_source_owners=list(audit.owners.values()),
+        verified_artifacts=list(audit.artifacts.values()))
+    destination = a.ROOT / ".analysis/results/frontend/accessories-camera-local-pages-audit.json"
+    host.publish_host_static_query(report, destination, a, "kimberly_identity_chain")
+    print(json.dumps({"receipt": a.rel(destination), "query": "kimberly_identity_chain", "owners": len(audit.owners),
+        "failures": report["failures"], "bounded_observation_complete": report["bounded_observation_complete"]}), flush=True)
+    if report["failures"]:
+        raise ValueError("Current Kimberly identity observation remains unresolved")
+    return report
+
+
+def collect_camera_device_lifecycle(audit):
+    """Continue the retained IMAGE/Host evidence through this camera DLL's owners."""
+    import frontend
+    import host
+    receipt = ".analysis/results/frontend/accessories-camera-local-pages-audit.json"
+    previous = json.loads((a.ROOT / receipt).read_bytes())
+    upstream, image = previous["image_host_chain"], previous["image_properties"]
+    for row in (upstream, image):
+        if row["failures"] or not row["bounded_observation_complete"] or not row["snapshot_stable"]:
+            raise ValueError("Camera device upstream IMAGE/Host evidence is unresolved")
+    canonical = lambda value: hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    if upstream["upstream_image"]["canonical_sha256"] != canonical(image):
+        raise ValueError("Camera device IMAGE/Host dependency identity differs")
+    if sorted(row["product_id"] for row in upstream["products"]) != [3595, 3596]:
+        raise ValueError("Camera device upstream product scope changed")
+    for product in upstream["products"]:
+        pid = product["product_id"]
+        for layer, prefix in (("ui", f"accessories-{pid}-"), ("mw", f"accessories-mw-{pid}-")):
+            selected = frontend.current_source_selection(f"https://apps.razer.com/synapse/products/{pid}/{layer}/", audit,
+                candidates=sorted((a.ROOT / ".analysis/inputs/frontend").glob(prefix + "*/acquisition.json")))
+            if selected["acquisition"] != product["source_sets"][layer]["acquisition"]:
+                raise ValueError("Camera device current product acquisition differs")
+    indexed = json.loads(audit.artifact(a.ROOT / ".analysis/inputs.json"))
+    release = host.verified_host_release_receipt(index=indexed)
+    if release["receipt"] != upstream["host_release"]["acquisition"]:
+        raise ValueError("Camera device current Host release changed")
+    audit.artifact(a.ROOT / release["receipt"]["path"], release["receipt"])
+    for dependency in release["verified_dependencies"]:
+        audit.artifact(a.ROOT / dependency["path"], dependency)
+    available = {row["path"]: row for row in host.current_host_asar_members(audit, indexed, release)}
+    for member in upstream["host_release"]["members"]:
+        source, archive, package = member["member"], member["archive"], member["official_package"]
+        raw, container = audit.read(source), audit.read(archive)
+        if available.get(source["path"]) != source or container[source["offset"]:source["offset"] + len(raw)] != raw:
+            raise ValueError("Camera device current Host ASAR/member identity differs")
+        audit.artifact(a.ROOT / package["path"], package)
+    retained, roles, owners = {row["id"]: row for row in upstream["complete_source_owners"]}, {}, {}
+    def keep(role, original, node):
+        key = audit.retain_range("camera_device_" + role, original, node.start_byte, node.end_byte, node.type)
+        roles[role], owners[role] = key, audit.owners[key]
+    for role, key in upstream["roles"].items():
+        row = retained[key]
+        keep(role, row["original"], host.verify_profiles_owner(audit, row))
+    for product in upstream["products"]:
+        prefix = f"mw_{product['product_id']}_"
+        owner = owners[prefix + "camera_adapter"]
+        root = host.verify_profiles_owner(audit, owner)
+        for role, name in (("device_select", "getDevice"), ("connect_device", "connectDevice")):
+            node, _ = audit.callable_member("camera_device_" + prefix + role, owner["original"], root, name)
+            keep(prefix + role, owner["original"], node)
+        selector = owners[prefix + "device_select"]
+        label = audit.binding("camera_device_" + prefix + "device_label", owner["original"], "g", selector["byte_start"])
+        if label["resolution"] != "declaration":
+            raise ValueError("Camera device label selector binding is unresolved")
+        for role, item in (("device_label", label), ("device_products", audit.binding("camera_device_" + prefix + "device_products",
+                owner["original"], "u", label["start_byte"]))):
+            if item["resolution"] != "declaration":
+                raise ValueError("Camera device product selector binding is unresolved")
+            keep(prefix + role, owner["original"], audit.tree(owner["original"]).root_node.descendant_for_byte_range(
+                item["start_byte"], item["end_byte"] - 1))
+    source_contract = camera_device_source_contract(owners)
+    original = upstream["native"]["original"]
+    for manifest in image["native_manifests"]:
+        audit.read(manifest["installer"])
+        raw = json.loads(audit.read(manifest["manifest"]))
+        resource = next(row for row in raw["resources"] if row["resourceName"] == "RzNativeDLLGenericCamera")
+        if (resource != manifest["resource"] or resource["resourceVersion"] != "1.0.35.0"
+                or (resource["sha256"].lower(), resource["size"]) != (original["sha256"], original["bytes"])):
+            raise ValueError("Camera device current native manifest identity differs")
+    native = audit.native_slice(original,
+        ["DeviceInitialize", "DeviceTerminate", "EnumerateCameraList", "StartCamera", "StopCamera", "SetNodeFFIEvent", "FreeMalloc"], depth=0,
+        rvas=(0x3bb10, 0x3bc50, 0x3d4f0, 0x3d940, 0x3d6f0, 0x35020, 0x35000, 0x42f30, 0x42f60,
+            0x4ab30, 0x4adf0, 0x4ae30, 0x4aee0, 0x4b680, 0x4d130, 0x4a9b0, 0x4a3d0, 0x4a460,
+            0x4f610, 0x7e0bc, 0x69ce4, 0x69d14, 0x69d64, 0x4f2a0, 0x4f4e0, 0x4f660, 0x4f830,
+            0x4f1b0, 0x4f3d0, 0x4edf0, 0x4c780, 0x4ca20, 0x3e130, 0x77800, 0x81fa0),
+        regions=tuple({"role": role, "rva": rva, "bytes": size} for role, rva, size in (
+            ("base_refcount", 0xb7b08, 24), ("x_refcount", 0xb7460, 24),
+            ("base_deleting_destructor", 0xb84b8, 8), ("x_deleting_destructor", 0xb8d20, 8),
+            ("CLSID_SystemDeviceEnum", 0xa8388, 16), ("CLSID_VideoInputDeviceCategory", 0xa8398, 16),
+            ("IID_ICreateDevEnum", 0xa83b8, 16), ("IID_IBaseFilter", 0xa83c8, 16),
+            ("IID_IPropertyBag", 0xa4750, 16), ("DEVPKEY_Device_ContainerId", 0xb7188, 20))))
+    if native["failures"] or native["decompiler_failures"]:
+        raise ValueError("Camera device selected complete native lifetime capture is unresolved")
+    native_contract = camera_device_native_contract(native)
+    return {"schema_version": 1, "kind": "current_camera_device_lifecycle", "product_ids": [3595, 3596],
+        "roles": roles, "source_contract": source_contract, "native": native, "native_contract": native_contract,
+        "upstream_sections": [{"receipt": receipt, "section": name, "canonical_sha256": canonical(previous[name])}
+                              for name in ("image_properties", "image_host_chain")],
+        "host_release": {"version": release["version"], "acquisition": release["receipt"]},
+        "remaining_local_chains": [
+            "Finish current product-level media/preview, reconnect and cancellation callers; browser selection, native filter and media tracks are separate owners.",
+            "The selected normal device/refcount/executor destruction is reviewed; no generation guard, complete in-flight-task exclusion or global callback quiescence is proven. Host FreeFFI/unload boundaries remain as the referenced image_host_chain records.",
+            "Current UI/MW full acquisition, other products/firmware/version branches and unexpanded native business dependencies remain independently pending.",
+            "Independent Rust implementation, UI/backend wiring, actual official DLL/device functional comparison and runtime acceptance remain unverified."],
+        "selected_device_lifecycle_semantics_reviewed": True, "source_chain_complete": False,
+        "whole_page_complete": False, "whole_product_complete": False, "target_execution": False,
+        "real_device_operations": False, "rust_implementation": "not_reviewed", "official_dll_comparison": "not_executed",
+        "runtime_acceptance": "unverified", "temporary_artifacts_created": []}
+
+
+def collect_audio_driver_lifecycle(audit):
+    """Continue PID1422 endpoint evidence through its own driver/host lifetime."""
+    import frontend
+    import host
+    receipt = ".analysis/results/frontend/audio-MapAudio-audit.json"
+    previous = json.loads((a.ROOT / receipt).read_bytes())
+    endpoint, dsp = previous["endpoint_local_chain"], previous["seiren_native_dsp"]
+    for row in (endpoint, dsp):
+        if row["failures"] or not row["bounded_observation_complete"] or not row["snapshot_stable"]:
+            raise ValueError("Audio driver upstream endpoint/DSP evidence is unresolved")
+    selected = frontend.current_source_selection("https://apps.razer.com/synapse/products/1422/mw/", audit,
+        candidates=sorted((a.ROOT / ".analysis/inputs/frontend").glob("audio-mw-1422-*/acquisition.json")))
+    if endpoint["source_sets"]["mw"]["acquisition"] != selected["acquisition"] or dsp["source_set"]["acquisition"] != selected["acquisition"]:
+        raise ValueError("Audio driver current MW source selection differs from its upstream evidence")
+    roles, owners, bindings = {}, {}, []
+    retained = {row["id"]: row for row in endpoint["complete_owners"]}
+
+    def keep(role, source, node):
+        key = audit.retain_range("audio_driver_" + role, source, node.start_byte, node.end_byte, node.type)
+        roles[role], owners[role] = key, audit.owners[key]
+        return node
+
+    for role in ("native_wrapper", "native_init", "native_terminate", "native_handleBeforeUnload", "native_handleEvent"):
+        row = retained[endpoint["roles"][role]]
+        keep(role, row["original"], host.verify_profiles_owner(audit, row))
+    source = owners["native_wrapper"]["original"]
+    root = host.verify_profiles_owner(audit, owners["native_wrapper"])
+    for name in ("constructor", "callDLLApi", "deviceInitialize", "setNodeFFIEvent", "getDLLVersion"):
+        node, _ = audit.callable_member("audio_driver_native_" + name, source, root, name)
+        keep("native_" + name, source, node)
+    call = owners["native_callDLLApi"]
+    node = host.verify_profiles_owner(audit, call)
+    ref = next(item.child_by_field_name("object") for item in host._help_nodes(node) if item.type == "member_expression" and item.text == b"E.oE")
+    _, factory, binding_id = host.javascript_import_namespace(audit, selected["originals"], source, ref, role="audio_driver_call_import")
+    if host._help_factory(factory)["module_id"] != 80995:
+        raise ValueError("Audio driver MW send module changed")
+    roles["send_module"] = binding_id
+    for role, export in (("async_export", "oE"), ("legacy_export", "I3")):
+        item = audit.webpack_export("audio_driver_" + role, selected["originals"], 80995, export)
+        original = next(row for row in selected["originals"] if row["path"] == item["original"]["path"])
+        keep(role, original, host._help_binding_node(audit, original, item["binding"]))
+        bindings.append(item)
+    for role, name, owner_role, body in (("mw_bridge", "A", "native_constructor", "{apiElectron:A}=window"),
+            ("export_bridge", "r", "async_export", "{apiElectron:r}=window.top")):
+        parent = owners[owner_role]
+        item = audit.binding("audio_driver_" + role, parent["original"], name, parent["byte_start"])
+        if item["resolution"] != "destructuring_requires_value_analysis" or item["body"] != body:
+            raise ValueError("Audio driver lexical preload producer changed")
+        keep(role, parent["original"], audit.tree(parent["original"]).root_node.descendant_for_byte_range(item["start_byte"], item["end_byte"] - 1))
+        bindings.append({"role": role, "original": parent["original"], "binding": item})
+    sources, host_release = _audio_driver_host_sources(audit)
+    for role, suffix, anchor, kinds in (
+        ("preload_support", "electron/preload.js", "supportElectron20:!0", {"pair"}),
+        ("preload_async", "electron/preload.js", "doDLLMainActionAsync:async", {"pair"}),
+        ("preload_legacy", "electron/preload.js", "doDLLAction:(t,e)=>", {"pair"}),
+        ("preload_response", "electron/preload.js", "response:(t,i)=>", {"pair"}),
+        ("host_async_dispatch", "electron/main.js", 'n.handle("ffiPreloadAsync",', {"call_expression"}),
+        ("host_ffi_instance", "electron/main.js", 'eo=new(require("./modules/ffi/FFIPreloadMain"))', {"variable_declarator"}),
+        ("host_ffi_global", "electron/main.js", "b.ffiPreloadMain=eo", {"assignment_expression"})):
+        keys = audit.retain("audio_driver_" + role, sources[suffix], anchor, kinds)
+        if len(keys) != 1:
+            raise ValueError("Audio driver current host owner is ambiguous")
+        roles[role], owners[role] = keys[0], audit.owners[keys[0]]
+    source = sources["electron/modules/ffi/FFIPreloadMain.js"]
+    for role, name in (("host_async", "callDLLAsync"), ("host_configure", "_handleAction_ConfigureFFI"),
+            ("host_invoke", "_callDLLFunctionAsync"), ("host_callback", "_handleAction_SetNodeFFIEvent"), ("host_free", "_handleAction_FreeFFI")):
+        node, _ = audit.callable_member("audio_driver_" + role, source, audit.tree(source).root_node, name)
+        keep(role, source, node)
+    for role, name, parent_role, expected in (
+        ("host_ipc_import", "n", "host_async_dispatch", '{app:e,BrowserWindow:o,ipcMain:n,Menu:i,Tray:t,shell:a,screen:s,nativeImage:r,powerMonitor:c,nativeTheme:l,session:d}=require("electron")'),
+        ("preload_ipc_import", "e", "preload_async", '{contextBridge:t,ipcRenderer:e,webUtils:i}=require("electron")'),
+        ("host_library_import", "n", "host_configure", 'n=require("ffi-napi-rz")')):
+        parent = owners[parent_role]
+        item = audit.binding("audio_driver_" + role, parent["original"], name, parent["byte_start"])
+        if item["resolution"] not in ("declaration", "destructuring_requires_value_analysis") or item["body"] != expected:
+            raise ValueError("Audio driver host import binding changed: " + role)
+        keep(role, parent["original"], audit.tree(parent["original"]).root_node.descendant_for_byte_range(item["start_byte"], item["end_byte"] - 1))
+        bindings.append({"role": role, "original": parent["original"], "binding": item})
+    ffi_declarations = {}
+    expected_abi = {"DeviceInitialize": ["bool", ["string"]], "DeviceTerminate": ["bool", ["string"]],
+        "SetNodeFFIEvent": ["bool", ["pointer"]], "FreeMalloc": ["void", ["pointer"]]}
+    init = host.verify_profiles_owner(audit, owners["native_init"])
+    for node in host._help_nodes(init):
+        key = node.child_by_field_name("key") if node.type == "pair" else None
+        name = key.text.decode() if key is not None else None
+        if name in expected_abi:
+            if name in ffi_declarations or json.loads(node.child_by_field_name("value").text) != expected_abi[name]:
+                raise ValueError("Audio driver current FFI declaration changed: " + name)
+            keep("abi_" + name, owners["native_init"]["original"], node)
+            ffi_declarations[name] = expected_abi[name]
+    if ffi_declarations != expected_abi:
+        raise ValueError("Audio driver current FFI declarations are incomplete")
+    source_contract = audio_driver_source_contract(owners)
+    monitor = dsp["monitor_driver"]
+    if endpoint["native"]["original"] != monitor["marie"]["original"]:
+        raise ValueError("Audio driver Marie original differs from its endpoint dependency")
+    acquired = json.loads(audit.artifact(a.ROOT / selected["acquisition"]["path"], selected["acquisition"]))
+    manifest = monitor["manifest"]
+    if not any(all(row.get(key) == manifest[key] for key in ("path", "sha256", "bytes")) for row in acquired["files"]):
+        raise ValueError("Audio driver resource manifest is outside the current MW acquisition")
+    resources = json.loads(audit.read(manifest))["resourceManifest"]["resources"]
+    resource = next(row for row in resources if row["resourceName"] == "Driver_PID058E")
+    container = monitor["container"]
+    if container["sha256"] != resource["sha256"].lower() or container["bytes"] != resource["size"]:
+        raise ValueError("Audio driver current package resource identity differs")
+    audit.read(container)
+    indexed = json.loads(audit.artifact(a.ROOT / ".analysis/inputs.json"))["inputs"]
+    package = json.loads(audit.artifact(a.ROOT / monitor["extraction_receipt"]["path"], monitor["extraction_receipt"]))
+    if package["container"]["sha256"] != container["sha256"] or not package["input_bytes_unchanged"]:
+        raise ValueError("Audio driver current extraction package changed")
+    package_sources = {}
+    for filename in ("custom.ini", "tlsetupfx_drv.xml", "RazerSeirenV3Pro.inf", "RazerSeirenV3Proapi_x64.dll"):
+        candidates = [row for row in indexed if row.get("container_sha256") == container["sha256"] and Path(row["path"]).name == filename]
+        if len(candidates) != 1:
+            raise ValueError("Audio driver current package member is absent or ambiguous: " + filename)
+        row = candidates[0]
+        if not any(all(item.get(key) == row[key] for key in ("path", "bytes", "sha256")) for item in package["files"]):
+            raise ValueError("Audio driver member has no verified extraction edge")
+        audit.read(row)
+        package_sources[filename] = row
+    if any(package_sources["RazerSeirenV3Proapi_x64.dll"][key] != monitor["driver"]["original"][key]
+           for key in ("path", "bytes", "sha256")):
+        raise ValueError("Audio driver current native differs from the monitor dependency")
+    configuration = audio_driver_configuration_contract(*(audit.read(package_sources[name]) for name in (
+        "custom.ini", "tlsetupfx_drv.xml", "RazerSeirenV3Pro.inf")))
+    marie = audit.native_slice(endpoint["native"]["original"], ["DeviceInitialize", "DeviceTerminate", "SetNodeFFIEvent"], depth=0,
+        rvas=(0x2b50, 0x3c90, 0x4c0c0, 0x4bef0, 0x3ea0, 0x4420, 0x34790, 0x5a6e0, 0x388d0, 0x5c610,
+              0x37ca0, 0x4a50, 0x34f30, 0x38980),
+        regions=({"role": "initialize_lambda", "rva": 0x6db18, "bytes": 24},
+            {"role": "terminate_lambda", "rva": 0x6dae0, "bytes": 24}, {"role": "device_refcount", "rva": 0x6db50, "bytes": 16}))
+    driver = audit.native_slice(package_sources["RazerSeirenV3Proapi_x64.dll"], ["DllRegisterServer", "DllUnregisterServer",
+        "TUSBAUDIO_OpenDeviceByIndex", "TUSBAUDIO_CloseDevice", "TUSBAUDIO_CheckApiVersion", "TUSBAUDIO_GetApiVersion"], depth=0,
+        rvas=(0x10410, 0x4d90, 0x3e20, 0x3da0, 0x55f0, 0x10ef0, 0xa740, 0xa700, 0x95c0, 0x9150, 0x2f70,
+              0x3b90, 0x10b20, 0x5020, 0x5160), regions=({"role": "device_vtable", "rva": 0x38488, "bytes": 16},))
+    if any(row["failures"] or row["decompiler_failures"] for row in (marie, driver)):
+        raise ValueError("Audio driver selected native lifecycle capture is incomplete")
+    native_contract = audio_driver_native_contract(marie, driver)
+    canonical = lambda value: hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    return {"schema_version": 1, "kind": "current_audio_driver_lifecycle", "product_id": 1422,
+        "roles": roles, "bindings": bindings, "ffi_declarations": ffi_declarations,
+        "source_set": {key: selected[key] for key in ("name", "acquisition", "capture", "capture_failures",
+            "failed_acquisition", "unresolved_acquisition", "candidate_decisions")}, "host_release": host_release,
+        "upstream_sections": [{"receipt": receipt, "section": section, "canonical_sha256": canonical(previous[section])}
+            for section in ("endpoint_local_chain", "seiren_native_dsp")],
+        "package": {"manifest": manifest, "resource": resource, "container": container,
+            "extraction_receipt": monitor["extraction_receipt"], "members": package_sources},
+        "configuration": configuration, "source_contract": source_contract, "marie": marie, "driver": driver,
+        "native_contract": native_contract, "selected_driver_semantics_reviewed": True,
+        "remaining_local_chains": [
+            "Current package registration declarations, API version compatibility and selected current Host/Marie/API owners are statically reviewed. Actual registry contents, registered path and loaded module were not observed or executed.",
+            "DeviceTerminate only enqueues container removal; the meter-thread destructor waits 1000ms and continues after timeout. All queue consumers, reconnect races, outstanding native calls and endpoint/driver callback quiescence remain unresolved; host FreeFFI does not release its maps.",
+            "Other products, kernel/installer execution, all driver notification branches, independent Rust implementation, UI/backend wiring and actual corresponding official DLL/device comparison remain separate unfinished work."],
+        "source_chain_complete": False, "whole_product_complete": False, "target_execution": False,
+        "real_device_operations": False, "rust_implementation": "not_reviewed", "official_dll_comparison": "not_executed",
+        "runtime_acceptance": "unverified", "temporary_artifacts_created": []}
+
+
+def audio_seiren_monitor_contract(marie, driver):
+    """Check the physical nine-argument monitor calls against captured instructions."""
+    def instructions(slice_):
+        return {int(row["rva"], 16): row for function in slice_["complete_functions"]
+                for row in function["capture"]["assembly"]}
+    sources = {"marie": instructions(marie), "driver": instructions(driver)}
+    checks = (("marie", 0x4e3ee, "41b101"), ("marie", 0x4e3f6, "450fb6c1"),
+              ("marie", 0x4e40c, "b20a"), ("marie", 0x4e40e, "c644242000"),
+              ("marie", 0x4e5bd, "c644242001"), ("marie", 0x4e60e, "c644242002"),
+              ("marie", 0x4e658, "c644242003"), ("marie", 0x4e588, "c744244064000000"),
+              ("marie", 0x4e59d, "41b102"), ("marie", 0x4e5a8, "c744243002000000"),
+              ("marie", 0x4e5b5, "41b001"), ("driver", 0x1825, "440fb6ca"),
+              ("driver", 0x1829, "8bd1"), ("driver", 0x1837, "4533c0"),
+              ("driver", 0x17c7, "41b001"), ("driver", 0x9f1f, "6641c1e108"),
+              ("driver", 0x9f2c, "66440bc8"), ("driver", 0x9f33, "66c1e208"),
+              ("driver", 0xa10f, "ba86208880"), ("driver", 0xa1ff, "ba81208880"))
+    checked = []
+    for module, rva, expected in checks:
+        actual = sources[module].get(rva)
+        if actual is None or actual["bytes"] != expected:
+            raise ValueError("Current Seiren monitor physical ABI changed at " + module + ":" + hex(rva))
+        checked.append({"module": module, "rva": hex(rva), "bytes": expected, "instruction": actual["text"]})
+    return {"instruction_assertions": checked,
+        "mute": {"entity": 10, "request": 1, "selector": 1, "channels": [0], "payload_bytes": 1, "timeout": 100},
+        "volume": {"entity": 10, "request": 1, "selector": 2, "channels": [1, 2, 3], "payload_bytes": 2, "timeout": 100},
+        "ioctl_set": "0x80882081", "ioctl_get": "0x80882086", "ioctl_header_bytes": 24,
+        "semantics": "The x64 caller supplies handle,entity,request,selector,channel,payload,size,bytesTransferred*,timeout. Pseudocode omits live register/stack arguments. Set maps direction0 to A150; Get maps direction1 to A060. Header fields are dword1,dword1,dword1,request byte,padding0,wValue=(selector<<8)|channel,wIndex=entity<<8,timeout. Driver I/O always waits with0xffffffff despite the header timeout100. Volume issues all three channels even after a nonzero prior result and returns E_FAIL if any is nonzero; mute sends enabled==0. No restore/readback is implied. Wait uses1000ms timeout iterations, CancelIo is followed by terminal completion, event belongs to the device owner, and the per-request locks release after completion.",
+        "runtime_acceptance": "unverified", "whole_driver_semantics_complete": False}
+
+
+def collect_audio_seiren_native_dsp(audit):
+    import frontend
+    root = a.ROOT / ".analysis/inputs/frontend"
+    selected = frontend.current_source_selection("https://apps.razer.com/synapse/products/1422/mw/", audit,
+        candidates=sorted(root.glob("audio-mw-1422-*/acquisition.json")))
+    previous = json.loads((a.ROOT / ".analysis/results/frontend/audio-MapAudio-audit.json").read_bytes())["seiren_current_mw"]
+    if previous["failures"] or not previous["bounded_observation_complete"] or previous["source_sets"]["mw"]["acquisition"] != selected["acquisition"]:
+        raise ValueError("Current Seiren DSP upstream MW identity differs or is unresolved")
+    chain = audio_seiren_native_dsp_chain(audit, selected["originals"])
+    owners = {row["id"]: row for row in previous["complete_owners"]}
+    for role in ("ui_parametricEQReducer", "ui_eqEffectReducer", "manager_taskRunnerSetDevice",
+                 "manager_restoreDeviceData", "hid_sendCommand", "hid__getUSBTransferInResult"):
+        owner = owners[previous["chain"]["roles"][role]]
+        key = audit.retain_range("seiren_dsp_upstream_" + role, owner["original"], owner["byte_start"], owner["byte_end"], owner["syntax"])
+        if audit.owners[key]["body_sha256"] != owner["body_sha256"]:
+            raise ValueError("Current Seiren DSP upstream owner changed")
+        chain["roles"]["upstream_" + role] = key
+    manifest = previous["native_gain"]["manifest"]
+    resources = json.loads(audit.read(manifest))["resourceManifest"]["resources"]
+    resource = next(row for row in resources if row["resourceName"] == "Driver_PID058E")
+    indexed = json.loads(audit.artifact(a.ROOT / ".analysis/inputs.json"))["inputs"]
+    container = next(row for row in indexed if row.get("sha256") == resource["sha256"].lower() and row.get("bytes") == resource["size"])
+    audit.read(container)
+    driver = next(row for row in indexed if row.get("container_sha256") == container["sha256"]
+                  and Path(row["path"]).name == "RazerSeirenV3Proapi_x64.dll")
+    extraction = driver["extraction_receipt"]
+    package = json.loads(audit.artifact(a.ROOT / extraction["path"], extraction))
+    if (package["container"]["sha256"] != container["sha256"] or not package.get("input_bytes_unchanged")
+            or not any(row["path"] == driver["path"] and row["sha256"] == driver["sha256"]
+                       and row["bytes"] == driver["bytes"] for row in package["files"])):
+        raise ValueError("Current Seiren DSP driver extraction identity differs")
+    marie = audit.native_slice(previous["native_gain"]["slice"]["original"], [], depth=0,
+        rvas=(0x2b50, 0x3c90, 0x4c0c0, 0x4e3a0, 0x4e430, 0x4f990, 0x4faa0, 0x4bef0))
+    driver_slice = audit.native_slice(driver, ["TUSBAUDIO_AudioControlRequestSet", "TUSBAUDIO_AudioControlRequestGet",
+        "TUSBAUDIO_CheckApiVersion", "TUSBAUDIO_GetApiVersion"], depth=0,
+        rvas=(0x9eb0, 0xa060, 0xa150, 0x3fb0, 0x4b20, 0x6f20))
+    if any(row["failures"] or row["decompiler_failures"] for row in (marie, driver_slice)):
+        raise ValueError("Current Seiren DSP selected native capture is incomplete")
+    contract = audio_seiren_monitor_contract(marie, driver_slice)
+    return {"chain": chain, "source_set": {key: selected[key] for key in ("name", "acquisition", "capture",
+        "capture_failures", "failed_acquisition", "unresolved_acquisition", "candidate_decisions")},
+        "upstream_mw": {"receipt": ".analysis/results/frontend/audio-MapAudio-audit.json", "query": "seiren_current_mw",
+            "canonical_sha256": hashlib.sha256(json.dumps(previous, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()).hexdigest()},
+        "monitor_driver": {"manifest": manifest, "driver_resource": resource, "container": container,
+            "extraction_receipt": extraction, "marie": marie, "driver": driver_slice, "contract": contract,
+            "selection_boundary": "Marie resolves CLSID D132049C-EE3B-4647-AC9E-E754FA90FD46/InprocServer32, then GetProcAddress, requiring API5.14; current x64 driver package exports API5.15. The actual registered path and loaded module were not observed. Destructor closes device then FreeLibrary, clears pointers and releases endpoints; callback quiescence remains unresolved."},
+        "remaining_chains": ["Resolve current host doRzDeviceAction to its selected native HID transport and all affected cancellation/connection lifetime branches.",
+            "Resolve driver API configuration/registration to the actual loaded module, device close and shared monitor/endpoint notification quiescence; this selected request ABI and I/O slice is not whole-driver closure.",
+            "Compare independent Rust and official actual DLL/device results for preset, band, HPF, vocal and monitor settings, errors, cancellation, restoration and release."],
+        "source_chain_complete": False, "whole_product_complete": False, "target_execution": False,
+        "rust_implementation": "not_reviewed", "official_dll_comparison": "not_executed", "runtime_acceptance": "unverified"}
+
+
+def audit_audio_driver_lifecycle(args):
+    import host
+    if (args.family != "audio" or args.function != "mw" or (args.product or [1422]) != [1422]
+            or getattr(args, "prepare", False)):
+        raise ValueError("Current audio driver lifecycle review requires PID1422 without production preparation")
+    audit = host.HostLocalAudit()
+    report = {"schema_version": 1, "kind": "current_audio_driver_lifecycle",
+        "recorded_at_utc": a.stamp(), "parser": audit.parser_versions, "product_id": 1422,
+        "failures": [], "bounded_observation_complete": False,
+        "source_chain_complete": False, "whole_product_complete": False,
+        "target_execution": False, "real_device_operations": False,
+        "rust_implementation": "not_reviewed", "official_dll_comparison": "not_executed",
+        "runtime_acceptance": "unverified"}
+    try:
+        for name in ("tools/families.py", "tools/host.py", "tools/frontend.py", "tools/evidence.py"):
+            audit.artifact(a.ROOT / name)
+        report.update(collect_audio_driver_lifecycle(audit))
+        report["bounded_observation_complete"] = True
+    except (OSError, ValueError, KeyError, IndexError, TypeError, StopIteration) as error:
+        report["failures"].append(type(error).__name__ + ": " + str(error))
+    changed = audit.final_snapshot()
+    if changed:
+        report["failures"].extend("Audio driver lifecycle input changed during query: " + name for name in changed)
+        report["bounded_observation_complete"] = False
+    report.update(tool=identity(Path(__file__)), changed_during_query=changed, snapshot_stable=not changed,
+        complete_originals=list(audit.sources.values()), complete_source_owners=list(audit.owners.values()),
+        verified_artifacts=list(audit.artifacts.values()))
+    destination = a.ROOT / ".analysis/results/frontend/audio-MapAudio-audit.json"
+    host.publish_host_static_query(report, destination, a, "driver_lifecycle")
+    print(json.dumps({"receipt": a.rel(destination), "query": "driver_lifecycle", "owners": len(audit.owners),
+        "failures": report["failures"], "bounded_observation_complete": report["bounded_observation_complete"]}), flush=True)
+    if report["failures"]:
+        raise ValueError("Current audio driver lifecycle observation remains unresolved")
+    return report
+
+
+def audit_audio_endpoint_local_chain(args):
+    import host
+    if (args.product or [1422]) != [1422] or getattr(args, "prepare", False):
+        raise ValueError("Current audio endpoint review requires PID1422 without production preparation")
+    audit = host.HostLocalAudit()
+    report = {"schema_version": 1, "kind": "current_audio_endpoint_local_chain",
+        "recorded_at_utc": a.stamp(), "parser": audit.parser_versions, "product_id": 1422,
+        "failures": [], "source_chain_complete": False, "whole_product_complete": False,
+        "target_execution": False, "real_device_operations": False,
+        "rust_implementation": "not_reviewed", "official_dll_comparison": "not_executed",
+        "runtime_acceptance": "unverified"}
+    try:
+        for name in ("tools/families.py", "tools/host.py", "tools/frontend.py", "tools/evidence.py"):
+            audit.artifact(a.ROOT / name)
+        report.update(collect_audio_endpoint_local_chain(audit))
+    except (OSError, ValueError, KeyError, IndexError, TypeError, StopIteration) as error:
+        report["failures"].append(type(error).__name__ + ": " + str(error))
+    report["complete_owners"] = list(audit.owners.values())
+    report["complete_originals"] = list(audit.sources.values())
+    report["verified_artifacts"] = list(audit.artifacts.values())
+    report["changed_during_query"] = audit.final_snapshot()
+    report["snapshot_stable"] = not report["changed_during_query"]
+    report["failures"].extend("Source artifact changed: " + name for name in report["changed_during_query"])
+    report["bounded_observation_complete"] = not report["failures"] and report["snapshot_stable"]
+    destination = a.ROOT / ".analysis/results/frontend/audio-MapAudio-audit.json"
+    host.publish_host_static_query(report, destination, a, "endpoint_local_chain")
+    print(json.dumps({"receipt": a.rel(destination), "query": "endpoint_local_chain", "owners": len(audit.owners),
+        "failures": report["failures"], "bounded_observation_complete": report["bounded_observation_complete"]}), flush=True)
+    if report["failures"]:
+        raise ValueError("Current audio endpoint observation remains unresolved")
+
+
+def audit_audio_seiren_native_dsp(args):
+    import host
+    if (args.product or [1422]) != [1422] or getattr(args, "prepare", False):
+        raise ValueError("Current Seiren DSP review is bounded to PID1422 without production preparation")
+    audit = host.HostLocalAudit()
+    report = {"recorded_at_utc": a.stamp(), "parser": audit.parser_versions, "product_id": 1422,
+              "failures": [], "source_chain_complete": False, "target_execution": False, "whole_product_complete": False,
+              "rust_implementation": "not_reviewed", "official_dll_comparison": "not_executed", "runtime_acceptance": "unverified"}
+    try:
+        for name in ("tools/families.py", "tools/host.py", "tools/frontend.py", "tools/evidence.py"):
+            audit.artifact(a.ROOT / name)
+        report.update(collect_audio_seiren_native_dsp(audit))
+    except (OSError, ValueError, KeyError, IndexError, TypeError, StopIteration) as error:
+        report["failures"].append(type(error).__name__ + ": " + str(error))
+    report["complete_owners"] = list(audit.owners.values())
+    report["complete_originals"] = list(audit.sources.values())
+    report["verified_artifacts"] = list(audit.artifacts.values())
+    report["changed_during_query"] = audit.final_snapshot()
+    report["snapshot_stable"] = not report["changed_during_query"]
+    report["failures"].extend("Source artifact changed: " + name for name in report["changed_during_query"])
+    report["bounded_observation_complete"] = not report["failures"] and report["snapshot_stable"]
+    destination = a.ROOT / ".analysis/results/frontend/audio-MapAudio-audit.json"
+    host.publish_host_static_query(report, destination, a, "seiren_native_dsp")
+    print(json.dumps({"receipt": a.rel(destination), "query": "seiren_native_dsp", "owners": len(audit.owners),
+                      "failures": report["failures"]}), flush=True)
+    if report["failures"]:
+        raise ValueError("Current Seiren DSP observation remains unresolved")
+
+
+def audit_audio_seiren_current_ui(args):
+    """Publish current UI evidence without regenerating production tables."""
+    import frontend
+    import host
+    audit = host.HostLocalAudit()
+    products = args.product or [1422]
+    if products != [1422] or getattr(args, "prepare", False):
+        raise ValueError("Current Seiren UI review is bounded to PID1422 and cannot prepare production data")
+    report = {"recorded_at_utc": a.stamp(), "parser": audit.parser_versions, "product_id": 1422,
+              "failures": [], "target_execution": False, "production_data_regenerated": False,
+              "runtime_acceptance": "unverified", "whole_product_complete": False}
+    try:
+        for name in ("tools/families.py", "tools/host.py", "tools/frontend.py", "tools/evidence.py"):
+            audit.artifact(a.ROOT / name)
+        root = a.ROOT / ".analysis/inputs/frontend"
+        selected = frontend.current_source_selection("https://apps.razer.com/synapse/products/1422/ui/", audit,
+            candidates=[root / "audio-1422-current/acquisition.json", *sorted(root.glob("audio-1422-snapshot-*/acquisition.json"))])
+        report["source_set"] = {key: selected[key] for key in ("name", "canonical_entry_url", "acquisition", "deployment",
+            "capture", "capture_failures", "candidate_decisions", "failed_acquisition", "unresolved_acquisition")}
+        report["chain"] = audio_seiren_current_ui_chain(audit, selected["originals"])
+    except (OSError, ValueError, KeyError, IndexError, TypeError, StopIteration) as error:
+        report["failures"].append(type(error).__name__ + ": " + str(error))
+    report["complete_owners"] = list(audit.owners.values())
+    report["complete_originals"] = list(audit.sources.values())
+    report["verified_artifacts"] = list(audit.artifacts.values())
+    report["changed_during_query"] = audit.final_snapshot()
+    report["snapshot_stable"] = not report["changed_during_query"]
+    report["failures"].extend("Source artifact changed: " + name for name in report["changed_during_query"])
+    destination = a.ROOT / ".analysis/results/frontend/audio-MapAudio-audit.json"
+    host.publish_host_static_query(report, destination, a, "seiren_eq_current_ui")
+    print(json.dumps({"receipt": a.rel(destination), "query": "seiren_eq_current_ui",
+                      "owners": len(audit.owners), "failures": report["failures"]}), flush=True)
+    if report["failures"]:
+        raise ValueError("Current Seiren UI observation remains unresolved")
+
+
 def audit_audio_seiren_eq(args):
     """Retain verified complete Seiren EQ feature/protocol/storage call chains."""
+    if args.family == "audio" and args.function == "ui":
+        return audit_audio_seiren_current_ui(args)
     import base64
     import importlib.metadata
     import sys
@@ -13657,6 +17030,731 @@ def audit_audio_seiren_eq(args):
 
 CAMERA_LEGACY_PRODUCTS = (3587, 3589, 3590, 3592)
 CAMERA_LEGACY_TYPES = {3587: "rzCamKiyo", 3589: "rzCamKiyoPro", 3590: "rzCamKiyoX", 3592: "rzCamKiyoProUltra"}
+
+
+def camera_image_property_chain(audit, pid, ui, middleware):
+    """Retain the current mounted IMAGE preset/property chain for V2 and V2 X."""
+    import host
+    if pid not in (3595, 3596):
+        raise ValueError("Current IMAGE property chain requires PID3595 or PID3596")
+    roles, bindings = {}, []
+
+    def one(rows, label):
+        rows = list(rows)
+        if len(rows) != 1:
+            raise ValueError("Camera IMAGE chain has no unique " + label)
+        return rows[0]
+
+    def keep(role, source, node):
+        roles[role] = audit.retain_range(f"camera_image_{pid}_{role}", source,
+            node.start_byte, node.end_byte, node.type)
+        return node
+
+    def check(condition, role):
+        if not condition:
+            raise ValueError("Camera IMAGE semantics changed: " + role)
+
+    def find(files, needle, kinds, role, *, predicate=None):
+        matches = {}
+        for source in files:
+            if Path(source["path"]).suffix != ".js":
+                continue
+            raw = audit.read(source)
+            for match in re.finditer(re.escape(needle.encode()), raw):
+                node = audit.tree(source).root_node.descendant_for_byte_range(match.start(), match.end() - 1)
+                while node is not None and (node.type not in kinds or predicate and not predicate(node)):
+                    node = node.parent
+                if node is not None:
+                    matches[(source["path"], node.start_byte)] = (source, node)
+        source, node = one(matches.values(), role)
+        return source, keep(role, source, node)
+
+    def exported(files, number, name, role):
+        binding = audit.webpack_export(f"camera_image_{pid}_{role}", files, number, name)
+        source = one((row for row in files if row["path"] == binding["original"]["path"]), role + " original")
+        node = host._help_binding_node(audit, source, binding["binding"])
+        visited = set()
+        while node.type == "variable_declarator" and node.child_by_field_name("value") is not None and node.child_by_field_name("value").type == "identifier":
+            check(node.start_byte not in visited, role + " alias cycle")
+            visited.add(node.start_byte)
+            keep(role + "_alias", source, node)
+            ref = node.child_by_field_name("value")
+            node = host._help_binding_node(audit, source,
+                audit.binding(f"camera_image_{pid}_{role}_alias", source, ref.text.decode(), ref.start_byte))
+        bindings.append({"role": role, "module": number, "export": name,
+                         "original": binding["original"], "binding": binding["binding"]})
+        return source, keep(role, source, node)
+
+    def resolve(files, source, ref, role):
+        if ref.type == "member_expression":
+            namespace = ref.child_by_field_name("object")
+            _, factory, _ = host.javascript_import_namespace(audit, files, source, namespace,
+                role=f"camera_image_{pid}_{role}_import")
+            return exported(files, host._help_factory(factory)["module_id"],
+                ref.child_by_field_name("property").text.decode(), role)
+        check(ref.type == "identifier", role + " direct binding")
+        node = host._help_binding_node(audit, source,
+            audit.binding(f"camera_image_{pid}_{role}", source, ref.text.decode(), ref.start_byte))
+        return source, keep(role, source, node)
+
+    def member(source, root, name, role=None):
+        role = role or name
+        node, key = audit.callable_member(f"camera_image_{pid}_{role}", source, root, name)
+        roles[role] = key
+        return node
+
+    def reference(root, name):
+        matches = [node for node in host._help_nodes(root) if node.type == "member_expression"
+                   and node.child_by_field_name("property").text == name.encode()]
+        check(bool(matches) and len({node.text for node in matches}) == 1, name + " reference")
+        return matches[0]
+
+    def callable_variable(node):
+        value = node.child_by_field_name("value")
+        return value is not None and value.type in {"arrow_function", "function_expression", "call_expression"}
+
+    ui_source, mount = find(ui, "supportWatermark:!1", {"array"}, "mounted_pages")
+    image_mount = one((node for node in host._help_nodes(mount) if node.type == "call_expression"
+        and len(node.child_by_field_name("arguments").named_children) == 2
+        and b"supportWatermark:!1" in node.child_by_field_name("arguments").named_children[1].text), "mounted IMAGE")
+    props = image_mount.child_by_field_name("arguments").named_children[1]
+    mounted_props = {node.child_by_field_name("key").text.decode(): node.child_by_field_name("value").text.decode()
+                     for node in props.named_children if node.type == "pair"}
+    check(mounted_props == {"supportSharpness": "!1", "supportGain": "!1", "isDisabledWhenAutoFrameOn": "!0",
+        "supportWatermark": "!1", "isDisableWhenThirdPartySelected": "!0"}, "actual mounted props")
+    page_source, page = resolve(ui, ui_source, image_mount.child_by_field_name("arguments").named_children[0], "image_page")
+    settings_source, settings = find(ui, "gradient_slider", {"variable_declarator"}, "image_settings", predicate=callable_variable)
+    settings_name = settings.child_by_field_name("name").text
+    check(any(node.type == "call_expression" and node.child_by_field_name("arguments").named_children
+              and node.child_by_field_name("arguments").named_children[0].text == settings_name
+              for node in host._help_nodes(page)), "mounted settings renderer")
+    check(all(token in settings.text for token in (b'isUpdateCustom:!0', b'originalName:', b'userSettings:',
+        b'"brightness"', b'"contrast"', b'"saturation"', b'"whiteBalance"', b'handleCheckbox:', b'stepValue:10',
+        b'minStepper:0,maxStepper:255', b'"custom"')), "image edit and AWB companions")
+    range_ref = one({node.text: node for node in host._help_nodes(settings) if node.type == "member_expression"
+        and node.child_by_field_name("property").text == b"min" and b".whiteBalance.min" in node.text}.values(), "white-balance range")
+    namespace = range_ref.child_by_field_name("object").child_by_field_name("object")
+    destructuring = audit.binding(f"camera_image_{pid}_config", settings_source, namespace.text.decode(), namespace.start_byte)
+    check(destructuring["resolution"] == "destructuring_requires_value_analysis", "DeviceInfo destructuring")
+    declaration = audit.tree(settings_source).root_node.descendant_for_byte_range(destructuring["start_byte"], destructuring["end_byte"] - 1)
+    while declaration.start_byte != destructuring["start_byte"] or declaration.end_byte != destructuring["end_byte"]:
+        declaration = declaration.parent
+    keep("ui_config_destructuring", settings_source, declaration)
+    config_source, config = host._help_runtime_value(audit, ui, settings_source, declaration.child_by_field_name("value"))
+    check(config.type == "object" and len(config.named_children) == 1 and config.named_children[0].type == "spread_element", "actual config spread")
+    keep("ui_config_spread", config_source, config)
+    _, config_factory, _ = host.javascript_import_namespace(audit, ui, config_source, config.named_children[0].named_children[0],
+        role=f"camera_image_{pid}_config_import")
+    config_mid = host._help_factory(config_factory)["module_id"]
+    device_source, device = exported(ui, config_mid, "DeviceInfo", "device_info")
+    info = device.child_by_field_name("value")
+    white_balance = one((node.child_by_field_name("value") for node in info.named_children if node.type == "pair"
+        and node.child_by_field_name("key").text == b"whiteBalance"), "DeviceInfo whiteBalance")
+    white_balance_range = {node.child_by_field_name("key").text.decode(): javascript_integer_literal(node.child_by_field_name("value").text.decode())
+                           for node in white_balance.named_children if node.type == "pair"}
+    check(white_balance_range == {"min": 2800, "max": 7500 if pid == 3595 else 6500}, "white-balance range")
+    _, preview_edit = exported(ui, config_mid, "DisplayPreviewWhenDisabled", "preview_off_editing")
+    check(preview_edit.child_by_field_name("value").text == (b"!0" if pid == 3595 else b"!1"), "preview-off editing branch")
+    action_source, action = resolve(ui, settings_source, reference(settings, "z6"), "image_action")
+    action_type = one((node.child_by_field_name("value") for node in host._help_nodes(action)
+                      if node.type == "pair" and node.child_by_field_name("key").text == b"type"), "image action type")
+    type_source, type_value = host._help_runtime_value(audit, ui, action_source, action_type)
+    keep("image_action_type", type_source, type_value)
+    _, reducer = find(ui, 'type:"ON_SET_IMAGE_PRESETS"', {"switch_case"}, "image_reducer",
+        predicate=lambda node: b"originalName" in node.text)
+    case_source, case_value = host._help_runtime_value(audit, ui, ui_source, reducer.child_by_field_name("value"))
+    keep("image_reducer_type", case_source, case_value)
+    check(type_value.text == case_value.text and type_value.type == "string", "action to reducer identity")
+    check(b'imagePresetData:{...' in reducer.text and b'customImagePreset:' in reducer.text
+          and b'imagePreset:' in reducer.text, "optimistic reducer and payload")
+
+    _, difference = find(ui, "Difference in Profile Brightness", {"variable_declarator"},
+        "image_difference_consumer", predicate=callable_variable)
+    check(all(token in difference.text for token in (b'currentImageSettings.brightness',
+        b'currentImageSettings.contrast', b'currentImageSettings.saturation', b'currentImageSettings.whiteBalance',
+        b'"custom"', b'500')), "source cache difference consumer")
+    _, cache = find(middleware, "getBrightness(),", {"variable_declarator"}, "source_cache", predicate=callable_variable)
+    check(b'Promise.all([n.getBrightness(),n.getContrast(),n.getSaturation(),n.getWhiteBalance()])' in cache.text
+        and b'currentImageSettings:' in cache.text and b'isAuto:JSON.parse(i[3].isAuto||"false")' in cache.text,
+        "standard getter batch and cache")
+    request_source, cache_request = find(middleware, '"getAdvancedCameraSettingsCache"===e.payload', {"if_statement"}, "cache_request")
+    refresh_source, refresh = resolve(middleware, request_source, reference(cache_request, "db"), "cache_request_reader")
+    check(refresh.text == cache.text, "cache request actual reader")
+    published_type = one((node.child_by_field_name("value") for node in host._help_nodes(cache_request)
+                         if node.type == "pair" and node.child_by_field_name("key").text == b"type"
+                         and node.child_by_field_name("value").type == "member_expression"), "cache response type")
+    published_source, published = host._help_runtime_value(audit, middleware, request_source, published_type)
+    keep("cache_response_type", published_source, published)
+    response_source, response = find(ui, "currentCameraSettings:E.payload", {"switch_case"}, "cache_response_reducer")
+    response_type_source, response_type = host._help_runtime_value(audit, ui, response_source, response.child_by_field_name("value"))
+    keep("cache_response_reducer_type", response_type_source, response_type)
+    check(published.text == response_type.text and published.type == "string", "cache producer to reducer identity")
+    root_source, cache_mount = find(ui, 'payload:"getAdvancedCameraSettingsCache"', {"method_definition"}, "ui_cache_request",
+        predicate=lambda node: node.child_by_field_name("name").text == b"componentDidMount")
+    root = cache_mount.parent
+    while root is not None and root.type not in {"class_declaration", "class"}:
+        root = root.parent
+    check(root is not None and root.start_byte <= mount.start_byte < mount.end_byte <= root.end_byte,
+          "actual product cache request mount")
+    member(root_source, root, "componentWillUnmount", "ui_product_unmount")
+
+    dispatch_source, dispatch = find(middleware, 'case"ON_SET_IMAGE_PRESETS"', {"switch_case"}, "image_dispatch")
+    check(b'imagePresetData:' in dispatch.text and b'.executeEventTask(' in dispatch.text, "current image dispatch")
+    called = one((node for node in host._help_nodes(dispatch) if node.type == "call_expression"
+        and node.child_by_field_name("function").type == "parenthesized_expression"), "image task maker call")
+    callref = one((node for node in host._help_nodes(called.child_by_field_name("function"))
+                   if node.type == "member_expression"), "image task maker import")
+    maker_source, maker = resolve(middleware, dispatch_source, callref, "image_task_maker")
+    check(all(token in maker.text for token in (b'taskMakerSetImagePreset: no active profile', b'NORMAL_SKIPPABLE',
+        b'.imagePreset,', b'.imageMode', b'.dataSet=', b'.nextVersion(', b'.Pf)(')), "profile persistence and queue")
+    runner_source, runner = resolve(middleware, maker_source, reference(maker, "DtK"), "image_runner")
+    result_source, result = resolve(middleware, maker_source, reference(maker, "Y61"), "image_result_consumer")
+    write_cases = [json.loads(node.child_by_field_name("value").text) for node in host._help_nodes(runner)
+                   if node.type == "switch_case"]
+    check(write_cases == ["brightness", "contrast", "saturation", "whiteBalance", "sharpness", "gain"], "preset write order")
+    check(b'["brightness","contrast","saturation","whiteBalance","sharpness","gain"]' in runner.text
+        and b'.signal.aborted' in runner.text and b'new Error("canceled")' in runner.text
+        and b'.result=!0' in runner.text and b'.result=!1' in runner.text
+        and b'.status="completed"' in runner.text and b'.getWhiteBalance(' not in runner.text,
+        "preset completion and cancellation")
+    setter_calls = [node for node in host._help_nodes(runner) if node.type == "call_expression"
+        and node.child_by_field_name("function").type == "member_expression"
+        and node.child_by_field_name("function").child_by_field_name("property").text.startswith(b"set")]
+    check([node.child_by_field_name("function").child_by_field_name("property").text.decode()
+           for node in setter_calls] == ["setBrightness", "setContrast", "setSaturation", "setWhiteBalance", "setSharpness", "setGain"],
+        "native setter selection")
+    check(all(node.parent.type == "yield_expression" for node in setter_calls)
+          and all(node.parent.parent.type == "expression_statement" for node in setter_calls[:4]),
+          "ignored setter acknowledgements")
+    check(all(node.child_by_field_name("function").type == "member_expression"
+              and node.child_by_field_name("function").child_by_field_name("object").text == b"console"
+              for node in host._help_nodes(result) if node.type == "call_expression"), "log-only result consumer")
+
+    manager_source, manager = resolve(middleware, maker_source, reference(maker, "RzTaskManager"), "task_manager")
+    check(b'cancelAllTasks' in manager.text and b'getWebLockName' in manager.text, "shared queue owner")
+    _, queue, _ = one(audit.webpack_factories(middleware, 81988), "shared queue factory")
+    keep("shared_queue_factory", manager_source, queue)
+
+    adapter_source, adapter = find(middleware, 'this.name="rzCamKimberly"', {"class_declaration"}, "camera_adapter")
+    for name in ("getBrightness", "setBrightness", "getContrast", "setContrast", "getSaturation", "setSaturation", "getWhiteBalance", "setWhiteBalance"):
+        node = member(adapter_source, adapter, name, "adapter_" + name)
+        action_name = name[0].upper() + name[1:]
+        check(('action:"' + action_name + '"').encode() in node.text and b'this.containerId' in node.text
+              and b'this.callDLLApi(' in node.text and b'this.isInit' in node.text, "adapter " + name)
+        if name.startswith("get"):
+            check(b'JSON.parse(' in node.text and b'?{}:' in node.text and b'return{}' in node.text, "getter parse boundary " + name)
+        else:
+            missing = b'return{}' if name == "setSaturation" else b'return!1'
+            check(b'actionArgs:[this.containerId,' in node.text and missing in node.text, "setter arguments " + name)
+    for name in ("terminate", "handleBeforeUnload", "init", "destroy"):
+        member(adapter_source, adapter, name, "adapter_" + name)
+    check(b'navigator.locks.request(this.lockName' in audit.owners[roles["adapter_terminate"]]["body"].encode()
+        and b'"DeviceTerminate"' in audit.owners[roles["adapter_terminate"]]["body"].encode(), "adapter release lock")
+    base_source, base = exported(middleware, 32374, "A", "camera_base")
+    member(base_source, base, "callDLLApi", "host_call")
+    check(b'this.channelName' in audit.owners[roles["host_call"]]["body"].encode(), "host channel dispatch")
+
+    feature_source, feature = find(middleware, "hasExtendedUVCExposure:!" + ("0" if pid == 3595 else "1"),
+        {"arrow_function"}, "product_feature")
+    check(b'isAdvancedCamera:!0' in feature.text and b'useFeature("rzDeviceType","rzCamKimberly")' in feature.text
+          and b'name:"RzNativeDLLGenericCamera"' in feature.text, "actual advanced camera registration")
+    return {"product_id": pid, "roles": roles, "bindings": bindings, "mounted_props": mounted_props,
+        "event": "ON_SET_IMAGE_PRESETS", "write_order": write_cases,
+        "white_balance_range": white_balance_range, "preview_off_editing": pid == 3595,
+        "has_extended_uvc_exposure": pid == 3595,
+        "semantics": {
+            "read": "The four standard getters run as one Promise.all batch. Their source cache conversion can turn missing values into zero/false; those are source cache values, not confirmed device readings. The existing CAMERA/SYNAPSE difference owner consumes currentImageSettings.",
+            "edit": "The actually mounted IMAGE renderer submits the complete imagePreset through the reducer's ON_SET_IMAGE_PRESETS payload. First custom edit and AWB preserve the source userSettings companions; sharpness/gain/watermark controls are not mounted for either product.",
+            "persistence": "The selected preset task maker updates the active profile and its version, persists when requested, then enqueues NORMAL_SKIPPABLE imagePreset. Missing active profile returns before device work. This is distinct from the legacy ON_SET_IMAGE_SETTING runner.",
+            "write": "The preset runner checks AbortSignal once before device work, then awaits each selected setter in order. Setter false values are ignored. Missing whiteBalance fields become 0/false; sharpness and gain are called only if present. No getter follows the writes. An uninitialized saturation wrapper returns {}, while the other selected setters return false; neither confirms a device write.",
+            "result": "An exception sets result=false/error; completed is assigned only after the loop. The selected completion consumer only logs completed/failure. Reducer state is optimistic and no result consumer publishes a confirmed device value.",
+            "release": "The retained current task manager owns per-name queues and cancellation. Adapter terminate acquires its instance lock, removes its listener, awaits DeviceTerminate and clears isInit; catch logs and still returns true. destroy and beforeUnload invoke terminate without awaiting it. Per-property COM release is documented separately from whole-session quiescence.",
+            "difference": "3595 registers extended UVC exposure, 3596 does not. Both mount the same standard IMAGE controls; exposure/processing and preview enable differences are not expanded by this property slice."},
+        "source_chain_complete": False, "whole_page_complete": False, "target_execution": False}
+
+
+def camera_image_native_contract(native):
+    """Bind the retained current standard-property IDs, COM flags and releases to bytes."""
+    instructions = {row["rva"]: row for function in native["complete_functions"] for row in function["capture"]["assembly"]}
+    expected = {"0x58b08": "4533c0", "0x58ce8": "41b801000000", "0x590f8": "41b803000000",
+        "0x59908": "41b807000000", "0x5a104": "33d2", "0x5a208": "ba01000000",
+        "0x5a434": "ba03000000", "0x5a898": "ba07000000", "0x4bd4e": "4183f101",
+        "0x4bd52": "41ffc1", "0x4bd65": "ff5020", "0x4be39": "ff5010",
+        "0x4bf53": "ff5028", "0x4c017": "ff5010", "0x4c0bd": "83bc24e400000001"}
+    for rva, raw in expected.items():
+        if rva not in instructions or instructions[rva]["bytes"] != raw:
+            raise ValueError("Camera IMAGE native property ABI changed: " + rva)
+    if not any(row["rva"] == "0xa83d8" and row["raw_hex"] == "6033e1c6ac30d011a18c00a0c9118956"
+               for row in native["verified_data_regions"]):
+        raise ValueError("Camera IMAGE native VideoProcAmp IID changed")
+    functions = {function["capture"]["rva"]: function["capture"] for function in native["complete_functions"]}
+    getter = "\n".join(row["text"] for row in functions["0x4be70"]["pseudocode"]["lines"])
+    setter = "\n".join(row["text"] for row in functions["0x4bce0"]["pseudocode"]["lines"])
+    if not all(text in getter for text in ('"value"', '"isAuto"', 'v31 = 0;', 'v32[0] = 0;', 'if ( (int)v24 < 0 )')) or "v9 >= 0" not in setter:
+        raise ValueError("Camera IMAGE native HRESULT/result boundary changed")
+    return {"properties": {"brightness": 0, "contrast": 1, "saturation": 3, "whiteBalance": 7},
+        "interface": "IAMVideoProcAmp", "set_vtable_offset": 32, "get_vtable_offset": 40,
+        "release_vtable_offset": 16, "auto_flag": 1, "manual_flag": 2,
+        "byte_assertions": [{"rva": rva, "bytes": raw, "instruction": instructions[rva]["text"]} for rva, raw in expected.items()],
+        "read_failure": "After successful QI the current getter still serializes its output fields when Get HRESULT is negative; they were initialized to value0/isAuto=false and no HRESULT is included. Unchanged outputs cannot be distinguished from an actual zero reading by the source parser. QI/filter failure yields empty/{} through its wrappers.",
+        "set_result": "Set HRESULT >=0 is an acknowledgement, with no following Get. The local COM interface is released on the selected normal/error branches; the serialized outer method mutex and full-session termination remain separate owners."}
+
+
+def collect_camera_image_properties(audit):
+    import frontend
+    root = a.ROOT / ".analysis/inputs/frontend"
+    products, manifests = [], []
+    for pid in (3595, 3596):
+        selections = {}
+        for layer, prefix in (("ui", f"accessories-{pid}-"), ("mw", f"accessories-mw-{pid}-")):
+            selections[layer] = frontend.current_source_selection(f"https://apps.razer.com/synapse/products/{pid}/{layer}/", audit,
+                candidates=sorted(root.glob(prefix + "*/acquisition.json")))
+        chain = camera_image_property_chain(audit, pid, selections["ui"]["originals"], selections["mw"]["originals"])
+        chain["source_sets"] = {layer: {key: row[key] for key in ("name", "acquisition", "capture", "capture_failures",
+            "failed_acquisition", "unresolved_acquisition", "candidate_decisions")} for layer, row in selections.items()}
+        acquired = json.loads(audit.artifact(a.ROOT / selections["mw"]["acquisition"]["path"], selections["mw"]["acquisition"]))
+        installer = next(row for row in acquired["files"] if row.get("path") and Path(row["path"]).name == "installer-manifest.json")
+        declaration = json.loads(audit.read(installer))
+        manifest = next(row for row in acquired["files"] if row.get("path") and row["url"] == urllib.parse.urljoin(
+            "https://apps.razer.com/" + declaration["baseURL"].rstrip("/") + "/", declaration["latest"]["url"]))
+        resource = next(row for row in json.loads(audit.read(manifest))["resources"] if row["resourceName"] == "RzNativeDLLGenericCamera")
+        if resource["resourceVersion"] != "1.0.35.0":
+            raise ValueError("Camera IMAGE current native version needs independent review")
+        manifests.append({"product_id": pid, "installer": installer, "manifest": manifest, "resource": resource})
+        products.append(chain)
+    if any((row["resource"]["sha256"].lower(), row["resource"]["size"]) !=
+           (manifests[0]["resource"]["sha256"].lower(), manifests[0]["resource"]["size"]) for row in manifests):
+        raise ValueError("Camera IMAGE product native identities differ")
+    indexed = json.loads(audit.artifact(a.ROOT / ".analysis/inputs.json"))["inputs"]
+    resource = manifests[0]["resource"]
+    original = next(row for row in indexed if row.get("sha256") == resource["sha256"].lower() and row.get("bytes") == resource["size"])
+    native = audit.native_slice(original, ["GetBrightness", "SetBrightness", "GetContrast", "SetContrast",
+        "GetSaturation", "SetSaturation", "GetWhiteBalance", "SetWhiteBalance"], depth=0,
+        rvas=(0x4c780, 0x4ca20, 0x4bce0, 0x4be70), regions=({"role": "IID_IAMVideoProcAmp", "rva": 0xa83d8, "bytes": 16},))
+    if native["failures"] or native["decompiler_failures"]:
+        raise ValueError("Camera IMAGE selected complete native property functions are unavailable")
+    contract = camera_image_native_contract(native)
+    return {"schema_version": 1, "kind": "current_camera_image_property_chain", "products": products,
+        "native": native, "native_manifests": manifests, "native_contract": contract,
+        "remaining_local_chains": [
+            "Current refreshed UI/MW have no complete capture; retained complete AST owners cover only this selected IMAGE chain, not the whole refreshed deployment.",
+            "Join host SendDLLActionMainAsync/native ownership and prove all pending-task cancellation, reconnect and callback quiescence paths; selected COM method releases do not prove whole-session closure.",
+            "Product/firmware branches outside this standard IMAGE slice, independent Rust/UI wiring, actual official DLL/device comparison and runtime acceptance need their own current evidence."],
+        "source_chain_complete": False, "whole_page_complete": False, "whole_product_complete": False,
+        "rust_implementation": "not_reviewed", "official_dll_comparison": "not_executed",
+        "runtime_acceptance": "unverified", "target_execution": False, "temporary_artifacts_created": []}
+
+
+def audit_camera_image_properties(args):
+    import host
+    if (args.family != "accessories" or args.function != "main" or getattr(args, "prepare", False)
+            or sorted(set(args.product or [3595, 3596])) != [3595, 3596]):
+        raise ValueError("camera-image-properties requires PID3595 and PID3596 without production preparation")
+    audit = host.HostLocalAudit()
+    report = {"recorded_at_utc": a.stamp(), "kind": "current_camera_image_property_chain", "parser": audit.parser_versions,
+        "failures": [], "source_chain_complete": False, "whole_page_complete": False, "whole_product_complete": False,
+        "target_execution": False, "rust_implementation": "not_reviewed", "official_dll_comparison": "not_executed",
+        "runtime_acceptance": "unverified"}
+    try:
+        for name in ("tools/families.py", "tools/host.py", "tools/frontend.py", "tools/evidence.py"):
+            audit.artifact(a.ROOT / name)
+        report.update(collect_camera_image_properties(audit))
+    except (OSError, ValueError, KeyError, IndexError, TypeError, StopIteration) as error:
+        report["failures"].append(type(error).__name__ + ": " + str(error))
+    report["complete_owners"] = list(audit.owners.values())
+    report["complete_originals"] = list(audit.sources.values())
+    report["verified_artifacts"] = list(audit.artifacts.values())
+    report["changed_during_query"] = audit.final_snapshot()
+    report["snapshot_stable"] = not report["changed_during_query"]
+    report["failures"].extend("Source artifact changed: " + name for name in report["changed_during_query"])
+    report["bounded_observation_complete"] = not report["failures"] and report["snapshot_stable"]
+    destination = a.ROOT / ".analysis/results/frontend/accessories-camera-local-pages-audit.json"
+    host.publish_host_static_query(report, destination, a, "image_properties")
+    print(json.dumps({"receipt": a.rel(destination), "query": "image_properties", "owners": len(audit.owners),
+                      "failures": report["failures"]}), flush=True)
+    if report["failures"]:
+        raise ValueError("Current camera IMAGE property observation remains unresolved")
+
+
+def audit_camera_device_lifecycle(args):
+    import host
+    if (args.family != "accessories" or args.function != "main" or getattr(args, "prepare", False)
+            or sorted(set(args.product or [3595, 3596])) != [3595, 3596]):
+        raise ValueError("camera-device-lifecycle requires PID3595 and PID3596 without production preparation")
+    audit = host.HostLocalAudit()
+    report = {"schema_version": 1, "recorded_at_utc": a.stamp(),
+        "kind": "current_camera_device_lifecycle", "parser": audit.parser_versions,
+        "failures": [], "bounded_observation_complete": False, "source_chain_complete": False,
+        "whole_page_complete": False, "whole_product_complete": False, "target_execution": False,
+        "real_device_operations": False, "rust_implementation": "not_reviewed",
+        "official_dll_comparison": "not_executed", "runtime_acceptance": "unverified"}
+    try:
+        for name in ("tools/families.py", "tools/host.py", "tools/frontend.py", "tools/evidence.py"):
+            audit.artifact(a.ROOT / name)
+        report.update(collect_camera_device_lifecycle(audit))
+        report["bounded_observation_complete"] = not report["failures"]
+    except (OSError, ValueError, KeyError, IndexError, TypeError, StopIteration) as error:
+        report["failures"].append(str(error))
+    changed = audit.final_snapshot()
+    if changed:
+        report["failures"].extend("Camera device lifecycle input changed during query: " + name for name in changed)
+        report["bounded_observation_complete"] = False
+    report.update(tool=identity(Path(__file__)), changed_during_query=changed, snapshot_stable=not changed,
+        complete_originals=list(audit.sources.values()), complete_source_owners=list(audit.owners.values()),
+        verified_artifacts=list(audit.artifacts.values()))
+    destination = a.ROOT / ".analysis/results/frontend/accessories-camera-local-pages-audit.json"
+    host.publish_host_static_query(report, destination, a, "device_lifecycle")
+    print(json.dumps({"receipt": a.rel(destination), "query": "device_lifecycle", "owners": len(audit.owners),
+        "failures": report["failures"], "bounded_observation_complete": report["bounded_observation_complete"]}), flush=True)
+    if report["failures"]:
+        raise ValueError("Current camera device lifecycle observation remains unresolved")
+    return report
+
+
+def audit_camera_image_host_chain(args):
+    import host
+    if (args.family != "accessories" or args.function != "main" or getattr(args, "prepare", False)
+            or sorted(set(args.product or [3595, 3596])) != [3595, 3596]):
+        raise ValueError("camera-image-host-chain requires PID3595 and PID3596 without production preparation")
+    audit = host.HostLocalAudit()
+    report = {"recorded_at_utc": a.stamp(), "kind": "current_camera_image_host_chain", "parser": audit.parser_versions,
+        "failures": [], "bounded_observation_complete": False, "source_chain_complete": False,
+        "whole_page_complete": False, "whole_product_complete": False, "target_execution": False,
+        "real_device_operations": False, "rust_implementation": "not_reviewed",
+        "official_dll_comparison": "not_executed", "runtime_acceptance": "unverified"}
+    try:
+        for name in ("tools/families.py", "tools/host.py", "tools/frontend.py", "tools/evidence.py"):
+            audit.artifact(a.ROOT / name)
+        report.update(collect_camera_image_host_chain(audit))
+        report["bounded_observation_complete"] = True
+    except (OSError, ValueError, KeyError, IndexError, TypeError, StopIteration) as error:
+        report["failures"].append(str(error))
+    changed = audit.final_snapshot()
+    if changed:
+        report["failures"].extend("Camera IMAGE host input changed during query: " + name for name in changed)
+        report["bounded_observation_complete"] = False
+    report.update(tool=identity(Path(__file__)), changed_during_query=changed, snapshot_stable=not changed,
+        complete_originals=list(audit.sources.values()), complete_source_owners=list(audit.owners.values()),
+        verified_artifacts=list(audit.artifacts.values()))
+    destination = a.ROOT / ".analysis/results/frontend/accessories-camera-local-pages-audit.json"
+    host.publish_host_static_query(report, destination, a, "image_host_chain")
+    print(json.dumps({"receipt": a.rel(destination), "query": "image_host_chain", "owners": len(audit.owners),
+        "failures": report["failures"], "bounded_observation_complete": report["bounded_observation_complete"]}), flush=True)
+    if report["failures"]:
+        raise ValueError("Current camera IMAGE host observation remains unresolved")
+    return report
+
+
+def camera_image_host_source_contract(owners):
+    """Keep the actual main-process camera path separate from other FFI routes."""
+    checks = {
+        "host_ffi_instance": ('new(require("./modules/ffi/FFIPreloadMain"))({dllRegistry:Ze})',),
+        "host_ffi_global": ('b.ffiPreloadMain=eo',),
+        "host_async_dispatch": ('n.handle("ffiPreloadAsync",async(e,o,n)=>eo.callDLLAsync(e,o,n))',),
+        "preload_async": ('doDLLMainActionAsync:async(t,i)=>await e.invoke("ffiPreloadAsync",t,i)',),
+        "preload_response": ('e.on(t,n)', '()=>{e.removeListener(t,n)}', 'return i(...n)'),
+        "host_constructor": ('this.ffiLibMap=new Map', 'this.ffiCallbackMap=new Map',
+                             'this.ffiMutexMap=new Map'),
+        "host_async": ('await this.ffiMutexMap.get(n).acquire()',
+            'c=await this._handleAction_ConfigureFFI(l,n,a)', 'case"FreeFFI":return!0',
+            'await this._callDLLFunctionAsync(e.libFFI,l,n,a)', 'finally{r&&r()}', 'return c'),
+        "host_configure": ('r.urlList.includes(e)||r.urlList.push(e)',
+            'l={result:!0,reason:"dll already loaded"}', 'n.Library(i.payload.dllPath,i.payload.apiObj)',
+            'this.ffiLibMap.set(t,{urlList:[e],libFFI:a})'),
+        "host_invoke": ('e[t.action].async(...t.payload.actionArgs,(e,a)=>{n(a)})',
+            'e[t.action].async(t.payload.actionArgs,(e,a)=>{n(a)})',
+            'e[t.action].async((e,a)=>{n(a)})',
+            's&&"function"==typeof s.readCString?(o=s.readCString(),r=!0):o=s',
+            'finally{r&&(s&&e.FreeMalloc?e.FreeMalloc(s):'),
+        "host_callback": ('if(this.ffiCallbackMap.get(o))', 'SetNodeFFIEvent already exists, reuse existing',
+            'const i=JSON.parse(n)', 'a.urlList.includes(e.getURL())',
+            '!e.isDestroyed()&&!e.isCrashed()&&!p(e)', 'e.send(i.event,i)',
+            'n.Callback("void",["string"],c)', 'r=a.SetNodeFFIEvent(h),this.ffiCallbackMap.set(o,h)'),
+        "host_free": ('_handleAction_FreeFFI=async(e,n,a)=>{}',),
+        "disposed_webcontents": ('try{return e.mainFrame.url&&!1}catch(e){return!0}',),
+        "host_ipc_import": ('ipcMain:n', 'require("electron")'),
+        "preload_ipc_import": ('ipcRenderer:e', 'require("electron")'),
+        "host_ffi_import": ('n=require("ffi-napi-rz")',),
+        "host_webcontents_import": ('{webContents:e}=require("electron")',),
+        "host_callback_global_import": ('{globalNodeVar:t}=require("../../lib/globalNodeVar")',),
+        "host_global_import": ('{globalNodeVar:b}=require("./lib/globalNodeVar")',),
+        "host_disposed_import": ('{isWebContentsDisposed:p}=require("../../mainSubFunction")',),
+    }
+    for pid in (3595, 3596):
+        prefix = f"mw_{pid}_"
+        checks.update({prefix + "host_call": ('yield(0,r.oE)(this.channelName,e)', 'return console.log('),
+            prefix + "async_export": ('yield r.doDLLMainActionAsync(e,t)', 'catch(n){console.warn(', 'return o'),
+            prefix + "electron_bridge": ('{apiElectron:r}=window.top',),
+            prefix + "adapter_constructor": ('this.channelName="GenericCamera_"+this.productId',
+                'h.response("displayCameraPropertiesDialogClosed",this.handleEvent)'),
+            prefix + "adapter_init": ('navigator.locks.request(this.lockName', 'this.isInit)return console.log(',
+                'this.channelName+="_"+(0,s.jg)(this.dllName)', 'action:"ConfigureFFI"',
+                'this.isInit=!0', 'action:"GetDLLVersion"', 'action:"DeviceInitialize"',
+                'for(let o=0;o<10;o++)', 'if(console.log(', ',n)break;yield(0,s.yy)(100)',
+                'action:"SetNodeFFIEvent"'),
+            prefix + "adapter_terminate": ('this.removeListener()', 'action:"DeviceTerminate"',
+                'yield this.callDLLApi(t),this.isInit=!1', 'return console.log(', ',!0'),
+            prefix + "adapter_handleBeforeUnload": ('this.terminate(),window.removeEventListener',),
+            prefix + "adapter_destroy": ('destroy(){this.terminate()}',),
+            prefix + "adapter_handleEvent": ('this.containerId===(null==t?void 0:t.containerId)&&',
+                'this.eventEmitter.emit("displayCameraPropertiesDialogClosed",t)'),
+            prefix + "image_runner": ('signal.aborted', 'yield t.setBrightness(i[n],!1)',
+                'c.result=!0,c.value.status="completed"'),
+        })
+    for role, tokens in checks.items():
+        if role not in owners or not all(token in owners[role]["body"] for token in tokens):
+            raise ValueError("Camera IMAGE host source contract changed: " + role)
+    for role in ("host_async", "host_invoke", "host_callback"):
+        if any(token in owners[role]["body"] for token in ("AbortSignal", "AbortController", ".cancel", "ffiSubPreload", ".delete(")):
+            raise ValueError("Camera IMAGE host cancellation or release boundary changed: " + role)
+    for pid in (3595, 3596):
+        prefix = f"mw_{pid}_"
+        init, terminate = owners[prefix + "adapter_init"]["body"], owners[prefix + "adapter_terminate"]["body"]
+        ordered = ('this.isInit=!0', 'action:"GetDLLVersion"', 'action:"DeviceInitialize"', 'action:"SetNodeFFIEvent"')
+        if [init.index(token) for token in ordered] != sorted(init.index(token) for token in ordered):
+            raise ValueError("Camera IMAGE host initialization order changed")
+        if terminate.index("this.removeListener()") >= terminate.index('action:"DeviceTerminate"'):
+            raise ValueError("Camera IMAGE host listener release order changed")
+        if any(token in terminate for token in ('action:"FreeFFI"', 'action:"SetNodeFFIEvent"', "cancelAllTasks")):
+            raise ValueError("Camera IMAGE host termination coverage changed")
+        if any("await" in owners[prefix + role]["body"] or "yield" in owners[prefix + role]["body"]
+               for role in ("adapter_destroy", "adapter_handleBeforeUnload")):
+            raise ValueError("Camera IMAGE host unload waiting boundary changed")
+    return {"route": ["camera.callDLLApi", "MW export 88382.oE", "window.top.apiElectron.doDLLMainActionAsync",
+        "preload ffiPreloadAsync invoke", "main FFIPreloadMain.callDLLAsync", "ffi-napi-rz async native call"],
+        "worker": "libffi asynchronous invocation in the main host; no camera FFIProcess isolation route",
+        "channel": "GenericCamera_<productId>_<hash(dllName)>; the retained adapter appends the suffix on each init after isInit became false",
+        "initialization": {"isInit_set_before_device_success": True, "wrapper_attempts": 10,
+            "retry_delay_ms": 100, "device_initialize_success_required_before_set_event": False},
+        "result": {"ffi_error_parameter_checked": False, "exceptions_rethrown": False,
+            "pointer_copy": "readCString then FreeMalloc in finally, only after readCString returned normally",
+            "copy_failure_still_frees_pointer": False, "setter_readback_added": False},
+        "ownership": {"per_channel_mutex": True, "mutex_released_in_finally": True,
+            "configure_reuses_existing_library_and_adds_url": True, "callback_abi": "void(UTF-8 string)",
+            "callback_reused_per_channel": True, "callback_routes_by_current_webcontents_url": True,
+            "free_ffi_branch_returns_true": True, "free_ffi_releases_library_or_callback": False,
+            "termination_unregisters_native_callback": False, "unload_awaits_termination": False,
+            "connection_generation_checked": False, "whole_session_quiescence_proven": False}}
+
+
+def camera_image_host_native_contract(native):
+    """Check selected native ownership against PE instructions and complete bodies."""
+    functions = {row["capture"]["rva"]: row["capture"] for row in native["complete_functions"]}
+    checks = {
+        "0x57500": ("qword_1800D5F78 = a1", "return 1"),
+        "0x57510": ("if ( a1 )", "sub_180077800(a1)", "return 1"),
+        "0x77800": ("sub_180081FA0(lpMem)",),
+        "0x81fa0": ("HeapFree(hHeap, 0, lpMem)", "GetLastError()"),
+        "0x57640": ("v4 = 30", "sub_18003BC50(qword_1800D5F70, a1)", "Sleep(0x3E8u)", "return v6"),
+        "0x3bb10": ("a1 + 40", "a1 + 48", "a2 + v7", "sub_180096AB0(v9, a2, v11)"),
+        "0x3bc50": ("if ( sub_18003BB10(a1, a2) )", "case 0xE0B:", "case 0xE0C:",
+            "CRzDeviceAccess_0E0C", "sub_18004AEE0(v13, v6 + 32)"),
+        "0x57830": ("sub_18003BB10(qword_1800D5F70, a1)", "sub_18004B680(v5)",
+            "sub_18004D130(v7)", "sub_180041940(v17, &v14, (__int64)i)", "return 0"),
+        "0x4b680": ("CRzDeviceAccess::DisconnectDevice", "sub_18004D130(a1", "a1 + 64) = 0", "sub_18004A9B0(a1 + 280"),
+        "0x4d130": ("GetCurrentThreadId()", "sub_18003E130(qword_1800D5F70", "PostMessageW(v3, 0x10u, 0, 0)",
+            "DestroyWindow", "sub_180069D64(&v5, 0)"),
+        "0x4a9b0": ("*(_BYTE *)(a1 + 160) = 0", "sub_180069CE4(a1 + 88)",
+            "GetCurrentThreadId()", "sub_180069D64(v5, 0)", "CRzWaitAsyncThread::Stop"),
+        "0x69d64": ("WaitForSingleObjectEx(*a1, 0xFFFFFFFF, 0)", "CloseHandle(v2)", "return 4"),
+        "0x3e130": ('"displayCameraPropertiesDialogClosed"', '"event"', '"containerId"',
+            "qword_1800D5F78", "v14(v15)", "sub_18000B9F0((__int64)&v20)"),
+    }
+    for rva, tokens in checks.items():
+        body = "\n".join(row["text"] for row in functions.get(rva, {}).get("pseudocode", {}).get("lines", []))
+        if not all(token in body for token in tokens):
+            raise ValueError("Camera IMAGE host native ownership boundary changed: " + rva)
+    instructions = {row["rva"]: row for function in functions.values() for row in function["assembly"]}
+    expected = {"0x57500": "48890d71ea0700", "0x57519": "e8e2020200", "0x576fd": "41be1e000000",
+        "0x57721": "e82a45feff", "0x57731": "b9e8030000", "0x57905": "e8763dffff",
+        "0x57978": "e8b357ffff", "0x579c6": "e8759ffeff", "0x4b720": "ff5010",
+        "0x4d1ad": "e87e0fffff", "0x4d219": "e846cb0100", "0x4aa02": "e85df30100",
+        "0x69d7a": "83caff", "0x69d7d": "ff15c5a50300", "0x69da8": "ff1592a30300",
+        "0x3e367": "ffd3", "0x3e36e": "e87dd6fcff", "0x81fb6": "ff15dc200200"}
+    for rva, raw in expected.items():
+        if rva not in instructions or instructions[rva]["bytes"] != raw:
+            raise ValueError("Camera IMAGE host native ABI changed: " + rva)
+    exports = {row["name"]: row["rva"] for row in native["exports"]}
+    if exports != {"DeviceInitialize": "0x57640", "DeviceTerminate": "0x57830",
+                   "SetNodeFFIEvent": "0x57500", "FreeMalloc": "0x57510"}:
+        raise ValueError("Camera IMAGE host current native exports changed")
+    return {"initialization": {"attempts_per_export": 30, "retry_delay_ms": 1000,
+        "container_lookup_reuses_existing_owner": True, "selected_product_classes": {"3595": "CRzDeviceAccess", "3596": "CRzDeviceAccess_0E0C"}},
+        "callback": {"global_pointer_rva": "0xd5f78", "setter_stores_raw_pointer": True,
+            "event": "displayCameraPropertiesDialogClosed", "payload_fields": ["event", "containerId"],
+            "payload_lifetime": "borrowed serialized string; native destroys its string after callback returns",
+            "event_confirms_image_write": False, "pointer_cleared_by_device_terminate": False},
+        "release": {"container_match_required": True, "missing_owner_returns": False,
+            "disconnects_filter_and_stops_camera_thread": True, "filter_release_vtable_offset": 16,
+            "dialog_close_can_emit_event": True, "thread_join_timeout_ms": "INFINITE",
+            "thread_handle_closed_after_join": True, "same_thread_join_enters_runtime_error": True,
+            "whole_callback_and_task_quiescence_proven": False},
+        "returned_pointer": "FreeMalloc -> thunk -> HeapFree; callback strings do not transfer ownership",
+        "byte_assertions": [{"rva": rva, "bytes": raw, "instruction": instructions[rva]["text"]} for rva, raw in expected.items()]}
+
+
+def collect_camera_image_host_chain(audit):
+    """Join existing IMAGE owners to the current host's actual FFI owner."""
+    import frontend
+    import host
+    receipt = ".analysis/results/frontend/accessories-camera-local-pages-audit.json"
+    upstream = json.loads((a.ROOT / receipt).read_bytes())["image_properties"]
+    if upstream["failures"] or not upstream["bounded_observation_complete"] or not upstream["snapshot_stable"]:
+        raise ValueError("Current camera IMAGE host dependency is not byte-verified")
+    retained = {row["id"]: row for row in upstream["complete_owners"]}
+    roles, owners, products = {}, {}, []
+
+    def keep(role, source, node):
+        key = audit.retain_range("camera_image_host_" + role, source, node.start_byte, node.end_byte, node.type)
+        roles[role], owners[role] = key, audit.owners[key]
+        return node
+
+    def member(role, source, root, name):
+        node, _ = audit.callable_member("camera_image_host_" + role, source, root, name)
+        return keep(role, source, node)
+
+    source_root = a.ROOT / ".analysis/inputs/frontend"
+    for previous in upstream["products"]:
+        pid, selected = previous["product_id"], {}
+        if pid not in (3595, 3596):
+            raise ValueError("Current camera IMAGE host dependency product changed")
+        for layer, prefix in (("ui", f"accessories-{pid}-"), ("mw", f"accessories-mw-{pid}-")):
+            selected[layer] = frontend.current_source_selection(f"https://apps.razer.com/synapse/products/{pid}/{layer}/", audit,
+                candidates=sorted(source_root.glob(prefix + "*/acquisition.json")))
+            if selected[layer]["acquisition"] != previous["source_sets"][layer]["acquisition"]:
+                raise ValueError("Current camera IMAGE host dependency source set changed")
+        prefix, bindings = f"mw_{pid}_", []
+        for role in ("camera_base", "host_call", "camera_adapter", "adapter_init", "adapter_terminate",
+                     "adapter_handleBeforeUnload", "adapter_destroy", "image_runner", "image_result_consumer"):
+            original = retained[previous["roles"][role]]
+            node = host.verify_profiles_owner(audit, original)
+            keep(prefix + role, original["original"], node)
+        source = owners[prefix + "camera_adapter"]["original"]
+        adapter = audit.tree(source).root_node.descendant_for_byte_range(
+            owners[prefix + "camera_adapter"]["byte_start"], owners[prefix + "camera_adapter"]["byte_end"] - 1)
+        for name in ("constructor", "handleEvent"):
+            member(prefix + "adapter_" + name, source, adapter, name)
+        source, caller = owners[prefix + "host_call"]["original"], owners[prefix + "host_call"]
+        node = audit.tree(source).root_node.descendant_for_byte_range(caller["byte_start"], caller["byte_end"] - 1)
+        ref = next(item.child_by_field_name("object") for item in host._help_nodes(node)
+            if item.type == "member_expression" and item.text == b"r.oE")
+        _, factory, binding = host.javascript_import_namespace(audit, selected["mw"]["originals"], source, ref,
+            role="camera_image_host_" + prefix + "base_import")
+        if host._help_factory(factory)["module_id"] != 88382:
+            raise ValueError("Current camera IMAGE host send module changed")
+        exported = audit.webpack_export("camera_image_host_" + prefix + "async_export", selected["mw"]["originals"], 88382, "oE")
+        source = next(row for row in selected["mw"]["originals"] if row["path"] == exported["original"]["path"])
+        keep(prefix + "async_export", source, host._help_binding_node(audit, source, exported["binding"]))
+        bridge = audit.binding("camera_image_host_" + prefix + "electron_bridge", source, "r", exported["binding"]["start_byte"])
+        if bridge["resolution"] != "destructuring_requires_value_analysis" or bridge["body"] != "{apiElectron:r}=window.top":
+            raise ValueError("Current camera IMAGE host preload bridge changed")
+        keep(prefix + "electron_bridge", source, audit.tree(source).root_node.descendant_for_byte_range(
+            bridge["start_byte"], bridge["end_byte"] - 1))
+        bindings.extend((binding, exported, bridge))
+        signatures = {"DeviceInitialize": ["bool", ["string"]], "DeviceTerminate": ["bool", ["string"]],
+            "SetNodeFFIEvent": ["bool", ["pointer"]], "FreeMalloc": ["void", ["pointer"]]}
+        init_owner = owners[prefix + "adapter_init"]
+        init_source = init_owner["original"]
+        init_node = audit.tree(init_source).root_node.descendant_for_byte_range(init_owner["byte_start"], init_owner["byte_end"] - 1)
+        abi = {}
+        for node in host._help_nodes(init_node):
+            key = node.child_by_field_name("key") if node.type == "pair" else None
+            name = key.text.decode() if key is not None else None
+            if name in signatures:
+                if name in abi or json.loads(node.child_by_field_name("value").text) != signatures[name]:
+                    raise ValueError("Current camera IMAGE host FFI declaration changed: " + name)
+                keep(prefix + "abi_" + name, init_source, node)
+                abi[name] = signatures[name]
+        if abi != signatures:
+            raise ValueError("Current camera IMAGE host FFI declarations are incomplete")
+        products.append({"product_id": pid, "roles": {key[len(prefix):]: value for key, value in roles.items() if key.startswith(prefix)},
+            "bindings": bindings, "ffi_declarations": abi, "source_sets": {layer: {key: row[key] for key in (
+                "name", "acquisition", "capture", "capture_failures", "failed_acquisition", "unresolved_acquisition", "candidate_decisions")}
+                for layer, row in selected.items()}})
+    if sorted(row["product_id"] for row in products) != [3595, 3596]:
+        raise ValueError("Current camera IMAGE host dependency omits a product")
+    indexed = json.loads(audit.artifact(a.ROOT / ".analysis/inputs.json"))
+    release = host.verified_host_release_receipt(index=indexed)
+    audit.artifact(a.ROOT / release["receipt"]["path"], release["receipt"])
+    for dependency in release["verified_dependencies"]:
+        audit.artifact(a.ROOT / dependency["path"], dependency)
+    available = host.current_host_asar_members(audit, indexed, release)
+    originals = {row["path"]: row for row in indexed["inputs"]}
+    sources, ancestry = {}, []
+    for suffix in ("electron/main.js", "electron/preload.js", "electron/modules/ffi/FFIPreloadMain.js", "electron/mainSubFunction.js"):
+        candidates = [row for row in available if row["path"].endswith("/" + suffix)]
+        if len(candidates) != 1:
+            raise ValueError("Current camera IMAGE host member is absent or ambiguous: " + suffix)
+        source = candidates[0]
+        archive = originals[source["container"]]
+        packages = [row for row in release["files"] if row.get("path") == archive["container"]
+            and row.get("sha256") == archive["container_sha256"] and row.get("manifest_identity_verified")]
+        raw, archive_raw = audit.read(source), audit.read(archive)
+        if (len(packages) != 1 or source.get("unpacked") or type(source.get("offset")) is not int
+                or source["container_sha256"] != archive["sha256"]
+                or archive_raw[source["offset"]:source["offset"] + len(raw)] != raw):
+            raise ValueError("Current camera IMAGE host member ASAR/package bytes differ")
+        audit.artifact(a.ROOT / packages[0]["path"], packages[0])
+        sources[suffix] = source
+        ancestry.append({"member": source, "archive": archive, "official_package": packages[0], "member_offset_verified": True})
+    def anchor(role, suffix, needle, kinds):
+        source = sources[suffix]
+        keys = audit.retain("camera_image_host_" + role, source, needle, kinds)
+        if len(keys) != 1:
+            raise ValueError("Current camera IMAGE host owner is ambiguous: " + role)
+        key = keys[0]
+        roles[role], owners[role] = key, audit.owners[key]
+    anchor("host_ffi_instance", "electron/main.js", 'eo=new(require("./modules/ffi/FFIPreloadMain"))', {"variable_declarator"})
+    anchor("host_ffi_global", "electron/main.js", "b.ffiPreloadMain=eo", {"assignment_expression"})
+    anchor("host_async_dispatch", "electron/main.js", 'n.handle("ffiPreloadAsync",', {"call_expression"})
+    anchor("preload_response", "electron/preload.js", "response:(t,i)=>", {"pair"})
+    anchor("preload_async", "electron/preload.js", "doDLLMainActionAsync:async", {"pair"})
+    anchor("preload_expose", "electron/preload.js", 'exposeInMainWorld("apiElectron",', {"call_expression"})
+    anchor("disposed_webcontents", "electron/mainSubFunction.js", "module.exports.isWebContentsDisposed=", {"assignment_expression"})
+    source = sources["electron/modules/ffi/FFIPreloadMain.js"]
+    root = audit.tree(source).root_node
+    for role, name in (("host_constructor", "constructor"), ("host_async", "callDLLAsync"),
+            ("host_configure", "_handleAction_ConfigureFFI"), ("host_invoke", "_callDLLFunctionAsync"),
+            ("host_callback", "_handleAction_SetNodeFFIEvent"), ("host_free", "_handleAction_FreeFFI")):
+        member(role, source, root, name)
+    host_bindings = []
+    for role, owner_role, name, body in (
+        ("host_ipc_import", "host_async_dispatch", "n", '{app:e,BrowserWindow:o,ipcMain:n,Menu:i,Tray:t,shell:a,screen:s,nativeImage:r,powerMonitor:c,nativeTheme:l,session:d}=require("electron")'),
+        ("preload_ipc_import", "preload_async", "e", '{contextBridge:t,ipcRenderer:e,webUtils:i}=require("electron")'),
+        ("host_ffi_import", "host_configure", "n", 'n=require("ffi-napi-rz")'),
+        ("host_webcontents_import", "host_callback", "e", '{webContents:e}=require("electron")'),
+        ("host_callback_global_import", "host_callback", "t", '{globalNodeVar:t}=require("../../lib/globalNodeVar")'),
+        ("host_global_import", "host_ffi_global", "b", '{globalNodeVar:b}=require("./lib/globalNodeVar")'),
+        ("host_disposed_import", "host_callback", "p", '{isWebContentsDisposed:p}=require("../../mainSubFunction")')):
+        owner = owners[owner_role]
+        binding = audit.binding("camera_image_host_" + role, owner["original"], name, owner["byte_start"])
+        if binding["resolution"] not in ("declaration", "destructuring_requires_value_analysis") or binding["body"] != body:
+            raise ValueError("Current camera IMAGE host lexical producer changed: " + role)
+        keep(role, owner["original"], audit.tree(owner["original"]).root_node.descendant_for_byte_range(
+            binding["start_byte"], binding["end_byte"] - 1))
+        host_bindings.append({"role": role, "original": owner["original"], "binding": binding,
+            "reviewed_value_analysis": "Exact retained lexical declaration resolves this actual caller's import"})
+    source_contract = camera_image_host_source_contract(owners)
+    native = audit.native_slice(upstream["native"]["original"],
+        ["DeviceInitialize", "DeviceTerminate", "SetNodeFFIEvent", "FreeMalloc"], depth=0,
+        rvas=(0x3bb10, 0x3bc50, 0x3e130, 0x4b680, 0x4d130, 0x4a9b0, 0x69d64, 0x77800, 0x81fa0))
+    if native["failures"] or native["decompiler_failures"]:
+        raise ValueError("Current camera IMAGE host selected native ownership capture is incomplete")
+    native_contract = camera_image_host_native_contract(native)
+    return {"schema_version": 1, "kind": "current_camera_image_host_chain", "products": products, "roles": roles,
+        "host_release": {"version": release["version"], "acquisition": release["receipt"], "members": ancestry},
+        "upstream_image": {"receipt": receipt, "section": "image_properties", "canonical_sha256": hashlib.sha256(
+            json.dumps(upstream, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()).hexdigest()},
+        "host_bindings": host_bindings, "source_contract": source_contract, "native": native, "native_contract": native_contract,
+        "remaining_local_chains": [
+            "This selected IMAGE host path uses FFIPreloadMain, not ffiMain.js or FFIProcess. Complete refreshed UI/MW acquisition and other product/firmware branches remain separate.",
+            "Finish deeper camera enumeration/open/destructor ownership and all reconnect/cancellation callers. Current init appends channel suffix again, FreeFFI does not release maps, DeviceTerminate does not clear the native callback, and unload does not await termination; full pending-task/callback quiescence is unproven.",
+            "The wrapper sets isInit before DeviceInitialize success, ignores all-failed retries, discards libffi callback errors, and only frees returned pointers after readCString returns. These observed source boundaries are not safe-completion claims.",
+            "Independent Rust implementation, UI/backend wiring, actual corresponding official DLL/device comparison and runtime acceptance remain separately unverified."],
+        "selected_host_semantics_reviewed": True, "source_chain_complete": False, "whole_page_complete": False,
+        "whole_product_complete": False, "target_execution": False, "real_device_operations": False,
+        "rust_implementation": "not_reviewed", "official_dll_comparison": "not_executed", "runtime_acceptance": "unverified",
+        "temporary_artifacts_created": []}
 
 
 def camera_legacy_sources():
@@ -17928,6 +22026,315 @@ def audit_gamepad_lighting(args):
         "complete_modules": len(module_bodies), "complete_callables": len(callable_bodies),
         "failures": len(result["failures"]) + sum(len(row["failures"]) for row in products),
         "target_execution": False, "runtime_acceptance": "unverified"}), flush=True)
+
+
+GAMEPAD_MODE_SOCD_SHAPES = {
+    "factory_1457": "dfa052e0324b7f126b3eaec8685492b9e068d29870154a425ad00b95e57a850d",
+    "factory_13065": "e3275492bea9a18ac0cd56fe3058d8429b9ee6498726eac5eb37a0517badfe1d",
+    "factory_58255": "6e89a5835a8e84cdd8d579ff8b6db2b40aa5740de15bc3f9df5c963856ad7f38",
+    "factory_84470": "fb6d591d79f72790210d1cb503bd12540ef7fbccaea7d08374db9671f48949b7",
+    "factory_98773": "e4f4469fdac6a80749e0f61aac28076594416b04ca6923343d2c7259e3c05de5",
+    "factory_78786": "669aef69524f666ba41082af8fbd330958a712d5fd13590915d3ce58167ad073",
+    "factory_10511": "591ea386c860e6dfff7ee51a357868d5963c5e3a32fa5970308403ee5b6cc808",
+    "mode_ui": "f8463166d598508e5186ea420c0870b8b4627201eeb9d9a42c9922ce4fd91c8b",
+    "socd_ui": "0c99e371bbc2a860db0b6b4d520fdc2753f340ddd8b65b1eaa4c95ebf1a6a306",
+    "mode_reducer": "fde3d746a8f54f5367a399855db2bab56f5707b8d7276d4e108751a4e8222efa",
+    "mode_broadcast": "60213926c1b9507c92800c3459d2ad25696715210da8159f4f322847240ced5c",
+    "mode_class": "0055ce8496d405ceb72a2d0520e3c79d479b61ae3a5d7b1f7ba21c5c34be4d48",
+    "socd_class": "2c145b6be09d774e7971df68dceed834a57777c282280dc100e05f41a5a5544c",
+    "slot_projection": "773607bd5db2433ecfab4b9af853bef69ba9f42469e398696d1abf1cfe6dcffd",
+    "mode_decoder": "74b5126ede13af33cb420326fd0b7227ab970024b4d61d9db5f6a821bd2337b7",
+    "socd_decoder": "74b5126ede13af33cb420326fd0b7227ab970024b4d61d9db5f6a821bd2337b7",
+    "mode_loader": "447b0f9a206299415241a90407f4c00fbc5ffe1049dcdda3fdb68fe6bb7566c5",
+    "socd_loader": "8a13d61132edf34f76f120e3827cc64ae505a41f0ead40bd32ed9de8fac01396",
+    "customize_wrapper": "37cf274853b83e973fccc1b902686708701bc09230685c98f980578a075dddb0",
+    "restore_dispatch": "8d4453b97cbdc2cfbba65b68fc80023826ed49d64a24839cc06ffa8361845531",
+    "hardware_socd": "545f302876bad5cc28374a4b40fab6b3f74721dc068461b5c6035a641c2701a7",
+    "socd_descriptor": "bf301f04d6cb1f194abb2e5b464ac1b05d63a1c87b641de20155c97ec687dc4d",
+    "mode_descriptor": "2aaf1c9ea89d594ba2e44467353662c2b9f595f1b6361ad8182a8de0e7646015",
+    "getRuntimeData": "2c9f42a769e815945f9f77613b9df3623d7d6b29dd95d76ddd61e1e95a25f716",
+    "mode_feature_setter": "eee4ae3f6fd74399ebfdb7b0ad31690f9d055d6f6ba3f1a26a94fe57581e865b",
+    "addFeature": "6a7477f17f7b917def51ae7c965f689ada8166d8c9de1871667ae0decf114bcd",
+    "taskMakerHandler": "9ead6f44c6e37938318b52a872ff6d8a4f1f613b51adcdab7113c2a501e42434",
+    "taskRunnerSetDevice": "ac8ad1e94a45f7621de8df5ce79ee3213f490519f83180e07c43ab14c3247721",
+    "onTaskRunnerSetDeviceComplete": "cee8c8415794e51c4a15b98c6c01f7cf394984893c97a38597668b213a8d3612",
+    "restoreDeviceData": "4cb44a52b21139e5e715dffa732e37698685ad1d37d9cae217a620ce362bcd3e",
+    "getControllerModeSwitch": "e3730bbe4137106bf7a304bc4c5d7508ae737dfa48d816a90f9f75c3e5103626",
+    "setControllerModeSwitch": "7b33270efba8df4517a56ce34894434deb89228e1c38ac137d4ea1ad6ae22b30",
+    "getControllerSOCDCleaningOption": "d2e51320a9bd1b1894f8c1f08c1dde92a710f3e05f99a8ccda51876eb4d877c0",
+    "setControllerSOCDCleaningOption": "fc956ccd5dc65284587f830688772af2af70699a9819976739721ec40f4ee043",
+}
+
+
+def verify_gamepad_mode_socd_owner(parser, role, owner):
+    """Reject semantic changes while allowing lexical minifier renaming."""
+    import host
+    body = owner["body"]
+    if owner["syntax"] in {"method_definition", "pair"}:
+        body = "owner={" + body + "}"
+    elif owner["syntax"] != "variable_declarator":
+        body = "owner=" + body
+    shape = host.help_runtime_shape(parser, body)
+    digest = hashlib.sha256(json.dumps(shape, separators=(",", ":")).encode()).hexdigest()
+    if digest != GAMEPAD_MODE_SOCD_SHAPES[role]:
+        raise ValueError("Current 4115 Mode/SOCD owner requires semantic review: " + role)
+    return digest
+
+
+def collect_gamepad_current_mode_socd(audit):
+    """Join the current 4115 mounted controls, storage, queue and protocol."""
+    import host
+    roles, exports, modules = {}, {}, {}
+
+    def walk(node):
+        yield node
+        for child in node.named_children:
+            yield from walk(child)
+
+    def exact(source, owner_id):
+        owner = audit.owners[owner_id]
+        node = audit.tree(source).root_node.descendant_for_byte_range(owner["byte_start"], owner["byte_end"] - 1)
+        while (node.start_byte, node.end_byte) != (owner["byte_start"], owner["byte_end"]):
+            node = node.parent
+        return node
+
+    def keep(role, source, node):
+        key = audit.retain_range(role, source, node.start_byte, node.end_byte, node.type)
+        roles[role] = key
+        if role in GAMEPAD_MODE_SOCD_SHAPES:
+            verify_gamepad_mode_socd_owner(audit.parser, role, audit.owners[key])
+        return node
+
+    def anchored(role, source, anchor, syntax):
+        keys = audit.retain(role, source, anchor, set(syntax), unique=False)
+        if len(keys) != 1:
+            raise ValueError("Current 4115 owner is absent or ambiguous: " + role)
+        return keep(role, source, exact(source, keys[0]))
+
+    def exported(role, module_id, name):
+        row = audit.webpack_export(role, mw_files, module_id, name)
+        exports[role] = row
+        return row
+
+    ui_set, ui_files = audit.current_source_set("gamepad-4115-current")
+    mw_set, mw_files = audit.current_source_set("gamepad-mw-4115-current")
+    source_sets = [ui_set, mw_set]
+    for source_set in source_sets:
+        if source_set["deployment"]["failures"]:
+            raise ValueError("Current 4115 deployment has unresolved identity failures")
+    def mounted(source_set):
+        matches = [row["original"] for row in source_set["deployment"]["sources"]
+                   if row["deployment_role"] == "html_include" and row.get("original")
+                   and Path(row["original"]["path"]).name.startswith("main.")
+                   and Path(row["original"]["path"]).suffix == ".js"]
+        if len(matches) != 1:
+            raise ValueError("Current 4115 mounted main is absent or ambiguous")
+        return matches[0]
+    ui, mw = mounted(ui_set), mounted(mw_set)
+    bootstrap = anchored("bootstrap", mw, '.useFeature("controllerDevice","config",',
+                         {"arrow_function", "function_expression", "function_declaration"})
+    features = javascript_bootstrap_features(bootstrap.text, audit.parser, 47973, "A")
+    registrations = {row["feature"]: row for row in features["registrations"]}
+    generic = keyboard_static_literal(registrations["genericFeature"]["arguments"][2])
+    if generic != {"features": [
+            {"featureKey": "controllerDPadSOCD", "featureConfig": {"initFromDevice": False}},
+            {"featureKey": "deviceReset", "featureConfig": {"isFirmwareReset": False}},
+            {"featureKey": "controllerModeSwitch", "featureConfig": {}}]}:
+        raise ValueError("Current 4115 generic Mode/SOCD registration changed")
+    if registrations["rzDeviceType"]["variant"] != "rzDevice25SagePC":
+        raise ValueError("Current 4115 uses a different protocol adapter")
+    for mid in (1457, 13065, 58255, 84470, 98773, 78786, 10511):
+        matches = audit.webpack_factories(mw_files, mid)
+        if len(matches) != 1:
+            raise ValueError("Current 4115 complete factory is absent or ambiguous: " + str(mid))
+        source, node, factory = matches[0]
+        keep("factory_" + str(mid), source, node)
+        modules[mid] = (source, factory)
+    manager_source, manager = modules[1457]
+    for role, name in (("mode_loader", "controllerModeSwitch"), ("socd_loader", "controllerDPadSOCD")):
+        loaders = [node for node in walk(manager) if node.type == "pair"
+                   and node.child_by_field_name("key").text.decode() == name]
+        if len(loaders) != 1:
+            raise ValueError("Current 4115 feature loader is absent or ambiguous: " + name)
+        keep(role, manager_source, loaders[0])
+    for role, mid, method in (
+            ("getRuntimeData", 58255, "getRuntimeData"),
+            ("mode_feature_setter", 58255, "setControllerModeSwitch"),
+            *((name, 1457, name) for name in ("addFeature", "taskMakerHandler", "taskRunnerSetDevice",
+                                               "onTaskRunnerSetDeviceComplete", "restoreDeviceData")),
+            *((name, 98773, name) for name in ("getControllerModeSwitch", "setControllerModeSwitch",
+                                                "getControllerSOCDCleaningOption", "setControllerSOCDCleaningOption"))):
+        source, factory = modules[mid]
+        node, _ = audit.callable_member(role, source, factory, method)
+        keep(role, source, node)
+    anchored("mode_descriptor", modules[58255][0], 'eventKey:"SET_CONTROLLER_MODE_SWITCH"', {"variable_declarator"})
+    anchored("socd_descriptor", mw, 'eventKey:"SET_CONTROLLER_DPAD_SOCD"', {"variable_declarator"})
+    anchored("hardware_socd", mw, '[handleControllerSOCDCleaningEvent]', {"arrow_function"})
+    anchored("restore_dispatch", mw, 'RzGenericFeatureManager.restoreDeviceData(e)', {"variable_declarator"})
+    mode = anchored("mode_ui", ui, 'className:"mode-switcher-options"', {"variable_declarator"})
+    socd = anchored("socd_ui", ui, 'className:"socd-settings-container"', {"variable_declarator"})
+    reducer = anchored("mode_reducer", ui, '.ON_SET_CONTROLLER_MODE_SWITCH:', {"variable_declarator"})
+    calls = [node for node in walk(reducer) if node.type == "call_expression"
+             and node.child_by_field_name("function").type == "identifier"
+             and len(node.child_by_field_name("arguments").named_children) == 3]
+    if len(calls) != 1:
+        raise ValueError("Current Mode reducer has no unique broadcast helper")
+    callee = calls[0].child_by_field_name("function")
+    bound = audit.binding("mode_broadcast", ui, callee.text.decode(), callee.start_byte)
+    keep("mode_broadcast", ui, exact(ui, bound["owner_id"]))
+    mounts = {}
+    customize = None
+    for role, node in (("mode", mode), ("socd", socd)):
+        mounts[role] = host.javascript_component_mounts(audit, [ui], ui, node, role="4115_" + role)
+        if len(mounts[role]["mounts"]) != 1:
+            raise ValueError("Current 4115 control has ambiguous mounted consumers")
+        mount = exact(ui, mounts[role]["mounts"][0]["owner"])
+        while mount is not None and mount.type not in {"class", "class_declaration"}:
+            mount = mount.parent
+        if mount is None or customize is not None and mount != customize:
+            raise ValueError("Mode/SOCD do not belong to one actual Customize owner")
+        customize = mount
+    if mounts["socd"]["mounts"][0]["props"] != {"isArcadeController": "!0"}:
+        raise ValueError("Current 4115 SOCD is not the mounted arcade branch")
+    keep("customize", ui, customize)
+    name = customize.child_by_field_name("name")
+    wrapped = []
+    for hit in re.finditer(rb"(?<![\w$])" + re.escape(name.text) + rb"(?![\w$])", audit.read(ui)):
+        reference = audit.tree(ui).root_node.descendant_for_byte_range(hit.start(), hit.end() - 1)
+        if reference.type != "identifier" or reference.parent.type != "arguments":
+            continue
+        binding = audit.binding("customize_wrapped_reference", ui, name.text.decode(), reference.start_byte)
+        if binding.get("start_byte") != customize.start_byte or binding.get("end_byte") != customize.end_byte:
+            continue
+        arguments = reference.parent.named_children
+        call = reference.parent.parent
+        function = call.child_by_field_name("function") if call.type == "call_expression" else None
+        if not arguments or arguments[0] != reference or function is None or function.type != "function_expression":
+            continue
+        keep("customize_wrapper", ui, function)
+        declaration = call
+        while declaration is not None and declaration.type != "variable_declarator":
+            declaration = declaration.parent
+        if declaration is not None:
+            keep("customize_connected_owner", ui, declaration)
+            wrapped.append(declaration)
+    if len(wrapped) != 1:
+        raise ValueError("Current 4115 Customize has no unique reviewed props-preserving wrapper")
+    mounts["customize"] = host.javascript_component_mounts(audit, [ui], ui, wrapped[0], role="4115_customize")
+    tabs = []
+    for row in mounts["customize"]["mounts"]:
+        node = exact(ui, row["owner"])
+        descriptor = None
+        while node is not None and node.type != "array":
+            if node.type == "object":
+                descriptor = node
+            node = node.parent
+        if node is None or descriptor is None:
+            continue
+        names = [pair.child_by_field_name("value") for pair in descriptor.named_children
+                 if pair.type == "pair" and pair.child_by_field_name("key").text == b"name"]
+        if len(names) != 1 or names[0].type != "member_expression":
+            raise ValueError("Current 4115 product tab has no static name owner")
+        name = names[0]
+        _, factory, _ = host.javascript_import_namespace(audit, [ui], ui,
+            name.child_by_field_name("object"), role="customize_tab_label_import")
+        mid = host._help_factory(factory)["module_id"]
+        label = audit.webpack_export("customize_tab_label", [ui], mid,
+                                     name.child_by_field_name("property").text.decode())
+        value = exact(ui, label["binding"]["owner_id"]).child_by_field_name("value")
+        if value.type != "string" or keyboard_static_literal(value.text.decode()) != "TAB_CUSTOMIZE":
+            raise ValueError("Current 4115 control is mounted in a different product tab")
+        exports["customize_tab_label"] = label
+        tabs.append(keep("product_tab", ui, node))
+    if len(tabs) != 1:
+        raise ValueError("Current 4115 Customize has no unique actual product tab")
+    protocol = {}
+    for method in ("getControllerModeSwitch", "setControllerModeSwitch",
+                   "getControllerSOCDCleaningOption", "setControllerSOCDCleaningOption"):
+        node = exact(modules[98773][0], roles[method])
+        function = next(child for child in walk(node) if child.type == "call_expression"
+                        and child.child_by_field_name("function").type == "member_expression"
+                        and child.child_by_field_name("function").child_by_field_name("property").text == b"sendCommand")
+        command = function.child_by_field_name("arguments").named_children[0]
+        binding = audit.binding(method + "_command", modules[98773][0], command.text.decode(), command.start_byte)
+        declaration = exact(modules[98773][0], binding["owner_id"])
+        keep(method + "_command", modules[98773][0], declaration)
+        array = next(child for child in walk(declaration) if child.type == "array")
+        protocol[method] = keyboard_static_literal(array.text.decode())
+        if method.startswith("set"):
+            decoders = [child for child in walk(node) if child.type == "call_expression"
+                        and child.child_by_field_name("function").type == "identifier"
+                        and len(child.child_by_field_name("arguments").named_children) == 1]
+            if len(decoders) != 1:
+                raise ValueError("Current 4115 response decoder is absent or ambiguous")
+            decoder = decoders[0].child_by_field_name("function")
+            role = "mode_decoder" if method == "setControllerModeSwitch" else "socd_decoder"
+            binding = audit.binding(role, modules[98773][0], decoder.text.decode(), decoder.start_byte)
+            keep(role, modules[98773][0], exact(modules[98773][0], binding["owner_id"]))
+    expected = {"getControllerModeSwitch": [2, 12, 156], "setControllerModeSwitch": [2, 12, 28],
+                "getControllerSOCDCleaningOption": [2, 12, 155], "setControllerSOCDCleaningOption": [2, 12, 27]}
+    if protocol != expected:
+        raise ValueError("Current 4115 command definitions require semantic review")
+    mode_export = exported("mode_feature", 58255, "ControllerModeSwitchFeature")
+    socd_export = exported("socd_feature", 84470, "ControllerDPadSOCDFeature")
+    for role, row in (("mode_class", mode_export), ("socd_class", socd_export)):
+        source = row["original"]
+        keep(role, source, exact(source, row["binding"]["owner_id"]))
+    slot = exported("slot_projection", 10511, "Fk")
+    keep("slot_projection", slot["original"], exact(slot["original"], slot["binding"]["owner_id"]))
+    adapter_source, adapter_factory = modules[78786]
+    classes = [node for node in walk(adapter_factory) if node.type in {"class", "class_declaration"}]
+    if len(classes) != 1:
+        raise ValueError("Current 4115 SagePC adapter class is absent or ambiguous")
+    adapter = classes[0]
+    heritage = next((node for node in adapter.named_children if node.type == "class_heritage"), None)
+    parent = heritage.named_children[0] if heritage is not None else None
+    if parent is None or parent.type != "member_expression":
+        raise ValueError("Current 4115 adapter has no verified controller ancestor")
+    namespace = parent.child_by_field_name("object")
+    bound = audit.binding("adapter_controller_import", adapter_source, namespace.text.decode(), namespace.start_byte)
+    declaration = exact(adapter_source, bound["owner_id"])
+    request = declaration.child_by_field_name("value")
+    if request.type != "call_expression" or request.child_by_field_name("arguments").named_children[0].text != b"98773":
+        raise ValueError("Current 4115 adapter selects a different controller ancestor")
+    host.javascript_require_binding(audit, adapter_source, request.child_by_field_name("function"))
+    methods = {node.child_by_field_name("name").text.decode() for node in adapter.child_by_field_name("body").named_children
+               if node.type == "method_definition"}
+    if methods.intersection(expected):
+        raise ValueError("Current 4115 adapter overrides a reviewed Mode/SOCD method")
+    keep("adapter", adapter_source, adapter)
+    changed = audit.final_snapshot()
+    if changed:
+        raise ValueError("Current 4115 source changed during query: " + str(changed))
+    return {"recorded_at_utc": a.stamp(), "product_ids": [4115], "source_sets": source_sets,
+        "parser": audit.parser_versions, "roles": roles, "exports": exports, "mounted_consumers": mounts,
+        "bootstrap_features": features, "protocol": protocol,
+        "complete_source_owners": list(audit.owners.values()), "complete_originals": list(audit.sources.values()),
+        "verified_artifacts": list(audit.artifacts.values()), "snapshot_stable": True,
+        "target_execution": False, "whole_page_complete": False, "source_chain_complete": True,
+        "rust_implementation": "incomplete", "ui_backend_wiring": "incomplete",
+        "actual_dll_comparison": "unverified", "runtime_acceptance": "unverified", "failures": [],
+        "semantics": {
+            "mode": "Root document mode; UI deduplicates safe/standard; SET payload [1,0/1]. Runtime reads local storage. No automatic restore or SET-followed-by-GET.",
+            "socd": "Profile-owned immediate radio action. Connection/reset import is disabled; profile restore still writes, reading only if the field is absent. Hardware events update the then-active profile independently.",
+            "queue": "Storage/version/save and explicit UI projection precede the skippable device task. False execute still receives completed value.status in the vendor runner; that log is not a successful ACK.",
+            "boundary": "Current 4115 selected static controls and protocol only. Complete mapping/profile/reset migration, actual DLL/device comparisons and window acceptance remain incomplete."}}
+
+
+def audit_gamepad_current_mode_socd(args):
+    import host
+    if args.family != "gamepad" or args.function != "mw" or set(args.product or [4115]) != {4115}:
+        raise ValueError("gamepad-mode-socd requires the current 4115 middleware branch")
+    audit = host.HostLocalAudit()
+    for filename in ("tools/families.py", "tools/host.py", "tools/evidence.py", "tools/frontend.py"):
+        audit.artifact(a.ROOT / filename)
+    report = collect_gamepad_current_mode_socd(audit)
+    destination = a.ROOT / ".analysis/results/frontend/gamepad-mw-audit.json"
+    host.publish_host_static_query(report, destination, a, "gamepad_mode_socd_current")
+    print(json.dumps({"receipt": a.rel(destination), "query": args.query, "products": [4115],
+        "complete_source_owners": len(report["complete_source_owners"]), "failures": report["failures"],
+        "target_execution": False, "whole_page_complete": False}), flush=True)
+    return report
 
 
 def audit_gamepad_input(args):
@@ -28917,6 +33324,27 @@ def native_rip_u32_initializers(assembly, start, count):
     return [values[start + index * 4] for index in range(count)]
 
 
+def hanbo_sensor_extraction_member(original, package, extraction):
+    """Check extracted-byte lineage while allowing independent index metadata."""
+    fields = ("path", "bytes", "sha256", "container", "container_sha256")
+    if (any(key not in original for key in fields)
+            or original["container"] != package.get("path")
+            or original["container_sha256"] != package.get("sha256")
+            or extraction.get("target_execution") is not False):
+        raise ValueError("External SDK extraction parent identity or static boundary differs")
+    containers = [row for row in extraction.get("containers", [])
+        if row.get("input") == package["path"] and row.get("sha256") == package["sha256"]]
+    if len(containers) != 1:
+        raise ValueError("External SDK extraction parent is absent or ambiguous")
+    container = containers[0]
+    matches = [row for row in container.get("files", []) if row.get("path") == original["path"]]
+    if (container.get("extracted") is not True or container.get("extraction_exit_code") != 0
+            or container.get("input_bytes_unchanged") is not True or len(matches) != 1
+            or any(matches[0].get(key) != original[key] for key in fields)):
+        raise ValueError("External SDK complete static extraction receipt is unresolved")
+    return container
+
+
 def hanbo_sensor_source(audit):
     """Verify the actual external SDK selection and sensor virtual dispatch."""
     index = json.loads(audit.artifact(a.ROOT / ".analysis/inputs.json"))
@@ -28958,13 +33386,16 @@ def hanbo_sensor_source(audit):
         manifests.append({"release": entry, "resources": resource})
     if not manifests:
         raise ValueError("External SDK package has no current release manifest")
-    extraction_path = a.ROOT / ".analysis/results/host-current/inspection.json"
-    extraction = json.loads(audit.artifact(extraction_path))
-    containers = [row for row in extraction["containers"]
-                  if row["input"] == package["path"] and row["sha256"] == package["sha256"]]
-    if (len(containers) != 1 or not containers[0].get("extracted")
-            or containers[0].get("extraction_exit_code") != 0 or original not in containers[0]["files"]):
-        raise ValueError("External SDK complete static extraction receipt is unresolved")
+    extraction_identity = original.get("extraction_receipt")
+    extraction_path = a.ROOT / (extraction_identity["path"] if extraction_identity else
+        ".analysis/results/host-current/inspection.json")
+    extraction = json.loads(audit.artifact(extraction_path, extraction_identity))
+    hanbo_sensor_extraction_member(original, package, extraction)
+    if extraction.get("acquisition"):
+        parent = json.loads(audit.artifact(a.ROOT / extraction["acquisition"]["path"], extraction["acquisition"]))
+        declared = [row for row in parent.get("files", []) if row.get("path") == package["path"]]
+        if len(declared) != 1 or any(declared[0].get(key) != package[key] for key in ("path", "bytes", "sha256")):
+            raise ValueError("External SDK extraction acquisition does not retain its actual parent input")
     provenance = {"original": original, "official_package": package,
                   "release_manifests": manifests, "acquisition": identity(acquisition_path),
                   "extraction": identity(extraction_path)}
@@ -29064,6 +33495,659 @@ def hanbo_sensor_source(audit):
         "gpu_driver_branch": "Display API monitors query temperature target1 first and append the GPU sensor only after a successful actual result. NVAPI branch0x11f2c0 first classifies driver return -220, then attempts capability-selected Q8.8 temperatures through selectors197662269/1711159981, then source thermal-settings selector3814984278. Clock branch0x11f8e0 uses source version retries and per-domain presence flags; source negative sentinels are not measurements. Device discovery/provider priority, complete clock refresh consumers, CPU/other GPU branches and Rust integration still require completion.",
         "remaining": ["Complete each CPU/GPU sensor creation and update branch through actual system or driver calls, including failures, cancellation and cleanup, then independently implement the backend; SDK getter/selector verification alone is not completion"],
         "target_execution": False, "runtime_acceptance": "unverified"}
+
+
+def hanbo_gpu_temperature_roles():
+    return {
+        0x1b4340: "sdk_refresh_and_monitor_dispatch", 0x1b4500: "sdk_close",
+        0x1ba400: "monitor_interface_create_and_failure_delete", 0xb8290: "monitor_interface_constructor",
+        0xb8b70: "monitor_initialization_and_first_refresh", 0xb8320: "monitor_periodic_refresh",
+        0xb1a10: "display_provider_priority_and_observed_monitor_adoption",
+        0x1f5170: "display_monitor_constructor", 0x109070: "monitor_class_refresh_interval_constructor",
+        0x1fc530: "display_monitor_initial_read", 0x1840: "display_monitor_empty_stop",
+        0x1f53d0: "display_monitor_sensor_updates", 0x65a30: "temperature_sensor_constructor",
+        0x627d0: "temperature_sensor_validity", 0x108b70: "monitor_sensor_kind_registration",
+        0x10a050: "global_and_visible_device_sensor_registration", 0x109c20: "sensor_view_rebuild",
+        0x13b090: "visible_valid_kind_sensor_selection", 0x1b1660: "sdk_sensor_getter",
+        0x11f680: "nvapi_provider_constructor", 0x120540: "nvapi_system_driver_resolution_and_matching",
+        0x139a90: "display_device_provider_index_attachment", 0x11f2c0: "nvapi_temperature_read",
+        0x11d3e0: "nvapi_capability_selected_q8_8_temperature", 0x11d2d0: "nvapi_thermal_target_temperature",
+        0xfbd0: "nvapi_sleeping_adapter_probe_dispatch", 0x11d7f0: "nvapi_unload",
+        0xb75a0: "monitor_stop_each_backend", 0xa150: "monitor_interface_deleting_destructor",
+        0xa280: "monitor_list_deleting_walk", 0x7cc0: "display_monitor_deleting_destructor",
+        0x1f50a0: "display_monitor_owned_buffers_release", 0x108040: "monitor_sensor_views_release",
+        0x1ba140: "sdk_stop_interfaces_and_providers", 0x1baef0: "sdk_owner_lists_release",
+        0xaf70: "sdk_owned_list_deleting_walk", 0x26d0: "sdk_interface_list_deleting_walk",
+        0xe990: "temperature_sensor_deleting_destructor", 0x5a70: "nvapi_library_release",
+    }
+
+
+def hanbo_gpu_temperature_slots():
+    return [{"role": role, "vtable_rva": table, "slot_byte_offset": offset, "target_rva": target}
+        for role, table, offset, target in (
+            ("monitor_initialize", 0x30c7b0, 0, 0xb8b70),
+            ("monitor_stop", 0x30c7b0, 8, 0xb75a0),
+            ("monitor_delete", 0x30c7b0, 16, 0xa150),
+            ("display_monitor_update", 0x309ed8, 32, 0x1f53d0),
+            ("display_monitor_delete", 0x309ed8, 40, 0x7cc0),
+            ("display_monitor_first_read", 0x309ed8, 80, 0x1fc530),
+            ("display_monitor_stop_is_empty", 0x309ed8, 88, 0x1840),
+            ("temperature_sensor_delete", 0x30f148, 0, 0xe990),
+            ("temperature_sensor_is_valid", 0x30f148, 8, 0x627d0),
+            ("nvapi_provider_delete", 0x307c08, 0, 0x5a70),
+            ("nvapi_provider_initialize", 0x307c08, 8, 0x120540),
+            ("nvapi_provider_unload", 0x307c08, 16, 0x11d7f0),
+            ("nvapi_provider_temperature", 0x307c08, 64, 0x11f2c0))]
+
+
+def hanbo_gpu_temperature_service_roles(version):
+    selected = {"1.0.29.0": (0x44700, 0x17300, 0x5410, 0x43a00),
+                "1.0.30.0": (0x45d90, 0x17570, 0x5420, 0x45090)}
+    if version not in selected:
+        raise ValueError("Hanbo GPU system service version requires semantic review")
+    return dict(zip(selected[version], ("cpu_gpu_temperature_clock_snapshot", "sensor_result_iteration_and_rounding",
+        "sdk_result_and_byte_bstr_release", "malloc_result_release")))
+
+
+def hanbo_gpu_temperature_projection(sdk, service, constants, *, service_version="1.0.29.0"):
+    """Validate the reviewed target1 producer through its actual result owners."""
+    def text(bodies, rva):
+        body = bodies[rva]
+        if int(body["rva"], 0) != rva or not body.get("assembly") or not body.get("chunks"):
+            raise ValueError("Hanbo GPU temperature owner lacks its complete native body")
+        return "\n".join(row["text"] for row in body["pseudocode"]["lines"])
+
+    pins = {
+        0x1b4340: ["WaitForSingleObject", "0x64u", "sub_1800B8320(v12)", "ReleaseMutex"],
+        0xb8320: ["v5[116]", "++v5[117] != (_DWORD)result", "*(_QWORD *)v5 + 32LL", "v5[117] = 0"],
+        0xb1a10: ["v9 == 131076", "sub_1801F5170", "*(_QWORD *)v11 + 80LL",
+            "*(_QWORD *)v11 + 40LL", "sub_18000A1D0"],
+        0x1f5170: ["a1 + 944", "*(_DWORD *)(a1 + 1576) = -1", "*(_DWORD *)(a1 + 284) = 0x20000"],
+        0x109070: ["if ( a2 != 1024 )", "*(_DWORD *)(a1 + 464) = 2", "*(_DWORD *)(a1 + 468) = 0"],
+        0x1840: ["void nullsub_1()", "  ;"],
+        0x1fc530: ["a1[394] == -1", "*(_QWORD *)a1 + 32LL", "a1[394] = v3", "a1[394] == 1"],
+        0x65a30: ["a1 + 328) = 0x2000", "a1 + 360) = 1065353216", "a2 & 0xFFF"],
+        0x627d0: ["*(float *)(a1 + 348) > -1.0e35"],
+        0x10a050: ["sub_180108B70", "v4 + 152", "a2 + 332", "*(_QWORD *)v6 + 56LL"],
+        0x108b70: ["a1[36]", "a2 + 328) & 0x3FF000", "case 8192:", "a1[40]"],
+        0x13b090: ["*(_QWORD *)v8 + 8LL", "(v8[82] & 0x3FF000) != a3"],
+        0x1b1660: ["sub_18013B090(v14, a3, a4)", "SysAllocStringByteLen", "v16 + 84", "v16 + 87"],
+        0x120540: ['"nvapi64.dll"', '"nvapi_QueryInterface"', "a1 + 2224) = v17(197662269)",
+            "a1 + 2232) = v17(1711159981)", "a1 + 1928) = v17(3814984278LL)", "sub_180139A90(v24, a1, v20)"],
+        0x139a90: ["while ( *v8 != a2 )", "*v9 = a2", "*((_DWORD *)v9 + 2) = a3"],
+        0x11f2c0: ["a1 + 280", "v12 == -1", "== -220", "a2 + 1364) = 1", "sub_18011D3E0", "sub_18011D2D0"],
+        0x11d3e0: ["v21[0] = 133808", "v10(a2, v21)", "!_bittest(&v15, v18)", "v21[21 * v19 + 11]",
+            "++v19 >= 32", "v20[0] = 131240", "(v20[v8 + 10] & 0xFF00) == 0xFF00",
+            "*a4 = (float)(int)v20[v8 + 10] * 0.00390625"],
+        0x11d2d0: ["v7 = 1", "v11 = 131140", "v5(a2, 15, &v11)", "i[1] != v7 || *i <= 0",
+            "*a4 = (float)(int)v13[5 * v8]"],
+        0xb75a0: ["*(_QWORD *)i + 88LL"],
+        0xa150: ["sub_18000A280(v4)"], 0xa280: ["*(_QWORD *)v3 + 40LL"],
+        0x7cc0: ["sub_1801F50A0()", "j_free(Block)"],
+        0x1f50a0: ["a1[196]", "a1[193]", "j_j_free(v2)", "sub_180108040(a1)"],
+        0x108040: ["a1[36]", "a1[40]", "(**v4)(v4, 1)"],
+        0x1ba140: ["*(_QWORD *)i + 24LL", "*(_QWORD *)j + 8LL"],
+        0x1baef0: ["sub_1800026D0(v8)", "sub_18000AF70(v13)", "a1 + 152) = 0"],
+        0xaf70: ["(**v3)(v3, 1)", "*(_QWORD *)(i + 8) = 0"],
+        0x26d0: ["*(_QWORD *)v3 + 16LL"],
+        0xe990: ["Block[46]", "j_j_free(v4)", "j_free(Block)"],
+        0x5a70: ["FreeLibrary(v4)", "Block[36] = 0"],
+    }
+    for rva, required in pins.items():
+        if not all(pin in text(sdk, rva) for pin in required):
+            raise ValueError("Hanbo GPU temperature reviewed branch changed: " + hex(rva))
+    producer = text(sdk, 0x1f53d0)
+    first = producer.index("if ( (*(unsigned int (__fastcall **)(_QWORD, _QWORD, __int64, float *))")
+    end = producer.index("  if ( (*(unsigned int (__fastcall **)(_QWORD, _QWORD, __int64, float *))", first + 5)
+    block = producer[first:end]
+    target = re.search(r'\*\(_QWORD \*\)\(a1 \+ 456\),\s*(\d+),\s*&v385', block)
+    required = ["if ( !*(_QWORD *)(a1 + 944) )", "sub_180065A30((__int64)v5, 1)",
+        '0x100u, "GPU"', "|= 0x4002000u", "sub_18010A050", "sub_180109C20",
+        "+ 336LL) = (int)v385", "v7[87] = v385 * v7[90]", "*(_QWORD *)v7 + 8LL",
+        "if ( v8 > v7[89] )", "v7[89] = v8", "if ( v7[88] > v8 )", "v7[88] = v8"]
+    if target is None or int(target[1]) != 1 or not all(pin in block for pin in required):
+        raise ValueError("Hanbo GPU target1 creation, update or min/max branch changed")
+    if producer.count("*(_DWORD *)(*(_QWORD *)(a1 + 944) + 336LL) =") != 1:
+        raise ValueError("Hanbo GPU target1 raw result gains another writer")
+    snapshot, iterator, getter, free = hanbo_gpu_temperature_service_roles(service_version)
+    current, maximum, minimum = ("v121", "v123[0]", "v122") if service_version == "1.0.29.0" else ("v131", "v133[0]", "v132")
+    service_pins = {
+        snapshot: ["sub_" + format(0x180000000 + iterator, "X") + "(32, 0x2000, 1", "malloc(v1)", "memcpy(v3, v5, v4)"],
+        iterator: ['v10 = "GPUInfo"', "for ( i = 0; i < v12; ++i )", "&& " + current + " > -4294967300.0",
+            *("round(" + field + " * 100.0) / 100.0" for field in (current, maximum, minimum))],
+        getter: ["v6 + 144", "strcpy_s(Destination, 0x80u, Source)", "SysFreeString((BSTR)Source)"],
+        free: ["free("],
+    }
+    for rva, required in service_pins.items():
+        if not all(pin in text(service, rva) for pin in required):
+            raise ValueError("Hanbo GPU service result consumer changed: " + hex(rva))
+    if (constants["q8_8_scale"] != 1 / 256 or constants["sensor_valid_above"] >= -1e34
+            or constants["initial_current"] > constants["sensor_valid_above"]
+            or constants["initial_minimum"] <= 1e34 or constants["initial_maximum"] >= -1e34):
+        raise ValueError("Hanbo GPU temperature PE scale or initial validity constants differ")
+    return {"target": int(target[1]), "sensor_kind": 0x2000, "sensor_identifier": 0x4002001,
+        "temperature_slot": 64, "sensor_owner_offset": 944,
+        "fields": {"raw": 336, "current": 348, "minimum": 352, "maximum": 356, "multiplier": 360},
+        "driver_selectors": {"capabilities": 197662269, "q8_8_temperature": 1711159981,
+            "thermal_settings": 3814984278}, "q8_8_scale": constants["q8_8_scale"],
+        "q8_8_invalid_mask": 0xff00, "sleeping_adapter_status": -220,
+        "sensor_valid_above": constants["sensor_valid_above"],
+        "service_valid_above": -4294967300.0, "service_class": 32,
+        "service_decimals": 2, "service_version": service_version, "failed_refresh_clears_existing_sensor": False,
+        "failed_refresh_is_new_observation": False, "monitor_stop_slot_is_empty": True}
+
+
+def collect_hanbo_gpu_temperature_chain(audit):
+    """Reuse current complete native captures for the consumed GPU target1 path."""
+    import host
+    import struct
+
+    source = hanbo_sensor_source(audit)
+    original = source["original"]
+    sdk_native = verify_native_functions(original, hanbo_gpu_temperature_roles(), hanbo_gpu_temperature_slots())
+    index = json.loads(audit.artifact(a.ROOT / ".analysis/inputs.json"))
+    current = host.host_release_metadata(index)
+    for row in current["verified_dependencies"]:
+        audit.artifact(a.ROOT / row["path"], row)
+    current_receipt = a.ROOT / (".analysis/inputs/host-current/releases/" + current["version"] + "/acquisition.json")
+    current_claim, = [row for row in index["inputs"] if row["path"] == a.rel(current_receipt)]
+    acquired = json.loads(audit.artifact(current_receipt, current_claim))
+    if (acquired.get("source_current_during_acquisition") is not True or acquired.get("complete") is not True
+            or acquired.get("target_execution") is not False or acquired.get("declarations") != current["declarations"]):
+        raise ValueError("Hanbo GPU current host acquisition differs from stable declarations")
+    sources, current_declarations = [], []
+    for name in ("RzSystemService", "Skip_RzDLLService_CPUZ"):
+        declared, = [row for row in current["declarations"] if row["declaration"].get("resourceName") == name]
+        row, = [row for row in acquired["files"] if row.get("url") == declared["url"]]
+        declaration = declared["declaration"]
+        if (row.get("declaration") != declaration or row["sha256"] != declaration["sha256"].lower()
+                or row["bytes"] != declaration["size"]):
+            raise ValueError("Hanbo GPU selected current native resource differs from its declaration")
+        audit.artifact(a.ROOT / row["path"], row)
+        current_declarations.append({"declaration": declared, "input": row})
+        if name == "RzSystemService":
+            sources.append((declaration["resourceVersion"], row, "current_stable_host"))
+        elif row["path"] != original["container"] or row["sha256"] != original["container_sha256"]:
+            raise ValueError("Hanbo GPU current CPUID package changed; selectors require fresh review")
+    legacy = json.loads(audit.artifact(a.ROOT / source["acquisition"]["path"], source["acquisition"]))
+    legacy_service, = [row for row in legacy["files"] if row.get("declaration", {}).get("resourceName") == "RzSystemService"]
+    if legacy_service["sha256"] != sources[0][1]["sha256"]:
+        declaration = legacy_service["declaration"]
+        if legacy_service["sha256"] != declaration["sha256"].lower() or legacy_service["bytes"] != declaration["size"]:
+            raise ValueError("Hanbo GPU retained legacy service differs from its actual declaration")
+        declared_manifests = []
+        for manifest in source["release_manifests"]:
+            if manifest["release"]["path"] not in legacy_service.get("release_manifests", []):
+                continue
+            resource = json.loads(audit.artifact(a.ROOT / manifest["resources"]["path"], manifest["resources"]))
+            if declaration not in resource.get("resources", resource.get("resourceManifest", {}).get("resources", [])):
+                raise ValueError("Hanbo GPU retained service is absent from its actual resource manifest")
+            declared_manifests.append(manifest)
+        if not declared_manifests:
+            raise ValueError("Hanbo GPU retained service has no verified release/resource declaration")
+        sources.append((declaration["resourceVersion"], legacy_service, "retained_prior_host_dependency"))
+
+    def reference(native):
+        audit.artifact(a.ROOT / native["input"]["path"], native["input"])
+        audit.artifact(a.ROOT / native["capture_receipt"]["path"], native["capture_receipt"])
+        functions, bodies = [], {}
+        for row in native["complete_selected_functions"]:
+            artifact, body = row["artifact"], row["capture"]
+            audit.artifact(a.ROOT / artifact["path"], artifact)
+            if row["failures"] or not row["pseudocode_captured"] or not row["assembly_captured"]:
+                raise ValueError("Hanbo GPU selected native owner is incomplete")
+            bodies[int(body["rva"], 0)] = body
+            functions.append({"role": row["role"], "rva": body["rva"], "artifact": artifact,
+                "pseudocode_sha256": hashlib.sha256("\n".join(x["text"] for x in
+                    body["pseudocode"]["lines"]).encode()).hexdigest(),
+                "input_chunks_verified": row["input_chunks_verified"]})
+        return {key: native[key] for key in ("input", "capture_receipt", "image_base", "ida_version",
+            "hexrays_version", "capture_tool", "capture_complete", "functions_total", "functions_captured",
+            "failures", "verified_indirect_slots", "target_execution", "runtime_acceptance")} | {
+                "functions": functions}, bodies
+
+    native_sdk, sdk = reference(sdk_native)
+    native_services, service_bodies = [], []
+    for version, row, scope in sources:
+        native, bodies = reference(verify_native_functions(row, hanbo_gpu_temperature_service_roles(version)))
+        native_services.append({"version": version, "declaration_scope": scope, **native})
+        service_bodies.append((version, bodies))
+    raw = audit.read(original)
+    pe = host.inspect_pe(raw)
+    spans, constants = [], {}
+    for name, rva in (("sensor_valid_above", 0x30f590), ("q8_8_scale", 0x30fb3c),
+            ("initial_current", 0x65afb + 6), ("initial_minimum", 0x65aac + 6),
+            ("initial_maximum", 0x65ab6 + 6)):
+        section, = [part for part in pe["sections"] if part["rva"] <= rva and rva + 4 <= part["rva"] + part["bytes"]]
+        offset = section["file_offset"] + rva - section["rva"]
+        encoded = raw[offset:offset + 4]
+        constants[name] = struct.unpack("<f", encoded)[0]
+        spans.append({"role": name, "rva": hex(rva), "file_offset": offset, "bytes": encoded.hex()})
+    projections = [hanbo_gpu_temperature_projection(sdk, service, constants, service_version=version)
+        for version, service in service_bodies]
+    return {"schema_version": 1, "kind": "current_hanbo_gpu_temperature_chain", "product_id": 3893,
+        "tool": identity(Path(__file__)), "native": {"sdk": native_sdk, "services": native_services},
+        "current_host": {"version": current["version"], "metadata": current["metadata_receipt"],
+            "acquisition": identity(current_receipt), "selected_declarations": current_declarations},
+        "source_provenance": {key: source[key] for key in ("original", "official_package",
+            "release_manifests", "acquisition", "extraction", "acquisition_scope")},
+        "pe_constants": {"values": constants, "spans": spans}, "service_projections": projections,
+        "target1_producer_and_result_semantics_reviewed": True, "source_chain_complete": False,
+        "scope": "Current external CPUID1.3.7.6 Display API GPU temperature target1, its actual NVAPI reads, refresh/result and owner-release boundary; no CPU, other temperature target or provider/clock closure is implied.",
+        "semantics": {
+            "creation": "Current monitor creation follows the real display device's provider list, with the first source priority group including NVAPI id131076. The monitor is adopted only when its initial update reports some actual supported result. That result may belong to another sensor: GPU target1 itself is allocated only after its own provider+64 call succeeds. No sensor is created from a default or a failed read.",
+            "refresh": "SDK refresh waits100ms for its source mutex, then dispatches the retained monitor scheduler. Display API monitors have source interval2; each matching positive interval invokes virtual+32 and resets its tick counter. Target1 writes integer raw at336, scaled float current at348, then changes min/max352/356 only if the temperature IsValid virtual predicate succeeds.",
+            "driver": "NVAPI resolves the actual system nvapi64.dll query interface. The provider/device index must exist. Target1 resets sleeping state, probes thermal settings and classifies -220 as sleeping; sleeping does not perform fallback temperature reads. Otherwise it tries capability-selected type0 with presence-bit/enabled checks, at most32 entries and Q8.8 invalid-mask0xff00 rejection, then the thermal-settings type1 entry whose integer value must be positive. Driver return failures leave the caller output unwritten.",
+            "failure": "After a sensor has been created, a later unsuccessful target1 query skips its whole update block. It does not clear, overwrite or invalidate the previously stored value or extrema. Temperature IsValid only compares current against the native negative threshold; it carries no per-refresh success or timestamp. Existing retained values cannot be described as a fresh hardware observation after a failed refresh.",
+            "result": "Both retained1.0.29 and current stable host1.0.30 service branches consume the same external CPUID1.3.7.6 package. Their selected GPU snapshot/getter/rounding/release semantics match despite different native RVAs. The visible SDK selector filters real IsValid sensors by kind0x2000 and returns native identifier, byte-BSTR name and raw/current/min/max. RzSystemService asks class32 kind0x2000, applies its distinct >-4294967300 result threshold and rounds current/min/max to2 decimals while iterating source sensors. It stops after the requested first valid sensor of each matching device. The byte-BSTR is freed by its result wrapper; exported JSON is copied to malloc storage and freed through FreeMalloc. This path does not refresh hardware itself or guarantee target1 wins against other real sensors/providers. The actual installed or loaded service version was not observed.",
+            "release": "SDK close stops interfaces/providers before deleting owner lists. Monitor stop virtual+88 is an empty source function for this Display API class. Interface deletion walks monitor deleting slot+40; Display monitor frees buffers1568/1544 and destroys its sensor views. The global sensor owner list is separately deleted and releases each temperature sensor's buffer368 and allocation. NVAPI unload is invoked through its source provider stop, and the provider destructor separately FreeLibrary's its loaded module; an empty monitor stop alone is not the release boundary.",
+            "cancellation": "These selected SDK calls are synchronous and expose no per-read cancellation token or generation guard. Source mutex/monitor ownership remains separate from caller cancellation and actual driver completion; no stronger cancellation or concurrent-release guarantee is inferred."},
+        "dependencies": [{"receipt": ".analysis/results/frontend/accessories-main-audit.json",
+            "section": "queries.hanbo-local-runtime", "scope": "Reuse current host/service loading, selectors, Common cache, callbacks and product stop consumers; preserve existing unresolved branches."}],
+        "remaining_chains": ["Complete CPU sensors, other actual GPU providers/targets, clock and usage branches through their actual consumers; this target1 query does not close the entire monitoring SDK.",
+            "Independent Rust monitoring, product/UI wiring and official DLL/device comparisons remain unverified.",
+            "The separate Hanbo HID write66/accepted-count65 transport branch remains unresolved."],
+        "target_execution": False, "real_device_operations": False, "actual_dll_comparison": "unverified",
+        "runtime_acceptance": "unverified", "product_code_modified": False,
+        "rust_independent_implementation": "not_assessed", "ui_backend_wiring": "not_assessed"}
+
+
+def audit_hanbo_gpu_temperature_chain(args):
+    import host
+    if (args.family != "accessories" or args.function != "main"
+            or (args.product or [3893]) != [3893] or getattr(args, "prepare", False)):
+        raise ValueError("Hanbo GPU temperature chain requires accessories/main PID3893 without preparation")
+    audit = host.HostLocalAudit()
+    report = {"schema_version": 1, "kind": "current_hanbo_gpu_temperature_chain", "failures": [],
+        "bounded_observation_complete": False, "source_chain_complete": False,
+        "target_execution": False, "runtime_acceptance": "unverified"}
+    try:
+        for name in ("tools/families.py", "tools/host.py", "tools/frontend.py", "tools/evidence.py"):
+            audit.artifact(a.ROOT / name)
+        report.update(collect_hanbo_gpu_temperature_chain(audit))
+        report["bounded_observation_complete"] = True
+    except (OSError, ValueError, KeyError, IndexError, TypeError, StopIteration) as error:
+        report["failures"].append(type(error).__name__ + ": " + str(error))
+    report.update(recorded_at_utc=a.stamp(), complete_originals=list(audit.sources.values()),
+        complete_source_owners=list(audit.owners.values()), verified_artifacts=list(audit.artifacts.values()))
+    changed = audit.final_snapshot()
+    report.update(changed_during_query=changed, snapshot_stable=not changed)
+    if changed:
+        report["failures"].extend("Hanbo GPU temperature source changed: " + name for name in changed)
+        report["bounded_observation_complete"] = False
+    if json.loads(json.dumps(report, ensure_ascii=False, sort_keys=True)) != report:
+        raise ValueError("Hanbo GPU temperature receipt changes during JSON roundtrip")
+    destination = a.ROOT / ".analysis/results/frontend/accessories-main-audit.json"
+    host.publish_host_static_query(report, destination, a, "hanbo_gpu_temperature_chain")
+    print(json.dumps({"receipt": a.rel(destination), "query": args.query,
+        "failures": report["failures"], "bounded_observation_complete": report["bounded_observation_complete"],
+        "target_execution": False, "runtime_acceptance": "unverified"}), flush=True)
+    if report["failures"]:
+        raise ValueError("Hanbo GPU temperature observation remains unresolved")
+    return report
+
+
+def _hanbo_system_monitor_versions_roles():
+    common = {
+        0x61640: "pipe_init", 0x61710: "pipe_connect", 0x619f0: "pipe_write",
+        0x61e00: "pipe_read", 0x62430: "pipe_cleanup", 0x60e40: "pipe_handle_probe",
+        0x60e10: "pipe_marker_strstr", 0x66250: "hardware_name_mask",
+        0x66550: "numeric_cache_or_null", 0x66780: "string_cache", 0x66850: "initialize",
+        0x66c90: "device_init_logging", 0x66cc0: "terminate", 0x66e20: "device_terminate_logging",
+        0x66e50: "free_malloc", 0x66fc0: "set_callback", 0x67000: "window_destroy",
+        0x67140: "flatten_values", 0x67850: "emit_callback", 0x68920: "cpu_cache",
+        0x69d50: "gpu_cache", 0x6af40: "other_cache", 0x6b680: "parse_message",
+        0x6c440: "sync_timer", 0x6c960: "pipe_receiver", 0x6cb70: "window_thread",
+        0x6cde0: "set_callback_interval", 0x6cf20: "set_sync_interval", 0x6d060: "server_running",
+        0x6d230: "close_server", 0x6d360: "register", 0x6d7b0: "unregister",
+        0x6db80: "get_by_mask", 0x6ede0: "get_by_name", 0x71aa0: "server_path",
+        0x71b70: "external_path", 0x71d10: "close_callback_timer", 0x71db0: "close_sync_timer"}
+    service = {
+        0x46b0: "load_external_sdk", 0x4c70: "close_external_sdk", 0x5420: "sensor_result_release",
+        0x14090: "update_exception_filter", 0x141d0: "update_exception_wrapper",
+        0x14a40: "initialize_monitor", 0x16000: "hardware_snapshot", 0x17570: "sensor_iteration",
+        0x18340: "refresh_failure_recovery", 0x18610: "device_change_reinitialize",
+        0x39680: "sdk_version_gate", 0x39a00: "window_proc", 0x39aa0: "window_thread",
+        0x39e80: "close_window_wait", 0x44880: "initialize", 0x44dd0: "terminate",
+        0x45090: "free_malloc", 0x45d90: "temperature_clock_snapshot",
+        0x45f40: "copy_response_fields", 0x47ed0: "all_hardware_malloc_json",
+        0x514a0: "update_exception_filter_thunk"}
+    server = {0x2fb50: "json_pointer_dispatch", 0x32280: "terminate_before_free_library",
+        0x39580: "server_shutdown_order", 0x3a360: "client_pipe_thread",
+        0x49410: "worker_stop", 0x49970: "enqueue_or_refuse"}
+    return {"RzSystemCommon": common, "RzSystemService": service, "RzDLLService": server}
+
+
+def _hanbo_system_monitor_versions_native_contract(modules):
+    """Bind this selected version review to complete native bodies and assembly."""
+    expected = {
+        "RzSystemCommon": "38e1152100f5df47f0449e6053dfb028a21b6f235339c41c1a33ebc63b647bf0",
+        "RzSystemService": "9910f86af677f607f62257f523a44652b75e7a8399ee4663435386c0259df335",
+        "RzDLLService": "2475ba54c9b7ccfaf86f47f3638fd3294ad816d7477a8523ca758392eb8e1901"}
+    roles = _hanbo_system_monitor_versions_roles()
+    if set(modules) != set(expected):
+        raise ValueError("Hanbo system monitor selected native libraries changed")
+    fingerprints = {}
+    for name, module in modules.items():
+        selected = module["complete_selected_functions"]
+        if (module["failures"] or not module["capture_complete"] or module["target_execution"]
+                or {int(row["capture"]["rva"], 0): row["role"] for row in selected} != roles[name]
+                or len(selected) != len(roles[name])):
+            raise ValueError("Hanbo system monitor selected native owners differ: " + name)
+        rows = []
+        for row in selected:
+            body = row["capture"]
+            if (row["failures"] or not row["input_chunks_verified"] or not row["assembly_captured"]
+                    or not row["pseudocode_captured"] or not body["chunks"]):
+                raise ValueError("Hanbo system monitor native owner is incomplete: " + name)
+            text = "\n".join(line["text"] for line in body["pseudocode"]["lines"])
+            assembly = [(line["rva"], line["text"], line["bytes"]) for line in body["assembly"]]
+            rows.append([body["rva"], row["role"], text, assembly])
+        fingerprint = hashlib.sha256(json.dumps(sorted(rows), ensure_ascii=False,
+            separators=(",", ":")).encode()).hexdigest()
+        if fingerprint != expected[name]:
+            raise ValueError("Hanbo system monitor complete native boundary changed: " + name)
+        fingerprints[name] = fingerprint
+    old_map = {0x61610: 0x61640, 0x616e0: 0x61710, 0x619c0: 0x619f0,
+        0x61de0: 0x61e00, 0x62380: 0x62430}
+    return {"complete_body_fingerprints": fingerprints,
+        "common_legacy_pipe_rva_map": {hex(k): hex(v) for k, v in old_map.items()},
+        "common": {"duplicate_event_replaces_subscription": False, "rejects_zero_interval": True,
+            "rejects_negative_interval": False, "registration_failure_rolls_back": False,
+            "marker": "<EOF>", "standalone_five_byte_marker": True,
+            "also_searches_current_read_region_with_strstr": True,
+            "search_includes_preceding_reads": False, "clears_buffer_at_read_helper_entry": True,
+            "receiver_retains_offset_when_incomplete": True, "helper_read_loop_limit": 500,
+            "message_flag_set_before_json_parse": True, "parse_is_transactional": False,
+            "cache_callback_is_fresh_device_observation": False,
+            "numeric_missing": "null", "window_thread_joined": False,
+            "pipe_receiver_joined": True, "device_terminate": "logging_only"},
+        "service": {"sdk_mutex_rva": "0x6f100", "refresh_exception_filter_codes": [
+                "0xc0000005", "0xc0000006", "0xc000001d", "0xc000008c", "0xc0000094",
+                "0xc0000096", "0xc00000fd"],
+            "normal_wrapper_return_proves_fresh_sensor_read": False,
+            "refresh_failure_reinitialize_counts": [3, 6, 9], "disable_at_consecutive_failures": 10,
+            "reinitialization_resets_failure_count": False, "normal_update_resets_failure_count": True,
+            "refresh_result_changes_export_success_directly": False,
+            "system_input_libraries_preloaded": ["msctf.dll", "imm32.dll"],
+            "preload_or_thread_creation_failure_prevents_initialized_flag": False,
+            "window_thread_handle_retained": True, "window_wait_step_ms": 200,
+            "window_wait_timeout_ms": 5000, "wait_failure_distinguished_from_signaled": False,
+            "window_timeout_keeps_owner_and_initialized_flag": True,
+            "sdk_released_before_window_wait": True,
+            "scope": "Shared refresh, snapshot, callbacks and exit; sensor creation and provider internals remain upstream work."},
+        "server": {"terminate_false_skips_free_library": True,
+            "terminate_false_removes_module_from_map": False,
+            "missing_terminate_allows_free_library": True,
+            "module_release_precedes_pool_shutdown_flag_and_worker_stop": True,
+            "refuses_enqueue_after_shutdown_flag_or_without_workers": True,
+            "worker_wait_ms": 10000, "force_terminate_on_any_nonzero_wait_result": True,
+            "force_terminate_followup_wait_ms": 1000,
+            "complete_server_task_and_callback_quiescence_proven": False},
+        "target_execution": False}
+
+
+def _hanbo_system_monitor_versions_source_contract(owners):
+    expected_roles = {"shared_monitor_filter", "shared_start_stop", "common_wrapper", "service_manager",
+        "system_info_projection", "installed_library_paths", "hanbo_monitor_state", "hanbo_last_temperature",
+        "hanbo_subscription", "hanbo_service", "hanbo_publish", "product_start", "product_stop",
+        "configuration", "host__handleAction_SetNodeFFIEvent", "host__callDLLFunctionAsync",
+        "host__handleAction_Default"}
+    if set(owners) != expected_roles:
+        raise ValueError("Hanbo system monitor current source owners differ")
+    digest = hashlib.sha256(json.dumps(sorted((role, row["body"]) for role, row in owners.items()),
+        ensure_ascii=False, separators=(",", ":")).encode()).hexdigest()
+    if digest != "e301c5f27ac3a030b649592a9ecbd0fc2ff4337fa406783a7d21178c22d39e24":
+        raise ValueError("Hanbo system monitor complete source boundary changed")
+    return {"complete_owner_fingerprint": digest, "callback_interval_ms": 1000,
+        "data_type_mask": 0x100000 | 0x200000,
+        "callback_filters": {"dllName": "RzSystemCommon", "dllFunc": "HardwareMonitorCallback",
+            "status": "SUCCESS"},
+        "server_start_precedes_subscription": True,
+        "server_probe_delays_ms": [100, 200, 400, 700, 1100],
+        "registers_after_all_server_probes_fail": True,
+        "projection": {"requires_init_status": 0, "cpu_selection": "first CPUInfo entry",
+            "cpu_temperature_field": "Temperatures.Package.cur",
+            "gpu_name_classes": {"contains Graphics": 2,
+                "Laptop/Mobile/Max-Q/MX-digits/digits-M": 1, "other": 0},
+            "hanbo_gpu_sort": "classes1/2 before class0; then vendor index of NVIDIA,AMD,Intel (unknown=-1)",
+            "gpu_selection": "first enabled sorted entry, otherwise first sorted entry",
+            "gpu_temperature_field": "AMD RADEON: Global then GPU; other: GPU",
+            "missing_measurements_default_to_zero_in_source": True,
+            "zero_projection_is_confirmed_hardware_observation": False,
+            "hanbo_checks_projection_status_before_forwarding": False},
+        "forwards_changed_temperature_to_elsa": True,
+        "updates_last_temperature_before_elsa_result": True,
+        "stop_awaits_device_terminate": False, "stop_calls_common_terminate": False,
+        "current_host_ffi_bodies_equal_legacy": True,
+        "host_callback_map_released_on_product_stop": False,
+        "scope": "Only the mounted Hanbo consumer and its shared local monitor path; other converter consumers remain separate."}
+
+
+def collect_hanbo_system_monitor_versions(audit):
+    """Continue the current Hanbo monitor dependency without recapturing sensors."""
+    import frontend
+    import host
+    import struct
+    receipt = ".analysis/results/frontend/accessories-main-audit.json"
+    previous = json.loads((a.ROOT / receipt).read_bytes())
+    runtime, gpu = previous["queries"]["hanbo-local-runtime"], previous["hanbo_gpu_temperature_chain"]
+    upstream = []
+    for section, value, digest in (
+            ("queries.hanbo-local-runtime", runtime, "fac6c9657a75e0fc3e9534144dea1d5134ae71bf7922342ad03e6e882e1449a5"),
+            ("hanbo_gpu_temperature_chain", gpu, "ea4406fcb12b3b859d81dc9f6a20af4fecba6aadfd1cad70deb0b0e899cd0f62")):
+        actual = hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True,
+            separators=(",", ":")).encode()).hexdigest()
+        if actual != digest or value["product_id"] != 3893 or value["target_execution"]:
+            raise ValueError("Hanbo system monitor upstream section changed: " + section)
+        upstream.append({"receipt": receipt, "section": section, "canonical_sha256": digest})
+    if (not runtime["inputs_unchanged"] or runtime["whole_page_complete"] or gpu["failures"]
+            or not gpu["bounded_observation_complete"] or not gpu["snapshot_stable"] or gpu["source_chain_complete"]):
+        raise ValueError("Hanbo system monitor upstream review is not a stable bounded observation")
+    indexed = json.loads(audit.artifact(a.ROOT / ".analysis/inputs.json"))
+    release = host.verified_host_release_receipt(index=indexed)
+    audit.artifact(a.ROOT / release["receipt"]["path"], release["receipt"])
+    for dependency in release["verified_dependencies"]:
+        audit.artifact(a.ROOT / dependency["path"], dependency)
+    originals = {row["path"]: row for row in indexed["inputs"]}
+    current, versions, declarations = {}, {}, []
+    for name, roles in _hanbo_system_monitor_versions_roles().items():
+        declaration, = [row for row in release["declarations"] if row["declaration"].get("resourceName") == name]
+        source, = [row for row in release["files"] if row.get("url") == declaration["url"]]
+        declared = declaration["declaration"]
+        raw = audit.read(source)
+        pe = host.inspect_pe(raw)
+        observed_versions = {(row["tree"].get("file_version"), row["tree"].get("product_version"))
+            for row in pe["version_resources"]}
+        if (source["declaration"] != declared or source["sha256"] != declared["sha256"].lower()
+                or len(raw) != declared["size"] or observed_versions != {(declared["resourceVersion"],) * 2}
+                or pe["architecture"] != "x64"):
+            raise ValueError("Hanbo system monitor current declared/native version differs: " + name)
+        native = verify_native_functions(source, roles)
+        audit.artifact(a.ROOT / native["capture_receipt"]["path"], native["capture_receipt"])
+        for row in native["complete_selected_functions"]:
+            audit.artifact(a.ROOT / row["artifact"]["path"], row["artifact"])
+        current[name], versions[name] = native, declared["resourceVersion"]
+        declarations.append({"name": name, "declaration": declaration, "original": native["input"],
+            "actual_pe_versions": [list(pair) for pair in sorted(observed_versions)]})
+    native_contract = _hanbo_system_monitor_versions_native_contract(current)
+
+    # The refresh wrapper has an SEH handler omitted from Hex-Rays pseudocode.
+    raw = audit.read(current["RzSystemService"]["input"])
+    pe = host.inspect_pe(raw)
+    spans = []
+    for role, rva, expected in (("update_runtime_function", 0x73f00, "d0410100094201002c540600"),
+            ("update_unwind_and_scope", 0x6542c, "190a02000a3206302305050001000000dd410100f5410100a0140500f5410100")):
+        size = len(bytes.fromhex(expected))
+        section, = [part for part in pe["sections"] if part["rva"] <= rva
+            and rva + size <= part["rva"] + part["bytes"]]
+        offset = section["file_offset"] + rva - section["rva"]
+        if raw[offset:offset + size].hex() != expected:
+            raise ValueError("Hanbo system monitor actual SEH scope changed")
+        spans.append({"role": role, "rva": hex(rva), "file_offset": offset, "raw_hex": expected})
+    runtime_function, scope = (bytes.fromhex(row["raw_hex"]) for row in spans)
+    if (struct.unpack("<III", runtime_function) != (0x141d0, 0x14209, 0x6542c)
+            or struct.unpack("<IIIIII", scope[8:]) != (0x50523, 1, 0x141dd, 0x141f5, 0x514a0, 0x141f5)):
+        raise ValueError("Hanbo system monitor actual SEH routing changed")
+    native_contract["service"]["verified_seh_spans"] = spans
+
+    # Recheck only the old owners used for this comparison, without embedding them again.
+    legacy = {}
+    for name, key in (("RzSystemCommon", "native_system_common"),
+            ("RzSystemService", "native_system_service"), ("RzDLLService", "native_dll_server")):
+        retained = runtime[key]
+        roles = {int(row["capture"]["rva"], 0): row["role"] for row in retained["complete_selected_functions"]}
+        legacy[name] = verify_native_functions(retained["input"], roles)
+        audit.read(retained["input"])
+        audit.artifact(a.ROOT / retained["capture_receipt"]["path"], retained["capture_receipt"])
+        for row in legacy[name]["complete_selected_functions"]:
+            audit.artifact(a.ROOT / row["artifact"]["path"], row["artifact"])
+    common_current = {int(row["capture"]["rva"], 0): row for row in current["RzSystemCommon"]["complete_selected_functions"]}
+    comparisons = []
+    for row in legacy["RzSystemCommon"]["complete_selected_functions"]:
+        old_rva = int(row["capture"]["rva"], 0)
+        new_rva = int(native_contract["common_legacy_pipe_rva_map"].get(hex(old_rva), hex(old_rva - 0x5a0)), 0)
+        new = common_current[new_rva]
+        def normalized(body):
+            text = "\n".join(line["text"] for line in body["pseudocode"]["lines"])
+            return re.sub(r"\b(sub|nullsub|qword|dword|byte|word|xmmword|off|unk|loc|flt|dbl)_+[0-9A-Fa-f]+\b",
+                r"\1_ADDRESS", text)
+        same = normalized(row["capture"]) == normalized(new["capture"])
+        if same != (old_rva not in {0x619c0, 0x61de0}):
+            raise ValueError("Hanbo system monitor Common version difference requires review")
+        comparisons.append({"role": row["role"], "legacy_rva": hex(old_rva), "current_rva": hex(new_rva),
+            "machine_address_normalized_pseudocode_equal": same,
+            "boundary": "Body comparison only; selected call targets and actual original chunks remain separately verified."})
+
+    selected = frontend.current_source_selection("https://apps.razer.com/synapse/products/3893/mw/", audit,
+        candidates=sorted((a.ROOT / ".analysis/inputs/frontend").glob("accessories-mw-3893-*/acquisition.json")))
+    files = selected["originals"]
+    chunk, = [row for row in files if Path(row["path"]).name.startswith("6259.")]
+    main, = [row for row in files if Path(row["path"]).name.startswith("main.")]
+    revalidation_path = a.ROOT / (".analysis/results/frontend-revalidation/"
+        "a05e92cae063a115fd792a6a04fd77cd72f6bdc48032324c6b1238d288c582b2.json")
+    revalidation_identity = {"path": a.rel(revalidation_path), "bytes": 34276,
+        "sha256": "a05e92cae063a115fd792a6a04fd77cd72f6bdc48032324c6b1238d288c582b2"}
+    revalidation = json.loads(audit.artifact(revalidation_path, revalidation_identity))
+    if (not revalidation["passed"] or revalidation["failures"] or not revalidation["inputs_unchanged"]
+            or not revalidation["protected_originals_unchanged"] or revalidation["target_execution"]
+            or revalidation["index_changed"] or revalidation["cleanup"]["owned_publication_files"]["failures"]
+            or not any(row["acquisition"] == selected["acquisition"] for row in revalidation["source_sets"])):
+        raise ValueError("Hanbo system monitor current deployment revalidation changed")
+    for original in (chunk, main):
+        observation, = [row for row in revalidation["observations"]
+            if (row.get("retained_original") or {}).get("path") == original["path"]]
+        rounds = observation["rounds"]
+        if (len(rounds) != 2 or any(row["http_status"] != 200 or row["sha256"] != original["sha256"]
+                or row["bytes"] != original["bytes"] for row in rounds)):
+            raise ValueError("Hanbo system monitor current consumer lacks two matching deployment rounds")
+    modules = {row["module_id"]: row for row in keyboard_source_modules(audit.read(chunk).decode("utf-8"))}
+    roles = {}
+    for mid, role in ((34244, "shared_monitor_filter"), (29346, "shared_start_stop"),
+            (68623, "common_wrapper"), (58070, "service_manager"), (83266, "system_info_projection")):
+        module = modules[mid]
+        roles[role] = audit.retain_range("hanbo_versions_" + role, chunk,
+            module["byte_start"], module["byte_end"], "pair")
+    paths = audit.webpack_export("hanbo_versions_installed_library_paths", files, 96183, "Hy")
+    roles["installed_library_paths"] = paths["binding"]["owner_id"]
+    for role, needle, kind in (
+            ("hanbo_monitor_state", 'Ze={cpuTemp:"0"', "variable_declarator"),
+            ("hanbo_last_temperature", 'Xe={cpuTemp:void 0,gpuTemp:void 0}', "variable_declarator"),
+            ("hanbo_subscription", 'et={getSpeedOfFanAndPumpTimer:', "variable_declarator"),
+            ("hanbo_service", 'tt=(0,qe.V)(et)', "variable_declarator"),
+            ("hanbo_publish", 'nt=()=>{(0,ce.a)({type:i.B8N,payload:Ze},!1)}', "variable_declarator"),
+            ("product_start", 'i?(yield tt.startService("rzSystemMon")', "generator_function"),
+            ("product_stop", 'wn=()=>{mt.mZ.stopService("rzSystemMon"),tt.stopService("rzSystemMon")}', "variable_declarator")):
+        roles[role], = audit.retain("hanbo_versions_" + role, chunk, needle, {kind})
+    roles["configuration"], = audit.retain("hanbo_versions_configuration", main,
+        'useFeature("systemHelper","config",{clientDllName:"RzSystemCommon",serverDllName:"RzSystemService"})',
+        {"call_expression"})
+    host_members = host.current_host_asar_members(audit, indexed, release)
+    ffi, = [row for row in host_members if row["path"].endswith("/electron/modules/ffi_subprocess/FFIPreloadSubProcess.js")]
+    archive = originals[ffi["container"]]
+    if (ffi.get("unpacked") or archive["sha256"] != ffi["container_sha256"]
+            or audit.read(archive)[ffi["offset"]:ffi["offset"] + ffi["bytes"]] != audit.read(ffi)):
+        raise ValueError("Hanbo system monitor current host member ancestry differs")
+    for method in ("_handleAction_SetNodeFFIEvent", "_callDLLFunctionAsync", "_handleAction_Default"):
+        _, key = audit.callable_member("hanbo_versions_host_" + method, ffi, audit.tree(ffi).root_node, method)
+        prior, = [owner for owner in runtime["complete_owners"].values()
+            if "host_ffi_" + method in owner["roles"]]
+        if audit.owners[key]["body"] != prior["body"]:
+            raise ValueError("Hanbo system monitor current host FFI consumer changed: " + method)
+        roles["host_" + method] = key
+    source_contract = _hanbo_system_monitor_versions_source_contract(
+        {role: audit.owners[key] for role, key in roles.items()})
+
+    def references(native):
+        return {key: native[key] for key in ("input", "capture_receipt", "image_base", "ida_version",
+            "hexrays_version", "capture_tool", "capture_complete", "functions_total", "functions_captured",
+            "failures", "target_execution")} | {"functions": [{"role": row["role"],
+                "rva": row["capture"]["rva"], "artifact": row["artifact"],
+                "pseudocode_sha256": hashlib.sha256("\n".join(line["text"] for line in
+                    row["capture"]["pseudocode"]["lines"]).encode()).hexdigest(),
+                "input_chunks_verified": row["input_chunks_verified"]}
+                for row in native["complete_selected_functions"]]}
+    return {"schema_version": 1, "kind": "current_hanbo_system_monitor_versions",
+        "query": "hanbo-system-monitor-versions", "product_id": 3893,
+        "upstream_sections": upstream, "host_release": {"version": release["version"],
+            "acquisition": release["receipt"], "selected_declarations": declarations,
+            "ffi_member": ffi, "ffi_archive": archive},
+        "versions": versions, "actual_installed_or_loaded_versions_observed": False,
+        "native": {name: references(native) for name, native in current.items()},
+        "legacy_native": {name: references(native) for name, native in legacy.items()},
+        "common_version_comparisons": comparisons, "native_contract": native_contract,
+        "source_contract": source_contract,
+        "source_selection": {key: selected[key] for key in ("name", "acquisition", "candidate_decisions")},
+        "deployment_revalidation": revalidation_identity,
+        "roles": roles, "selected_system_monitor_version_semantics_reviewed": True,
+        "semantics": {
+            "version": "Current stable host declarations and actual PE versions select all three1.0.30.0 monitor components. The retained1.0.29.0 inputs are comparison evidence, not the current selected dependency or an observation of installed/loaded versions.",
+            "common": "Of34 prior selected Common owners,32 have identical complete pseudocode after only machine-address normalization. The writer difference is logging argument construction. The receiver additionally calls the actual strstr import over the current read region and terminates at a found EOF marker. It still clears the buffer at each helper entry, retains an incomplete offset in its receiver, ignores the helper BOOL and sets its received-data flag before JSON parsing. This does not establish arbitrary fragment reassembly, transactional cache updates or per-tick freshness.",
+            "refresh": "Current service serializes refresh, result iteration/snapshot, device-change reinitialization and SDK destruction with its monitor mutex. Its real SEH scope catches only the seven recorded exception codes. Normal wrapper completion resets the consecutive counter but does not prove individual sensors refreshed. Caught failures reinitialize on counts3/6/9; count10 disables monitoring. Successful reinitialization alone leaves the count pending until a normal update; export SUCCESS and existing cached fields are not transformed into fresh observations.",
+            "exit": "Current service retains its hidden-window thread handle, preloads msctf/imm32, posts WM_CLOSE and WM_QUIT, then waits200ms per step up to5000ms. Timeout returns false while retaining its window owner and initialized flag after the SDK was already released. Any non-WAIT_TIMEOUT result is accepted, so WAIT_FAILED is not independently distinguished. The current server consumes false and skips module unload/removal. Its selected shutdown owner still calls module release before setting pool shutdown and stopping workers; worker stop waits10000ms and force-terminates on any nonzero wait, followed by1000ms. These facts do not prove whole-server in-flight task/callback quiescence.",
+            "product": "Current Hanbo starts monitoring during device setup, waits for the server through at most five probes, then registers1000ms with CPU_Info|GPU_Info. The real callback filters Common/HardwareMonitorCallback/SUCCESS and consumes current converter83266. That converter supplies zero defaults on missing/uninitialized/disabled data, selects CPUInfo[0], and sorts the real GPU list by name class and vendor before taking the first enabled item. Hanbo does not check projected CPU/GPU status before publishing and forwarding changed temperatures through Elsa; those projected defaults are not hardware observations. It records last temperatures before the native action completes. Product stop unregisters and calls DeviceTerminate without awaiting it; this logging-only method is not Common Terminate or CloseAPPServer. Current Host FFI still JSON-decodes void(string), retains its callback map, copies malloc strings and calls FreeMalloc in finally."},
+        "remaining_chains": ["All unreviewed actual CPU/GPU providers, sensor/clock/usage branches and hardware subqueries remain required; no new sensors are inferred from names or declarations.",
+            "Current server task completion, callback queue draining, Common window-thread join and actual concurrent release remain unproved.",
+            "Hanbo HID write66/accepted-count65, independent Rust, UI/backend wiring and actual official DLL/device comparisons remain unresolved."],
+        "source_chain_complete": False, "whole_product_complete": False, "target_execution": False,
+        "real_device_operations": False, "actual_dll_comparison": "unverified",
+        "rust_independent_implementation": "unverified", "ui_backend_wiring": "unverified",
+        "runtime_acceptance": "unverified", "product_code_modified": False}
+
+
+def audit_hanbo_system_monitor_versions(args):
+    import host
+    if (args.family != "accessories" or args.function != "main"
+            or (args.product or [3893]) != [3893] or getattr(args, "prepare", False)):
+        raise ValueError("Hanbo system monitor versions requires accessories/main PID3893 without preparation")
+    audit = host.HostLocalAudit()
+    report = {"schema_version": 1, "kind": "current_hanbo_system_monitor_versions", "failures": [],
+        "bounded_observation_complete": False, "source_chain_complete": False,
+        "target_execution": False, "runtime_acceptance": "unverified"}
+    try:
+        for name in ("tools/families.py", "tools/host.py", "tools/frontend.py", "tools/evidence.py"):
+            audit.artifact(a.ROOT / name)
+        report.update(collect_hanbo_system_monitor_versions(audit))
+        report["bounded_observation_complete"] = not report["failures"]
+    except (OSError, ValueError, KeyError, IndexError, TypeError, StopIteration) as error:
+        report["failures"].append(type(error).__name__ + ": " + str(error))
+    report.update(recorded_at_utc=a.stamp(), complete_originals=list(audit.sources.values()),
+        complete_source_owners=list(audit.owners.values()), verified_artifacts=list(audit.artifacts.values()))
+    changed = audit.final_snapshot()
+    report.update(changed_during_query=changed, snapshot_stable=not changed)
+    if changed:
+        report["failures"].extend("Hanbo system monitor source changed: " + name for name in changed)
+        report["bounded_observation_complete"] = False
+    if json.loads(json.dumps(report, ensure_ascii=False, sort_keys=True)) != report:
+        raise ValueError("Hanbo system monitor receipt changes during JSON roundtrip")
+    destination = a.ROOT / ".analysis/results/frontend/accessories-main-audit.json"
+    host.publish_host_static_query(report, destination, a, "hanbo_system_monitor_versions")
+    print(json.dumps({"receipt": a.rel(destination), "query": args.query,
+        "failures": report["failures"], "bounded_observation_complete": report["bounded_observation_complete"],
+        "target_execution": False, "runtime_acceptance": "unverified"}), flush=True)
+    if report["failures"]:
+        raise ValueError("Hanbo system monitor versions observation remains unresolved")
+    return report
 
 
 def hanbo_native_inventory(audit, inputs, wrapper, *, prepare=False):
@@ -30457,6 +35541,391 @@ def driver_install_selection_semantics():
         "driver_install_exit_proves_device_ack": False}
 
 
+def common_driver_install_selection_branch(version_high):
+    """Reuse the signed version comparison with this installer's actual jump targets."""
+    selected = driver_install_selection_branch(version_high)
+    selected["first_extraction_entry"] = 44 if selected["selected_branch"] == "legacy" else 39
+    return selected
+
+
+def common_driver_install_architecture_gate(process_machine, wow64_result):
+    """Project the two initialized output values; this is not native-architecture detection."""
+    for value, maximum in ((process_machine, 0xffff), (wow64_result, 0xffffffff)):
+        if value is not None and (type(value) is not int or not 0 <= value <= maximum):
+            raise ValueError("Common driver architecture output is outside its observed integer boundary")
+    aggregate = (process_machine or 0) | (wow64_result or 0)
+    return {"process_machine_output": process_machine, "wow64_output": wow64_result,
+        "aggregate": aggregate, "dpinst_requested": aggregate != 0,
+        "both_outputs_observed": process_machine is not None and wow64_result is not None,
+        "native_machine_output_checked": False, "payload_architecture": "amd64",
+        "zero_jump_entry": 85, "installed_architecture_verified": False}
+
+
+def common_driver_install_result(exit_text):
+    """Keep nsExec text, NSIS integer coercion and reboot-bit handling separate."""
+    if exit_text is not None and not isinstance(exit_text, str):
+        raise ValueError("Common driver result must preserve the original stack string or absence")
+    if exit_text is None:
+        return {"stack_text": None, "stack_value_observed": False, "numeric_u32": None,
+            "reboot_bit": None, "requested_exit_code": None, "installation_success_proven": False}
+    cursor, sign, base, result = 0, 1, 10, 0
+    if exit_text.startswith("-"):
+        cursor, sign = 1, -1
+    if cursor < len(exit_text) and exit_text[cursor] == "0":
+        cursor += 1
+        following = exit_text[cursor:cursor + 1]
+        if following and following in "01234567":
+            base = 8
+        elif following in ("x", "X"):
+            base, cursor = 16, cursor + 1
+    while cursor < len(exit_text):
+        character = exit_text[cursor].upper()
+        if "0" <= character <= "9":
+            digit = ord(character) - ord("0")
+        elif base == 16 and "A" <= character <= "F":
+            digit = ord(character) - ord("A") + 10
+        else:
+            break
+        if digit >= base:
+            break
+        result = (result * base + digit) & 0xffffffff
+        cursor += 1
+    value = (result * sign) & 0xffffffff
+    reboot = value & 0x40000000
+    return {"stack_text": exit_text, "stack_value_observed": True, "numeric_u32": value,
+        "reboot_bit": reboot, "requested_exit_code": 3010 if reboot else None,
+        "installation_success_proven": False}
+
+
+def common_driver_install_selection_snapshot(raw):
+    """Resolve the current Unicode RzComDriver version, architecture and payload entries."""
+    import host
+    pe = host.inspect_pe(raw)
+    if pe["architecture"] != "x86" or pe["image_base"] != "0x400000":
+        raise ValueError("Common driver selection requires the reviewed x86 NSIS interpreter")
+    overlay = max(section["file_offset"] + section["bytes"] for section in pe["sections"])
+    header, strings = driver_install_nsis_header(raw, overlay)
+    entries = header["entries"]
+    expected_entries = {32: [43, 10, 11, 253, 0, 0, 0], 33: [29, 32, 278, 281, 5, 0, 0],
+        38: [28, 321, 355, 0, 45, 0, 0], 39: [11, 366, 1, 0, 0, 0, 0],
+        43: [2, 50, 0, 0, 0, 0, 0], 44: [11, 366, 1, 0, 0, 0, 0],
+        58: [5, 94, 0, 0, 0, 0, 0], 59: [20, 83886225, 672, 2730761, -1, -1, -37],
+        60: [13, 13, 0, 1, 0, 0, 0], 61: [31, 686, 0, 0, 0, 0, 0],
+        62: [44, 672, 719, 0, 0, 1, 0], 63: [5, 94, 0, 0, 0, 0, 0],
+        64: [20, 33554601, 672, 2730761, -1, -1, -37], 65: [13, 13, 0, 1, 0, 0, 0],
+        66: [31, 724, 0, 0, -1, -1, -37], 67: [44, 672, 719, 0, 0, 1, -37],
+        68: [31, 762, 0, 0, 0, 0, 0], 69: [5, 94, 0, 0, 0, 0, 0],
+        70: [20, 33554601, 672, 2730761, -1, -1, -37], 71: [13, 13, 0, 1, 0, 0, 0],
+        72: [31, 764, 0, 0, -1, -1, -37], 73: [44, 672, 719, 0, 0, 1, -37],
+        74: [5, 94, 0, 0, 0, 0, 0], 75: [20, 33554601, 672, 2730761, -1, -1, -37],
+        76: [13, 13, 0, 1, 0, 0, 0], 77: [44, 672, 799, 0, 0, 1, -37],
+        78: [31, 37, 1, 0, 0, 0, 0], 79: [26, 807, 119, 86, 0, 0, 0],
+        80: [5, 94, 0, 0, 0, 0, 0], 81: [20, 83886225, 810, 2737480, -1, -1, -37],
+        82: [13, 13, 0, 1, 0, 0, 0], 83: [31, 824, 0, 0, 0, 0, 0],
+        84: [44, 810, 892, 0, 0, 1, 0], 85: [31, 0, 1, 0, 0, 0, 0],
+        86: [29, 1, 897, 281, 5, 0, 0], 87: [29, 2, 900, 903, 5, 0, 0],
+        88: [26, 914, 917, 0, 91, 0, 0], 89: [13, 11, 928, 0, 0, 0, 0],
+        90: [51, -2147483647, 292, 90, 914, 4, 4], 91: [1, 0, 0, 0, 0, 0, 0]}
+    for index, expected in expected_entries.items():
+        if index >= len(entries) or entries[index] != expected:
+            raise ValueError("Common driver NSIS selected instruction differs: " + str(index))
+    variable = lambda index: {"kind": "variable", "index": index, "encoded": 0x8080 | index}
+    literal = lambda value: {"kind": "literal", "value": value}
+    expected_strings = {253: [{"kind": "shell", "index": 4644, "encoded": 9252}, literal("\\System32\\kernel32.dll")],
+        278: [variable(10)], 281: [literal("0xFFFFFFFF")], 321: [variable(32)],
+        355: [literal("0x000A0000")], 366: [variable(21), literal("\\Drivers\\x64")],
+        672: [variable(26), literal("\\System.dll")], 686: [literal("kernel32::GetCurrentProcess()p.s")],
+        719: [literal("Call")], 724: [literal("kernel32::IsWow64Process2(ps,*i0s,*i)")],
+        762: [literal("|")], 764: [literal("kernel32::IsWow64Process(p-1,*i0s)")],
+        799: [literal("Int64Op")], 807: [variable(37)], 119: [literal("0")],
+        810: [variable(26), literal("\\nsExec.dll")], 892: [literal("Exec")],
+        824: [literal('"'), variable(21), literal('\\Drivers\\DPInst_amd64.exe" /F /LM /SW /SA /PATH "'),
+              variable(21), literal('\\Drivers\\x64"')],
+        897: [variable(0)], 900: [variable(1)], 903: [literal("0x40000000")],
+        914: [variable(2)], 917: [literal("1073741824")], 928: [literal("3010")],
+        90: [literal("RzComDriver")], 292: [literal("Volatile Environment")]}
+    for offset, expected in expected_strings.items():
+        if host.nsis_unicode_string(strings, offset) != expected:
+            raise ValueError("Common driver NSIS selected string differs: " + str(offset))
+    branches = []
+    for name, begin, end, driver_offset, expected_names in (
+        ("universal", 39, 43, 930991, ["rzcommon.cat", "RzCommonU.inf", "RzCommon.sys"]),
+        ("legacy", 44, 49, 975111, ["rzcommon.cat", "RzCommon.inf", "RzCommon.sys", "WdfCoinstaller01009.dll"])):
+        output, files = None, []
+        for index in range(begin, end):
+            row = entries[index]
+            if row[0] == 11 and row[2:] == [1, 0, 0, 0, 0]:
+                output = host.nsis_unicode_string(strings, row[1])
+            elif row[0] == 20 and row[1] == 83886224 and output:
+                _, block = driver_install_nsis_chunk(raw, header["data_offset"] + row[3], header["container_end"])
+                filename = host.nsis_unicode_string(strings, row[2])
+                if (len(filename) != 1 or filename[0]["kind"] != "literal"
+                        or any(char in filename[0]["value"] for char in "/\\:")):
+                    raise ValueError("Common driver NSIS payload filename is not a bounded literal")
+                files.append({"entry": index, "output_directory": output, "filename": filename[0]["value"],
+                    "data_relative_offset": row[3], "block": block})
+            else:
+                raise ValueError("Common driver NSIS payload branch contains an unreviewed instruction")
+        if ([row["filename"] for row in files] != expected_names
+                or next(row for row in files if row["filename"] == "RzCommon.sys")["data_relative_offset"] != driver_offset):
+            raise ValueError("Common driver NSIS branch payload references differ")
+        branches.append({"name": name, "entry_range": [begin, end - 1], "files": files,
+            "continuation_entry": 49, "official_driver_filename": "RzCommon.sys"})
+    records = []
+    for index in (36, 59, 64, 70, 75, 81):
+        row = entries[index]
+        filename = host.nsis_unicode_string(strings, row[2])
+        _, block = driver_install_nsis_chunk(raw, header["data_offset"] + row[3], header["container_end"])
+        records.append({"entry": index, "instruction": row, "filename_tokens": filename, "block": block})
+    return {"header": {key: value for key, value in header.items() if key != "entries"},
+        "selected_entries": [{"index": index, "values": entries[index]} for index in sorted(expected_entries)],
+        "selected_strings": [{"offset": offset, "tokens": host.nsis_unicode_string(strings, offset)}
+                             for offset in sorted(expected_strings)], "branches": branches,
+        "shared_payload_records": records}
+
+
+def _common_driver_install_selection_inputs(audit):
+    """Select only current release-owned RzComDriver originals and extraction lineage."""
+    import host
+    indexed = json.loads(audit.artifact(a.ROOT / ".analysis/inputs.json"))
+    release = host.verified_host_release_receipt(index=indexed)
+    audit.artifact(a.ROOT / release["receipt"]["path"], release["receipt"])
+    for row in release["verified_dependencies"]:
+        audit.artifact(a.ROOT / row["path"], row)
+    packages = [row for row in release["files"] if row.get("path", "").endswith("/RzComDriver_v23.0.6.0.exe")]
+    if len(packages) != 1 or (packages[0]["sha256"], packages[0]["bytes"]) != (
+            "d17bbc15e025bcee12948655ed5956bfe855019e626e497dd10ed40cb9a5e0dc", 2789456):
+        raise ValueError("Current common driver installer requires source and semantic review")
+    package = packages[0]
+    audit.read(package)
+    current = host.current_host_extracted_inputs(indexed, release)
+    retained = {"installer": package}
+    for role, suffix in (("system_plugin", "$PLUGINSDIR/System.dll"), ("exec_plugin", "$PLUGINSDIR/nsExec.dll"),
+        ("dpinst", "Drivers/DPInst_amd64.exe"), ("universal_driver", "Drivers/x64/RzCommon.sys"),
+        ("legacy_driver", "Drivers/x64/RzCommon_1.sys"), ("universal_inf", "Drivers/x64/RzCommonU.inf"),
+        ("legacy_inf", "Drivers/x64/RzCommon.inf"), ("universal_catalog", "Drivers/x64/rzcommon.cat"),
+        ("legacy_catalog", "Drivers/x64/rzcommon_1.cat"), ("legacy_coinstaller", "Drivers/x64/WdfCoinstaller01009.dll")):
+        matches = [row for row in current if row["path"].endswith("/" + suffix)
+                   and row.get("container") == package["path"] and row.get("container_sha256") == package["sha256"]]
+        if len(matches) != 1:
+            raise ValueError("Current common driver package member is absent or ambiguous: " + suffix)
+        original = matches[0]
+        reference = original.get("extraction_receipt")
+        if reference is None:
+            raise ValueError("Current common driver member extraction receipt is missing")
+        inspection = json.loads(audit.artifact(a.ROOT / reference["path"], reference))
+        containers = [row for row in inspection.get("containers", [])
+                      if row.get("input") == package["path"] and row.get("sha256") == package["sha256"]]
+        if (inspection.get("target_execution") is not False or len(containers) != 1
+                or containers[0].get("extracted") is not True or containers[0].get("extraction_exit_code") != 0
+                or containers[0].get("list_exit_code") != 0 or containers[0].get("input_bytes_unchanged") is not True
+                or containers[0].get("retained_outputs_verified") is not True):
+            raise ValueError("Current common driver extraction is incomplete")
+        members = [row for row in containers[0]["files"] if row["path"] == original["path"]]
+        if (len(members) != 1 or any(members[0][key] != original[key] for key in ("path", "bytes", "sha256"))):
+            raise ValueError("Current common driver retained member identity differs")
+        audit.read(original)
+        retained[role] = original
+    return retained, {"release_version": release["version"], "acquisition": release["receipt"],
+        "official_package": package, "extraction_receipt": retained["legacy_driver"]["extraction_receipt"]}
+
+
+def _common_driver_install_selection_proof(installer_bodies, plugin_bodies, exec_bodies):
+    """Pin reviewed interpreter and System owners, retaining the call bridge warning."""
+    expected = {"installer": {
+        0x1389: "cf8cc06ff7209c287cef1c62bebea31b1e78ae4bb41817536ae229e153833077",
+        0x1434: "6e5a2e1f4e3cfcdd34aa51cb47a5f30f1832208639034563abfa240fb8255d33",
+        0x6467: "f567df627bff9b90cd907db75d825f6f74c9c650f93cfad5a13547032a62e078",
+        0x6544: "7b3d945b87aa42adef19a4cc2e7aed97f5b4c5920836412425259f4e4918ef43",
+        0x68d4: "82e6be0f136714266ab4633515b1591c4795a2e59e5740d8fd1dd575d6ffbaba",
+        0x34f7: "363d450ff01a760123edc428bc462980abfd960a41949dd956de9411d31dd927"},
+        "system_plugin": {
+        0x12e3: "5c1c17657ca4b328585bf1234879c3c9a8d6fb0c45e369f66a558b72844d18f7",
+        0x1312: "e8763b21a8c4057dce03892667046df62b104e232988ca414ba66927da8a48af",
+        0x13b1: "ca45daaafda745500ceb4565a31f016a4b64cf88d80af7a84e071e6a8be55f83",
+        0x1817: "27612cac378a60a23e7af61511a5b0ad51f7b2e1f219e5d693ac0e35e4c4c459",
+        0x1979: "1b904c3b56810cbfcfb394531c27b561c2bae3f9f691c227881d595e08baafd0",
+        0x1bff: "8c40ca4e126f04bd7b931f290d33b44ddd23db60b4b586a9c68ce55104c2f673",
+        0x243e: "47bc2a49b951bbe2f4ebb3d9c8336939d1d1d1192c88e65098b9e479bad697f7",
+        0x2480: "7d2e28e1141368febc745937d9d6502342d9f5f03959216992d7b5cca6b9713c",
+        0x2618: "f9257147b9e9c2a6d9456e629c5c89d3623c03dca10307072eb58df331d2055c",
+        0x2655: "be3b93a1e38aafcbc39e2f6edc5350d21d694c0c0b9ff5917d28b064b739a15e",
+        0x2b98: "c85bbf91ba156c94ca317a49fd2c8d5b33239c5faabd7371005d2ce77de6cfaf"},
+        "exec_plugin": {0x1096: "4047bbfa7673a0afa42908205ea8fc31a44d3156d97bb43077e5484c7f63265e",
+        0x1987: "85741bfdf8838d478b02f214af7b7e8fe964f15c52d1c8e3d5810a6d74ae35a1",
+        0x1c8c: "24a23b80eba3f7ba99519667aa5065891c92b8614d5af412c57e61abbc71266a"}}
+    anchors = {0x1a92: "7c08", 0x1b09: "23ce", 0x2039: "6a0a", 0x2047: "66891f",
+        0x204c: "668918", 0x2070: "6a0b", 0x2077: "6a0c", 0x20b0: "ff748808", 0x20c0: "ff74810c"}
+    for label, bodies in (("installer", installer_bodies), ("system_plugin", plugin_bodies), ("exec_plugin", exec_bodies)):
+        for rva, digest in expected[label].items():
+            text = "\n".join(row["text"] for row in bodies[rva]["pseudocode"]["lines"])
+            if hashlib.sha256(text.encode()).hexdigest() != digest:
+                raise ValueError("Common driver reviewed " + label + " owner differs: " + hex(rva))
+    instructions = {int(line["rva"], 16): line["bytes"]
+                    for body in installer_bodies.values() for line in body["assembly"]}
+    for rva, encoded in anchors.items():
+        if instructions.get(rva) != encoded:
+            raise ValueError("Common driver signed/version interpreter instruction differs: " + hex(rva))
+    edges = {"installer": ((0x1389, 0x1434), (0x1389, 0x136d), (0x1434, 0x2d84),
+        (0x1434, 0x2da6), (0x1434, 0x68d4), (0x2d84, 0x6467), (0x2d84, 0x6544)),
+        "system_plugin": ((0x1817, 0x1bff), (0x1817, 0x243e), (0x1817, 0x2480),
+        (0x1817, 0x2655), (0x1817, 0x2618), (0x1817, 0x2b98),
+        (0x1979, 0x12e3), (0x1979, 0x13b1), (0x1979, 0x1312), (0x1bff, 0x16bd)),
+        "exec_plugin": ((0x1000, 0x1096), (0x1096, 0x1987), (0x1096, 0x1c8c))}
+    for label, bodies, base in (("installer", installer_bodies, 0x400000),
+                                ("system_plugin", plugin_bodies, 0x10000000), ("exec_plugin", exec_bodies, 0x10000000)):
+        for owner, target in edges[label]:
+            if not any(int(xref["to"], 16) - base == target
+                    for line in bodies[owner]["assembly"] for xref in line.get("xrefs_from", [])):
+                raise ValueError("Common driver " + label + " actual owner edge differs: " + hex(owner))
+    return {"reviewed_owner_digests": [{"input": label, "rva": hex(rva), "pseudocode_sha256": digest}
+        for label, rows in expected.items() for rva, digest in rows.items()],
+        "instruction_anchors": [{"rva": hex(rva), "bytes": encoded} for rva, encoded in anchors.items()],
+        "actual_edges": [{"input": label, "owner_rva": hex(owner), "target_rva": hex(target)}
+                         for label, rows in edges.items() for owner, target in rows],
+        "system_call_bridge_rva": "0x2b98", "positive_stack_warning_retained": True,
+        "assembly_and_raw_bytes_verified": True, "dynamic_abi_execution": "unverified"}
+
+
+def collect_common_driver_install_selection(audit):
+    """Review current shared driver static selection without invoking installer or APIs."""
+    import host
+    import struct
+    inputs, provenance = _common_driver_install_selection_inputs(audit)
+    roles = {"installer": {0x136d: "jump_target", 0x1389: "entry_dispatch_and_target_minus_one",
+        0x1434: "unicode_opcode_dispatch", 0x2d84: "numeric_operand", 0x2da6: "string_operand",
+        0x644e: "signed_integer_to_string", 0x6467: "numeric_string_parser",
+        0x6544: "unicode_variable_and_shell_expansion", 0x6864: "system_library_lookup", 0x68d4: "version_api_lookup",
+        0x34f7: "installer_exit_flag_consumer"},
+        "system_plugin": {0x12e3: "stack_pop", 0x1312: "stack_push", 0x13b1: "numeric_input",
+        0x1666: "api_lookup_status_string", 0x16bd: "named_api_lookup", 0x1817: "actual_call_export",
+        0x1979: "actual_int64_or_export", 0x1bff: "unicode_signature_parser",
+        0x243e: "by_reference_allocation", 0x2480: "input_marshalling", 0x2618: "by_reference_release",
+        0x2655: "output_marshalling", 0x2b98: "complete_indirect_call_bridge"},
+        "exec_plugin": {0x1000: "actual_exec_export", 0x1096: "process_result_and_cleanup_owner",
+        0x1987: "process_compatibility_probe", 0x1c8c: "result_stack_push"}}
+    native, bodies, counts, readers, pe_images = {}, {}, {}, {}, {}
+    for key in ("installer", "system_plugin", "exec_plugin"):
+        native[key] = driver_install_selection_native_reference(inputs[key], roles[key])
+        raw, pe, read, selected, verified = driver_install_selection_verify_native(audit, native[key], roles[key])
+        if int(pe["image_base"], 16) != (0x400000 if key == "installer" else 0x10000000):
+            raise ValueError("Common driver native image base differs: " + key)
+        bodies[key], counts[key], readers[key], pe_images[key] = selected, verified, read, pe
+    if [row["tree"].get("file_version") for row in pe_images["installer"]["version_resources"]] != ["23.0.6.0"]:
+        raise ValueError("Current common driver installer version differs")
+    if (inputs["system_plugin"]["sha256"], inputs["system_plugin"]["bytes"]) != (
+            "8dc562cda7217a3a52db898243de3e2ed68b80e62ddcb8619545ed0b4e7f65a8", 12288):
+        raise ValueError("Current common driver System plugin requires semantic review")
+    exports = [(name, rva) for name, rva in (("Call", "0x1817"), ("Int64Op", "0x1979"))
+               if any(name in row.get("names", []) and row["rva"] == rva
+                      for row in pe_images["system_plugin"]["exports"])]
+    if len(exports) != 2:
+        raise ValueError("Common driver actual System exports differ")
+    if (inputs["exec_plugin"]["sha256"], inputs["exec_plugin"]["bytes"]) != (
+            "1076ca39c449ed1a968021b76ef31f22a5692dfafeea29460e8d970a63c59906", 7168):
+        raise ValueError("Current common driver nsExec plugin requires semantic review")
+    if not any("Exec" in row.get("names", []) and row["rva"] == "0x1000" for row in pe_images["exec_plugin"]["exports"]):
+        raise ValueError("Common driver actual Exec export differs")
+    proof = _common_driver_install_selection_proof(bodies["installer"], bodies["system_plugin"], bodies["exec_plugin"])
+    version_apis = []
+    for index in (10, 11, 12):
+        pointers = struct.unpack("<II", readers["installer"](0xa3e0 + 8 * index, 8))
+        names = []
+        for address in pointers:
+            value = bytearray()
+            for cursor in range(128):
+                byte = readers["installer"](address - 0x400000 + cursor, 1)
+                if byte == b"\0":
+                    break
+                value.extend(byte)
+            else:
+                raise ValueError("Common driver API string is outside reviewed bounds")
+            names.append(value.decode("ascii"))
+        version_apis.append({"table_index": index, "library": names[0], "symbol": names[1]})
+    if [(row["library"], row["symbol"]) for row in version_apis] != [
+            ("VERSION", "GetFileVersionInfoSizeW"), ("VERSION", "GetFileVersionInfoW"), ("VERSION", "VerQueryValueW")]:
+        raise ValueError("Common driver actual version API table differs")
+    snapshot = common_driver_install_selection_snapshot(audit.read(inputs["installer"]))
+    branch_members = {"universal": {"rzcommon.cat": "universal_catalog", "RzCommonU.inf": "universal_inf", "RzCommon.sys": "universal_driver"},
+        "legacy": {"rzcommon.cat": "legacy_catalog", "RzCommon.inf": "legacy_inf", "RzCommon.sys": "legacy_driver",
+                   "WdfCoinstaller01009.dll": "legacy_coinstaller"}}
+    for branch in snapshot["branches"]:
+        for row in branch["files"]:
+            original = inputs[branch_members[branch["name"]][row["filename"]]]
+            if (row["block"]["sha256"], row["block"]["bytes"]) != (original["sha256"], original["bytes"]):
+                raise ValueError("Common driver branch bytes differ from retained member: " + row["filename"])
+            row["retained_original"] = original
+    for row in snapshot["shared_payload_records"]:
+        original = inputs["dpinst" if row["entry"] == 36 else "exec_plugin" if row["entry"] == 81 else "system_plugin"]
+        if (row["block"]["sha256"], row["block"]["bytes"]) != (original["sha256"], original["bytes"]):
+            raise ValueError("Common driver shared payload differs from retained original")
+        row["retained_original"] = original
+    drivers = []
+    for key, digest, size, version, binding in (
+        ("universal_driver", "64b72ef9ce409bb17d31096c119b68c4a6a02ab35b7535d763157a4e1a587e59", 64880, "1.0.0.76", [1, 15, 0, 444]),
+        ("legacy_driver", "3faca8cbb6f82a26c8d1af808d2f1d8d979a56422d503ed1dc109d1ec9935a80", 52072, "1.0.0.71", [1, 9, 7600, 396])):
+        original = inputs[key]
+        if (original["sha256"], original["bytes"]) != (digest, size):
+            raise ValueError("Common driver branch requires independent semantic review: " + key)
+        raw = audit.read(original)
+        pe = host.inspect_pe(raw)
+        if pe["architecture"] != "x64" or [row["tree"].get("file_version") for row in pe["version_resources"]] != [version]:
+            raise ValueError("Common driver branch architecture or version differs: " + key)
+        encoded = struct.pack("<4I", *binding)
+        offset = raw.find(encoded)
+        if raw.count(encoded) != 1 or offset < 16 or struct.unpack_from("<I", raw, offset - 16)[0] != 48:
+            raise ValueError("Common driver branch WDF binding differs: " + key)
+        capture = verify_native_functions(original, {})
+        audit.artifact(a.ROOT / capture["capture_receipt"]["path"], capture["capture_receipt"])
+        drivers.append({"role": key, "original": original, "file_version": version,
+            "official_install_filename": "RzCommon.sys", "wdf_binding_file_offset": offset,
+            "wdf_binding_version": binding[:3], "wdf_function_count": binding[3],
+            "capture_receipt": capture["capture_receipt"], "functions_captured": capture["functions_captured"],
+            "functions_total": capture["functions_total"], "capture_complete": capture["capture_complete"],
+            "capture_failures": capture["failures"], "whole_driver_semantics_reviewed_by_this_query": False})
+    infs = []
+    for role, digest in (("universal_inf", "dd3c8d65c7c3ccf2093fe70fb21fb8dc724e837880566bae629b3104a5b1b37b"),
+                         ("legacy_inf", "44850223fdd06e18cc1fb14095d345039736ccac70fcfe4b8018cbc523b94e59")):
+        original = inputs[role]
+        if original["sha256"] != digest:
+            raise ValueError("Common driver INF requires independent semantic review: " + role)
+        body = audit.read(original).decode("utf-8-sig")
+        infs.append({"role": role, "original": original, "source_text": body,
+            "service_binary": "%12%\\RzCommon.sys", "hardware_id": "RAZER\\DeviceContol",
+            "driver_version": "09/26/2023,10.0.15063.0" if role == "universal_inf" else "06/15/2021,6.2.9200.16384",
+            "models_sections": ["Standard.NTamd64"] if role == "universal_inf" else ["Standard.NTamd64", "Standard.NTamd64.6.2"],
+            "coinstaller_for_nt61": role == "legacy_inf"})
+    return {"schema_version": 1, "kind": "current_common_driver_install_selection",
+        "scope": "Current RzComDriver 23.0.6.0 signed kernel32-file-version selector, actual Unicode NSIS/System architecture gate, exact two INF/SYS payloads, nsExec result consumer and existing SYS capture availability",
+        "provenance": provenance, "selection": snapshot, "native": native, "native_verification": counts,
+        "native_proof": proof, "version_api_table": version_apis, "driver_branches": drivers, "inf_contracts": infs,
+        "boundary_cases": [common_driver_install_selection_branch(value) for value in
+            (None, 0x00060003, 0x0009ffff, 0x000a0000, 0x000a0001, 0x7fffffff, 0x80000000, 0xffffffff)],
+        "architecture_cases": [common_driver_install_architecture_gate(machine, wow64)
+            for machine, wow64 in ((None, None), (0, 0), (0x14c, 0), (0, 1), (0x14c, 1))],
+        "execution_result_cases": [common_driver_install_result(value)
+            for value in (None, "0", "1073741824", "2147483648", "-1", "error", "timeout")],
+        "reviewed_semantics": {
+            "version_source": "Entry32 GetDLLVersion reads the actual %WINDIR%\\System32\\kernel32.dll file, not GetVersionEx. Unicode interpreter1434 calls exact VERSION GetFileVersionInfoSizeW/GetFileVersionInfoW/VerQueryValueW through68D4 indices10/11/12. It clears both result strings before failures;33 masks high DWORD with0xFFFFFFFF into variable32.38 uses signed IntCmp with threshold0x000A0000: equal/greater falls through39, less target45 resolves zero-based44 through1389's positive-target-minus-one. Absent file version follows the original zero/legacy path without becoming a successful observation.",
+            "two_payload_branches": "Universal entries39–42 write rzcommon.cat, RzCommonU.inf and original filenameRzCommon.sys; legacy44–48 write another rzcommon.cat, RzCommon.inf, another original filenameRzCommon.sys and WdfCoinstaller01009.dll. Every record is decompressed in memory and compared with retained bytes. Universal SYS is1.0.0.76 with WDF1.15/444, legacy SYS is1.0.0.71 with WDF1.9.7600/396. Retained RzCommon_1.sys/rzcommon_1.cat preserve the legacy colliding bytes; neither suffix appears as the corresponding official output filename. Universal entry43 jumps to49; both branches then share the following path.",
+            "inf_contract": "Both INF files install demand-start kernel serviceRzCommon for exact RAZER\\DeviceContol and ServiceBinary%12%\\RzCommon.sys. Universal declares NTamd64 and PnpLockdown1. Legacy declares Standard.NTamd64 and Standard.NTamd64.6.2; its6.1 section adds WdfCoInstaller01009.dll and KMDF1.9. These declarations do not establish which INF Windows actually selected or that its service/device was installed.",
+            "architecture_output_gate": "Entries61/62 request GetCurrentProcess()p.s;66/67 invoke IsWow64Process2(ps,*i0s,*i),68 pushes literal|,72/73 invoke IsWow64Process(p-1,*i0s),77 calls System.Int64Op and78 pops variable37. System1817/1BFF/243E/2480/2655 retain actual pointer, stack and zero-initialized by-reference semantics. The process-machine output from IsWow64Process2 and BOOL output from IsWow64Process are ORed; the native-machine output has no output consumer and neither API BOOL return is checked. These two probes are both called, not a success-conditioned fallback. Lookup/API failure is not installation success or native-architecture qualification.",
+            "execution_gate": "Entry79 compares that aggregate string to0. Equal target86 resolves zero-based85, skipping entries80–84 but still entering Pop$0/status processing; nonzero reaches actual nsExec.Exec1000/1096 with the amd64 DPInst path and flags/F /LM /SW /SA /PATH. The selected command has no nsExec TIMEOUT argument, leaving its idle timeout0;1096 polls real process/pipe state, formats its exit code as signed decimal, and pushes error/timeout text on those paths. It closes created process/thread/pipe handles and attempts deletion of its optional compatibility temporary executable. These are source cleanup attempts, not observed successful release.",
+            "execution_result_consumer": "After Pop$0,86 applies0xFFFFFFFF and87 extracts only bit0x40000000 into$2.88 compares it with1073741824; the matching branch sets installer flag11 to3010. Both paths reach90, writing the bit value as HKCU Volatile Environment/RzComDriver DWORD.34F7 consumes flag11 as final ExitProcess override. No other result-success predicate is present here: the separate failure bit is not checked, -1 also has the reboot bit, and nonnumeric error/timeout text becomes0 through6467. A skipped Exec still reaches Pop and cannot be treated as a fresh observed exit code. None of these paths proves installation or device acknowledgment.",
+            "capture_and_release_boundary": "The existing installer105-function, System62-function and nsExec17-function captures are rechecked against actual PE chunks and instruction bytes. The System2B98 positive-stack warning remains in the complete owner; assembly resolves its call bridge without claiming dynamic ABI execution. Existing universal121-function and legacy105-function SYS captures are indexed by exact bytes and retain failures; their availability is separate from review of Common_1 input semantics. Static decoding creates no files, runs no target and opens no new analyzer session."},
+        "dependencies": [{"receipt": ".analysis/results/host-current/local-audit.json", "section": "mapping_kernel_input_producer",
+            "scope": "Reuse the reviewed universal1.0.0.76 notification chain; the selector does not transfer it to legacy1.0.0.71"}],
+        "remaining_chains": [
+            "Review the actual legacy1.0.0.71 Common_1 input production and cancellation chain against its own complete SYS capture; do not transfer universal offsets or semantics.",
+            "Complete mounted install/uninstall callers, launch arguments, OS/architecture support, actual DPInst/nsExec outcomes, service/driver readiness and failure/cancel/restoration/cleanup consumers where required. This selector does not establish installed-device eligibility.",
+            "Independently implement confirmed Rust after full semantic reverse work and retain official DLL/device and actual installation/runtime acceptance as separately unverified."],
+        "selected_static_semantics_reviewed": True, "source_chain_complete": False, "whole_product_complete": False,
+        "installed_branch_observed": False, "native_machine_qualified": False, "target_execution": False,
+        "real_device_operations": False, "product_code_modified": False, "new_native_captures": 0,
+        "new_analysis_sessions": 0, "temporary_files_created": [], "rust_independent_implementation": "not_implemented_by_this_query",
+        "ui_backend_wiring": "unverified", "actual_dll_comparison": "unverified", "runtime_acceptance": "unverified", "failures": []}
+
+
 def driver_install_selection_snapshot(raw):
     """Resolve the current 006A selection from its complete compiled entries."""
     import host
@@ -31349,7 +36818,7 @@ def add_commands(parsers):
     audit.add_argument("--acquisition", action="append", help="Explicit indexed acquisition for matcher deployment comparison; repeat for each product/layer")
     audit.add_argument("--workers", type=int, choices=range(2, 17), default=4,
                        help="bounded worker threads for independent product audits")
-    audit.add_argument("--query", choices=["mouse-dpi", "mouse-dpi-profile", "mouse-local-profile-schema", "mouse-dpi-matcher", "mouse-matcher-deployment", "mouse-matcher-ui-names", "mouse-input-monitoring", "mouse-dynamic-sensitivity", "mouse-rotation", "mouse-customize", "mouse-page-layout", "mouse-power", "mouse-scroll", "mouse-dpi-backend", "mouse-tracking", "mouse-calibration", "global-shortcuts", "shared-preferences", "profile-import-processors", "mouse-runtime-artwork", "mouse-receiver-polling", "mouse-receiver-indicator", "mouse-receiver-legacy", "mouse-receiver-mapping", "mouse-dpi-profile-events", "keyboard-analog-keys", "keyboard-gamepad-tester", "keyboard-driver-request-lifecycle", "driver-install-selection", "keyboard-local-controls", "keyboard-local-profile-adoption", "keyboard-wireless-power", "keyboard-brightness", "keyboard-artwork", "keyboard-metadata", "keyboard-page-layout", "keyboard-actuation-selection", "receiver-page-layout", "receiver-local-runtime", "shared-page-layout", "gamepad-artwork", "gamepad-triggers", "gamepad-input", "gamepad-thumbsticks", "gamepad-lighting", "gamepad-lighting-selection", "mapping-engine", "audio-firmware-selector", "audio-help-reset", "audio-local-profiles", "hue-profile-actions", "accessory-text-inputs", "audio-preset-inputs", "chroma-text-inputs", "audio-seiren-eq", "audio-leviathan", "audio-demo", "audio-surround", "camera-local-pages", "camera-source-review", "camera-legacy-selection", "camera-legacy-native-properties", "camera-properties-lifecycle", "hanbo-local-runtime"], help="Append a semantic query to an existing complete capture audit")
+    audit.add_argument("--query", choices=["mouse-dpi", "mouse-dpi-profile", "mouse-local-profile-schema", "mouse-dpi-matcher", "mouse-matcher-deployment", "mouse-matcher-ui-names", "mouse-input-monitoring", "mouse-dynamic-sensitivity", "mouse-rotation", "mouse-customize", "mouse-page-layout", "mouse-power", "mouse-scroll", "mouse-dpi-backend", "mouse-tracking", "mouse-calibration", "global-shortcuts", "shared-preferences", "profile-import-processors", "mouse-runtime-artwork", "mouse-receiver-polling", "mouse-receiver-indicator", "mouse-receiver-legacy", "mouse-receiver-mapping", "mouse-dpi-profile-events", "keyboard-analog-keys", "keyboard-gamepad-tester", "keyboard-driver-request-lifecycle", "driver-install-selection", "keyboard-local-controls", "keyboard-local-profile-adoption", "keyboard-wireless-power", "keyboard-brightness", "keyboard-artwork", "keyboard-metadata", "keyboard-page-layout", "keyboard-actuation-selection", "receiver-page-layout", "receiver-local-runtime", "shared-page-layout", "gamepad-artwork", "gamepad-triggers", "gamepad-input", "gamepad-mode-socd", "gamepad-thumbsticks", "gamepad-lighting", "gamepad-lighting-selection", "mapping-engine", "audio-firmware-selector", "audio-help-reset", "audio-local-profiles", "hue-profile-actions", "accessory-text-inputs", "audio-preset-inputs", "chroma-text-inputs", "audio-seiren-eq", "audio-seiren-current-mw", "audio-seiren-native-dsp", "audio-endpoint-local-chain", "audio-endpoint-notification-chain", "audio-driver-lifecycle", "audio-driver-close-quiescence", "audio-leviathan", "audio-demo", "audio-surround", "camera-local-pages", "camera-source-review", "camera-legacy-selection", "camera-legacy-native-properties", "camera-properties-lifecycle", "camera-image-properties", "camera-image-host-chain", "camera-device-lifecycle", "camera-media-preview-chain", "camera-kimberly-identity-chain", "hanbo-local-runtime", "hanbo-gpu-temperature-chain", "hanbo-system-monitor-versions"], help="Append a semantic query to an existing complete capture audit")
     audit.add_argument("--prepare", action="store_true", help="Prepare verified current artwork resources through the shared workflow")
     audit.add_argument("--receipt-only", action="store_true", help="Refresh supported mouse or mapping-engine evidence without rewriting runtime descriptors")
     audit.add_argument("--native-driver-lifecycle", choices=["capture", "check", "negative"],

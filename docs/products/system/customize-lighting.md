@@ -68,6 +68,20 @@ Quick／Advanced 切换会处理 Chroma 全局启用、选中的本地效果和�
 
 缺少引擎、设备、灯位或 effect 会在相应边界停止。逐行帧 writer 对部分异常只记录并继续，最后构造 SUCCESS；这只是官方 wrapper 的返回语义，不能用它证明每行已传输成功或真实读回一致。厂商 native 引擎的计算、DLL 实现和物理灯光效果仍是独立证据层。
 
+## Studio 共享编辑、预览与本地保存
+
+当前 Studio 的真实挂载链为 React 根 → EditorCanvas → 参数侧栏。侧栏按当前图层名称选择 13 个面板：Ambient、Audio、Breathing、Chroma Generate、Fire、Reactive、Ripple、Spectrum、Starlight、Static、Tidal、Wave、Wheel。灯光引擎 mapper 还能处理其他 effect ID，不代表页面增加了对应面板。本节只闭合共享编辑与保存边界，各面板内部的全部控件和版本分支继续单独核对。
+
+参数分为选中灯位的 `params` 与图层几何的 `params2`。区域默认值区分 Select 与 Pen／Bucket：后两者提供画笔颜色，Select 保留未填写字段；Wheel／Tidal 的中心点默认值另取当前设备布局。修改先进入草稿；实际 region merge 从旧区域移除选中灯位，为混合值保留原区域字段（`randomColor` 例外），过滤失效灯位，再合并相同参数的区域并标记待保存。Reset 使用当前效果的默认参数；Wheel／Tidal 还重置中心点。该过程触发预览，不直接写已保存配置档。
+
+预览 facade 将草稿图层和当前设备几何发送为 `refreshPreviewEngine` 内存动作；没有可用设备则返回。灯光引擎在 Chroma Connect 占用时拒绝重建，以独立 mutex 串行销毁旧 preview 并重建，复用已确认的 Advanced layer／mapper。失败只记录，未恢复旧引擎。帧请求按设备／region 和速度发出，`[]/-1` 停止轮询；返回经 RGB／mirror 投影进入 preview-frame 内存键，Canvas 消费后更新对应 LED 的 DOM fill 与缓存。关闭预览还安排 500 ms 的灯色清除；这些消息和界面帧均不是设备写回确认。
+
+侧栏 Save 先核实当前配置档和设备，再快照图层、设备位置与媒体，更新保存态和本地选择，随后等待本地配置存储。`setRemote` 的当前实现先更新本地选择并写 IndexedDB：`rzr` 数据库的 `auth` 记录内保存 `chromaStudioProfiles`；后续同步通知另行执行。Save 在等待持久化前已经更新了 reducer，失败没有对应回滚。IndexedDB helper 处理单个请求失败，但没有 `open` 的 error／blocked 处理、事务完成确认或数据库关闭；不能把请求 success 说成完整事务已提交。
+
+未保存提示中的 Save、Don't Save 与关闭按钮是不同动作：前两者清除待保存标记，并分别保存或执行传入的后续动作；关闭仅隐藏提示、清空回调。Header Save All 和 Discard All 各自调用保存与恢复草稿动作。各效果控件自己的 Apply／Cancel 不自动等同于这条配置档保存链。Canvas 卸载移除列出的 DOM 监听和设备、清空 LED 缓存；其异步内存监听在该 owner 内未退订，也没有代次过滤，滚轮包装监听的移除函数身份亦不同。Header 的未保存管理器则关闭 BroadcastChannel 并移除其 storage／beforeunload 监听。原版这些边界已如实保留，不能写成已经完整取消或释放。
+
+完整所有者、默认常量和 13 个面板的实际 lazy-module 身份归入[主机收据](../../../.analysis/results/host-current/local-audit.json)的 `studio_editing_consumers`；当前来源为 [Studio 获取收据](../../../.analysis/inputs/frontend/synapse-chroma-studio-build-2609080829-current-refresh-ec3db4b29c5a/acquisition.json)、[主脚本](../../../.analysis/inputs/frontend/synapse-chroma-studio-build-2609080829-current-refresh-ec3db4b29c5a/raw/apps.razer.com/synapse/chroma-studio/static/js/main.0b34ec4f.js)和 [EditorCanvas](../../../.analysis/inputs/frontend/synapse-chroma-studio-build-2609080829-current-refresh-ec3db4b29c5a/raw/apps.razer.com/synapse/chroma-studio/static/js/EditorCanvas.3e7d9a22.chunk.js)。原生计算与释放复用[共享灯光证据](../shared/dynamic-lighting.md)，不重做已闭合的 HDK 或 Advanced 静态层。完整面板交互、实际产品几何／镜像分支、Rust／UI 接线和真实设备对照仍未由本节验收。
+
 ## VC、启动动画、退出与恢复
 
 VC 设置按当前供电／twoMode 选择分支，写 `setVcLedState` 后写 `setVcLedStateInSleep`。电池下睡眠编码区分关闭、持续亮和定时亮，接电使用单独的编码；保存与 UI 更新在该 feature runner 中完成。硬件 VC 快捷键使用另一个 toggle owner。
@@ -84,6 +98,6 @@ VC 设置按当前供电／twoMode 选择分支，写 `setVcLedState` 后写 `se
 - 同产品 `9742.82cb0b5c.chunk.js`：自动关灯 `[6909,9868)`；Quick／Advanced 控制 class `[86319,92745)`；亮度／Logo `[95826,97717)`；动态灯光提示 `[97925,98648)`；启动动画 `[98653,98984)`；Lighting 根 `[98985,99366)`。
 - 737 中间件 `system-mw-737-current/raw/apps.razer.com/synapse/products/737/mw/6737.85397ce157d4cca228ee.js`：映射生成 `[727416,730792)`、保存 `[760812,771193)`；Fn maker `[883735,886262)`、GET `[1265172,1265457)`、resume `[2356021,2357056)`；游戏 maker `[872543,876558)`、runner `[1202908,1206354)`；Snap Tap maker `[758218,758821)`、主机转换模块 `[21808,24444)`；触控板 `[909462,910493)`。
 - 同中间件：亮度 maker `[734664,738167)`、统一供电模式 `[738167,740525)`、开关 `[742116,745201)`、自动关灯 `[750935,753756)`；Quick maker `[792562,795416)`；亮度 runner `[1121341,1123244)`、Logo runner `[1124278,1125608)`；VC 和 feature 分派模块 `[2019109,2032396)`；启动动画 `[36447,37758)`、版本及读取入口 `[1878210,1878863)`。
-- 全局 `synapse-lighting-engine-current/raw/apps.razer.com/synapse/lighting-engine/static/js/main.a383ea9e.js`：storage 分派 `[908613,909145)`、当前配置消费者 `[844173,849899)`；区域效果 `[823012,825228)`、硬件同步 `[825247,826331)`；软件效果 `[863131,868219)`；帧消费者 `[435194,437352)`、逐行／批写 `[550280,551544)`；退出 `[874724,876284)`。
+- 全局 `synapse-lighting-engine-snapshot-1d1be731/raw/apps.razer.com/synapse/lighting-engine/static/js/main.1d1be731.js`：storage 分派 `[902476,903008)`、当前配置消费者 `[838420,844174)`；区域效果 `[817188,819404)`、硬件同步 `[819405,820507)`；软件效果 `[857366,862473)`；退出 `[868852,870413)`。当前完整 owner 由[主机查询](../../../.analysis/results/host-current/local-audit.json)的 `product_chroma_observation` 管理；帧编码、传输与恢复的已有原生证据继续见[共享灯光链](../shared/dynamic-lighting.md#11-类灯光协议帧字节与实际发送结果)，不能将旧部署的帧函数坐标套到当前脚本。
 
 本页记录当前官方源码的静态行为，未执行厂商 JavaScript、主程序、灯光 DLL 或真实设备。Rust 实现、UI 后端接线、模拟验证和真实运行验收不能由这份语义文档替代。

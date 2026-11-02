@@ -7662,6 +7662,11 @@ def _clean_candidates(before=None):
             if sha_root.name in reserved:
                 retained.append({"path": name, "reason": "reserved_analysis_family", "owners": reserved[sha_root.name]})
                 continue
+            if target.name == ".reservation.lock" and target.is_file() and not _scratch_link(target):
+                retained.append({"path": name, "reason": "supplement_reservation_lock",
+                                 "owner": "tools/analysis.py:supplement_native",
+                                 "purpose": "Persistent lock path shared by subsequent supplement reservations"})
+                continue
             result = ROOT / ".analysis/results/native" / sha_root.name / "supplements" / target.name
             if not target.is_dir() or _scratch_link(target) or not _clean_supplement_attempt(result):
                 retained.append({"path": name, "reason": "unknown_or_linked_supplement"})
@@ -7887,13 +7892,96 @@ def _clean_formal_capture_history(document, owner, raw, candidates, *, bind_hist
     return result
 
 
+def _clean_native_release_history(document, owner, raw, candidates, *, bind_history):
+    """Release exact private-file inventories backed by the frozen owner review."""
+    released = {}
+    if (not isinstance(document, dict) or document.get("schema_version") != 1
+            or document.get("review_kind") != "completed_native_private_database_release_candidates"
+            or document.get("target_execution") is not False
+            or document.get("all_owned_coordinators_finished") is not True
+            or document.get("new_native_jobs_started_after_cleanup_priority") is not False
+            or document.get("canonical_outputs_modified") is not False or document.get("files_deleted") is not False
+            or not isinstance(document.get("cleanup_released_candidates"), list)
+            or not isinstance(document.get("process_observation"), dict)
+            or document["process_observation"].get("ida_process_count") != 0
+            or document["process_observation"].get("processes") != []):
+        return released
+    frozen = ROOT / ".analysis/results/reverse-pending/review-sources" / (hashlib.sha256(raw).hexdigest() + ".json")
+    if owner not in {frozen, ROOT / ".work/reverse-pending/native-scratch-release-review.json"}:
+        return released
+    try:
+        common = [_clean_history_file({"path": relative(path), "bytes": len(raw),
+                                       "sha256": hashlib.sha256(raw).hexdigest()})[0] for path in {owner, frozen}]
+        reviewed_at = datetime.fromisoformat(document["recorded_at_utc"])
+        if reviewed_at.tzinfo is None or reviewed_at >= datetime.now(timezone.utc):
+            return released
+    except (KeyError, TypeError, ValueError, OSError):
+        return released
+    for item in document["cleanup_released_candidates"]:
+        try:
+            name = ".work/native/" + item["sha256"] + "/supplements/" + item["selection_id"]
+            output = name.replace(".work/native/", ".analysis/results/native/", 1)
+            row = candidates.get(name)
+            if (row is None or row.get("kind") != "ended_supplement_private_copy"
+                    or item["scratch_directory"] != name or item["retained_result_directory"] != output
+                    or item.get("eligible_for_cleanup_released") is not True or item.get("session_passed") is not True
+                    or item.get("all_pseudocode_captured") is not True or item.get("capture_failures_retained") != []):
+                continue
+            previous = {entry["path"]: entry for entry in row["basis"]}
+            basis, evidence = list(common), {}
+            for field in ("session", "plan", "capture"):
+                reference = item["retained_" + field]
+                if reference["path"] != output + "/" + field + ".json":
+                    raise ValueError("Release review names another completion owner")
+                actual, body = _clean_history_file(reference, contents=True)
+                if previous.get(reference["path"]) != actual:
+                    raise ValueError("Release completion basis changed")
+                basis.append(actual)
+                evidence[field] = json.loads(body)
+            session, plan, capture = (evidence[key] for key in ("session", "plan", "capture"))
+            ended = datetime.fromisoformat(session["finished_at_utc"])
+            source = item["source_database"]
+            source_identity = {key: source[key] for key in ("path", "sha256")}
+            if (session.get("passed") is not True or session.get("exit_code") != 0
+                    or session.get("pid") != item["analyzer_pid"] or session["finished_at_utc"] != item["finished_at_utc"]
+                    or ended.tzinfo is None or ended > reviewed_at
+                    or capture.get("capture_complete") is not True or capture.get("all_pseudocode_captured") is not True
+                    or capture.get("target_execution") is not False or capture.get("failures") != []
+                    or plan.get("sha256") != item["sha256"] or plan.get("output") != output
+                    or plan.get("source_database") != source_identity or capture.get("source_database") != source_identity
+                    or not source["path"].startswith(".work/native/" + item["sha256"] + "/batch/")
+                    or plan.get("database") != item["private_database_preanalysis_from_plan"]):
+                continue
+            basis.append(_clean_history_file(source)[0])
+            tree = _clean_tree(name)
+            files = [{key: entry[key] for key in ("path", "bytes", "sha256")} for entry in tree["files"]]
+            if (sorted(item["files"], key=lambda entry: entry["path"]) != sorted(files, key=lambda entry: entry["path"])
+                    or item["scratch_bytes"] != tree["bytes"] or item["private_database_final"] not in files
+                    or item["private_database_final"]["path"] != plan["database"]["path"]):
+                continue
+            if any(entry["path"] in previous and previous[entry["path"]] != entry for entry in basis):
+                continue
+            if bind_history:
+                previous.update((entry["path"], entry) for entry in basis)
+                row["basis"] = sorted(previous.values(), key=lambda entry: entry["path"])
+            elif any(previous.get(entry["path"]) != entry for entry in basis):
+                continue
+            released[id(item)] = name
+        except (KeyError, TypeError, ValueError, OSError):
+            continue
+    return released
+
+
 def _clean_json_dependencies(value, *, own_receipt=False, field=None, ended_batch=False, historical_job=False,
-                             formal_stdout_jobs=(), verification_owners=(), released_checkouts=()):
+                             formal_stdout_jobs=(), verification_owners=(), released_checkouts=(), native_release_items=()):
     """Keep dependency fields while excluding explicitly historical inventory facts."""
     if isinstance(value, dict):
         if value.get("mode") in {"scratch_cleanup_plan", "scratch_cleanup_apply"}:
             return
         for key, child in value.items():
+            if id(value) in native_release_items and key in {
+                    "scratch_directory", "files", "private_database_final", "private_database_preanalysis_from_plan"}:
+                continue
             if key == "directory" and id(child) in verification_owners:
                 continue
             if key == "scratch_cleanup" or own_receipt and key in {"database", "argv", "retained_private_database"}:
@@ -7913,12 +8001,14 @@ def _clean_json_dependencies(value, *, own_receipt=False, field=None, ended_batc
             yield from _clean_json_dependencies(child, own_receipt=own_receipt and key == "previous_attempts",
                                                 field=key, historical_job=ended_batch and key == "jobs",
                                                 formal_stdout_jobs=formal_stdout_jobs,
-                                                verification_owners=verification_owners, released_checkouts=released_checkouts)
+                                                 verification_owners=verification_owners, released_checkouts=released_checkouts,
+                                                 native_release_items=native_release_items)
     elif isinstance(value, list):
         for child in value:
             yield from _clean_json_dependencies(child, field=field, own_receipt=own_receipt,
                                                 historical_job=historical_job, formal_stdout_jobs=formal_stdout_jobs,
-                                                verification_owners=verification_owners, released_checkouts=released_checkouts)
+                                                 verification_owners=verification_owners, released_checkouts=released_checkouts,
+                                                 native_release_items=native_release_items)
     elif isinstance(value, str):
         yield value
 
@@ -8081,6 +8171,7 @@ def _clean_references(candidates, *, exclude=(), bind_history=False):
             errors.append("Malformed retained JSON reference owner: " + filename)
             continue
         formal_history = _clean_formal_capture_history(document, path, raw, names, bind_history=bind_history)
+        native_releases = _clean_native_release_history(document, path, raw, names, bind_history=bind_history)
         verification_owners = set()
         if filename == VERIFICATION_TEMP_LEDGER:
             try:
@@ -8103,6 +8194,8 @@ def _clean_references(candidates, *, exclude=(), bind_history=False):
                                                  and row.get("kind") != "owned_empty_verification_temp",
                                                  ended_batch=ended_batch, formal_stdout_jobs={
                                                       job for job, target in formal_history.items() if target == name},
+                                                  native_release_items={
+                                                       item for item, target in native_releases.items() if target == name},
                                                  verification_owners=verification_owners,
                                                  released_checkouts={name} if row.get("kind") == "old_asset_upload_clone" else ())
                        if document is not None else [raw.decode("utf-8")])
@@ -8115,6 +8208,8 @@ def _clean_references(candidates, *, exclude=(), bind_history=False):
 
 
 def _clean_process_guard(candidates):
+    if not candidates:
+        return {}, []
     processes, errors = _scratch_processes()
     references = {}
     for row in candidates:
@@ -8317,9 +8412,11 @@ def clean(stale=False, *, before=None, dry_run=False, plan=None, apply=None, pla
             raise ValueError("Cleanup plan has invalid ownership or failed guards")
         with _clean_locks():
             rows = report["candidates"]
-            current, _ = _clean_candidates()
-            verification_rows, _ = _verification_candidates()
-            current.extend(verification_rows)
+            current = []
+            if rows:
+                current, _ = _clean_candidates()
+                verification_rows, _ = _verification_candidates()
+                current.extend(verification_rows)
             current_names = {row["path"]: row for row in current}
             for row in rows:
                 if row.get("kind") not in {"ended_supplement_private_copy", "old_asset_upload_clone", "owned_empty_verification_temp"}:
@@ -8428,6 +8525,7 @@ def clean(stale=False, *, before=None, dry_run=False, plan=None, apply=None, pla
                                     "exited capture-batch job scratch/argv/command/log",
                                     "verified exited native launch/completion stdout",
                                      "source-bound frozen capture job structured stdout log inventory",
+                                      "frozen owner-validated released private database inventory",
                                      "validated verification ledger directory ownership field"],
               "guard_failures": errors + process_errors, "candidates": eligible, "retained": retained,
               "candidate_bytes": sum(row["tree"]["bytes"] for row in eligible)}

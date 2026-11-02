@@ -681,8 +681,22 @@ def native_capture_gaps(data, receipt):
     return rows
 
 
+def managed_capture_gaps(data, evidence):
+    rows = []
+    for assembly in data.get("assemblies", []):
+        rows.extend({"kind": "managed_analyzer_failure", "input": assembly["input"], **command}
+                    for command in assembly.get("commands", []) if command["exit_code"])
+        rows.extend({**diagnostic, "input": assembly["input"], "evidence": evidence}
+                    for diagnostic in assembly.get("diagnostics", []))
+        if not assembly.get("input_bytes_unchanged"):
+            rows.append({"kind": "managed_input_identity_unverified", "input": assembly["input"]})
+    rows.append({"kind": "semantic_audit_pending",
+                 "scope": "managed local installation, lifecycle, native dependencies and Rust adapters"})
+    return rows
+
+
 def refresh_selected_gaps(owners):
-    """Publish only explicitly selected semantic or native capture owners."""
+    """Publish only explicitly selected semantic or capture owners."""
     if not owners or len(owners) != len(set(owners)):
         raise ValueError("Selected gap owners must be a nonempty unique list")
     selected = []
@@ -695,17 +709,19 @@ def refresh_selected_gaps(owners):
                     and path.name.endswith("-audit.json")
                     and not path.name.endswith("-shared-page-layout-audit.json"))
         native = bool(re.fullmatch(r"\.analysis/results/native/[0-9a-f]{64}/capture\.json", relative))
-        if not semantic and not native and relative != ".analysis/results/host-current/local-audit.json":
-            raise ValueError("Selected gap owner is not a semantic audit or native capture: " + name)
-        selected.append((path, native))
+        managed = relative == ".analysis/results/host-current/managed/capture.json"
+        if not semantic and not native and not managed and relative != ".analysis/results/host-current/local-audit.json":
+            raise ValueError("Selected gap owner is not a semantic audit, native or managed capture: " + name)
+        selected.append((path, native, managed))
 
     def read_owner(item):
-        path, native = item
+        path, native, managed = item
         raw = path.read_bytes()
         data = json.loads(raw)
         if not isinstance(data, dict):
             raise ValueError("Gap owner must contain a result object: " + rel(path))
-        rows = native_capture_gaps(data, path) if native else semantic_result_gaps(data, rel(path))
+        rows = (native_capture_gaps(data, path) if native else managed_capture_gaps(data, rel(path))
+                if managed else semantic_result_gaps(data, rel(path)))
         return rel(path), rows, {"path": rel(path), "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()}
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=min(8, max(2, len(selected)))) as pool:
@@ -1126,17 +1142,7 @@ def _refresh_gaps():
     managed = ROOT / ".analysis/results/host-current/managed/capture.json"
     if managed.is_file():
         data = json.loads(managed.read_bytes())
-        rows = []
-        for assembly in data.get("assemblies", []):
-            rows.extend({"kind": "managed_analyzer_failure", "input": assembly["input"], **command}
-                        for command in assembly.get("commands", []) if command["exit_code"])
-            rows.extend({**diagnostic, "input": assembly["input"], "evidence": rel(managed)}
-                        for diagnostic in assembly.get("diagnostics", []))
-            if not assembly.get("input_bytes_unchanged"):
-                rows.append({"kind": "managed_input_identity_unverified", "input": assembly["input"]})
-        rows.append({"kind": "semantic_audit_pending",
-                     "scope": "managed local installation, lifecycle, native dependencies and Rust adapters"})
-        derived[rel(managed)] = rows
+        derived[rel(managed)] = managed_capture_gaps(data, rel(managed))
     host_js = ROOT / ".analysis/results/host-current/javascript/capture.json"
     if host_js.is_file():
         data = json.loads(host_js.read_bytes())
@@ -5109,7 +5115,11 @@ def analyze_frontend(args, *, refresh_ledger=True):
             raise ValueError("Complete explicit Wakaru input list still exceeds Windows command-line limit")
     command("unpack", unpack_args, cwd=unpack_cwd)
     if unpacked.exists():
-        command("validate", [str(tool), "debug", "validate", str(unpacked), "--input", str(retained_input_root), "--json"])
+        validate_args = [str(tool), "debug", "validate", str(unpacked)]
+        for path in inputs:
+            validate_args.extend(("--input", os.path.relpath(path, unpack_cwd)))
+        validate_args.append("--json")
+        command("validate", validate_args, cwd=unpack_cwd)
     map_inputs = [r for r in records if r["url"].endswith(".map")]
     maps = []
 
