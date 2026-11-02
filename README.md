@@ -1,33 +1,21 @@
 # razer_ui
 
-使用 Rust + GPUI Kit 实现当前稳定版 Razer Synapse 的本地设备配置功能。设备读写、配置文件、映射与宏、灯光、音频、摄像头、本地服务、持久化和系统集成均在范围内；完整页面与设备链仍在实现，不能将产品列表覆盖视为功能完成。
+使用 Rust + GPUI Kit 独立实现当前稳定版 Razer Synapse 的本地设备配置功能。范围依据当前官方源码、二进制和实际调用链；原版没有的功能不新增，已有本地功能完整保留，账户、云同步、在线目录和远程更新业务移除。
 
-本地设备功能要求完整读取、修改、设备／服务写回与确认，真实结果进入原页面和控件。设备当前值、未提交草稿与持久化配置分别建模，读取失败不能回退到本地值或默认值，未返回字段保持未观测。默认值、首次初始化条件、读取／写入顺序及失败行为均依据当前源码；必要初始化与恢复写入仍须实现，不能改成通用只读流程或另一套配置页面。具体约束见[本地优先范围](docs/re/local-first-scope.md)，各产品已接线范围与剩余工作见[实现路线](docs/re/ui-readonly-first-roadmap.md)。
+当前优先完成全范围语义逆向，再按已确认的行为修正必要架构、实现 Rust 并接通页面与后端。批量捕获已有基础，完整功能语义尚未完成；当前进度、下一批安排及各阶段完成条件统一维护在[路线图](docs/re/ui-readonly-first-roadmap.md)，静态捕获和补查收据见[逆向证据索引](docs/re/native-bulk-reverse.md)。
 
-静态图片、字体和视频存放在私有 Hugging Face Dataset `han1548772930/razer-ui-assets`，按产品和共享资源保留原文件，不需要 ZIP 或整套 pack。程序只请求当前界面实际使用的文件，在当前 EXE 所在目录的 `assets/cache/` 校验并缓存；有效缓存不请求网络，支持下次启动及离线复用。尚未缓存的资源离线时会保留真实加载失败状态。静态资源获取是用户授权的交付例外，账户、云同步、在线目录和远程更新等业务仍不在范围内。
+设备实测、持久化配置和待提交草稿分别建模；真实读写、初始化、应答确认及失败行为以官方调用链为依据。官方业务 DLL 仅用于静态分析和显式对照，不作为生产后端。完整规则见 [AGENTS.md](AGENTS.md)。
 
-源码 `assets/` 保留独立 SQLite 目录库、安装／托盘／菜单必需的 9 个 RGBA 图标，以及 4 个固定窗口控制 SVG，其余载荷由 `.gitignore` 排除。`tools/asset-release.json` 固定资源仓库提交及每个文件的长度、SHA-256 和产品依赖；`assets/synapse/resource-catalog.sqlite3` 当前为 schema 4、47,710,208 字节，保存 331 个产品、365 条导航分支、1,459 个页面、10 个语种的 58,587 条界面翻译，以及表情词表、分组、变体、版本过滤及资源索引，以独立文件随安装交付，不内嵌 EXE；`crates/razer-resource-db/installation.json` 统一维护文件名与缓存目录。启动在当前安装的 `assets/cache/catalogs/` 原子发布按内容版本区分的只读数据库，缺失或损坏可从 EXE 旁的独立目录库文件离线恢复；业务读入有类型的快照，render 不执行 SQL。Cargo 检查不下载资源、不恢复媒体，也不要求 `synapse.pack`。资源仓库使用独立 Git LFS；主仓库其余 JSON 的 LFS 规则见 `.gitattributes`，克隆后使用 `git lfs install --local` 和 `git lfs pull` 获取被跟踪的维护文件。
+| 入口 | 内容 |
+| --- | --- |
+| [项目文档](docs/README.md) | 各类文档的唯一阅读入口 |
+| [产品与共享功能](docs/products/README.md) | 各产品族、型号差异、宿主和共享功能语义 |
+| [本地优先范围](docs/re/local-first-scope.md) | 本地能力与排除项 |
+| [架构说明](docs/re/architecture.md) | 当前 crate 职责、依赖与状态所有者 |
+| [资源交付](docs/asset-pack-format.md) | 独立 SQLite、按需媒体与缓存；编译无需整套媒体 |
+| [Windows 安装](docs/windows-installation.md) | 安装配置、普通权限缓存和卸载边界 |
+| [维护工具](tools/README.md) | `tools/workspace.py` 统一入口、准备和验证命令 |
 
-私有资源凭据从本机凭据存储、`hf auth login` 的本地令牌文件或显式 `HF_TOKEN` 读取，不进入源码、资源索引或安装包。资源请求异步执行、按文件去重、限制并发并校验内容，失败可重试。完整流程与保留的独立容器格式见 [资源交付与容器格式](docs/asset-pack-format.md)。
+分析原件、索引和正式结果保留在 [.analysis](.analysis/README.md)，测试夹具归所属 crate。缺项由现有审阅收据与 `gaps.json` 维护；已确认、已归档且无后续依赖的临时残留通过统一清理计划实际删除，清理结果单独留据。
 
-用户分发入口是 [Windows 安装包](docs/windows-installation.md)，默认安装到当前用户可写目录；升级保留资源缓存，卸载可选择保留或清理缓存。安装脚本与静态准备工具已提供；当前没有生成或运行安装包，仍缺 release EXE 与 ISCC 输入。
-
-固定设备能力、协议映射、配对与恢复默认值使用有类型的普通 Rust 构造函数或常量；表情、界面词表与目录、图片选择／几何元数据和资源索引使用上述本地数据库，通过领域所有者的普通有类型函数读取。`razer-i18n` 查询保留的不可变词表快照，与 GPUI 共用当前语言状态，不再嵌入旧 `locales/*.json`。维护入口为 `python tools/workspace.py prepare-typed-data --check`、`prepare-resource-database --check` 和 `prepare-locale-exports`，专用协议／存储表命令见 [tools](tools/README.md)。原始维护 JSON 保留在分析输入，产品不依赖这些 JSON 或分析目录。资源映射维护清单位于 `tools/resource-mappings.json`，替代旧 Rust 片段，维护时校验完整字段与原始顺序。用户配置在明确的持久化边界序列化，不把本地保存视为设备写入成功。
-
-从 [文档索引](docs/README.md)、[本地优先范围](docs/re/local-first-scope.md) 和 [完整实现路线](docs/re/ui-readonly-first-roadmap.md) 开始。UI 必须依据当前原始 JS/CSS 和资源，完整追踪挂载组件、产品分支、控件与状态，以及提交、响应、写回、取消、保存和清理链。
-
-工作区按 UI、状态、本地 IPC、服务、协议与平台适配分层，见 [架构说明](docs/re/architecture.md)。外部项目用于学习安装、目录、缓存与生命周期等架构；Razer 协议依据当前 Razer 原始源码与二进制。证据 SHA 从实际输入字节计算，存于分析索引，不能作为产品运行门槛。
-
-偏好、快捷键、宏文档／编译和模块快照统一由无 GPUI 的 `razer-model` 提供，版本化工作区由 `razer-storage::workspace` 读写。产品保存共用快照入口，并绑定请求入队时的页面实体确认结果。资源 I/O 独立于 `razer-assets` 的 GPUI 适配，由应用注入的 `razer-resources::ResourceRuntime` 管理队列、HTTP、安装缓存与取消／关闭。`organize-sources` 维护全工作区模块、依赖和共享所有者检查；这些边界的验证不代表全部产品页面已经完成。
-
-产品正文通过 `BodyLayout` 声明外层文档滚动或内部视口滚动，抽屉与正文分别持有布局空间。延迟绘制的弹层通过共享资源作用域保留窗口图片缓存；鼠标、键盘和音频映射复用该边界。具体实现、静态／模拟验证及真实窗口验收分别记录，不能据此认定全部产品页面或弹层已完成。
-
-设置中的“所有产品”列出 331 个已注册产品，支持搜索、分类、版本及布局选择，并进入正式产品工作区，而非产品演示弹窗。获取 locator 仍保留 332 个 PID；162 端点的完整 DeviceInfo 实际声明 163，身份错误项不作为额外产品展示。真实连接与未连接的本地预览明确分开；列表覆盖不代表全部页面及设备链已完成。
-
-`prepare-runtime-assets`／`verify-runtime-assets` 从 `tools/resource-mappings.json` 和已固定的资源清单生成／核验同一 SQLite 资源目录，无需本地图片载荷。`fetch-asset-release --product PID` 仅供维护人员明确恢复选定产品原文件，不属于启动或编译流程；普通使用无需执行。来源获取、静态逆向、Rust 实现、接线、纯测试与真实验收分别记录。
-
-[tools](tools/README.md) 保存维护入口和分析器配置，前端静态恢复使用 Wakaru，IDA 路径为 `E:/IDA`（9.1）或 `D:/ida/IDA Pro 8.3`（8.3）。实际版本与限制见 [工具说明](docs/re/tooling.md)。[.analysis](.analysis/README.md) 保存原始输入、外部参考和分析结果；测试样本归所属 crate 的 `testdata/`。
-
-检查与测试必须对应当前文件字节；旧 [验证记录](.analysis/validation.json) 在代码／输入变化后不能沿用为通过结论。`tools/workspace.py audit-inputs` 完整列出缺失原件和不匹配样本；静态／纯 Rust／模拟验证按完整功能批次进行，页面完整性与真实运行验收仍未验证。
-
-允许静态分析、格式化、`cargo check --locked --all-targets`、纯 Rust 和模拟 transport 测试。用户已授权核实来源、架构、ABI 和清理链后的本地 DLL／导出、服务与真实设备功能测试；先只读核对，可恢复写入须记录原值、恢复并回读确认。应用窗口、厂商 JavaScript、无关 helper、installer、固件刷写及不可逆操作仍不运行。实际调用、返回、比较、恢复和未验证范围分别记录，完整规则见 [AGENTS.md](AGENTS.md)。
+允许的静态、纯 Rust、模拟及显式 DLL／服务／设备对照测试以根规则为准。应用窗口、厂商 JavaScript、安装器及动态调试不执行；未实际验证的结果保持未验证。

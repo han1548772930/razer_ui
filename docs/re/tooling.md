@@ -145,7 +145,7 @@ Profiles 的 Windows 原生枚举／图标另复用 [SysUtilsNative 完整捕获
 
 [Steam、BattleNet 与 Epic 的本机输入](../products/host/profiles.md#steambattlenet-与-epic-的实际本机输入)另核 Lib 的 39 个、Common 的 4 个所选 MethodDef 身份、原 PE 方法头及关键调用字节，并重新核对两套程序集的全部 246／107 个捕获输出摘要；方法集合有交集，不累加为全策略覆盖。Steam 的两个 bool 结果被 pop、停止库循环后仍可能进入联网补全、数据库适配器丢弃序列化返回值、BattleNet 日志单次读取及 64 位门禁后调用 32 位 getter、Epic 先读两列表却以不同列表作门槛与遍历均分别记录。联网目录与匿名登录属于本项目删除范围，不能因此省略本机文件／数据库／图标和结果发布链。底层 KV／SQLite provider、完整取消与发布并发、独立 Rust 行为测试及实际 DLL／服务对照仍未由此完成。
 
-[Arc、Bethesda、EA、GOG、Mihoyo、Riot 与 Uplay 的本机扫描](../products/host/profiles.md#arc-bethesda-ea-gog-mihoyo-riot-与-uplay-的实际本机扫描)继续核对剩余七个注册策略及其公共 Registry／Path 适配器。选定 ServiceLib 44 个、Common 12 个、服务 EXE 1 个共 57 个方法的身份／方法头、调用与分支摘要已独立复核，并保留 68 个异常区间、55 行定位表和 1901 个调用／操作计数；这些集合与前段重叠，不相加为全策略覆盖。实际输入包括 HKLM Registry32 两视图、Bethesda reader、Arc／EA／GOG 注册表字段、Mihoyo gamedata、Riot rc_live／metadata YAML、Uplay 本地 configuration 文本及路径适配器；逐项停止只位于候选边界，预读取、枚举器和 AsyncTaskMethodBuilder 异常不会自动回滚。完整策略取消／并发、Rust 行为测试及实际 DLL／服务对照仍未验证。
+[Arc、Bethesda、EA、GOG、Mihoyo、Riot 与 Uplay 的本机扫描](../products/host/profiles.md#arcbethesdaeagogmihoyoriot-与-uplay-的实际本机扫描)继续核对剩余七个注册策略及其公共 Registry／Path 适配器。选定 ServiceLib 44 个、Common 12 个、服务 EXE 1 个共 57 个方法的身份／方法头、调用与分支摘要已独立复核，并保留 68 个异常区间、55 行定位表和 1901 个调用／操作计数；这些集合与前段重叠，不相加为全策略覆盖。实际输入包括 HKLM Registry32 两视图、Bethesda reader、Arc／EA／GOG 注册表字段、Mihoyo gamedata、Riot rc_live／metadata YAML、Uplay 本地 configuration 文本及路径适配器；逐项停止只位于候选边界，预读取、枚举器和 AsyncTaskMethodBuilder 异常不会自动回滚。完整策略取消／并发、Rust 行为测试及实际 DLL／服务对照仍未验证。
 
 [GSL 加密文件与重试](../products/host/profiles.md#加密设置文件的读取重试与释放)另核 Lib 5 个、Common 10 个所选 MethodDef／方法头、原 EH sections、TypeRef catch 类型及静态 #US 字段；方法集合含复用。FileMode.Create 会直接重写目标，独占打开探测不读内容且耗尽后仍置完成，外层十次 IOException 也可正常 void 返回；Dispose 顺序和非 IO rethrow 分开。加密字符串 Serialize 返回 Base64，而 DeserializeString 直接取输入的 UTF-8 字节后解密，未执行反向 Base64 解码。Aes 工厂显式参数与框架默认参数分开记录；加载失败后重建本地缓存不证明设备无配置。框架密码／XML 内部、完整数据契约及 Rust／实际 DLL／文件恢复对照仍未验证。
 
@@ -361,103 +361,15 @@ GPUI 修改前读取用户指定目录的两个 SKILL.md 及适用机制／组�
 
 缺失原件、间接调用、ABI／协议分支、未实现本地链进入统一 `.analysis/results/gaps.json` 并驱动后续实现。账号、云同步、远程下载／更新、在线目录等联网产品功能移除；loopback、本地 socket、固件文件传输、DLL 替换、服务生命周期、本地预设仍须实现。纯／模拟测试不冒充设备写回；本地 DLL／导出、服务及设备功能测试按根目录已授权的来源、架构、ABI、清理链核实和只读优先边界执行，可恢复写入保留原值、恢复与回读结果。应用窗口、厂商 JS、无关 helper 和安装器仍不运行；测试实际调用、返回、比较及未验证范围单独记录，不能由加载成功或单次 getter 推导整页验收。
 
-## 2026-10-24 四 DLL 并行静态语义批次
+## 批量捕获与静态复核
 
-本批针对三个 Seiren TUSBAUDIO API 版本和一个 Chroma SDK API DLL，使用 .work/seiren-dll-batch-20261024/analyze_batch.py 的 ThreadPoolExecutor(max_workers=4) 并行读取既有捕获目录，汇总导出、调用/被调用、字符串、导入 xref、错误返回和释放边界。批次收据与摘要保存在 [.work 分析摘要](../../.work/seiren-dll-batch-20261024/analysis.json)；脚本只读，不执行 DLL、服务、设备、应用、安装器或调试器。
+批量流程复用现有 IDA／Hex-Rays capture，逐份核对原件、函数／chunk／指令字节、导出、导入、xref、类型与失败结果。索引只提供定位入口，完整调用链仍须连接实际消费者；当前任务与阶段见[路线图](ui-readonly-first-roadmap.md)，捕获及冻结队列结果见[证据索引](native-bulk-reverse.md)。DLL／NODE／SYS 索引自身的扩展名筛选不排除产品范围内 EXE、主机和本机安装生命周期的静态逆向。
 
-| 原件 SHA-256 | 架构／原件字节 | capture.json SHA-256 | 函数／Hex-Rays 失败 | 导出 |
-| --- | --- | --- | --- | --- |
-| 966162446b255d393c1d272cc1fda3a1eac34c9b649854a61a6d2d77fb65c549 | x64／304,944 | 81ed8145c887c8d4ca642e7a0a3c5071f2c66e9a213829846e356cc831a82095 | 1,170／0 | 84 |
-| 0789707daaa4020a1bf80b5ff7d6e6aedd1f2b645afc2cd925ce06ae5d3a36c9 | x64／321,336 | 3c4237581777be020b5bf8e25d64ec4fdcc18ce43fd2dc3bf1a5e1e30265f036 | 1,129／0 | 84 |
-| 1c34a749e3cc7deed34e5d0f1fc8fd13dbac659d4991b1e31ba7d4f958a0e475 | x86／281,904 | c921d1282414d52f02f261297aaa276a4eb5970500711386c034641ee6fb8b89 | 1,101／5 | 84 |
-| 78a7454edc13006e5c80d5d05d76c8262b1473cb4da6066e6422b1e32d48cef0 | x86／228,552 | 0e269a459a87e2d0af6c8e8008adfb9deba9829d27decde84c9aad32eb821432 | 544／3 | 29 |
+相同结构的反编译失败可以按完整汇编分组定位共享根因，但应用类型前仍须核对全部相关调用方与 callee。字符转换、返回缓冲区和大函数补查分别保留[第一批收据](../../.analysis/results/native-reanalysis-batch.json)、[第二批收据](../../.analysis/results/native-bulk/demangle-reanalysis.json)和[大函数收据](../../.analysis/results/native-bulk/large-reanalysis.json)。私有副本中的类型或反编译器设置不改写原件、基础捕获及失败事实。
 
-三份 Seiren 原件的 API minor 门禁分别为 0xC、0x10、0xC；已在音频文档追到 Enumerate/Open/Close、音量 IOCTL、通知、DSP wrapper、DFU/firmware image 和释放路径。RzAPIChromaSDK 已追到 GUID 身份检查、事件注册返回码、Synapse 状态事件、注册表元数据与共享 mapping/event 导入。以上是静态调用链结果，未将导出存在或捕获完成解释为运行成功；三份 Seiren x86/x64 ABI、五处/三处 Hex-Rays 失败和具体间接服务端仍按各自收据保留。
+独立复核读取结果正文并检查原始字节、完整函数、真实退出及冲突；队列退出或 passed 数量不能代替该复核。[历史复核](../../.analysis/results/native-bulk/reanalysis-verification.json)及[冲突诊断](../../.analysis/results/native-bulk/reanalysis-conflicts.json)保持各自快照，新的静态未决状态按冻结队列的增量收据判断。WPP 日志包装的[独立汇编核对](../../.analysis/results/native-bulk/wpp-wrapper-verification.json)只解释日志过滤与转发，不能提升为设备业务成功。
 
-四个模块原件 SHA、capture SHA、函数/失败数和产物字节已在批次中独立复核；同族版本的函数数不相加为项目覆盖率。实际 DLL/设备对照、读回、错误、取消、恢复和释放验收仍须后续显式测试。
-## 2026-10-24 四 DLL 并行 Chroma/Mixer 静态语义批次
-
-本批使用 `.work/chroma-native-batch-20261024/analyze_batch.py` 的 `ThreadPoolExecutor(max_workers=4)`，四个 worker 并行读取已有 IDA capture、导出、imports、字符串和 xref，并在每个任务中独立核对原件 SHA-256、capture SHA-256、函数清单和失败清单。汇总收据为 [`analysis.json`](../../.work/chroma-native-batch-20261024/analysis.json)。脚本没有加载 DLL、启动服务、访问 HID/设备、运行应用或执行安装器。
-
-| 原件（SHA-256） | 字节/架构 | capture SHA-256 | 函数/失败 | 导出 |
-| --- | --- | --- | --- | --- |
-| `30e64d0f10401a2c847476dfaf024d06550028b34d8775f84695d9713b0d9521` RzChromatic64.dll | 2,835,656 / x64 | `b1b40b40b9ab379fc01fdd6158da45f25712266c1f475ffa9e85dc206446c6c4` | 10,120 / 0 | 588 |
-| `babd928b9dbf81ce3a7f203ecfbc01a51fd8f9059b811cde858cabbf04fe257f` RzChromaConnectAPI64.dll | 223,432 / x64 | `bae39fcffaf59a8af8299a5ecad4c0f69f14d9c7382c69b70c77a70ec1571a73` | 840 / 0 | 6 |
-| `21ab57c4db9f773b055a89e1e07a13dfe5bd516005d60bdcc250bfe7838fea55` RzChromaBroadcastAPI64.dll | 53,448 / x64 | `88ca1fc8a4cb43695974ef2488c551dda22bf6e9e75eb83d667c9403bdb1adde` | 171 / 0 | 6 |
-| `d3cf6173a2e8bb7af0a1066da3bd9d6038270884b6fcdc5afdaefd349755da5d` RzNative_053E_v1.0.16.0.dll | 2,922,184 / x64 | `f4329cca2430a2cd01fee72e6832999fd12d6623c078fd539548cbc62a08e3ef` | 10,432 / 1 | 49 |
-
-RzChromatic 的导出/插件链、Connect/Broadcast 的映射和事件生命周期已追加到 [dynamic-lighting](../products/shared/dynamic-lighting.md)；RzNative_053E 的 MixerSDK/HID/PropertyControl/UnInit 语义已追加到 [microphone-and-preview](../products/audio/microphone-and-preview.md)。四个输入均为不同 SHA；版本函数数不相加为项目覆盖率。静态结果只能作为 Rust 协议实现和回放测试的证据，官方 DLL 对照、服务端应答、设备读回、错误/取消/恢复的真实执行仍保持未验证。
-## 2026-10-24 四 DLL 并行设备/音频静态语义批次
-
-本批使用 [.work/native-device-batch-20261024/analyze_batch.py](../../.work/native-device-batch-20261024/analyze_batch.py) 的 ThreadPoolExecutor(max_workers=4)，对四个已有 IDA capture 并行读取原件、capture.json、函数伪代码、导出、imports、字符串和 xref。每个 worker 独立重算原件 SHA-256、capture.json SHA-256 并调用 verify_native_capture；汇总见 [analysis.json](../../.work/native-device-batch-20261024/analysis.json)。脚本没有加载 DLL、启动服务、修改注册表、打开 HID/WinUSB、执行安装器或访问真实设备。
-
-| 原件 SHA-256 / 模块 | 架构/字节 | capture.json SHA-256 | 函数/Hex-Rays 失败 | 导出 |
-| --- | --- | --- | --- | --- |
-| 05c454f02c2d7c8f5cfd33519d2770fe70180005f35ed8e7ae9992b728289f28 RazerMCUUpdaterInterface.dll | x86 / 42,496 | bc5e006873c56cab498f56fd8b88ba60520755c4ca186a3dd2e830d653864cd0 | 160 / 0 | 24 |
-| e268ea62bdfc0a65194f580b66f6d907b1e2bdcf9cb474d737364adcdcabe88e RzChromaSDKProxy_v1.2.3.2.dll | x64 / 359,112 | 00b5bf90b995f1381e55be65150eb67433600fcbbef00e9009d45f0d44bfcbe9 | 1,479 / 0 | 14 |
-| 13fc8d59ca268687f490cfaf132f875da1dce2a6d81c434723f614b4385821b6 RzChromaBroadcastManager.dll | x86 / 226,504 | bfb1e7f7e6dcd1662abd46128264418a138f6b5298dc8c2cedd2f4c001104338 | 561 / 0 | 23 |
-| 012b86a320f2f9a1266cd7a0165da7b5e02e0ea2abe2aa065038089020a7bf11 RzAudioUtil_v1.0.1.1.dll | x64 / 706,248 | 92ed9a6f9651fb6c67ece87ed97667b4c885f23d8fd173eca97d720500608b2d | 2,339 / 1 (0x1800673a3, call analysis -12) | 9 |
-
-RazerMCUUpdaterInterface 的 OpenDevice/OpenWinUsbBootloader、HID Feature 状态轮询、WinUSB 控制传输、new_fw.bin 分块和 DFU 退出边界已追加到 firmware-and-installation；RzChromaSDKProxy 的 JSON Invoke、PollEvents、allocator 与 UnInit 已追加到 dynamic-lighting；BroadcastManager 的效果入口、注册表元数据和单回调错误码已追加到同一文档；RzAudioUtil 的 THX JSON dispatch、媒体命令、错误字符串和 FreeMalloc 已追加到 microphone-and-preview。静态证据不能代替真实设备应答、读回、取消/恢复或释放验收；这些仍保持 Unverified。
-
-## 2026-10-24 全量 DLL/NODE/SYS 四线程静态批处理
-
-为避免逐模块手工启动，`.work/native-bulk-analysis-20261024/analyze_all.py` 使用 `ThreadPoolExecutor(max_workers=4)` 一次枚举全部 1,623 份现有捕获收据，并过滤为 881 个 DLL/NODE/SYS；该批次只读取既有 IDA/Hex-Rays 结果、导出、导入、命名符号和输入字节，不读取或执行 EXE、安装器、DLL、服务或设备。完整汇总收据见 [`capture-index.json`](../../.analysis/results/native-bulk/capture-index.json)。
-
-| 项目 | 结果 |
-| --- | ---: |
-| 并行 worker | 4 |
-| DLL/NODE/SYS 模块 | 881 |
-| capture 完整 | 881/881 |
-| 函数总数/已捕获 | 2,603,678 / 2,603,678 |
-| Hex-Rays 失败条目 | 869 |
-| 输入字节 SHA 与收据一致 | 881/881 |
-| 扫描耗时 | 约 16.5 秒 |
-
-这份收据证明批量静态捕获和字节身份检查已完成，不等于每个模块的语义、Rust 独立实现、页面接线或官方 DLL/设备运行对照已完成；失败函数、间接调用、服务端应答和未覆盖产品分支继续按产品文档与 `.analysis/results/gaps.json` 追踪。EXE/安装器不纳入当前后续逆向范围。
-
-同一批次随后运行 `.work/native-bulk-analysis-20261024/semantic_index.py`，仍以四个 worker 并行读取 1,623 份收据，实际索引 881 个 DLL/NODE/SYS。它为每个模块记录导出入口及对应函数体、失败 RVA、关键导入族（HID/WinUSB/SetupAPI/Kernel32/Advapi/COM 等）、命名符号和导出函数的关键伪代码/返回行；函数体和原始字节仍以各模块 `.analysis/results/native/<sha>/` 收据为准。汇总索引见 [`semantic-index.json`](../../.analysis/results/native-bulk/semantic-index.json)，本次共覆盖 64,092 个导出，其中 60,843 个有捕获函数体、3,249 个只有导出入口记录；869 个 Hex-Rays 失败条目分布在 241 个模块。批处理耗时约 45.4 秒。该索引是批量静态语义入口，不能把关键字命中或导出存在解释成协议、页面、设备 ACK、读回、取消、恢复或释放已经闭合；后续产品文档继续引用具体函数和原始字节。
-
-## 2026-10-24 Chroma Connect Server frame follow-up
-
-The existing `RzChromaConnectServer.dll` capture was independently checked with `ThreadPoolExecutor(max_workers=4)` for the WebSocket frame and Ping helpers: 6 selected functions, 20 unique chunks, 2,112 instructions, 7,673 raw instruction bytes, 0 unlisted bytes. Original SHA-256 `a49d11fc5f078c4e0019dd0d4972c683755456dcf83ddb1f883cd4a6b26fdbc5`; `capture.json` SHA-256 `2ce03476a1e68777e86009029defa301a17d57723116a21d2ec6f6f3de7eaed9`. The selected set is RVA `4e040,4ec80,5f6a0,5fee0,60000,60470`; all function JSON, chunk and instruction bytes matched the original PE.
-
-## 2026-10-24 四 DLL 并行 Camera/Audio/THX 语义批次
-
-本批使用 [.work/camera-audio-native-batch-20261024/analyze_batch.py](../../.work/camera-audio-native-batch-20261024/analyze_batch.py) 的 ThreadPoolExecutor(max_workers=4) 并行读取已有 IDA/Hex-Rays capture。每个 worker 独立重算原件 SHA、capture SHA，调用完整捕获校验，并把每个函数 chunk 和 assembly instruction 的原始字节映射回 PE section；脚本只做静态读取，没有加载 DLL、启动服务、访问 HID、执行设备写入或运行应用/安装器。汇总收据见 [analysis.json](../../.work/camera-audio-native-batch-20261024/analysis.json)。
-
-| 原件 SHA-256 / 文件 | 原件字节 / 架构 | capture SHA-256 | 函数 / 失败 | 导出 |
-| --- | ---: | --- | ---: | ---: |
-| 1ea145fe182505cd8ae19a6bc1ea5362c70d18681b51195d026ec57c86ad06d8 RzNative_0E08_v1.0.16.0.dll | 600264 / x64 | 54f729c256fd559ec8c5c286a869f9fcf587e4546d49ab23c112f19114989275 | 2060 / 0 | 91 |
-| b06973af45bcc6cc6c10dd74e2fc0f1b9caa8124b0416e8f869b5640fc795a8c RzNative_0542_v1.0.25.0.dll | 639624 / x64 | 65b7d807757bfd1188d7886046c5c0b83a0cb47a04cd0f114ba2e5e7541eacab | 2472 / 0 | 44 |
-| 8678a5eadd881ea7a569131369b3964d9519f1d584beddd315fb897e6f4af5ca ThxVADCarolNative_v1.0.13.0.dll | 954504 / x64 | 77a1cb3de9321ba4b1cc027d440d7f575aa0e84b82d8d67203b5aa8b074b612f | 2920 / 0 | 71 |
-| d4fd77a92c860bb190d7aab604124e9d4343901fcea83069aa99d29db5a9586b RzNative_0E03_v1.0.16.1.dll | 796296 / x64 | 23ce499d0c8fae7c60e75c97072dc080a0876f1c07376aad8d748af523d9a377 | 2634 / 1 | 40 |
-
-四个模块均为 capture_complete；独立字节映射均报告 all_chunks_match_original=true 和 all_assembly_matches_original=true。去重后的 chunk/指令/字节计数依次为 0E08 2066/103613/419265，0542 2478/112768/458516，Carol 2958/173596/673579，0E03 2684/143877/555742。0E03 基础捕获中唯一失败函数的入口为 RVA `0x721f0`；Hex-Rays 在该函数内部绝对地址 `0x180072223`（RVA `0x72223`）报告 call-analysis failed，错误码 -12，不能把错误指令位置写成函数入口。该函数及其字符转换 callee 已通过私有 IDB 类型补查恢复，当前严格复核为恢复 1、保留失败 0、补查错误 0，见[正式复核](../../.analysis/results/native-bulk/reanalysis-verification.json)中对应模块；原始失败、汇编及基础捕获仍保留。伪代码恢复不代表设备功能链或实际 DLL 对照完成。
-
-静态语义已分别记录到 [camera](../products/accessories/camera.md)、[microphone-and-preview](../products/audio/microphone-and-preview.md) 和 [playback-and-eq](../products/audio/playback-and-eq.md)。导出数、函数捕获数或字节一致性不代表 Rust 已实现，也不代表官方 DLL、音频端点、相机属性、HID 报文、读回、失败、取消、恢复和释放已经运行验收；没有设备时的回放和模拟只能作为独立期望，官方实际对照继续保持 Unverified。
-
-
-## 2026-10-24 Chroma SDK public-method follow-up
-
-Four-thread static byte checks (`ThreadPoolExecutor(max_workers=4)`) reused the IDA 9.1 captures for RzChromaSDK.dll / RzChromaSDK64.dll. The x86 input SHA-256 is `8e1466d0dfd653f0bba61f57117bda85e91ee779e2b6e71ac76f411cfeb0d038`, capture SHA-256 `7d2de3c1ceb4b9860b3eec84bd045a29b4a7d5886cd1d0adc155b675e66c2e32`: 15 selected functions, 15 unique chunks, 2,273 instructions, 6,883 raw/instruction bytes, 0 unlisted bytes. The x64 input SHA-256 is `7ab56ea40c67450f81772cd35c3dae8e36fc2ca43110a2d8294dcac4b2e364e7`, capture SHA-256 `35aabd2f3285e856d762889213e7ec73630b69b116a5ff8b33d76250766540d1`: 15 selected functions, 15 unique chunks, 1,666 instructions, 6,822 raw chunk bytes, 6,484 instruction bytes, 338 unlisted chunk bytes. Every selected function/chunk/instruction and every aggregate output hash matched the retained original. The x86 complete capture retains two Hex-Rays failures outside this selected set (`0x6500`, `0x6510`); x64 retains none. Export validation, null GUID rejection, effect-type/parameter boundaries and window/stop lifecycle are recorded in [dynamic-lighting.md](../products/shared/dynamic-lighting.md). DLL execution, actual device results and Rust differential acceptance remain unverified.
-## 2026-10-24 统一产品语义批处理
-
-全量索引保留 881 个按 input 扩展名选出的 DLL/NODE/SYS 模块。[完整索引](../../.analysis/results/native-bulk/semantic-index.json)和[基础捕获统计](../../.analysis/results/native-bulk/capture-index.json)已保存到正式分析目录；[统一报告](native-bulk-reverse.md)不再使用 docs 中 SHA 出现次数筛选或判断语义覆盖。原有 590／576 一类“未覆盖候选”会被报告自己的引用影响，不能作为剩余功能数量。当前报告的检索候选只表示信号匹配，不能证明某项调用链已经解释完成。
-
-报告使用 16 个发布线程读取固定分析索引，保留每个模块的原件/capture 身份、函数和基础失败数、伪代码记录、导出函数体、关键导入和检索候选。基础捕获的 869 条失败与补查恢复结果分开记账，不改写原始失败收据。报告不包含 EXE/安装器后续任务；已有历史 EXE 静态收据不进入本批队列。真实 DLL、服务、设备、错误、取消、恢复、释放和 Rust/页面对照仍按授权边界分别记录，不能以批量索引替代运行验收。
-
-统一续查使用一个协调队列，按本机 16 个逻辑核启用最多 16 个 Python 调度线程和独立静态分析进程；经用户要求并行分配的语义核验任务复用完整捕获，各自负责明确的文档与收据，不重复启动该队列，也不以等待子任务阻塞其他分析。原始 capture-corpus 的现存队列收据声明 module_count=884，但 modules 只保存 836 项，日志也止于 836；这 836 项为 reused_complete_capture，不能据进程退出宣称剩余 48 项已完成或已排除。881 项索引另按捕获 input 的 DLL/NODE/SYS 扩展名筛选，与队列的候选来源和别名筛选不是同一集合。当前逐条复用完整捕获并补查有汇编依据的类型、间接调用、传输和释放；Rust 迁移保持后置。
-
-全库失败函数在同一并行批次中按完整指令／操作数分组，基础捕获共 241 个模块、869 条失败、329 组汇编结构。分组仅用于定位共享问题；实际修复前必须核对调用方和全部相关 callee，不能按同名函数或单一关键字套用签名。UTF-16／UTF-8 转换组逐份核对调用方和三个 callee 的寄存器参数、完整原字节，明确排除反编译器错误推导的第五／第六参数，再由 `supplement-native` 在私有 IDB 副本中应用类型并重新执行 IDA／Hex-Rays。队列与每次实际分析结果见[统一补查收据](../../.analysis/results/native-reanalysis-batch.json)；原 capture 和 IDB 保持不变，恢复伪代码不计作产品功能或实际设备验收完成。
-
-### 统一队列结束与独立复核
-
-实际命令为 `python -X utf8 .work/native-bulk-analysis-20261024/reanalyze_failures.py --workers 16` 和同一脚本的 `--phase demangle --workers 16`；前者完成 56/56，后者完成 59/59，均保留正式 `supplement-native` 计划、IDA 9.1／Hex-Rays 9.1.0.250226 会话和完整函数结果。第二批根据完整的九指令调用方及实际 callee 核实 RCX 输出缓冲区、RDX／R8 输入和 R9D 的 0／1 分支，再修正错误的聚合返回推断；它恢复的 118 条基础失败均经现有严格复核器独立通过。[第二批收据](../../.analysis/results/native-bulk/demangle-reanalysis.json)不以队列退出代替此复核。
-
-同一脚本的 `--phase audit --workers 16` 对全部 241 个基础失败模块调用 `native_reanalysis_resolution`。大函数与 SDK x86 补查后的[正式复核](../../.analysis/results/native-bulk/reanalysis-verification.json)记录：历史基础失败 869、已恢复 212、仍保留 657，审计读取异常 0；其中 212 为此前 176、大函数 34 和 SDK x86 2 条恢复之和。该完整快照另保留 6 个模块的 8 条补查错误：6 条完整结果冲突和 2 条旧不完整补查。字符转换批次的无错误模块为 50/56；不能将队列的 passed=56 写成全部独立复核无误。完整冲突对的实际汇编等非类型字段一致，正文在明确参数重命名后也一致，但声明和摘要不同，仍按严格规则保留冲突；[诊断结果](../../.analysis/results/native-bulk/reanalysis-conflicts.json)只解释差异，不放宽对照或静态验证标准。新的统一剩余队列启动后，进展另记于其独立收据，不覆盖此历史基础失败。
-
-同一脚本的 `--phase wpp --workers 16` 使用固定的两份完整指令模板和现有原件函数验证器，46 个键盘驱动包装函数的输入、完整 chunk 与指令逐字节匹配，合计 2,254 条指令、9,344 字节，错误 0；实际导入另核为 WppRecorder 的 WppAutoLogTrace。完整参数转发和条件分支见[设备通信](../products/shared/device-communication.md#键盘驱动中的-wpp-日志包装边界)，[收据](../../.analysis/results/native-bulk/wpp-wrapper-verification.json)保留每个版本与函数身份。这是完整汇编语义核对，不是重新运行驱动、设备测试或 Rust 功能验收。
+具体语义由[产品与共享功能文档](../products/README.md)及所属收据维护。此处不重复列各批原件 SHA、函数统计和旧 `.work` 脚本；不能按 Markdown 中哈希的出现次数、模块数或关键字命中推算语义覆盖。新的维护能力归 `tools/workspace.py` 及既有工具模块。
 
 ### 大函数补查的进程内上限与收据
 
@@ -541,8 +453,6 @@ Lighting Engine 与 4115 MW 的当前来源分别由[稳定 LE snapshot](../../.
 
 `python -X utf8 tools/workspace.py clean --stale` 只处理当前批次开始前的 `.work` 根层 `.log/.txt/.out` 与根层 `__pycache__/*.pyc`。引用核对使用已安装的 `rg` 固定字符串多模式搜索与 16 个扫描线程，覆盖维护源码、文档、输入索引及正式 JSON 收据；已索引的函数／AST／原始反编译正文不重复扫描。不明类型、仍有引用、活进程路径、链接／junction、新文件及占用文件保持原样，删除前以 Windows 独占句柄重新核对文件身份。该模式不进入原生 IDB、分析工具与当前运行目录，也不删除 `.analysis` 原件或正式结果。
 
-首批共核对 529 个候选，删除 526 个文件、26,397,115 字节（约 25.17 MiB），3 个候选因现有引用保留，保护检查无错误；删除后逐项确认均不存在，8,933 个原有受保护文件及输入／corpus 索引均仍在。清单在当前队列最终发布后合并至统一收据的 `scratch_cleanup`，合并前暂存于受保护的当前运行目录。`test_scratch_cleanup.py` 的 13 项测试中，11 项通过；2 项真实 symlink 创建因本机权限跳过，另有无需该权限的链接拒绝、目录逃逸及真实独占占用反例。`--stale` 保持上述有限范围。
-
 每轮逆向必须按 [AGENTS.md 第 7.1 节](../../AGENTS.md#71-每轮逆向的清理与体积控制必做) 收尾。默认 `python -X utf8 tools/workspace.py clean` 或显式 `--dry-run` 仅生成 `.analysis/results/scratch-cleanup-<UTC时间>-plan.json`，不再清空 `.work`。计划使用保留名称并独占创建，已有计划和 apply 收据不得覆盖。完成证据充分、无后续依赖的 supplement 私有副本和旧资源克隆由计划逐项列出；原始 batch 数据库、活跃／预留任务、当前 verification checkout 及正式引用保留。执行使用 `clean --apply <计划相对路径> --plan-sha256 <实际计划SHA>`，先获取队列与资源写入锁，再重新核对完整引用、预留、完成收据、实际文件身份、路径和占用；首次删除前持久化完整计划范围和身份。实际删除与失败记入统一收据；清理计划不代表已释放空间。
 
 旧上传克隆的清理还核对当前资源 lock、真实校验器、完整发布或固定版本只读预检收据、HEAD／refs、index／tree／worktree、LFS 实际对象与 Git 元数据；存在未发布对象、额外引用、未知文件或重建依据不足时保留。apply 在计划中的目录和文件句柄仍持有时，最后重新枚举完整树、核对目录和文件身份并盘点活动进程；任何外部 Git／Git LFS／Git remote 进程，包括相对工作目录命令，均会阻止上传克隆删除。新增锁、资源或传输文件会在首次删除前拒绝并写失败收据。最终重扫与进程盘点不等于原子禁止所有子项创建，目录句柄本身不提供这种保证。
@@ -551,22 +461,10 @@ Lighting Engine 与 4115 MW 的当前来源分别由[稳定 LE snapshot](../../.
 
 验证命令由 `verification_environment` 在启动前登记 `target/verification-temp` 子目录的实际身份、创建者 PID 与 OS 创建时间，并持有独立账本锁；`TEMP`／`TMP`／`TMPDIR` 仅指向该命令拥有的目录。正常、失败和取消路径均由创建者释放自己的目录及其中测试文件。进程意外退出后，统一 `clean` 只回收身份仍匹配、创建进程已确认退出的已登记空目录；apply 再核账本、引用、活动及子进程清单和 Windows 独占句柄。未登记、非空、被替换或进程状态未知的目录继续保留，不递归猜测删除。
 
-此前 BLE 获取的[清理计划](../../.analysis/results/scratch-cleanup-20261030-ble-open-plan.json)与 [apply 收据](../../.analysis/results/scratch-cleanup-20261030-ble-open-plan-applied.json)仍保留其零删除、零新增释放及 57 项临时所有权释放的历史事实。音频／IPC 批次的[最终清理计划](../../.analysis/results/scratch-cleanup-20261030-audio-ipc-final-plan.json)经实际 SHA 再核后执行，[apply 收据](../../.analysis/results/scratch-cleanup-20261030-audio-ipc-final-plan-applied.json)确认删除 1 份成功上传克隆、10,348 个文件，删除前实际占用 584,747,622 字节，删除后为零，实际释放 **584,747,622 字节**，失败为零，目标路径已不存在。该计划的 189 项保留分别为 136 项未完成／失败／未审、26 项未知或同步锁、23 项引用／活动依赖、2 项缺完成依据及 2 份旧上传克隆的 owner 完成证据不匹配，未计为已删除。验证临时目录的当前数量、创建者、释放状态与路径身份以[所有权账本](../../.analysis/verification/temporary-directories.json)和现场核对为准，后续套件新增目录须重新盘点。[目录整理计划](../../.analysis/results/source-organization-plan.json)以当次 `workspace_inventory`、`architecture` 和 `resource_scope` 的实际文件集合限定检查范围；当前 `moves`、`rewrite_files`、`unresolved` 均为空且 `applied=false`，未执行移动 apply。整理、资源闭包和 Rust 验证各自使用独立输入快照；更早释放的 302,739,266 字节不计入该音频／IPC 清理批次。
-
 队列时间边界仅在顶层完成时间有效、协调进程实例已确认退出时释放；未完成、仍存活、身份未知或仅有嵌套旧完成字段时继续保护。capture-batch 的预留同样逐进程核实终态。已结束任务的历史 scratch／argv／command／log 字段可以与真实依赖区分，但 `source_database` 始终参与引用保护。历史 stdout 只有精确 launch／passed 格式与当前完整会话、capture 和实际退出相符时才解除旧日志路径的保护。伪代码明确未完整的现场仍保留；进程退出码为零不足以准许删除未决数据库。
 
 `python -X utf8 tools/workspace.py compact-analysis --workers 8` 仅为原生根层大型数据集生成 `.analysis/results/storage-compaction.json`，逐项核对当前内容 SHA、文件身份与 capture 身份。`compact-analysis --workers 8 --apply --plan-sha256 <实际计划SHA>` 使用 Windows 文件系统压缩，保持文件路径、逻辑字节与完成状态；压缩前后在同一独占写入句柄核对 SHA、文件身份和写入时间，并以 `FileCompressionInfo` 记录实际占用。已有计划和 apply 收据不得覆盖；完整 apply 日志在压缩首项前持久化，结果位于计划同目录的 `*-apply.json`。旧 schema 或未完成 capture 的状态照原样保留，压缩不补造完成证明。该工具只更改文件存储属性，不执行分析输入、厂商 DLL 或应用。
 
 显式 `compact-analysis --review-receipt <项目相对路径>` 还可将当前 `.analysis/results/reverse-pending/review-sources/<SHA>.json` 纳入同一压缩计划。路径必须处于该边界、没有链接，实际 JSON 字节 SHA 必须等于文件名及计划身份；默认扫描不扩展到其他结果或工作目录。apply 仅使用核验后的原计划，不另接新范围。该路径保持不变，完整逻辑字节和 SHA 经压缩前后核验后才记录实际节省空间，禁止通过删字段或改写完成事实缩小正式收据。
 
-[原生补查实际删除收据](../../.analysis/results/scratch-cleanup-native-final-parser-protected-plan-applied.json)另确认移除 48 组已结束私有副本、144 个文件，实际释放 639,054,683 字节，失败为零；删除后各目标不存在，144 份完成依据的实际 SHA 保持不变。未完成伪代码、原始数据库和后续依赖继续保留。[定向审阅收据压缩](../../.analysis/results/storage-compaction-native-review-final-apply.json)保持 161,350,822 逻辑字节及 SHA 不变，实际释放 121,386,150 字节；两项合计实际释放 760,440,833 字节。较早计划中尚缺释放依据的候选没有执行，不计入上述结果。
-
-[共享算术逐例结果压缩](../../.analysis/results/storage-compaction-power5-family-plan-apply.json)另保持 99,839,842 逻辑字节及 SHA 不变，实际释放 22,204,258 字节，失败为零。该结果服务于十五输入的 7,110 个精确解释用例，仍由[当前语义审阅](../../.analysis/results/reverse-pending/review-sources/5365af43eadad4bdfd75f6be500772264d77e32025bdd28e688a46ee95175c6a.json)正式引用，保留原因明确；没有把有效证据当作临时文件删除。
-
-既有[实际删除收据](../../.analysis/results/scratch-cleanup-plan-applied.json)确认 475 份已结束 supplement 私有副本和 9 份旧资源克隆全部移除，共 484 组目录、77,069 个文件、29,478,199,202 逻辑字节，失败为零；删除后逐项目录不存在，1,425 份正式完成收据 SHA 及输入索引保持一致，223 份源数据库仍在。[大型文件压缩](../../.analysis/results/storage-compaction-apply.json)与[中型文件压缩](../../.analysis/results/storage-compaction-medium-apply.json)分别处理 152／574 个文件，实际减少磁盘占用 40,930,720,539／11,801,813,522 字节，全部内容 SHA 保持不变。后续计划跳过已压缩文件；`test_analysis_storage.py` 的 16 项测试通过，包含真实 NTFS 压缩、计划与文件变化、占用、链接、收据防覆盖和提前持久化日志。1 MiB 阈值的[小型文件计划](../../.analysis/results/storage-compaction-small.json)仅完成校验，尚未执行，节省量不计入已执行结果。其他仍有依赖或尚缺释放依据的工作副本保持保留。
-
-[当前资源克隆删除收据](../../.analysis/results/scratch-cleanup-20261029T175624886699Z-plan-applied.json)确认旧上传克隆已不存在，实际释放 146,659,798 字节。[原生补查清理收据](../../.analysis/results/scratch-cleanup-20261030-host896-plan-applied.json)确认两份结束的私有副本、6 个文件已删除，实际释放 22,050,521 字节，失败为零；六份基础数据库及真实 `source_database` 保留。
-
-[四份 strings 压缩](../../.analysis/results/storage-compaction-20261030-host896-apply.json)与[两份 bindings 压缩](../../.analysis/results/storage-compaction-20261030-host896-bindings-apply.json)保留 218,332,819 逻辑字节、原路径与 SHA，实际释放 134,028,947 字节。该组删除与压缩合计实际释放 **302,739,266 字节**，仅计资源克隆删除、host896 原生补查清理及上述两份压缩正式 apply 收据。
-
-对应主机 4.0.896 获取与补查收尾的[历史清理计划](../../.analysis/results/scratch-cleanup-20261030-host896-plan.json)中，189 条保留记录均有明确原因：136 条未完成、失败或未审；26 条未知或同步锁文件；2 条缺少完成依据；2 条上传重建未获证明；23 条仍有引用或活动依赖。两个 1 字节 `.reservation.lock` 是 `index_lock` 的稳定同步入口，OS 锁在 `finally` 释放并关闭句柄，文件按设计保留，文件存在不代表在途任务。
+清理结果保存在各次 `scratch-cleanup-*-plan-applied.json`，压缩结果保存在 `storage-compaction-*-apply.json`；实际删除、失败、保留依据和释放空间直接读取所属收据，不在此累计历史数值。当前批次只计本次实际释放量。所有权账本位于 `.analysis/verification/temporary-directories.json`；仍有 `source_database`、正式引用或未决分析依赖的副本继续保护，未知身份与同步锁文件不能按体积或年龄删除。

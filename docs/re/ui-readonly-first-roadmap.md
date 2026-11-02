@@ -1,194 +1,58 @@
-# 完整分析与实现路线
+# 逆向与实现路线图
 
-从原始输入生成全量分析，完整实现所有本地功能，包括设备变更、写回和持久化。[本地优先范围](local-first-scope.md) 排除的联网功能须从 UI 和 dispatch 清除。
+当前主线是完成原版实际本地功能的全量语义逆向。范围、独立实现、设备状态及执行限制遵循 [AGENTS.md](../../AGENTS.md) 和[本地优先范围](local-first-scope.md)。只实现当前官方源码与二进制证明存在的功能；原版已有而 Rust 缺失的功能继续纳入，缺失源码和未知调用继续取证。
 
-## 当前架构边界
+## 当前进度
 
-执行顺序为先整理完整工作区的架构，再沿当前原始源码逐项补齐所有产品功能与界面。已接入的架构边界见 [架构说明](architecture.md)：宏、快捷键、映射、偏好和模块快照的纯契约由 `razer-model` 拥有，工作区读写与迁移归 `razer-storage`，GPUI 页面保留编辑状态、任务和事件。资源目录、缓存、凭据、HTTP 与工作线程由无 GPUI 的 `razer-resources` 拥有，`razer-assets` 只适配界面资源与解码生命周期。
+以下是 2026-11-02 读取现有收据的状态汇总，日期按 Asia/Shanghai 展示；本次文档整理未重新执行全库审计。范围分别归属各份收据，不能合并成项目完成百分比。
 
-所有产品必须完整连接本地读取、状态观察、修改、设备／服务写回、确认和刷新，真实结果进入原页面控件。持久化配置、未提交草稿和当前连接实测分开，读取失败不回退本地值或默认值；未返回字段保持未观测，局部读取失败不抹去同一有效请求已取得的字段。首次初始化条件、默认内容、mode／stage 初始化、配置恢复及读取／写入顺序均沿当前源码，必要写入不能用通用只读流程替代，也不能因本机缺文件或首次发现就覆盖已有设备配置。未知、读取中、失败和断开状态应落在原组件语义内，不新建另一套本地草稿配置面板；具体已接线范围以下列记录与当前验证为准。
-
-产品正文以 `BodyLayout::Document` 或 `SplitViewport` 明确滚动所有权，按实际挂载正文选择，不把同一产品的 Help 等页面套成内部滚动。鼠标 190 与已接入的共享 Customize 侧栏使用内部视口，正文、抽屉和 LED 面板各自保留布局空间；190／229／239 的说明与指南链接通过保留的 Markdown entity 自然换行。延迟弹层通过 `deferred_resource` 保留窗口图片缓存，自定义层使用布局前创建的 `ResourceLayer`；鼠标、键盘与音频映射共享该边界。以上是具体组件与资源所有权的实现，真实窗口、缩放和弹层图片显示尚未验收，其余整页仍按原件继续核对。
-
-产品保存通过共同快照入口保留全部共享字段，并在请求入队时绑定原页面实体；出队和完成时都核对身份与成员关系，避免设备列表变化后确认或继续写入错误页面。每次保存只携带一个有类型的产品后续动作，本地写盘成功与设备／服务写回分别确认。资源服务关闭停止接收新请求、取消在途任务并等待 worker，暂存文件清理由成功创建该文件的任务负责，失败不能永久表现为加载中。
-
-配置与宏传输复用同一文件 I/O 生命周期，许可从界面接受请求开始计数，覆盖后台排队、执行和原子暂存清理；诊断记录和 OLED 本地图片读取沿各自实际所有者使用同一等待边界。Chroma 设置拆为领域类型、后台存储和跨窗口保留状态，页面不直接读写文件。独立偏好写入失败具有明确回执并取消退出，计数归零不能代替保存成功；录音临时文件等待播放服务释放后清理。
-
-正常退出先关闭新请求，再等待已经接受的本地保存、键盘 actuation FIFO、PID756 恢复和手动游戏配置工作；发现连接保留既有观察，避免把退出准备误当作物理断开。保存或恢复失败会取消退出，重新开放偏好、快捷键、发现与当前产品的请求入口；设备／配置／连接切换仍核对完整作用域，旧工作不能写入继任者。产品任务排空后由统一退出所有者逐项等待服务清理，最后关闭并等待资源运行时，再结束应用。
-
-发现连接、设备变化与会话通知分别保留线程及完成句柄；活动和已经失败的观察连接均在后台停止、注销和 join，GUI 析构只发出取消。最终应用清理与用户手动断开的意图分别建模，前者不再向已经关闭的页面发布人工断开事件。IPC 进程、Windows job 与输入／输出线程由同一客户端持有；结束进程并确认退出后才 join 管道，不能确认退出时保留所有权与真实错误，禁止游离回收线程。THX 清理线程创建失败时保留原连接和 source-close 语义，交给后续工作或统一退出的后台所有者处理。
-
-键盘亮度的页面取消、后台任务与退出等待已经接到同一保留所有者，连接复查复用实际路由，不因普通发现刷新制造重连。摄像头的 IPC、并发 getter、MIC、快捷键、会话观察及预览释放各自保留真实任务和收尾结果；页面不再游离启动或同步等待原生线程。预览锁按物理作用域代次和具体请求持有，多个设置同时完成、退出后恢复同一摄像头及配置切换均不能释放继任请求的锁或提交旧保存回执。验证以当前统一收据为准，真实窗口与整页设备验收仍未完成。
-
-键盘亮度 getter 与 SET 回读已接原 `SliderState`，真实观察、用户预览、持久化草稿与清理错误分别保留；读取失败、未知值、未观测或断开不回退本地值，也不从百分比推断开关。原位置保留无值轨道，窗口不存在不阻断结果接受和清理；提交修订防止旧 GET／SET 覆盖新拖动，并保留忙碌期间的最新已提交值及后续刷新。纯状态覆盖设备返回 42 与本地默认 100 不同、部分清理失败、未知值、失败重试、断开重连和编辑冲突，实际命中与结果以统一收据为准。PID679 的亮度已通过显式实机查询及原值记录、变更、恢复和独立读回验证；这不等于整页验收。
-
-普通 DPI 观察由 shell 保留实际连接、请求和后台清理，连接初始化沿产品自己的源码入口，再为具备能力的产品请求真实当前值。当前 DPI 与档位表独立保存有效结果；原输入和滑块只投影可证明身份的数值，未返回的 enable／visible／independent 字段不由数值推断。新编辑阻止旧结果覆盖，忙碌期间的刷新继续排队；结果接受与窗口呈现分开，页面不可见不丢失实际回执。纯状态夹具覆盖实际 2000 与本地 1600 不同、部分读取失败、重连、重排及未提交编辑；真实鼠标的在线状态、具体返回和未执行查询见 [设备收据](../../.analysis/results/connected-device-verification.json)，真实窗口仍未验收。
-
-轮询率的实际观察与当前主动编辑统一由 `mouse_polling::RuntimeState` 选择，旧工作区、产品工作区、电源门控与接收器指示器共用该入口。未知值保持无选中值，不继承有线值或本地 profile 默认值；低功耗门控在未观测时禁用，也不误报高于 1000Hz。产品规定的初始化参数和 SET 顺序独立保留；文件保存、设备 ACK、读回和清理分别确认，具体纯／模拟测试以统一验证收据为准。
-
-PID182／190 的连接读取先取得真实身份，再由后台读取对应官方本地 Chromium 配置，按产品、序列号和活动 GUID 选择，页面分别接收源本地偏好与 HID 实测值。DPI 档位 enable 属于本地偏好，不从设备返回的档位数量推断。本程序没有配置文件不足以触发默认值写回；明确恢复／应用配置的必要写入保留独立入口。当前来源读取器校验 LevelDB 日志、表、校验和及 Chromium 文本编码，损坏或冲突明确失败，不修改官方数据库。本机 PID190 的只读检查实际得到 enable=false；这不代表其它产品或窗口已验收。已核实的节能初始读取使用独立读取身份和编辑修订，原滑块不再将失败投影为默认 5 分钟；同连接配置切换保留硬件观察，断开重连拒绝旧结果。
-
-动态灵敏度在进入 Advanced、设备激活及重连时读取真实曲线，编辑草稿与实际 250 点曲线分离；SET ACK、独立刷新及失败各自保留。Chroma 的本地 profile、动态灯光和模块状态独立解码，某一字段失败不丢弃其它成功观察；完整 host 快照清除缺失的旧 host 字段，独立 memory 响应不清空 host 或设备状态。具体产品分支与模拟测试仍按统一验证收据判断，不能据此将完整灯光页或动态灵敏度页标为已验收。
-
-宏文件传输、按键捕获与全局快捷键解码分别使用存储、服务及领域所有者；共享输入规则和固定捕获键表不依赖运行时界面目录。已核实产品的映射文档入口统一由领域类型选择，在文档与连接均就绪后显式启动。PID740／746 的普通映射、Sync、真实固件槽位及宏提交已接到同一提交所有者；共享宏协议保留鼠标与键盘不同的容量和清理规则。窗口任务、观察订阅和产品实体保留在各自实际生命周期，render 只读取状态并组合控件。这些架构边界不代表对应整页与所有产品分支已完成。
-
-Hanbo PID3893 的页面、配置保存、初始／差异恢复、热控 FIFO、周期查询和系统监控已接线。Armory 与 Performance 复用保留状态；退出先提交曲线最后一帧，再排空保存与设备任务。HID 与系统监控分别拥有 IPC 客户端，取消、原生 Shutdown 和进程／线程回收保留各自结果。页面代次、配置代次与完整连接路由共同隔离迟到结果。曲线纵轴文字由保留实体在后台生成旋转轮廓，字体走统一按需资源入口，失败与重试进入独立资源诊断；语言切换按原版 effect 清理提交当前高级曲线。协议、状态与模拟传输验证按统一收据记录，真实窗口、设备及厂商 DLL 尚未运行，其余整页清单继续按原件推进。
-
-`organize-sources` 维护全工作区模块／嵌入引用、平台及构建／测试依赖和共享所有者约束；生成器保留稳定的已安装目录身份。架构检查、目录等价性及纯／模拟测试的实际结果各自记录，不能据此将下列未实现产品链或整页标为完成。窗口、应用、厂商 JS 和安装不运行；本地 DLL／服务／设备测试按根目录已授权的核实、只读优先及可恢复写入边界执行。
-
-PID190 Matcher 的输入监控、设备任务协调、真实 DPI setter 与统一文档保存由保留的服务 worker 串联，界面只交换草稿、观察与实际回执。重新开始等待旧 worker 的传输释放和线程结束；旧页面、连接和会话的结果均拒绝。两路输入的分类、重叠正向位移与 500ms 超时分别按完整源函数实现，设备 ACK、本地持久化与 UI 响应不互相替代。手柄颜色以 profile 为唯一所有者，共享选择器发送有类型槽位编辑；配置读回与校准帧的旧代次不覆盖新状态。具体边界见[架构说明](architecture.md)。
-
-验证只对执行时的输入快照有效，新增实现及原件获取后须重新核验。当前命令、筛选、命中数量与输入身份统一见 [Rust 验证](../../.analysis/validation.json)、[维护工具验证](../../.analysis/results/tool-verification.json)、[类型化再生](../../.analysis/results/typed-data.json)、[目录规划](../../.analysis/results/source-organization-plan.json)和[输入审计](../../.analysis/results/input-audit.json)。产品整页、其余本地链、原始来源缺口及真实运行验收继续按以下清单与统一缺项推进，旧的通过数量不能作为新工作树的验证结果。
-
-## 2026-10-17 待完成项
-
-- 全部产品页面仍需逐项按当前原件实现：各族页面内残留 “仍在接入／尚未接入” 占位和未核实分支（`source_controls.rs`、`accessory_system_products.rs`、`workspace.rs`、`customize_page.rs`、`app_picker.rs`、`profile_migration.rs`、`profiles_page/devices.rs`、`receiver_reset.rs`），以及轮询率接收器连接分支、原生 getter 生命周期。快捷键编译已归领域层并复用设备映射的键表、修饰位和哈希；保留的服务会话完成原生注册，将默认 Turbo、Turbo、普通及分段宏的依赖按序发布，再提交引用它们的映射并核对回执。原生存储 ACK 与实际动作执行分别判断，真实执行尚未验收。
-- 手柄 mounted 子树，以及宏、Chroma、Dashboard、设置、Gamer Room 页面的源码对照未完成。
-- Seiren 1422／1446：图表、增删频段、mic／monitor、频谱、Tutorial、录音 footer 与设置向导已有 Rust 实现和本地接线。采集／回放 I/O 归服务所有者；完整 EQ 子树、三份 CSS 的级联、24 项 RGBA 资源逐像素比对及原生 `0x18003318e` 补查已完成静态核对。该点的失败来自分析器错误参数推断，独立补查各保留八个完整函数；原失败捕获仍保留。录音标题和等待／计时分支的 0.5px 字距、教程全部文本的 0.1px 字距已接入共享 `SourceText`，两款产品的正式完整 owner／CSS 查询为 0 失败，10 个纯字形布局夹具通过；真实窗口、音频服务和设备未验收，整页不能标为完成。
-- 键盘 `local_controls_source_review` 已从当前原件重查 691／740／746：147 份完整模块、291 份完整 callable，查询失败与未解项均为零。获取缺失、依赖图未闭合及其余产品分支分别保留；查询成功不代表页面或设备链已完成。
-- razer-app-pages 11 项 GPUI 测试失败：5 项依赖当前 GPUI Kit Button 不暴露的 accessibility disabled 标记；应用选择器点击未打开、导览视口偏移、IoT 弹窗焦点恢复、配对确认框缺失、按钮 33.5／33.75px 高度、Gamer Room tutorial 状态待查。razer-pages 测试尚未全量运行。
-- 鼠标电源、其余键盘 calibration／lighting gates、系统灯光和音频 SURROUND 仍须逐项对照原件复核。PID740／746 映射及 Hanbo 本轮已接的具体链见上述架构边界和当前验证收据；这些结果不能替代其余产品分支或整页清单。缺失远程资源仍须按现有发布链核对，不据此重新全量上传。
-- 应用、安装包与厂商 JavaScript 未运行；整页真实设备和窗口验收未完成。已授权的本地 DLL／服务／设备专项对照及可恢复写入以各自当前收据为准。
-
-## 2026-10-16 全产品并行实现
-
-全产品、本地全页面的原始任务尚未完成，当前主任务保持进行中。三个子任务分别负责当前来源与资源、全部产品 UI 对照、本地平台／设备调用链；主任务负责集成、音频及统一验证。以下记录区分已落地具体链与仍需继续实现的部分，不能作为整页完成结论；缺项仍集中维护在 [gaps.json](../../.analysis/results/gaps.json)。
-
-| 负责人／范围 | 已落地位置与行为 | 继续位置 |
+| 层级 | 已有结果 | 当前边界 |
 | --- | --- | --- |
-| `mouse_source_integration`：鼠标滚轮 153／170／203／204／214／226／45066 | [页面任务](../../crates/razer-pages/src/features/mouse/scrolling/mouse_scroll_task.rs)、[串行保存](../../crates/razer-shell/src/shell/mouse/mouse_scroll.rs)、[直连传输](../../crates/razer-discovery/src/direct/mouse_scroll.rs)：用户编辑、300ms 模式 debounce、53 位 profile 版本保存、typed IPC、接收器分支、226 mask→mode、取消与清理；仅真实已保存 `scrollWheel` 字段允许源码规定的恢复，其余初读走 GET。typed observation 接原开关、模式和滑块，未知值保留 raw，超范围无伪滑块，不回退草稿；Smart Reel 从真实板载 metadata 匹配 GUID，45066 取首匹配 slot | [当前完整查询](../../.analysis/results/frontend/mouse-mw-audit.json) 覆盖这 7 个产品的 100 个 owner，失败为零；GET 是本项目独立观察扩展，不能改写官方缓存恢复语义；其余页面组件、产品分支、实际 DLL 对照及真实设备验收继续逐项完成 |
-| `product_ui_parity`：九款游戏手柄源码与共用控件 | [配置恢复](../../crates/razer-pages/src/features/gamepad/gamepad_profile.rs) 恢复扳机、摇杆与 OBM slot 的已保存字段，校验 side、值域与产品分支，保留扩展字段；[Stepper](../../crates/razer-widgets/src/stepper.rs) 按当前完整组件仅在点击输入后注册窗口滚轮，失焦清理；[取屏色状态](../../crates/razer-pages/src/features/lighting/screen_color.rs) 保留请求与取消；2636／4115 快捷灯效子树、profile 颜色、Chroma 读回修订和校准帧所有者已继续接线 | [main 证据](../../.analysis/results/frontend/gamepad-main-audit.json)及[中间件证据](../../.analysis/results/frontend/gamepad-mw-audit.json)分别保留完整捕获、Wakaru validate 失败和语义核对；九款源码范围与已接入的具体 Rust 链分别核对，不能将组件图闭合当作分析器全部成功。继续其余 mounted 分支、整页呈现和后端清单；真实取屏色、窗口与设备未验收 |
-| `accessories_camera_system`：Kiyo V2 PID3595 MIC | [MIC 控件](../../crates/razer-pages/src/features/workspace/source_controls/camera_mic.rs)：`CAMERA_MIC_SETTINGS`→`setAudioFunction(1/0)`→10ms→flash save→10ms→reboot；保留 dirty／pending／reboot 状态及取消／清理；刷新当前 native 静态捕获并保留反编译失败 | 新增编译测试及统一测试仍待复跑，继续其余摄像头／附件／系统页面。当前 [摄像头报告](../../.analysis/results/frontend/accessories-camera-local-pages-audit.json) 对应 gaps 仍有未解语义／失败及整页待验收项 |
-| 主任务：音频／视频 | [页面播放器](../../crates/razer-pages/src/features/audio/audio_media.rs) 已挂载 1352／1392／1442／3942，连接按需媒体、原八通道 PCM、实际已消费音频时钟、后台帧解码、拖动 seek 及旧代次隔离、播放／暂停／全屏；后三款保留循环和跨页浮动播放／拖动／关闭，1352 保留专用尺寸与音频模式选择器 | 继续原版全部快捷键、点击／双击与焦点语义，真实音量／保音高变速、forceOpen 分支及 SURROUND 完整组件／后端；全屏事件顺序仍须逐完整库函数核对。没有真实窗口／播放验收；见 [音频 demo 证据](../../.analysis/results/frontend/audio-demo-audit.json) |
-| `local_backend_parity`：手柄／混音器及平台链 | 已接入手柄的 Feature collection，2676／2684 的 V3 扳机校准已有 Start／Poll／Cancel 的 source-host 提交链；Mixer PID1342 的 Feature64→18 与 Output66→Input16 接线、20 次重试及取消／身份门禁；HID GetInput 返回长度按当前原生完整函数修正；[取屏色平台所有者](../../crates/razer-platform/src/input/screen_color.rs) 持有 Windows 后台窗口、截图、流式事件、Done／取消与资源释放 | V2 校准和 V3 摇杆弹层的 `CalibrationIntent` 尚未见生产提交消费者，不能与 V3 扳机链合并宣称完成；继续所有产品的原生协议／服务链，并逐 PID 核对九款源码范围。真实取屏色、窗口和这些手柄设备分支未验收，模拟传输通过不等于真实设备写回 |
-| `current_source_audit`：来源／依赖／资源 | 官方当前稳定通道及本机活动主程序 4.0.827 已复核，138 个宿主文件与官方提取字节一致；664 个 UI／MW 入口本批复核稳定，保留原件未发现字节损坏；补充精确原版 SVG、媒体分析器与资源发布验证 | 继续实际声明缺失文件、拆包失败、间接调用及完整依赖闭包；原生全语料由统一 IDA 队列继续补捕获；source map 缺失、未声明 manifest probe 与实际运行依赖缺失分别记录 |
+| 保留输入身份 | [输入审计](../../.analysis/results/input-audit.json)于 2026-10-29 记录 279,961 项字节身份核对通过，缺失／不匹配／错误均为 0 | 证明该索引快照中的保留输入一致，不证明所有当前官方来源及依赖已获取 |
+| 原生基础捕获 | [静态索引](../../.analysis/results/native-bulk/semantic-index.json)包含 881 个 DLL／NODE／SYS 模块及其函数捕获 | 包含历史反编译失败；函数已捕获不等于业务语义已查清，不覆盖全部 EXE／安装分支 |
+| 冻结静态复核 | [950 项队列](../../.analysis/results/reverse-pending.json)记录 889 项通过、61 项未决；[后续增量](../../.analysis/results/reverse-pending/unresolved-current.json)已对这 61 项全部复核通过 | 只闭合该冻结基线的静态未决；收据仍明确 `semantics_complete=false` |
+| 全量功能语义 | 各产品族、主机及共享功能已有专项结论，入口见[产品文档](../products/README.md) | 当前主要工作：补齐来源闭包、真实消费者、间接调用和全部产品分支；尚未全量完成 |
+| Rust 与页面接线 | 已有部分协议、服务、页面和纯／模拟验证 | 保留局部成果，待全量逆向完成后按已确认语义继续迁移；不能以编译或某个页面通过覆盖其余功能 |
+| 当前验证 | [最新 Rust 收据](../../.analysis/validation.json)于 2026-11-01 仅选择 `camera-source-runtime` 且通过，`all_configured_suites=false` | 不等于本批全工作区测试；官方实际 DLL、设备和窗口验收按所属收据分别判断 |
 
-手柄源码范围按九个独立 PID 清点。已再次核对各 acquisition 中实际 JS 字节，并沿真实产品根读取页面数组；各产品的获取时间与部署身份仍由自己的收据维护。本轮静态阅读不改变其 Rust 实现、接线、官方 DLL 实际对照或设备验收状态。详细调用链见[手柄功能文档](../products/gamepad/README.md)。
+现有 [gaps.json](../../.analysis/results/gaps.json)是各所有者和审阅来源的汇总，不是去重后的独立功能总表。获取失败、source map 缺失、捕获失败、语义未决、实现未完成和实际验收未执行分别判断，不把记录条数直接当作剩余功能数。
 
-| PID | 实际挂载页与必须保留的分支 |
-| --- | --- |
-| 2629 | Customize、Triggers、Thumbsticks、Calibration、Help；有线 Sage，无 Lighting 页 |
-| 2636 | 2629 的页面加 Lighting、Power；无线 Sage，灯光能力来自本产品 MW 的 `supportsLighting:true` |
-| 2647 | Customize、Triggers、Thumbsticks、Power、Calibration、Help；Triggers 受设备实读固件 `1.4.0.0` 门槛控制，SagePC report ID 10、等待 30 ms |
-| 2650 | Customize、Thumbsticks、Calibration、Help；产品根直接没有 Triggers 项，不能套用 2647 的固件门槛 |
-| 2676 | Customize、Triggers、Thumbsticks、Power、Calibration、Help；MW `supportsLighting:false`；共享 extended-static 方法与实际继承链的不匹配仍待查清，不据共享引用推定灯光能力 |
-| 2684 | Customize、Triggers、Thumbsticks、Calibration、Help；main 中模块 4841 只挂载 lazy wrapper，实际根在 `8169.3cf63c70.chunk.js` |
-| 4115 | Customize、Lighting、Help；街机分支，软件灯光与退出恢复独立于双摇杆校准 |
-| 4133 | Customize、Triggers、Thumbsticks、Power、Calibration、Help；PlayStation 分支，包含 `useGetDockEditionAPI` |
-| 4144 | 页面组合与 4133 相同；PID、dongle 4146、BLE 4147 独立，当前 bootstrap 未注册 4133 的 `useGetDockEditionAPI` |
+## 分阶段路线
 
-九款手柄仍须按完整页面、弹层和当前生产 caller 验收。当前 [GamepadProductWorkspace](../../crates/razer-pages/src/features/gamepad/mod.rs) 真正 dispatch Customize／Triggers／Thumbsticks／Lighting／Power／Calibration 六类 body，Help 由共享 workspace 挂载；页面数组、通用 profile 字段或包含某个组件均不能证明下面链已经闭合。具体官方调用、单位、产品和固件差异见[映射与摇杆](../products/gamepad/mapping-and-sensitivity.md)及[校准与灯光](../products/gamepad/calibration-and-lighting.md)。
-
-| 实际页面／弹层 | 当前 Rust 表面、状态与生命周期 | 后端接线和独立验收边界 |
+| 阶段 | 工作 | 完成条件 |
 | --- | --- | --- |
-| Customize：双摇杆产品 | `customize_artwork` 绘制产品／edition／layout 图像、按钮热区与 hover；当前选中按钮的 Default／Controller assignment／Disable 以普通 Button 列表写 draft，右列按产品 polling 档位绘制 | `set_mapping` 和 polling 的 `choice → write` 当前发 `GamepadProductChanged → source_workspace.capture → WorkspaceEvent::Changed`；这条路径没有独立具名 mapping／polling 请求。不能把本地 profile 快照视为真实 OBM 写入，也未完成原 key mapping drawer／全部输出类别与保存取消链核对 |
-| Customize：4115 街机 | [kitsune](../../crates/razer-pages/src/features/gamepad/kitsune.rs) 独立绘制模式、方向与 SOCD 表面，不能套用普通手柄按钮树 | SOCD、controller mode、reset 与 profile／通知的实际生产 caller 仍须分别追完；其他产品的扩展方法或 UI 控件不能代替该 PID 的真实结果 |
-| Triggers：左右 Analog／Digital | [triggers](../../crates/razer-pages/src/features/gamepad/gamepad_triggers.rs) 包含实时产品图、左右两列、模式 radio、range 双手柄、actuation、Rapid Trigger、reset 与两类帮助；range preview 与已提交值分开，digital 控件为 1%–100%。[navigation](../../crates/razer-pages/src/features/gamepad/gamepad_navigation.rs) 对 2647 的实读固件只移除、不在同一生命周期重新插入 Triggers；2650 无该页 | [trigger runtime](../../crates/razer-pages/src/features/gamepad/gamepad_trigger_runtime.rs) → workspace event → shell [controller_triggers](../../crates/razer-shell/src/shell/gamepad/controller_triggers.rs) → discovery → typed IPC → [设备命令](../../crates/razer-device/src/gamepad/controller_triggers.rs) 已有具体链，写前保存、当前连接唯一性、scope／应答／响应身份和关闭后的结果收尾独立处理；没有实际官方 DLL／设备对照，不能扩展为所有型号完成 |
-| Thumbsticks：六款 legacy 与 2676／2684 modern | [thumbsticks](../../crates/razer-pages/src/features/gamepad/gamepad_thumbsticks.rs) 持有 slider／focus／延迟提交、死区／灵敏度、双死区预防、圆度、分配说明、模拟图和教程；modern 两 PID 单独选择。切页取消编辑，重新进入按源码重新采集本次 rollback 基线 | deadzone／sensitivity／circularity 使用 trigger 请求链，真实输入由 controller input owner 发布；各产品曲线、clutch assignment、资源选择与读取消费者仍须逐项核验，不能由同一模拟报文覆盖全部档位／未知／失败／重连 |
-| 低／零死区警告 | [deadzone_dialog](../../crates/razer-pages/src/features/gamepad/gamepad_deadzone_dialog.rs) 独立持有 focus／return_focus 和展开状态，区分低值／零值标题、Continue 与回退；legacy 的 Recalibrate 请求导航，2676／2684 则打开摇杆 popup；说明的高度、opacity 和箭头分通道动画 | [deadzone_state](../../crates/razer-pages/src/features/gamepad/gamepad_deadzone_state.rs) 保留六款 legacy 的进入／选择基线，2676／2684 按当前展示的非低值同步基线。关闭始终派发当前 prev，包括同值；Continue、Recalibrate 及旧所有者退出不恢复。打开校准入口不代表执行设备校准，摇杆 intent 的后台消费者及实际 HID 次数仍须独立核验 |
-| Calibration：2629／2636／2647／2650／4133／4144 | [calibration](../../crates/razer-pages/src/features/gamepad/gamepad_calibration.rs) 的 V2 页面、步骤／实际有效性、产品图、模拟器及错误 Dialog 由独立 state 持有；离开页发 Stop，错误 Dialog 明确关闭 Escape 和外部取消，恢复触发前焦点 | 当前页面发 `CalibrationIntent`；workspace 只有取 intent／注入 observation 的方法，生产挂载订阅与 shell 未见该 V2 intent 的提交／读取消费者。不能由页面步骤、存在协议计算器或 V3 请求链宣称六款 V2 校准已接通 |
-| Calibration：2676／2684 选择页、摇杆 popup、扳机 popup | [selection](../../crates/razer-pages/src/features/gamepad/gamepad_calibration_selection.rs)、[calibration_popup](../../crates/razer-pages/src/features/gamepad/gamepad_calibration_popup.rs)、[trigger_calibration](../../crates/razer-pages/src/features/gamepad/gamepad_trigger_calibration.rs) 分开处理 hover、部件、generation、真实移动、帧动画、focus 和关闭；扳机 popup 的 Escape／外部取消按明确源码策略处理 | 扳机 `TriggerCalibrationIntent` 经 shell [controller_calibration](../../crates/razer-shell/src/shell/gamepad/controller_calibration.rs) 进入 Start／Poll／Cancel，设备 V3 按 start／prepare／poll 分阶段处理不可用样本，最终五次采样仍严格验证；SET＋GET 逐项确认，业务与清理错误分别传递。同页摇杆 popup 发的是另一类 `CalibrationIntent`，仍受上一行缺口约束；实际 DLL／设备对照和窗口验收未完成 |
-| Lighting：2636 硬件、4115 软件 | [lighting](../../crates/razer-pages/src/features/gamepad/gamepad_lighting.rs)、[quick_lighting](../../crates/razer-pages/src/features/gamepad/gamepad_quick_lighting.rs) 与各 runtime 保留效果、preset／custom、色板／取屏色、亮度及关闭灯光分支；离页取消控件观察和色彩编辑 | shell 的 controller_lighting／controller_chroma／controller_power owners 区分硬件效果请求、持续软件帧、显示／空闲策略及退出恢复。其余七 PID 没有 Lighting 页，尤其 2676 的 `supportsLighting:false` 不得被共享方法推翻；实际帧无 ACK 的完成契约、调色板、初始化和全部释放仍按原件分别验收 |
-| Power 与 Help | 2636／2676 的 Power 选项按官方显示 5／15／30／45／60 裸数字分钟；[sleep runtime](../../crates/razer-pages/src/features/gamepad/gamepad_sleep_runtime.rs) 分开持久化值、乐观草稿与真实秒数观察，初读失败不写默认。Help 从共享 workspace 的当前产品目录挂载；切页保留 body entity，销毁／换设备另有 owner 生命周期 | typed 请求经 workspace → shell 保存队列 → IPC → service → 独立 Rust [休眠协议](../../crates/razer-device/src/gamepad/controller_sleep.rs)。5 分钟为 300 秒，2636 小端载荷 `2c01`，2676 大端 `012c`；每次点击保存，设备请求合并最新，宏录制期间只保存，SET 后严格比较 GET 原始秒数。服务确认与进程／管道释放分别核实，同设备未确认的清理阻断后续动作，其他设备保持隔离。[初始化 owner](../../crates/razer-shell/src/shell/gamepad/controller_initialization.rs) 负责真实目录／设备槽读取、根字段及配置档导入，经本地保存确认后才恢复对应运行时；失败、取消或捕获文档变化拒绝提交，不以按需 GET 代替。`controller_power.rs` 另管灯光策略。实际 DLL／设备对照、窗口呈现及其余产品的 Power 分支仍须分别验收 |
+| 1. 确定当前范围 | 复用现有获取与捕获，核对当前部署、目录、实际挂载／初始化入口和依赖；把 Rust 现状接到已有功能分支 | 每个范围内功能具备产品、版本／固件、传输／平台身份；不存在、别名和不适用分支均有依据，缺证据项有下一条取证路径 |
+| 2. 完成共享链逆向 | 先处理阻断多个消费者的发现／身份、传输、配置档、映射／宏、存储与事件生命周期；沿官方前端和原生双向追踪 | 输入、状态、读取／初始化、观察、计算、写入、应答／读回、消费者、持久化、失败、取消、恢复和释放均有依据 |
+| 3. 收束产品差异 | 依赖就绪后并行核对鼠标、键盘、音频、手柄、配件／摄像头、系统、灯光及主机的实际独有分支 | 共享结论接回每个真实消费者，固件／连接／布局差异已解释，未知间接调用和必需来源缺口已解决 |
+| 4. 全量逆向验收 | 从所有范围内 UI 动作向下、从原生 dispatcher／服务事件向上核对；只复核变化输入和受影响依赖 | 没有未归属、漏审或未解释的范围内语义缺口；有效证据可复核，本阶段清理已执行。达到此条件后进入生产实现阶段 |
+| 5. 独立 Rust 与接线 | 根据已确认语义修正必要架构，迁移协议、平台、服务、状态与原版 UI；同步迁移全部调用方和生成器 | 真实读写和消费者闭环，状态与生命周期所有权清晰，对应生产官方 DLL 加载依赖及失效数据已清除 |
+| 6. 分项验证 | 完成适用的自动化行为／模拟测试及已授权的实际 DLL／服务／设备对照 | 输入、双方结果、差异、恢复与清理有实际收据；受执行限制或缺少条件的验收仍为未验证 |
 
-尺寸、文案与资源要随具体 mounted 分支核验。例如 2636 的当前 [main.3d9eb3d1.css](../../.analysis/inputs/frontend/gamepad-2636-current/raw/apps.razer.com/synapse/products/2636/ui/static/css/main.3d9eb3d1.css) 保留低死区警告宽 402 px、padding 20 px、gap 20 px、标题 16 px；展开信息最大宽 360 px、最大高 200 px，height／opacity 分别 250／200 ms。V2 校准 area 最小宽 850 px、margin `11px 30px 30px 23px`，产品图最大宽 372 px，说明区宽 460 px、最小高 44 px，按钮高 27 px。不能把这些规则无依据扩展到另八个 PID，其他产品／edition／布局／系统分支必须读取各自 CSS 级联、图片与实际调用者。普通、选中、禁用、loading、空状态、错误、图像失败、tooltip、键盘、焦点、滚动、关闭和重挂载均为单独检查项。
+阶段 1—4 以连续批次推进，阶段 2 与 3 可按依赖并行。当前不穿插无关产品功能、页面迁移或全工作区重构；维护工具仅为取证、解析、复核和清理提供必要支持。逆向完成、Rust 完成、接线完成和实际验收分别记账。
 
-上表区分当前源码行为、实际 Rust caller 与未完成链。全工作区 all-targets 编译及纯／模拟测试通过统一 `validate-rust` 入口执行，当前结果、实际输入、非零测试数量、未执行项与逐命令日志以 [validation.json](../../.analysis/validation.json) 为准；不能将旧输入的通过记录用于当前代码。分析工具测试、源码静态复核与 Rust 测试分别记录。窗口测试只参与编译，普通测试入口在执行前排除需要真实或 headless 窗口的用例。本批未运行 UI、厂商 JS、官方 DLL、服务／真实设备或安装验收。每页仍须将“原件组件 → Rust owner → UI 事件 → 本地保存 → 实际服务／协议 → 应答／真实读回 → 状态／失败 → 取消／恢复／释放”逐项连通，不能以局部已接链标记完整页面完成。
+## 当前子任务安排
 
-私有 Dataset `han1548772930/razer-ui-assets` 的[资源锁](../../tools/asset-release.json)固定提交 `ce7ba4dd6cd039f9b1e955c9872ce83ac754867e`。332 个产品分组、7,772 个载荷文件、1,514,324,891 字节已逐项核对：5,276 个 LFS 对象核对 SHA-256 和长度；2,496 个普通 Git 对象以维护快照的 SHA-256、长度及 Git blob OID 交叉验证。主仓库保留独立 SQLite 目录库、9 个原生托盘／菜单 RGBA 图标与 4 个窗口控制 SVG。原生取屏色光标从已验证 PE 资源静态重建，保留八个尺寸、热点及图像数据，按实际界面请求进入同一资源缓存。不要重新启动批量下载、上传或推送 GitHub。
+协调者从现有正式审阅和 `gaps.json` 读取仍未闭合项，先核实是否已有结论；不照旧日志重做捕获。每项领取完整功能链或一个明确阻断点，写清输入、依赖、发布所有者及验收条件，完成后接回既有收据并领取下一项。
 
-资源运行时通过统一 manifest、安装目录 `assets/cache` 和独立 I/O 工作线程按实际请求获取单个文件，最多 4 文件并发；相同文件去重，先验证缓存、长度与 SHA-256，缓存命中不联网；下载后原子发布。页面订阅加载完成事件，保留失败及重试，生命周期结束取消任务；不预取其他产品，不恢复源码 `assets/`。共享字体按实际依赖请求，本机凭据不写入源码、清单、安装包或日志。安装生命周期统一在 [安装配置](../../packaging/windows/RazerUI.iss) 和 [维护工具](../../tools/windows_installer.py)；当前尚无 release EXE／ISCC，未生成或执行安装包。其余账户／云同步／联网业务仍排除，遵循 [集中配置、类型化数据与安装资源规则](../../AGENTS.md)。
-
-应用启动、编译和安装均不依赖 `synapse.pack`；独立 pack 工具仅用于维护验证。无人调用的 `assets/native/razer-hid-0.0.31.node` 已删除，字节相同的静态分析原件保留在 `.analysis/inputs/`。固定设备能力、配对规则和默认值随 Rust 类型化表交付，不依赖远程资源。
-
-固定设备表由 `prepare-typed-data` 及专用协议表生成器维护，使用所属能力模块的普通构造函数；界面静态目录由 `prepare-resource-database` 生成独立 SQLite，使用普通有类型读取函数。当前 schema 4 目录库为 47,501,312 字节，包含 334 个产品、369 条完整导航分支和 1,478 个页面；五张产品规范化表保留产品类别、版本顺序、稳定页面身份、连接分支和 Help 记录选择键。`ui_locale`／`ui_translation` 另保存 10 个语种、58,841 条翻译，`razer-i18n` 读取保留的不可变词表快照，不再嵌入旧生产词表 JSON。`prepare-locale-exports` 静态解码当前完整字典导出、核对来源并只补缺键；原有值和原字节 baseline 保留，旧词表的完整厂商来源仍须继续核实。启动加载一次有类型快照，源文件路径、源码哈希及分析状态仅留在分析证据。生成时逐字段回读全部目录并核对 335 个 Help 页面与各自展示记录的连接，不能用当前 JS 位置覆盖稳定选择键。维护投影保留于 `.analysis/inputs/typed-tables/` 并标明其与原始证据的区别；目录等价性与 Help 连接修复分别记录于统一 typed-data 证据。旧巨量目录字面量、`src/data/`、分区、读取宏、重复 JSON 和空注册模块已清理。`razer-pages/testdata` 的完整图片和生产 JSON 已删除，仅保留验证具体行为所需的三个小型 Rust 夹具。目录迁移不代表页面行为与后端已全部实现；文件／服务报文和导入导出的动态 JSON 边界单独保留。
-
-验证须区分范围：此前鼠标、gamepad、协议、i18n、保存回归和摄像头 MIC 的局部测试只证明各自执行时的代码。当前统一入口收据见 [validation.json](../../.analysis/validation.json)，按其中实际套件、测试数量、日志及 `inputs_unchanged` 判断；旧通过数量或失败记录不能代替新一轮验证。逐命令日志在 `.analysis/verification/`。目录准备、定向编译和纯／模拟检查均不能替代全页面验收；应用窗口、安装程序和厂商 JS 未运行，已授权本地 DLL／服务／设备测试的实际范围与结果须单独读取对应收据。
-
-## 全产品实现路线
-
-2026-10-15 当前范围是全部源码产品与全部本地页面，不限本机连接设备或单一 PID。统一获取 locator 仍保留 332 个 PID，真实产品注册为 331 个：162 端点的 PWA manifest 曾被误当作产品身份，而完整 DeviceInfo 实际声明 163；获取证据保留，错误生产注册已隔离。locator 仅用于获取，不是行为证据。当前正在对所有产品族 UI／MW 原件进行 repair 和完整静态提取。必须按当前 index、manifest 和入口 lazy loader 确认挂载关系；获取目录中附存的旧 main 即使哈希正确，也不能当作当前挂载页面。
-
-2026-10-14 获取的官方生产通道 4.0.827 宿主收据包含 36 个文件；2026-10-15 重新计算其实际长度与 SHA-256，全部匹配。安装主 EXE、ASAR、mapping_engine.dll、simple_service.dll 与 HID.node 均与保留的宿主解包原件一致；主 EXE PE 版本为 `4.0.827.114`。本轮又完成 637 个本机安装文件、4,681 个公共静态缓存容器及响应资源的获取，解析失败为 0；5 个前端缓存组中 PID179 MW 保留 2 个版本冲突。宿主收据仍标记依赖闭包不完整，缓存亦不能证明当天部署；旧 ASAR／JS 提取总量和页面版本须逐项核对当前原件与输出。原始端点、版本、字节身份和失败的存放位置见 [分析目录说明](../../.analysis/README.md) 及各 acquisition 收据。
-
-同日 01:36:25 UTC 完成 [官方部署元数据复核](../../.analysis/results/host-current/metadata-recheck.json)：6 个官方 JSON 端点双取，全部与 2026-10-14 基线字节一致，Synapse／Chroma 声明版本仍为 4.0.827。仅部署元数据得到复核，未下载安装器，也不据此宣称宿主／设备源码与依赖闭包完整。
-
-启动状态已按当前 MW 的完整 `runtimeData` 与 `setupOnDeviceReady` producer 接线：统一 `audit-runtime-setup --family all` 查询 332 个获取入口，330 个真实 runtime PID，105→104、162→163 保留源码别名；117／2594 初始为 `unknown`，其余已查询分支为 `waiting`。页面模块实际构造后发布源码 `READY`，其后仍独立处理 profile 初始化、设备 GET／SET 和失败，不能把 READY 当作设备写回成功。结果保存在各族现有 `*-mw-audit.json` 的 `runtime_setup`；本次语义查询失败为 0，源依赖图仍保留 Sentry ESM／CommonJS 等未解边，不宣称完整闭包。
-
-启动修复同步保留 discovery 实际读值，Dashboard 在进入原码允许接收电量的阶段时接受已有读值，避免设备已读取而卡片仍显示旧状态；状态文案不再由 Rust 的“本地草稿”等诊断覆盖。设备 workspace owner 使用产品与容器身份，读取序列号不再使页签／待完成请求失配；旧页签顺序仍可恢复。164／179／241 接收器自身固件读取按完整源 `getExtendedFirmwareVersion` 接通 `[4,0,135]`，使用各自已核实的接口与传输参数，未添加鼠标或电池能力。179 的 serial／edition／indicator／bindings 与配对取消现由主实例保留 transaction 序列；分类实例保留各自 namespace，已执行的设置与待执行替换分别管理，配置保存校验产品和配置完整身份。当前完整 owner 查询及纯／模拟验证分别见 receiver 与统一验证收据，其余初始化和整页分支仍按原件清单核对。真实应用和设备验收未运行。
-
-当前并行实现记录（具体链落地不等于整页完成）：
-
-| 范围 | 已落地的具体链 | 仍需继续实现／核对 |
+| 工作槽 | 首要责任 | 交接结果 |
 | --- | --- | --- |
-| 鼠标 PID70 Performance | DPI 编辑与档位选择 → 串行本地保存 → `[7,4,5]` SET ACK；独立 XY 开关按原源码仅保存；连续编辑合并、作用域取消、过期响应隔离及退出清理 | 完整 profile 切换、硬件事件同步、映射／宏的其他链及其他型号分支 |
-| 鼠标滚轮 153／170／203／204／214／226／45066 | 源控件编辑 → 每次接受的变更立即进入串行 profile／53 位版本保存 → 独立任务合并 → 有线、自有／共享接收器 typed IPC → Feature SET；模式保留 300ms debounce，226 保留 mask 后 mode；启动与配置恢复复用同一入口，Smart Reel 按实际板载 inventory 的 GUID 关联所有匹配槽位，45066 的旧模式取首匹配 slot；设备 ACK、真实 GET 观察与源乐观草稿分别保留，失败保留部分结果并继续独立任务，作用域取消与退出清理已接 | 真实 GET 到对应原控件的完整接线仍须核对，不能只留诊断；继续完整页面组件与其余产品分支；这些具体链的实现不代表整页完成，真实设备／窗口未验收 |
-| 键盘 PID515 Lighting | 从当前 MW 核验 interface 2／BacklightLED 5，补齐 legacy 亮度 GET／SET，复用 UI → discovery → service 链；修正亮度请求超时 | GamingMode 全部交互与产品分支；其余设置页的完整组件树和动作 |
-| 摄像头 PID3594 | 曝光重置按当前源码依次提交自动曝光、测光、补偿，独立任务失败继续且不回滚草稿；预览等待 OnFlush 后 Shutdown，并在停止／失败时清帧 | HDR 握手、快捷键、分辨率分支和其余整页交互 |
-| 本地壳与 Chroma Settings | 移除账户／登录／在线通知和更新入口；保留本地托盘；动态照明设置按钮连接本机 Windows 设置 | 继续核对其余 mounted 本地页面和平台分支 |
-| 设置“所有产品” | 两个设置入口共用本地产品列表，覆盖注册表 331 个产品；支持名称／PID 搜索、版本与该型号实际布局、本地图片；通过正式 ProductWorkspace 路由打开，不创建产品演示弹窗；精确匹配的真实连接优先，否则隔离为离线草稿 | 用户要求的本地浏览入口，不冒称厂商原生设置页签；正式页面仍须逐项完成完整组件／动作清单，路由可达不等于页面完成 |
-| IPC 与批量工具 | IPC 帧错误、无效响应和 EOF 及时结束等待；六产品族并行采集与共享缓存；报告重新核对原件身份，不沿用缺失收据的成功状态 | 所有产品资源闭包、间接调用及未实现链持续按 gaps 驱动 |
-| 公共页面滚动与列布局 | 固定页签、BodyWrapper 视口持有滚动状态，释放 flex 最小尺寸；正文保持自然高度；通用列保持 row＋wrap、600px 卡片居中、窄窗列外边距，移除额外 gap | 共享组件／CSS 查询的旧片段总量与零失败结论尚未本轮复核；真实窗口、缩放和滚轮验收未执行；产品专用布局继续逐页核对 |
-| Dashboard 图片 | 按目录版本、文件名版本、布局、腕托和密度选择本地图片；sidepad／mat 观察经设备模型、产品正文与 Dashboard 接线 | 旧文档的请求、图片与失败总数需从实际原件／收据重算；参数静态定位失败和官网缺失资源继续获取／逆向；publisher 的纯／模拟验证与真实设备验收分别记录 |
-| 鼠标／键盘页面图片和几何 | 鼠标 75 款 91 个 Customize surface 的完整 producer、固定几何与 footer 已查询；键盘 72 入口的版本／布局／密度 atlas、SVG producer 已接，60 款 Customize 消除重复间距，756 校准保留 680px 专用列；四个 keypad AVIF 转为当前 codec 可读 PNG | 本批统一编译／纯 Rust 验证尚未完成；全页组件、状态、交互与写回继续推进；获取与图片准备不代表完整页面验收 |
-| 接收器布局和图片 | 164／241／207 正文 inset、卡片间距、滚动分支与宿主 42px 起点按完整源修正；207 主图和 pairing helper 使用精确本地 3x 图片，目录／文件版本、布局、腕托、密度独立选择 | 资源闭包失败保留；独立配对、错误、取消、清理和设备写回继续核对；真实窗口与设备未验收 |
-| 鼠标电源与 BLE 分支 | 42 款电源卡片、alwaysRead 初始化与本地草稿所有权已接；199／208 使用源码六个秒数按钮；204／45066 BLE 隐藏电源页，170／214／235 隐藏校准页，历史导航跳过隐藏页 | Protocol30／真实 WinRT GATT 分支在本批继续收尾；源码完整确认、编译与模拟验证分别记录 |
-| Seiren 1422／1446 EQ | 完整 EQ 子树、源 CSS 级联、24 项 RGBA 比对及两 DLL 的调用分析补查已核对；录音 footer、整条采样率切换、向导 hover／动画／透明度和共享 SVG 滤镜已接。录音标题、等待与计时文案以及 EQ 教程共用 `SourceText` 表达源字距；采集、回放、临时 PCM、固件回路恢复及停止释放由服务／存储所有者持有 | 静态组件、纯字形测试与资源核对不代表真实窗口／音频服务／设备验收，整页尚不能完成验收 |
-| 接收器／键盘事件 | 持续 interrupt reader 与 Feature 查询句柄分离；Unpair ACK 后的额外诊断不覆盖源 UI 成功状态；独立重连与 owner 清理正在接线 | 重连批次及本轮资源合并后统一编译／纯 Rust 模拟验证；真实设备未验收 |
-| 接收器 164／241 配置与灯效 | Help／亮度／选择共用类型化 profile 快照与串行保存；退出阻止新请求并排空已接受保存。软件灯效保留设备会话和前任释放屏障，电量／充电分支连接真实 getter、通知、LED 几何、独立覆盖引擎与恢复；本机 Chroma Connect 由应用唯一连接完成属性调用及真实回执 | 各原件和静态／模拟收据见现有 receiver 查询与验证记录；整页其它交互仍逐项核对，窗口、本机服务、真实下载和设备写入未执行验收 |
+| 协调者 | 核对范围、当前状态、共享依赖和消费者；合并结果、交叉复核、统一清理 | 当前有效分支与下一批依赖明确；局部结论不外推为全项目完成 |
+| 子任务 A：前端／MW | 实际挂载、动作、参数、状态消费者、存储及卸载；覆盖同一能力的全部产品差异 | 当前原件到真实消费者的完整语义依据及尚缺的原生契约 |
+| 子任务 B：原生／本地服务 | 对应协议、间接表、计算、线程、事件、失败和释放；复用完整捕获 | 精确函数／数据边界、应答契约和产品／固件差异，接回 A 的消费者 |
+| 子任务 C：来源补缺／独有链 | 只补阻断当前功能的来源闭包；无来源阻断时接音频、灯光、摄像头、手柄或系统独有链 | 缺口闭合或下一条具体取证路径；独有功能的完整调用链 |
 
-共用 HID 读写现按当前 `UsbRzDeviceAction.js` 与 `HID.node` 对照：GET 使用 `reportId ? reportId : claimInterface`，SET 使用 `reportId ?? claimInterface`；GET 去掉返回首字节，不额外要求回显请求 ID。产品 factory 的实际接口、报告 ID、事务前缀、等待和重试分别保留，接收器 master 绑定后不再被逻辑产品默认值覆盖。Windows source-host 路径按 collection 最大长度传输，并将 hidapi 非零报告前缀的返回长度转换为原 HID.node 语义。具体完整函数、物理分支及 Rust 对应见 [共用 HID 查询](../../.analysis/results/native/chain-audit.json)，不能据此标记全部产品全部协议闭合。
+最多三个独立子任务，不为填满并发而重复拆分；同一数据库和同一发布文件由一个所有者处理。共享阻断先解，再批量核对消费者，最后收束独有分支。相同输入和方法没有新证据时换路径，其他独立批次继续。并发按实测吞吐、内存和磁盘等待调整。
 
-PID182 休眠的接收器链已连接页面、discovery、typed IPC 和 service，覆盖自有 183 与源码支持的共享 master。当前 `85191.Rt` 的顺序为 SET 秒数、取消检查、一次独立 GET 并比较；不预读、不因旧值相等跳过，不要求 ACK 回显设置值。前后真实 peer 状态和响应身份分别校验，失败不回滚原版乐观 UI；该产品源码只有 wired／dongle，不添加 BLE 分支。完整 caller、任务、继承方法和 native 对应须沿原件重新查询；本轮重建的滚轮查询收据不覆盖此休眠调用链，不能沿用原已缺失的查询结论。
+当前领取候选包括：灯光已有 profile 观察到 layer render／真实帧写回和恢复的完整链、尚缺当前来源闭包的音频页面、其余产品的挂载／状态与间接消费者。领取前分别查所属审阅的最新状态，已闭合语义直接复用；仅剩 Rust／UI 接线或实际验收的记录留到对应阶段。
 
-电源页按当前 reducer 和组件补正：42 个产品初始省电值为 5，34 个产品低电量阈值初值为 30，不能从 profile 模板猜测 UI 初值；这些是源码初始展示值，不能作为设备实测或读取失败后的回退。真实 getter 与用户编辑按各自源码进入原控件，必要初始化仍遵循实际产品调用顺序。38 个 alwaysRead 产品跳过省电项磁盘保存，不再让磁盘错误阻断设备写入，并迁移移除无源码依据的 `_mousePowerDraft`。设备级电源任务跨 profile 切换保留，物理连接销毁时取消；199／208／214／229 等真实本地保存分支保留。标准滑块使用原版数字气泡、轨道、端点和禁用样式，拖动预览、松手提交；27 处帮助按钮恢复独立右上定位。完整 shared-page-layout 查询随本轮当前部署获取继续复核，静态／模拟测试与真实窗口验收分别记录。
+## 每批收尾与文档维护
 
-本轮另按当前完整组件／CSS 修正鼠标 Customize 按钮 margin 所有权、禁用 hover 和 tooltip 子项间距；键盘帮助图标回到卡片右上位置，Hypershift 提示按型号保留宽度与断点，756 的 FN＋Backspace 卡片恢复源尺寸。Seiren 1422／1446 下拉框恢复源尺寸、边框、选项与展开动画，提交值和键盘游标分离，Enter／Escape／外部关闭与失焦遵循独立的焦点和关闭链；无采集时清空频谱而不清除独立 meter 观察。配对入口保留完整源 metadata，不用测试专用裁剪 payload 代替真实 caller。
+每批只汇报实际闭合的功能及产品分支、仍缺的具体依据、验证层级和清理结果。已确认结果归正式收据并接好引用后，通过 `python -X utf8 tools/workspace.py clean` 生成计划，核对路径、完成依据、SHA、引用、在途／预留任务和占用，再执行：
 
-针对本地反馈，公共 CheckItem 恢复当前 `.check-text` 的相对定位和 `min-width:max-content`，以实际字体度量保留文字宽度，避免中文被 20px 方框挤成竖排；游戏手柄数值提示和 Audio Mixer 数值包装按各自源规则修正，未全局强制单行。真实发现设备与离线预览共用当前厂商名称字典，保留用户改名，规范语言代码别名。保留的选择项现在保存源文案键／产品自己的词典，在显示时取当前语言，不把语言切换当作设备变更，也不翻译用户预设名。Sound 六型号和 Mixer 的纯测试覆盖同一选择项切换语言、选择身份／禁用状态不变及与内置文案键同名的用户预设。
+```powershell
+python -X utf8 tools/workspace.py clean --apply <计划相对路径> --plan-sha256 <实际计划SHA>
+```
 
-图片检查分开核对资源解码与请求选择：设置中的版本／布局候选从当前源支持域取得，不能通过删掉缺图候选掩盖遗漏；本地产品浏览可使用同 PID 的真实 ProductImage 备用，遵守其版本／布局重试规则，不跨型号借图。真实键盘版本与布局读取保留为独立观察，不从初始化值或预览默认值伪造设备响应；直连、接收器和 BLE 的实际分支分别核对。
+无后续依赖的临时数据库副本、重复解压、克隆、中间输出和日志在本批实际删除；所需原件、正式收据、断点数据库及未决证据记录具体保留原因。计划、实际删除、失败和释放空间分别记录，清理失败继续处理。
 
-编译警告与 UI 偏差分别核对：修复跨模块可见性、漏更新的调用签名和测试 helper 重复编译，移除没有生产 caller 的复制代码、演示兼容弹窗及范围外社交／远程更新占位；未添加 blanket allow 或关闭 warnings。零编译警告也不能证明原页面视觉、全部行为或设备写回一致。
-
-生产 `razer-model::demo` 与壳层合成设备注入已移除。离线 `product_preview` 只从真实注册表构造本地草稿，设置状态未知，不编造固件、电池、连接观察或已初始化功能；测试数据归 owning crate 的 `testdata/`。历史持久化只清除同时匹配旧 PID、serial 和 container 的精确合成记录，不误删真实或未知设备。
-
-全量媒体与巨量字面量不再进入编译：固定窗口控制 SVG 和 9 个原生 RGBA 图标内嵌；界面目录、表情和资源索引在 EXE 旁独立 SQLite，所有实际打开的界面按文件加载媒体并缓存。`tools/resource-mappings.json` 替代旧 Rust 资源片段，保留 first-match、重复 list 顺序、图片选择条件、sprite 与 GPUI fallback。缺失或损坏保留真实错误；未打开的页面或产品不预取。转换等价、完整原件解析、纯／模拟测试和真实 UI 验收分别记录，不能把数据库生成当作全页面完成。
-
-旧的 1,115 项测试结论不适用于当前代码。每批 Rust／资源冻结后，通过维护入口统一执行 `cargo check --locked --offline --workspace --all-targets` 与适用的纯 Rust／模拟 transport 测试，在 [validation.json](../../.analysis/validation.json) 记录实际测试数量、失败和验证期间输入身份。窗口测试不在允许执行范围内。
-
-输入身份审计独立于代码测试。当前 [input-audit.json](../../.analysis/results/input-audit.json) 核验 278,931 项，全部 verified；missing、mismatch、error 和 index error 均为 0。补充获取收据、静态资源发布清单和固定参考快照经各自维护所有者核对完整原件、入口／manifest、稳定性及依赖清单后发布索引；发布原因和前后字节身份保留在同一收据的 `source_publications`。维护投影以独立身份纳入索引，不升级其原始来源证据状态。该结果只证明已索引文件的实际字节符合记录，未获取的 source map、声明资源缺失、未闭合调用、过期 capture、ABI 和实现缺项仍独立保留；产品族／层矩阵和页面完成状态不能据此升级。后续获取、补充分析或来源发布改变索引后，应重新执行输入审计。
-
-资源引用、图片内容与选择域分别验证。当前 [resource-audit.json](../../.analysis/results/resource-audit.json) 的 `runtime_reference_closure` 是 2026-10-18 的静态引用快照，覆盖 1,377 个 Rust 文件、151 个目录输入及 43,194 个目录引用，缺失引用为 0；243 条资源作用域边未发现违规。75 个动态引用点中有 70 个完成有限域核验，动态选择域的运行验收仍为 unverified。该收据不包含本轮全部图片解码或 ProductImage／Dashboard 全部分支的验收结果，后续改动须按实际输入重新验证，不能沿用旧图片通过数量。官方缺图继续保留完整 caller、资源上下文与响应证据，不借用其他产品图片，也不通过删掉可选版本掩盖；实际 codec、版本／布局选择与真实窗口分别验收。
-
-独立 pack 工具保留自己的容器格式、维护收据和测试。应用的 `SynapseAssets::list` 读取安装目录库，`load` 通过当前应用注入的 `ResourceClient` 获取已请求资源，并复用必需内嵌图标入口；应用启动、编译和安装不以整套 pack 为前提。资源加载须分别核验共享界面、产品页面、缓存命中、失败重试及取消，容器维护结果不能替代资源运行时或产品页面验收。
-
-当前源码与分析收据保留在 `.analysis/results/`，完整 Rust 检查和纯 Rust／模拟 transport 测试收据见 [validation.json](../../.analysis/validation.json)。源码图校验失败、缺失 source map 和资源仍明确保留；未运行应用或厂商 JavaScript。显式本地 DLL／服务／设备测试只按实际收据中的功能、产品和传输分支判断，不提升为整页或其余设备已验收。
-
-| 工作 | 必须保留的可复核结果 |
-| --- | --- |
-| 获取并核对当前原始输入 | 来源、获取时间、版本关系、原始包／文件字节、动态 SHA、缺失输入 |
-| 统一提取完整前端 | 全部 JS/CSS/HTML、source map、资源引用、模块依赖、实际挂载组件、所有产品／版本／附件分支及完整函数体 |
-| 统一提取宿主与本地服务 | 本地 IPC、参数与返回、事件与状态、存储、系统集成、安装和生命周期调用链 |
-| 统一提取原生库及插件 | IDA／Hex-Rays 全函数与边界、RVA、完整伪代码／汇编、xref、类型与协议证据及失败项 |
-| 补齐跨层语义 | UI 调用方→参数→transport／服务→响应→状态→写回／持久化→取消／清理；间接调用与缺少 producer 明确标未解 |
-| 完整 Rust 与 UI 实现 | 协议逻辑、平台适配、服务、UI 的具体代码对应和每项剩余缺口 |
-| 当前验证 | 静态检查、纯 Rust／模拟 transport 测试、输入与代码身份、失败结果；已授权本地 DLL／服务／设备测试和仍禁止执行的窗口／安装验收分别记录 |
-
-通过 `tools/workspace.py` 维护统一入口，分析缺项集中写入 `.analysis/results/gaps.json`。工作流记录工具版本、输入边界、每项提取结果和失败原因；提取后复用结果查询，对明确未解项补查。前端恢复使用 Wakaru 1.14.0；原生分析使用 `E:/IDA` 的 IDA Pro 9.1／Hex-Rays 9.1.0.250226。本轮已重新取得并捕获 GenericCamera、HID.node、simple_service.dll、mapping_engine.dll 与 BLE binding.node；完整函数数量、反编译失败和原始汇编以对应实际输入 SHA 的当前 `capture.json` 为准，不沿用旧工具或旧输入的统计。能力、输入摘要与限制见 [工具说明](tooling.md) 和 [分析目录说明](../../.analysis/README.md)。捕获成功不代表协议或适配完成。
-
-遵循根目录 AGENTS.md 的持续实现规则：未实现项必须继续完成，不能只登记缺口或留下 TODO、空函数、占位接口、恒定未连接返回或仅有 mock。缺证据时继续静态逆向并补齐真实调用链；具体平台适配和 UI／后端接线均属于交付范围。真实窗口仍不运行；本地 DLL／服务／设备测试按已授权范围执行，未实际验证的分支不能伪称通过。
-
-每个本地 UI 页面逐项核对：
-
-- 实际 mounted root、完整组件树和所有产品／版本／附件条件。
-- 布局、尺寸、字体、颜色、图片／图标、文案、标签页、面板、抽屉、弹窗和提示。
-- 普通、选中、禁用、加载、空值、错误状态，以及键盘、焦点和滚动行为。
-- 每个本地动作的完整提交／响应、确认、乐观更新、失败、刷新、取消、保存与资源清理链。
-- 具体当前源码位置、Rust/UI/backend 对应和剩余缺项；本地草稿与设备／服务写回分别记录。
-
-GPUI 修改前遵循 [AGENTS.md](../../AGENTS.md) 中指定的 GPUI Kit 与设计 skills，并对照项目锁定 API。通用设计指南不能授权精简或重新设计 Razer 原页面，也不能替换原始确认和失败语义。
-
-页面只有在全部源码→Rust→UI／服务清单完成后，才能标为完整实现。路由、descriptor、哈希、snippet、wrapper 或部分控件均不足以验收。源码获取、逆向语义、实现、接线、静态／模拟验证和实际运行验收分别记录；缺项不能标为完成或永久延期。
-
-允许静态解析、资源准备、格式化、`cargo check` 及纯 Rust／模拟 transport `cargo test`。用户已授权核实来源、版本、架构、ABI 和清理链后的本地 DLL／导出、服务及真实设备功能测试，先只读核对，可恢复写入须保留原值、恢复并回读确认。应用窗口、厂商 JS、无关 helper、installer、固件刷写及不可逆操作仍不运行。测试结果按真实调用、返回、比较、恢复与未验证范围分别记录，单次设备操作不能替代整页验收。当前新检查结果见 [验证记录](../../.analysis/validation.json)。
+规则由根目录及细分规则维护；本页维护阶段和路线；产品文档维护具体语义；[证据索引](native-bulk-reverse.md)链接机器可读结果；[工具说明](tooling.md)维护执行方法。删除重复历史叙述、过期分工与失效文档，保留有效语义与正式证据，不新建平行进度档案。
