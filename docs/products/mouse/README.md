@@ -253,6 +253,20 @@ PID199、208 声明 `isHidingKeyMapping=true`、`defaultVisibleFunctionsCount=5`
 
 本地 Import 的当前源码与静态调用语义已经闭合，父段中旧的 legacy pending 边界由这些后续证据覆盖，旧记录不改写。既有 `PreparedMouseImport` 仍只是本地候选实现，其当前源码一致性、真正发布、UI／后端接线以及自动化／实际 DLL／设备和视觉验收须分别完成。其他 CRUD、宏播放或设备 Apply 未被本段升级为完成；本次只创建正式 review，没有新捕获、分析会话或临时副本。
 
+## PID182：新增／删除／重置配置档与板载槽关联
+
+当前能力见[内容寻址 review](../../../.analysis/results/reverse-pending/review-sources/fe54e22ad17d923f1cf98af23c8ef1e4700b53c711779f0f450afa79c23ac518.json)，经 `audit-family-function --family mouse --function mw --product 182 --query mouse-182-profile-slot-chain --semantic-review` 接入 [mouse-mw-audit.json](../../../.analysis/results/frontend/mouse-mw-audit.json) 的 `mouse_182_profile_crud_chain`。复用 DPI 槽位、重命名、复制收据的同一当前 UI／MW、库存身份、存储与原生存储证据；没有重新捕获。
+
+- 实际挂载：普通 Profile 菜单 `Vu` 含 ADD、RESET_PROFILE、DELETE。RESET 只对 MOUSE／KEYBOARD／KEYPAD／SYSTEM／MOUSEPLUSMAT 以外类别移除，PID182 为 MOUSE 保留；除 ADD 外均需选中 GUID。DELETE 在只剩一个配置档、选中行为 `isObmProfile` 或模拟预设时以 `aria-disabled` 呈现且无点击。`isObmProfile` 只在 OBM specs `profileSwap` 或 macro 显示模式下产生；UI 默认 `profileSwap:false`，唯一设置者 `obmSetSpecs` 位于 PID182 未挂载的 OBM 菜单 chunk。
+- 新增：名称为 `计算机名-Default`（计算机名异步取得，尚未取得时为 `Default`）再去重，GUID 随机生成；UI 乐观追加并选中后发送 `ON_ADD_PROFILE`。权限同普通配置 helper（存储 shared＋deviceAccess，宏录制占用时仅存储）。后台以 `getDefaultProfile(target)` 叠加 name／guid／containerId，追加并设为文档与当前 serial 的活动配置，推进版本、分离 `EA`、`Pf`→`qw`。随后 `et` 以此前活动配置的映射排队板载槽 1 默认按键写入，再按新旧活动配置差异交给 `Kn`；完成通知不等待这些设备队列。
+- 删除：确认弹层后发送 `ON_DELETE_PROFILE`（存储 exclusive＋deviceAccess）。板载槽删除只在 `OBMSlots>1` 时排队，182 不进入。仅在存储中多于一个配置档时删除、选新活动配置并改写其他 serial 中等于旧活动 GUID 的关联，同样经 `et` 与 `Kn` 差异恢复。关联游戏删除位于该判断之外，按**旧活动 GUID**而非被删 GUID 匹配，且在 forEach 中 splice，可能跳过相邻项；两者只在删除活动配置时一致。
+- 重置：弹层有“重置按键”（`ON_SET_KEYMAPPING` 空映射并乐观清空）与“重置配置档”两个按钮。后者 `ON_RESET_PROFILE` 只取得存储 exclusive，不乐观修改；后台保留 name／guid、其余替换为产品默认值，GUID 不存在则在修改前报错。若板载引擎存在且旧配置有映射，无论该配置是否活动，都按旧映射向 `[1, GUID 匹配槽]` 排队默认按键写入；之后不带差异调用 `Kn`，重新应用当前活动配置的全部字段。MW 发出的重置结果类型在当前 UI 中没有常量或 reducer，对应待办项不会被移除，页面只依赖 `Kn`／`Bj5` 及各功能发布刷新。
+- 板载槽关联：`obmData` 在 `ON_INIT_OBM_ENGINE`→`sn`→`Tt` 读取设备库存前未定义，此前 `Qe` 只得空集、仅针对槽 1。`Xc` 保留实测槽号（排除原始 ID1），名称为空或乱码时按本地 `obmSlotId` 再按首个本地配置补 GUID／名称，属本地关联；182 已挂载链不会写 `obmSlotId`。`Qe` 按 GUID 收集全部匹配槽，供 DPI、重置与映射同步（`tt` 另加槽 1，使用文档 `activeProfile`）共用。`Tt` 以 GUID＋owner 或活动配置对应原始 ID1 匹配并写入差异，仅存在于设备的行经 `ON_ADD_OBM_PROFILES_TO_PROFILES` 追加或替换本地配置。逐槽写入为 `[80,2,12]`，单槽错误只记录且任务仍 completed，成功只更新引擎缓存，没有读回，不能证明板载持久化。
+- `ON_STAGES_INIT` 的两个构造点都在 `Kn` 内（文档级分支仅 `singleProfileDevice`，182 为否）。review 保留绑定到模块 87190 的 17 个 `IF` 调用点（13 个所有者）及 `Gn` 的直接调用，覆盖新增、删除、重置、复制、切换、设备循环切换、OBM 重置／导入、端口、关联游戏前台切换、设备重置、存储事件、控制器槽切换与供电恢复；每个排队事件仍要求宏录制未运行，仅获得 deviceAccess。
+- 取消与释放：弹层关闭只影响本地状态；派发后 `qt`／`Qt`／`Zt` 没有 AbortSignal 或连接代次检查，OBM 任务只在整轮逐槽循环前后检查取消，页面卸载不会排空分离的 `EA`、MappingEngine 发布或 OBM 任务。
+
+`MouseProfileCrudReviewTests` 4/4 通过，覆盖专属追加段、经现有 CLI 的只读冻结校验（其他槽位修改工具后按设计拒绝旧身份）、错误产品／查询／准备的拒绝，以及关键分支与保留完整所有者的绑定。本段只闭合当前 PID182 上述静态语义；共享映射／宏执行器与其他多槽型号的槽增删改另行接续，独立 Rust、UI／后端接线、实际 DLL／设备对照与运行验收仍为未验证。
+
 ## 旧版文件：共享映射转换
 
 统一入口 `python -B -X utf8 tools/workspace.py audit-family-function --family mouse --function mw --product 182 --query legacy-mapping-conversion-chain`；正式结果归[鼠标中间件收据](../../../.analysis/results/frontend/mouse-mw-audit.json)的 `legacy_mapping_conversion_chain`。本段接续 `mouse_182_legacy_worker_chain` 的 Mappings 缺项，复用同一当前 worker、两轮 HTTP 部署收据及实际 Import 消费者；29 个完整模块覆盖 `8061 → input62/output3405`、21 个实际输出分组、19 个输出 helper 及键表／别名／解析依赖。源产品专属转换调用方仍另行判断，不把目标 PID182 当作源文件范围。

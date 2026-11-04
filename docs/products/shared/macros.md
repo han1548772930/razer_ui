@@ -48,6 +48,8 @@
 
 本查询闭合这条当前静态 callback 链。设备 OTFM 写回、其他宏执行器、当前版本的映射／快捷键暂停、独立 Rust 完整迁移及实际 DLL／设备对照仍分别登记；本批没有执行厂商 DLL、JS 或应用。
 
+全产品共用的当前原生宏／turbo／phased 执行器（manager 选择、executor 线程、步骤循环、完成时释放按下键、停止与引擎关闭）见键盘专题[原生映射输出执行器](../keyboard/calibration.md#756原生映射输出执行器)；本页不重复其语义。
+
 ## 停止、后处理与保存
 
 显式停止按钮和全局录制快捷键发送 `ON_STOP_RECORDING`。状态机进入 `stoppingRecorder`，复制动作数组、清空部分快捷键缓存，调用共享窗口项删除，然后调用停止保护函数 `dr`。原生 `ON_RECORDING_STOPPED` 再推动录制后显示器查询与后处理。

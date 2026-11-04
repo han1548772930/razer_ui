@@ -680,6 +680,9 @@ _STATIC_GAP_PROOFS = {
     "mute_mapping_1446_chain": "434a4198ceaf9a99892c45bed069358861d0d15a819d458de7bc85a0321c0ea2",
     "quick_effect_binding_1446_chain": "6bade65a33edf6b8dc93140bf5877c30fb8d90167a65de501eadd2238726fa78",
     "tap_notification_1446_chain": "238cbcec357107a533744aa6588c637ff1efc3c4ab48099c24077fccbad6898f",
+    "mouse_182_profile_crud_chain": "678101d580e9697ea9ab4d5c7b007ad1d24598bc27cc73376e9a3c0bfb9cacb5",
+    "keyboard_756_native_output_executor_chain": "4d267da0b6a977378577a827186ec6b0e0c7ebcd6c14092abd75d1fbfe837616",
+    "headset_earbuds_protocol40_chain": "46969cbebcb6405a6243c39ec00d41781224d63e2472def8e66d2a78593e4814",
 }
 
 # These exact older receipts express reviewed scope through their original field.
@@ -705,6 +708,10 @@ _STATIC_GAP_REVIEWS = {
         ("/legacy_product_mapping_chain/remaining_chains/0", "23fa17fbc7b33476ade1d644c975005dd4cd8144125b7952c45016c4f6fb8229", ("legacy_source_product_chain",), "resolved"),
         ("/legacy_shared_scalar_chain/remaining_chains/0", "d4dc8cd861f45488d9f04593c7f13a74f519aa6baca00f73429f61da33a587da", ("legacy_shared_structured_chain",), "resolved"),
         ("/legacy_shared_structured_chain/remaining_chains/0", "742427ac59092a0d1e80994416ba5613ca2d6ed2d902a0eabeef7cb0d5ebedd9", ("legacy_source_product_chain",), "resolved"),
+        ("/mouse_182_profile_slot_chain/remaining_chains/1", "53d210433c224fee423c322576c04da534d3e142dd9437d635a69efe0503a615", ("mouse_182_profile_crud_chain",), "partial_static"),
+        ("/mouse_182_profile_import_complete_chain/remaining_chains/2", "17ae44651bf09e8251b4b38bf9cc881570d1c53e10939192fe1b885d21957b30", ("mouse_182_profile_crud_chain",), "partial_static"),
+        ("/queries/mouse-receiver-polling/products/0/remaining_local_chains/3", "99ec9cb10f1d45f52a5b736ea467c9bb4aebbfc77795942389cb8906d164970b", ("mouse_182_profile_crud_chain",), "runtime"),
+        ("/queries/mouse-receiver-polling/products/0/remaining_local_chains/2", "a7709e3a5a93205c2730a1dc0381a83af6ff3c7ec30d2025fbf5d9f03b01cb42", ("mouse_182_profile_crud_chain",), "implementation_and_runtime"),
     ),
     ".analysis/results/frontend/accessories-main-audit.json": (
         ("/hanbo_cpu_monitor_chain/remaining_chains/2", "5dae94c54ae83c4ebc217959a2f9322ac213a8ef34e02bbbc5921900f7b0b3f0", ("hanbo_cpu_owner32_chain",), "partial_static"),
@@ -717,6 +724,9 @@ _STATIC_GAP_REVIEWS = {
         ("/keyboard_756_appengine_apply_chain/remaining_chains/0", "baa03dd267b15550622a51deb76e32df2f3975cbdb7f4ef53fec0a06f4394c04", ("keyboard_756_analog_registration_chain",), "resolved"),
         ("/keyboard_756_analog_registration_chain/remaining_chains/0", "765da90c144bbfc3bfe51bb97b577bf494c4ca4415c0891a1a05e7148c5377e9", ("keyboard_756_analog_registration_chain",), "runtime"),
         ("/keyboard_756_analog_registration_chain/remaining_chains/2", "cbebdc45785f52aee7451460d6c847476aded0d3c926c2c593d602738f9f9255", ("keyboard_756_analog_registration_chain",), "implementation_and_runtime"),
+        ("/keyboard_756_appengine_output_chain/remaining_chains/0", "3b41ee1840568a069c8596ad2798f660b0db263a2047cc9e7de6ec4ff0ea1bd6", ("keyboard_756_native_output_executor_chain",), "partial_static"),
+        ("/keyboard_756_appengine_output_chain/remaining_chains/1", "98000794cec54b8c5251ca0471cf2651d7db30b53bc685bde84abe6cabad2462", ("keyboard_756_native_output_executor_chain",), "partial_static"),
+        ("/keyboard_756_analog_registration_chain/remaining_chains/1", "250225a0fd60f021086d12ce17474c8ad3e4c7bccf780f003aac8319ddf6452a", ("keyboard_756_native_output_executor_chain",), "partial_static"),
     ),
     ".analysis/results/frontend/accessories-camera-local-pages-audit.json": (
         ("/media_preview_chain/remaining_local_chains/0", "5eb8b6554e854a2b93cb224a72e65db244d6b5f6ff41ef6b4e06b1b1f715a8c6", ("kimberly_identity_chain",), "resolved"),

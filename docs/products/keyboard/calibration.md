@@ -235,7 +235,26 @@ GameMode先深拷贝文档，按active GUID找到实际profile；状态1直接�
 
 自定义mapping set与combo按真实配置合并；有效key1但无有效key2的combo成为disable-only。每项转换异常记录后继续，外层深拷贝与hash失败仍可拒绝。GameMode激活分支在存在消耗项和profile GUID时保存快照，重算hash，并把活动profile从原位置移到profiles末尾；未激活分支重算hash但不重排profile。hash克隆对象后只删除顶层hash／gamemode，再进行稳定JSON、`<`转义及MD5；内部消耗快照没有被自动排除。
 
-当前原生接线只复用已核4.0.896／Mapping 1.3.17.2的配置producer／发布、ordinary trigger、keyboard／mouse／joystick部分消费者、analog路由及shutdown。旧 `mapping_descriptors` 仍属于4.0.827，不能用于补齐当前条件执行。其余cascade／modtap／timed／macro／Xbox或服务输出的完整执行、恢复及取消仍按共享原生缺项继续；本节完成的是编译与条件重写源语义，不宣称所有输出动作或整个键盘已完成。没有执行厂商JS、DLL或产品，Rust接线及实际对照仍独立验收。
+当前原生接线只复用已核4.0.896／Mapping 1.3.17.2的配置producer／发布、ordinary trigger、keyboard／mouse／joystick部分消费者、analog路由及shutdown。旧 `mapping_descriptors` 仍属于4.0.827，不能用于补齐当前条件执行。cascade／modtap／timed／macro／Xbox及服务输出的原生执行、恢复与取消由下节接回；本节完成的是编译与条件重写源语义，不宣称所有输出动作或整个键盘已完成。没有执行厂商JS、DLL或产品，Rust接线及实际对照仍独立验收。
+
+## 756：原生映射输出执行器
+
+正式段为[键盘收据](../../../.analysis/results/frontend/keyboard-main-audit.json)的 `keyboard_756_native_output_executor_chain`，冻结审阅为 `.analysis/results/reverse-pending/review-sources/ebb1b35aa1af6948a18f622c31717e6cbe3b446fb736f0ab4def49dae1ce47eb.json`，经既有 `audit-family-function --semantic-review` 发布。复用当前4.0.896／Mapping 1.3.17.2完整捕获，没有新捕获或分析会话：核对157个完整原生函数、28,191条指令字节、43项输出类型名表、11组真实虚表槽和42处指令锚点，并保留PID756 MW与Host的10个完整源码所有者。keyboard／mouse／joystick／dpad的驱动提交复用既有证明边界；旧4.0.827 `mapping_descriptors` 不作证据。
+
+| 输出族 | 当前原生语义 |
+| --- | --- |
+| 选择 | 顶层解析器只为28种类型建对象，delay、randomDelay、loop、mouseMove、razerKey等及未知名称成为保留原JSON的unsupported；multi条目另接受delay／randomDelay／copyText／macro／turbo／system。只有byte+25且global数据版本≥2的映射进入AEAFE，它缺少cascade、dpad、joystick、phasedMacro、xboxGamepad分支，落入全局unsupported；其余走AD0CC。 |
+| cascade | 按顺序检查条件键是否仍处于活动映射；make仅在(condition,input)对不存在时登记并重入分派，已存在则试下一项；break只在删除该对时输出。最终break后清理条件或输入已失效的对，并用当前tick补发对应条目输出。设备析构只释放这些对，不补发。 |
+| modtap | make以当前tick登记，并在输出+16毫秒后向设备线程投递回调；回调只在身份与tick均一致时发hold。提前松开发tap（存储的make输入与当前break各一次），回调后松开发hold break。没有取消句柄或代次；析构先join设备线程，未触发的hold直接丢弃，不补释放。 |
+| turbo／macro／phased | 设备侧记录运行键集合；宏flag3由设备序列游标逐次触发，不经manager。manager按(guid,device)执行：宏0启动、1停止、2切换、4排队，phased 0启动／非0停止，turbo 0启动／1停止。每个并发执行占一个executor线程；步骤逐个投递并检查停止与失败，嵌套上限100、循环帧可嵌套、repeat0直到停止、连续键盘事件间隔10ms。turbo间隔取映射+40毫秒、次数+48。完成时补发全部仍按下键的break（忽略结果），状态为失败1／停止2／完成0；仅非队列执行的状态1才发设备error事件。 |
+| 定时键盘 | USB／BLE／外部设备初始化都启动独立键盘executor。首延迟与间隔取delayInMs，否则用SPI键盘延迟250n+250ms、速度1000/(n×0.887+2.5)，缺省250／30ms；重复回调只按当前输出与tick拒绝旧任务；releaseAfterMs每250ms递减并补发break。smart stop只停重复。executor关闭不发break，旧任务失效为空操作。 |
+| 延迟与SnapTap | delay／randomDelay和SnapTap重按等待在设备线程上阻塞（≤2ms自旋，否则timeSetEvent后自旋）；清理只置事件缩短当前等待，不取消后续分派。模拟SnapTap四种模式分别为后按优先、优先键类、深度优先和中立，重按等待rand()%21+15ms；回调同步执行，排队事件不持有设备裸指针。模式状态不随映射变更、配置切换或清理清空，也不发统一释放。数字SnapTap三种模式仍待查。 |
+| Xbox与本机动作 | Xbox要求构造时创建的聚合状态，只有状态变化才提交驱动kind12并发布通知。Hypershift／OTFS为全局引用计数，最后释放时通知所有设备重放活动映射；设备析构会释放持有的计数。launch在设备线程同步启动且不等待进程，system执行电源动作，mode交给设备模式服务。 |
+| 服务输出 | unsupported需设备注册位和回调同时存在，经引擎线程以type2交给Host；Host只转发给订阅中的存活页面。PID756 MW在setup注册、cleanup注销，按productId和双链归属过滤后分派snapTap、配置档／键位切换、灯光、亮度、风扇／电源、copyText等；各业务处理链仍归其自身专题。 |
+
+停止链：PID756在硬件非连接事件和cleanUpDevice末尾不等待地调用 `stopRunningTurbosAndMacros`。后者位于已等待的removeUsbDevice之后，同一设备的Host表项通常已删除，因此直接返回“device did not exist”而不调用原生；实际停止来自原生移除。原生停止只取消该设备的队列与manager执行，完成值不表示确有执行被停止；设备侧flag3游标、键盘executor重复与按下集、modtap计时、cascade对、Hypershift计数和SnapTap状态都不在其中。引擎关闭先停止并等待全部执行完成（释放按下键），再关闭executor与键盘线程（不发break）并无限等待join。
+
+其他键盘：上述执行器按USB／BLE／外部设备类共享，产品差异在前端配置及MW unsupported消费者。69个当前键盘MW捕获的消费者模块与PID756不是字节相同，721／752没有该消费者字符串，须在各自产品批次复核。仍待：宏子事件解析与剪贴板／音频／显示／鼠标移动内部、数字SnapTap、924D2映射选择、驱动关闭句柄时的按键处理；独立Rust、UI／后端及实际DLL／设备对照均未执行。
 
 ## 756：模拟键事件注册与刷新
 

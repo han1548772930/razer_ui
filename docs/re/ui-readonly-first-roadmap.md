@@ -10,16 +10,16 @@
 
 既有共享链、产品结论和验证事实继续复用，详细证据归[产品专题](../products/README.md)及正式收据。此前旧配置52个导入共享模块、26项源产品注册表、当前Host枚举及PID2636退出／重连的所选静态范围已发布；对应两批100项验证仍由正式历史链保留，不重做取证。
 
-2026-11-04（Asia/Shanghai）本批按更新后的[执行规则](../../AGENTS.md#11-当前执行优先级先完成逆向)完成三条在途链，并修正当前台账没有接入后续完成证明的问题：
+2026-11-05（Asia/Shanghai）本批由协调者加三个边界独立的第一梯队槽位完成。先发布已冻结的PID2657 ANC review，并把此前已发布但未接入台账的鼠标Import、键盘输出编译与CPU owner32刷新到[gaps.json](../../.analysis/results/gaps.json)：
 
-| 功能链 | 正式结果与本次核对范围 | 结论与边界 |
+| 功能链 | 正式结果 | 结论与边界 |
 | --- | --- | --- |
-| 系统ClientApi与回调 | [系统收据](../../.analysis/results/frontend/system-mw-audit.json)的 `overclock_client_api_chain`；27个完整原生函数、7个PE槽、22处汇编参数现场和15个IL方法。 | 实际通过SWD接口InstallDir寻找ClientApiProxy并协商ClientApiR4，接受revision3..4；同步callback有字符串参数，错误传nullptr。mailbox的success先置true再解析，异常不重置。Proxy完整原件仍未取得，不能宣称provider／驱动链完成。 |
-| AMD SMU对象与Package热参数 | [配件收据](../../.analysis/results/frontend/accessories-main-audit.json)的 `hanbo_amd_k17_smu_owner_chain`；9个完整函数、3个PE槽。 | 191c60→209750真实创建owner+216；七组mailbox及family/model选择已核。正SMU校准先于品牌默认值，热参数失败保留原字段；析构只释放SMU、不关闭借用driver。不再把非空producer列为未知，Rust热查询接线仍单独未完成。 |
-| PID756模拟键采样注册 | [键盘收据](../../.analysis/results/frontend/keyboard-main-audit.json)的 `keyboard_756_analog_registration_chain`；41个选定源码引用、58个复用原生函数和24个真实PE槽。 | 当前产品走skip计数；interval分支将同值当毫秒。注册false后仍查状态，single-status可由all标志成立；注销不取消尾部throttle或清采样状态。当前注册链静态语义已闭合，整产品、Rust与真实验收不随之完成。 |
-| 已完成依赖归并 | 既有 `refresh-gaps --owner` 直接将已审阅的后续证明接入[gaps.json](../../.analysis/results/gaps.json)。 | 旧配置7条、AMD2条、键盘1条旧静态待办标记为已解决，另3条实现／运行事项回到对应阶段。保留每条原finding、原kind、精确来源pointer及证明段SHA；没有整条关闭混合Import／取消／其他provider事项。 |
+| 耳机PID2657 ANC | [音频收据](../../.analysis/results/frontend/audio-mw-audit.json)的 `headset_2657_anc_chain`；同时按官方DeviceInfo身份把77个保留音频端点分为49个耳机、2个耳机USB适配器和26个非耳机端点。 | ANC／Ambient／Reduce的profile、runtime、get/set、通知与失败静态语义闭合；当前2657不从设备初始化ANC，本地默认值不是设备实测。该分类不等于全部Host SKU准入。 |
+| 耳塞PROTOCOL40五款 | 同一收据的 `headset_earbuds_protocol40_chain`，覆盖2657／2660／2664／2668／2689。 | 固件EQ、电池、手势、点击速度、提示音、省电、勿扰、输入源、THX与麦克风静音已逐款核对；EQ没有可达的设备读取，传输失败仍返回true；连接恢复跳过本地省电；2689为独立旧构建。`source_chain_complete=false`：simple_service音量、默认扬声器／discord读取、2664／2668 Chroma注册与2664 bleId差异仍待证。 |
+| 鼠标PID182配置档增删重置与板载槽 | [鼠标收据](../../.analysis/results/frontend/mouse-mw-audit.json)的 `mouse_182_profile_crud_chain`。 | 实际挂载的Add／Delete／Reset及“重置按键”闭合。Delete按旧活动配置档清理联动游戏；Reset不论是否活动都写slot1及同ID槽，结果消息在当前UI无处理者。板载槽仅在OBM引擎读取清单后按profile ID关联，逐槽写入吞错且无读回。ON_STAGES_INIT的17个调用点已归属。 |
+| 键盘原生映射输出执行器 | [键盘收据](../../.analysis/results/frontend/keyboard-main-audit.json)的 `keyboard_756_native_output_executor_chain`；复用既有捕获中157个完整函数。 | 分派、cascade／modtap／turbo、宏与分段宏、定时、Xbox、服务输出、模拟SnapTap及停止／移除／关闭链闭合，宏执行器对全部产品共用。PID756关闭时的停止调用在 `removeUsbDevice` 之后执行而实际无效；原生停止只取消宏／turbo，不释放按住键、modtap计时器或SnapTap状态。数字SnapTap、宏单事件内部、各服务handler业务链及其他键盘的consumer仍未闭合。 |
 
-三条链联合验证33/33通过；台账归并与既有刷新回归20/20通过，均无失败／错误／跳过，各次工具输入快照稳定。[最新验证收据](../../.analysis/results/tool-verification.json)通过 `previous_receipt` 保留33项及更早结果。键盘预检曾拒绝错误的source chunk选择，并发现局部import遗漏，修正后才进行正式验证；预检失败未发布成成功。
+四项新结果的完整证明段SHA已登记到既有归并表；只接受与原finding完全一致的范围：鼠标2项部分静态、1项转运行验收、1项转实现验收，键盘3项部分静态。`auto_pause_hid_chain` 的混合事项（含其他音频功能）按既有反例保持待办，不以耳塞结果整条关闭。台账归并、发布器与鼠标定向测试共32/32通过，[验证收据](../../.analysis/results/tool-verification.json)输入快照稳定；只刷新三个受影响owner。键盘槽首次发布的review误将收据自身列入固定输入，发布后立即失效，已在文件锁下只撤回本段并重新发布，其余段落哈希不变；首个review作为新段的 `previous_review_source` 被正式引用，按历史事实保留。
 
 归并只接受逐项审阅且原finding与完整证明段规范SHA均一致的范围；证明缺失、变动、失败或非静态时保持待办，未知／混合事项不按文字猜测分类。三个新结果均已回读，旧字段保留；只刷新四个实际受影响owner，其余3199个owner不变。既有 `Cargo.lock` 改动未覆盖。
 
@@ -44,14 +44,14 @@
 
 产品顺序按[AGENTS.md第1.2节](../../AGENTS.md#12-产品推进优先级)执行：当前第一梯队为**鼠标、键盘、耳机**，同级并行。后续依次为手柄／摄像头、其他音频与独立接收器／底座、系统设备、独立灯光／散热及其余配件；必要共享依赖随第一梯队前置。
 
-此前ClientApi、SMU和PID756采样注册已发布；本轮已完成的相机／音频旧证明归并、已冻结CPU owner32证明只做发布与清理，不再扩展低优先级范围。键盘输出编译的完整能力证明继续作为第一梯队工作接续。新的分工为：
+鼠标Import／增删重置、键盘输出编译与原生执行器、耳塞ANC及五款设备链已发布；本批只接回第一梯队实际完成证明，不扩展低优先级范围。新的分工为：
 
 | 槽位 | 功能链 | 输入与完成条件 |
 | --- | --- | --- |
-| 协调者 | 当前状态与批次验收 | 复用已通过验证，先把精确完成证明接回当前台账；只在真实缺口需要时增加维护能力，按批统一发布、刷新与清理。 |
-| A | 鼠标完整本地能力 | 先归并已闭合的52个共享转换、26项源产品转换及Host枚举；接续实际导入发布／取消、配置与映射消费者的剩余完整链。必要接收器／底座依赖随鼠标前置，不重做已有转换。 |
-| B | 键盘完整本地能力 | 接续当前54组输出编译、普通／analog分派和GameMode条件证明，再核真实未闭合输出执行器。复用已发布AppEngine／OBM及采样注册链，不重复取证。 |
-| C | 耳机完整本地能力 | 先按官方身份从audio族中确认耳机范围，再归并已有耳机证明，接续设备通信、Profiles、EQ／DSP、内置麦克风及读写／事件／释放的真实缺口；不扩独立音箱、麦克风或混音器。 |
+| 协调者 | 当前状态与批次验收 | 发布冻结结果、登记精确归并、统一验证、刷新受影响owner与清理；每批最多三个子任务，子任务不得再派生代理。 |
+| A | 鼠标完整本地能力 | 复用已闭合的PID182配置档与共享执行器结论，接续映射／宏编辑器的Pt5／tt创建与删除、其他声明OBMSlots>1或挂载OBM菜单的鼠标槽增删改，以及接收器省电任务内存链。 |
+| B | 键盘完整本地能力 | 接续数字SnapTap模式821C2／82608／82CD4与924D2映射选择、宏单事件解析器与剪贴板／音频／显示辅助，再按真实字节差异核对其他键盘的unsupported-output consumer（69个不同捆绑及缺失的721／752）。 |
+| C | 耳机完整本地能力 | 先补耳塞的simple_service音量、默认扬声器／discord读取、2664 bleId及Chroma注册消费者，再开始PROTOCOL40_HEADSET（1427 Airoha、1465）独立批次。 |
 
 ClientApiProxy来源、其他Intel／CPU provider、系统性能、独立散热及各后续梯队的缺项继续保留；除第一梯队实际必需的依赖外，当前不新开这些研究。已完成片段与仍待证明的实际分支分别判断；缺输入不能判定功能不存在，也不能把待运行验收重复派成静态逆向。
 
@@ -64,6 +64,6 @@ ClientApiProxy来源、其他Intel／CPU provider、系统性能、独立散热�
 3. 用 `git diff --check`、Python AST／编译和文档相对链接检查收尾；失败事实写入收据，不删除正式原件或未决证据。
 4. 路线与当前阶段只写入本页，具体语义写入产品专题，机器可读结果写入 `.analysis/results/`；删除重复历史叙述、过期分工和失效链接，不新增平行进度档案。
 
-本批[清理计划](../../.analysis/results/scratch-cleanup-20261104T121955411759Z-plan.json)的SHA-256为 `15987cabf764cc7697a3bfe6f853fddd975d702e2bb2c58e16e8f00d436474ef`，[执行收据](../../.analysis/results/scratch-cleanup-20261104T121955411759Z-plan-applied.json)为 `completed`，删除0项、释放0字节、失败0项。三条链没有新增临时副本、捕获或分析会话；175项既有内容按真实引用／未决依赖保留。此前各批清理收据保留，不合并计算本批释放量。
+本批[清理计划](../../.analysis/results/scratch-cleanup-20261104T212205894946Z-plan.json)的SHA-256为 `6d1d7ab3efb97000ed8a6fb891911e5f04cbb79e47881dc635b62ccbbee60f00`，[执行收据](../../.analysis/results/scratch-cleanup-20261104T212205894946Z-plan-applied.json)删除0项、释放0字节，175项按真实引用／未决依赖保留。此前一次dry run因PATH中缺少引用扫描器 `rg` 而记录guard失败，[该计划](../../.analysis/results/scratch-cleanup-20261104T212014373835Z-plan.json)未执行；在环境边界补充本机已有的ripgrep 14.1.1后重新生成上述计划。三个槽位自建的 `.work/slot*` 草稿（共15个文件、约578 KB，无正式引用）由创建批次直接释放；槽位此前创建的其他副本已由各自删除。此前各批清理收据保留，不合并计算。
 
-本轮修改维护查询／测试、实际所需的台账归并、既有专题和规则文档，不新增平行进度档案。发布后回读确认30个旧字段及3199个无关owner不变，55项工具输入稳定；最终当前差异中的Python AST、175个文档相对链接及 `git diff --check` 通过。未执行官方JS、业务DLL、应用、安装器、调试器或设备操作；应用窗口和实际硬件验收保持未验证。
+本批只修改维护归并表／测试、发布器多产品范围检查、既有产品专题与本页，不新增平行进度档案。未执行官方JS、业务DLL、应用、安装器、调试器或设备操作；独立Rust、UI／后端接线、实际DLL／设备对照及窗口验收保持未完成／未验证。

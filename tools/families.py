@@ -49548,10 +49548,16 @@ _CAPABILITY_REVIEW_TARGETS = {
         "accessories-main-audit.json", "hanbo_cpu_owner32_chain"),
     "current_keyboard_756_output_review": ("keyboard", "mw", "keyboard-756-appengine-apply-chain", 756,
         "keyboard-main-audit.json", "keyboard_756_appengine_output_chain"),
+    "current_keyboard_756_native_output_review": ("keyboard", "mw", "keyboard-756-appengine-apply-chain", 756,
+        "keyboard-main-audit.json", "keyboard_756_native_output_executor_chain"),
     "current_mouse_profile_import_review": ("mouse", "mw", "mouse-182-profile-import-chain", 182,
         "mouse-mw-audit.json", "mouse_182_profile_import_complete_chain"),
+    "current_mouse_profile_crud_review": ("mouse", "mw", "mouse-182-profile-slot-chain", 182,
+        "mouse-mw-audit.json", "mouse_182_profile_crud_chain"),
     "current_headset_anc_review": ("audio", "mw", None, 2657,
         "audio-mw-audit.json", "headset_2657_anc_chain"),
+    "current_headset_earbuds_protocol40_review": ("audio", "mw", None, (2657, 2660, 2664, 2668, 2689),
+        "audio-mw-audit.json", "headset_earbuds_protocol40_chain"),
 }
 
 
@@ -49559,8 +49565,10 @@ def publish_capability_static_review(args, review, reference):
     """Publish a frozen complete capability through the existing source and native verifiers."""
     import host
     family, function, query, pid, filename, section = _CAPABILITY_REVIEW_TARGETS[review["kind"]]
+    products = list(pid) if isinstance(pid, tuple) else [pid]
     if (args.family != family or args.function != function or args.query != query
-            or (args.product or [pid]) != [pid] or review.get("product_id") != pid
+            or (args.product or products) != products
+            or (review.get("product_ids") if isinstance(pid, tuple) else review.get("product_id")) != (products if isinstance(pid, tuple) else pid)
             or getattr(args, "prepare", False)):
         raise ValueError("Capability review publication does not match its current product scope")
     if (any(review.get(key) is not True for key in (

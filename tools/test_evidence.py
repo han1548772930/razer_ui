@@ -285,7 +285,7 @@ class StaticGapContinuationTests(unittest.TestCase):
             cls.documents[owner] = json.loads((analysis.ROOT / owner).read_bytes())
 
     def test_reviewed_current_scopes_separate_stages_and_keep_every_original(self):
-        expected = {"mouse-mw-audit.json": (11, 0, 0), "accessories-main-audit.json": (2, 0, 1),
+        expected = {"mouse-mw-audit.json": (11, 1, 1), "accessories-main-audit.json": (2, 0, 1),
                     "keyboard-main-audit.json": (1, 1, 1),
                     "accessories-camera-local-pages-audit.json": (2, 3, 12), "audio-mw-audit.json": (1, 8, 5)}
         for owner, document in self.documents.items():
@@ -447,7 +447,12 @@ class StaticGapContinuationTests(unittest.TestCase):
     def test_completed_subscope_does_not_close_remaining_native_families_or_providers(self):
         for name, source in (
             ("keyboard-main-audit.json", "/keyboard_756_appengine_apply_chain/remaining_chains/1"),
-            ("accessories-main-audit.json", "/hanbo_cpu_monitor_chain/remaining_chains/2")):
+            ("accessories-main-audit.json", "/hanbo_cpu_monitor_chain/remaining_chains/2"),
+            ("mouse-mw-audit.json", "/mouse_182_profile_slot_chain/remaining_chains/1"),
+            ("mouse-mw-audit.json", "/mouse_182_profile_import_complete_chain/remaining_chains/2"),
+            ("keyboard-main-audit.json", "/keyboard_756_appengine_output_chain/remaining_chains/0"),
+            ("keyboard-main-audit.json", "/keyboard_756_appengine_output_chain/remaining_chains/1"),
+            ("keyboard-main-audit.json", "/keyboard_756_analog_registration_chain/remaining_chains/1")):
             owner = ".analysis/results/frontend/" + name
             rows = analysis.semantic_result_gaps(self.documents[owner], owner)
             row = next(row for row in rows if row.get("current_review", {}).get("source_pointer") == source)

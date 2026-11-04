@@ -10411,6 +10411,7 @@ class MatcherNumericReviewTests(unittest.TestCase):
 class CapabilityStaticReviewPublicationTests(unittest.TestCase):
     keyboard_review_sha = "6b5a55220aaafe4e3cab0f4d9ffcaf4572b24b1afeff15a9f61832c92ac4f8ed"
     native_review_sha = "bf2bb52b4fbc99641a812990d98bf10438ea9e8947b579d4ac40fea0461c3672"
+    keyboard_native_output_review_sha = "ebb1b35aa1af6948a18f622c31717e6cbe3b446fb736f0ab4def49dae1ce47eb"
 
     @classmethod
     def setUpClass(cls):
@@ -10489,7 +10490,8 @@ class CapabilityStaticReviewPublicationTests(unittest.TestCase):
     def test_existing_cli_verifies_current_complete_source_and_native_formats_read_only(self):
         import re
         cases = ((self.keyboard_review_sha, "keyboard_756_appengine_output_chain", False),
-                 (self.native_review_sha, "hanbo_cpu_owner32_chain", True))
+                 (self.native_review_sha, "hanbo_cpu_owner32_chain", True),
+                 (self.keyboard_native_output_review_sha, "keyboard_756_native_output_executor_chain", True))
         with patch.object(analysis, "ROOT", self.workspace_root), \
                 patch.object(analysis, "save", side_effect=AssertionError("Read-only verification must not save audits")):
             for digest, section, has_native in cases:
@@ -10569,6 +10571,43 @@ class CapabilityStaticReviewPublicationTests(unittest.TestCase):
                     self.assertRaisesRegex(ValueError, "product scope"):
                 families.publish_frontend_semantic_review(self.args(**changed))
             publish.assert_not_called()
+
+    def test_multi_product_capability_requires_its_exact_declared_product_set(self):
+        products = [2657, 2660, 2664, 2668, 2689]
+        scope = dict(family="audio", function="mw", query=None)
+        valid = copy.deepcopy(self.review)
+        valid.pop("product_id")
+        valid.update(kind="current_headset_earbuds_protocol40_review", product_ids=products)
+        reference = host.freeze_host_static_review(valid, analysis)
+        for product in (products, None):
+            with self.subTest(product=product), patch.object(host, "publish_host_static_query") as publish:
+                result = families.publish_frontend_semantic_review(self.args(valid, reference, product=product, **scope))
+            publish.assert_called_once()
+            self.assertEqual(publish.call_args.args[3], "headset_earbuds_protocol40_chain")
+            self.assertEqual(result["section"], "headset_earbuds_protocol40_chain")
+        for product in ([2657], products[:-1], list(reversed(products)), products + [1427]):
+            with self.subTest(product=product), patch.object(host, "publish_host_static_query") as publish, \
+                    self.assertRaisesRegex(ValueError, "product scope"):
+                families.publish_frontend_semantic_review(self.args(valid, reference, product=product, **scope))
+            publish.assert_not_called()
+        for name, value in (("product_ids", products[:-1]), ("product_ids", None), ("product_id", 2657)):
+            changed = copy.deepcopy(valid)
+            changed.pop("product_ids")
+            if value is not None:
+                changed[name] = value
+            frozen = host.freeze_host_static_review(changed, analysis)
+            with self.subTest(field=name, value=value), patch.object(host, "publish_host_static_query") as publish, \
+                    self.assertRaisesRegex(ValueError, "product scope"):
+                families.publish_frontend_semantic_review(self.args(changed, frozen, product=products, **scope))
+            publish.assert_not_called()
+        single = copy.deepcopy(self.review)
+        single["product_ids"] = [756]
+        single.pop("product_id")
+        frozen = host.freeze_host_static_review(single, analysis)
+        with patch.object(host, "publish_host_static_query") as publish, \
+                self.assertRaisesRegex(ValueError, "product scope"):
+            families.publish_frontend_semantic_review(self.args(single, frozen))
+        publish.assert_not_called()
 
     def test_failed_incomplete_or_runtime_promoting_reviews_reject(self):
         for key, value in (("failures", ["retained failure"]), ("snapshot_stable", False),
@@ -10660,6 +10699,85 @@ class CapabilityStaticReviewPublicationTests(unittest.TestCase):
                         families.publish_frontend_semantic_review(self.args())
                 publish.assert_not_called()
                 lock.assert_not_called()
+
+
+class MouseProfileCrudReviewTests(unittest.TestCase):
+    review_sha = "fe54e22ad17d923f1cf98af23c8ef1e4700b53c711779f0f450afa79c23ac518"
+
+    @classmethod
+    def setUpClass(cls):
+        path = analysis.ROOT / ".analysis/results/reverse-pending/review-sources" / (cls.review_sha + ".json")
+        raw = path.read_bytes()
+        cls.reference = {"path": analysis.rel(path), "bytes": len(raw), "sha256": cls.review_sha}
+        cls.hash = hashlib.sha256(raw).hexdigest()
+        cls.review = json.loads(raw)
+
+    def args(self, **changes):
+        import argparse
+        return argparse.Namespace(**(dict(family="mouse", function="mw", query="mouse-182-profile-slot-chain",
+            product=[182], prepare=False, semantic_review=self.reference["path"],
+            semantic_review_sha256=self.review_sha) | changes))
+
+    def body(self, role):
+        return self.review["complete_owners"][self.review["roles"][role]]["body"]
+
+    def test_target_keeps_crud_in_its_own_append_only_section(self):
+        self.assertEqual(self.hash, self.review_sha)
+        target = families._CAPABILITY_REVIEW_TARGETS[self.review["kind"]]
+        self.assertEqual(target, ("mouse", "mw", "mouse-182-profile-slot-chain", 182,
+                                  "mouse-mw-audit.json", "mouse_182_profile_crud_chain"))
+        sections = [row[5] for kind, row in families._CAPABILITY_REVIEW_TARGETS.items() if kind != self.review["kind"]]
+        self.assertNotIn(target[5], sections + ["mouse_182_profile_slot_chain", "mouse_182_profile_import_complete_chain"])
+
+    def test_frozen_review_verifies_through_existing_cli_read_only(self):
+        import re
+        changed = [row["path"] for row in self.review["verified_artifacts"] if row["path"].startswith("tools/")
+                   and hashlib.sha256((analysis.ROOT / row["path"]).read_bytes()).hexdigest() != row["sha256"]]
+        with patch.object(analysis, "save", side_effect=AssertionError("Read-only verification must not save")), \
+                patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+            if changed:
+                with self.assertRaisesRegex(ValueError, "^" + re.escape(
+                        "Local host audit artifact identity differs: " + changed[0]) + "$"):
+                    families.publish_frontend_semantic_review(self.args())
+                publish.assert_not_called()
+                return
+            result = families.publish_frontend_semantic_review(self.args())
+        payload, _, _, section = publish.call_args.args
+        self.assertEqual((section, result["section"]), ("mouse_182_profile_crud_chain",) * 2)
+        self.assertEqual(publish.call_args.kwargs, {"replace_existing": False})
+        self.assertEqual(payload["review_source"], self.reference)
+        self.assertNotIn("complete_owners", payload)
+        self.assertFalse(payload["whole_product_complete"] or payload["target_execution"])
+        self.assertEqual(payload["runtime_acceptance"], "unverified")
+
+    def test_other_product_query_or_preparation_rejects_before_publication(self):
+        for changes in (dict(product=[190]), dict(query="mouse-182-profile-import-chain"),
+                        dict(function="main"), dict(prepare=True)):
+            with self.subTest(changes=changes), patch.object(host, "publish_host_static_query") as publish, \
+                    self.assertRaisesRegex(ValueError, "product scope"):
+                families.publish_frontend_semantic_review(self.args(**changes))
+            publish.assert_not_called()
+
+    def test_decisive_branches_are_bound_to_retained_complete_owners(self):
+        self.assertIn("isOBMDevice:!0,OBMSlots:1", self.body("ui_device_info"))
+        self.assertIn("(null!==(v=d.DeviceInfo.OBMSlots)&&void 0!==v?v:0)>1", self.body("delete"))
+        self.assertIn("t.profileID===I&&e.devices.splice(n,1)", self.body("delete"))
+        for role in ("add", "reset"):
+            self.assertNotIn("OBMSlots", self.body(role))
+        self.assertIn("m.jf.obmEngine&&a){const e=Qe(n,L.A.obm);Xe(f,t,a,e)}yield(0,O.IF)(e,l)", self.body("reset"))
+        self.assertIn("const r=[1,...i.filter((e=>1!==e))]", self.body("obm_reset_mappings"))
+        self.assertIn("setSingleButtonMapping(e,t)}catch(e){console.error(e)}", self.body("obm_task_button"))
+        self.assertIn('{type:"updateLocalStorage",payload:{mode:"exclusive"}}]', self.body("reset_state"))
+        self.assertNotIn("deviceAccess", self.body("reset_state"))
+        ui_events = {self.body(role) for role in self.review["roles"] if role.startswith("ui_event_")}
+        self.assertFalse(any("RESET_PROFILE_UI_ACTION" in body for body in ui_events))
+        restore = self.review["complete_owners"][self.review["roles"]["active_profile_restore"]]
+        self.assertTrue(self.review["stages_init_sites"])
+        self.assertTrue(all(restore["byte_start"] <= at < restore["byte_end"] for at in self.review["stages_init_sites"]))
+        for row in self.review["kn_producers"]:
+            owner = self.review["complete_owners"][row["owner"]]
+            self.assertTrue(owner["byte_start"] <= row["call_byte"] < owner["byte_end"])
+        self.assertEqual(len(self.review["kn_producers"]), 17)
 
 
 class FrontendSemanticMergeTests(unittest.TestCase):
