@@ -660,6 +660,33 @@ const Connected=connect(state,actions)(Help);
         self.assertFalse(mounted["lazy_import"]["cleanup_cancels_import"])
         self.assertEqual(self.audit.final_snapshot(), [])
 
+    def test_lazy_renderer_body_destructure_preserves_actual_props_and_cleanup(self):
+        from host import help_runtime_components
+        old = 'E=({lazy:e,LoadingComponent:t,ErrorComponent:n,...o})=>{'
+        new = 'E=props=>{let{lazy:e,LoadingComponent:t,ErrorComponent:n,...o}=props;'
+        row, = help_runtime_components(self.audit, self.lazy_sources(
+            change_wrapper=lambda body: body.replace(old, new)))
+        mounted, = row["mounts"]
+        self.assertEqual(mounted["props"], {"resetObm": "this.resetDevice"})
+        self.assertEqual(mounted["lazy_import"]["chunk_ids"], [7, 50])
+        self.assertFalse(mounted["lazy_import"]["cleanup_cancels_import"])
+        wrapper = self.audit.owners[mounted["lazy_import"]["wrapper"]]["body"]
+        self.assertIn('...o}=props;', wrapper)
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_lazy_body_destructure_cannot_borrow_props_drop_errors_or_add_cancellation(self):
+        from host import help_runtime_components
+        old = 'E=({lazy:e,LoadingComponent:t,ErrorComponent:n,...o})=>{'
+        new = 'E=props=>{let{lazy:e,LoadingComponent:t,ErrorComponent:n,...o}=props;'
+        for before, after in (('...o}=props;', '...o}=unrelated;'),
+                ('t.default', 't.other'), ('(r,{...o})', '(r,{})'),
+                ('s(t instanceof Error?t:new Error("AsyncComponent loading failed."))', 's(null)'),
+                ('()=>{E(null),s(null)}', '()=>{cancel(),E(null),s(null)}')):
+            with self.subTest(change=after), self.assertRaisesRegex(ValueError, "complete default-export"):
+                help_runtime_components(self.audit, self.lazy_sources(change_wrapper=lambda body:
+                    body.replace(old, new).replace(before, after)))
+            self.audit = HostLocalAudit()
+
     def test_lazy_target_requires_its_published_chunk_and_actual_require(self):
         from host import help_runtime_components
         for old, new, message in (
@@ -5917,6 +5944,2323 @@ class LightingMediaResamplerTests(unittest.TestCase):
         self.assertFalse(report["fixed_vectors"]["actual_dll_results"])
 
 
+class LightingPngDecoderChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        from host import collect_lighting_png_decoder_chain
+        cls.audit = HostLocalAudit()
+        cls.report = collect_lighting_png_decoder_chain(cls.audit)
+
+    def verify(self, report):
+        from host import _verify_lighting_png_decoder_chain
+        return _verify_lighting_png_decoder_chain(report)
+
+    def test_current_png_entry_complete_owners_bytes_and_real_edges(self):
+        report = self.report
+        native = report["native"]
+        self.assertEqual(report["current_native_release"]["declaration"]["resourceVersion"], "4.0.55.0")
+        self.assertEqual(native["input"]["sha256"],
+            "cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa")
+        self.assertEqual(len(native["complete_selected_functions"]), 48)
+        self.assertEqual(len(native["verified_call_edges"]), 70)
+        functions = {row["rva"]: row for row in native["complete_selected_functions"]}
+        self.assertTrue({"0x8b880", "0x8fa10", "0x8fb40", "0x89010", "0x9c8d0",
+            "0x9d340", "0x926e0", "0x91d40", "0x16b1c0"} <= functions.keys())
+        self.assertNotIn("0x8b910", functions)
+        self.assertNotIn("0x98c80", functions)
+        self.assertEqual(report["boundaries"]["entry"]["selected_path"], ["0x8b880", "0x8fa10", "0x8fb40"])
+        self.assertEqual(report["boundaries"]["entry"]["selected_scan_mode"], 0)
+        self.assertEqual(native["selected_pseudocode_failures"], [])
+
+    def test_pe_tables_bind_adam7_filters_huffman_and_packed_scaling(self):
+        regions = {row["role"]: bytes.fromhex(row["raw_hex"])
+            for row in self.report["native"]["verified_data_regions"]}
+        self.assertEqual(len(regions), 13)
+        self.assertEqual(regions["first_row_filter_map"], bytes([0, 1, 0, 5, 1]))
+        self.assertEqual(regions["packed_gray_scale"], bytes([0, 255, 85, 0, 17, 0, 0, 0, 1]))
+        self.assertEqual(regions["code_length_permutation"], bytes([16, 17, 18, 0, 8, 7, 9, 6, 10,
+            5, 11, 4, 12, 3, 13, 2, 14, 1, 15]))
+        self.assertEqual(regions["fixed_literal_length_sizes"],
+            bytes([8] * 144 + [9] * 112 + [7] * 24 + [8] * 8))
+        self.assertEqual(regions["fixed_distance_sizes"], bytes([5] * 32))
+        self.assertEqual(struct.unpack("<29I", regions["length_base"])[-1], 258)
+        self.assertEqual(struct.unpack("<30I", regions["distance_base"])[-1], 24577)
+        self.assertEqual(struct.unpack("<30I", regions["distance_extra_bits"])[-1], 13)
+        tables = struct.unpack("<31I", regions["adam7_origins_steps_and_padding"])
+        self.assertEqual(tables[0:7], (0, 4, 0, 2, 0, 1, 0))
+        self.assertEqual(tables[8:15], (0, 0, 4, 0, 2, 0, 1))
+        self.assertEqual(tables[16:23], (8, 8, 4, 4, 2, 2, 1))
+        self.assertEqual(tables[24:31], (8, 8, 8, 4, 4, 2, 2))
+
+    def test_scanline_vectors_keep_paeth_packed_gray_palette_endian_and_adam7(self):
+        from host import _lighting_png_decoder_reconstruct
+        for row in self.report["fixed_vectors"]["scanlines"]:
+            with self.subTest(name=row["name"]):
+                kwargs = {key: row[key] for key in ("width", "height", "channels", "depth",
+                    "color_type", "output_channels", "interlace")}
+                self.assertEqual(_lighting_png_decoder_reconstruct(bytes.fromhex(row["input_hex"]),
+                    **kwargs).hex(), row["expected_hex"])
+        self.assertEqual(_lighting_png_decoder_reconstruct(bytes([0, 0xa8]), 5, 1, 1, 1),
+            bytes([255, 0, 255, 0, 255]))
+        self.assertEqual(_lighting_png_decoder_reconstruct(bytes([0, 0x0f, 0x80]), 3, 1, 1, 4),
+            bytes([0, 255, 136]))
+        self.assertEqual(_lighting_png_decoder_reconstruct(bytes([0, 0x6c]), 1, 1, 3, 2,
+            color_type=2, output_channels=4), bytes([1, 2, 3, 255]))
+
+    def test_all_filters_first_row_mapping_multichannel_stride_and_modulo(self):
+        from host import _lighting_png_decoder_reconstruct
+        cases = [
+            (bytes([0, 10, 20, 30]), 3, 1, 1, bytes([10, 20, 30])),
+            (bytes([1, 1, 2, 3, 4, 9, 18, 27, 36]), 2, 1, 4,
+                bytes([1, 2, 3, 4, 10, 20, 30, 40])),
+            (bytes([2, 10, 20, 30, 2, 1, 2, 3]), 3, 2, 1, bytes([10, 20, 30, 11, 22, 33])),
+            (bytes([3, 10, 10, 10]), 3, 1, 1, bytes([10, 15, 17])),
+            (bytes([0, 10, 20, 30, 3, 15, 20, 25]), 3, 2, 1, bytes([10, 20, 30, 20, 40, 60])),
+            (bytes([4, 10, 10, 10]), 3, 1, 1, bytes([10, 20, 30])),
+            (bytes([1, 250, 20]), 2, 1, 1, bytes([250, 14]))]
+        for data, width, height, channels, expected in cases:
+            with self.subTest(data=data):
+                self.assertEqual(_lighting_png_decoder_reconstruct(data, width, height, channels, 8), expected)
+        self.assertEqual(_lighting_png_decoder_reconstruct(bytes([0, 9, 99, 88]), 1, 1, 1, 8), b"\x09")
+        with self.assertRaisesRegex(ValueError, "not enough pixels"):
+            _lighting_png_decoder_reconstruct(bytes([0, 1]), 2, 1, 1, 8)
+        with self.assertRaisesRegex(ValueError, "invalid filter"):
+            _lighting_png_decoder_reconstruct(bytes([5, 1]), 1, 1, 1, 8)
+
+    def test_transparency_exact_words_and_defined_palette_alpha(self):
+        from host import _lighting_png_decoder_finish
+        self.assertEqual(_lighting_png_decoder_finish(bytes.fromhex("112233ff112234ff"), 4,
+            transparent=[17, 34, 51]).hex(), "11223300112234ff")
+        self.assertEqual(_lighting_png_decoder_finish(bytes.fromhex("3412ffff3512ffff"), 2, depth=16,
+            transparent=[0x1234]).hex(), "341200003512ffff")
+        palette = [[17, 34, 51, 0], [68, 85, 102, 127], [119, 136, 153, 255]]
+        self.assertEqual(_lighting_png_decoder_finish(bytes([2, 0, 1]), 1, palette=palette).hex(),
+            "778899ff112233004455667f")
+        with self.assertRaisesRegex(ValueError, "uninitialized entries"):
+            _lighting_png_decoder_finish(bytes([3]), 1, palette=palette)
+        self.assertFalse(self.report["boundaries"]["pixels"]["palette_actual_index_checked"])
+
+    def test_cgbi_alpha0_rounding_byte_truncation_and_unforced_selectors(self):
+        from host import _lighting_png_decoder_finish
+        self.assertEqual(_lighting_png_decoder_finish(bytes.fromhex("20406080"), 4,
+            cgbi_convert=True, cgbi_unpremultiply=True).hex(), "bf804080")
+        self.assertEqual(_lighting_png_decoder_finish(bytes.fromhex("12345600"), 4,
+            cgbi_convert=True, cgbi_unpremultiply=True).hex(), "56341200")
+        self.assertEqual(_lighting_png_decoder_finish(bytes.fromhex("02020201"), 4,
+            cgbi_convert=True, cgbi_unpremultiply=True).hex(), "fefefe01")
+        self.assertEqual(_lighting_png_decoder_finish(bytes.fromhex("12345678"), 4).hex(), "12345678")
+        native = self.report["native"]
+        region, = native["verified_zero_fill_regions"]
+        self.assertEqual(region["loader_initial_bytes_hex"], "0000000000000000")
+        self.assertFalse(region["current_runtime_values_observed"])
+        self.assertEqual(native["global_selector_setter_entry_references"], {"0x89300": [], "0x89310": []})
+        self.assertFalse(self.report["boundaries"]["pixels"]["cgbi_depth16_guard_present"])
+
+    def test_deflate_routes_malformed_limits_and_hidden_growth_arguments(self):
+        boundaries = self.report["boundaries"]["inflate"]
+        self.assertEqual(set(boundaries["block_types"]), {"0", "1", "2", "3"})
+        self.assertEqual(boundaries["dynamic_repeat_codes"], [16, 17, 18])
+        self.assertTrue(boundaries["stored_len_nlen_checked"])
+        self.assertTrue(boundaries["backreference_cannot_precede_output"])
+        self.assertTrue(boundaries["overlapping_copy_preserved"])
+        self.assertFalse(boundaries["adler32_verified"])
+        self.assertFalse(boundaries["zlib_cinfo_range_checked"])
+        evidence = self.report["instruction_evidence"]
+        literal = {row["rva"]: row for row in evidence["literal_growth_requests_one_byte"]["instructions"]}
+        self.assertEqual(literal["0x9d404"]["bytes"], "41b801000000")
+        stored = {row["rva"]: row for row in evidence["stored_growth_preserves_length_in_r8"]["instructions"]}
+        self.assertEqual(stored["0x9cc4f"]["text"], "movzx   r8d, word ptr [rsp+48h+var_1C]")
+        self.assertTrue(stored["0x9ccb7"]["text"].endswith("sub_18009D7F0"))
+        self.assertEqual([row["target_rva"] for row in self.report["native"]["verified_indirect_slots"]],
+            ["0x8b3e0", "0x8b400"])
+
+    def test_real_ownership_early_returns_and_prior_reducer_failure_remain_distinct(self):
+        owner = self.report["boundaries"]["ownership"]
+        for field in ("inflate_failure_frees_current_output", "invalid_filter_releases_scratch",
+                "reconstruction_failure_leaves_pixels_for_outer_cleanup",
+                "adam7_failure_releases_full_destination",
+                "palette_allocation_failure_leaves_indices_for_outer_cleanup",
+                "channel_conversion_failure_returns_before_common_exit",
+                "channel_conversion_failure_has_already_consumed_input"):
+            self.assertTrue(owner[field])
+        self.assertFalse(owner["invalid_depth_reachable_after_successful_header"])
+        self.assertFalse(owner["separate_async_cancellation_api_observed"])
+        self.assertFalse(owner["file_close_and_later_rgba8_reducer_revalidated"])
+        self.assertIn("later16to8 failure leak", self.report["reviewed_semantics"]["ownership_and_failure"])
+
+    def test_unclosed_other_formats_implementation_and_product_chains_reach_ledger(self):
+        from analysis import semantic_query_gaps
+        evidence = ".analysis/results/host-current/local-audit.json"
+        findings = [row for row in semantic_query_gaps(self.report, evidence)
+            if row["kind"] == "semantic_query_chain_unresolved"]
+        self.assertEqual(len(findings), 3)
+        self.assertEqual([row["finding"] for row in findings], self.report["remaining_chains"])
+        self.assertEqual([row["pointer"] for row in findings], ["/remaining_chains"] * 3)
+        self.assertNotIn("remaining_dependencies", self.report)
+        self.assertNotIn("PNG8FB40", self.report["remaining_chains"][0]["owner"])
+
+    def test_wrong_format_pixels_cleanup_or_integrity_assumptions_are_rejected(self):
+        for group, field, value in (("entry", "selected_path", ["0x8b880", "0x8b910"]),
+                ("chunks", "crc_verified", True), ("inflate", "adler32_verified", True),
+                ("pixels", "depth16_input_order", "little endian"),
+                ("pixels", "palette_actual_index_checked", True),
+                ("pixels", "cgbi_depth16_guard_present", True),
+                ("ownership", "inflate_failure_frees_current_output", False),
+                ("ownership", "channel_conversion_failure_returns_before_common_exit", False),
+                ("ownership", "separate_async_cancellation_api_observed", True)):
+            report = copy.deepcopy(self.report)
+            report["boundaries"][group][field] = value
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, "boundary requires semantic review"):
+                self.verify(report)
+
+    def test_rehashed_truncated_owner_edge_table_instruction_or_missing_scope_fails(self):
+        from host import _lighting_png_decoder_projection
+        for mutate in (lambda r: r["native"]["complete_selected_functions"].pop(),
+                lambda r: r["native"]["complete_selected_functions"][0].update(pseudocode_text_sha256="0" * 64),
+                lambda r: r["native"]["verified_call_edges"][0].update(target_rva="0x8b910"),
+                lambda r: r["native"]["verified_data_regions"][0].update(raw_hex="000000000000000000"),
+                lambda r: r["instruction_evidence"]["outer_transfer_and_common_cleanup"]["instructions"].clear(),
+                lambda r: r["fixed_vectors"]["scanlines"][0].update(expected_hex="00"),
+                lambda r: r["remaining_chains"].clear()):
+            report = copy.deepcopy(self.report)
+            mutate(report)
+            report["reviewed_selection_sha256"] = hashlib.sha256(json.dumps(_lighting_png_decoder_projection(report),
+                ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+            with self.assertRaisesRegex(ValueError, "selected bytes require semantic review"):
+                self.verify(report)
+
+    def test_static_snapshot_and_strict_json_do_not_claim_native_execution(self):
+        for field, value in (("source_chain_complete", True), ("target_execution", True),
+                ("actual_dll_comparison", "verified"), ("runtime_acceptance", "verified"),
+                ("ui_backend_wiring", "verified"), ("changed_during_query", [{"path": "changed"}])):
+            report = copy.deepcopy(self.report)
+            report[field] = value
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, "static boundary was promoted"):
+                self.verify(report)
+        report = copy.deepcopy(self.report)
+        report["native"]["failures"].clear()
+        with self.assertRaisesRegex(ValueError, "capture failure was hidden"):
+            self.verify(report)
+        report = json.loads(json.dumps(self.report, ensure_ascii=False, sort_keys=True, allow_nan=False))
+        self.assertEqual(self.verify(report), report["verification"])
+        self.assertFalse(report["fixed_vectors"]["actual_dll_results"])
+        self.assertFalse(report["verification"]["all_format_decoders_complete"])
+        self.assertEqual(report["maintenance_lifecycle"]["temporary_artifacts_created"], [])
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+
+class LightingPnmDecoderChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        from host import collect_lighting_pnm_decoder_chain
+        cls.audit = HostLocalAudit()
+        cls.report = collect_lighting_pnm_decoder_chain(cls.audit)
+
+    def verify(self, report):
+        from host import _verify_lighting_pnm_decoder_chain
+        return _verify_lighting_pnm_decoder_chain(report)
+
+    def test_current_pnm_complete_functions_pe_bytes_and_real_edges(self):
+        report = self.report
+        native = report["native"]
+        self.assertEqual(report["current_native_release"]["declaration"]["resourceVersion"], "4.0.55.0")
+        self.assertEqual(native["input"]["sha256"],
+            "cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa")
+        self.assertEqual(len(native["complete_selected_functions"]), 19)
+        self.assertEqual(len(native["verified_call_edges"]), 22)
+        functions = {row["rva"] for row in native["complete_selected_functions"]}
+        self.assertTrue({"0x8e010", "0x9bbc0", "0x9be70", "0x9bfc0", "0x9c090", "0x9c0c0",
+            "0x9bdd0", "0x9be30"} <= functions)
+        self.assertFalse({"0x8b480", "0x8fb40", "0x8b910", "0x8eda0"} & functions)
+        self.assertEqual(native["selected_pseudocode_failures"], [])
+        regions = {row["role"]: bytes.fromhex(row["raw_hex"]) for row in native["verified_data_regions"]}
+        self.assertEqual(len(regions), 2)
+        self.assertEqual(struct.unpack("<3Q", regions["file_callback_table"]),
+            (0x18008b3e0, 0x18008b400, 0x18008b440))
+        self.assertEqual([row["target_rva"] for row in native["verified_indirect_slots"]],
+            ["0x8b3e0", "0x8b440"])
+
+    def test_fixed_vectors_preserve_source_quirks_without_native_execution(self):
+        from host import _lighting_pnm_decoder_synthetic
+        for vector in self.report["fixed_vectors"]["resident_inputs"]:
+            actual = _lighting_pnm_decoder_synthetic(bytes.fromhex(vector["input_hex"]))
+            for key, expected in vector["expected"].items():
+                with self.subTest(name=vector["name"], field=key):
+                    self.assertEqual(actual[key], expected)
+        self.assertFalse(self.report["fixed_vectors"]["actual_dll_results"])
+
+    def test_p5_p6_header_comments_whitespace_and_magic_without_separator(self):
+        from host import _lighting_pnm_decoder_synthetic
+        data = b"P6# before width\r\n1\t# before height\n1\v# before maximum\r255\n\x10\x20\x30"
+        actual = _lighting_pnm_decoder_synthetic(data)
+        self.assertTrue(actual["success"])
+        self.assertEqual((actual["width"], actual["height"], actual["channels"]), (1, 1, 3))
+        self.assertEqual(actual["rgba8_hex"], "102030ff")
+        self.assertEqual(_lighting_pnm_decoder_synthetic(b"P51 1 255\n\x7f")["rgba8_hex"], "7f7f7fff")
+        for magic in (b"P2", b"P4", b"P7", b"p5"):
+            actual = _lighting_pnm_decoder_synthetic(magic + b"\n1 1\n255\n\x7f")
+            self.assertFalse(actual["success"])
+            self.assertEqual(actual["raster_offset"], 0)
+            self.assertEqual(actual["error_writes"], [])
+
+    def test_maxval_is_depth_threshold_without_rescaling_or_sample_validation(self):
+        from host import _lighting_pnm_decoder_synthetic
+        for maximum in (b"0", b"x", b"15", b"255"):
+            actual = _lighting_pnm_decoder_synthetic(b"P5\n1 1\n" + maximum + b"\n\xff")
+            self.assertTrue(actual["success"])
+            self.assertEqual(actual["bits"], 8)
+            self.assertEqual(actual["raster_hex"], "ff" if maximum != b"x" else "0a")
+        actual = _lighting_pnm_decoder_synthetic(b"P5\n1 1\n256\n\x00\x01")
+        self.assertEqual((actual["bits"], actual["raster_hex"], actual["rgba8_hex"]),
+            (16, "0001", "010101ff"))
+        actual = _lighting_pnm_decoder_synthetic(b"P5\n1 1\n65536\n\x00\x01")
+        self.assertFalse(actual["success"])
+        self.assertEqual(actual["error_writes"], ["max value > 65535"])
+
+    def test_only_one_postmaxval_lookahead_is_discarded(self):
+        from host import _lighting_pnm_decoder_synthetic
+        for suffix, expected in ((b"\r\n\x7f", "0a"), (b"  \x7f", "20"),
+                (b" #comment\n\x7f", "23"), (b"X\x7f", "7f")):
+            actual = _lighting_pnm_decoder_synthetic(b"P5\n1 1\n255" + suffix)
+            self.assertTrue(actual["success"])
+            self.assertEqual(actual["raster_hex"], expected)
+        actual = _lighting_pnm_decoder_synthetic(b"P5\n1 1\n255\n\x7f\x42")
+        self.assertEqual(actual["raster_hex"], "7f")
+
+    def test_sixteen_bit_raster_remains_raw_before_native_word_high_byte(self):
+        from host import _lighting_pnm_decoder_synthetic
+        actual = _lighting_pnm_decoder_synthetic(b"P5\n2 1\n65535\n\x12\x34\x56\x78")
+        self.assertEqual(actual["raster_hex"], "12345678")
+        self.assertEqual(actual["rgba8_hex"], "343434ff787878ff")
+        self.assertNotEqual(actual["rgba8_hex"], "121212ff565656ff")
+        instructions = self.report["instruction_evidence"]["raw_raster_read_without_swap_or_scale"]["instructions"]
+        calls = [row["text"] for row in instructions if row["text"].startswith("call")]
+        self.assertEqual(calls, ["call    sub_180091C90"])
+
+    def test_postdigit_overflow_zero_dimensions_and_checked_allocation_limits(self):
+        from host import _lighting_pnm_decoder_synthetic
+        actual = _lighting_pnm_decoder_synthetic(b"P5\n214748365 1\n255\n\x7f")
+        self.assertFalse(actual["success"])
+        self.assertEqual(actual["error_writes"], ["integer parse overflow", "invalid width"])
+        actual = _lighting_pnm_decoder_synthetic(b"P5\n1 1\n214748364\n\x7f")
+        self.assertEqual(actual["error_writes"], ["max value > 65535"])
+        for dimensions, error in ((b"0 1", "invalid width"), (b"1 0", "invalid width"),
+                (b"16777217 1", "too large"), (b"16777216 16777216", "too large")):
+            actual = _lighting_pnm_decoder_synthetic(b"P5\n" + dimensions + b"\n255\n\x7f")
+            self.assertFalse(actual["success"])
+            self.assertEqual(actual["error_writes"], [error])
+        self.assertFalse(self.report["boundaries"]["ownership"]["size_failure_allocates_pixels"])
+
+    def test_short_read_frees_and_real_converter_arguments_keep_shared_ownership(self):
+        evidence = self.report["instruction_evidence"]
+        rows = {row["rva"]: row for row in evidence["short_raster_read_frees_before_error"]["instructions"]}
+        self.assertTrue(rows["0x8e142"]["text"].endswith("sub_18014FBA0"))
+        self.assertIn("bad PNM", rows["0x8e147"]["text"])
+        word = {row["rva"]: row for row in evidence["word_converter_actual_width_height_channels"]["instructions"]}
+        self.assertEqual(word["0x8e101"]["text"], "mov     r9d, [rsi]")
+        self.assertEqual(word["0x8e104"]["text"], "mov     ecx, [rsi+4]")
+        self.assertEqual(word["0x8e109"]["bytes"], "894c2420")
+        self.assertTrue(word["0x8e110"]["text"].endswith("sub_1800910A0"))
+        owner = self.report["boundaries"]["ownership"]
+        self.assertTrue(owner["conversion_takes_source_ownership"])
+        self.assertTrue(owner["conversion_frees_source_on_failure"])
+        self.assertFalse(owner["separate_async_cancellation_api_observed"])
+
+    def test_wrong_format_normalization_fallback_or_cleanup_assumptions_fail(self):
+        for group, key, value in (("entry", "selected_decoder_rva", "0x8eda0"),
+                ("header", "maxval_positive_required", True),
+                ("header", "maxval_parse_failure_error_can_survive_success", False),
+                ("header", "skip_after_maxval", True), ("pixels", "maxval_rescaling", True),
+                ("pixels", "sixteen_bit_input_byte_swap", True),
+                ("ownership", "short_read_frees_pixels_before_error", False),
+                ("ownership", "conversion_frees_source_on_failure", False)):
+            report = copy.deepcopy(self.report)
+            report["boundaries"][group][key] = value
+            with self.subTest(key=key), self.assertRaisesRegex(ValueError, "boundary requires semantic review"):
+                self.verify(report)
+
+    def test_rehashed_owner_byte_edge_semantics_or_dependency_mutations_fail(self):
+        from host import _lighting_pnm_decoder_projection
+        for mutate in (lambda r: r["native"]["complete_selected_functions"].pop(),
+                lambda r: r["native"]["verified_data_regions"][0].update(raw_hex="00" * 32),
+                lambda r: r["native"]["verified_call_edges"][0].update(target_rva="0x8b910"),
+                lambda r: r["instruction_evidence"]["numeric_postdigit_overflow_and_consumed_lookahead"]["instructions"].clear(),
+                lambda r: r["reviewed_semantics"].update(raster_and_parameters="big endian samples normalized by maxval"),
+                lambda r: r["dependencies"][0].update(section="unreviewed_converter"),
+                lambda r: r["fixed_vectors"]["resident_inputs"][1]["expected"].update(rgba8_hex="12569aff"),
+                lambda r: r["remaining_chains"].clear()):
+            report = copy.deepcopy(self.report)
+            mutate(report)
+            report["reviewed_selection_sha256"] = hashlib.sha256(json.dumps(_lighting_pnm_decoder_projection(report),
+                ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+            with self.assertRaisesRegex(ValueError, "selected bytes require semantic review"):
+                self.verify(report)
+
+    def test_remaining_chains_and_static_snapshot_keep_actual_execution_unverified(self):
+        from analysis import semantic_query_gaps
+        findings = [row for row in semantic_query_gaps(self.report, ".analysis/results/host-current/local-audit.json")
+            if row["kind"] == "semantic_query_chain_unresolved"]
+        self.assertEqual([row["finding"] for row in findings], self.report["remaining_chains"])
+        self.assertEqual(len(findings), 3)
+        self.assertEqual([row["pointer"] for row in findings], ["/remaining_chains"] * 3)
+        self.assertNotIn("PNM", self.report["remaining_chains"][0]["owner"])
+        for field, value in (("source_chain_complete", True), ("target_execution", True),
+                ("actual_dll_comparison", "verified"), ("ui_backend_wiring", "verified"),
+                ("changed_during_query", [{"path": "changed"}])):
+            report = copy.deepcopy(self.report)
+            report[field] = value
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, "static boundary was promoted"):
+                self.verify(report)
+        report = copy.deepcopy(self.report)
+        report["native"]["failures"].clear()
+        with self.assertRaisesRegex(ValueError, "capture failure was hidden"):
+            self.verify(report)
+        report = json.loads(json.dumps(self.report, ensure_ascii=False, sort_keys=True, allow_nan=False))
+        self.assertEqual(self.verify(report), report["verification"])
+        self.assertFalse(report["verification"]["all_format_decoders_complete"])
+        self.assertEqual(report["maintenance_lifecycle"]["temporary_artifacts_created"], [])
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+
+class LightingBmpTgaDecoderChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        from host import collect_lighting_bmp_tga_decoder_chain
+        cls.audit = HostLocalAudit()
+        cls.report = collect_lighting_bmp_tga_decoder_chain(cls.audit)
+
+    def verify(self, report):
+        from host import _verify_lighting_bmp_tga_decoder_chain
+        return _verify_lighting_bmp_tga_decoder_chain(report)
+
+    def test_current_original_complete_functions_edges_slots_and_pe_tables(self):
+        native = self.report["native"]
+        self.assertEqual(self.report["current_native_release"]["declaration"]["resourceVersion"], "4.0.55.0")
+        self.assertEqual(native["input"]["sha256"],
+            "cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa")
+        self.assertEqual(len(native["complete_selected_functions"]), 25)
+        self.assertEqual(len(native["verified_call_edges"]), 41)
+        functions = {row["rva"] for row in native["complete_selected_functions"]}
+        self.assertTrue({"0x8b910", "0x93fa0", "0x94300", "0x94370", "0x943c0", "0x94400",
+            "0x8eda0", "0x9c380", "0x9c3e0"} <= functions)
+        self.assertFalse({"0x8b480", "0x8fb40", "0x8e010", "0x98c80"} & functions)
+        regions = {row["role"]: bytes.fromhex(row["raw_hex"]) for row in native["verified_data_regions"]}
+        self.assertEqual(len(regions), 4)
+        self.assertEqual(struct.unpack("<9I", regions["bmp_channel_multipliers"]), (0, 255, 85, 73, 17, 33, 65, 129, 1))
+        self.assertEqual(struct.unpack("<9I", regions["bmp_channel_shifts"]), (0, 0, 0, 1, 0, 2, 4, 6, 0))
+        self.assertEqual(struct.unpack("<4I", regions["bmp32_default_masks"]),
+            (0xff0000, 0xff00, 0xff, 0xff000000))
+        self.assertEqual([row["target_rva"] for row in native["verified_indirect_slots"]], ["0x8b3e0", "0x8b400"])
+
+    def test_independent_fixed_vectors_keep_bmp_tga_pixel_differences(self):
+        from host import _lighting_bmp_tga_decoder_bmp_pixels, _lighting_bmp_tga_decoder_tga_pixels
+        for kind, helper in (("bmp_pixels", _lighting_bmp_tga_decoder_bmp_pixels),
+                ("tga_pixels", _lighting_bmp_tga_decoder_tga_pixels)):
+            for row in self.report["fixed_vectors"][kind]:
+                kwargs = {key: value for key, value in row.items()
+                    if key not in ("name", "input_hex", "expected_rgba8_hex")}
+                with self.subTest(name=row["name"]):
+                    self.assertEqual(helper(bytes.fromhex(row["input_hex"]), **kwargs).hex(), row["expected_rgba8_hex"])
+        self.assertFalse(self.report["fixed_vectors"]["actual_dll_results"])
+
+    def test_bmp_packed_indices_padding_direction_and_uninitialized_palette_boundary(self):
+        from host import _lighting_bmp_tga_decoder_bmp_pixels
+        palette = [(255, 0, 0), (0, 255, 0), (0, 0, 255)]
+        self.assertEqual(_lighting_bmp_tga_decoder_bmp_pixels(bytes.fromhex("40000000"), 3, -1, 1,
+            palette=palette).hex(), "ff0000ff00ff00ffff0000ff")
+        self.assertEqual(_lighting_bmp_tga_decoder_bmp_pixels(bytes.fromhex("12000000"), 3, -1, 4,
+            palette=palette).hex(), "00ff00ff0000ffffff0000ff")
+        self.assertEqual(_lighting_bmp_tga_decoder_bmp_pixels(bytes.fromhex("00010200"), 3, -1, 8,
+            palette=palette).hex(), "ff0000ff00ff00ff0000ffff")
+        self.assertEqual(_lighting_bmp_tga_decoder_bmp_pixels(bytes.fromhex("010000000200000003000000"),
+            1, 3, 24).hex(), "000003ff000002ff000001ff")
+        with self.assertRaisesRegex(ValueError, "uninitialized entries"):
+            _lighting_bmp_tga_decoder_bmp_pixels(b"\x03\x00\x00\x00", 1, -1, 8, palette=palette)
+
+    def test_bmp_mask_table_contiguity_and_alpha_heuristic_are_not_repaired(self):
+        from host import _lighting_bmp_tga_decoder_mask, _lighting_bmp_tga_decoder_bmp_pixels
+        self.assertEqual(_lighting_bmp_tga_decoder_mask(16 << 10, 0x7c00), 132)
+        self.assertEqual(_lighting_bmp_tga_decoder_mask(5, 5), 170)
+        self.assertFalse(self.report["boundaries"]["bmp"]["mask_contiguity_required"])
+        data = bytes.fromhex("1020300040506001")
+        self.assertEqual(_lighting_bmp_tga_decoder_bmp_pixels(data, 2, -1, 32,
+            alpha_accumulator_zero=True).hex(), "3020100060504001")
+        self.assertEqual(_lighting_bmp_tga_decoder_bmp_pixels(data[:4], 1, -1, 32).hex(), "30201000")
+        self.assertEqual(_lighting_bmp_tga_decoder_bmp_pixels(bytes.fromhex("00800000"), 1, -1, 16).hex(), "000000ff")
+        with self.assertRaisesRegex(ValueError, "bad masks"):
+            _lighting_bmp_tga_decoder_bmp_pixels(b"\x00" * 4, 1, -1, 16, masks=(0, 1, 2, 0))
+
+    def test_tga_raw_and_rle_origin_horizontal_bit_gray_alpha_and_rgb555(self):
+        from host import _lighting_bmp_tga_decoder_tga_pixels
+        data = bytes.fromhex("010203040506")
+        self.assertEqual(_lighting_bmp_tga_decoder_tga_pixels(data, 2, 1, 24,
+            descriptor=48).hex(), "030201ff060504ff")
+        self.assertEqual(_lighting_bmp_tga_decoder_tga_pixels(data, 1, 2, 24,
+            descriptor=0).hex(), "060504ff030201ff")
+        self.assertEqual(_lighting_bmp_tga_decoder_tga_pixels(bytes.fromhex("ffff"), 1, 1, 16).hex(), "ffffffff")
+        self.assertEqual(_lighting_bmp_tga_decoder_tga_pixels(bytes.fromhex("8033"), 1, 1, 16,
+            image_type=3, descriptor=32).hex(), "80808033")
+        self.assertFalse(self.report["boundaries"]["tga"]["descriptor_horizontal_bit16_applied"])
+
+    def test_tga_packets_clip_at_raster_and_scalar_eof_differs_from_raw_short_read(self):
+        from host import _lighting_bmp_tga_decoder_tga_pixels
+        self.assertEqual(_lighting_bmp_tga_decoder_tga_pixels(bytes.fromhex("ff010203"), 1, 1, 24,
+            image_type=10).hex(), "030201ff")
+        self.assertEqual(_lighting_bmp_tga_decoder_tga_pixels(b"", 1, 1, 24,
+            image_type=10).hex(), "000000ff")
+        self.assertEqual(_lighting_bmp_tga_decoder_tga_pixels(b"", 1, 1, 16).hex(), "000000ff")
+        with self.assertRaisesRegex(ValueError, "unobserved"):
+            _lighting_bmp_tga_decoder_tga_pixels(b"", 1, 1, 24)
+        evidence = self.report["instruction_evidence"]
+        for key, call, following in (("tga_raw_bottom_row_result_unchecked", "0x8f0fd", "0x8f102"),
+                ("tga_raw_top_row_result_unchecked", "0x8f60d", "0x8f612")):
+            rows = {row["rva"]: row for row in evidence[key]["instructions"]}
+            self.assertTrue(rows[call]["text"].endswith("sub_180091C90"))
+            self.assertNotIn("eax", rows[following]["text"])
+
+    def test_tga_palette_out_of_range_selects_zero_and_origin_skip_is_unscaled(self):
+        from host import _lighting_bmp_tga_decoder_tga_pixels
+        palette = [(16, 32, 48), (64, 80, 96)]
+        self.assertEqual(_lighting_bmp_tga_decoder_tga_pixels(bytes([1, 2]), 2, 1, 8,
+            image_type=1, palette=palette).hex(), "605040ff302010ff")
+        self.assertEqual(_lighting_bmp_tga_decoder_tga_pixels(bytes.fromhex("0100"), 1, 1, 16,
+            image_type=1, palette=palette).hex(), "605040ff")
+        rows = {row["rva"]: row for row in self.report["instruction_evidence"]["tga_palette_origin_raw_byte_skip"]["instructions"]}
+        self.assertEqual(rows["0x8f18b"]["text"], "mov     edx, r15d")
+        self.assertTrue(rows["0x8f18e"]["text"].endswith("sub_180091B50"))
+
+    def test_actual_cleanup_both_palette_buffers_and_shared_conversion_ownership(self):
+        evidence = self.report["instruction_evidence"]
+        rows = {row["rva"]: row for row in evidence["tga_palette_short_read_both_frees"]["instructions"]}
+        self.assertTrue(rows["0x8f7a1"]["text"].endswith("sub_18014FBA0"))
+        self.assertEqual(rows["0x8f7a6"]["text"], "mov     rcx, r15")
+        failure = {row["rva"]: row for row in evidence["tga_palette_failure_release_and_errors"]["instructions"]}
+        self.assertTrue(failure["0x8f740"]["text"].endswith("sub_18014FBA0"))
+        self.assertTrue(failure["0x8f751"]["text"].endswith("sub_18014FBA0"))
+        bmp = {row["rva"]: row for row in evidence["bmp_bad_masks_release"]["instructions"]}
+        self.assertTrue(bmp["0x8c12c"]["text"].endswith("sub_18014FBA0"))
+        self.assertTrue(self.report["boundaries"]["shared"]["conversion_failure_frees_source"])
+        self.assertFalse(self.report["boundaries"]["shared"]["decoder_async_cancel_observed"])
+
+    def test_incorrect_format_compression_mask_palette_direction_and_cleanup_fail(self):
+        for group, field, value in (("bmp", "rle1_rle2_rejected", False),
+                ("bmp", "palette_index_actual_count_checked", True),
+                ("bmp", "explicit_alpha_masks_force_all_zero_opaque", True),
+                ("bmp", "negative_height_is_top_down", False),
+                ("tga", "raw_nonpalette_non_rgb16_exact_row_return_checked", True),
+                ("tga", "out_of_range_palette_index_selects_zero", False),
+                ("tga", "palette_short_read_releases_palette_and_destination", False),
+                ("tga", "color_map_first_index_subtracts_from_pixel_index", True),
+                ("shared", "conversion_failure_frees_source", False)):
+            report = copy.deepcopy(self.report)
+            report["boundaries"][group][field] = value
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, "boundary requires semantic review"):
+                self.verify(report)
+
+    def test_rehashed_sources_functions_bytes_edges_semantics_and_dependencies_fail(self):
+        from host import _lighting_bmp_tga_decoder_projection
+        for mutate in (lambda r: r["current_native_release"].update(version="old"),
+                lambda r: r["native"]["complete_selected_functions"].pop(),
+                lambda r: r["native"]["verified_call_edges"][0].update(target_rva="0x8fb40"),
+                lambda r: r["native"]["verified_data_regions"][0].update(raw_hex="00" * 36),
+                lambda r: r["instruction_evidence"]["tga_raw_top_row_result_unchecked"]["instructions"].clear(),
+                lambda r: r["reviewed_semantics"].update(bmp_pixels="generic division like TGA"),
+                lambda r: r["dependencies"][0].update(section="unknown"),
+                lambda r: r["remaining_chains"].clear()):
+            report = copy.deepcopy(self.report)
+            mutate(report)
+            report["reviewed_selection_sha256"] = hashlib.sha256(json.dumps(_lighting_bmp_tga_decoder_projection(report),
+                ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+            with self.assertRaisesRegex(ValueError, "selected bytes require semantic review"):
+                self.verify(report)
+
+    def test_remaining_formats_static_snapshot_and_actual_execution_are_separate(self):
+        from analysis import semantic_query_gaps
+        findings = [row for row in semantic_query_gaps(self.report, ".analysis/results/host-current/local-audit.json")
+            if row["kind"] == "semantic_query_chain_unresolved"]
+        self.assertEqual([row["finding"] for row in findings], self.report["remaining_chains"])
+        self.assertEqual(len(findings), 3)
+        self.assertEqual([row["pointer"] for row in findings], ["/remaining_chains"] * 3)
+        self.assertFalse(any(name in self.report["remaining_chains"][0]["owner"] for name in ("BMP", "TGA", "PNG", "PNM")))
+        for field, value in (("source_chain_complete", True), ("target_execution", True),
+                ("actual_dll_comparison", "verified"), ("runtime_acceptance", "verified"),
+                ("changed_during_query", [{"path": "changed"}])):
+            report = copy.deepcopy(self.report)
+            report[field] = value
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, "static boundary was promoted"):
+                self.verify(report)
+        report = copy.deepcopy(self.report)
+        report["native"]["failures"].clear()
+        with self.assertRaisesRegex(ValueError, "capture failure was hidden"):
+            self.verify(report)
+        report = json.loads(json.dumps(self.report, ensure_ascii=False, sort_keys=True, allow_nan=False))
+        self.assertEqual(self.verify(report), report["verification"])
+        self.assertFalse(report["verification"]["all_format_decoders_complete"])
+        self.assertEqual(report["maintenance_lifecycle"]["temporary_artifacts_created"], [])
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+
+class LightingPicDecoderChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        from host import collect_lighting_pic_decoder_chain
+        cls.audit = HostLocalAudit()
+        cls.report = collect_lighting_pic_decoder_chain(cls.audit)
+
+    def verify(self, report):
+        from host import _verify_lighting_pic_decoder_chain
+        return _verify_lighting_pic_decoder_chain(report)
+
+    def decode(self, data, width=1, height=1):
+        from host import _lighting_pic_decoder_synthetic
+        return _lighting_pic_decoder_synthetic(bytes.fromhex(data), width, height)
+
+    def test_current_original_complete_functions_edges_callbacks_and_pe_bytes(self):
+        native = self.report["native"]
+        self.assertEqual(self.report["current_native_release"]["declaration"]["resourceVersion"], "4.0.55.0")
+        self.assertEqual(native["input"]["sha256"],
+            "cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa")
+        self.assertEqual(len(native["complete_selected_functions"]), 16)
+        self.assertEqual(len(native["verified_call_edges"]), 22)
+        functions = {row["rva"] for row in native["complete_selected_functions"]}
+        self.assertTrue({"0x8dc40", "0x95910", "0x95ec0", "0x960e0", "0x90680"} <= functions)
+        self.assertFalse({"0x8b480", "0x8fb40", "0x93fa0", "0x98c80", "0x8e920"} & functions)
+        self.assertEqual([row["target_rva"] for row in native["verified_indirect_slots"]], ["0x8b3e0", "0x8b440"])
+        regions = {row["role"]: bytes.fromhex(row["raw_hex"]) for row in native["verified_data_regions"]}
+        self.assertEqual(len(regions), 2)
+        self.assertEqual(len(regions["read_callback_leaf_and_padding"]), 32)
+        self.assertEqual(struct.unpack("<3Q", regions["file_callback_table"]),
+            (0x18008b3e0, 0x18008b400, 0x18008b440))
+        self.assertEqual(len(self.report["instruction_evidence"]), 12)
+
+    def test_independent_fixed_packet_vectors(self):
+        for row in self.report["fixed_vectors"]["packet_streams"]:
+            result = self.decode(row["input_hex"], row["width"], row["height"])
+            with self.subTest(name=row["name"]):
+                for field, expected in row["expected"].items():
+                    self.assertEqual(result[field], expected)
+        self.assertFalse(self.report["fixed_vectors"]["actual_dll_results"])
+
+    def test_channel_masks_packet_order_rows_and_trailing_input(self):
+        result = self.decode("010800800008004010203040", 2, 1)
+        self.assertEqual(result["rgba8_hex"], "1030ffff2040ffff")
+        result = self.decode("010800800008004010203040", 1, 2)
+        self.assertEqual(result["rgba8_hex"], "1020ffff3040ffff")
+        result = self.decode("0008000faabb", 2, 1)
+        self.assertEqual(result["rgba8_hex"], "ffffffffffffffff")
+        self.assertEqual(result["bytes_consumed"], 4)
+        self.assertEqual(result["selected_channels"], 3)
+        result = self.decode("0008001055", 1, 1)
+        self.assertEqual(result["rgba8_hex"], "ffffff55")
+        self.assertEqual(result["selected_channels"], 4)
+
+    def test_pure_repeat_clips_count_and_zero_count_still_consumes_sample(self):
+        result = self.decode("0008018000aa0533", 2, 1)
+        self.assertEqual(result["rgba8_hex"], "33ffffff33ffffff")
+        self.assertEqual(result["bytes_consumed"], 8)
+        result = self.decode("0008018002110222", 2, 2)
+        self.assertEqual(result["rgba8_hex"], "11ffffff11ffffff22ffffff22ffffff")
+        self.assertEqual(result["bytes_consumed"], 8)
+
+    def test_mixed_literal_short_extended_and_zero_repeat_counts(self):
+        self.assertEqual(self.decode("000802808155", 2, 1)["rgba8_hex"], "55ffffff55ffffff")
+        self.assertEqual(self.decode("0008028080000244", 2, 1)["rgba8_hex"], "44ffffff44ffffff")
+        result = self.decode("00080280800000aa0033", 1, 1)
+        self.assertEqual(result["rgba8_hex"], "33ffffff")
+        self.assertEqual(result["bytes_consumed"], 10)
+        for data in ("00080280011122", "000802808111", "0008028080000211"):
+            with self.subTest(data=data):
+                result = self.decode(data, 1, 2)
+                self.assertFalse(result["success"])
+                self.assertEqual(result["error"], "bad file")
+        self.assertEqual(self.decode("0008028000110022", 1, 2)["rgba8_hex"], "11ffffff22ffffff")
+
+    def test_descriptors_limits_unknown_compression_and_zero_dimensions(self):
+        self.assertEqual(self.decode("0007008011")["error"], "bad format")
+        ten = "01080000" * 9 + "00080000"
+        self.assertEqual(self.decode(ten)["packet_count"], 10)
+        eleven = "01080000" * 10 + "00080000"
+        result = self.decode(eleven)
+        self.assertEqual(result["error"], "bad format")
+        self.assertEqual(result["bytes_consumed"], 40)
+        self.assertEqual(self.decode("00080300")["error"], "bad format")
+        self.assertTrue(self.decode("00080300", 1, 0)["success"])
+        self.assertTrue(self.decode("00080200", 0, 1)["success"])
+        self.assertEqual(self.decode("00080300", 0, 1)["error"], "bad format")
+
+    def test_short_synthetic_payload_does_not_claim_native_callback_eof(self):
+        for data in ("", "000800", "000800e01020", "0008018000", "000802808000"):
+            with self.subTest(data=data):
+                self.assertEqual(self.decode(data)["error"], "bad file")
+        from host import _lighting_pic_decoder_synthetic
+        for data, width, height in ((b"", 65536, 1), (b"", 1025, 1025), (b"x" * 1048577, 1, 1)):
+            with self.assertRaisesRegex(ValueError, "outside the reviewed model"):
+                _lighting_pic_decoder_synthetic(data, width, height)
+        owner = self.report["boundaries"]["failure_and_ownership"]
+        self.assertTrue(owner["callback_refill_can_still_supply_zero_sample"])
+        self.assertFalse(owner["global_exact_raster_read_gate"])
+        self.assertFalse(self.report["boundaries"]["scope"]["synthetic_model_is_product_rust_or_callback_execution"])
+
+    def test_full_width_optional_pointer_required4_arguments_and_failure_release(self):
+        evidence = self.report["instruction_evidence"]
+        pointer = {row["rva"]: row for row in evidence["full_width_component_pointer_and_dimensions"]["instructions"]}
+        self.assertEqual(pointer["0x8dcb7"]["text"], "cmovnz  r15, r12")
+        self.assertEqual(pointer["0x8dcb7"]["bytes"], "4d0f45fc")
+        convert = {row["rva"]: row for row in evidence["current_converter_actual_source4_width_height"]["instructions"]}
+        self.assertEqual(convert["0x8dd9c"]["text"], "mov     edx, 4")
+        self.assertEqual(convert["0x8dda1"]["text"], "mov     r8d, esi")
+        self.assertEqual(convert["0x8dda4"]["text"], "mov     r9d, ebp")
+        self.assertTrue(convert["0x8dda7"]["text"].endswith("sub_180090680"))
+        failure = {row["rva"]: row for row in evidence["packet_failure_free_then_common_converter"]["instructions"]}
+        self.assertTrue(failure["0x8de0c"]["text"].endswith("sub_18014FBA0"))
+        self.assertEqual(failure["0x8de11"]["text"], "xor     r13d, r13d")
+        self.assertTrue(failure["0x8de1b"]["text"].endswith("loc_18008DD94"))
+        self.assertTrue(failure["0x8de24"]["text"].endswith("loc_18008DD94"))
+        owner = self.report["boundaries"]["failure_and_ownership"]
+        self.assertEqual(owner["current_converter_source_and_required_components"], [4, 4])
+        self.assertTrue(owner["current_null_converter_result_is_direct_null_return"])
+        self.assertTrue(owner["decode_failure_updates_width_height_outputs"])
+
+    def test_wrong_packet_channel_compression_eof_and_cleanup_assumptions_fail(self):
+        for group, field, value in (("entry", "working_pixel_stride", 3),
+                ("packets", "maximum_descriptors", 11), ("packets", "at_least_one_selected_channel_required", True),
+                ("packets", "compression1_zero_count_rejected", True),
+                ("packets", "compression2_run_must_fit_remaining_row", False),
+                ("packets", "runs_cross_scanline_boundaries", True),
+                ("failure_and_ownership", "global_exact_raster_read_gate", True),
+                ("failure_and_ownership", "decode_failure_still_reaches_channel_converter", False),
+                ("failure_and_ownership", "decode_failure_frees_rgba_buffer", False)):
+            report = copy.deepcopy(self.report)
+            report["boundaries"][group][field] = value
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, "boundary requires semantic review"):
+                self.verify(report)
+
+    def test_rehashed_sources_bytes_edges_semantics_vectors_dependencies_and_remaining_fail(self):
+        from host import _lighting_pic_decoder_projection
+        for mutate in (lambda r: r["current_native_release"].update(version="old"),
+                lambda r: r["native"]["complete_selected_functions"].pop(),
+                lambda r: r["native"]["verified_call_edges"][0].update(target_rva="0x98c80"),
+                lambda r: r["native"]["verified_data_regions"][0].update(raw_hex="00" * 32),
+                lambda r: r["instruction_evidence"]["packet_failure_free_then_common_converter"]["instructions"].clear(),
+                lambda r: r["reviewed_semantics"].update(compression="all runs clip at the image boundary"),
+                lambda r: r["fixed_vectors"]["packet_streams"][0]["expected"].update(rgba8_hex="10203000"),
+                lambda r: r["dependencies"][0].update(section="unreviewed"),
+                lambda r: r["remaining_chains"].clear()):
+            report = copy.deepcopy(self.report)
+            mutate(report)
+            report["reviewed_selection_sha256"] = hashlib.sha256(json.dumps(_lighting_pic_decoder_projection(report),
+                ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+            with self.assertRaisesRegex(ValueError, "selected bytes require semantic review"):
+                self.verify(report)
+
+    def test_remaining_chains_snapshot_and_actual_execution_stay_separate(self):
+        from analysis import semantic_query_gaps
+        findings = [row for row in semantic_query_gaps(self.report, ".analysis/results/host-current/local-audit.json")
+            if row["kind"] == "semantic_query_chain_unresolved"]
+        self.assertEqual([row["finding"] for row in findings], self.report["remaining_chains"])
+        self.assertEqual(len(findings), 3)
+        self.assertEqual([row["pointer"] for row in findings], ["/remaining_chains"] * 3)
+        self.assertFalse(any(name in self.report["remaining_chains"][0]["owner"]
+            for name in ("PIC", "PNG", "PNM", "BMP", "TGA")))
+        for field, value in (("source_chain_complete", True), ("target_execution", True),
+                ("actual_dll_comparison", "verified"), ("ui_backend_wiring", "verified"),
+                ("runtime_acceptance", "verified"), ("changed_during_query", [{"path": "changed"}])):
+            report = copy.deepcopy(self.report)
+            report[field] = value
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, "static boundary was promoted"):
+                self.verify(report)
+        report = copy.deepcopy(self.report)
+        report["native"]["failures"].clear()
+        with self.assertRaisesRegex(ValueError, "capture failure was hidden"):
+            self.verify(report)
+        report = json.loads(json.dumps(self.report, ensure_ascii=False, sort_keys=True, allow_nan=False))
+        self.assertEqual(self.verify(report), report["verification"])
+        self.assertFalse(report["verification"]["all_format_decoders_complete"])
+        self.assertEqual(report["maintenance_lifecycle"]["temporary_artifacts_created"], [])
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+
+class LightingGifDecoderChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        import analysis
+        import host
+        cls.audit = HostLocalAudit()
+        cls.report = host.collect_lighting_gif_decoder_chain(cls.audit)
+        cls.previous = json.loads((analysis.ROOT / ".analysis/results/host-current/local-audit.json").read_bytes())
+
+    def verify(self, report):
+        from host import _lighting_gif_decoder_verify
+        return _lighting_gif_decoder_verify(report)
+
+    def decode(self, value):
+        from host import _lighting_gif_decoder_synthetic
+        return _lighting_gif_decoder_synthetic(bytes.fromhex(value) if isinstance(value, str) else value)
+
+    def image(self, raster="0202440100", *, width=1, height=1, rect=None, background=0,
+              global_table=True, image_flags=0, local="", extensions="", palette="112233445566"):
+        rect = (0, 0, width, height) if rect is None else rect
+        header = b"GIF89a" + struct.pack("<HHBBB", width, height, 128 if global_table else 0, background, 0)
+        colors = bytes.fromhex(palette) if global_table else b""
+        return header + colors + bytes.fromhex(extensions) + b"," + struct.pack("<HHHHB", *rect, image_flags) + bytes.fromhex(local + raster) + b";"
+
+    def test_current_original_selected_owners_actual_edges_slots_and_pe_bytes(self):
+        native = self.report["native"]
+        self.assertEqual(self.report["current_native_release"]["declaration"]["resourceVersion"], "4.0.55.0")
+        self.assertEqual(native["input"]["sha256"], "cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa")
+        self.assertEqual(len(native["complete_selected_functions"]), 18)
+        self.assertEqual(len(native["verified_call_edges"]), 25)
+        self.assertEqual(len(self.report["instruction_evidence"]), 17)
+        self.assertEqual(len(native["verified_data_regions"]), 2)
+        self.assertTrue(all(row["pseudocode_captured"] and row["input_chunks_verified"] and not row["failures"]
+            for row in native["complete_selected_functions"]))
+        self.assertEqual([row["target_rva"] for row in native["verified_indirect_slots"]], ["0x8b3e0", "0x8b400", "0x8b440"])
+        functions = {row["rva"] for row in native["complete_selected_functions"]}
+        self.assertTrue({"0x8cc40", "0x945c0", "0x94c30", "0x94f50", "0x95090", "0x95450"} <= functions)
+        self.assertFalse({"0x8b480", "0x8cd70", "0x98c80", "0x8e160"} & functions)
+
+    def test_hand_packed_fixed_first_images_and_independent_expected_colors(self):
+        for row in self.report["fixed_vectors"]["first_images"]:
+            result = self.decode(row["input_hex"])
+            with self.subTest(name=row["name"]):
+                for field, expected in row["expected"].items():
+                    self.assertEqual(result[field], expected)
+        self.assertFalse(self.report["fixed_vectors"]["actual_dll_results"])
+
+    def test_current_caller_stops_after_first_image_without_using_delay_or_tail(self):
+        first = self.image(extensions="21f9040c34120000")
+        result = self.decode(first + b"malformed later frames are never parsed")
+        self.assertEqual(result["pixels_rgba8_hex"], "112233ff")
+        self.assertEqual(result["delay_ms"], 46600)
+        self.assertEqual(result["bytes_consumed"], len(first) - 1)
+        self.assertTrue(result["first_image_only"])
+        instructions = self.report["instruction_evidence"]["one_zero_state_and_previous_null_call"]["instructions"]
+        by_rva = {row["rva"]: row for row in instructions}
+        self.assertEqual(by_rva["0x8cc77"]["text"], "mov     r8d, 8870h")
+        self.assertEqual(by_rva["0x8cc90"]["text"], "xor     r9d, r9d")
+        self.assertEqual(sum(row["text"].endswith("sub_1800945C0") for row in instructions), 1)
+        caller = self.report["boundaries"]["caller"]
+        self.assertFalse(caller["multi_frame_disposal_branch_reached"])
+        self.assertFalse(caller["delay_drives_current_playback"])
+
+    def test_internal_bgra_normal_rgba_background_raw_copy_and_index0(self):
+        result = self.decode(self.image(width=2, rect=(0, 0, 1, 1), background=1))
+        self.assertEqual(result["pixels_rgba8_hex"], "112233ff665544ff")
+        self.assertEqual(self.decode(self.image(width=2, rect=(0, 0, 1, 1)))["pixels_rgba8_hex"], "112233ff00000000")
+        result = self.decode(self.image(width=2, rect=(0, 0, 1, 1), background=1, extensions="21f9040100000000"))
+        self.assertEqual(result["pixels_rgba8_hex"], "00000000665544ff")
+        self.assertEqual(result["history_hex"], "0100")
+        emitted = {row["rva"]: row for row in self.report["instruction_evidence"]["history_precedes_transparency_and_rgba_emit"]["instructions"]}
+        self.assertEqual(emitted["0x954a4"]["text"], "mov     byte ptr [r8+rdx], 1")
+        self.assertEqual(emitted["0x954b9"]["text"], "cmp     byte ptr [rdx+r8*4+3], 81h")
+        background = {row["rva"]: row for row in self.report["instruction_evidence"]["background_nonzero_untouched_raw_bgra_copy"]["instructions"]}
+        self.assertEqual(background["0x94c20"]["text"], "mov     [rdx+rcx*4], r8d")
+
+    def test_local_palette_precedence_and_unchecked_undeclared_palette_index(self):
+        result = self.decode(self.image(image_flags=128, local="a1b2c3d4e5f6"))
+        self.assertEqual((result["palette"], result["pixels_rgba8_hex"]), ("local", "a1b2c3ff"))
+        result = self.decode(self.image(global_table=False, image_flags=128, local="a1b2c3d4e5f6"))
+        self.assertEqual(result["pixels_rgba8_hex"], "a1b2c3ff")
+        self.assertEqual(self.decode(self.image(global_table=False))["error"], "missing color table")
+        result = self.decode(self.image("02025c0100"))
+        self.assertTrue(result["success"])
+        self.assertEqual((result["pixels_rgba8_hex"], result["history_hex"]), ("00000000", "01"))
+        restored = self.image("02025c0100", extensions="21f904010000030021f9040000000000")
+        self.assertEqual(self.decode(restored)["pixels_rgba8_hex"], "000000ff")
+
+    def test_interlaced_rectangle_order_is_bound_to_actual_passes(self):
+        data = bytes.fromhex("47494638396101000800820000" +
+            "000000010000020000030000040000050000060000070000" +
+            "2c0000000001000800400306082143652701003b")
+        result = self.decode(data)
+        self.assertEqual(result["pixels_rgba8_hex"], "000000ff040000ff020000ff050000ff010000ff060000ff030000ff070000ff")
+        self.assertEqual(result["history_hex"], "01" * 8)
+        result = self.decode(self.image(width=2, height=2, rect=(1, 1, 1, 1)))
+        self.assertEqual(result["pixels_rgba8_hex"], "00000000" * 3 + "112233ff")
+
+    def test_subblock_boundaries_early_termination_and_excess_symbols(self):
+        self.assertEqual(self.decode(self.image("020144010100"))["pixels_rgba8_hex"], "112233ff")
+        result = self.decode(self.image("0200"))
+        self.assertEqual((result["stop"], result["history_hex"]), ("zero_subblock", "00"))
+        result = self.decode(self.image("02010500"))
+        self.assertEqual((result["stop"], result["history_hex"]), ("end_code", "00"))
+        result = self.decode(self.image("02034401ff02aabb00"))
+        self.assertEqual(result["pixels_rgba8_hex"], "112233ff")
+        self.assertEqual(result["bytes_consumed"], len(self.image("02034401ff02aabb00")) - 1)
+        result = self.decode(self.image("0202840b00"))
+        self.assertEqual((result["decoded_symbols"], result["clipped_symbols"]), (1, 2))
+        result = self.decode(self.image(rect=(0, 0, 0, 1)))
+        self.assertTrue(result["success"])
+        self.assertEqual(result["history_hex"], "00")
+
+    def test_actual_lzw_minimum_range_clear_errors_and_dictionary_limit(self):
+        self.assertEqual(self.decode(self.image("00011100", width=2))["pixels_rgba8_hex"], "112233ff112233ff")
+        self.assertEqual(self.decode(self.image("01013600"))["pixels_rgba8_hex"], "445566ff")
+        result = self.decode(self.image("0c05003020044000"))
+        self.assertEqual(result["pixels_rgba8_hex"], "445566ff")
+        self.assertEqual((result["stop"], result["decoded_symbols"], result["clipped_symbols"]), ("end_code", 1, 0))
+        for raster, error in (("02012800", "no clear code"), ("02010700", "illegal code in raster"),
+                ("02013400", "illegal code in raster")):
+            with self.subTest(raster=raster):
+                self.assertEqual(self.decode(self.image(raster))["error"], error)
+        result = self.decode(self.image("0d"))
+        self.assertEqual((result["success"], result["error"], result["stop"]), (False, None, "minimum_code_size_above12"))
+        codes = [4096] + [0] * 4096
+        packed = sum(code << (13 * index) for index, code in enumerate(codes)).to_bytes((13 * len(codes) + 7) // 8, "little")
+        subblocks = b"".join(bytes((len(packed[offset:offset + 255]),)) + packed[offset:offset + 255]
+            for offset in range(0, len(packed), 255))
+        data = self.image()[:-6] + b"\x0c" + subblocks + b"\0;"
+        self.assertEqual(self.decode(data)["error"], "too many codes")
+
+    def test_header_extensions_descriptor_and_no_image_failures_remain_distinct(self):
+        self.assertEqual(self.decode(b"BADHDR" + self.image()[6:])["error"], "not GIF")
+        self.assertEqual(self.decode(self.image(rect=(1, 0, 1, 1)))["error"], "bad Image Descriptor")
+        self.assertEqual(self.decode(self.image()[:19] + b"x")["error"], "unknown code")
+        self.assertEqual(self.decode(self.image()[:19] + b";")["stop"], "trailer_before_image")
+        extensions = "21fe02616201630021ff036162630021f902aabb00"
+        self.assertEqual(self.decode(self.image(extensions=extensions))["pixels_rgba8_hex"], "112233ff")
+        data = b"GIF89a" + struct.pack("<HHBBB", 65535, 65535, 0, 0, 0)
+        self.assertEqual(self.decode(data)["error"], "too large")
+        for data, message in ((self.image()[:10], "unobserved callback-dependent"),
+                (self.image()[:-4], "unobserved callback-dependent"),
+                (b"GIF89a" + struct.pack("<HHBBB", 0, 1, 0, 0, 0), "unobserved allocator-dependent")):
+            with self.subTest(data=data), self.assertRaisesRegex(ValueError, message):
+                self.decode(data)
+
+    def test_allocation_cleanup_actual_converter_parameters_and_commit_order(self):
+        evidence = self.report["instruction_evidence"]
+        allocation = evidence["three_allocations_before_test_then_zero"]["instructions"]
+        calls = [row["rva"] for row in allocation if row["text"].endswith("sub_180088FC0")]
+        self.assertEqual(calls, ["0x94692", "0x946a1", "0x946b3"])
+        self.assertEqual([row["rva"] for row in evidence["unconditional_history_and_background_release"]["instructions"]
+            if row["text"].endswith("sub_18014FBA0")], ["0x8ccf6", "0x8cd00"])
+        convert = {row["rva"]: row for row in evidence["actual_converter_parameters_and_dimension_commit"]["instructions"]}
+        self.assertEqual(convert["0x8cccb"]["text"], "mov     [rbx], r9d")
+        self.assertEqual(convert["0x8cce4"]["text"], "mov     edx, 4")
+        self.assertEqual(convert["0x8ccdd"]["text"], "mov     [rsp+88C8h+var_88A8], eax")
+        self.assertFalse(self.report["boundaries"]["ownership"]["converter_failure_reverts_dimensions"])
+        self.assertFalse(self.report["boundaries"]["ownership"]["universal_truncation_failure"])
+
+    def test_wrong_frame_layout_transparency_lzw_and_release_assumptions_fail(self):
+        for group, field, value in (("caller", "decoder_calls_per_wrapper", 2),
+                ("caller", "delay_drives_current_playback", True), ("header", "palette_internal_layout", "R,G,B,A"),
+                ("image", "transparent_pixels_mark_history_before_skipping_write", False),
+                ("image", "background_index0_filled", True), ("image", "first_background_fill_bytes", "R,G,B,A"),
+                ("lzw", "accepted_minimum_code_sizes", [2, 8]), ("lzw", "dictionary_entries", 4096),
+                ("lzw", "end_code_requires_full_raster", True), ("ownership", "universal_truncation_failure", True)):
+            report = copy.deepcopy(self.report)
+            report["boundaries"][group][field] = value
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, "boundary requires semantic review"):
+                self.verify(report)
+
+    def test_rehashed_native_bytes_edges_vectors_semantics_and_remaining_cannot_be_forged(self):
+        from host import _lighting_gif_decoder_projection
+        for mutate in (lambda r: r["current_native_release"].update(version="old"),
+                lambda r: r["native"]["complete_selected_functions"].pop(),
+                lambda r: r["native"]["verified_call_edges"][0].update(target_rva="0x98c80"),
+                lambda r: r["native"]["verified_data_regions"][0].update(raw_hex="00"),
+                lambda r: r["instruction_evidence"]["history_precedes_transparency_and_rgba_emit"]["instructions"].clear(),
+                lambda r: r["reviewed_semantics"].update(raster="background always uses RGBA"),
+                lambda r: r["fixed_vectors"]["first_images"][1]["expected"].update(pixels_rgba8_hex="112233ff445566ff"),
+                lambda r: r["dependencies"][0].update(pointer="/unreviewed"),
+                lambda r: r["remaining_chains"].clear()):
+            report = copy.deepcopy(self.report)
+            mutate(report)
+            report["reviewed_selection_sha256"] = hashlib.sha256(json.dumps(_lighting_gif_decoder_projection(report),
+                ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+            with self.assertRaisesRegex(ValueError, "selected bytes require semantic review"):
+                self.verify(report)
+
+    def test_exact_upstream_pointers_reject_changes_and_allow_unrelated_refresh(self):
+        from host import _lighting_gif_decoder_dependencies
+        previous = copy.deepcopy(self.previous)
+        previous["independent_refresh"] = True
+        self.assertEqual(_lighting_gif_decoder_dependencies(previous), self.report["dependencies"])
+        for mode in ("missing", "changed", "unresolved"):
+            previous = copy.deepcopy(self.previous)
+            if mode == "missing":
+                previous["lighting_psd_decoder_chain"]["remaining_chains"].pop(0)
+            elif mode == "changed":
+                previous["lighting_media_codec_boundaries"]["boundaries"]["caller"]["required_channels"] = 3
+            else:
+                previous["lighting_psd_decoder_chain"]["bounded_observation_complete"] = False
+            with self.subTest(mode=mode), self.assertRaisesRegex(ValueError, "upstream pointer requires review"):
+                _lighting_gif_decoder_dependencies(previous)
+
+    def test_remaining_failures_snapshot_and_real_execution_stay_separate(self):
+        from analysis import semantic_query_gaps
+        report = self.report
+        findings = [row for row in semantic_query_gaps(report, ".analysis/results/host-current/local-audit.json")
+            if row["kind"] == "semantic_query_chain_unresolved"]
+        self.assertEqual([row["finding"] for row in findings], report["remaining_chains"])
+        self.assertEqual(len(findings), 3)
+        self.assertEqual([row["pointer"] for row in findings], ["/remaining_chains"] * 3)
+        self.assertEqual(report["verification"]["global_native_failures_retained"], 10)
+        for field, value in (("source_chain_complete", True), ("target_execution", True),
+                ("actual_dll_comparison", "verified"), ("ui_backend_wiring", "verified"),
+                ("runtime_acceptance", "verified"), ("changed_during_query", [{"path": "changed"}])):
+            changed = copy.deepcopy(report)
+            changed[field] = value
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, "static boundary was promoted"):
+                self.verify(changed)
+        changed = copy.deepcopy(report)
+        changed["native"]["failures"].clear()
+        with self.assertRaisesRegex(ValueError, "capture failure was hidden"):
+            self.verify(changed)
+        self.assertEqual(self.verify(json.loads(json.dumps(report, ensure_ascii=False))), report["verification"])
+        self.assertEqual(report["maintenance_lifecycle"]["temporary_artifacts_created"], [])
+        self.assertEqual(report["maintenance_lifecycle"]["analysis_sessions_created"], [])
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+
+class LightingPsdDecoderChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        from host import collect_lighting_psd_decoder_chain
+        cls.audit = HostLocalAudit()
+        cls.report = collect_lighting_psd_decoder_chain(cls.audit)
+
+    def verify(self, report):
+        from host import _verify_lighting_psd_decoder_chain
+        return _verify_lighting_psd_decoder_chain(report)
+
+    def pixels(self, data, width=1, height=1, channels=3, depth=8, compression=0, requested_bpc=8):
+        from host import _lighting_psd_decoder_pixels
+        return _lighting_psd_decoder_pixels(bytes.fromhex(data), width, height, channels, depth, compression, requested_bpc)
+
+    def test_current_original_complete_functions_edges_slots_and_pe_constants(self):
+        native = self.report["native"]
+        self.assertEqual(self.report["current_native_release"]["declaration"]["resourceVersion"], "4.0.55.0")
+        self.assertEqual(native["input"]["sha256"],
+            "cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa")
+        self.assertEqual(len(native["complete_selected_functions"]), 16)
+        self.assertEqual(len(native["verified_call_edges"]), 19)
+        functions = {row["rva"] for row in native["complete_selected_functions"]}
+        self.assertTrue({"0x8cd70", "0x95570", "0x90680", "0x910a0"} <= functions)
+        self.assertFalse({"0x8b480", "0x8fb40", "0x95910", "0x98c80", "0x8e920"} & functions)
+        self.assertEqual([row["target_rva"] for row in native["verified_indirect_slots"]],
+            ["0x8b3e0", "0x8b400", "0x8b440"])
+        regions = {row["role"]: bytes.fromhex(row["raw_hex"]) for row in native["verified_data_regions"]}
+        self.assertEqual(len(regions), 5)
+        self.assertEqual(struct.unpack("<f", regions["alpha_byte_maximum"]), (255.0,))
+        self.assertEqual(struct.unpack("<f", regions["alpha_word_maximum"]), (65535.0,))
+        self.assertEqual(struct.unpack("<f", regions["alpha_inverse_one"]), (1.0,))
+        self.assertEqual(len(self.report["instruction_evidence"]), 16)
+
+    def test_header_actual_reserved_skip_signed_dimensions_channels_mode_and_sections(self):
+        evidence = self.report["instruction_evidence"]
+        header = {row["rva"]: row for row in evidence["header_signature_version_reserved_channels"]["instructions"]}
+        self.assertEqual(header["0x8cd96"]["text"], "cmp     eax, 38425053h")
+        self.assertEqual(header["0x8cdad"]["text"], "mov     edx, 6")
+        self.assertTrue(header["0x8cdb2"]["text"].endswith("sub_180091B50"))
+        self.assertEqual(header["0x8cdbf"]["text"], "cmp     eax, 11h")
+        self.assertTrue(header["0x8cdc2"]["text"].startswith("jb "))
+        fields = {row["rva"]: row for row in evidence["dimensions_depth_rgb_and_sections"]["instructions"]}
+        self.assertTrue(fields["0x8cdfd"]["text"].startswith("jge "))
+        self.assertTrue(fields["0x8ce04"]["text"].startswith("jl "))
+        self.assertEqual(fields["0x8ce4f"]["text"], "cmp     eax, 3")
+        for site in ("0x8ce5f", "0x8ce71", "0x8ce83"):
+            self.assertEqual(fields[site]["text"], "mov     edx, eax")
+        entry = self.report["boundaries"]["entry"]
+        self.assertEqual(entry["channel_count_range"], [0, 16])
+        self.assertFalse(entry["zero_dimensions_explicitly_rejected"])
+        self.assertFalse(entry["reserved_bytes_must_be_zero"])
+        self.assertFalse(entry["skip_return_checked"])
+
+    def test_independent_fixed_raw_rle_depth_and_matte_vectors(self):
+        for row in self.report["fixed_vectors"]["pixel_payloads"]:
+            kwargs = {key: value for key, value in row.items() if key not in ("name", "input_hex", "expected")}
+            result = self.pixels(row["input_hex"], **kwargs)
+            with self.subTest(name=row["name"]):
+                for field, expected in row["expected"].items():
+                    self.assertEqual(result[field], expected)
+        self.assertFalse(self.report["fixed_vectors"]["actual_dll_results"])
+
+    def test_missing_channels_zero_rgb_opaque_alpha_and_extra_planes_unread(self):
+        self.assertEqual(self.pixels("", channels=0)["pixels_le_hex"], "000000ff")
+        self.assertEqual(self.pixels("7f", channels=1)["pixels_le_hex"], "7f0000ff")
+        self.assertEqual(self.pixels("1020", channels=2)["pixels_le_hex"], "102000ff")
+        self.assertEqual(self.pixels("", channels=0, depth=16, requested_bpc=16)["pixels_le_hex"], "000000000000ffff")
+        result = self.pixels("102030ff7788", channels=5)
+        self.assertEqual(result["pixels_le_hex"], "102030ff")
+        self.assertEqual(result["bytes_consumed"], 4)
+        result = self.pixels("00100020003000ff7788", channels=16, compression=1)
+        self.assertEqual(result["pixels_le_hex"], "102030ff")
+        self.assertEqual(result["bytes_consumed"], 8)
+
+    def test_raw_big_endian_high_byte_and_only_uncompressed_retains16(self):
+        for requested in (8, 16):
+            with self.subTest(requested=requested):
+                result = self.pixels("00ff7fff8000", depth=16, requested_bpc=requested)
+                self.assertEqual(result["pixels_le_hex"], "007f80ff" if requested == 8 else "ff00ff7f0080ffff")
+                self.assertEqual(result["bits_per_channel"], requested)
+        result = self.pixels("00120056009a", depth=16, compression=1, requested_bpc=16)
+        self.assertEqual(result["pixels_le_hex"], "12569aff")
+        self.assertEqual(result["bits_per_channel"], 8)
+        evidence = self.report["instruction_evidence"]
+        high = {row["rva"]: row for row in evidence["raw16_current_high_byte"]["instructions"]}
+        self.assertEqual(high["0x8d2d4"]["text"], "mov     [rbp+rcx*4+0], ah")
+        storage = self.report["boundaries"]["storage"]
+        self.assertTrue(storage["retained16_sets_result_bpc_before_allocation_success_check"])
+        self.assertEqual(storage["all_other_paths_output_bpc"], 8)
+
+    def test_packbits_noop_literal_repeat_plane_bounds_and_row_crossing(self):
+        result = self.pixels("80011234", width=1, height=2, channels=1, compression=1)
+        self.assertEqual(result["pixels_le_hex"], "120000ff340000ff")
+        self.assertEqual(result["bytes_consumed"], 4)
+        self.assertEqual(self.pixels("ff55", width=2, channels=1, compression=1)["pixels_le_hex"], "550000ff550000ff")
+        result = self.pixels("8155", width=128, channels=1, compression=1)
+        self.assertEqual(result["pixels_le_hex"], "550000ff" * 128)
+        literal = "7f" + bytes(range(128)).hex()
+        result = self.pixels(literal, width=128, channels=1, compression=1)
+        self.assertEqual(result["pixels_le_hex"], b"".join(bytes((i, 0, 0, 255)) for i in range(128)).hex())
+        for data in ("011122", "fe33"):
+            with self.subTest(data=data):
+                result = self.pixels(data, width=1, channels=1, compression=1)
+                self.assertFalse(result["success"])
+                self.assertEqual(result["error"], "corrupt")
+                self.assertEqual(result["bytes_consumed"], 1)
+        table = {row["rva"]: row for row in self.report["instruction_evidence"]["rle_table_skip_and_full_plane_size"]["instructions"]}
+        self.assertEqual(table["0x8cf53"]["text"], "imul    edx, eax")
+        self.assertEqual(table["0x8cf56"]["text"], "add     edx, edx")
+        self.assertEqual(table["0x8cf7a"]["text"], "mov     r8d, r12d")
+
+    def test_alpha_endpoints_partial_float32_and_low_byte_word_storage(self):
+        for alpha in ("00", "ff"):
+            self.assertEqual(self.pixels("102030" + alpha, channels=4)["pixels_le_hex"], "102030" + alpha)
+        self.assertEqual(self.pixels("0080ff80", channels=4)["pixels_le_hex"], "0301ff80")
+        result = self.pixels("aaaa0000ffff5555", channels=4, depth=16, requested_bpc=16)
+        self.assertEqual(result["pixels_le_hex"], "00000200ffff5555")
+        alpha = self.report["boundaries"]["alpha"]
+        self.assertFalse(alpha["clamp_before_storage"])
+        self.assertFalse(alpha["alpha_modified"])
+        rows = {row["rva"]: row for row in self.report["instruction_evidence"]["alpha8_float_and_byte_truncation"]["instructions"]}
+        self.assertEqual(rows["0x8da7b"]["text"], "cvttss2si edx, xmm4")
+        self.assertEqual(rows["0x8da7f"]["text"], "mov     [rbp+rcx*4+0], dl")
+
+    def test_short_synthetic_payload_remains_unobserved_not_native_failure(self):
+        for data, depth, compression in (("1020", 8, 0), ("12345678", 16, 0), ("00", 8, 1), ("80", 8, 1)):
+            with self.subTest(data=data), self.assertRaisesRegex(ValueError, "unobserved callback-dependent"):
+                self.pixels(data, depth=depth, compression=compression)
+        from host import _lighting_psd_decoder_pixels
+        with self.assertRaisesRegex(ValueError, "outside the reviewed model"):
+            _lighting_psd_decoder_pixels(b"", 1025, 1025, 3, 8, 0)
+        with self.assertRaisesRegex(ValueError, "outside the reviewed model"):
+            _lighting_psd_decoder_pixels(b"", 1, 1, 17, 8, 0)
+        owner = self.report["boundaries"]["ownership"]
+        self.assertFalse(owner["raw_short_read_always_fails"])
+        self.assertFalse(owner["rle_short_read_always_fails"])
+        self.assertTrue(self.report["boundaries"]["rle"]["exhausted_scalar_reads_can_supply_zero"])
+        self.assertFalse(self.report["boundaries"]["scope"]["synthetic_model_is_product_rust_or_callback_execution"])
+
+    def test_failure_free_precedes_error_current4_bypass_and_output_commit(self):
+        evidence = self.report["instruction_evidence"]
+        failure = {row["rva"]: row for row in evidence["compressed_failure_release_before_error"]["instructions"]}
+        self.assertTrue(failure["0x8d29a"]["text"].endswith("sub_18014FBA0"))
+        self.assertIn('"corrupt"', failure["0x8d29f"]["text"])
+        convert = {row["rva"]: row for row in evidence["converter_actual4_and_current_bypass"]["instructions"]}
+        self.assertEqual(convert["0x8dae3"]["text"], "test    r8d, 0FFFFFFFBh")
+        self.assertTrue(convert["0x8daea"]["text"].endswith("loc_18008DB30"))
+        self.assertEqual(convert["0x8db01"]["text"], "mov     edx, 4")
+        self.assertEqual(convert["0x8db15"]["text"], "mov     edx, 4")
+        self.assertEqual(convert["0x8daf9"]["bytes"], "44897c2420")
+        self.assertTrue(convert["0x8db2a"]["text"].endswith("loc_18008CE12"))
+        output = {row["rva"]: row for row in evidence["success_output_metadata"]["instructions"]}
+        self.assertEqual(output["0x8db35"]["text"], "mov     dword ptr [rbx], 4")
+        self.assertEqual(output["0x8db3b"]["text"], "mov     [rdi], r15d")
+        self.assertEqual(output["0x8db3e"]["text"], "mov     [rsi], r9d")
+
+    def test_wrong_header_depth_rle_alpha_and_ownership_assumptions_fail(self):
+        for group, field, value in (("entry", "reserved_bytes_must_be_zero", True),
+                ("entry", "channel_count_range", [1, 4]), ("entry", "dimension_upper_gate_signed", False),
+                ("storage", "compressed16_uses_same_byte_plane_decoder", False),
+                ("storage", "extra_channel_pixels_consumed_or_skipped", True),
+                ("rle", "row_length_entries_used_to_bound_runs", True),
+                ("rle", "runs_can_cross_rows", False), ("alpha", "clamp_before_storage", True),
+                ("ownership", "raw_short_read_always_fails", True),
+                ("ownership", "compressed_overflow_frees_pixels_before_error", False)):
+            report = copy.deepcopy(self.report)
+            report["boundaries"][group][field] = value
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, "boundary requires semantic review"):
+                self.verify(report)
+
+    def test_rehashed_sources_bytes_edges_semantics_vectors_dependencies_and_remaining_fail(self):
+        from host import _lighting_psd_decoder_projection
+        for mutate in (lambda r: r["current_native_release"].update(version="old"),
+                lambda r: r["native"]["complete_selected_functions"].pop(),
+                lambda r: r["native"]["verified_call_edges"][0].update(target_rva="0x95910"),
+                lambda r: r["native"]["verified_data_regions"][2].update(raw_hex="00000000"),
+                lambda r: r["instruction_evidence"]["rle_table_skip_and_full_plane_size"]["instructions"].clear(),
+                lambda r: r["reviewed_semantics"].update(packbits="decode16bit samples and reset every row"),
+                lambda r: r["fixed_vectors"]["pixel_payloads"][1]["expected"].update(pixels_le_hex="3478bcff"),
+                lambda r: r["dependencies"][0].update(section="unreviewed"),
+                lambda r: r["remaining_chains"].clear()):
+            report = copy.deepcopy(self.report)
+            mutate(report)
+            report["reviewed_selection_sha256"] = hashlib.sha256(json.dumps(_lighting_psd_decoder_projection(report),
+                ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+            with self.assertRaisesRegex(ValueError, "selected bytes require semantic review"):
+                self.verify(report)
+
+    def test_remaining_chains_snapshot_and_real_execution_stay_separate(self):
+        from analysis import semantic_query_gaps
+        findings = [row for row in semantic_query_gaps(self.report, ".analysis/results/host-current/local-audit.json")
+            if row["kind"] == "semantic_query_chain_unresolved"]
+        self.assertEqual([row["finding"] for row in findings], self.report["remaining_chains"])
+        self.assertEqual(len(findings), 3)
+        self.assertEqual([row["pointer"] for row in findings], ["/remaining_chains"] * 3)
+        self.assertFalse(any(name in self.report["remaining_chains"][0]["owner"]
+            for name in ("PSD", "PIC", "PNG", "PNM", "BMP", "TGA")))
+        for field, value in (("source_chain_complete", True), ("target_execution", True),
+                ("actual_dll_comparison", "verified"), ("ui_backend_wiring", "verified"),
+                ("runtime_acceptance", "verified"), ("changed_during_query", [{"path": "changed"}])):
+            report = copy.deepcopy(self.report)
+            report[field] = value
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, "static boundary was promoted"):
+                self.verify(report)
+        report = copy.deepcopy(self.report)
+        report["native"]["failures"].clear()
+        with self.assertRaisesRegex(ValueError, "capture failure was hidden"):
+            self.verify(report)
+        report = json.loads(json.dumps(self.report, ensure_ascii=False, sort_keys=True, allow_nan=False))
+        self.assertEqual(self.verify(report), report["verification"])
+        self.assertFalse(report["verification"]["all_format_decoders_complete"])
+        self.assertEqual(report["maintenance_lifecycle"]["temporary_artifacts_created"], [])
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+
+class LightingJpegDecoderChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        from host import collect_lighting_jpeg_decoder_chain
+        cls.audit = HostLocalAudit()
+        cls.report = collect_lighting_jpeg_decoder_chain(cls.audit)
+
+    def verify(self, report):
+        from host import _lighting_jpeg_decoder_verify
+        return _lighting_jpeg_decoder_verify(report)
+
+    def instructions(self, role):
+        return {row["rva"]: row for row in self.report["instruction_evidence"][role]["instructions"]}
+
+    def test_current_complete_native_selection_edges_callbacks_and_failure_boundary(self):
+        native = self.report["native"]
+        self.assertEqual(self.report["current_native_release"]["declaration"]["resourceVersion"], "4.0.55.0")
+        self.assertEqual(native["input"]["sha256"],
+            "cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa")
+        self.assertEqual(len(native["complete_selected_functions"]), 51)
+        self.assertEqual(len(native["verified_call_edges"]), 74)
+        self.assertEqual([row["target_rva"] for row in native["verified_indirect_slots"]],
+            ["0x8b3e0", "0x8b400", "0x8b440"])
+        for row in native["complete_selected_functions"]:
+            self.assertTrue(row["assembly_captured"] and row["pseudocode_captured"] and row["input_chunks_verified"])
+            self.assertEqual(row["failures"], 0)
+        functions = {row["rva"] for row in native["complete_selected_functions"]}
+        self.assertTrue({"0x8deb0", "0x98c80", "0x9a9e0", "0x9b020", "0x9b320", "0x9baa0",
+            "0x962c0", "0x96ae0", "0x96820", "0x97550", "0x98be0"} <= functions)
+        self.assertFalse({"0x8b480", "0x945c0", "0x8e160", "0x95570", "0x95910"} & functions)
+        self.assertFalse(native["all_pseudocode_captured"])
+        self.assertEqual(native["selected_pseudocode_failures"], [])
+        self.assertEqual(len(native["failures"]), 10)
+        self.assertEqual(len(self.report["instruction_evidence"]), 18)
+
+    def test_exact_pe_zigzag_padding_entropy_masks_and_simd_constants(self):
+        regions = {row["role"]: bytes.fromhex(row["raw_hex"])
+            for row in self.report["native"]["verified_data_regions"]}
+        self.assertEqual(len(regions), 6)
+        zigzag = regions["zigzag_padding_and_RGB_ids"]
+        self.assertEqual(list(zigzag[:16]), [0, 1, 8, 16, 9, 2, 3, 10, 17, 24, 32, 25, 18, 11, 4, 5])
+        self.assertEqual(sorted(zigzag[:64]), list(range(64)))
+        self.assertEqual(zigzag[64:79], bytes([63] * 15))
+        self.assertEqual(zigzag[79:], b"RGB")
+        masks = struct.unpack("<17I", regions["entropy_masks"])
+        self.assertEqual(masks, tuple((1 << i) - 1 for i in range(17)))
+        constants = regions["jpeg_simd_coefficients"]
+        self.assertEqual(struct.unpack_from("<8h", constants, 16), (2217, -5350) * 4)
+        self.assertEqual(struct.unpack_from("<4i", constants, 144), (512,) * 4)
+        self.assertEqual(struct.unpack_from("<4i", constants, 160), (16842752,) * 4)
+        self.assertEqual(struct.unpack_from("<8h", constants, 192), (5743,) * 8)
+        self.assertEqual(struct.unpack_from("<8h", constants, 208), (-1410,) * 8)
+        self.assertEqual(struct.unpack_from("<8h", constants, 224), (7258,) * 8)
+        self.assertEqual(struct.unpack_from("<8h", constants, 240), (-2925,) * 8)
+
+    def test_header_actual_precision_nonzero_dimensions_components_sampling_and_alignment(self):
+        rows = self.instructions("frame_header_sampling_and_checked_storage")
+        self.assertEqual(rows["0x983aa"]["text"], "cmp     byte ptr [rcx], 8")
+        self.assertEqual(rows["0x983bc"]["text"], "test    eax, eax")
+        self.assertEqual(rows["0x983ca"]["text"], "test    eax, eax")
+        self.assertEqual(rows["0x98431"]["text"], "cmp     edx, 4")
+        self.assertEqual(rows["0x98775"]["text"], "idiv    dword ptr [r8-4]")
+        self.assertEqual(rows["0x98784"]["text"], "idiv    dword ptr [r8]")
+        self.assertTrue(rows["0x98898"]["text"].endswith("sub_180093BA0"))
+        self.assertTrue(rows["0x988eb"]["text"].endswith("sub_180093AD0"))
+        self.assertEqual(rows["0x988ba"]["text"], "and     rax, 0FFFFFFFFFFFFFFF0h")
+        self.assertEqual(rows["0x988fe"]["text"], "and     rax, 0FFFFFFFFFFFFFFF0h")
+        entry = self.report["boundaries"]["entry"]
+        self.assertEqual(entry["sof_markers"], [192, 193, 194])
+        self.assertEqual(entry["component_counts"], [1, 3, 4])
+        self.assertEqual(entry["sampling_factors"], [1, 4])
+        self.assertFalse(entry["dnl_creates_missing_height"])
+
+    def test_sos_baseline_overwrites_end_and_progressive_has_no_history_guarantee(self):
+        rows = self.instructions("sos_scan_parameter_validation")
+        self.assertEqual(rows["0x99f72"]["text"], "cmp     edx, 3Fh ; '?'")
+        self.assertEqual(rows["0x99f7e"]["text"], "cmp     r8d, 40h ; '@'")
+        self.assertEqual(rows["0x99f91"]["text"], "cmp     al, 0E0h")
+        self.assertEqual(rows["0x99f96"]["text"], "cmp     ecx, 0Eh")
+        self.assertEqual(rows["0x99fc0"]["text"], "mov     dword ptr [rsi+4838h], 3Fh ; '?'")
+        scans = self.report["boundaries"]["scans"]
+        self.assertTrue(scans["baseline_spectral_end_overwritten_to63"])
+        self.assertFalse(scans["duplicate_scan_ids_explicitly_rejected"])
+        self.assertFalse(scans["scan_history_or_high_low_relation_validated"])
+        self.assertEqual(scans["progressive_successive_high_low_max"], 13)
+        self.assertIn("EOB count persists", scans["progressive"])
+
+    def test_marker_error_and_missing_restart_preserve_actual_early_success(self):
+        rows = self.instructions("body_marker_early_success_and_eoi_finish")
+        self.assertTrue(rows["0x99696"]["text"].endswith("sub_1800979E0"))
+        self.assertTrue(rows["0x9969f"]["text"].endswith("loc_1800996F4"))
+        self.assertEqual(rows["0x996f4"]["text"], "mov     esi, 1")
+        self.assertTrue(rows["0x996ed"]["text"].endswith("sub_18009A830"))
+        scan = self.instructions("baseline_actual_idct_callback")
+        self.assertEqual(scan["0x9a2e2"]["text"], "and     al, 0F8h")
+        self.assertEqual(scan["0x9a2e4"]["text"], "cmp     al, 0D0h")
+        self.assertTrue(scan["0x9a2e6"]["text"].endswith("loc_18009A48D"))
+        success = self.instructions("restart_missing_marker_returns_success")
+        self.assertEqual(success["0x9a48d"]["text"], "mov     r14d, 1")
+        self.assertFalse(self.report["boundaries"]["scans"]["eoi_required_for_all_success"])
+        self.assertFalse(self.report["boundaries"]["scans"]["missing_restart_always_fails"])
+        self.assertTrue(self.report["boundaries"]["tables_and_markers"]["exhausted_scalar_reads_may_supply_zero"])
+        self.assertTrue(self.report["boundaries"]["ownership"]["marker_error_can_leave_uninitialized_component_or_coefficient_data"])
+
+    def test_actual_scalar_sse2_slots_and_baseline_progressive_indirect_call_sites(self):
+        rows = self.instructions("scalar_sse_callback_assignment")
+        self.assertEqual(rows["0x9613f"]["text"], "mov     [rcx+4870h], rax")
+        self.assertEqual(rows["0x96180"]["text"], "mov     [rsi+4878h], rax")
+        self.assertEqual(rows["0x9618e"]["text"], "mov     [rsi+4880h], rax")
+        cpu = self.instructions("cpuid_sse2_selection")
+        self.assertEqual(cpu["0x96ac9"]["text"], "shr     eax, 1Ah")
+        dispatch = self.report["native"]["verified_dynamic_dispatch"]
+        self.assertEqual([row["byte_offset"] for row in dispatch["context_slots"]], [18544, 18552, 18560])
+        self.assertEqual([row["sse2_target"] for row in dispatch["context_slots"]], ["0x96ae0", "0x972f0", "0x97550"])
+        self.assertEqual([row["instruction"]["rva"] for row in dispatch["call_sites"]],
+            ["0x9a2ac", "0x9a63d", "0x9a928", "0x98f15", "0x9943b", "0x98fd3"])
+        self.assertTrue(all(row["instruction"]["text"].startswith("call    ") for row in dispatch["call_sites"]))
+        finish = self.instructions("progressive_actual_finish_callback")
+        self.assertTrue(finish["0x9a908"]["text"].endswith("sub_18009BAA0"))
+        self.assertEqual(finish["0x9a928"]["text"], "call    qword ptr [r15+4870h]")
+
+    def test_fixed_scalar_idct_dc_both_ac_axes_and_clamp_vectors(self):
+        from host import _lighting_jpeg_decoder_block
+        for row in self.report["fixed_vectors"]["scalar_blocks"]:
+            with self.subTest(name=row["name"]):
+                self.assertEqual(_lighting_jpeg_decoder_block(row["coefficients"]).hex(), row["expected_pixels_hex"])
+        self.assertEqual(len(self.instructions("scalar_complete_idct")), 273)
+        self.assertEqual(len(self.instructions("sse2_complete_idct")), 405)
+        for coefficients in ([0] * 63, [32768] + [0] * 63, [-32769] + [0] * 63, [False] + [0] * 63):
+            with self.assertRaisesRegex(ValueError, "requires 64 signed16"):
+                _lighting_jpeg_decoder_block(coefficients)
+        self.assertFalse(self.report["boundaries"]["scope"]["synthetic_model_executes_jpeg_stream_or_simd"])
+
+    def test_fixed_color_rows_simd_groups_tail_and_opaque_k_conversion(self):
+        from host import _lighting_jpeg_decoder_row
+        for row in self.report["fixed_vectors"]["rows"]:
+            for simd in (False, True):
+                with self.subTest(name=row["name"], simd=simd):
+                    actual = _lighting_jpeg_decoder_row([bytes.fromhex(value) for value in row["planes_hex"]], row["color"], simd=simd)
+                    self.assertEqual(actual.hex(), row["expected_rgba_hex"])
+                    self.assertEqual(actual[3::4], b"\xff" * (len(actual) // 4))
+        self.assertEqual(_lighting_jpeg_decoder_row([b"\xff", b"\xff", b"\xff", b"\x00"], "cmyk"), b"\x00\x00\x00\xff")
+        self.assertEqual(self.instructions("current_rgba_row_and_opaque_alpha")["0x990fc"]["text"], "mov     byte ptr [rbx], 0FFh")
+        for planes, color in (([], "rgb"), ([b""], "gray"), ([b"a", b"b"], "rgb"), ([b"a", b"bb", b"c"], "ycbcr"), ([b"a"], "unknown")):
+            with self.assertRaisesRegex(ValueError, "complete equal-width"):
+                _lighting_jpeg_decoder_row(planes, color)
+
+    def test_resampling_original_horizontal_tail_vertical_combination_and_generic(self):
+        from host import _lighting_jpeg_decoder_resample
+        for row in self.report["fixed_vectors"]["resampling"]:
+            with self.subTest(name=row["name"]):
+                self.assertEqual(_lighting_jpeg_decoder_resample(bytes.fromhex(row["near_hex"]), bytes.fromhex(row["far_hex"]),
+                    row["horizontal"], row["vertical"]).hex(), row["expected_hex"])
+        self.assertEqual(_lighting_jpeg_decoder_resample(b"\x0a", b"\x32", 2, 1), b"\x0a\x0a")
+        self.assertEqual(_lighting_jpeg_decoder_resample(b"\x0a", b"\x32", 2, 2), b"\x14\x14")
+        tail = self.instructions("horizontal2_original_last_weight")
+        self.assertEqual(tail["0x99b25"]["text"], "movzx   r9d, byte ptr [rdx+r9-2]")
+        self.assertEqual(tail["0x99b2b"]["text"], "lea     r9d, [r9+r9*2]")
+        for near, far, horizontal, vertical in ((b"", b"", 1, 1), (b"a", b"bb", 1, 2), (b"a", b"b", 5, 1), (b"a", b"b", 2, 0)):
+            with self.assertRaisesRegex(ValueError, "outside the reviewed sampling"):
+                _lighting_jpeg_decoder_resample(near, far, horizontal, vertical)
+
+    def test_cleanup_partial_components_context_output_metadata_and_unproven_unwind(self):
+        wrapper = self.instructions("context_allocation_and_release")
+        self.assertEqual(wrapper["0x8df3f"]["text"], "retn")
+        cleanup = self.instructions("owned_plane_cleanup")
+        frees = [row for row in cleanup.values() if row["text"].endswith("sub_18014FBA0")]
+        self.assertEqual([row["rva"] for row in frees], ["0x98c23", "0x98c37", "0x98c57"])
+        self.assertEqual(cleanup["0x98c3c"]["text"], "mov     qword ptr [rsi+rbx-10h], 0")
+        self.assertEqual(cleanup["0x98c5c"]["text"], "mov     qword ptr [rsi+rbx-8], 0")
+        output = self.instructions("output_commit_and_component_cleanup")
+        self.assertTrue(output["0x9954f"]["text"].endswith("sub_180099720"))
+        self.assertEqual(output["0x99561"]["text"], "mov     [rax], ecx")
+        self.assertEqual(output["0x99571"]["text"], "mov     [rax], ecx")
+        self.assertEqual(output["0x9958c"]["text"], "lea     ecx, ds:1[rdx*2]")
+        ownership = self.report["boundaries"]["ownership"]
+        self.assertTrue(ownership["component_allocation_failure_frees_partial_components"])
+        self.assertTrue(ownership["success_transfers_output_allocation"])
+        self.assertFalse(ownership["cpp_exception_unwind_or_heap_fault_recovery_established"])
+        self.assertFalse(ownership["separate_async_cancel_observed"])
+
+    def test_wrong_header_scan_eof_pixel_and_release_assumptions_are_rejected(self):
+        for group, field, value in (("entry", "component_counts", [1, 2, 3, 4]),
+                ("entry", "sample_bits", 16), ("entry", "dnl_creates_missing_height", True),
+                ("tables_and_markers", "body_marker_error_runs_progressive_finish", True),
+                ("scans", "missing_restart_always_fails", True), ("scans", "eoi_required_for_all_success", True),
+                ("scans", "duplicate_scan_ids_explicitly_rejected", True),
+                ("scans", "scan_history_or_high_low_relation_validated", True),
+                ("pixels", "horizontal2_last_inner_uses_previous_weight3", False),
+                ("ownership", "strict_short_read_or_eoi_guarantee", True),
+                ("ownership", "marker_error_can_leave_uninitialized_component_or_coefficient_data", False)):
+            report = copy.deepcopy(self.report)
+            report["boundaries"][group][field] = value
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, "boundary requires semantic review"):
+                self.verify(report)
+
+    def test_rehashed_sources_bytes_edges_dispatch_vectors_dependencies_still_require_review(self):
+        from host import _lighting_jpeg_decoder_projection
+        for mutate in (lambda r: r["current_native_release"].update(version="old"),
+                lambda r: r["native"]["complete_selected_functions"].pop(),
+                lambda r: r["native"]["verified_call_edges"][0].update(target_rva="0x945c0"),
+                lambda r: r["native"]["verified_dynamic_dispatch"]["context_slots"][0].update(sse2_target="0x962c0"),
+                lambda r: r["native"]["verified_data_regions"][0].update(raw_hex="00"),
+                lambda r: r["instruction_evidence"]["scalar_complete_idct"]["instructions"].clear(),
+                lambda r: r["reviewed_semantics"].update(entropy="all malformed scans fail"),
+                lambda r: r["fixed_vectors"]["scalar_blocks"][1].update(expected_pixels_hex="80" * 64),
+                lambda r: r["fixed_vectors"]["resampling"][2].update(expected_hex="0a214e64"),
+                lambda r: r["dependencies"][0].update(pointer="/unreviewed"),
+                lambda r: r["remaining_chains"].clear()):
+            report = copy.deepcopy(self.report)
+            mutate(report)
+            report["reviewed_selection_sha256"] = hashlib.sha256(json.dumps(_lighting_jpeg_decoder_projection(report),
+                ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+            with self.assertRaisesRegex(ValueError, "selected bytes require semantic review"):
+                self.verify(report)
+
+    def test_exact_upstream_pointers_reuse_semantic_validation_and_reject_change(self):
+        from host import _lighting_jpeg_decoder_dependencies
+        sections = {"lighting_psd_decoder_chain", "lighting_media_codec_boundaries", "lighting_media_resampler"}
+        previous = {key: value for key, value in json.loads((self.audit.a.ROOT / ".analysis/results/host-current/local-audit.json").read_bytes()).items()
+            if key in sections}
+        self.assertEqual(_lighting_jpeg_decoder_dependencies(previous), self.report["dependencies"])
+        self.assertEqual([row["pointer"] for row in self.report["dependencies"]],
+            ["/lighting_psd_decoder_chain/remaining_chains/0", "/lighting_media_codec_boundaries/reviewed_selection_sha256",
+                "/lighting_media_resampler/reviewed_selection_sha256"])
+        for section in ("lighting_psd_decoder_chain", "lighting_media_codec_boundaries", "lighting_media_resampler"):
+            changed = copy.deepcopy(previous)
+            changed[section]["boundaries"]["unreviewed"] = True
+            with self.subTest(section=section), self.assertRaisesRegex(ValueError, "boundary|bytes|selection"):
+                _lighting_jpeg_decoder_dependencies(changed)
+        changed = copy.deepcopy(previous)
+        changed["lighting_psd_decoder_chain"]["remaining_chains"][0]["owner"] = "JPEG only"
+        with patch("host._verify_lighting_psd_decoder_chain", return_value={}):
+            with self.assertRaisesRegex(ValueError, "exact upstream pointer changed"):
+                _lighting_jpeg_decoder_dependencies(changed)
+
+    def test_snapshot_remaining_chains_roundtrip_and_execution_stages_stay_separate(self):
+        from analysis import semantic_query_gaps
+        findings = [row for row in semantic_query_gaps(self.report, ".analysis/results/host-current/local-audit.json")
+            if row["kind"] == "semantic_query_chain_unresolved"]
+        self.assertEqual([row["finding"] for row in findings], self.report["remaining_chains"])
+        self.assertEqual(len(findings), 3)
+        self.assertEqual(self.report["remaining_chains"][0]["owner"], "HDR8E160")
+        for field, value in (("source_chain_complete", True), ("target_execution", True),
+                ("real_device_operations", True), ("product_code_modified", True),
+                ("rust_independent_implementation", "verified"), ("actual_dll_comparison", "verified"),
+                ("ui_backend_wiring", "verified"), ("runtime_acceptance", "verified"),
+                ("snapshot_stable", False), ("changed_during_query", ["changed"])):
+            report = copy.deepcopy(self.report)
+            report[field] = value
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, "static boundary was promoted"):
+                self.verify(report)
+        report = copy.deepcopy(self.report)
+        report["native"]["failures"].clear()
+        with self.assertRaisesRegex(ValueError, "capture failure was hidden"):
+            self.verify(report)
+        report = json.loads(json.dumps(self.report, ensure_ascii=False, sort_keys=True, allow_nan=False))
+        self.assertEqual(self.verify(report), report["verification"])
+        self.assertFalse(report["verification"]["all_format_decoders_complete"])
+        self.assertFalse(report["fixed_vectors"]["actual_dll_results"])
+        self.assertEqual(report["maintenance_lifecycle"]["temporary_artifacts_created"], [])
+        self.assertEqual(report["maintenance_lifecycle"]["analysis_sessions_created"], [])
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+
+class LightingAiFlatbufferTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        from host import _lighting_type_media_color_source, _lighting_ai_flatbuffer_resource
+        audit = HostLocalAudit()
+        original, _ = _lighting_type_media_color_source(audit)
+        cls.raw = audit.read(original)
+        cls.report = _lighting_ai_flatbuffer_resource(cls.raw)
+        resource = cls.report["resource"]
+        cls.model = cls.raw[resource["file_offset"]:resource["file_offset"] + resource["bytes"]]
+
+    def slot(self, offset, field):
+        vtable = offset - struct.unpack_from("<i", self.model, offset)[0]
+        relative = struct.unpack_from("<H", self.model, vtable + 4 + field * 2)[0]
+        self.assertNotEqual(relative, 0)
+        return offset + relative
+
+    def changed(self, offset, fmt, value):
+        result = bytearray(self.model)
+        struct.pack_into(fmt, result, offset, value)
+        return bytes(result)
+
+    def decode(self, data):
+        from host import _lighting_ai_flatbuffer_graph
+        return _lighting_ai_flatbuffer_graph(data)
+
+    def test_current_resource_graph_and_exact_constant_spans(self):
+        report = self.report
+        self.assertEqual((report["identifier"], report["version"], report["root_table_offset"]), ("TFL3", 3, 28))
+        self.assertEqual((report["model_bytes"], report["model_sha256"]), (59336,
+            "98f063f9d8a3e6263523afccfbb1e60e0611656f1c5401a3aa88864fd8e042dc"))
+        self.assertEqual(report["resource"]["rva"], "0x556438")
+        self.assertNotEqual(report["resource"]["file_offset"], int(report["resource"]["rva"], 16))
+        self.assertEqual([(row["name"], row["version"]) for row in report["operator_codes"]], [
+            ("CONV_2D", 1), ("MAX_POOL_2D", 1), ("RESHAPE", 1), ("FULLY_CONNECTED", 1), ("SOFTMAX", 1)])
+        graph, = report["subgraphs"]
+        self.assertEqual((graph["name"], graph["inputs"], graph["outputs"]), ("main", [0], [20]))
+        self.assertEqual([(row["opcode_index"], row["inputs"], row["outputs"]) for row in graph["operators"]], [
+            (0, [0, 5, 1], [12]), (0, [12, 6, 2], [13]), (1, [13], [14]),
+            (0, [14, 7, 3], [15]), (0, [15, 8, 4], [16]), (1, [16], [17]),
+            (2, [17, 10], [18]), (3, [18, 11, 9], [19]), (4, [19], [20])])
+        tensors = graph["tensors"]
+        self.assertEqual(len(tensors), 21)
+        self.assertEqual(tensors[0]["shape"], [1, 32, 32, 3])
+        self.assertEqual(tensors[0]["shape_signature"], [-1, 32, 32, 3])
+        self.assertEqual(tensors[20]["shape"], [1, 16])
+        self.assertEqual(tensors[10]["int32_constant"], [-1, 400])
+        self.assertTrue(all(row["quantization_fields"] == [] and row["has_rank"] for row in tensors))
+        buffers = report["buffers"]
+        self.assertEqual(len(buffers), 24)
+        self.assertEqual((buffers[12]["data_offset"], buffers[12]["bytes"], buffers[12]["sha256"]),
+            (536, 25600, "feebae6e213cd6e8c90ebbb400cc5d2b7ac97084961d00be0cd49593b8d15c85"))
+        self.assertIsNone(buffers[1]["data_offset"])
+        for row in buffers:
+            value = b"" if row["data_offset"] is None else self.model[row["data_offset"]:row["data_offset"] + row["bytes"]]
+            self.assertEqual(hashlib.sha256(value).hexdigest(), row["sha256"])
+
+    def test_options_distinguish_serialized_values_from_format_defaults(self):
+        ops = self.report["subgraphs"][0]["operators"]
+        conv = ops[0]["options"]
+        self.assertEqual((conv["padding"], conv["stride_w"], conv["stride_h"], conv["fused_activation"]), (1, 1, 1, 1))
+        self.assertEqual(conv["defaulted_fields"], ["dilation_w_factor", "dilation_h_factor"])
+        pool = ops[2]["options"]
+        self.assertEqual((pool["stride_w"], pool["stride_h"], pool["filter_width"], pool["filter_height"]), (2, 2, 2, 2))
+        self.assertEqual(pool["defaulted_fields"], ["fused_activation"])
+        self.assertIsNone(ops[6]["options"])
+        dense = ops[7]["options"]
+        self.assertEqual(dense["defaulted_fields"], ["fused_activation", "weights_format", "keep_num_dims", "asymmetric_quantize_inputs"])
+        self.assertEqual(ops[8]["options"]["beta"], 1.0)
+        self.assertEqual(ops[8]["options"]["defaulted_fields"], [])
+        self.assertEqual(self.report["metadata"][0]["nul_terminated_ascii"], "1.5.0")
+        signature, = self.report["signature_defs"]
+        self.assertEqual((signature["name"], signature["inputs"], signature["outputs"]),
+            ("serving_default", [{"name": "conv2d_input", "tensor_index": 0}], [{"name": "dense", "tensor_index": 20}]))
+
+    def test_shared_vtable_after_table_is_accepted(self):
+        tensors = self.report["subgraphs"][0]["tensors"]
+        self.assertTrue(any(struct.unpack_from("<i", self.model, row["table_offset"])[0] < 0 for row in tensors))
+        self.assertEqual(self.decode(self.model)["model_sha256"], self.report["model_sha256"])
+
+    def test_truncation_invalid_offsets_and_oversized_vectors_are_rejected(self):
+        root = self.report["root_table_offset"]
+        opcode_vector_slot = self.slot(root, 1)
+        opcode_vector = opcode_vector_slot + struct.unpack_from("<I", self.model, opcode_vector_slot)[0]
+        for changed in (self.model[:7], self.model[:-1], self.changed(0, "<I", len(self.model)),
+                self.changed(root, "<i", 0x7fffffff), self.changed(opcode_vector_slot, "<I", 0),
+                self.changed(opcode_vector, "<I", 0xffffffff)):
+            with self.subTest(bytes=len(changed)), self.assertRaises(ValueError):
+                self.decode(changed)
+
+    def test_bad_indices_and_union_discriminator_are_rejected(self):
+        graph = self.report["subgraphs"][0]
+        tensor = graph["tensors"][0]
+        op = graph["operators"][2]
+        input_slot = self.slot(op["table_offset"], 1)
+        input_vector = input_slot + struct.unpack_from("<I", self.model, input_slot)[0]
+        for changed, error in ((self.changed(self.slot(tensor["table_offset"], 2), "<I", 24), "buffer index"),
+                (self.changed(self.slot(op["table_offset"], 0), "<I", 5), "opcode index"),
+                (self.changed(input_vector + 4, "<i", -1), "tensor index"),
+                (self.changed(self.slot(op["table_offset"], 3), "<B", 1), "options type")):
+            with self.subTest(error=error), self.assertRaisesRegex(ValueError, error):
+                self.decode(changed)
+
+    def test_string_table_and_constant_size_boundaries_are_enforced(self):
+        root = self.report["root_table_offset"]
+        vtable = root - struct.unpack_from("<i", self.model, root)[0]
+        description_slot = self.slot(root, 3)
+        description = description_slot + struct.unpack_from("<I", self.model, description_slot)[0]
+        description_end = description + 4 + struct.unpack_from("<I", self.model, description)[0]
+        shape_tensor = self.report["subgraphs"][0]["tensors"][10]
+        shape_slot = self.slot(shape_tensor["table_offset"], 0)
+        shape_vector = shape_slot + struct.unpack_from("<I", self.model, shape_slot)[0]
+        for changed, error in ((self.changed(description_end, "<B", 1), "NUL terminated"),
+                (self.changed(vtable, "<H", 3), "table header"),
+                (self.changed(vtable + 2, "<H", 4), "table field"),
+                (self.changed(shape_vector + 4, "<i", 3), "constant bytes")):
+            with self.subTest(error=error), self.assertRaisesRegex(ValueError, error):
+                self.decode(changed)
+
+    def test_resource_identity_absence_and_ambiguity_are_rejected(self):
+        from host import _lighting_ai_flatbuffer_resource
+        resource = self.report["resource"]
+        changed = bytearray(self.raw)
+        changed[resource["file_offset"] + 536] ^= 1
+        with self.assertRaisesRegex(ValueError, "identity requires review"):
+            _lighting_ai_flatbuffer_resource(bytes(changed))
+        for rows in ([], [resource, resource]):
+            with self.subTest(rows=len(rows)), patch("host.pe_resource_entries", return_value=rows), \
+                    self.assertRaisesRegex(ValueError, "absent or ambiguous"):
+                _lighting_ai_flatbuffer_resource(self.raw)
+
+
+class LightingAiModelChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        from host import collect_lighting_ai_model_chain
+        cls.audit = HostLocalAudit()
+        cls.report = collect_lighting_ai_model_chain(cls.audit)
+
+    def verify(self, report):
+        from host import _lighting_ai_model_verify
+        return _lighting_ai_model_verify(report)
+
+    def test_current_source_release_model_graph_and_capture_failures(self):
+        report, native = self.report, self.report["native"]
+        self.assertEqual(report["current_ai_release"]["version"], "4.0.896")
+        self.assertEqual(report["current_ai_release"]["declaration"]["resourceVersion"], "1.0.1.0")
+        self.assertEqual(native["input"]["sha256"], "20604ff3a2193710a76147931da4528ae1092ad89149e517f7b95c8996d3e191")
+        self.assertEqual((len(native["complete_selected_functions"]), len(native["verified_call_edges"])), (109, 83))
+        self.assertEqual((native["functions_total"], native["functions_captured"]), (14934, 14934))
+        self.assertEqual(native["selected_pseudocode_failures"], [])
+        self.assertEqual(len(native["failures"]), 1)
+        self.assertEqual(native["failures"][0]["stage"], "2c83d0:hexrays")
+        self.assertFalse(native["all_pseudocode_captured"])
+        model = report["model"]
+        self.assertEqual((model["version"], model["model_bytes"], model["description"]), (3, 59336, "MLIR Converted."))
+        graph, = model["subgraphs"]
+        self.assertEqual((len(graph["tensors"]), len(graph["operators"]), len(model["buffers"])), (21, 9, 24))
+        self.assertEqual((graph["inputs"], graph["outputs"]), ([0], [20]))
+        self.assertEqual(graph["tensors"][0]["shape"], [1, 32, 32, 3])
+        self.assertEqual(graph["tensors"][20]["shape"], [1, 16])
+        self.assertEqual([graph["tensors"][i]["shape"] for i in (12, 13, 14, 15, 16, 17, 18)],
+            [[1, 30, 30, 16], [1, 28, 28, 16], [1, 14, 14, 16], [1, 12, 12, 16],
+                [1, 10, 10, 16], [1, 5, 5, 16], [1, 400]])
+
+    def test_actual_five_builtin_version_ranges_and_pe_callback_tables(self):
+        report = self.report
+        bindings = {row["builtin_code"]: row for row in report["operator_bindings"]}
+        self.assertEqual({code: row["registered_versions_inclusive"] for code, row in bindings.items()},
+            {3: [1, 8], 17: [1, 3], 22: [1, 1], 9: [1, 11], 25: [1, 3]})
+        self.assertEqual(bindings[3]["callbacks"], {"init": "0x4bcf0", "free": "0x4bd60", "prepare": "0x4db30", "invoke": "0x4db40"})
+        image_base = int(report["native"]["image_base"], 16)
+        regions = {row["rva"]: row for row in report["native"]["verified_data_regions"]}
+        for op in report["model"]["operator_codes"]:
+            binding = bindings[op["effective_builtin_code"]]
+            self.assertEqual((op["version"], binding["model_version"]), (1, 1))
+            callbacks = struct.unpack("<4Q", bytes.fromhex(regions[binding["registration_rva"]]["raw_hex"])[:32])
+            self.assertEqual(callbacks, tuple(image_base + int(binding["callbacks"][name], 16) for name in ("init", "free", "prepare", "invoke")))
+        self.assertEqual(len(regions), 7)
+        self.assertTrue(all(row["actual_pe_bytes_verified"] for row in regions.values()))
+
+    def test_actual_mounted_callers_startup_gates_and_sixteen_primary_colors(self):
+        report = self.report
+        self.assertEqual(set(report["selected"]), {"initialize_ai_generator", "initialize_ai_action", "media_parameters", "generator_choices", "panel", "startup"})
+        owners = {row["id"]: row for row in report["complete_source_owners"]}
+        startup = owners[report["selected"]["startup"]]
+        self.assertEqual(startup["body_sha256"], "9b12cfae75b3684098993950ebc969cfba05240fc74d4713a9ed9d493139e25c")
+        self.assertIn('!(0,u.I4)())return', startup["body"])
+        self.assertIn('"RzChromaAIColorGenDLL"===e.name', startup["body"])
+        self.assertIn('await t.A.initChromaAiColorGen(n,[127,65535,802917,2460111,3753048,4894788,8008747,8323327,8388352,10517857,13421772,16553138,16711680,16744192,16776960,16777215])', startup["body"])
+        self.assertEqual(report["boundaries"]["caller"]["media_input"], [32, 32, 4])
+        self.assertEqual(report["boundaries"]["caller"]["mounted_effect"], 18)
+        self.assertFalse(report["boundaries"]["caller"]["quick_all_products_reviewed"])
+
+    def test_normalization_float32_bytes_and_alpha_ignored_without_inference(self):
+        from host import _lighting_ai_model_normalize
+        vector = self.report["fixed_vectors"]["normalization_rgba"]
+        raw = bytes.fromhex(vector["input_hex"])
+        actual = _lighting_ai_model_normalize(raw)
+        self.assertEqual(b"".join(struct.pack("<f", value) for value in actual).hex(),
+            "00000000fffefe3e0000803f8180803bfffe7e3f8180003f")
+        self.assertEqual(vector["expected_float32_hex"], "00000000fffefe3e0000803f8180803bfffe7e3f8180003f")
+        changed_alpha = raw[:3] + b"\xff" + raw[4:7] + b"\x00"
+        self.assertEqual(_lighting_ai_model_normalize(changed_alpha), actual)
+        self.assertEqual(_lighting_ai_model_normalize(b"\x00\x00\x00\xff\xff\xff\xff\x00"), [0.0] * 3 + [1.0] * 3)
+        with self.assertRaises(ValueError):
+            _lighting_ai_model_normalize(b"\x00\x01\x02")
+        self.assertEqual(self.report["fixed_vectors"]["actual_inference_results"], "not_executed")
+
+    def test_ranking_descends_ties_stay_stable_and_color_mapping_is_not_scores(self):
+        from host import _lighting_ai_model_rank
+        self.assertEqual(_lighting_ai_model_rank(list(range(16))), self.report["fixed_vectors"]["rank_scores_ascending"])
+        self.assertEqual(_lighting_ai_model_rank([0.0] * 16), self.report["fixed_vectors"]["rank_all_equal_primary_order"])
+        scores = [0.0] * 16
+        scores[2] = scores[5] = 1.0
+        self.assertEqual(_lighting_ai_model_rank(scores, list(range(16))), [2, 5, 0, 1, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
+        scores[5] += 2.0 ** -25
+        self.assertEqual(_lighting_ai_model_rank(scores, list(range(16)))[:2], [2, 5])
+        self.assertEqual(_lighting_ai_model_rank(list(range(16)), [123] * 16), [123] * 16)
+        for scores in ([0.0] * 15, [float("nan")] * 16, [float("inf")] * 16, [1e39] * 16):
+            with self.subTest(scores=scores[0]), self.assertRaises(ValueError):
+                _lighting_ai_model_rank(scores)
+
+    def test_real_input_and_invoke_status_boundaries_are_preserved(self):
+        boundary = self.report["boundaries"]
+        self.assertTrue(boundary["input"]["checks_input_tensor_float_type"])
+        self.assertFalse(boundary["input"]["checks_typed_input_pointer_before_pixel_writes"])
+        self.assertFalse(boundary["input"]["requires_exact_model_width_height"])
+        self.assertFalse(boundary["input"]["input_buffer_size_or_tensor_shape_checked"])
+        rows = self.report["instruction_evidence"]["input_guards_normalization_unchecked_invoke_and_ranking"]["instructions"]
+        self.assertEqual(sum(row["text"].startswith("divss") for row in rows), 3)
+        at = next(i for i, row in enumerate(rows) if row["rva"] == "0x12a7")
+        self.assertEqual(rows[at]["text"], "call    sub_18001AB20")
+        self.assertEqual([row["text"].split()[0] for row in rows[at + 1:at + 10]],
+            ["mov", "mov", "mov", "mov", "mov", "mov", "imul", "mov", "movss"])
+        self.assertFalse(boundary["output"]["invoke_status_checked_by_rank_caller"])
+        self.assertFalse(boundary["output"]["zero_output_is_inference_success"])
+        self.assertEqual(self.report["fixed_vectors"]["structural_failure"], {"output_uint32": [0] * 16, "inference_executed": False})
+
+    def test_initialization_normal_cleanup_and_real_failure_leak_are_distinguished(self):
+        boundary = self.report["boundaries"]
+        self.assertTrue(boundary["initialization"]["allocate_tensors_status_checked"])
+        self.assertTrue(boundary["initialization"]["allocate_failure_deletes_interpreter"])
+        self.assertTrue(boundary["initialization"]["builder_missing_interpreter_clears_model_without_release"])
+        self.assertFalse(boundary["initialization"]["outer_create_requires_valid_interpreter"])
+        self.assertFalse(boundary["initialization"]["native_checks_complete_flatbuffer_bounds"])
+        rows = {row["rva"]: row["text"] for row in self.report["instruction_evidence"]["model_build_allocate_and_failure_ownership"]["instructions"]}
+        self.assertEqual(rows["0x167e"], "call    sub_18001A6C0")
+        self.assertEqual(rows["0x1683"], "test    eax, eax")
+        self.assertEqual(rows["0x16a0"], "call    sub_180019D70")
+        self.assertEqual(rows["0x16b6"], "mov     qword ptr [rax], 0")
+        self.assertEqual(boundary["lifetime"]["destroy_order"],
+            ["interpreter_and_subgraphs", "model_memory_allocation_wrapper", "generator", "export_wrapper"])
+        self.assertTrue(boundary["lifetime"]["native_cancel_callback_supported_in_generic_interpreter"])
+        self.assertFalse(boundary["lifetime"]["generator_exports_expose_cancel_or_install_callback"])
+        self.assertFalse(boundary["lifetime"]["generator_export_inflight_drain"])
+
+    def test_default_delegate_is_real_and_host_partition_selection_remains_unverified(self):
+        native, execution = self.report["native"], self.report["boundaries"]["execution"]
+        self.assertEqual([row["target_rva"] for row in native["verified_indirect_slots"]],
+            ["0x4ab0", "0x3024c0", "0x304800", "0x304990", "0x3049a0"])
+        self.assertTrue(all(row["actual_pe_bytes_verified"] for row in native["verified_indirect_slots"]))
+        self.assertTrue(execution["default_delegate_creator_registered"])
+        self.assertTrue(execution["delegate_can_replace_execution_plan"])
+        self.assertTrue(execution["delegate_apply_failure_can_restore_original_plan"])
+        self.assertFalse(execution["delegate_enabled_unconditionally_on_every_host"])
+        self.assertFalse(execution["all_optimized_microkernel_numeric_semantics_reviewed"])
+        functions = {row["rva"] for row in native["complete_selected_functions"]}
+        self.assertTrue({"0x2ef970", "0x2efdb0", "0x2f1b90", "0x304800", "0x3049a0", "0x2ef6a0", "0x289610"} <= functions)
+
+    def test_exact_upstream_pointer_change_rejected_without_whole_mutable_receipt_dependency(self):
+        import analysis as a
+        import host
+        previous = json.loads((a.ROOT / ".analysis/results/host-current/local-audit.json").read_bytes())
+        dependencies = host._lighting_ai_model_dependencies(previous)
+        self.assertEqual(dependencies, self.report["dependencies"])
+        self.assertTrue(all(row["pointer"].startswith("/lighting_") for row in dependencies))
+        changed = copy.deepcopy(previous)
+        changed["lighting_hdr_decoder_chain"]["remaining_chains"][1]["status"] += " changed"
+        with patch.object(host, "_lighting_hdr_decoder_verify", return_value={}), self.assertRaisesRegex(ValueError, "exact upstream pointer changed"):
+            host._lighting_ai_model_dependencies(changed)
+        previous["unrelated_parallel_publication"] = {"status": "changed"}
+        self.assertEqual(host._lighting_ai_model_dependencies(previous), dependencies)
+        self.assertNotIn(".analysis/results/host-current/local-audit.json", self.audit.artifacts)
+
+    def test_source_owner_graph_pseudocode_table_and_instruction_changes_rejected(self):
+        import host
+        changed = copy.deepcopy(self.report)
+        changed["complete_source_owners"][0]["body"] += " "
+        with self.assertRaisesRegex(ValueError, "complete source owner differs"):
+            self.verify(changed)
+        mutations = (
+            lambda row: row["model"]["subgraphs"][0]["operators"][8]["options"].update(beta=2.0),
+            lambda row: row["native"]["complete_selected_functions"][0].update(pseudocode_text_sha256="0" * 64),
+            lambda row: row["native"]["verified_data_regions"][0].update(raw_hex="00" * 88),
+            lambda row: row["instruction_evidence"]["actual_reshape_version"]["instructions"][0].update(text="nop"))
+        for mutate in mutations:
+            changed = copy.deepcopy(self.report)
+            mutate(changed)
+            changed["reviewed_selection_sha256"] = hashlib.sha256(json.dumps(host._lighting_ai_model_projection(changed),
+                ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+            with self.assertRaisesRegex(ValueError, "selected bytes require semantic review"):
+                self.verify(changed)
+
+    def test_static_stages_json_snapshot_and_no_temporary_sessions(self):
+        report = json.loads(json.dumps(self.report, ensure_ascii=False, allow_nan=False))
+        self.assertEqual(self.verify(report), report["verification"])
+        for stage in ("source_chain_complete", "target_execution", "product_code_modified", "real_device_operations"):
+            self.assertFalse(report[stage])
+        for stage in ("actual_dll_comparison", "runtime_acceptance", "ui_backend_wiring"):
+            self.assertEqual(report[stage], "unverified")
+        self.assertEqual(report["maintenance_lifecycle"]["temporary_artifacts_created"], [])
+        self.assertEqual(report["maintenance_lifecycle"]["analysis_sessions_created"], [])
+        self.assertEqual(report["changed_during_query"], [])
+        self.assertEqual(self.audit.final_snapshot(), [])
+        changed = copy.deepcopy(report)
+        changed["actual_dll_comparison"] = "passed"
+        with self.assertRaisesRegex(ValueError, "static boundary was promoted"):
+            self.verify(changed)
+
+
+class LightingHdrDecoderChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        from host import collect_lighting_hdr_decoder_chain
+        cls.audit = HostLocalAudit()
+        cls.report = collect_lighting_hdr_decoder_chain(cls.audit)
+
+    def verify(self, report):
+        from host import _lighting_hdr_decoder_verify
+        return _lighting_hdr_decoder_verify(report)
+
+    def image(self, payload, width=1, height=1, signature=b"#?RADIANCE", format_line=b"FORMAT=32-bit_rle_rgbe", layout=None):
+        if layout is None:
+            layout = f"-Y {height} +X {width}".encode()
+        return signature + b"\n" + format_line + b"\n\n" + layout + b"\n" + payload
+
+    def decode(self, data, requested=4):
+        from host import _lighting_hdr_decoder_pixels
+        return _lighting_hdr_decoder_pixels(data, requested)
+
+    def instructions(self, role):
+        return {row["rva"]: row for row in self.report["instruction_evidence"][role]["instructions"]}
+
+    def test_current_complete_selection_actual_calls_constants_and_global_failures(self):
+        native = self.report["native"]
+        self.assertEqual(self.report["current_native_release"]["declaration"]["resourceVersion"], "4.0.55.0")
+        self.assertEqual(native["input"]["sha256"], "cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa")
+        self.assertEqual(len(native["complete_selected_functions"]), 21)
+        self.assertEqual(len(native["verified_call_edges"]), 29)
+        functions = {row["rva"] for row in native["complete_selected_functions"]}
+        self.assertTrue({"0x8e160", "0x9c280", "0x9c0d0", "0x8e920", "0x1530f0", "0x1593f0", "0x15a860"} <= functions)
+        self.assertFalse({"0x8b480", "0x98c80", "0x945c0", "0x154300"} & functions)
+        edge = next(row for row in native["verified_call_edges"] if row["target_rva"] == "0x154300")
+        self.assertEqual(edge["instruction_addresses"], ["0x18008ea15"])
+        self.assertEqual([row["target_rva"] for row in native["verified_indirect_slots"]], ["0x8b3e0", "0x8b400", "0x8b440"])
+        self.assertEqual(len(native["verified_data_regions"]), 9)
+        regions = {row["role"]: bytes.fromhex(row["raw_hex"]) for row in native["verified_data_regions"]}
+        self.assertEqual(regions["format_exact_overlapping_strings"][:16], b"32-bit_rle_rgbe\x00")
+        self.assertEqual(struct.unpack("<d", regions["double_one"]), (1.0,))
+        self.assertEqual(struct.unpack("<2f", regions["default_inverse_gamma_and_scale"]), (0.45454543828964233, 1.0))
+        self.assertEqual(len(self.report["instruction_evidence"]), 11)
+        self.assertEqual(native["selected_pseudocode_failures"], [])
+        self.assertFalse(native["all_pseudocode_captured"])
+        self.assertEqual(len(native["failures"]), 10)
+
+    def test_header_exact_lines_direction_signed_dimensions_and_metadata_before_failure(self):
+        payload = bytes.fromhex("80402081")
+        self.assertTrue(self.decode(self.image(payload, signature=b"#?RGBE"))["success"])
+        for changed, error in ((self.image(payload, signature=b"#?OTHER"), "not HDR"),
+                (self.image(payload, format_line=b"FORMAT=32-bit_rle_rgbe "), "unsupported format"),
+                (self.image(payload, format_line=b"FORMAT=32-bit_rle_rgbe\r"), "unsupported format"),
+                (self.image(payload, layout=b"+Y 1 +X 1"), "unsupported data layout"),
+                (self.image(payload, layout=b"-Y 1 -X 1"), "unsupported data layout"),
+                (self.image(payload, layout=b"-Y 1\t+X 1"), "unsupported data layout")):
+            with self.subTest(error=error):
+                self.assertEqual(self.decode(changed)["error"], error)
+        result = self.decode(self.image(payload, layout=b"-Y +1   +X +1trailing"))
+        self.assertTrue(result["success"])
+        self.assertEqual((result["width"], result["height"], result["source_components"]), (1, 1, 3))
+        result = self.decode(self.image(b"", width=-1))
+        self.assertEqual(result["error"], "too large")
+        self.assertEqual((result["width"], result["height"], result["source_components"]), (-1, 1, 3))
+        result = self.decode(self.image(b"", width=16777217))
+        self.assertIsNone(result["width"])
+        self.assertIsNone(result["source_components"])
+        rows = self.instructions("header_format_layout_metadata_and_alloc")
+        self.assertEqual(rows["0x8e344"]["text"], "mov     [r12], ebx")
+        self.assertEqual(rows["0x8e350"]["text"], "mov     dword ptr [r14], 3")
+        self.assertTrue(rows["0x8e370"]["text"].endswith("sub_18009BDD0"))
+        self.assertFalse(self.report["boundaries"]["entry"]["explicit_nonzero_dimension_check"])
+
+    def test_overlong_comment_is_drained_and_cr_is_not_trimmed(self):
+        source = b"#?RADIANCE\n" + b"x" * 1100 + b"\nFORMAT=32-bit_rle_rgbe\n\n-Y 1 +X 1\n" + bytes.fromhex("80402081")
+        result = self.decode(source)
+        self.assertTrue(result["success"])
+        self.assertEqual(result["bytes_consumed"], len(source))
+        self.assertEqual(self.decode(self.image(b"", signature=b"#?RADIANCE\r"))["error"], "not HDR")
+        rows = self.instructions("bounded_line_reader")
+        self.assertEqual(rows["0x9c1a8"]["text"], "cmp     rbx, 3FEh")
+        self.assertEqual(rows["0x9c265"]["text"], "mov     ebx, 3FFh")
+        self.assertEqual(rows["0x9c26a"]["text"], "mov     byte ptr [rsi+rbx], 0")
+
+    def test_fixed_rgbe_zero_subnormal_maximum_and_gray_alpha_arithmetic(self):
+        from host import _lighting_hdr_decoder_rgbe
+        for row in self.report["fixed_vectors"]["rgbe"]:
+            actual = _lighting_hdr_decoder_rgbe(bytes.fromhex(row["input_hex"]), row["requested"])
+            with self.subTest(input=row["input_hex"], requested=row["requested"]):
+                self.assertEqual(b"".join(struct.pack("<f", value) for value in actual).hex(), row["expected_float_le_hex"])
+        self.assertEqual(_lighting_hdr_decoder_rgbe(b"\x01\x01\x01\x81", 1), [0.0078125])
+        rows = self.instructions("complete_rgbe_conversion")
+        self.assertEqual(rows["0x9c298"]["text"], "add     edx, 0FFFFFF78h")
+        self.assertEqual(rows["0x9c2ab"]["text"], "cvtsd2ss xmm0, xmm0")
+        self.assertEqual(rows["0x9c34d"]["text"], "mov     dword ptr [rsi+0Ch], 3F800000h")
+        for pixel, requested in ((b"", 4), (b"1234", 0), (b"1234", 5)):
+            with self.assertRaisesRegex(ValueError, "four bytes"):
+                _lighting_hdr_decoder_rgbe(pixel, requested)
+
+    def test_flat_pixels_do_not_expand_legacy_repeat_marker(self):
+        source = self.image(bytes.fromhex("8040208101010181"), width=2)
+        result = self.decode(source)
+        self.assertTrue(result["success"])
+        self.assertEqual(result["paths"], ["flat"])
+        self.assertEqual(result["float_le_hex"], "0000803f0000003f0000803e0000803f" + "0000003c" * 3 + "0000803f")
+        self.assertEqual(result["bytes_consumed"], len(source))
+        self.assertFalse(self.report["boundaries"]["encoding"]["legacy_111_repeat_marker_expanded"])
+
+    def test_new_rle_repeat_and_literal_planes_both_return_rgba_float(self):
+        pixel_hex = "0000003e0000803e0000c03e0000803f"
+        repeat = bytes.fromhex("020200088810882088308881")
+        literal = bytes.fromhex("02020008") + b"\x08\x10" + b"\x10" * 7 + b"\x08\x20" + b"\x20" * 7 + b"\x08\x30" + b"\x30" * 7 + b"\x08\x81" + b"\x81" * 7
+        for payload in (repeat, literal):
+            source = self.image(payload, width=8)
+            result = self.decode(source)
+            with self.subTest(payload=payload.hex()):
+                self.assertTrue(result["success"])
+                self.assertEqual(result["paths"], ["rle"])
+                self.assertEqual(result["float_le_hex"], pixel_hex * 8)
+                self.assertEqual(result["bytes_consumed"], len(source))
+        payload = bytes.fromhex("02020080") + b"\x80" + b"\x10" * 128 + b"\x80" + b"\x20" * 128 + b"\x80" + b"\x30" * 128 + b"\x80" + b"\x81" * 128
+        self.assertEqual(self.decode(self.image(payload, width=128))["float_le_hex"], pixel_hex * 128)
+
+    def test_second_row_nonnew_header_resets_entire_output_and_overwrites_old_rows(self):
+        prior = bytes.fromhex("020200088810882088308881")
+        fallback = bytes.fromhex("80402081") * 16
+        source = self.image(prior + fallback, width=8, height=2)
+        result = self.decode(source)
+        self.assertTrue(result["success"])
+        self.assertEqual(result["paths"], ["rle", "flat"])
+        self.assertEqual(result["fallback_rows"], [1])
+        self.assertEqual(result["float_le_hex"], "0000803f0000003f0000803e0000803f" * 16)
+        self.assertEqual(result["bytes_consumed"], len(source))
+        rows = self.instructions("rle_errors_fallback_release_and_ignored_raw_read")
+        self.assertEqual(rows["0x8e84e"]["text"], "mov     rcx, [rsp+4F8h+var_4D8]")
+        self.assertEqual(rows["0x8e867"]["text"], "xor     r14d, r14d")
+        self.assertEqual(rows["0x8e86a"]["text"], "mov     r12d, 1")
+
+    def test_new_rle_width_zero_and_overrun_fail_but_missing_values_can_be_zero(self):
+        for payload, error in ((bytes.fromhex("02020009"), "invalid decoded scanline length"),
+                (bytes.fromhex("0202000800"), "corrupt"),
+                (bytes.fromhex("0202000889aa"), "corrupt"),
+                (bytes.fromhex("0202000809"), "corrupt")):
+            result = self.decode(self.image(payload, width=8))
+            with self.subTest(payload=payload.hex()):
+                self.assertFalse(result["success"])
+                self.assertEqual(result["error"], error)
+                self.assertEqual((result["width"], result["height"], result["source_components"]), (8, 1, 3))
+        result = self.decode(self.image(bytes.fromhex("0202000888108820883088"), width=8))
+        self.assertTrue(result["success"])
+        self.assertEqual(result["float_le_hex"], "0000000000000000000000000000803f" * 8)
+        encoding = self.report["boundaries"]["encoding"]
+        self.assertEqual(encoding["new_rle_width_inclusive_range"], [8, 32767])
+        self.assertEqual(encoding["literal_counts"], [1, 128])
+        self.assertFalse(encoding["all_truncated_payloads_rejected"])
+
+    def test_raw_short_read_zero_size_and_unterminated_header_remain_unobserved(self):
+        for source, reason in ((self.image(b"\x80\x40"), "raw short-read"),
+                (self.image(b"", width=0), "zero-size"), (b"#?RADIANCE", "unterminated header")):
+            with self.subTest(reason=reason), self.assertRaisesRegex(ValueError, reason):
+                self.decode(source)
+        rows = self.instructions("rle_errors_fallback_release_and_ignored_raw_read")
+        self.assertTrue(rows["0x8e8e0"]["text"].endswith("sub_180091C90"))
+        self.assertEqual(rows["0x8e8e5"]["text"], "mov     eax, ebx")
+        self.assertTrue(self.report["boundaries"]["encoding"]["truncated_flat_can_use_uninitialized_or_previous_stack_bytes"])
+
+    def test_finite_post_pow_quantization_actual_operands_linear_alpha_and_gray(self):
+        from host import _lighting_hdr_decoder_quantize
+        for row in self.report["fixed_vectors"]["quantization"]:
+            self.assertEqual(_lighting_hdr_decoder_quantize(row["samples"]).hex(), row["expected_hex"])
+        for value in (float("inf"), float("-inf"), float("nan")):
+            with self.assertRaisesRegex(ValueError, "nonfinite"):
+                _lighting_hdr_decoder_quantize([value])
+        rows = self.instructions("current_pow_operands_and_opaque_linear_alpha")
+        self.assertEqual(rows["0x8ea00"]["text"], "movss   xmm1, cs:dword_1801F5998")
+        self.assertEqual(rows["0x8ea0d"]["text"], "mulss   xmm0, cs:dword_1801F599C")
+        self.assertTrue(rows["0x8ea15"]["text"].endswith("sub_180154300"))
+        self.assertEqual(rows["0x8ea30"]["text"], "cvttss2si eax, xmm0")
+        self.assertEqual(rows["0x8ea54"]["text"], "mulss   xmm0, xmm6")
+        self.assertFalse(self.report["boundaries"]["pixels"]["byte_alpha_uses_pow"])
+        self.assertFalse(self.report["boundaries"]["pixels"]["one_component_converter_uses_gamma"])
+        self.assertFalse(self.report["boundaries"]["scope"]["synthetic_quantization_executes_pow"])
+
+    def test_actual_cleanup_for_invalid_rle_width_scratch_oom_and_byte_output(self):
+        rows = self.instructions("rle_errors_fallback_release_and_ignored_raw_read")
+        for site in ("0x8e7f2", "0x8e7fc", "0x8e862", "0x8e875", "0x8e87d", "0x8e891", "0x8e8a9"):
+            self.assertTrue(rows[site]["text"].endswith("sub_18014FBA0"))
+        byte_failure = self.instructions("byte_allocation_failure_release")
+        self.assertTrue(byte_failure["0x8ea86"]["text"].endswith("sub_18014FBA0"))
+        self.assertTrue(self.instructions("byte_normal_release")["0x8eb88"]["text"].endswith("sub_18014FBA0"))
+        self.assertFalse(self.report["boundaries"]["ownership"]["strict_raw_short_read_failure_or_initialized_output_guarantee"])
+        self.assertFalse(self.report["boundaries"]["ownership"]["cpp_exception_unwind_or_heap_fault_recovery_established"])
+
+    def test_boundary_mutations_and_rehashed_native_vectors_dependencies_are_rejected(self):
+        from host import _lighting_hdr_decoder_projection
+        for group, field, value in (("entry", "other_orientations_supported", True),
+                ("entry", "explicit_nonzero_dimension_check", True), ("entry", "cr_stripped", True),
+                ("encoding", "legacy_111_repeat_marker_expanded", True), ("encoding", "flat_exact_read_return_checked", True),
+                ("pixels", "rgb_half_unit_bias_added", True), ("pixels", "byte_alpha_uses_pow", True),
+                ("ownership", "cpp_exception_unwind_or_heap_fault_recovery_established", True)):
+            report = copy.deepcopy(self.report)
+            report["boundaries"][group][field] = value
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, "boundary requires semantic review"):
+                self.verify(report)
+        for mutate in (lambda r: r["current_native_release"].update(version="old"),
+                lambda r: r["native"]["complete_selected_functions"].pop(),
+                lambda r: r["native"]["verified_call_edges"][0].update(target_rva="0x945c0"),
+                lambda r: r["native"]["verified_data_regions"][0].update(raw_hex="00"),
+                lambda r: r["instruction_evidence"]["complete_rgbe_conversion"]["instructions"].clear(),
+                lambda r: r["reviewed_semantics"].update(encoding="legacy repeats expanded"),
+                lambda r: r["fixed_vectors"]["rgbe"][0].update(expected_float_le_hex="00" * 16),
+                lambda r: r["dependencies"][0].update(pointer="/unreviewed"), lambda r: r["remaining_chains"].clear()):
+            report = copy.deepcopy(self.report)
+            mutate(report)
+            report["reviewed_selection_sha256"] = hashlib.sha256(json.dumps(_lighting_hdr_decoder_projection(report),
+                ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+            with self.assertRaisesRegex(ValueError, "selected bytes require semantic review"):
+                self.verify(report)
+
+    def test_exact_upstream_pointers_snapshot_remaining_chains_and_execution_separation(self):
+        from host import _lighting_hdr_decoder_dependencies
+        from analysis import semantic_query_gaps
+        sections = {"lighting_jpeg_decoder_chain", "lighting_media_codec_boundaries", "lighting_media_resampler"}
+        previous = {key: value for key, value in json.loads((self.audit.a.ROOT / ".analysis/results/host-current/local-audit.json").read_bytes()).items() if key in sections}
+        self.assertEqual(_lighting_hdr_decoder_dependencies(previous), self.report["dependencies"])
+        changed = copy.deepcopy(previous)
+        changed["lighting_jpeg_decoder_chain"]["remaining_chains"][0]["owner"] = "changed"
+        with patch("host._lighting_jpeg_decoder_verify", return_value={}):
+            with self.assertRaisesRegex(ValueError, "exact upstream pointer changed"):
+                _lighting_hdr_decoder_dependencies(changed)
+        findings = [row for row in semantic_query_gaps(self.report, ".analysis/results/host-current/local-audit.json") if row["kind"] == "semantic_query_chain_unresolved"]
+        self.assertEqual([row["finding"] for row in findings], self.report["remaining_chains"])
+        self.assertEqual(len(findings), 3)
+        self.assertEqual(self.report["remaining_chains"][0]["owner"], "HDR setters/compiler pow")
+        for field, value in (("source_chain_complete", True), ("target_execution", True), ("real_device_operations", True),
+                ("rust_independent_implementation", "verified"), ("actual_dll_comparison", "verified"),
+                ("ui_backend_wiring", "verified"), ("runtime_acceptance", "verified"), ("snapshot_stable", False)):
+            report = copy.deepcopy(self.report)
+            report[field] = value
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, "static boundary was promoted"):
+                self.verify(report)
+        report = copy.deepcopy(self.report)
+        report["native"]["failures"].clear()
+        with self.assertRaisesRegex(ValueError, "capture failure was hidden"):
+            self.verify(report)
+        report = json.loads(json.dumps(self.report, ensure_ascii=False, sort_keys=True, allow_nan=False))
+        self.assertEqual(self.verify(report), report["verification"])
+        self.assertFalse(report["verification"]["compiler_pow_and_setters_reviewed"])
+        self.assertEqual(report["maintenance_lifecycle"]["temporary_artifacts_created"], [])
+        self.assertEqual(report["maintenance_lifecycle"]["analysis_sessions_created"], [])
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+
+class LightingHdrParametersChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        from host import collect_lighting_hdr_parameters_chain
+        cls.audit = HostLocalAudit()
+        cls.report = collect_lighting_hdr_parameters_chain(cls.audit)
+
+    def verify(self, report):
+        from host import _lighting_hdr_parameters_verify
+        return _lighting_hdr_parameters_verify(report)
+
+    def instructions(self, role):
+        return {row["rva"]: row for row in self.report["instruction_evidence"][role]["instructions"]}
+
+    def regions(self):
+        return {row["role"]: bytes.fromhex(row["raw_hex"]) for row in self.report["native"]["verified_data_regions"]}
+
+    def test_current_complete_functions_actual_edges_and_original_failures(self):
+        native = self.report["native"]
+        self.assertEqual(self.report["current_native_release"]["declaration"]["resourceVersion"], "4.0.55.0")
+        self.assertEqual(native["input"]["sha256"], "cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa")
+        self.assertEqual(len(native["complete_selected_functions"]), 13)
+        self.assertEqual(len(native["verified_call_edges"]), 21)
+        self.assertEqual(len(native["verified_data_regions"]), 11)
+        self.assertEqual(len(self.report["actual_exports"]), 15)
+        self.assertEqual(native["selected_pseudocode_failures"], [])
+        self.assertFalse(native["all_pseudocode_captured"])
+        self.assertEqual(len(native["failures"]), 10)
+        self.assertEqual(sum(len(row["instructions"]) for row in self.report["instruction_evidence"].values()), 1106)
+
+    def test_shared_globals_are_distinct_from_tls_and_have_only_captured_reads(self):
+        inventory = self.report["reference_inventory"]
+        self.assertEqual(inventory["complete_captured_functions"], 8694)
+        self.assertEqual(inventory["parameter_storage_section"]["name"], ".data")
+        self.assertEqual(inventory["separate_tls_section"]["name"], ".tls")
+        self.assertEqual([row["instruction_rva"] for row in inventory["captured_instruction_references"]], ["0x8ea00", "0x8ea0d"])
+        self.assertEqual(inventory["absolute_va_file_offsets"], {"0x1f5998": [], "0x1f599c": []})
+        self.assertEqual(struct.unpack("<4f", self.regions()["separate_ldr_and_hdr_global_defaults"]),
+            (2.200000047683716, 1.0, 0.45454543828964233, 1.0))
+        self.assertFalse(self.report["boundaries"]["parameters"]["thread_local"])
+        self.assertFalse(self.report["boundaries"]["parameters"]["exported_setter_established"])
+        self.assertFalse(self.report["boundaries"]["parameters"]["ui_control_or_mutation_api_inferred"])
+
+    def test_reference_inventory_retains_new_store_and_absolute_pointer_counterexamples(self):
+        from host import _lighting_hdr_parameters_references
+        assembly = "\n".join((
+            "0x18008ea00  f30f100d906f1600  movss   xmm1, cs:dword_1801F5998",
+            "0x180001000  90  movss   cs:dword_1801f599c, xmm0",
+            "0x180001001  90  movss   xmm1, cs:dword_1801F5990"))
+        report = _lighting_hdr_parameters_references(assembly, b"abc" + struct.pack("<Q", 0x1801f599c), 0x180000000)
+        self.assertEqual(len(report["captured_instruction_references"]), 2)
+        self.assertIn("cs:dword_1801f599c, xmm0", report["captured_instruction_references"][1]["text"])
+        self.assertEqual(report["absolute_va_file_offsets"], {"0x1f5998": [], "0x1f599c": [3]})
+
+    def test_float_abi_rgb_before_pow_and_linear_alpha_are_actual_instructions(self):
+        rows = self.instructions("hdr_rgb_operands_linear_alpha_and_release")
+        self.assertEqual(rows["0x8ea00"]["text"], "movss   xmm1, cs:dword_1801F5998")
+        self.assertEqual(rows["0x8ea0d"]["text"], "mulss   xmm0, cs:dword_1801F599C")
+        self.assertTrue(rows["0x8ea15"]["text"].endswith("sub_180154300"))
+        self.assertEqual(sum("sub_180154300" in row["text"] for row in rows.values()), 1)
+        bounds = self.report["boundaries"]
+        self.assertEqual(bounds["pow"]["actual_abi"], "float_xmm0_base_float_xmm1_exponent_to_float_xmm0")
+        self.assertFalse(bounds["pow"]["decompiler_signature_trusted"])
+        self.assertFalse(bounds["consumer"]["alpha_reads_hdr_parameters"])
+        self.assertFalse(bounds["consumer"]["pow_error_checked_before_quantization"])
+
+    def test_reverse_converter_has_three_distinct_gamma_then_postscale_calls(self):
+        edge = next(row for row in self.report["native"]["verified_call_edges"]
+            if row["caller_rva"] == "0x9c5b0" and row["target_rva"] == "0x154300")
+        self.assertEqual(edge["instruction_addresses"], ["0x18009c6b8", "0x18009c6e3", "0x18009c72f"])
+        rows = self.instructions("reverse_ldr_distinct_gamma_and_scale")
+        self.assertEqual(rows["0x9c6a0"]["text"], "movss   xmm1, cs:dword_1801F5990")
+        self.assertEqual(rows["0x9c6b4"]["text"], "divss   xmm0, xmm6")
+        self.assertEqual(rows["0x9c6bd"]["text"], "mulss   xmm0, cs:dword_1801F5994")
+        self.assertFalse(self.report["boundaries"]["consumer"]["reverse_ldr_float_converter_is_current_byte_loader"])
+
+    def test_pow_tables_have_all_257_log_reciprocal_and_64_exp_entries(self):
+        regions = self.regions()
+        logarithms = struct.unpack("<257d", regions["pow_log257_table"])
+        reciprocals = struct.unpack("<257d", regions["pow_reciprocal257_table"])
+        exponents = struct.unpack("<64d", regions["pow_exp64_table"])
+        self.assertEqual((logarithms[0], logarithms[256]), (0.0, 0.6931471805599453))
+        self.assertEqual((reciprocals[0], reciprocals[256]), (2.0, 1.0))
+        self.assertEqual(exponents[0], 1.0)
+        constants = regions["pow_scalar_and_near_one_constants"]
+        self.assertEqual(struct.unpack_from("<2d", constants, 16), (88.72283935546875, -103.2789306640625))
+        self.assertEqual(struct.unpack_from("<d", constants, 48), (0.0625,))
+        self.assertTrue(all(a < b for a, b in zip(logarithms, logarithms[1:])))
+        self.assertTrue(all(a > b for a, b in zip(reciprocals, reciprocals[1:])))
+
+    def test_cpu_flag_selects_sse_fma_but_avx_near_one_rejoins_sse(self):
+        sse = self.instructions("pow_entry_sse_table_polynomial_and_return")
+        self.assertEqual(sse["0x154310"]["text"], "cmp     cs:dword_1801F9B54, 0")
+        self.assertEqual(sse["0x15448e"]["text"], "cvtsd2ss xmm0, xmm4")
+        avx = self.instructions("avx_fma_table_polynomial_and_return")
+        self.assertTrue(avx["0x154b6b"]["text"].startswith("vfmadd213sd"))
+        near = self.instructions("avx_near_one_rejoins_sse_and_special_routes")
+        self.assertEqual(near["0x154d1b"]["text"], "jmp     loc_1801543FE")
+        cpu = self.instructions("cpu_dispatch_global_writes")
+        self.assertEqual(cpu["0x17ca5d"]["text"], "and     ecx, 18001000h")
+        self.assertEqual(cpu["0x17ca87"]["text"], "mov     rax, [rsp+18h+arg_0]")
+        self.assertEqual(cpu["0x17cac4"]["text"], "test    bl, 20h")
+        self.assertEqual(struct.unpack("<Q", self.regions()["cpu_initializer_pointer"]), (0x18017ca40,))
+
+    def test_all_special_error_calls_and_kind_table_are_preserved(self):
+        edge = next(row for row in self.report["native"]["verified_call_edges"]
+            if row["caller_rva"] == "0x154300" and row["target_rva"] == "0x183890")
+        self.assertEqual(len(edge["instruction_addresses"]), 23)
+        self.assertEqual(struct.unpack("<8i", self.regions()["pow_error_kind_constants"]), tuple(range(2, 10)))
+        self.assertEqual(struct.unpack("<9I", self.regions()["pow_error_switch9_table"]),
+            (0x1838bd, 0x1838e7, 0x183916, 0x183916, 0x183916, 0x183928, 0x183954, 0x1839cd, 0x183980))
+        self.assertEqual(self.regions()["actual_powf_error_label"], b"powf\0")
+        self.assertTrue(self.report["boundaries"]["errors"]["kind_3_4_5_quiet_return"])
+        self.assertEqual(self.report["boundaries"]["errors"]["quiet_nan_mask"], "0x400000")
+
+    def test_crt_callback_return_is_ignored_and_underflow_does_not_force_errno34(self):
+        rows = self.instructions("pow_special_result_preserved_over_crt_wrapper")
+        self.assertEqual(rows["0x18389c"]["text"], "movaps  xmm6, xmm2")
+        self.assertEqual(rows["0x1839c8"]["text"], "call    sub_18017C750")
+        self.assertTrue(rows["0x1839cd"]["text"].startswith("movaps  xmm0, xmm6"))
+        bounds = self.report["boundaries"]["errors"]
+        self.assertEqual(bounds["kind_7"], {"matherr_selector": 4, "exception_mask": 18, "errno_argument": 34})
+        self.assertEqual(bounds["errno_mapper_only_sets_selectors"], [1, 2, 3])
+        self.assertFalse(bounds["kind_7_sets_errno_through_mapper"])
+        self.assertFalse(bounds["pow_wrapper_consumes_matherr_return_value"])
+        self.assertFalse(bounds["decoder_error_string_same_as_crt_errno"])
+        self.assertFalse(bounds["exception_unwind_releases_converter_input_proven"])
+
+    def test_exact_upstream_sections_and_no_temporary_artifacts(self):
+        from host import _otfm_macro_encoding_dependency_changes
+        self.assertEqual([row["pointer"] for row in self.report["upstream_sections"]],
+            ["/lighting_hdr_decoder_chain", "/lighting_hdr_decoder_chain/remaining_chains/0"])
+        self.assertEqual(_otfm_macro_encoding_dependency_changes(self.report["upstream_sections"]), [])
+        self.assertEqual(self.report["maintenance_lifecycle"]["temporary_artifacts_created"], [])
+        self.assertEqual(self.report["maintenance_lifecycle"]["analysis_sessions_created"], [])
+        self.assertEqual(self.report["changed_during_query"], [])
+
+    def test_changed_globals_instructions_upstream_or_numerical_claims_are_rejected(self):
+        for mutate in (
+                lambda r: r["reference_inventory"]["captured_instruction_references"].append({"instruction_rva": "0x1000", "text": "store"}),
+                lambda r: r["native"]["verified_data_regions"][0].__setitem__("raw_hex", "00" * 16),
+                lambda r: r["instruction_evidence"]["avx_near_one_rejoins_sse_and_special_routes"]["instructions"][0].__setitem__("text", "ret"),
+                lambda r: r["upstream_sections"][0].__setitem__("canonical_sha256", "0" * 64),
+                lambda r: r.__setitem__("actual_pow_numerical_results", "verified"),
+                lambda r: r.__setitem__("source_chain_complete", True),
+                lambda r: r["boundaries"]["parameters"].__setitem__("thread_local", True),
+                lambda r: r["native"].__setitem__("failures", [])):
+            changed = copy.deepcopy(self.report)
+            mutate(changed)
+            with self.assertRaises(ValueError):
+                self.verify(changed)
+
+
+class LightingMediaCodecBoundariesTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        from host import collect_lighting_media_codec_boundaries
+        cls.audit = HostLocalAudit()
+        cls.report = collect_lighting_media_codec_boundaries(cls.audit)
+
+    def verify(self, report):
+        from host import _verify_lighting_media_codec_boundaries
+        return _verify_lighting_media_codec_boundaries(report)
+
+    def test_unclosed_decoder_mutation_product_and_implementation_chains_reach_ledger(self):
+        from analysis import semantic_query_gaps
+        evidence = ".analysis/results/host-current/local-audit.json"
+        findings = [row for row in semantic_query_gaps(self.report, evidence)
+            if row["kind"] == "semantic_query_chain_unresolved"]
+        self.assertEqual(len(findings), 4)
+        self.assertEqual([row["finding"] for row in findings], self.report["remaining_chains"])
+        self.assertEqual([row["evidence"] for row in findings], [evidence] * 4)
+        self.assertEqual([row["pointer"] for row in findings], ["/remaining_chains"] * 4)
+        self.assertNotIn("remaining_dependencies", self.report)
+
+    def test_current_original_complete_owners_and_real_callback_slots_are_bound(self):
+        report = self.report
+        self.assertEqual(report["current_native_release"]["declaration"]["resourceVersion"], "4.0.55.0")
+        self.assertEqual(report["native"]["input"]["sha256"],
+            "cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa")
+        self.assertEqual(len(report["native"]["complete_selected_functions"]), 56)
+        self.assertEqual(len(report["native"]["verified_call_edges"]), 63)
+        self.assertEqual([row["target_rva"] for row in report["native"]["verified_indirect_slots"]],
+            ["0x8b3e0", "0x8b400", "0x8b440"])
+        regions = {row["role"]: bytes.fromhex(row["raw_hex"])
+            for row in report["native"]["verified_data_regions"]}
+        self.assertEqual(regions["pic_signature"], bytes.fromhex("5380f634"))
+        self.assertEqual(struct.unpack("<2f", regions["hdr_default_inverse_gamma_and_scale"]),
+            (0.45454543828964233, 1))
+        self.assertEqual(len(report["instruction_evidence"]), 10)
+
+    def test_actual_dispatch_order_keeps_nine_probes_and_selected_decoder_returns(self):
+        routes = self.report["format_routes"]
+        self.assertEqual([row["format"] for row in routes],
+            ["png", "bmp", "gif", "psd", "pic", "jpeg", "pnm", "hdr", "tga"])
+        expected = [int(row[key], 16) for row in routes for key in ("probe_rva", "decoder_rva")]
+        instructions = self.report["instruction_evidence"]["all_ordered_format_branches"]["instructions"]
+        base = int(self.report["native"]["image_base"], 16)
+        actual = [int(ref["to"], 16) - base for row in instructions
+            if row["text"].split()[0].lower() in ("call", "jmp") for ref in row["xrefs_from"]
+            if ref.get("code") and int(ref["to"], 16) - base in expected]
+        self.assertEqual(actual, expected)
+        self.assertFalse(self.report["boundaries"]["dispatch"]["matched_decoder_failure_tries_next_format"])
+        pnm = self.report["instruction_evidence"]["pnm_success_returns_without_rewind"]["instructions"]
+        self.assertEqual(next(row["bytes"] for row in pnm if row["rva"] == "0x8dff9"), "c3")
+        self.assertEqual(next(row["bytes"] for row in pnm if row["rva"] == "0x8dffd"), "e89e190000")
+
+    def test_rgba8_examples_preserve_gray_alpha_and_high_bytes_without_rounding(self):
+        from host import _lighting_media_codec_rgba8
+        for row in self.report["fixed_vectors"]["decoded_pixels"]:
+            with self.subTest(row=row):
+                self.assertEqual(_lighting_media_codec_rgba8(bytes.fromhex(row["input_hex"]),
+                    row["width"], row["height"], row["channels"], bits=row["bits"], flip=row["flip"]).hex(),
+                    row["expected_hex"])
+        cases = [(1, [0x7fff], [127, 127, 127, 255]),
+            (2, [0x00ff, 0x8000], [0, 0, 0, 128]),
+            (3, [0xff00, 0x7fff, 0x00ff], [255, 127, 0, 255])]
+        for channels, values, expected in cases:
+            self.assertEqual(_lighting_media_codec_rgba8(struct.pack("<" + "H" * channels, *values),
+                1, 1, channels, bits=16), bytes(expected))
+        self.assertEqual(_lighting_media_codec_rgba8(bytes.fromhex("10203000"), 1, 1, 4),
+            bytes.fromhex("10203000"))
+
+    def test_flip_preserves_wide_whole_rows_odd_middle_and_allocation_scope(self):
+        from host import _lighting_media_codec_rgba8
+        first, middle, last = bytes([17, 33, 49, 65]) * 513, bytes([81, 97, 113, 129]) * 513, bytes([145, 161, 177, 193]) * 513
+        self.assertEqual(_lighting_media_codec_rgba8(first + middle + last, 513, 3, 4, flip=True),
+            last + middle + first)
+        proof = {row["rva"]: row for row in
+            self.report["instruction_evidence"]["flip_full_row_chunk_swap"]["instructions"]}
+        self.assertEqual(proof["0x8b7d7"]["bytes"], "41bc00080000")
+        self.assertEqual(len([row for row in proof.values() if row["text"].startswith("call")]), 3)
+        self.assertEqual(self.report["boundaries"]["pixels"]["flip_scratch_bytes"], 2048)
+
+    def test_real_failure_ownership_and_hdr_alpha_must_not_be_silently_repaired(self):
+        boundaries = self.report["boundaries"]
+        self.assertFalse(boundaries["pixels"]["sixteen_bit_reducer_frees_input_on_allocation_failure"])
+        self.assertFalse(boundaries["pixels"]["sixteen_bit_reducer_null_result_checked_before_optional_flip"])
+        self.assertTrue(boundaries["ownership"]["channel_conversion_frees_input_on_allocation_failure"])
+        self.assertTrue(boundaries["ownership"]["hdr_conversion_frees_input_on_allocation_failure"])
+        self.assertFalse(boundaries["pixels"]["hdr_alpha_uses_gamma"])
+        for group, key, value in (("pixels", "sixteen_bit_reducer_frees_input_on_allocation_failure", True),
+                ("pixels", "sixteen_bit_reducer_null_result_checked_before_optional_flip", True),
+                ("dispatch", "pnm_probe_rewinds_after_success", True),
+                ("pixels", "hdr_alpha_uses_gamma", True),
+                ("caller", "resize_result_checked", True),
+                ("scope", "all_compressed_pixel_arithmetic_reviewed", True)):
+            report = copy.deepcopy(self.report)
+            report["boundaries"][group][key] = value
+            with self.subTest(key=key), self.assertRaisesRegex(ValueError, "boundary requires semantic review"):
+                self.verify(report)
+
+    def test_rehashed_route_chunk_constant_instruction_and_remaining_scope_mutations_fail(self):
+        from host import _lighting_media_codec_projection
+        for mutate in (lambda r: r["format_routes"].reverse(),
+                lambda r: r["native"]["complete_selected_functions"][0].update(pseudocode_text_sha256="0" * 64),
+                lambda r: r["native"]["verified_indirect_slots"][0].update(target_rva="0x8b400"),
+                lambda r: r["native"]["verified_data_regions"][0].update(raw_hex="00000000"),
+                lambda r: r["instruction_evidence"]["result8bit_and_real_conversion_parameters"]["instructions"].clear(),
+                lambda r: r["remaining_chains"].clear()):
+            report = copy.deepcopy(self.report)
+            mutate(report)
+            report["reviewed_selection_sha256"] = hashlib.sha256(json.dumps(_lighting_media_codec_projection(report),
+                ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+            with self.assertRaisesRegex(ValueError, "selected bytes require semantic review"):
+                self.verify(report)
+
+    def test_failed_capture_execution_or_changed_snapshot_cannot_be_promoted(self):
+        for field, value in (("source_chain_complete", True), ("target_execution", True),
+                ("actual_dll_comparison", "verified"), ("runtime_acceptance", "verified"),
+                ("changed_during_query", [{"path": "changed"}])):
+            report = copy.deepcopy(self.report)
+            report[field] = value
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, "static boundary was promoted"):
+                self.verify(report)
+        report = copy.deepcopy(self.report)
+        report["native"]["failures"].clear()
+        with self.assertRaisesRegex(ValueError, "capture failure was hidden"):
+            self.verify(report)
+
+    def test_strict_json_and_decoded_example_limits_remain_separate_from_native_results(self):
+        from host import _lighting_media_codec_rgba8
+        report = json.loads(json.dumps(self.report, ensure_ascii=False, sort_keys=True, allow_nan=False))
+        self.assertEqual(report, self.report)
+        self.assertEqual(self.verify(report), report["verification"])
+        self.assertFalse(report["fixed_vectors"]["actual_dll_results"])
+        self.assertFalse(report["verification"]["compressed_pixel_arithmetic_complete"])
+        self.assertEqual(report["maintenance_lifecycle"]["temporary_artifacts_created"], [])
+        self.assertEqual(self.audit.final_snapshot(), [])
+        with self.assertRaisesRegex(ValueError, "decoded-buffer length differs"):
+            _lighting_media_codec_rgba8(b"\x00", 1, 1, 4)
+        with self.assertRaisesRegex(ValueError, "outside the reviewed"):
+            _lighting_media_codec_rgba8(b"", 0, 1, 4)
+
+
 class LightingAudioEffectChainTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -6739,11 +9083,18 @@ class CurrentReverseChainDispatchTests(unittest.TestCase):
         ("mapping-analog-key-routing", "collect_mapping_analog_key_routing", "mapping_analog_key_routing"),
         ("mapping-input-shutdown-chain", "collect_mapping_input_shutdown_chain", "mapping_input_shutdown_chain"),
         ("mapping-delayed-task-lifecycle", "collect_mapping_delayed_task_lifecycle", "mapping_delayed_task_lifecycle"),
+        ("mapping-engine-shutdown-chain", "collect_mapping_engine_shutdown_chain", "mapping_engine_shutdown_chain"),
         ("mapping-input-producer-eligibility", "collect_mapping_input_producer_eligibility", "mapping_input_producer_eligibility"),
         ("mapping-kernel-input-producer", "collect_mapping_kernel_input_producer", "mapping_kernel_input_producer"),
+        ("mapping-hardware-notification-chain", "collect_mapping_hardware_notification_chain", "mapping_hardware_notification_chain"),
         ("keypad-mapping-consumers", "collect_keypad_mapping_consumers", "keypad_mapping_consumers"),
         ("keypad-mapping-current-native", "collect_keypad_mapping_current_native", "keypad_mapping_current_native"),
+        ("keypad-temporary-keymap-chain", "collect_keypad_temporary_keymap_chain", "keypad_temporary_keymap_chain"),
+        ("keypad-two-tap-chain", "collect_keypad_two_tap_chain", "keypad_two_tap_chain"),
         ("common-driver-install-selection", "collect_common_driver_install_selection", "common_driver_install_selection"),
+        ("common-driver-legacy-notification", "collect_common_driver_legacy_notification", "common_driver_legacy_notification"),
+        ("common-driver-install-consumers", "collect_common_driver_install_consumers", "common_driver_install_consumers"),
+        ("keyboard-ble-power-transport", "collect_keyboard_ble_power_transport", "keyboard_ble_power_transport"),
         ("lighting-ripple-chain", "collect_lighting_ripple_chain", "lighting_ripple_chain"),
         ("lighting-reactive-radiate-chain", "collect_lighting_reactive_radiate_chain", "lighting_reactive_radiate_chain"),
         ("lighting-ambient-screen-chain", "collect_lighting_ambient_screen_chain", "lighting_ambient_screen_chain"),
@@ -6751,6 +9102,17 @@ class CurrentReverseChainDispatchTests(unittest.TestCase):
         ("lighting-type-media-chain", "collect_lighting_type_media_chain", "lighting_type_media_chain"),
         ("lighting-media-calculations", "collect_lighting_media_calculations", "lighting_media_calculations"),
         ("lighting-media-resampler", "collect_lighting_media_resampler", "lighting_media_resampler"),
+        ("lighting-media-codec-boundaries", "collect_lighting_media_codec_boundaries", "lighting_media_codec_boundaries"),
+        ("lighting-png-decoder-chain", "collect_lighting_png_decoder_chain", "lighting_png_decoder_chain"),
+        ("lighting-pnm-decoder-chain", "collect_lighting_pnm_decoder_chain", "lighting_pnm_decoder_chain"),
+        ("lighting-bmp-tga-decoder-chain", "collect_lighting_bmp_tga_decoder_chain", "lighting_bmp_tga_decoder_chain"),
+        ("lighting-pic-decoder-chain", "collect_lighting_pic_decoder_chain", "lighting_pic_decoder_chain"),
+        ("lighting-psd-decoder-chain", "collect_lighting_psd_decoder_chain", "lighting_psd_decoder_chain"),
+        ("lighting-gif-decoder-chain", "collect_lighting_gif_decoder_chain", "lighting_gif_decoder_chain"),
+        ("lighting-jpeg-decoder-chain", "collect_lighting_jpeg_decoder_chain", "lighting_jpeg_decoder_chain"),
+        ("lighting-hdr-decoder-chain", "collect_lighting_hdr_decoder_chain", "lighting_hdr_decoder_chain"),
+        ("lighting-hdr-parameters-chain", "collect_lighting_hdr_parameters_chain", "lighting_hdr_parameters_chain"),
+        ("lighting-ai-model-chain", "collect_lighting_ai_model_chain", "lighting_ai_model_chain"),
         ("studio-region-window-lifecycle", "collect_studio_region_window_lifecycle", "studio_region_window_lifecycle"),
         ("profile-alternate-icons", "collect_profile_alternate_icons", "profile_alternate_icons"),
         ("profile-gog-scanner", "collect_profile_gog_scanner", "profile_gog_scanner"),
@@ -6760,7 +9122,8 @@ class CurrentReverseChainDispatchTests(unittest.TestCase):
         ("profile-remaining-scanner-versions", "collect_profile_remaining_scanner_versions", "profile_remaining_scanner_versions"),
         ("profile-mac-sysutils-native", "collect_profile_mac_sysutils_native", "profile_mac_sysutils_native"),
         ("profile-shared-helper-consumers", "collect_profile_shared_helper_consumers", "profile_shared_helper_consumers"),
-        ("otfm-device-writeback", "collect_otfm_device_writeback", "otfm_device_writeback"))
+        ("otfm-device-writeback", "collect_otfm_device_writeback", "otfm_device_writeback"),
+        ("otfm-macro-encoding-chain", "collect_otfm_macro_encoding_chain", "otfm_macro_encoding_chain"))
 
     def test_queries_reuse_the_static_publisher_without_replaying_shared_collectors(self):
         import host
@@ -6803,6 +9166,99 @@ class CurrentReverseChainDispatchTests(unittest.TestCase):
                 self.assertFalse(report["bounded_observation_complete"])
                 self.assertEqual(report["snapshot_stable"], mode != "changed")
                 self.assertIn("current-owner" if mode == "changed" else "missing current chain owner", report["failures"][0])
+
+    def test_exact_upstream_dependency_change_is_published_as_failure_before_returning(self):
+        import host
+        for query, collector, pointer in (
+                ("otfm-macro-encoding-chain", "collect_otfm_macro_encoding_chain", "/otfm_device_writeback"),
+                ("mapping-engine-shutdown-chain", "collect_mapping_engine_shutdown_chain", "/mapping_delayed_task_lifecycle"),
+                ("lighting-hdr-parameters-chain", "collect_lighting_hdr_parameters_chain", "/lighting_hdr_decoder_chain"),
+                ("mapping-hardware-notification-chain", "collect_mapping_hardware_notification_chain", "/mapping_input_provider")):
+            dependencies = [{"pointer": pointer}]
+            with self.subTest(query=query), patch.object(host, collector, return_value={
+                        "failures": [], "upstream_sections": dependencies}), \
+                    patch.object(HostLocalAudit, "final_snapshot", return_value=[]), \
+                    patch.object(host, "_otfm_macro_encoding_dependency_changes", return_value=[
+                        "local-audit.json#" + pointer]) as recheck, \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"), \
+                    self.assertRaisesRegex(ValueError, "query remains unresolved"):
+                audit_host_local(argparse.Namespace(query=query, verify_only=False))
+            recheck.assert_called_once_with(dependencies)
+            report = publish.call_args.args[0]
+            self.assertFalse(report["snapshot_stable"])
+            self.assertFalse(report["bounded_observation_complete"])
+            self.assertIn(pointer, report["failures"][0])
+
+    def test_keypad_dependency_change_is_published_as_failure_before_returning(self):
+        import host
+        dependencies = [{"pointer": "/keypad_mapping_current_native"}]
+        for query, collector in (("keypad-temporary-keymap-chain", "collect_keypad_temporary_keymap_chain"),
+                ("keypad-two-tap-chain", "collect_keypad_two_tap_chain")):
+            with self.subTest(query=query), patch.object(host, collector, return_value={
+                        "failures": [], "upstream_sections": dependencies}), \
+                    patch.object(HostLocalAudit, "final_snapshot", return_value=[]), \
+                    patch.object(host, "_keypad_temporary_keymap_dependency_changes", return_value=[
+                        "local-audit.json#/keypad_mapping_current_native"]) as recheck, \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"), \
+                    self.assertRaisesRegex(ValueError, "query remains unresolved"):
+                audit_host_local(argparse.Namespace(query=query, verify_only=False))
+            recheck.assert_called_once_with(dependencies)
+            report = publish.call_args.args[0]
+            self.assertFalse(report["snapshot_stable"])
+            self.assertFalse(report["bounded_observation_complete"])
+            self.assertIn("/keypad_mapping_current_native", report["failures"][0])
+
+    def test_codec_dependency_change_after_final_snapshot_is_preserved_as_failure(self):
+        import host
+        dependencies = [{"receipt": "local-audit.json", "pointer": "/selected", "canonical_sha256": "reviewed"}]
+        for query, collector, helper in (
+                ("lighting-gif-decoder-chain", "collect_lighting_gif_decoder_chain", "_lighting_gif_decoder_dependencies"),
+                ("lighting-jpeg-decoder-chain", "collect_lighting_jpeg_decoder_chain", "_lighting_jpeg_decoder_dependencies"),
+                ("lighting-hdr-decoder-chain", "collect_lighting_hdr_decoder_chain", "_lighting_hdr_decoder_dependencies"),
+                ("lighting-ai-model-chain", "collect_lighting_ai_model_chain", "_lighting_ai_model_dependencies")):
+            for mode in ("changed", "exception"):
+                configured = ({"side_effect": ValueError("changed selected upstream")} if mode == "exception"
+                    else {"return_value": [{**dependencies[0], "canonical_sha256": "changed"}]})
+                with self.subTest(query=query, mode=mode), \
+                        patch.object(host, collector, return_value={"failures": [], "dependencies": dependencies}) as selected, \
+                        patch.object(HostLocalAudit, "final_snapshot", return_value=[]), \
+                        patch.object(host, helper, **configured) as recheck, \
+                        patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"), \
+                        self.assertRaisesRegex(ValueError, "query remains unresolved"):
+                    audit_host_local(argparse.Namespace(query=query, verify_only=False))
+                selected.assert_called_once()
+                recheck.assert_called_once_with()
+                report = publish.call_args.args[0]
+                self.assertFalse(report["snapshot_stable"])
+                self.assertFalse(report["bounded_observation_complete"])
+                self.assertIn("upstream dependencies", report["failures"][0])
+
+    def test_keypad_recheck_tracks_exact_array_owner_and_rejects_invalid_or_changed_indices(self):
+        import analysis
+        import host
+        from unittest.mock import Mock
+        document = {"shared": {"list/owner": [{"rva": "first"}, {"rva": "selected"}]}, "other": 1}
+        receipt = ".analysis/results/host-current/local-audit.json"
+        dependency = [{"receipt": receipt, "pointer": "/shared/list~1owner/1",
+            "canonical_sha256": host._keypad_temporary_keymap_digest(document["shared"]["list/owner"][1])}]
+        fake = Mock()
+        fake.read_bytes.side_effect = lambda: json.dumps(document).encode()
+        with patch.object(analysis, "resolve", return_value=fake):
+            self.assertEqual(host._keypad_temporary_keymap_dependency_changes(dependency), [])
+            document["other"] = 2
+            document["shared"]["list/owner"][0]["rva"] = "unrelated"
+            self.assertEqual(host._keypad_temporary_keymap_dependency_changes(dependency), [])
+            for index in ("-1", "01", "2", "-", "missing"):
+                changed = [{**dependency[0], "pointer": "/shared/list~1owner/" + index}]
+                with self.subTest(index=index):
+                    self.assertEqual(host._keypad_temporary_keymap_dependency_changes(changed),
+                        [receipt + "#" + changed[0]["pointer"]])
+            document["shared"]["list/owner"][1]["rva"] = "changed"
+            self.assertEqual(host._keypad_temporary_keymap_dependency_changes(dependency),
+                [receipt + "#/shared/list~1owner/1"])
+            document["shared"]["list/owner"].pop()
+            self.assertEqual(host._keypad_temporary_keymap_dependency_changes(dependency),
+                [receipt + "#/shared/list~1owner/1"])
 
 
 class MappingInputProviderDispatchTests(unittest.TestCase):
@@ -7456,6 +9912,244 @@ class MappingDelayedTaskLifecycleTests(unittest.TestCase):
                 host._mapping_delayed_task_lifecycle_proof(native, addon, owners, self.report["selected"])
 
 
+class MappingEngineShutdownChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        import host
+        cls.audit = HostLocalAudit()
+        cls.report = host.collect_mapping_engine_shutdown_chain(cls.audit)
+        cls.addon_raw = cls.audit.read(cls.report["ffi_provenance"]["original"])
+
+    def native_captures(self, label="native"):
+        return {"image_base": self.report[label]["image_base"],
+            "complete_selected_functions": [{"capture": json.loads((self.audit.a.ROOT / row["artifact"]["path"]).read_bytes())}
+                for row in self.report[label]["complete_selected_functions"]]}
+
+    def proof(self, native=None, addon=None, owners=None):
+        import host
+        return host._mapping_engine_shutdown_chain_proof(
+            self.native_captures() if native is None else native,
+            self.native_captures("addon_native") if addon is None else addon,
+            self.audit.owners if owners is None else owners, self.report["selected"], self.addon_raw)
+
+    def test_reviewed_shutdown_order_is_distinct_from_implementation_or_global_drain(self):
+        report = self.report
+        complete = {**report, "complete_originals": list(self.audit.sources.values()),
+            "complete_source_owners": list(self.audit.owners.values()),
+            "verified_artifacts": list(self.audit.artifacts.values())}
+        self.assertEqual(json.loads(json.dumps(complete, ensure_ascii=False)), complete)
+        self.assertEqual(report["kind"], "current_mapping_engine_shutdown_chain")
+        self.assertEqual(report["provenance"]["release_version"], "4.0.896")
+        self.assertEqual(report["ffi_provenance"]["version"], "1.0.11")
+        self.assertEqual(len(report["native"]["complete_selected_functions"]), 57)
+        self.assertEqual(len(report["addon_native"]["complete_selected_functions"]), 10)
+        self.assertEqual(len(report["selected"]), 15)
+        self.assertEqual(len(report["upstream_sections"]), 2)
+        self.assertTrue(all(not row["recaptured"] for row in report["upstream_sections"]))
+        for label in ("native", "addon_native"):
+            self.assertTrue(all(row["input_chunks_verified"] and row["pseudocode_captured"]
+                and not row["failures"] and "capture" not in row
+                for row in report[label]["complete_selected_functions"]))
+        self.assertTrue(report["engine_main_shutdown_order_reviewed"])
+        for key in ("source_chain_complete", "whole_product_complete", "target_execution",
+                    "real_device_operations", "product_code_modified", "global_event_loop_drain_proven"):
+            self.assertFalse(report[key], key)
+        for key in ("new_native_captures", "new_analysis_sessions", "temporary_files_created"):
+            self.assertEqual(report[key], 0)
+        self.assertEqual(report["actual_dll_comparison"], "unverified")
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_nested_construction_runs_in_reverse_with_device_cleanup_first_and_signal_last(self):
+        proof = self.report["verified_contract"]
+        self.assertEqual(proof["engine_stage_execution_rvas"], ["0x1a620", "0x1a4c0", "0x1a440",
+            "0x1a3c0", "0x1a290", "0x1a150", "0x1a010", "0x19ed0", "0x19d30", "0x19cb0", "0x19c30"])
+        self.assertEqual(proof["manager_stage_execution_rvas"], ["0x571e0", "0x57090", "0x56f10", "0x56e70"])
+        self.assertEqual((proof["engine_initialize_byte_offset"], proof["engine_state_offset"],
+            proof["engine_main_thread_offset"], proof["manager_device_count_offset"],
+            proof["manager_device_continuation_offset"], proof["manager_executor_count_offset"]), (80, 64, 56, 376, 344, 208))
+        self.assertFalse(proof["nested_disposer_executes_next_stage"])
+        self.assertTrue(proof["manager_device_erase_and_destructor_precede_next_stage"])
+
+    def test_signal_join_completion_gate_and_final_owner_release_have_distinct_boundaries(self):
+        proof = self.report["verified_contract"]
+        for key in ("main_stage_signal_precedes_main_thread_join", "main_join_precedes_external_completion",
+                "external_completion_precedes_global_sample_gate_clear",
+                "external_completion_precedes_at_exit_owner_release", "host_shutdown_uses_synchronous_ffi_call",
+                "addon_js_call_precedes_waiter_signal"):
+            self.assertTrue(proof[key], key)
+        for key in ("shutdown_post_result_checked", "host_shutdown_has_timeout_or_cancel",
+                "native_event_wait_has_deadline_or_js_loop_pump", "addon_async_send_result_checked",
+                "addon_environment_close_is_engine_shutdown", "environment_queue_destructor_signals_waiting_producers",
+                "global_event_loop_drain_proven", "actual_concurrent_teardown_verified"):
+            self.assertFalse(proof[key], key)
+
+    def test_changed_native_and_host_sources_cannot_reuse_shutdown_conclusions(self):
+        import host
+        provenance = self.report["provenance"]
+        for target, message in (("original", "shutdown native requires semantic review"),
+                                ("host_source", "shutdown Host source requires semantic review")):
+            changed = {**provenance[target], "sha256": "0" * 64}
+            original = changed if target == "original" else provenance["original"]
+            source = changed if target == "host_source" else provenance["host_source"]
+            with self.subTest(target=target), patch.object(host, "_mapping_external_input_source",
+                    return_value=(original, source, {})), \
+                    patch.object(self.audit.families, "verify_native_functions") as verify:
+                with self.assertRaisesRegex(ValueError, message):
+                    host.collect_mapping_engine_shutdown_chain(HostLocalAudit())
+                verify.assert_not_called()
+
+    def test_exact_upstream_sections_ignore_siblings_and_reject_changed_lifetime_owners(self):
+        import host
+        receipt = self.audit.a.ROOT / ".analysis/results/host-current/local-audit.json"
+        original_read = Path.read_bytes
+        document = json.loads(original_read(receipt))
+        for section in (None, "mapping_delayed_task_lifecycle", "mapping_input_shutdown_chain"):
+            changed = copy.deepcopy(document)
+            changed["unrelated_new_query"] = {"failures": ["independent"]}
+            if section:
+                changed[section]["selected_static_semantics_reviewed"] = False
+            replacement = json.dumps(changed, ensure_ascii=False).encode()
+
+            def read(path):
+                return replacement if path == receipt else original_read(path)
+
+            with self.subTest(section=section), patch.object(Path, "read_bytes", read):
+                if section:
+                    with self.assertRaisesRegex(ValueError, "upstream section requires review: " + section):
+                        host._mapping_engine_shutdown_dependencies(HostLocalAudit())
+                else:
+                    self.assertEqual(host._mapping_engine_shutdown_dependencies(HostLocalAudit()),
+                        self.report["upstream_sections"])
+                    self.assertEqual(host._otfm_macro_encoding_dependency_changes(self.report["upstream_sections"]), [])
+
+    def test_changed_ffi_sync_proxy_original_requires_review(self):
+        import host
+        ffi = self.report["ffi_provenance"]
+        members = [*ffi["complete_source_originals"], ffi["asar_alias"]]
+        for name in ("library.js", "foreign_function.js", "_foreign_function.js"):
+            changed = copy.deepcopy(members)
+            row = next(row for row in changed if row["path"].endswith("/lib/" + name))
+            row["sha256"] = "0" * 64
+            with self.subTest(name=name), patch.object(host, "current_host_asar_members", return_value=changed):
+                with self.assertRaisesRegex(ValueError, "shutdown FFI source requires review: " + name):
+                    host._mapping_engine_shutdown_sources(HostLocalAudit(), self.report["provenance"])
+
+    def test_incomplete_stage_or_environment_owner_cannot_become_reviewed(self):
+        import host
+        ffi = self.report["ffi_provenance"]
+        for label in ("mapping", "addon"):
+            audit = HostLocalAudit()
+            incomplete = {"complete_selected_functions": [{"role": "incomplete_shutdown_owner",
+                "pseudocode_captured": False, "failures": 0}]}
+            valid = {"complete_selected_functions": []}
+            reports = [incomplete, valid] if label == "mapping" else [valid, incomplete]
+            with self.subTest(label=label), patch.object(audit.families, "verify_native_functions", side_effect=reports), \
+                    patch.object(host, "_mapping_engine_shutdown_sources", return_value=(ffi["original"], {}, ffi)):
+                with self.assertRaisesRegex(ValueError, "shutdown " + label + " native function remains incomplete"):
+                    host.collect_mapping_engine_shutdown_chain(audit)
+
+    def test_actual_engine_and_thread_virtual_slots_are_not_interchangeable(self):
+        original = self.report["provenance"]["original"]
+        for role, table, offset, target in (("engine_shutdown", 0x2e0010, 8, 0x2090),
+                ("thread_deleting_destructor", 0x2ffbe0, 0, 0x1b9510)):
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "Native virtual slot target differs"):
+                self.audit.families.verify_native_functions(original, {target: role},
+                    [{"role": role, "vtable_rva": table, "slot_byte_offset": offset, "target_rva": target}])
+
+    def test_initialized_state_count_and_callback_order_anchors_are_required(self):
+        for label, rva in (("native", "0x20dd"), ("native", "0x246f"),
+                ("native", "0x2539"), ("native", "0x19c4d"), ("native", "0x1fea8"),
+                ("native", "0x57214"), ("native", "0x57ef3"), ("native", "0x5efec"),
+                ("native", "0x1b978"), ("addon_native", "0xa254"), ("addon_native", "0x9483")):
+            native, addon = self.native_captures(), self.native_captures("addon_native")
+            changed = native if label == "native" else addon
+            instruction = next(line for row in changed["complete_selected_functions"]
+                for line in row["capture"]["assembly"] if line["rva"] == rva)
+            instruction["bytes"] = "90" * (len(instruction["bytes"]) // 2)
+            with self.subTest(label=label, rva=rva), self.assertRaisesRegex(ValueError, "owner/order anchor differs: " + rva):
+                self.proof(native, addon)
+
+    def test_full_stage_wait_completion_disposer_and_environment_bodies_are_required(self):
+        for label, rva in (("native", "0x2090"), ("native", "0x2510"), ("native", "0x1fdd0"),
+                ("native", "0x1b9c6"), ("native", "0x571e0"), ("native", "0x57e60"),
+                ("native", "0x1b8d60"), ("native", "0x1a9ee0"), ("native", "0x1cffd0"),
+                ("addon_native", "0xa0f0"), ("addon_native", "0x93e0"), ("addon_native", "0x7b20")):
+            native, addon = self.native_captures(), self.native_captures("addon_native")
+            changed = native if label == "native" else addon
+            capture = next(row["capture"] for row in changed["complete_selected_functions"] if row["capture"]["rva"] == rva)
+            capture["pseudocode"]["lines"].append({"text": "pretend_every_queue_drained();"})
+            with self.subTest(label=label, rva=rva), self.assertRaisesRegex(ValueError, "complete boundary set differs"):
+                self.proof(native, addon)
+
+    def test_actual_staged_manager_join_and_environment_edges_are_required(self):
+        for label, owner_rva, target in (("native", "0x1fed0", "0x18001fdd0"),
+                ("native", "0x1a620", "0x180056b40"), ("native", "0x571e0", "0x180057e60"),
+                ("native", "0x56f10", "0x18005efb0"), ("native", "0x1b8d60", "0x1801a9ee0"),
+                ("native", "0x17ac", "0x1801cffd0"), ("addon_native", "0x93e0", "0x180008c20"),
+                ("addon_native", "0x2750", "0x180007b20")):
+            native, addon = self.native_captures(), self.native_captures("addon_native")
+            changed = native if label == "native" else addon
+            capture = next(row["capture"] for row in changed["complete_selected_functions"] if row["capture"]["rva"] == owner_rva)
+            for line in capture["assembly"]:
+                line["xrefs_from"] = [xref for xref in line.get("xrefs_from", []) if xref["to"] != target]
+            with self.subTest(label=label, rva=owner_rva), self.assertRaisesRegex(ValueError, "actual reference edge differs: " + owner_rva):
+                self.proof(native, addon)
+
+    def test_host_callback_retention_and_sync_ffi_selection_require_complete_ast(self):
+        for role, before, after in (("callDLL", "this.cbMap.set(o,r)", "this.cbMap.clear()"),
+                ("callDLL", "this.cbMap.delete(o)", "this.cbMap.clear()"),
+                ("initDll", 'mappingEngineShutdown:["void",["pointer"]]',
+                    'mappingEngineShutdown:["void",["pointer"],{async:true}]'),
+                ("ffi_library", "lib[func] = async ? ff.async : ff", "lib[func] = ff.async"),
+                ("ffi_foreign", "return _ForeignFunction(cif, funcPtr, returnType, argTypes)", "return null"),
+                ("ffi_proxy", "bindings.ffi_call(cif, funcPtr, result, argsList)", "pump_event_loop()")):
+            owners = copy.deepcopy(self.audit.owners)
+            owner = owners[self.report["selected"][role]]
+            self.assertIn(before, owner["body"])
+            owner["body"] = owner["body"].replace(before, after)
+            owner["body_sha256"] = hashlib.sha256(owner["body"].encode()).hexdigest()
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "complete source owner differs: " + role):
+                self.proof(owners=owners)
+
+    def test_actual_pe_delay_names_and_instruction_iat_targets_are_both_required(self):
+        import host
+        bindings = host._mapping_engine_shutdown_delay_imports(self.addon_raw)
+        self.assertEqual(len(bindings), 9)
+        self.assertTrue(all(row["actual_pe_bytes_verified"] and row["module"] == "node.exe" for row in bindings))
+        self.assertEqual({row["symbol"] for row in bindings}, {"uv_async_send", "uv_cond_wait", "uv_cond_signal",
+            "uv_close", "napi_get_uv_event_loop", "uv_async_init", "napi_set_instance_data", "napi_make_callback", "napi_call_function"})
+        changed = self.addon_raw.replace(b"uv_cond_wait\0", b"uv_cond_waiX\0")
+        self.assertNotEqual(changed, self.addon_raw)
+        with self.assertRaisesRegex(ValueError, "actual delay-import binding differs: uv_cond_wait"):
+            host._mapping_engine_shutdown_delay_imports(changed)
+        changed = bytearray(self.addon_raw)
+        section = next(row for row in inspect_pe(changed)["sections"] if row["name"] == ".text")
+        offset = section["file_offset"] + 0xa246 - section["rva"]
+        changed[offset + 2] ^= 8
+        with self.assertRaisesRegex(ValueError, "actual delay-import binding differs: uv_async_send"):
+            host._mapping_engine_shutdown_delay_imports(bytes(changed))
+
+    def test_cli_failures_and_dependency_changes_cannot_upgrade_shutdown_to_complete(self):
+        import host
+        parser = argparse.ArgumentParser()
+        add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["audit-host-local", "--query", "mapping-engine-shutdown-chain"])
+        for condition in ("missing", "changed_snapshot", "changed_dependency"):
+            result = {"failures": [], "upstream_sections": self.report["upstream_sections"]}
+            with self.subTest(condition=condition), \
+                    patch.object(host, "collect_mapping_engine_shutdown_chain", **(
+                        {"side_effect": ValueError("missing exact shutdown owner")} if condition == "missing" else {"return_value": result})), \
+                    patch.object(HostLocalAudit, "final_snapshot", return_value=["current.dll"] if condition == "changed_snapshot" else []), \
+                    patch.object(host, "_otfm_macro_encoding_dependency_changes", return_value=["changed section"] if condition == "changed_dependency" else []), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"), \
+                    self.assertRaisesRegex(ValueError, "query remains unresolved"):
+                audit_host_local(args)
+            published = publish.call_args.args[0]
+            self.assertFalse(published["source_chain_complete"])
+            self.assertFalse(published["target_execution"])
+            self.assertEqual(published["actual_dll_comparison"], "unverified")
+
+
 class MappingInputProducerEligibilityTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -7737,6 +10431,150 @@ class MappingAnalogKeyRoutingTests(unittest.TestCase):
                     host._mapping_analog_key_product(audit)
 
 
+class MappingTriggerOutputsTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        import analysis
+        import host
+        cls.audit = host.HostLocalAudit()
+        cls.result = host.retain_mapping_trigger_outputs(cls.audit)
+        cls.raw = cls.audit.read(cls.result["native_identity"])
+        cls.previous = json.loads((analysis.ROOT / ".analysis/results/host-current/local-audit.json").read_bytes())
+        cls.reused = [{"capture": json.loads((analysis.ROOT / row["artifact"]["path"]).read_bytes())}
+            for row in cls.result["reused_native"]]
+
+    def verify(self, native=None, reused=None):
+        import host
+        return host._mapping_trigger_outputs_proof(self.raw, self.result["native"] if native is None else native,
+            self.reused if reused is None else reused)
+
+    def change_body(self, rva, before, after):
+        native = copy.deepcopy(self.result["native"])
+        function = next(row["capture"] for row in native["complete_functions"] if row["capture"]["rva"] == rva)
+        line = next(line for line in function["pseudocode"]["lines"] if before in line["text"])
+        line["text"] = line["text"].replace(before, after, 1)
+        return self.verify(native)
+
+    def test_actual_type_and_bounded_software_scope_remain_distinct_from_firmware(self):
+        result, proof = self.result, self.result["verified_contract"]
+        self.assertEqual(result["kind"], "current_mapping_trigger_outputs")
+        self.assertEqual(proof["type"], {"triggers": 38, "doubleMapping": 15, "joystick": 19, "keyboard": 21, "xboxGamepad": 41})
+        self.assertEqual((proof["new_complete_functions"], proof["reused_complete_functions"]), (28, 8))
+        self.assertEqual(len(proof["verified_consumer_edges"]), 40)
+        self.assertFalse(proof["firmware_publication_proven"])
+        self.assertFalse(proof["whole_executor_family_complete"])
+        self.assertFalse(proof["actual_device_or_os_result_observed"])
+        for field in ("source_chain_complete", "whole_product_complete", "target_execution", "real_device_operations"):
+            self.assertFalse(result[field])
+        self.assertEqual(result["actual_dll_comparison"], "unverified")
+
+    def test_output_ids_and_int32_low16_actuation_do_not_become_invented_validation(self):
+        parser = self.result["verified_contract"]["parser"]
+        self.assertIn("zero, leading zeros and optional plus accepted", parser["output_id"])
+        self.assertEqual(parser["actuation"], "required JSON int32; low16 copied without range validation")
+        self.assertIn("reject insertion", parser["duplicate_numeric_id"])
+        for rva, before, after in (("0xf4211", "v49 >= 0x10000", "v49 >= 0x100"),
+                ("0xdbaf3", "*a3 = WORD2(v12)", "*a3 = v12"),
+                ("0x1b5110", "(_BYTE)v6 != 2", "(_BYTE)v6 != 3")):
+            with self.subTest(rva=rva), self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+                self.change_body(rva, before, after)
+
+    def test_threshold_order_and_per_output_admission_cannot_be_changed(self):
+        consumer = self.result["verified_contract"]["ordinary_consumer"]
+        self.assertIn("make ascending, break descending", self.result["verified_contract"]["parser"]["order"])
+        self.assertIn("pair(keyId,outputId)", consumer["per_output_admission"])
+        self.assertFalse(consumer["per_output_result_aggregated"])
+        self.assertFalse(consumer["notifications_prove_output_success"])
+        for rva, before, after in (("0x96f02", "sub_180098156(v21, v20[16], v19, &v18)",
+                "sub_180098156(v21, v19, v20[16], &v18)"),
+                ("0x9743a", "v15 = a3", "v15 = 0"),
+                ("0x98156", "if ( (_BYTE)result )", "if ( 1 )")):
+            with self.subTest(rva=rva), self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+                self.change_body(rva, before, after)
+
+    def test_selected_device_membership_branch_keeps_its_actual_limited_executor(self):
+        consumer = self.result["verified_contract"]["ordinary_consumer"]
+        self.assertIn("key ID in device+992 selects9719E", consumer["selector"])
+        self.assertIn("executes only mode29", consumer["device_992_nested"])
+        with self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+            self.change_body("0x986bc", "(_DWORD)result == 21", "(_DWORD)result == 27")
+
+    def test_double_mapping_digital_parser_and_actual_rapid_selection_are_retained(self):
+        semantics = self.result["verified_contract"]["double_mapping"]
+        self.assertIn("ignores the selected analog executor result", semantics)
+        self.assertIn("rapid config92748 or ordinary9307E", semantics)
+        for rva, before, after in (("0xf50b4", "sub_1800F4211(a1, a2, a3)", "sub_1800F4C78(a1, a2, a3)"),
+                ("0x953a0", "sub_18009307E(a1, a2, a3, v16, a5, a6, a7, &v73, 0)",
+                    "sub_18009307E(a1, a2, a3, v16, a5, a6, a7, &v73, 1)")):
+            with self.subTest(rva=rva), self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+                self.change_body(rva, before, after)
+
+    def test_partial_tree_move_and_nested_release_do_not_hide_failure_cleanup(self):
+        for rva, before, after in (("0x105100", "*(_OWORD *)(a2 + 1) = 0", "*(_OWORD *)(a2 + 1) = 1"),
+                ("0xf6904", "sub_1800F6948(a2 + 4)", "nullsub_1()"),
+                ("0x1046b0", "*(_OWORD *)(a1 + 24) = 0", "*(_OWORD *)(a1 + 24) = 1")):
+            with self.subTest(rva=rva), self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+                self.change_body(rva, before, after)
+        self.assertFalse(self.result["verified_contract"]["all_pending_tasks_cancelled_or_drained"])
+
+    def test_physical_bytes_constants_slots_and_consumer_edges_cannot_be_forged(self):
+        for mode in ("instruction", "region", "edge"):
+            native = copy.deepcopy(self.result["native"])
+            if mode == "region":
+                row = next(row for row in native["verified_data_regions"] if row["role"] == "triggers_vtable")
+                row["raw_hex"] = "00" * row["bytes"]
+                row["sha256"] = hashlib.sha256(bytes(row["bytes"])).hexdigest()
+            else:
+                function = next(row["capture"] for row in native["complete_functions"] if row["capture"]["rva"] == "0xf4211")
+                if mode == "instruction":
+                    row = next(row for row in function["assembly"] if row["rva"] == "0xf4731")
+                    row["bytes"] = "41b813000000"
+                else:
+                    for row in function["assembly"]:
+                        row["xrefs_from"] = [edge for edge in row.get("xrefs_from", []) if edge["to"] != "0x180104cb0"]
+            with self.subTest(mode=mode), self.assertRaisesRegex(ValueError, "differs|consumer edge changed"):
+                self.verify(native)
+
+    def test_exact_upstream_list_pointer_changes_fail_and_unrelated_sections_can_refresh(self):
+        import host
+        previous = copy.deepcopy(self.previous)
+        previous["independent_refresh"] = {"new": True}
+        _, dependencies = host._mapping_trigger_outputs_dependencies(previous)
+        self.assertEqual(dependencies, self.result["dependencies"])
+        self.assertTrue(any(row["pointer"].endswith("/21") for row in dependencies))
+        for mode in ("absent", "changed", "unresolved"):
+            previous = copy.deepcopy(self.previous)
+            if mode == "absent":
+                del previous["keypad_mapping_current_native"]["native"]["complete_selected_functions"][21]
+            elif mode == "changed":
+                previous["keypad_mapping_current_native"]["native"]["complete_selected_functions"][21]["rva"] = "0xad0cd"
+            else:
+                previous["mapping_analog_key_routing"]["bounded_observation_complete"] = False
+            with self.subTest(mode=mode), self.assertRaisesRegex(ValueError, "upstream pointer requires review"):
+                host._mapping_trigger_outputs_dependencies(previous)
+
+    def test_selected_capture_failure_cannot_be_reported_complete(self):
+        import host
+        original_slice = host.HostLocalAudit.native_slice
+
+        def failed_slice(audit, *args, **kwargs):
+            result = original_slice(audit, *args, **kwargs)
+            result["decompiler_failures"].append("selected owner unavailable")
+            return result
+
+        with patch.object(host.HostLocalAudit, "native_slice", failed_slice), \
+                self.assertRaisesRegex(ValueError, "complete capture remains unresolved"):
+            host.retain_mapping_trigger_outputs(host.HostLocalAudit())
+
+    def test_current_byte_snapshot_and_no_temporary_or_target_resources(self):
+        self.assertEqual(self.result["native_identity"]["sha256"], "c64e539437b50da2b1f2e4155d8cbb0fb1c3e1ebaad894caf509bad97e9857f9")
+        self.assertTrue(all(row["input_chunks_verified"] for row in self.result["native"]["complete_functions"]))
+        self.assertEqual(self.result["cleanup"]["temporary_files_created"], [])
+        self.assertEqual(self.result["cleanup"]["private_databases_created"], [])
+        self.assertEqual(json.loads(json.dumps(self.result, ensure_ascii=False)), self.result)
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+
 class MappingBleAnalogStickRoutingTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -7984,6 +10822,208 @@ class MappingExternalInputRoutingTests(unittest.TestCase):
         owner["body_sha256"] = hashlib.sha256(owner["body"].encode("utf-8")).hexdigest()
         with self.assertRaisesRegex(ValueError, "host consumer differs: createCbHardwareEvent"):
             host._mapping_external_input_proof(native, owners, self.report["selected"])
+
+
+class OtfmMacroEncodingTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        import host
+        cls.audit = HostLocalAudit()
+        dependency = host._otfm_macro_encoding_dependencies
+        def retained(audit):
+            result = dependency(audit)
+            cls.upstream = result[0]
+            return result
+        with patch.object(host, "_otfm_macro_encoding_dependencies", side_effect=retained), \
+                patch.object(host, "collect_otfm_device_writeback") as old:
+            cls.report = host.collect_otfm_macro_encoding_chain(cls.audit)
+        old.assert_not_called()
+        cls.owners = cls.audit.owners
+
+    def test_complete_current_sources_and_reused_native_evidence_keep_execution_unverified(self):
+        report = self.report
+        self.assertEqual(report["product_id"], 756)
+        self.assertEqual(report["source_selections"]["product"]["name"], "keyboard-mw-756-current-refresh-ec3db4b29c5a-2")
+        self.assertEqual(report["source_selections"]["background"]["name"], "background-manager-current-refresh-ec3db4b29c5a")
+        self.assertEqual(len(report["upstream_sections"]), 1)
+        self.assertFalse(report["upstream_sections"][0]["recaptured"])
+        self.assertEqual(report["upstream_sections"][0]["reused_native_functions"], 8)
+        self.assertNotIn(".analysis/results/host-current/local-audit.json", self.audit.artifacts)
+        self.assertEqual(report["temporary_files_created"], [])
+        self.assertEqual(report["native_evidence_reuse"]["new_native_captures"], 0)
+        self.assertFalse(report["native_evidence_reuse"]["new_native_semantics_claimed"])
+        for flag in ("source_chain_complete", "whole_product_complete", "target_execution", "real_device_operations", "product_code_modified"):
+            self.assertFalse(report[flag], flag)
+        self.assertEqual(report["actual_dll_comparison"], "unverified")
+        for owner in self.owners.values():
+            raw = self.audit.read(owner["original"])[owner["byte_start"]:owner["byte_end"]]
+            self.assertEqual(raw, owner["body"].encode())
+            self.assertEqual(hashlib.sha256(raw).hexdigest(), owner["body_sha256"])
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_worker_realm_and_actual_tables_are_joined_without_borrowing_protocol_duplicate(self):
+        report = self.report
+        opcodes = report["cross_chunk_exports"]["opcodes"]
+        self.assertEqual(opcodes["module_id"], 65350)
+        self.assertTrue(opcodes["original"]["path"].endswith("obmEngineKeyboard.548c12e603ff5072603e.js"))
+        keys = self.owners[report["selected"]["worker_keys_factory"]]
+        self.assertTrue(keys["original"]["path"].endswith("1451.d334c935ecafd99b2709.js"))
+        self.assertIn("init_keyMapping", self.owners[report["selected"]["worker_keys_wrapper"]]["body"])
+        self.assertIn("t.init_keyMapping=o", keys["body"])
+        self.assertEqual(report["tables"]["opcodes"]["CURSOR"], 21)
+        self.assertEqual(report["tables"]["scan_to_hid"]["30"], 4)
+        self.assertEqual(report["tables"]["scan_to_hid"]["158"], 4)
+        self.assertEqual(report["tables"]["hid_to_scan"]["228"], 57373)
+
+    def test_independent_keyboard_and_extended_modifier_samples_use_source_flags(self):
+        import host
+        tables = self.report["tables"]
+        for event, expected in (({"type": "keyboard", "scancode": 30, "flag": 0}, [1, 4]),
+                ({"type": "keyboard", "scancode": 158, "flag": 1}, [2, 4]),
+                ({"type": "keyboard", "scancode": 57373, "flag": 0}, [1, 228])):
+            with self.subTest(event=event):
+                ok, data, mouse = host._otfm_macro_encoding_project_event(event, 3, tables)
+                self.assertEqual((ok, data, mouse), (True, expected, 3))
+        for event in ({"type": "keyboard", "scancode": 0, "flag": 0},
+                {"type": "keyboard", "scancode": 30, "flag": 2}):
+            self.assertFalse(host._otfm_macro_encoding_project_event(event, 0, tables)[0])
+        original = {"guid": "macro", "name": "modifier", "appEngine": {"mouseMoveType": "none",
+            "events": [{"type": "keyboard", "scancode": 29, "flag": 3}]}}
+        projected = host._otfm_macro_encoding_project_worker(original, tables)
+        self.assertEqual(projected["macroItemList"], [{"type": "keyboard", "scancode": 57373, "flag": 1, "HID": 228}])
+        self.assertIs(projected["macroItemList"][0], original["appEngine"]["events"][0])
+
+    def test_relative_worker_filters_zero_motion_and_preserves_source_integer_wrapping(self):
+        import host
+        source = {"guid": "m", "name": "motion", "appEngine": {"mouseMoveType": "relative", "events": [
+            {"type": "mouseMove", "x": 10, "y": 20}, {"type": "delay", "ms": 0},
+            {"type": "mouseMove", "x": 7, "y": 22}, {"type": "keyboard", "scancode": 30, "flag": 0}]}}
+        result = host._otfm_macro_encoding_project_worker(source, self.report["tables"])
+        self.assertEqual(result["numItems"], 2)
+        self.assertEqual(result["macroItemList"][0], {"type": "mouseMove", "x": 65533, "y": 2})
+        self.assertEqual(host._otfm_macro_encoding_project_batch(result["macroItemList"], self.report["tables"])["fwMacroData"],
+                         [21, 255, 253, 0, 2, 1, 4])
+        self.assertEqual(source["appEngine"]["events"][-1], {"type": "keyboard", "scancode": 30, "flag": 0})
+        source["appEngine"]["mouseMoveType"] = "absolute"
+        self.assertIsNone(host._otfm_macro_encoding_project_worker(source, self.report["tables"]))
+        self.assertEqual(self.report["verified_contract"]["worker"]["other_mode_result"], "SUCCESS payload undefined")
+
+    def test_mouse_accumulation_literal_middle_bit_wheel_and_horizontal_behavior(self):
+        import host
+        cases = ((1, 0, [8, 1], 1), (4, 1, [8, 3], 3), (2, 3, [8, 2], 2),
+            (16, 3, [8, 3], 3), (32, 4, [8, 4], 4), (2048, 3, [8, 3], 3))
+        for button, before, expected, after in cases:
+            with self.subTest(button=button):
+                self.assertEqual(host._otfm_macro_encoding_project_event({"type": "mouse", "id": button}, before,
+                    self.report["tables"]), (True, expected, after))
+        for value, expected in ((120, 1), (-120, 255), (65416, 255), (0, 255)):
+            self.assertEqual(host._otfm_macro_encoding_project_event({"type": "mouse", "id": 1024, "data": value},
+                3, self.report["tables"]), (True, [10, expected], 3))
+
+    def test_independent_delay_boundaries_and_low16_motion_bytes(self):
+        import host
+        for value, expected in ((255, [17, 255]), (256, [18, 1, 0]), (65535, [18, 255, 255]),
+                (65536, [19, 1, 0, 0]), (16777215, [19, 255, 255, 255]),
+                (16777216, [20, 1, 0, 0, 0]), (-1, [17, 255]), (4294967297, [20, 0, 0, 0, 1])):
+            with self.subTest(delay=value):
+                self.assertEqual(host._otfm_macro_encoding_project_event({"type": "delay", "ms": value}, 0,
+                    self.report["tables"]), (True, expected, 0))
+        self.assertEqual(host._otfm_macro_encoding_project_event({"type": "mouseMove", "x": -1, "y": 65538}, 0,
+            self.report["tables"]), (True, [21, 255, 255, 0, 2], 0))
+
+    def test_failed_item_returns_only_prior_bytes_while_original_count_reaches_name_and_cache(self):
+        import host
+        events = [{"type": "keyboard", "scancode": 30, "flag": 0},
+                  {"type": "keyboard", "scancode": 0, "flag": 0}, {"type": "delay", "ms": 256}]
+        self.assertEqual(host._otfm_macro_encoding_project_batch(events, self.report["tables"]),
+            {"fwMacroData": [1, 4], "fwMacroDataSize": 2, "original_num_items": 3})
+        contract = self.report["verified_contract"]
+        self.assertTrue(contract["firmware"]["batch"]["original_num_items_preserved_in_name_and_cache"])
+        self.assertFalse(contract["writer"]["local_name_or_data_write_error_propagation"])
+        self.assertEqual(contract["writer"]["command"], [80, 6, 9])
+        self.assertEqual(contract["writer"]["chunk_data_limit"], 72)
+        frame = self.owners[self.report["selected"]["frame"]]["body"]
+        self.assertIn("t<n.length&&t<o[5]", frame)
+        self.assertFalse(contract["writer"]["ack_is_independent_full_macro_readback"])
+        self.assertFalse(contract["static_projection_is_vendor_execution"])
+
+    def test_changed_body_identity_table_or_missing_owner_cannot_reuse_selection(self):
+        import host
+        for role, before, after in (("macro_fw_items", "16&e.id&&(o&=-5)", "32&e.id&&(o&=-5)"),
+                ("macro_fw_bytes", "break}", "throw new Error();}"),
+                ("worker_keys_wrapper", "o.init_keyMapping.call(void 0)", "o.init_keyMapping"),
+                ("worker_operation", '"SUCCESS"===c', '"ERROR"===c')):
+            selected, owners = dict(self.report["selected"]), dict(self.owners)
+            owner = copy.deepcopy(owners[selected[role]])
+            self.assertIn(before, owner["body"])
+            owner["body"] = owner["body"].replace(before, after, 1)
+            raw = owner["body"].encode()
+            owner["body_sha256"] = hashlib.sha256(raw).hexdigest()
+            owner["byte_end"] = owner["byte_start"] + len(raw)
+            owners[selected[role]] = owner
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "selection requires review"):
+                host._otfm_macro_encoding_contract(selected, owners, self.report["tables"])
+        for mode in ("table", "missing", "identity"):
+            selected, owners, tables = dict(self.report["selected"]), dict(self.owners), copy.deepcopy(self.report["tables"])
+            if mode == "table":
+                tables["opcodes"]["BUTTON"] = 10
+            elif mode == "missing":
+                del selected["worker_keys_factory"]
+            else:
+                owner = copy.deepcopy(owners[selected["macro_worker"]])
+                owner["original"]["sha256"] = "0" * 64
+                owners[selected["macro_worker"]] = owner
+            with self.subTest(mode=mode), self.assertRaisesRegex(ValueError, "selection requires review"):
+                host._otfm_macro_encoding_contract(selected, owners, tables)
+
+    def test_changed_upstream_source_selection_or_resigned_missing_consumer_is_rejected(self):
+        import host
+        path = self.audit.a.ROOT / ".analysis/results/host-current/local-audit.json"
+        read = Path.read_bytes
+        for mode in ("semantics", "missing"):
+            section = copy.deepcopy(self.upstream)
+            if mode == "semantics":
+                section["verified_contract"]["macro_local_write_error_propagated"] = True
+            else:
+                del section["selected"]["macro_worker"]
+                section["self_signed"] = host._otfm_macro_encoding_digest(section)
+            replacement = json.dumps({"otfm_device_writeback": section}).encode()
+            def altered(selected):
+                return replacement if selected == path else read(selected)
+            with self.subTest(mode=mode), patch.object(Path, "read_bytes", altered), \
+                    patch.object(host, "_otfm_device_writeback_sources") as sources, \
+                    self.assertRaisesRegex(ValueError, "upstream section requires review"):
+                host.collect_otfm_macro_encoding_chain(HostLocalAudit())
+            sources.assert_not_called()
+        changed = copy.deepcopy(self.report["source_selections"])
+        changed["product"]["acquisition"]["sha256"] = "0" * 64
+        with patch.object(host, "_otfm_device_writeback_sources", return_value=(changed, {"product": []})), \
+                self.assertRaisesRegex(ValueError, "current source selection differs"):
+            host.collect_otfm_macro_encoding_chain(HostLocalAudit())
+
+    def test_dependency_recheck_retains_missing_changed_malformed_or_io_failure_and_allows_other_queries(self):
+        import host
+        path = self.audit.a.ROOT / ".analysis/results/host-current/local-audit.json"
+        read = Path.read_bytes
+        for mode in ("unchanged", "changed", "missing", "malformed", "io"):
+            section = copy.deepcopy(self.upstream)
+            if mode == "changed":
+                section["snapshot_stable"] = False
+            data = {"unrelated_query": {"changed": True}}
+            if mode != "missing":
+                data["otfm_device_writeback"] = section
+            replacement = b"{" if mode == "malformed" else json.dumps(data).encode()
+            def altered(selected):
+                if selected == path:
+                    if mode == "io":
+                        raise OSError("receipt busy")
+                    return replacement
+                return read(selected)
+            with self.subTest(mode=mode), patch.object(Path, "read_bytes", altered):
+                changes = host._otfm_macro_encoding_dependency_changes(self.report["upstream_sections"])
+            self.assertEqual(bool(changes), mode != "unchanged")
+            if changes:
+                self.assertEqual(changes, [".analysis/results/host-current/local-audit.json#/otfm_device_writeback"])
 
 
 class OtfmDeviceWritebackTests(unittest.TestCase):
@@ -8873,6 +11913,732 @@ class KeypadMappingCurrentNativeTests(unittest.TestCase):
         raw[offset:offset + 8] = struct.pack("<Q", int(self.native["image_base"], 16) + 0x110dda)
         with self.assertRaisesRegex(ValueError, "adjusted delegate or driver slot differs"):
             host._keypad_mapping_current_native_proof(bytes(raw), self.native)
+
+
+class KeypadTemporaryKeymapChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        import host
+        cls.audit = HostLocalAudit()
+        cls.report = host.collect_keypad_temporary_keymap_chain(cls.audit)
+        cls.raw = cls.audit.read(cls.report["provenance"]["original"])
+        cls.native = {"image_base": cls.report["native"]["image_base"],
+            "complete_selected_functions": [{"capture": json.loads(
+                (cls.audit.a.ROOT / row["artifact"]["path"]).read_bytes())}
+                for row in cls.report["native"]["complete_selected_functions"]]}
+
+    def test_actual_747_temporary_producers_remain_distinct_from_all_runtime_acceptance(self):
+        report = self.report
+        self.assertEqual(report["kind"], "current_keypad_temporary_keymap_chain")
+        self.assertEqual(report["product_id"], 747)
+        self.assertTrue(report["temporary_keymap_producer_slice_complete"])
+        self.assertEqual(report["verified_contract"]["source"]["selected_source_owners"], 47)
+        self.assertEqual(report["verified_contract"]["native"]["functions_verified"], 13)
+        self.assertEqual(report["verified_contract"]["native"]["instructions_verified"], 1522)
+        self.assertEqual(len(report["reused_native_owners"]), 11)
+        self.assertEqual(len(report["native"]["verified_indirect_slots"]), 5)
+        self.assertFalse(report["verified_contract"]["source"]["temporary_active_keymap_id_persisted"])
+        self.assertFalse(report["verified_contract"]["native"]["last_key_read_is_a_generation_barrier"])
+        for key in ("source_chain_complete", "whole_product_complete", "target_execution",
+                "real_device_operations", "product_code_modified"):
+            self.assertFalse(report[key], key)
+        for key in ("ui_backend_wiring", "actual_dll_comparison", "runtime_acceptance"):
+            self.assertEqual(report[key], "unverified", key)
+        self.assertEqual(report["cleanup"]["temporary_files_created"], [])
+        self.assertFalse(report["cleanup"]["new_capture_created"])
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_clutch_press_release_persistence_and_failure_semantics_require_complete_reviewed_owners(self):
+        import host
+        for role, old, new in (("actual_keymap_compiler", 'guid:e.keymapGroup.previousKeymapGuid',
+                    'guid:e.keymapGroup.previousKeymapGuid,id:"specificKeymap"'),
+                ("context_factory", 's.appEngine=structuredClone(a.appEngine)', 'Object.assign(s,a)'),
+                ("selection_task", 'loadKeyMappings)(s,T,o,i,!0)', 'loadKeyMappings)(s,T,o,i,!1)'),
+                ("temporary_mapping_task", 'finally{I&&Il.Ay.setTemporaryKeypadKeymapContext(null)}',
+                    'finally{Il.Ay.setTemporaryKeypadKeymapContext(null)}'),
+                ("clutch_predicate", '!0===(null==o?void 0:o.isClutch)', '!1===(null==o?void 0:o.isClutch)'),
+                ("storage_hook_owner", 'this.hooks.PostSetLocalStorage(t)', 'yield this.hooks.PostSetLocalStorage(t)')):
+            owners = copy.deepcopy(self.audit.owners)
+            row = owners[self.report["selected"][role]]
+            self.assertIn(old, row["body"], role)
+            row["body"] = row["body"].replace(old, new, 1)
+            row["body_sha256"] = hashlib.sha256(row["body"].encode()).hexdigest()
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "complete reviewed source selection differs"):
+                host._keypad_temporary_keymap_source_proof(self.report["selected"], owners)
+
+    def test_inline_same_named_compiler_cannot_replace_the_actual_cross_chunk_keymap_owner(self):
+        import host
+        selected = dict(self.report["selected"])
+        selected["actual_keymap_compiler"] = selected["selection_task"]
+        with self.assertRaisesRegex(ValueError, "complete reviewed source selection differs"):
+            host._keypad_temporary_keymap_source_proof(selected, self.audit.owners)
+
+    def test_missing_key_read_callback_notification_or_config_owner_is_rejected(self):
+        import host
+        for rva in ("0x77df0", "0x555b0", "0x8563e", "0xe3d90"):
+            native = {**self.native, "complete_selected_functions": [row for row in self.native[
+                "complete_selected_functions"] if row["capture"]["rva"] != rva]}
+            with self.subTest(rva=rva), self.assertRaisesRegex(ValueError, "selected native owner differs"):
+                host._keypad_temporary_keymap_native_proof(self.raw, native)
+
+    def test_real_storage_key_and_notification_continuation_edges_are_required(self):
+        import host
+        for owner_rva, target in (("0x77df0", 0x784d0), ("0x55484", 0x555b0),
+                ("0x78920", 0xe3d90), ("0x8563e", 0xa3afc), ("0xaa2c8", 0x7b350)):
+            native = copy.deepcopy(self.native)
+            owner = next(row["capture"] for row in native["complete_selected_functions"]
+                if row["capture"]["rva"] == owner_rva)
+            for line in owner["assembly"]:
+                line["xrefs_from"] = [xref for xref in line.get("xrefs_from", [])
+                    if int(xref["to"], 16) != int(native["image_base"], 16) + target]
+            with self.subTest(rva=owner_rva), self.assertRaisesRegex(ValueError, "continuation/publication edge differs"):
+                host._keypad_temporary_keymap_native_proof(self.raw, native)
+
+    def test_changed_instruction_or_rehashed_chunk_cannot_disagree_with_actual_pe_bytes(self):
+        import host
+        for change in ("instruction", "chunk"):
+            native = copy.deepcopy(self.native)
+            owner = next(row["capture"] for row in native["complete_selected_functions"]
+                if row["capture"]["rva"] == "0x555b0")
+            if change == "instruction":
+                line = owner["assembly"][0]
+                raw = bytearray.fromhex(line["bytes"])
+                raw[0] ^= 1
+                line["bytes"] = raw.hex()
+                message = "instruction differs from PE bytes or owner"
+            else:
+                chunk = owner["chunks"][0]
+                raw = bytearray.fromhex(chunk["raw_hex"])
+                raw[0] ^= 1
+                chunk.update(raw_hex=raw.hex(), sha256=hashlib.sha256(raw).hexdigest())
+                message = "function chunk differs from PE bytes"
+            with self.subTest(change=change), self.assertRaisesRegex(ValueError, message):
+                host._keypad_temporary_keymap_native_proof(self.raw, native)
+
+    def test_complete_native_interpretations_cannot_claim_additional_generation_or_device_ack(self):
+        import host
+        for rva in ("0x77df0", "0x784d0", "0x8563e", "0xaa2c8"):
+            native = copy.deepcopy(self.native)
+            owner = next(row["capture"] for row in native["complete_selected_functions"]
+                if row["capture"]["rva"] == rva)
+            owner["pseudocode"]["lines"].append({"text": "return confirmed_device_generation;"})
+            owner["pseudocode_sha256"] = hashlib.sha256("\n".join(
+                line["text"] for line in owner["pseudocode"]["lines"]).encode()).hexdigest()
+            with self.subTest(rva=rva), self.assertRaisesRegex(ValueError, "complete reviewed native owner differs"):
+                host._keypad_temporary_keymap_native_proof(self.raw, native)
+
+    def test_actual_common_observer_and_device_data_slots_cannot_be_neighbors(self):
+        import host
+        for pointer_rva in (0x2e6a18 + 8, 0x2ed2e8 + 8):
+            raw = bytearray(self.raw)
+            section = next(row for row in inspect_pe(raw)["sections"]
+                if row["rva"] <= pointer_rva < row["rva"] + row["bytes"])
+            offset = section["file_offset"] + pointer_rva - section["rva"]
+            raw[offset:offset + 8] = struct.pack("<Q", int(self.native["image_base"], 16) + 0x65cc0)
+            if pointer_rva == 0x2e6a18 + 8:
+                raw[offset:offset + 8] = struct.pack("<Q", int(self.native["image_base"], 16) + 0x656ca)
+            with self.subTest(pointer=hex(pointer_rva)), self.assertRaisesRegex(ValueError, "configuration slot differs"):
+                host._keypad_temporary_keymap_native_proof(bytes(raw), self.native)
+
+    def test_exact_upstream_recheck_ignores_unrelated_queries_but_rejects_changed_shared_sections(self):
+        import host
+        from unittest.mock import Mock
+        upstream = self.report["upstream_sections"]
+        self.assertEqual([row["pointer"] for row in upstream], ["/keypad_mapping_consumers",
+            "/keypad_mapping_current_native", "/mapping_input_producer_eligibility"])
+        self.assertTrue(all(not row["recaptured"] for row in upstream))
+        self.assertNotIn(".analysis/results/host-current/local-audit.json", self.audit.artifacts)
+        document = {"shared": {"native": {"publication": "requested"}}, "other": {"progress": 1}}
+        dependency = [{"receipt": ".analysis/results/host-current/local-audit.json",
+            "pointer": "/shared/native", "canonical_sha256": host._keypad_temporary_keymap_digest(document["shared"]["native"])}]
+        fake = Mock()
+        fake.read_bytes.side_effect = lambda: json.dumps(document).encode()
+        with patch.object(self.audit.a, "resolve", return_value=fake):
+            self.assertEqual(host._keypad_temporary_keymap_dependency_changes(dependency), [])
+            document["other"]["progress"] = 2
+            self.assertEqual(host._keypad_temporary_keymap_dependency_changes(dependency), [])
+            document["shared"]["native"]["publication"] = "confirmed"
+            self.assertEqual(host._keypad_temporary_keymap_dependency_changes(dependency), [
+                ".analysis/results/host-current/local-audit.json#/shared/native"])
+
+
+class KeypadTwoTapChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        import host
+        cls.audit = HostLocalAudit()
+        cls.report = host.collect_keypad_two_tap_chain(cls.audit)
+        document = json.loads((cls.audit.a.ROOT / ".analysis/results/host-current/local-audit.json").read_bytes())
+        cls.shared = {name: document[name] for name in host._keypad_two_tap_reviewed_dependencies}
+
+    def body(self, role):
+        return self.audit.owners[self.report["selected"][role]]["body"]
+
+    def test_current_mounted_747_slice_keeps_all_runtime_stages_unverified(self):
+        report = self.report
+        self.assertEqual(report["kind"], "current_keypad_two_tap_chain")
+        self.assertEqual(report["product_id"], 747)
+        self.assertEqual(report["verified_contract"]["selected_source_owners"], 100)
+        self.assertEqual(report["verified_contract"]["actual_ui_module"], 67742)
+        self.assertTrue(report["two_tap_producer_slice_complete"])
+        self.assertTrue(report["selected_static_semantics_reviewed"])
+        for key in ("source_chain_complete", "whole_product_complete", "target_execution",
+                "real_device_operations", "product_code_modified"):
+            self.assertFalse(report[key], key)
+        for key in ("ui_backend_wiring", "actual_dll_comparison", "runtime_acceptance"):
+            self.assertEqual(report[key], "unverified", key)
+        self.assertEqual(report["cleanup"]["temporary_files_created"], [])
+        self.assertFalse(report["cleanup"]["new_capture_created"])
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_complete_source_owners_reproduce_current_bytes_and_ast_boundaries(self):
+        for role, oid in self.report["selected"].items():
+            row = self.audit.owners[oid]
+            raw = self.audit.read(row["original"])[row["byte_start"]:row["byte_end"]]
+            with self.subTest(role=role):
+                self.assertEqual(raw.decode(), row["body"])
+                self.assertEqual(hashlib.sha256(raw).hexdigest(), row["body_sha256"])
+                node = self.audit.tree(row["original"]).root_node.descendant_for_byte_range(
+                    row["byte_start"], row["byte_end"] - 1)
+                self.assertEqual((node.start_byte, node.end_byte, node.type),
+                    (row["byte_start"], row["byte_end"], row["syntax"]))
+        self.assertEqual(len(self.report["reused_source_owners"]), 31)
+
+    def test_actual_input_identity_and_nested_stage_are_distinct_from_hypershift(self):
+        self.assertIn('"AnalogInput"===n&&i===s', self.body("ui_initial_mapping"))
+        root = self.body("ui_two_tap_getTwoTapMapping")
+        for field in ("analogInput", "inputType", "inputID", "isHyperShift"):
+            self.assertIn("delete t." + field, root)
+            self.assertIn("delete e." + field, root)
+        self.assertIn("this.keymapping.mapping[1]=this.getDefaultMapping()", root)
+        self.assertFalse(self.report["verified_contract"]["secondary_mapping_is_same_as_hypershift_layer"])
+
+    def test_save_syncs_other_layer_but_cancel_only_clears_editor(self):
+        save = self.body("ui_editor_saveTwoTapChanges")
+        self.assertIn("isHyperShift:!t.isHyperShift", save)
+        self.assertIn("e.mapping[0].actuationPoint=D", save)
+        self.assertIn("delete l.rapidTrigger", save)
+        self.assertIn("n-i<16380", self.body("ui_editor_gap_gate"))
+        self.assertIn('await this.props.setActiveButton("")', self.body("ui_two_tap_clear"))
+        self.assertIn("this.props.displaySaveAlert(this.clear)", self.body("ui_two_tap_closeMapping"))
+        self.assertFalse(self.report["verified_contract"]["ui_save_waits_for_device_confirmation"])
+        self.assertFalse(self.report["verified_contract"]["rollback_on_cancel"])
+
+    def test_actual_keypad_default_provider_and_preconfig_do_not_unify_source_defaults(self):
+        proof = self.report["verified_contract"]
+        self.assertEqual(proof["default_config_actual_module"], 24255)
+        self.assertEqual((proof["ui_initial_device_default"], proof["mw_device_info_default"]), (32760, 39312))
+        self.assertTrue(proof["ui_default_can_be_updated_by_keymap_preconfig"])
+        self.assertIn("e?i(24255).default:i(72233).Ay", self.body("mw_default_provider_selector"))
+        self.assertIn("thresholdL:19656,thresholdH:18018", self.body("mw_keypad_actuation_presets"))
+        self.assertIn("thresholdL:13104,thresholdH:11466", self.body("mw_keypad_actuation_presets"))
+        self.assertIn("specific:{KEY_A:{enabled:!0", self.body("mw_keypad_rapid_presets"))
+        self.assertIn("defaultValue:a", self.body("mw_initialize_keymap_defaults"))
+        self.assertIn("j.fH.updateConverter(n)", self.body("ui_actuation_preconfig"))
+
+    def test_actual_432_compiler_preserves_trigger_and_scale_branches(self):
+        self.assertFalse(self.report["verified_contract"]["inline_compiler_substituted"])
+        self.assertIn('type:"triggers"', self.body("compiler_De"))
+        self.assertIn('type:"doubleMapping"', self.body("compiler_ve"))
+        self.assertIn('digital:{type:"triggers",outputs:{}}', self.body("compiler_ve"))
+        self.assertIn('t.type="analogKey",a.type="analogKey"', self.body("compiler_ft"))
+        self.assertEqual(self.report["verified_contract"]["software_rapid_two_byte_multiplier"], 1628)
+        self.assertEqual(self.report["verified_contract"]["obm_rapid_multiplier"], 1638)
+        self.assertIn("p=e.isAnalogGen2?1628:12", self.body("compiler_rapid_trigger"))
+        self.assertIn("Math.round(1638*e)", self.body("engine_convertUIRapidTriggerToFW"))
+
+    def test_current_analog_v3_primary_write_does_not_transmit_secondary_threshold(self):
+        self.assertIn("e.mapping?e.mapping[0]:e", self.body("obm_analog_v3_projection"))
+        self.assertIn("uiThresholdL:0,uiThresholdH:0", self.body("obm_scalar_projection"))
+        collector = self.body("collect_primary_analog")
+        self.assertIn('n.isHyperShift||"AnalogInput"!==n.inputType', collector)
+        self.assertIn("const l=n.mapping[0]", collector)
+        self.assertNotIn("n.mapping[1]", collector)
+        self.assertFalse(self.report["verified_contract"]["secondary_threshold_transmitted_by_primary_actuation_command"])
+
+    def test_real_headers_record_packing_and_result_consumers_keep_failure_boundaries(self):
+        self.assertEqual(self.report["verified_contract"]["actuation_command"], [80, 2, 25])
+        self.assertEqual(self.report["verified_contract"]["rapid_command"], [80, 2, 26])
+        self.assertIn("2+5*o.length", self.body("protocol_setMultiAnalogKeyActuationPoint"))
+        self.assertIn("d[n+3]=a.E4(o[t].thresholdH)", self.body("protocol_setMultiAnalogKeyActuationPoint"))
+        self.assertIn("d[n+5]=a.E4(o[t].thresholdL)", self.body("protocol_setMultiAnalogKeyActuationPoint"))
+        self.assertIn("2+6*o.length", self.body("protocol_setMultiAnalogKeyRapidTrigger"))
+        self.assertIn("for(let e=2;e<t.packetSizeReturned;e+=5)", self.body("protocol_actuation_decoder"))
+        self.assertIn("r.status=a.STATUS_SUCCESS", self.body("engine_setActuationPoint"))
+        self.assertIn("r.status=a.STATUS_FAIL", self.body("engine_setActuationPoint"))
+        rapid = self.body("rapid_runner")
+        self.assertLess(rapid.index("setRapidTrigger(n.profileId,n.keys)"),
+            rapid.index("setRapidTrigger(n.profileId,n.keys,n.keymapId)"))
+        self.assertFalse(self.report["verified_contract"]["independent_post_write_get"])
+        self.assertFalse(self.report["verified_contract"]["set_target_keymap_boolean_checked_by_analog_writer"])
+
+    def test_rehashed_changes_to_identity_layers_defaults_cancel_or_command_need_review(self):
+        import host
+        for role, old, new in (("ui_initial_mapping", '"AnalogInput"===n&&i===s', '"AnalogInput"===n&&!!i===!!s'),
+                ("ui_editor_saveTwoTapChanges", "e.mapping[0].actuationPoint=D", "e.mapping[1].actuationPoint=D"),
+                ("ui_two_tap_clear", "this.props.toggleMappingPanel(!1)", "this.props.restoreDevice()"),
+                ("mw_keypad_default_config", "thresholdL:32760", "thresholdL:39312"),
+                ("compiler_rapid_trigger", "p=e.isAnalogGen2?1628:12", "p=e.isAnalogGen2?1638:12"),
+                ("collect_primary_analog", "const l=n.mapping[0]", "const l=n.mapping[1]"),
+                ("protocol_constant_iPi", "[80,2,25]", "[80,2,13]"),
+                ("engine_setActuationPoint", "r.status=a.STATUS_FAIL", "r.status=a.STATUS_SUCCESS")):
+            owners = copy.deepcopy(self.audit.owners)
+            row = owners[self.report["selected"][role]]
+            self.assertIn(old, row["body"], role)
+            row["body"] = row["body"].replace(old, new, 1)
+            row["body_sha256"] = hashlib.sha256(row["body"].encode()).hexdigest()
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "Keypad two-tap"):
+                host._keypad_two_tap_source_proof(self.report["selected"], owners)
+
+    def test_missing_or_same_named_inline_compiler_owner_cannot_replace_actual_selection(self):
+        import host
+        for change in ("missing", "wrong"):
+            selected = dict(self.report["selected"])
+            if change == "missing":
+                selected.pop("compiler_map_actuation")
+            else:
+                selected["compiler_map_actuation"] = selected["mw_converter_setup"]
+            with self.subTest(change=change), self.assertRaisesRegex(ValueError, "Keypad two-tap"):
+                host._keypad_two_tap_source_proof(selected, self.audit.owners)
+
+    def test_exact_upstream_sections_ignore_siblings_and_reject_changed_shared_semantics(self):
+        import host
+        sources = {key: value for key, value in self.report["reviewed_inputs"].items() if key != "ui_two_tap"}
+        document = copy.deepcopy(self.shared)
+        document["unrelated"] = {"progress": 1}
+        with patch.object(Path, "read_bytes", side_effect=lambda: json.dumps(document).encode()):
+            expected = host._keypad_two_tap_dependencies(self.audit, self.report["source_selections"], sources)
+            document["unrelated"]["progress"] = 2
+            self.assertEqual(host._keypad_two_tap_dependencies(self.audit, self.report["source_selections"], sources), expected)
+            document["keypad_mapping_consumers"]["selected_static_semantics_reviewed"] = False
+            with self.assertRaisesRegex(ValueError, "shared section requires renewed review"):
+                host._keypad_two_tap_dependencies(self.audit, self.report["source_selections"], sources)
+        self.assertNotIn(".analysis/results/host-current/local-audit.json", self.audit.artifacts)
+        shared = self.report["shared_trigger_outputs"]
+        self.assertTrue(shared["selected_static_semantics_reviewed"])
+        self.assertFalse(shared["target_execution"])
+        self.assertTrue(all(row in self.report["upstream_sections"] for row in shared["dependencies"]))
+
+
+class KeyboardBlePowerTransportTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        import analysis
+        import host
+        cls.host, cls.analysis = host, analysis
+        cls.audit = HostLocalAudit()
+        cls.report = host.collect_keyboard_ble_power_transport(cls.audit)
+        cls.full_native = copy.deepcopy(cls.report["native"])
+        for row in cls.full_native["complete_selected_functions"]:
+            row["capture"] = json.loads((analysis.ROOT / row["artifact"]["path"]).read_bytes())
+
+    def test_current_inputs_complete_owners_and_native_edges_remain_separate_from_acceptance(self):
+        report = self.report
+        self.assertEqual(report["current_host"]["version"], "4.0.896")
+        self.assertEqual(report["native"]["input"]["sha256"],
+                         "caa1bf44e236d00361af6294bce93433f1a3fcc597a1dc708601321bd69443ad")
+        self.assertEqual(len(report["native"]["complete_selected_functions"]), 52)
+        self.assertEqual(len(report["native"]["verified_indirect_slots"]), 10)
+        self.assertGreaterEqual(len(report["actual_native_edges"]), 34)
+        self.assertTrue(all(row["pseudocode_captured"] and row["input_chunks_verified"]
+                            for row in report["native"]["complete_selected_functions"]))
+        self.assertEqual(len(report["semantic_dependencies"][0]["byte_identical_current_roles"]), 17)
+        self.assertEqual(report["semantic_dependencies"][0]["previous_owner_count"], 35)
+        self.assertFalse(report["native"]["retained_successful_supplement"]["selected_by_this_slice"])
+        self.assertEqual(report["native"]["retained_successful_supplement"]["failures"], [])
+        for name in ("source_chain_complete", "whole_product_complete", "target_execution", "real_device_operations"):
+            self.assertFalse(report[name], name)
+        self.assertEqual(report["actual_dll_comparison"], "unverified")
+        self.assertEqual(report["temporary_files_created"], [])
+        self.assertEqual(self.audit.final_snapshot(), [])
+        self.assertEqual(json.loads(json.dumps(report, ensure_ascii=False)), report)
+
+    def test_native_selection_preserves_fs_order_and_does_not_choose_noble_by_name(self):
+        first = self.host._keyboard_ble_power_transport_first_build
+        self.assertEqual(first(["binding.exp", "binding.node", "noble.node"]), "binding.node")
+        self.assertEqual(first(["noble.node", "binding.node"]), "noble.node")
+        self.assertEqual(first(["ignore.NODE", "arbitrary.node", "binding.node"]), "arbitrary.node")
+        self.assertIsNone(first(["binding.lib", "BINDING.NODE"]))
+        loader = self.report["current_host"]["loader"]
+        self.assertFalse(loader["runtime_environment_or_listing_observed"])
+        self.assertIn("runtimeRequire.addon absent", loader["conditions"])
+        self.assertIn("NODE_BLE_RZ_PREBUILD unset", loader["conditions"])
+
+    def test_old_host_version_cannot_borrow_current_native_semantics(self):
+        release = {**self.host.verified_host_release_receipt(), "version": "4.0.827"}
+        with patch.object(self.host, "verified_host_release_receipt", return_value=release), \
+                self.assertRaisesRegex(ValueError, "new current release review"):
+            self.host._keyboard_ble_power_transport_inputs(self.audit)
+
+    def test_packed_source_must_match_real_current_asar_offset(self):
+        rows = copy.deepcopy(self.report["current_host"]["members"])
+        row = next(item for item in rows if item["path"].endswith("/strategy/protocol30.js"))
+        row["offset"] += 1
+        with patch.object(self.host, "current_host_asar_members", return_value=rows), \
+                self.assertRaisesRegex(ValueError, "actual ASAR offset"):
+            self.host._keyboard_ble_power_transport_inputs(self.audit)
+
+    def test_native_unpacked_state_and_package_mirror_cannot_be_assumed(self):
+        rows = copy.deepcopy(self.report["current_host"]["members"])
+        row = next(item for item in rows if item["path"].endswith("/binding.node"))
+        row["unpacked"] = False
+        with patch.object(self.host, "current_host_asar_members", return_value=rows), \
+                self.assertRaisesRegex(ValueError, "unpacked native/package bytes"):
+            self.host._keyboard_ble_power_transport_inputs(self.audit)
+
+    def test_changed_loader_timer_write_mode_or_host_result_requires_new_owner_review(self):
+        for role, before, after in (
+                ("gyp_get_first", "files[0]", "files[1]"),
+                ("win_binding", "{ NobleWinrt }", "{ Noble }"),
+                ("protocol_write", "if(!r)return", "if(clearTimeout(l),!r)return"),
+                ("protocol_write", 'return o.off("read",g)', 'o.off("read",g)'),
+                ("win_write_data", "!!e.isSupportWriteWithoutResponse||r", "!!e.isSupportWriteWithoutResponse"),
+                ("host_send", "await m.write(g,v,o,c,a,i,d)", "{state:!0,data:[]}"),
+                ("host_stop", "e.disconnect()", "e.cleanUp()")):
+            key = self.report["selected"][role]
+            owner = copy.deepcopy(self.audit.owners[key])
+            self.assertIn(before, owner["body"])
+            owner["body"] = owner["body"].replace(before, after)
+            owner["body_sha256"] = hashlib.sha256(owner["body"].encode()).hexdigest()
+            with self.subTest(role=role, before=before), self.assertRaisesRegex(ValueError, "source boundary differs: " + role):
+                self.host._keyboard_ble_power_transport_source_proof(self.report["selected"],
+                    {**self.audit.owners, key: owner})
+
+    def test_protocol_cannot_borrow_unchanged_characteristic_owner(self):
+        selected = {**self.report["selected"],
+                    "protocol_write": self.report["selected"]["reused_characteristic_write"]}
+        with self.assertRaisesRegex(ValueError, "source boundary differs: protocol_write"):
+            self.host._keyboard_ble_power_transport_source_proof(selected, self.audit.owners)
+
+    def test_async_status_is_not_gatt_success_and_write_event_does_not_confirm_device(self):
+        report = self.report
+        self.assertFalse(report["write"]["reads_gatt_write_result"])
+        self.assertTrue(report["write"]["emits_write_on_async_failure"])
+        self.assertTrue(report["write"]["emits_write_when_native_peripheral_missing"])
+        self.assertFalse(report["write"]["manager_bool_return_reaches_js"])
+        self.assertEqual(report["write"]["gatt_write_options"], {"false": 0, "true": 1})
+        changed = copy.deepcopy(self.full_native)
+        callback = next(row["capture"] for row in changed["complete_selected_functions"]
+                        if row["rva"] == "0x446f0")
+        gate = next(line for line in callback["pseudocode"]["lines"] if "a3 == 1" in line["text"])
+        gate["text"] = gate["text"].replace("a3 == 1", "a3 == 0")
+        with self.assertRaisesRegex(ValueError, "completion/release boundary differs: 0x446f0"):
+            self.host._keyboard_ble_power_transport_native_proof(changed)
+
+    def test_cccd_result_token_revocation_and_bulk_drop_have_distinct_boundaries(self):
+        report = self.report
+        self.assertFalse(report["notify"]["reads_gatt_cccd_result"])
+        self.assertIn("bit 0x20", report["notify"]["cccd_enable"])
+        self.assertFalse(report["release"]["disconnect_calls_remove_value_changed"])
+        self.assertFalse(report["release"]["manager_destructor_calls_remove_value_changed"])
+        changed = copy.deepcopy(self.full_native)
+        drop = next(row["capture"] for row in changed["complete_selected_functions"] if row["rva"] == "0x325e0")
+        drop["pseudocode"]["lines"].insert(2, {"line": -1, "text": "RemoveValueChanged(saved_token);"})
+        with self.assertRaisesRegex(ValueError, "completion/release boundary differs: 0x325e0"):
+            self.host._keyboard_ble_power_transport_native_proof(changed)
+
+    def test_missing_actual_callback_or_release_edge_fails_even_with_complete_function(self):
+        changed = copy.deepcopy(self.full_native)
+        callback = next(row["capture"] for row in changed["complete_selected_functions"] if row["rva"] == "0x45460")
+        target = int(changed["image_base"], 16) + 0x45920
+        for line in callback["assembly"]:
+            line["xrefs_from"] = [ref for ref in line.get("xrefs_from", []) if int(ref["to"], 16) != target]
+        with self.assertRaisesRegex(ValueError, "actual call/callback edge differs: 0x45460 -> 0x45920"):
+            self.host._keyboard_ble_power_transport_native_proof(changed)
+
+    def test_current_protocol_timer_fix_does_not_expand_other_confirmation_or_shutdown_claims(self):
+        delta = self.report["protocol30_current_delta"]
+        self.assertFalse(delta["clear_write_timer_before_filter"])
+        self.assertIn("ignored/non-notify/partial packets retain", delta["write_timer_clear"])
+        self.assertIn("read still clears", delta["unchanged_limits"])
+        self.assertIn("returns after resolving false", delta["write_catch"])
+        self.assertFalse(self.report["release"]["queued_event_drain_is_gatt_operation_drain"])
+        self.assertFalse(self.report["release"]["gatt_cancel_or_join_proven"])
+        self.assertIn("does not invoke NobleWinrt.cleanUp", self.report["release"]["host_shutdown"])
+
+
+class CommonDriverInstallConsumerTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        import host
+        cls.host = host
+        cls.audit = HostLocalAudit()
+        cls.report = host.collect_common_driver_install_consumers(cls.audit)
+
+    def test_current_concrete_action_registry_and_result_boundaries_are_separate(self):
+        report = self.report
+        self.assertEqual(report["current_host"]["version"], "4.0.896")
+        self.assertEqual(report["current_host"]["driver_package"]["declaration"]["resourceName"],
+                         "NormalDriver_RzComDriver")
+        self.assertEqual(report["concrete_action"]["params"], "/S /LAUNCH")
+        self.assertEqual(report["concrete_action"]["js_action"], "simpleLaunchUserAppProcess")
+        self.assertFalse(report["concrete_action"]["js_force_elevated"])
+        self.assertFalse(report["concrete_action"]["js_pid_drv_ascii_branch"])
+        self.assertEqual(report["executable_manifest"]["requested_execution_level"]["level"], "requireAdministrator")
+        self.assertEqual(report["driver_info"]["values"], ["ProductVersion", "UninstallPath"])
+        self.assertEqual(report["result_consumers"]["uninstall_launch"]["params"], "")
+        self.assertFalse(report["result_consumers"]["uninstall_checks_result_or_exit_code"])
+        self.assertEqual(len(report["actual_source_calls"]), 13)
+        self.assertEqual({name: len(row["complete_selected_functions"]) for name, row in report["native"].items()},
+                         {"simple_service.dll": 22, "SysUtilsNative.dll": 5})
+        self.assertTrue(all(row["pseudocode_captured"] and row["input_chunks_verified"] and "capture" not in row
+                            for native in report["native"].values() for row in native["complete_selected_functions"]))
+        for key in ("source_chain_complete", "whole_product_complete", "target_execution", "real_device_operations"):
+            self.assertFalse(report[key], key)
+        self.assertEqual(report["actual_dll_comparison"], "unverified")
+        self.assertEqual(report["temporary_files_created"], [])
+        self.assertEqual(json.loads(json.dumps(report, ensure_ascii=False)), report)
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_changed_branch_result_skip_or_cancel_cannot_reuse_reviewed_semantics(self):
+        for role, before, after in (
+                ("Ka", 'a=await q.simpleLaunchUserAppProcessJson', 'a=await q.simpleLaunchUserAppElevatedJson'),
+                ("$l", 'a.result===!1', 'a.result!==!0'),
+                ("kl", 'i!=null?i:!1', 'i?.result===!0'),
+                ("yl", 'await Il(s,r)', 'r.isCancelling||await Il(s,r)'),
+                ("driver_info", 'reason:"undefined"', 'reason:"observed not installed"')):
+            owners = dict(self.audit.owners)
+            key = self.report["selected"][role]
+            owner = copy.deepcopy(owners[key])
+            self.assertIn(before, owner["body"])
+            owner["body"] = owner["body"].replace(before, after)
+            owner["body_sha256"] = hashlib.sha256(owner["body"].encode()).hexdigest()
+            owners[key] = owner
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "source boundary differs: " + re.escape(role)):
+                self.host._common_driver_install_consumer_proof(self.report["selected"], owners)
+
+    def test_uninstall_cannot_borrow_the_install_result_consumer(self):
+        selected = {**self.report["selected"], "kl": self.report["selected"]["$l"]}
+        with self.assertRaisesRegex(ValueError, "source boundary differs: kl"):
+            self.host._common_driver_install_consumer_proof(selected, self.audit.owners)
+
+    def test_historical_host_release_is_not_a_current_source_selection(self):
+        release = {**self.host.verified_host_release_receipt(), "version": "4.0.827"}
+        with patch.object(self.host, "verified_host_release_receipt", return_value=release), \
+                self.assertRaisesRegex(ValueError, "new release review"):
+            self.host._common_driver_install_consumer_inputs(self.audit)
+
+    def test_new_manifest_elevation_flag_requires_review(self):
+        release = copy.deepcopy(self.host.verified_host_release_receipt())
+        driver = next(row for row in release["files"]
+                      if row.get("declaration", {}).get("resourceName") == "NormalDriver_RzComDriver")
+        driver["declaration"]["action"]["saveToDisk"]["runForceElevated"] = True
+        with patch.object(self.host, "verified_host_release_receipt", return_value=release), \
+                self.assertRaisesRegex(ValueError, "install action requires semantic review"):
+            self.host._common_driver_install_consumer_inputs(self.audit)
+
+    def test_real_member_must_match_current_asar_offset_and_packaging(self):
+        members = [copy.deepcopy(row["member"]) for row in self.report["current_host"]["host_members"]]
+        for field, value, message in (("offset", members[0]["offset"] + 1, "actual ASAR bytes"),
+                ("unpacked", True, "package/ASAR ancestry")):
+            changed = copy.deepcopy(members)
+            changed[0][field] = value
+            with self.subTest(field=field), patch.object(self.host, "current_host_asar_members", return_value=changed), \
+                    self.assertRaisesRegex(ValueError, message):
+                self.host._common_driver_install_consumer_inputs(self.audit)
+
+    def test_similarly_named_native_cannot_replace_the_current_package_member(self):
+        rows = [copy.deepcopy(row["input"]) for row in self.report["native"].values()]
+        source = self.report["current_host"]["host_members"][0]["official_package"]
+        for row in rows:
+            row["container"], row["container_sha256"] = source["path"], source["sha256"]
+        rows[0]["sha256"] = "0" * 64
+        with patch.object(self.host, "current_host_extracted_inputs", return_value=rows), \
+                patch.object(self.host, "current_host_asar_members", return_value=[
+                    row["member"] for row in self.report["current_host"]["host_members"]]), \
+                self.assertRaisesRegex(ValueError, "native identity requires review: simple_service"):
+            self.host._common_driver_install_consumer_inputs(self.audit)
+
+    def test_executable_manifest_must_be_the_real_resource_with_the_reviewed_level(self):
+        raw = self.audit.raw[self.report["current_host"]["driver_package"]["path"]]
+        changed = raw.replace(b'level="requireAdministrator"', b'level="asInvoker           "')
+        self.assertNotEqual(raw, changed)
+        with self.assertRaisesRegex(ValueError, "elevation manifest requires review"):
+            self.host._common_driver_install_consumer_manifest(changed)
+        with patch.object(self.host, "pe_resource_entries", return_value=[]), \
+                self.assertRaisesRegex(ValueError, "manifest is absent or ambiguous"):
+            self.host._common_driver_install_consumer_manifest(raw)
+
+    def test_partial_or_changed_native_result_owner_is_not_promoted(self):
+        native = self.report["native"]["simple_service.dll"]
+        first = copy.deepcopy(native["complete_selected_functions"][0])
+        first["capture"] = {"rva": first["rva"], "assembly": [{}]}
+        originals = {name: row["input"] for name, row in self.report["native"].items()}
+        for field, value in (("pseudocode_captured", False), ("failures", 1)):
+            changed = {**first, field: value}
+            with self.subTest(field=field), patch.object(self.audit.families, "verify_native_functions", return_value={
+                    "capture_receipt": native["capture_receipt"], "complete_selected_functions": [changed]}), \
+                    self.assertRaisesRegex(ValueError, "complete native boundary differs"):
+                self.host._common_driver_install_consumer_native(self.audit, originals)
+
+
+class MixedClrMethodIdentityTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        import host
+        cls.host = host
+        cls.root = HostLocalAudit().a.ROOT
+        cls.original = {"path": ".analysis/inputs/official-native-current/blobs/0278fc29d16fa8334d22b8d62347f73ba9819139ef02ee10d20f1aa0ec7d1d56/RzIntelOverClockDLL_v1.2.23.0.dll"}
+        cls.raw = (cls.root / cls.original["path"]).read_bytes()
+        cls.metadata = host._profile_gog_clr(cls.raw)
+
+    def test_mixed_native_and_runtime_bodies_are_never_parsed_as_il(self):
+        methods = self.metadata["methods"]
+        self.assertEqual(len(methods), 699)
+        native = [row for row in methods.values() if row["implementation_kind"] == "native"]
+        self.assertEqual(len(native), 46)
+        self.assertTrue(all(not row["body_decoded"] and "code" not in row for row in native))
+        method = methods[0x06000050]
+        self.assertEqual((method["rva"], method["code_size"], method["implementation_kind"]),
+                         ("0x41480", 4057, "il"))
+        self.assertTrue(method["body_decoded"])
+        row = bytes.fromhex(method["metadata_row_hex"])
+        self.assertEqual(self.raw.count(row), 1)
+        offset = self.raw.index(row)
+        for flags, kind in ((1, "native"), (2, "optil"), (3, "runtime")):
+            raw = bytearray(self.raw)
+            raw[offset + 4:offset + 6] = flags.to_bytes(2, "little")
+            changed = self.host._profile_gog_clr(bytes(raw))["methods"][0x06000050]
+            self.assertEqual(changed["implementation_kind"], kind)
+            self.assertEqual(changed["implementation_flags"], hex(flags))
+            self.assertEqual(changed["method_flags"], method["method_flags"])
+            self.assertFalse(changed["body_decoded"])
+            self.assertNotIn("code", changed)
+
+    def test_corrupt_real_il_still_fails(self):
+        method = self.metadata["methods"][0x06000050]
+        rva = int(method["rva"], 16)
+        section, = [row for row in self.metadata["pe"]["sections"] if row["rva"] <= rva < row["rva"] + row["bytes"]]
+        raw = bytearray(self.raw)
+        raw[section["file_offset"] + rva - section["rva"]] = 0
+        with self.assertRaisesRegex(ValueError, "CLR method header is invalid"):
+            self.host._profile_gog_clr(bytes(raw))
+
+    def test_original_il_calls_and_eh_still_verify_in_mixed_assembly(self):
+        text = (self.root / ".analysis/results/host-current/managed/0278fc29d16f/il.stdout.txt").read_text(encoding="utf-8")
+        selected = {"<Module>": ("RzIntelOverClockLib.UpdateAllTuningControlData",)}
+        method, = self.host._profile_gog_il_methods(self.original, text, self.metadata, selected)
+        self.assertEqual(method["raw_code_hex"], self.metadata["methods"][0x06000050]["code"].hex())
+        self.assertTrue(method["exception_sections"])
+        self.assertTrue(any(row["resolved_method"] and row["resolved_method"]["name"] == "Tune" for row in method["calls"]))
+
+
+class MappingHardwareNotificationChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        import host
+        cls.audit = HostLocalAudit()
+        cls.report = host.collect_mapping_hardware_notification_chain(cls.audit)
+
+    def native_captures(self):
+        return {"image_base": self.report["native"]["image_base"],
+            "complete_selected_functions": [{"capture": json.loads(
+                (self.audit.a.ROOT / row["artifact"]["path"]).read_bytes())}
+                for row in self.report["native"]["complete_selected_functions"]]}
+
+    def test_selected_usb_provider_reuses_current_evidence_and_keeps_acceptance_separate(self):
+        report = self.report
+        self.assertEqual(report["kind"], "current_mapping_hardware_notification_chain")
+        self.assertEqual(report["provenance"]["release_version"], "4.0.896")
+        self.assertEqual(len(report["selected"]), 19)
+        self.assertEqual(len(report["native"]["complete_selected_functions"]), 26)
+        self.assertEqual(len(report["native"]["verified_indirect_slots"]), 17)
+        self.assertEqual(len(report["reused_native_functions"]), 64)
+        self.assertEqual(len(report["upstream_sections"]), 4)
+        self.assertTrue(all(not row["recaptured"] for row in report["upstream_sections"]))
+        self.assertEqual(report["new_native_captures"], 0)
+        self.assertEqual(report["new_analysis_sessions"], 0)
+        self.assertEqual(report["temporary_files_created"], 0)
+        for key in ("source_chain_complete", "whole_product_complete", "target_execution",
+                    "real_device_operations", "product_code_modified"):
+            self.assertFalse(report[key], key)
+        self.assertEqual(report["actual_dll_comparison"], "unverified")
+        self.assertEqual(json.loads(json.dumps(report, ensure_ascii=False)), report)
+        self.assertEqual(self.audit.final_snapshot(), [])
+        self.assertNotIn(".analysis/results/host-current/local-audit.json", self.audit.artifacts)
+
+    def test_feature_io_registration_and_native_join_do_not_claim_notification_or_drain(self):
+        proof = self.report["verified_contract"]
+        self.assertEqual((proof["selected_product_id"], proof["actual_constructor_type"]), (756, "usb"))
+        self.assertEqual(proof["read_capacity"], 100)
+        self.assertEqual((proof["selected_report_ids"], proof["selected_event_id"]), ([5, 9], 128))
+        self.assertEqual((proof["published_special_report_ids"], proof["unmapped_report_category"]), ([4, 11], 8))
+        self.assertEqual(proof["callback_type"], 0)
+        for key in ("feature_report_io_is_notification_provider", "category8_strips_prefix",
+                "registration_result_consumes_callback_set_result", "register_is_physically_confirmed_notification",
+                "unregister_clears_callback", "unregister_cancels_io", "unregister_proves_callback_drain",
+                "whole_connection_generation_drain_proven", "actual_notification128_observed"):
+            self.assertFalse(proof[key], key)
+
+    def test_subscriber_order_callback_result_and_url_filter_cannot_be_rewritten(self):
+        import host
+        for role, before, after in (
+                ("registerHardwareEvent", 'await this.setHardwareEventCallback(t,e)',
+                    'o=await this.setHardwareEventCallback(t,e)'),
+                ("unregisterHardwareEvent", 'g.hardwareEventList=g.hardwareEventList.filter(e=>e!==a)',
+                    'g.hardwareEventList=[]'),
+                ("createCbHardwareEvent", 'r?.hardwareEventList.includes(e.getURL())', 'true'),
+                ("isHardwareEventRegistered", 'r.result=!1,g.hardwareEventList=[]', 'r.result=!0')):
+            owners = copy.deepcopy(self.audit.owners)
+            owner = owners[self.report["selected"][role]]
+            self.assertIn(before, owner["body"])
+            owner["body"] = owner["body"].replace(before, after)
+            owner["body_sha256"] = hashlib.sha256(owner["body"].encode()).hexdigest()
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "complete source owner differs: " + role):
+                host._mapping_hardware_notification_verify(self.native_captures(), owners, self.report["selected"])
+
+    def test_service_failed_unsubscribe_and_real_notification_parser_are_preserved(self):
+        import host
+        for role, before in (("hardware_service", 'this.deviceMap.delete(e.deviceContainerId)'),
+                ("hardware_lifecycle", 's.A.off("hardwareevent",J)'),
+                ("product_report_ids", '11:"analogKeyboardV2ReportID"')):
+            owners = copy.deepcopy(self.audit.owners)
+            owner = owners[self.report["selected"][role]]
+            self.assertIn(before, owner["body"])
+            owner["body"] = owner["body"].replace(before, 'undefined')
+            owner["body_sha256"] = hashlib.sha256(owner["body"].encode()).hexdigest()
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "complete source owner differs: " + role):
+                host._mapping_hardware_notification_verify(self.native_captures(), owners, self.report["selected"])
+
+    def test_actual_engine_slot_interval_zero_and_hid_gate_have_machine_code_evidence(self):
+        import host
+        for rva, replacement in (("0x2a170", "488b8010010000"),
+                ("0x2a17a", "41b801000000"), ("0x784c", "488b4040"),
+                ("0x52b2c", "80bfb000000000")):
+            native = self.native_captures()
+            instruction = next(line for row in native["complete_selected_functions"]
+                for line in row["capture"]["assembly"] if line["rva"] == rva)
+            instruction["bytes"] = replacement
+            with self.subTest(rva=rva), self.assertRaisesRegex(ValueError, "ABI or HID gate differs: " + rva):
+                host._mapping_hardware_notification_verify(native, self.audit.owners, self.report["selected"])
+
+    def test_native_query_and_cleanup_cannot_be_replaced_with_success_or_empty_body(self):
+        import host
+        for rva, role in (("0x6b4f0", "registered_flag_query"), ("0xa896c", "usb_destructor")):
+            native = self.native_captures()
+            function = next(row["capture"] for row in native["complete_selected_functions"]
+                if row["capture"]["rva"] == rva)
+            function["pseudocode"]["lines"] = [{"text": "return 1;"}]
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "complete native owner differs: " + role):
+                host._mapping_hardware_notification_verify(native, self.audit.owners, self.report["selected"])
+
+    def test_usb_observer_and_input_interfaces_must_resolve_from_actual_pe(self):
+        with self.assertRaisesRegex(ValueError, "Native virtual slot target differs"):
+            self.audit.families.verify_native_functions(self.report["native"]["input"],
+                {0x6b4f0: "query"}, [{"role": "query", "vtable_rva": 0x2e8e18,
+                    "slot_byte_offset": 56, "target_rva": 0x6b4f0}])
+
+    def test_changed_shared_section_or_incomplete_native_blocks_publication(self):
+        import host
+        with patch.object(host, "_otfm_macro_encoding_digest", return_value="0" * 64):
+            with self.assertRaisesRegex(ValueError, "upstream requires review: mapping_external_input_routing"):
+                host._mapping_hardware_notification_dependencies(HostLocalAudit())
+        audit = HostLocalAudit()
+        with patch.object(audit.families, "verify_native_functions", return_value={
+                "complete_selected_functions": [{"role": "register_export", "pseudocode_captured": False,
+                    "failures": 0}]}):
+            with self.assertRaisesRegex(ValueError, "native function remains incomplete: register_export"):
+                host.collect_mapping_hardware_notification_chain(audit)
 
 
 if __name__ == "__main__":

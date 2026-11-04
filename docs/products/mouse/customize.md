@@ -83,13 +83,35 @@ PID167 的设备 reducer 把真实 `SET_SIDEPAD_LAYOUT` 投影为 layout 及 `si
 
 只有总功能数大于 6、产品启用折叠、`isShowHideMappingUI` 成立且当前输入不是 `RazerAI` 时，才显示 Show All／Show Less。点击只翻转局部 `hideMappingUI`，不删除 profile 的已有映射，也不产生设备命令。列表折叠、鼠标悬停的功能栏收缩和具体输出编辑器的 Save 是不同状态。
 
+## PID182：本地旧版配置导入与宏坐标
+
+实际导入组件按当前页面 origin 创建 `/profile-migration/worker.js`，名称为 `s3FileWorker`。此动态路径不在主机 manifest 的静态引用中。[两轮官方 HTTP 复核收据](../../../.analysis/results/frontend-revalidation/29e00387b8e4afa73f25c320303d7d38e1e56064225af2a2176a36543e54612d.json)证明该 worker 的当前部署字节与已保留原件一致；此次复用原件，未新增 raw 副本、临时目录或原生分析会话。该收据只覆盖实际动态 worker，不代表旧页面入口或整个应用部署已经重新核验。
+
+worker 先回传输入，再异步调用 `9113.loadSyn3File`、同步调用 `5167.toSyn4` 并返回转换结果或错误。ZIP 全文件加载后，按可选精确文件名列表过滤，各条目并发解码文本与 XML；单条 XML 异常记录后继续，外层 ZIP／分组异常记录后返回 undefined。`DeviceInfo.xml` 必须精确匹配；重复 XML 子标签聚为数组，非空 content 直接返回。Features、Macros 的正斜线前缀分支不要求 XML 后缀，反斜线分支要求，不能自行补括号改变原式优先级。其余条目可合并到顶层，覆盖顺序仍受真实条目处理次序影响。
+
+转换器按文件内原始 `Product_ID` 分派，再通过 `swapPID` 规范返回身份；导入目标 PID182 只参与类别／警告判定，不能用它裁掉其他源产品。同类别其他源产品仍可导入，例如源 183 的返回身份可变为 182，但与目标 182 的原始 PID 比较仍可产生警告。共享转换异常会终止本次 worker；all／源产品批量转换逐项捕获，且原式在首次结果 truthy 时调用同一转换函数两次，部分结果可能保留。
+
+本批核对九项共享计算：DPI 档位与 active 加一、普通／高速轮询的覆盖、亮度、灯效及 PID780 方向、休眠秒转分钟、滚轮、智能调暗、动态灵敏度；同时核对 all 分组的电源／功耗成对输入。52 个共享入口及 26 个源产品入口按实际注册顺序保留完整 AST 范围、原件／函数哈希、源 PID、特征选择表达式与真实完成状态；其余转换器保持待逆向，不因入口已找到而标为完成，也不添加无源码依据的版本门禁。
+
+完整旧版宏转换保留单个／数组事件、键盘扫描码与 extended 标记、按键／鼠标／循环配对栈、非移动事件之前的秒单位延迟、未知事件抛错、文本／分组／命令，以及键盘的 `Id` 和鼠标的 `id` 大小写差异。移动模式映射为 1→2、2→1、3→3，worker 仅解析坐标与毫秒时间，累计秒数保留三位小数；最后一段移动模式写入 actionBar。宏数组没有逐项 catch，一个异常宏可使整个 worker 回复错误。
+
+MW 导入另外读取 monitor／virtual-screen 信息，旧版文件还会再次刷新这些全局值。模式 1／2 先用主屏尺寸把 65535 坐标还原，再由宏翻译器按主屏尺寸换回；相对坐标按选中 monitor 的 DPI scale 换算。当前选择只处理第一个／第二个 monitor，缺少主屏会抛错，时间残差按严格 `>1`／`<-1` 校正，hash 先于 `mouseMoveType` 更新。virtual-screen 信息被保存，但不参与这段坐标公式；全局可用性只查 truthiness，空数组同样可通过。
+
+monitor 回复沿实际 `window.top.apiElectron`、preload IPC、当前主机 sysutil 与 FFI 指针链返回；当前 4.0.896 主机实际实例为 `po`，来源经版本收据、ASAR 原件及提取别名逐字节核对。前端 truthy monitor 文本解析失败返回 undefined，falsy／无支持路径返回空数组；非 Electron 路径的真实 gate 是 `window.setBounds`。FFI 读 C 字符串后按成功标记调用 FreeMalloc。该静态结论不覆盖原生 monitor 枚举计算、ABI 实际执行或 OS／设备对照。
+
+SharedWorker 以显式 portId 保存端口，消息转发先回复 echo；页面忽略 ready／echo，并在每次收到消息后新建两秒 timeout。完整函数中没有 request ID、Map 删除、port.close、abort 或连接代次保护，不能凭关闭弹窗宣称在途工作已取消。
+
+统一复核入口为 `python -X utf8 tools/workspace.py audit-family-function --family mouse --function mw --product 182 --query mouse-182-legacy-worker-chain`；只有显式 `--prepare` 才重新获取 worker。正式结果归[现有鼠标中间件收据](../../../.analysis/results/frontend/mouse-mw-audit.json)的 `mouse_182_legacy_worker_chain`。后续从该段四项 remaining 接续：其余共享转换（含 Mappings8061 → input62／output3405）、未闭合源产品转换、当前原生 monitor 枚举，以及独立 Rust／UI／真实 DLL 与设备对照；本批未修改或重新验收产品代码。
+
+定向验证首次 15 项中有 1 项因默认选择了旧 Host 输入而失败；已改为显式选择当前版本收据，并保留当前版本与 ASAR 身份断言。`Mouse182LegacyWorkerChainTests` 修后实际复跑为 15／15 通过；测试仅验证静态收据及维护流程，不执行厂商 JS／DLL 或主应用。
+
 ## 原件与复核位置
 
 - PID158 映射面板：`.analysis/inputs/frontend/mouse-158-current/raw/apps.razer.com/synapse/products/158/ui/static/js/567.9db2e44b.chunk.js`，windowClick `[34171,35400)`、clear `[36620,36990)`、saveMapping `[36991,37131)`、saveChanges `[42138,44558)`、主要退出 `[69469,69741)`；直接复读原始字节。
 - PID158 外层 Customize：`.analysis/inputs/frontend/mouse-158-current/raw/apps.razer.com/synapse/products/158/ui/static/js/main.d9d086de.js`，loadFilteredMappings `[5641383,5642860)`、各组投影及默认映射 `[5648100,5650020)`、Save／Don't Save／后续动作 `[5650020,5651700)`。
 - PID158 中间件：`.analysis/inputs/frontend/mouse-mw-158-current/raw/apps.razer.com/synapse/products/158/mw/6259.1944c2392b18ba3f8282.js`，wrapper 模块 32226 `[151883,152427)`，`30525.bt` `[1505570,1509301)`；直接复读完整函数。
 - 全键／turbo factory 与回调差异：`.analysis/results/frontend/mouse-mw-audit.json` 的 `queries["mapping-engine"].products[product_id=158]`、`queries.shared_mapping_chroma_callback.products`／`semantics`；PID190 的当前 `DeviceInfo` 位于 performance 文档所列模块 8193。
-- 侧板名称 getter：各 PID 当前 UI `main.*.js`，80 `[4862625,4862750)`、83 `[4710936,4711062)`、103 `[45237,45435)`、141 `[143843,143969)`、143 `[4770502,4770698)`、147 `[45206,45404)`、150 `[32747,32873)`、167 `[168925,169121)`、180 `[4783370,4783496)`、231 `[115527,115723)`；完整文件身份见 [鼠标原件表](README.md#可复核原件)。PID167 UI reducer `[5063858,5065821)`、Customize reducer `[5114494,5117644)`；同目录 `main.05d42904.js` 的全侧板宏收集 `[5824135,5824468)`。
+- 侧板名称 getter：各 PID 当前 UI `main.*.js`，80 `[4862625,4862750)`、83 `[4710936,4711062)`、103 `[45237,45435)`、141 `[143843,143969)`、143 `[4770502,4770698)`、147 `[45206,45404)`、150 `[32747,32873)`、167 `[168925,169121)`、180 `[4783370,4783496)`、231 `[115527,115723)`；完整文件身份见 [鼠标原件表](README.md#产品定义原件)。PID167 UI reducer `[5063858,5065821)`、Customize reducer `[5114494,5117644)`；同目录 `main.05d42904.js` 的全侧板宏收集 `[5824135,5824468)`。
 - PID199 UI `5107.34b4b1e1.chunk.js`：折叠长度 `[31013,31156)`、过滤 `[51917,54227)`、toggle `[65569,65631)`、render `[73330,76892)`；PID208 对应 `5107.c6818f1c.chunk.js` 为 `[32723,32866)`、`[53627,55937)`、`[67279,67341)`、`[75040,78602)`。
 
 本页是原版实际前端和中间件语义说明；主机映射服务、物理按键事件、板载写入和真实窗口行为未在本次执行验证。

@@ -2925,15 +2925,15 @@ def add_commands(parsers):
         "dynamic-lighting", "macro-recorder", "screen-color", "lighting-static-layer", "lighting-timed-effects",
         "lighting-input-lifecycle", "lighting-product-input-map", "studio-editing-consumers", "mapping-input-provider", "mapping-physical-input-decode",
         "mapping-external-input-routing", "mapping-ble-analog-stick-routing", "mapping-analog-key-routing",
-        "mapping-input-shutdown-chain", "mapping-delayed-task-lifecycle", "mapping-input-producer-eligibility", "mapping-kernel-input-producer",
+        "mapping-input-shutdown-chain", "mapping-delayed-task-lifecycle", "mapping-engine-shutdown-chain", "mapping-input-producer-eligibility", "mapping-kernel-input-producer", "mapping-hardware-notification-chain",
         "lighting-ripple-chain", "lighting-reactive-radiate-chain",
-        "lighting-ambient-screen-chain", "lighting-audio-effect-chain", "lighting-type-media-chain", "lighting-media-calculations", "lighting-media-resampler", "studio-region-window-lifecycle",
+        "lighting-ambient-screen-chain", "lighting-audio-effect-chain", "lighting-type-media-chain", "lighting-media-calculations", "lighting-media-resampler", "lighting-media-codec-boundaries", "lighting-png-decoder-chain", "lighting-pnm-decoder-chain", "lighting-bmp-tga-decoder-chain", "lighting-pic-decoder-chain", "lighting-psd-decoder-chain", "lighting-gif-decoder-chain", "lighting-jpeg-decoder-chain", "lighting-hdr-decoder-chain", "lighting-hdr-parameters-chain", "lighting-ai-model-chain", "studio-region-window-lifecycle",
         "profile-local-applications", "profile-alternate-icons", "profile-gog-scanner", "profile-scanner-version-differences",
         "profile-store-scanner-versions", "profile-local-scanner-versions", "profile-remaining-scanner-versions",
         "profile-mac-sysutils-native", "profile-shared-helper-consumers",
-        "macro-native-recorder", "otfm-device-writeback", "hdk-refresh", "interhaptics-services", "help-system-info",
+        "macro-native-recorder", "otfm-device-writeback", "otfm-macro-encoding-chain", "hdk-refresh", "interhaptics-services", "help-system-info",
         "help-runtime-versions", "keyboard-navigation", "product-chroma-observation", "window-lifecycle", "profiles",
-        "keypad-mapping", "keypad-mapping-consumers", "keypad-mapping-current-native", "common-driver-install-selection", "mapping-descriptors"])
+        "keypad-mapping", "keypad-mapping-consumers", "keypad-mapping-current-native", "keypad-temporary-keymap-chain", "keypad-two-tap-chain", "common-driver-install-selection", "common-driver-legacy-notification", "common-driver-install-consumers", "keyboard-ble-power-transport", "mapping-descriptors"])
     local.add_argument("--verify-only", action="store_true", help="Independently verify the retained profiles source receipt without collecting or publishing it")
     local.add_argument("--product", type=int, action="append", help="Limit the current Help runtime-version source query to these product routes")
     installed = parsers.add_parser("acquire-installed", help="Read-only snapshot of installed Razer files and public official Service Worker resources")
@@ -7121,6 +7121,16 @@ _JAVASCRIPT_LAZY_COMPONENT = (
 )
 
 
+_JAVASCRIPT_LAZY_COMPONENT_BODY_DESTRUCTURE = (
+    's=e=>{let{lazy:t,LoadingComponent:n,ErrorComponent:o,...r}=e;'
+    'const[s,_]=(0,i.useState)(null),[E,c]=(0,i.useState)(null);'
+    'return(0,i.useEffect)(()=>((async()=>{try{const e=await t();_(()=>e.default)}'
+    'catch(e){console.error("Asynchronous component loading failed",e),'
+    'c(e instanceof Error?e:new Error("AsyncComponent loading failed."))}})(),'
+    '()=>{_(null),c(null)}),[t]),E?o||null:s?(0,a.jsx)(s,{...r}):n||null}'
+)
+
+
 def javascript_lazy_component_mount(audit, originals, source, bound, module_id, export_name, *, role):
     """Follow a literal lazy request through the actual default-export renderer."""
     if export_name != b"default":
@@ -7202,7 +7212,9 @@ def javascript_lazy_component_mount(audit, originals, source, bound, module_id, 
         wrapper.child_by_field_name("object"), role=role + "_lazy_wrapper_import")
     exported = audit.webpack_export(role + "_lazy_wrapper", originals, _help_factory(factory)["module_id"],
                                    wrapper.child_by_field_name("property").text.decode())
-    if help_runtime_shape(audit.parser, exported["binding"]["body"]) != help_runtime_shape(audit.parser, _JAVASCRIPT_LAZY_COMPONENT):
+    renderer_shape = help_runtime_shape(audit.parser, exported["binding"]["body"])
+    if not any(renderer_shape == help_runtime_shape(audit.parser, expected) for expected in
+            (_JAVASCRIPT_LAZY_COMPONENT, _JAVASCRIPT_LAZY_COMPONENT_BODY_DESTRUCTURE)):
         raise ValueError("Lazy component renderer differs from its complete default-export, props and cleanup contract")
     forwarded = {}
     for prop in props.named_children:
@@ -9787,6 +9799,236 @@ def _lighting_type_media_color_source(audit):
         "verified_dependencies": release["verified_dependencies"]}
 
 
+def _lighting_ai_flatbuffer_graph(data):
+    """Decode the current embedded TFL3 graph as bounded bytes, without inference."""
+    def span(offset, size):
+        if offset < 0 or size < 0 or offset + size > len(data):
+            raise ValueError("AI FlatBuffer range exceeds model bytes")
+        return data[offset:offset + size]
+
+    def read(fmt, offset):
+        return struct.unpack(fmt, span(offset, struct.calcsize(fmt)))[0]
+
+    def table(offset, allowed):
+        vtable = offset - read("<i", offset)
+        length, size = struct.unpack("<HH", span(vtable, 4))
+        if length < 4 or length % 2 or size < 4:
+            raise ValueError("AI FlatBuffer table header is invalid")
+        span(vtable, length)
+        span(offset, size)
+        fields = {}
+        for index in range((length - 4) // 2):
+            relative = read("<H", vtable + 4 + index * 2)
+            if relative:
+                if relative < 4 or relative >= size or index not in allowed:
+                    raise ValueError("AI FlatBuffer table field requires review")
+                fields[index] = offset + relative
+        return {"offset": offset, "end": offset + size, "fields": fields}
+
+    def scalar(owner, field, fmt, default):
+        offset = owner["fields"].get(field)
+        if offset is None:
+            return default
+        if offset + struct.calcsize(fmt) > owner["end"]:
+            raise ValueError("AI FlatBuffer scalar exceeds table object")
+        return read(fmt, offset)
+
+    def target(offset):
+        relative = read("<I", offset)
+        if not relative:
+            raise ValueError("AI FlatBuffer zero relative reference")
+        result = offset + relative
+        span(result, 4)
+        return result
+
+    def reference(owner, field, required=False):
+        offset = owner["fields"].get(field)
+        if offset is None:
+            if required:
+                raise ValueError("AI FlatBuffer required field is absent")
+            return None
+        if offset + 4 > owner["end"]:
+            raise ValueError("AI FlatBuffer reference exceeds table object")
+        return target(offset)
+
+    def vector(owner, field, fmt="<i", tables=False, required=False):
+        offset = reference(owner, field, required)
+        if offset is None:
+            return []
+        count, width = read("<I", offset), 4 if tables else struct.calcsize(fmt)
+        span(offset + 4, count * width)
+        return [target(offset + 4 + index * width) if tables else read(fmt, offset + 4 + index * width)
+            for index in range(count)]
+
+    def string(owner, field, required=False):
+        offset = reference(owner, field, required)
+        if offset is None:
+            return None
+        size = read("<I", offset)
+        value = span(offset + 4, size + 1)
+        if value[-1:] != b"\0":
+            raise ValueError("AI FlatBuffer string is not NUL terminated")
+        return value[:-1].decode("utf-8")
+
+    def scalars(owner, specification):
+        values = {name: scalar(owner, field, fmt, default) for field, name, fmt, default in specification}
+        values["defaulted_fields"] = [name for field, name, _, _ in specification if field not in owner["fields"]]
+        return values
+
+    if span(4, 4) != b"TFL3":
+        raise ValueError("AI FlatBuffer identifier is not TFL3")
+    root = read("<I", 0)
+    model = table(root, set(range(8)))
+    version = scalar(model, 0, "<I", 0)
+    if version != 3:
+        raise ValueError("AI FlatBuffer model version requires review")
+    builtin_names = {3: "CONV_2D", 17: "MAX_POOL_2D", 22: "RESHAPE", 9: "FULLY_CONNECTED", 25: "SOFTMAX"}
+    codes = []
+    for index, offset in enumerate(vector(model, 1, tables=True, required=True)):
+        owner = table(offset, {0, 1, 2, 3})
+        deprecated = scalar(owner, 0, "<b", 0)
+        builtin = scalar(owner, 3, "<i", 0)
+        effective = max(deprecated, builtin)
+        custom = string(owner, 1)
+        if effective not in builtin_names or custom is not None:
+            raise ValueError("AI FlatBuffer operator code requires review")
+        codes.append({"index": index, "table_offset": offset, "deprecated_builtin_code": deprecated,
+            "builtin_code": builtin, "effective_builtin_code": effective, "name": builtin_names[effective],
+            "version": scalar(owner, 2, "<i", 1), "custom_code": custom,
+            "defaulted_fields": [name for field, name in ((0, "deprecated_builtin_code"),
+                (2, "version"), (3, "builtin_code")) if field not in owner["fields"]]})
+    buffers = []
+    for index, offset in enumerate(vector(model, 4, tables=True, required=True)):
+        owner = table(offset, {0})
+        payload = reference(owner, 0)
+        size = 0 if payload is None else read("<I", payload)
+        begin = None if payload is None else payload + 4
+        value = b"" if begin is None else span(begin, size)
+        buffers.append({"index": index, "table_offset": offset, "data_offset": begin,
+            "bytes": size, "sha256": hashlib.sha256(value).hexdigest()})
+
+    def buffer_value(index):
+        if not 0 <= index < len(buffers):
+            raise ValueError("AI FlatBuffer buffer index is out of range")
+        row = buffers[index]
+        return b"" if row["data_offset"] is None else span(row["data_offset"], row["bytes"])
+
+    option_specs = {
+        1: ((0, "padding", "<b", 0), (1, "stride_w", "<i", 0), (2, "stride_h", "<i", 0),
+            (3, "fused_activation", "<b", 0), (4, "dilation_w_factor", "<i", 1), (5, "dilation_h_factor", "<i", 1)),
+        5: ((0, "padding", "<b", 0), (1, "stride_w", "<i", 0), (2, "stride_h", "<i", 0),
+            (3, "filter_width", "<i", 0), (4, "filter_height", "<i", 0), (5, "fused_activation", "<b", 0)),
+        8: ((0, "fused_activation", "<b", 0), (1, "weights_format", "<b", 0),
+            (2, "keep_num_dims", "<?", False), (3, "asymmetric_quantize_inputs", "<?", False)),
+        9: ((0, "beta", "<f", 0.0),)}
+    expected_options = {3: 1, 17: 5, 22: 0, 9: 8, 25: 9}
+    subgraphs = []
+    for index, offset in enumerate(vector(model, 2, tables=True, required=True)):
+        graph = table(offset, set(range(5)))
+        tensors = []
+        for tensor_index, tensor_offset in enumerate(vector(graph, 0, tables=True, required=True)):
+            owner = table(tensor_offset, set(range(9)))
+            if 6 in owner["fields"]:
+                raise ValueError("AI FlatBuffer sparse tensor requires review")
+            quantization = reference(owner, 4)
+            if quantization is not None:
+                table(quantization, set())
+            shape = vector(owner, 0, required=True)
+            values = scalars(owner, ((1, "type", "<b", 0), (2, "buffer", "<I", 0),
+                (5, "is_variable", "<?", False), (8, "has_rank", "<?", False)))
+            if values["type"] not in (0, 2) or values["is_variable"] or not shape or any(dim <= 0 for dim in shape):
+                raise ValueError("AI FlatBuffer tensor type or shape requires review")
+            constant = buffer_value(values["buffer"])
+            elements = 1
+            for dim in shape:
+                elements *= dim
+            if constant and len(constant) != elements * 4:
+                raise ValueError("AI FlatBuffer constant bytes differ from tensor shape")
+            tensors.append({"index": tensor_index, "table_offset": tensor_offset, "name": string(owner, 3, True),
+                "shape": shape, "shape_signature": vector(owner, 7), "quantization_table_offset": quantization,
+                "quantization_fields": [], **values, "type_name": {0: "FLOAT32", 2: "INT32"}[values["type"]],
+                "int32_constant": list(struct.unpack("<" + "i" * elements, constant))
+                    if constant and values["type"] == 2 else None})
+
+        def tensor_indices(indices):
+            if any(value < 0 or value >= len(tensors) for value in indices):
+                raise ValueError("AI FlatBuffer tensor index is out of range")
+            return indices
+
+        operators = []
+        for op_index, op_offset in enumerate(vector(graph, 3, tables=True, required=True)):
+            owner = table(op_offset, set(range(5)))
+            code = scalar(owner, 0, "<I", 0)
+            if not 0 <= code < len(codes):
+                raise ValueError("AI FlatBuffer opcode index is out of range")
+            options_type = scalar(owner, 3, "<B", 0)
+            if options_type != expected_options[codes[code]["effective_builtin_code"]]:
+                raise ValueError("AI FlatBuffer operator options type requires review")
+            options_offset = reference(owner, 4, options_type != 0)
+            if options_type == 0:
+                if options_offset is not None:
+                    raise ValueError("AI FlatBuffer NONE options unexpectedly have a table")
+                options = None
+            else:
+                spec = option_specs[options_type]
+                options = {"table_offset": options_offset, **scalars(table(options_offset, {row[0] for row in spec}), spec)}
+            operators.append({"index": op_index, "table_offset": op_offset, "opcode_index": code,
+                "opcode_defaulted": 0 not in owner["fields"], "name": codes[code]["name"],
+                "inputs": tensor_indices(vector(owner, 1, required=True)),
+                "outputs": tensor_indices(vector(owner, 2, required=True)),
+                "options_type": options_type, "options": options})
+        subgraphs.append({"index": index, "table_offset": offset, "name": string(graph, 4, True),
+            "inputs": tensor_indices(vector(graph, 1, required=True)), "outputs": tensor_indices(vector(graph, 2, required=True)),
+            "tensors": tensors, "operators": operators})
+    metadata = []
+    for offset in vector(model, 6, tables=True):
+        owner = table(offset, {0, 1})
+        index = scalar(owner, 1, "<I", 0)
+        value = buffer_value(index)
+        metadata.append({"table_offset": offset, "name": string(owner, 0, True), "buffer": index,
+            "raw_hex": value.hex(), "nul_terminated_ascii": value.rstrip(b"\0").decode("ascii")
+                if value and all(byte == 0 or 32 <= byte < 127 for byte in value) else None})
+    signatures = []
+    for offset in vector(model, 7, tables=True):
+        owner = table(offset, {0, 1, 2, 3, 4})
+        if 3 in owner["fields"]:
+            raise ValueError("AI FlatBuffer deprecated signature field requires review")
+        subgraph_index = scalar(owner, 4, "<I", 0)
+        if not 0 <= subgraph_index < len(subgraphs):
+            raise ValueError("AI FlatBuffer signature subgraph is out of range")
+        maps = {}
+        for field, name in ((0, "inputs"), (1, "outputs")):
+            maps[name] = []
+            for entry in vector(owner, field, tables=True, required=True):
+                item = table(entry, {0, 1})
+                tensor_index = scalar(item, 1, "<I", 0)
+                if not 0 <= tensor_index < len(subgraphs[subgraph_index]["tensors"]):
+                    raise ValueError("AI FlatBuffer signature tensor is out of range")
+                maps[name].append({"name": string(item, 0, True), "tensor_index": tensor_index})
+        signatures.append({"table_offset": offset, "name": string(owner, 2, True),
+            "subgraph_index": subgraph_index, "subgraph_index_defaulted": 4 not in owner["fields"], **maps})
+    metadata_buffers = vector(model, 5)
+    for index in metadata_buffers:
+        buffer_value(index)
+    return {"identifier": "TFL3", "root_table_offset": root, "version": version,
+        "description": string(model, 3, True), "model_bytes": len(data), "model_sha256": hashlib.sha256(data).hexdigest(),
+        "operator_codes": codes, "subgraphs": subgraphs, "buffers": buffers, "metadata_buffer": metadata_buffers,
+        "metadata": metadata, "signature_defs": signatures,
+        "default_value_basis": "TFL3 scalar field defaults; absent references remain absent; no inference executed"}
+
+
+def _lighting_ai_flatbuffer_resource(raw):
+    matches = [row for row in pe_resource_entries(raw) if (row["type"], row["name"], row["language"]) == (10, 100, 1033)]
+    if len(matches) != 1:
+        raise ValueError("AI model RCDATA is absent or ambiguous")
+    resource, = matches
+    if (resource["rva"], resource["bytes"], resource["sha256"]) != ("0x556438", 59336,
+            "98f063f9d8a3e6263523afccfbb1e60e0611656f1c5401a3aa88864fd8e042dc"):
+        raise ValueError("AI model RCDATA identity requires review")
+    begin = resource["file_offset"]
+    return {"resource": resource, **_lighting_ai_flatbuffer_graph(raw[begin:begin + resource["bytes"]])}
+
+
 def _lighting_type_media_native(audit, original, roles, slots, pairs):
     native = audit.families.verify_native_functions(original, roles, slots)
     functions = {int(row["capture"]["rva"], 16): row["capture"] for row in native["complete_selected_functions"]}
@@ -10713,6 +10955,3262 @@ def collect_lighting_media_resampler(audit):
     report["changed_during_query"] = audit.final_snapshot()
     report["snapshot_stable"] = not report["changed_during_query"]
     report["verification"] = _verify_lighting_media_resampler(report)
+    return report
+
+
+def _lighting_media_codec_rgba8(raw, width, height, channels, *, bits=8, flip=False):
+    """Evaluate valid decoded-buffer examples, never compressed files or native failure paths."""
+    if (any(type(value) is not int or value <= 0 for value in (width, height, channels))
+            or channels not in (1, 2, 3, 4) or bits not in (8, 16) or type(flip) is not bool
+            or width * height * channels * (bits // 8) > 0x7fffffff):
+        raise ValueError("Codec example is outside the reviewed decoded-buffer range")
+    if not isinstance(raw, bytes) or len(raw) != width * height * channels * (bits // 8):
+        raise ValueError("Codec example decoded-buffer length differs")
+    samples = list(raw) if bits == 8 else list(struct.unpack("<" + "H" * (len(raw) // 2), raw))
+    opaque = (1 << bits) - 1
+    rgba = []
+    for offset in range(0, len(samples), channels):
+        pixel = samples[offset:offset + channels]
+        if channels == 1:
+            pixel = [pixel[0], pixel[0], pixel[0], opaque]
+        elif channels == 2:
+            pixel = [pixel[0], pixel[0], pixel[0], pixel[1]]
+        elif channels == 3:
+            pixel = [*pixel, opaque]
+        rgba.extend(value >> (bits - 8) for value in pixel)
+    rows = [rgba[offset:offset + width * 4] for offset in range(0, len(rgba), width * 4)]
+    return bytes(value for row in (reversed(rows) if flip else rows) for value in row)
+
+
+def _lighting_media_codec_boundaries():
+    return {
+        "caller": {"required_channels": 4, "requested_result_bits": 8, "output_width": 32,
+            "output_height": 32, "resampler_layout": 4, "resampler_sample_type": 0,
+            "decoder_channel_count_is_native_output_stride": False, "resize_result_checked": False},
+        "dispatch": {"ordered_formats": ["png", "bmp", "gif", "psd", "pic", "jpeg", "pnm", "hdr", "tga"],
+            "filename_extension_selects_decoder": False, "matched_decoder_failure_tries_next_format": False,
+            "pnm_probe_rewinds_after_success": False, "pnm_decoder_rewinds_before_header": True,
+            "other_successful_probes_restore_saved_buffer_window": True,
+            "rewind_is_file_seek": False, "unknown_type_returns_null": True,
+            "jpeg_probe_allocates_bytes": 18568},
+        "pixels": {"four_channel_gray": "Y,Y,Y,max", "four_channel_gray_alpha": "Y,Y,Y,A",
+            "four_channel_rgb": "R,G,B,max", "sixteen_bit_reduction": "native word >> 8",
+            "sixteen_bit_round_or_rescale": False, "sixteen_bit_reducer_checks_product_overflow": False,
+            "word_channel_conversion_checks_product_overflow": False,
+            "sixteen_bit_reducer_frees_input_on_allocation_failure": False,
+            "sixteen_bit_reducer_null_result_checked_before_optional_flip": False,
+            "flip_row_pairs": "floor(height/2)", "flip_scratch_bytes": 2048,
+            "flip_applies_after_bit_depth_reduction": True,
+            "flip_thread_override_precedes_global": True, "flip_is_always_enabled_for_current_caller": False,
+            "hdr_color_uses_gamma_and_scale": True, "hdr_alpha_uses_gamma": False},
+        "ownership": {"ordinary_channel_conversion_frees_replaced_input": True,
+            "channel_conversion_frees_input_on_allocation_failure": True,
+            "hdr_conversion_frees_input_on_allocation_failure": True,
+            "error_message_owner": "thread local pointer", "file_closed_after_decode_returns": True,
+            "decoded_pixels_released_after_resize_or_nonpositive_dimensions": True,
+            "separate_async_decoder_cancellation_api_observed": False},
+        "scope": {"format_dispatch_and_current_rgba8_normalization_reviewed": True,
+            "all_compressed_pixel_arithmetic_reviewed": False,
+            "all_generic_channel_conversions_reviewed": False,
+            "actual_dll_examples_executed": False, "resampler_repeated": False}}
+
+
+def _lighting_media_codec_projection(report):
+    return {name: report[name] for name in ("current_native_release", "native", "instruction_evidence",
+        "format_routes", "boundaries", "reviewed_semantics", "fixed_vectors", "dependencies",
+        "remaining_chains")}
+
+
+def _verify_lighting_media_codec_boundaries(report):
+    if report.get("boundaries") != _lighting_media_codec_boundaries():
+        raise ValueError("Media codec boundary requires semantic review")
+    if (report.get("schema_version") != 1 or report.get("query") != "lighting-media-codec-boundaries"
+            or report.get("kind") != "current_lighting_media_codec_boundaries"
+            or report.get("selected_codec_boundaries_reviewed") is not True
+            or any(report.get(name) is not False for name in ("source_chain_complete", "target_execution",
+                "product_code_modified", "real_device_operations"))
+            or any(report.get(name) != "unverified" for name in ("actual_dll_comparison", "runtime_acceptance", "ui_backend_wiring"))
+            or report.get("rust_independent_implementation") != "existing_not_revalidated"
+            or report.get("failures") or report.get("changed_during_query") or report.get("snapshot_stable") is not True):
+        raise ValueError("Media codec static boundary was promoted or snapshot failed")
+    native = report["native"]
+    if (native["selected_pseudocode_failures"] or native["all_pseudocode_captured"] is not False
+            or len(native["failures"]) != 10):
+        raise ValueError("Media codec capture failure was hidden")
+    digest = hashlib.sha256(json.dumps(_lighting_media_codec_projection(report), ensure_ascii=False,
+        sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+    if digest != "281500b8ec1b49a13c9c67c74f6188f06d6c45a1cdc281b98bef1d1e30f33487" or report.get("reviewed_selection_sha256") != digest:
+        raise ValueError("Media codec selected bytes require semantic review: " + digest)
+    return {"selected_native_functions": len(native["complete_selected_functions"]),
+        "actual_direct_edges": len(native["verified_call_edges"]), "ordered_formats": 9,
+        "selected_native_failures": 0, "global_native_failures_retained": 10,
+        "compressed_pixel_arithmetic_complete": False, "actual_dll_comparison": "unverified",
+        "reviewed_selection_sha256": digest}
+
+
+def _lighting_png_decoder_reconstruct(data, width, height, channels, depth, *, color_type=0,
+        output_channels=None, interlace=False):
+    """Check synthetic scanlines against reviewed reconstruction; never execute the codec."""
+    output_channels = channels if output_channels is None else output_channels
+    if (width <= 0 or height <= 0 or width * height > 1048576 or channels not in (1, 2, 3, 4)
+            or depth not in (1, 2, 4, 8, 16) or output_channels not in (channels, channels + 1)
+            or output_channels > 4 or color_type not in (0, 2, 3, 4, 6)):
+        raise ValueError("PNG synthetic reconstruction is outside the reviewed model")
+    passes = [(0, 0, 1, 1)] if not interlace else [
+        (0, 0, 8, 8), (4, 0, 8, 8), (0, 4, 4, 8), (2, 0, 4, 4),
+        (0, 2, 2, 4), (1, 0, 2, 2), (0, 1, 1, 2)]
+    sample_bytes = 2 if depth == 16 else 1
+    output = bytearray(width * height * output_channels * sample_bytes)
+    cursor = 0
+    for x0, y0, dx, dy in passes:
+        pass_width = max(0, (width - x0 + dx - 1) // dx)
+        pass_height = max(0, (height - y0 + dy - 1) // dy)
+        if not pass_width or not pass_height:
+            continue
+        row_size = (pass_width * channels * depth + 7) // 8
+        filter_stride = 1 if depth < 8 else channels * sample_bytes
+        previous = bytes(row_size)
+        for y in range(pass_height):
+            if cursor + row_size + 1 > len(data):
+                raise ValueError("PNG synthetic input has not enough pixels")
+            filter_type = data[cursor]
+            if filter_type > 4:
+                raise ValueError("PNG synthetic input has invalid filter")
+            row = bytearray(data[cursor + 1:cursor + row_size + 1])
+            cursor += row_size + 1
+            for index in range(row_size):
+                left = row[index - filter_stride] if index >= filter_stride else 0
+                up = previous[index]
+                corner = previous[index - filter_stride] if index >= filter_stride else 0
+                if filter_type == 0:
+                    predictor = 0
+                elif filter_type == 1:
+                    predictor = left
+                elif filter_type == 2:
+                    predictor = up
+                elif filter_type == 3:
+                    predictor = (left + up) // 2
+                else:
+                    estimate = left + up - corner
+                    distances = (abs(estimate - left), abs(estimate - up), abs(estimate - corner))
+                    predictor = (left, up, corner)[distances.index(min(distances))]
+                row[index] = (row[index] + predictor) & 255
+            previous = bytes(row)
+            samples = []
+            for index in range(pass_width * channels):
+                if depth == 16:
+                    value = int.from_bytes(row[2 * index:2 * index + 2], "big")
+                elif depth == 8:
+                    value = row[index]
+                else:
+                    bit = index * depth
+                    value = (row[bit // 8] >> (8 - depth - bit % 8)) & ((1 << depth) - 1)
+                    if color_type == 0:
+                        value *= 255 // ((1 << depth) - 1)
+                samples.append(value)
+            for x in range(pass_width):
+                pixel = samples[x * channels:(x + 1) * channels]
+                if output_channels != channels:
+                    pixel.append(65535 if depth == 16 else 255)
+                offset = ((y0 + y * dy) * width + x0 + x * dx) * output_channels * sample_bytes
+                for index, value in enumerate(pixel):
+                    start = offset + index * sample_bytes
+                    output[start:start + sample_bytes] = value.to_bytes(sample_bytes, "little")
+    return bytes(output)
+
+
+def _lighting_png_decoder_finish(data, channels, *, depth=8, transparent=None,
+        palette=None, cgbi_convert=False, cgbi_unpremultiply=False):
+    """Model defined postprocessing vectors, excluding uninitialized palette entries."""
+    sample_bytes = 2 if depth == 16 else 1
+    if (channels not in (1, 2, 3, 4) or depth not in (8, 16)
+            or len(data) % (channels * sample_bytes)):
+        raise ValueError("PNG synthetic pixel layout differs")
+    output = bytearray(data)
+    if transparent is not None:
+        if channels not in (2, 4) or len(transparent) != channels - 1:
+            raise ValueError("PNG synthetic transparency layout differs")
+        for start in range(0, len(output), channels * sample_bytes):
+            colors = [int.from_bytes(output[start + i * sample_bytes:start + (i + 1) * sample_bytes],
+                "little") for i in range(channels - 1)]
+            if colors == list(transparent):
+                alpha = start + (channels - 1) * sample_bytes
+                output[alpha:alpha + sample_bytes] = bytes(sample_bytes)
+    if cgbi_convert:
+        if depth != 8 or channels not in (3, 4):
+            raise ValueError("PNG synthetic CgBI model covers defined byte pixels only")
+        for start in range(0, len(output), channels):
+            blue, green, red = output[start:start + 3]
+            alpha = output[start + 3] if channels == 4 else 0
+            if cgbi_unpremultiply and channels == 4 and alpha:
+                red, green, blue = [((alpha // 2 + 255 * value) // alpha) & 255
+                    for value in (red, green, blue)]
+            output[start:start + 3] = bytes((red, green, blue))
+    if palette is not None:
+        if channels != 1 or depth != 8 or any(len(row) != 4 for row in palette):
+            raise ValueError("PNG synthetic palette layout differs")
+        if any(index >= len(palette) for index in output):
+            raise ValueError("PNG original palette index selects uninitialized entries")
+        return b"".join(bytes(palette[index]) for index in output)
+    return bytes(output)
+
+
+def _lighting_png_decoder_boundaries():
+    return {
+        "entry": {"selected_path": ["0x8b880", "0x8fa10", "0x8fb40"],
+            "selected_scan_mode": 0, "current_requested_components": 4,
+            "signature": "89504e470d0a1a0a", "other_decoder_failure_fallback": False},
+        "chunks": {"ihdr_bytes": 13, "maximum_dimension": 16777216,
+            "accepted_depths": [1, 2, 4, 8, 16], "accepted_color_types": [0, 2, 3, 4, 6],
+            "palette_depth16_rejected": True, "other_depth_color_pairs_spec_restricted": False,
+            "compression_and_filter_method": 0, "interlace_methods": [0, 1],
+            "plte_maximum_bytes": 768, "plte_multiple_bytes": 3,
+            "idat_chunk_maximum_bytes": 1073741824, "idat_capacity_initial_minimum": 4096,
+            "idat_size_addition_checked": True, "idat_exact_read_required": True,
+            "trns_after_idat_gate": "owned IDAT pointer is nonnull, not a chunk-seen flag",
+            "unknown_critical_rejected": True, "unknown_ancillary_skipped": True,
+            "cgbi_may_precede_ihdr": True, "iend_length_zero_checked": False,
+            "crc_read": True, "crc_verified": False,
+            "scalar_reads_at_eof_may_supply_zero": True, "skip_callback_success_checked": False},
+        "inflate": {"block_types": {"0": "stored", "1": "fixed Huffman", "2": "dynamic Huffman",
+                "3": "return failure without assigning a new error"},
+            "zlib_header_for_standard_png": True, "zlib_header_for_cgbi": False,
+            "zlib_header_mod31_checked": True, "zlib_compression_method": 8,
+            "zlib_preset_dictionary_allowed": False, "zlib_cinfo_range_checked": False,
+            "adler32_verified": False, "stored_len_nlen_checked": True,
+            "stored_input_length_checked": True, "huffman_fast_bits": 9,
+            "huffman_slow_maximum_bits": 15, "dynamic_repeat_codes": [16, 17, 18],
+            "dynamic_repeat_previous_requires_prior_symbol": True,
+            "dynamic_repeat_overrun_rejected": True, "literal_end_symbol": 256,
+            "maximum_length_symbol": 285, "maximum_distance_symbol": 29,
+            "backreference_cannot_precede_output": True, "overlapping_copy_preserved": True,
+            "distance1_uses_byte_fill": True, "input_exhaustion_zero_refill": True,
+            "single16bit_eof_padding_and_end_check": True,
+            "output_growth_enabled_by_png_wrapper": True, "output_growth_doubles": True,
+            "output_size_addition_uint32_overflow_checked": True,
+            "failed_realloc_preserves_owned_buffer": True},
+        "pixels": {"input_filters": [0, 1, 2, 3, 4], "first_row_filter_map": [0, 1, 0, 5, 1],
+            "filter_addition_modulo": 256, "filter_stride_packed": 1,
+            "filter_stride_unpacked": "source channels * sample bytes",
+            "average_rounding": "floor((left+up)/2)", "paeth_tie_order": ["left", "up", "corner"],
+            "scratch_scanlines": 2, "extra_inflated_bytes_rejected": False,
+            "packed_order": "MSB first", "packed_gray_scales": {"1": 255, "2": 85, "4": 17},
+            "packed_non_gray_scaled": False, "depth16_input_order": "big endian",
+            "depth16_output_order": "native little endian words",
+            "new_alpha8": 255, "new_alpha16": 65535,
+            "adam7_passes": [[0, 0, 8, 8], [4, 0, 8, 8], [0, 4, 4, 8], [2, 0, 4, 4],
+                [0, 2, 2, 4], [1, 0, 2, 2], [0, 1, 1, 2]],
+            "adam7_skips_empty_passes": True, "trns_exact_sample_equality": True,
+            "palette_initial_alpha": 255, "palette_actual_index_checked": False,
+            "cgbi_convert_tls_override": {"value_offset": 32, "present_offset": 36,
+                "global_rva": "0x1f8da8", "global_setter_rva": "0x89310"},
+            "cgbi_unpremultiply_tls_override": {"value_offset": 24, "present_offset": 28,
+                "global_rva": "0x1f8da4", "global_setter_rva": "0x89300"},
+            "cgbi_unpremultiply": "(alpha//2 + 255*channel)//alpha; truncate to byte",
+            "cgbi_alpha0_skips_division": True, "cgbi_result_clamped": False,
+            "cgbi_depth16_guard_present": False},
+        "ownership": {"png_context_fields": ["stream", "IDAT", "inflated", "pixels", "depth"],
+            "inflate_failure_frees_current_output": True,
+            "successful_inflate_releases_idat": True,
+            "successful_reconstruction_releases_scratch": True,
+            "invalid_filter_releases_scratch": True,
+            "reconstruction_failure_leaves_pixels_for_outer_cleanup": True,
+            "adam7_failure_releases_full_destination": True,
+            "adam7_each_success_releases_pass_pixels": True,
+            "palette_allocation_failure_leaves_indices_for_outer_cleanup": True,
+            "success_transfers_pixels_and_clears_context_owner": True,
+            "common_exit_releases_and_nulls_remaining_three_buffers": True,
+            "channel_conversion_failure_returns_before_common_exit": True,
+            "channel_conversion_failure_has_already_consumed_input": True,
+            "invalid_requested_components_or_depth_bypass_common_exit": True,
+            "invalid_depth_reachable_after_successful_header": False,
+            "separate_async_cancellation_api_observed": False,
+            "file_close_and_later_rgba8_reducer_revalidated": False},
+        "scope": {"selected_png_decoder_semantics_reviewed": True,
+            "other_eight_formats_repeated": False, "resampler_repeated": False,
+            "actual_dll_examples_executed": False, "synthetic_models_are_native_execution": False}}
+
+
+def _lighting_png_decoder_projection(report):
+    return {name: report[name] for name in ("current_native_release", "native", "instruction_evidence",
+        "boundaries", "reviewed_semantics", "fixed_vectors", "dependencies", "remaining_chains")}
+
+
+def _verify_lighting_png_decoder_chain(report):
+    if report.get("boundaries") != _lighting_png_decoder_boundaries():
+        raise ValueError("PNG decoder boundary requires semantic review")
+    if (report.get("schema_version") != 1 or report.get("query") != "lighting-png-decoder-chain"
+            or report.get("kind") != "current_lighting_png_decoder_chain"
+            or report.get("selected_png_decoder_semantics_reviewed") is not True
+            or any(report.get(name) is not False for name in ("source_chain_complete", "target_execution",
+                "product_code_modified", "real_device_operations"))
+            or any(report.get(name) != "unverified" for name in ("actual_dll_comparison", "runtime_acceptance", "ui_backend_wiring"))
+            or report.get("rust_independent_implementation") != "existing_not_revalidated"
+            or report.get("failures") or report.get("changed_during_query") or report.get("snapshot_stable") is not True):
+        raise ValueError("PNG decoder static boundary was promoted or snapshot failed")
+    native = report["native"]
+    if (native["selected_pseudocode_failures"] or native["all_pseudocode_captured"] is not False
+            or len(native["failures"]) != 10):
+        raise ValueError("PNG decoder capture failure was hidden")
+    digest = hashlib.sha256(json.dumps(_lighting_png_decoder_projection(report), ensure_ascii=False,
+        sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+    if digest != "d9a72fab2c3665f9da5ab3d879a96eadf7416b5c6be06de8f8a310a083a005d4" or report.get("reviewed_selection_sha256") != digest:
+        raise ValueError("PNG decoder selected bytes require semantic review: " + digest)
+    return {"selected_native_functions": len(native["complete_selected_functions"]),
+        "actual_direct_edges": len(native["verified_call_edges"]),
+        "selected_native_failures": 0, "global_native_failures_retained": 10,
+        "selected_png_decoder_semantics_reviewed": True, "all_format_decoders_complete": False,
+        "actual_dll_comparison": "unverified", "reviewed_selection_sha256": digest}
+
+
+def collect_lighting_png_decoder_chain(audit):
+    """Review current PNG internals from retained complete functions and actual PE bytes."""
+    original, release = _lighting_ripple_native_source(audit)
+    roles = {0x8b880: "selected_png_entry", 0x8fa10: "png_result_transfer_and_outer_cleanup",
+        0x8fb40: "png_chunks_allocation_and_decode_owner", 0x8f7b0: "png_full_signature",
+        0x91b20: "png_chunk_length_and_type", 0x91bb0: "stream_big_endian32",
+        0x91be0: "stream_big_endian16", 0x91b50: "stream_skip_payload",
+        0x91c90: "stream_exact_read", 0x8f9b0: "stream_refill_eof_zero",
+        0x8b400: "file_skip_callback", 0x89010: "inflate_owned_buffer_wrapper",
+        0x88fd0: "inflate_output_state", 0x9c8d0: "inflate_block_dispatch",
+        0x9ca10: "zlib_header", 0x9cab0: "inflate_stored_block",
+        0x9cd00: "huffman_table_builder", 0x9d000: "dynamic_huffman_lengths",
+        0x9d340: "huffman_literals_and_backreferences", 0x9d790: "inflate_bit_refill",
+        0x9d7f0: "inflate_output_growth", 0x9d880: "huffman_slow_decode",
+        0x91d40: "png_adam7_pass_scatter", 0x926e0: "png_scanline_filters_and_samples",
+        0x93be0: "paeth_predictor", 0x93c10: "append_alpha_backward",
+        0x92120: "transparent_key16", 0x92220: "transparent_key8",
+        0x92310: "cgbi_channel_swap_and_unpremultiply", 0x92530: "palette_expansion",
+        0x89300: "global_cgbi_unpremultiply_setter", 0x89310: "global_cgbi_convert_setter",
+        0x90680: "existing_byte_channel_conversion", 0x910a0: "existing_word_channel_conversion",
+        0x93ad0: "checked_triple_allocation", 0x93b10: "checked_triple_size",
+        0x93ba0: "checked_pair_allocation", 0x93b60: "checked_pair_size",
+        0x93d60: "signed_product_range", 0x93d90: "signed_add_range",
+        0x87e20: "thread_local_error_pointer", 0x88fc0: "allocation_thunk",
+        0x153480: "allocation_crt_thunk", 0x16b220: "crt_heap_allocation",
+        0x155200: "reallocation_thunk", 0x17b590: "crt_heap_reallocation",
+        0x14fba0: "free_thunk", 0x16b1c0: "crt_heap_free"}
+    pairs = [(0x8b880, 0x8fa10), (0x8fa10, 0x8fb40), (0x8fa10, 0x90680),
+        (0x8fa10, 0x910a0), (0x8fa10, 0x14fba0), (0x8fb40, 0x8f7b0),
+        (0x8fb40, 0x91b20), (0x91b20, 0x91bb0), (0x91bb0, 0x91be0),
+        (0x91be0, 0x8f9b0), (0x8f7b0, 0x8f9b0),
+        (0x8fb40, 0x91b50), (0x8fb40, 0x91c90), (0x8fb40, 0x91bb0),
+        (0x8fb40, 0x91be0), (0x8fb40, 0x8f9b0), (0x8fb40, 0x155200),
+        (0x8fb40, 0x89010), (0x8fb40, 0x14fba0), (0x8fb40, 0x91d40),
+        (0x8fb40, 0x92120), (0x8fb40, 0x92220), (0x8fb40, 0x92310),
+        (0x8fb40, 0x92530), (0x8fb40, 0x87e20),
+        (0x89010, 0x88fc0), (0x89010, 0x88fd0), (0x89010, 0x14fba0),
+        (0x88fd0, 0x9c8d0), (0x9c8d0, 0x9ca10), (0x9c8d0, 0x9cab0),
+        (0x9c8d0, 0x9cd00), (0x9c8d0, 0x9d000), (0x9c8d0, 0x9d340),
+        (0x9c8d0, 0x9d790), (0x9cab0, 0x9d790), (0x9cab0, 0x9d7f0),
+        (0x9d000, 0x9cd00), (0x9d000, 0x9d790), (0x9d000, 0x9d880),
+        (0x9d340, 0x9d790), (0x9d340, 0x9d880), (0x9d340, 0x9d7f0),
+        (0x9d7f0, 0x155200), (0x91d40, 0x926e0), (0x91d40, 0x93ad0),
+        (0x91d40, 0x14fba0), (0x926e0, 0x93ad0), (0x926e0, 0x93b10),
+        (0x926e0, 0x93b60), (0x926e0, 0x93ba0), (0x926e0, 0x93be0),
+        (0x926e0, 0x93c10), (0x926e0, 0x14fba0), (0x92530, 0x93ba0),
+        (0x92530, 0x14fba0), (0x93ad0, 0x93b10), (0x93ad0, 0x88fc0),
+        (0x93ba0, 0x93b60), (0x93ba0, 0x88fc0), (0x93b10, 0x93d60),
+        (0x93b10, 0x93d90), (0x93b60, 0x93d60), (0x93b60, 0x93d90),
+        (0x88fc0, 0x153480), (0x153480, 0x16b220), (0x155200, 0x17b590),
+        (0x17b590, 0x16b220), (0x17b590, 0x16b1c0), (0x14fba0, 0x16b1c0)]
+    slots = [{"role": role, "vtable_rva": "0x1f59c0", "slot_byte_offset": index * 8,
+        "target_rva": hex(target)} for index, (role, target) in enumerate(
+            (("read", 0x8b3e0), ("skip", 0x8b400)))]
+    native, functions = _lighting_type_media_native(audit, original, roles, slots, pairs)
+    raw = audit.read(original)
+    pe = inspect_pe(raw)
+    native["verified_data_regions"] = [_lighting_timed_constant(raw, pe, role, rva, size, sha)
+        for role, rva, size, sha in (
+            ("packed_gray_scale", 0x1ae070, 9, "d8e2e17697cdf4db31bb89b24fb41b19fe734e28dd8dd0b3ff7df1b590124693"),
+            ("adam7_origins_steps_and_padding", 0x1ae080, 124, "1f04a25c7c460a4c51c7f2f13a74e8d6245ebea03d0c2956000bcaed9fca6dec"),
+            ("first_row_filter_map", 0x1ae0fc, 5, "93c69ebe5c9822b292c71e8300a51e467e6e008b0bcd90e8789da3355bf625b3"),
+            ("fixed_literal_length_sizes", 0x1ae260, 288, "d52ff0c78190ba319c56a4004d0ed7355c78a3f4ee0491e5e47a4496d617f5ae"),
+            ("fixed_distance_sizes", 0x1ae380, 32, "f849d67325facf04177bc663b2dc544051831c589ef581d412f2eba44834e77c"),
+            ("code_length_permutation", 0x1ae3a0, 19, "111b15b20e0428a22eeaa1e54b0d3b008a7a3e79c8f7f4e783710f569e9cef15"),
+            ("length_base", 0x1ae3c0, 116, "52aa14dbfad385cc0a67e081c133be3c353a46e2260e564186f0fef33b8874e5"),
+            ("length_extra_bits", 0x1ae440, 116, "f8d7861760c88cc514f66095af0aed47ecba063adb65f47125ed07bcc2cf9842"),
+            ("distance_base", 0x1ae4c0, 120, "fc216f5c5ae2947d800794ecd5f752ee8381073c2e5d0d095fda040f541702f3"),
+            ("distance_extra_bits", 0x1ae540, 120, "b23d510f520cb4ba8afa847f8a40e757c40cb6a55b237efa1ac6d3984911b114"),
+            ("byte_average_mask", 0x1af2f0, 16, "87dcde7fa6df23e15fa7ba9b2a1f31408eac832f4e615ea815ae92024e3d818b"),
+            ("huffman_length_count_limits", 0x1af470, 48, "242e354d764d35b6f484e5df855d187590d12293608dc2c29e09ccab27c86236"),
+            ("read_callback_leaf_and_padding", 0x8b3e0, 32, "679362342bb92e67c293d010d6df6554c76d92abf497a3ee5b3efa3068fa0d38"))]
+    sections = [part for part in pe["sections"] if part["rva"] + part["bytes"] <= 0x1f8da4
+        and 0x1f8dac <= part["rva"] + part["virtual_bytes"]]
+    if len(sections) != 1:
+        raise ValueError("PNG CgBI selectors are no longer in loader zero-fill storage")
+    native["verified_zero_fill_regions"] = [{"role": "cgbi_global_selector_initial_storage",
+        "rva": "0x1f8da4", "bytes": 8, "section": sections[0],
+        "loader_initial_bytes_hex": "0000000000000000", "current_runtime_values_observed": False}]
+    native["global_selector_setter_entry_references"] = {
+        hex(rva): functions[rva]["xrefs_to_entry"] for rva in (0x89300, 0x89310)}
+    instruction_evidence = {}
+    for role, owner, first, last in (
+            ("selected_entry_scan0_and_requested_components", 0x8fa10, 0x8fa22, 0x8fa47),
+            ("chunk_skip_uses_real_length", 0x8fb40, 0x900b3, 0x900c9),
+            ("inflate_estimate_and_cgbi_header_switch", 0x8fb40, 0x9049f, 0x904ef),
+            ("stored_growth_preserves_length_in_r8", 0x9cab0, 0x9cc4f, 0x9ccb7),
+            ("literal_growth_requests_one_byte", 0x9d340, 0x9d3eb, 0x9d40f),
+            ("match_growth_requests_full_length", 0x9d340, 0x9d575, 0x9d5aa),
+            ("alpha_helper_hidden_width_and_source_channels", 0x926e0, 0x93600, 0x93633),
+            ("alpha_helper_actual_branch_call", 0x926e0, 0x92ab1, 0x92ab9),
+            ("filter_scratch_success_and_failure_free", 0x926e0, 0x93a9e, 0x93ac9),
+            ("cgbi_selector_and_call_has_no_depth_guard", 0x8fb40, 0x905d4, 0x90616),
+            ("outer_transfer_and_common_cleanup", 0x8fa10, 0x8fa56, 0x8fb1a)):
+        rows = [row for row in functions[owner]["assembly"] if first <= int(row["rva"], 16) <= last]
+        if not rows:
+            raise ValueError("PNG decoder instruction owner is absent: " + role)
+        instruction_evidence[role] = {"rva": hex(owner), "instructions": rows}
+    report = {"schema_version": 1, "query": "lighting-png-decoder-chain",
+        "kind": "current_lighting_png_decoder_chain", "current_native_release": release,
+        "native": native, "instruction_evidence": instruction_evidence,
+        "boundaries": _lighting_png_decoder_boundaries(),
+        "reviewed_semantics": {
+            "stream_and_chunks": "8B880 delegates to8FA10, which invokes8FB40 scan0 with current required4. Full signature and IHDR13 gates bind dimensions1..2^24, depth1/2/4/8/16, color0/2/3/4/6 (palette16 forbidden), methods0 and interlace0/1. Other low-depth/color combinations are not spec-restricted. Size checks cap width*height*source-channels, with palette using4. PLTE accepts length0..768 divisible3; initialized entries receive alpha255. tRNS must precede a nonnull accumulated IDAT pointer, supplies palette alpha or exact gray/RGB sample keys, and rejects existing-alpha channels. IDAT adds lengths with overflow detection, grows from max(4096,chunk length) by doubling, and requires exact callback reads. A zero-size IDAT can leave the owner null. Unknown critical chunks fail; ancillary chunks use signed-length skip, whose negative path only exhausts the current window. CgBI may precede IHDR and skips its payload. IEND does not require declared length0. CRC is read/discarded, never checked; scalar EOF can supply zeros. Exact-read failure differs from these scalar reads. The skip callback return is ignored. Inflate initial estimate height+((width*depth+7)>>3)*height*source-channels uses32bit arithmetic without a separate checked-product wrapper; checked final pixel allocation is a distinct boundary.",
+            "deflate": "89010 allocates the estimated output and88FD0 enables growth before9C8D0; initial allocation failure returns null without assigning a new decoder error. Standard PNG validates a mod31 zlib header, CM8 and absent preset dictionary; CINFO is not checked. CgBI bypasses that header. Block0 aligns to bytes, checks LEN xor NLEN==FFFF and remaining input; block1 uses bound fixed lengths; block2 builds ordered dynamic lengths, rejecting invalid repeats/overruns and oversized or oversubscribed codes. Huffman uses fast9 and canonical bit-reversed slow10..15. Literals0..255 append,256 ends a block,257..285 select length/extra tables; distance symbols0..29 select distance/extra tables. Distances preceding existing output fail. Distance1 fills; other matches copy forwards with overlap and vector/scalar branches.9D790 supplies zero bits beyond input; Huffman has one16bit EOF allowance and rejects consuming that allowance at block end.9D7F0 gets the real required length in r8 (stored LEN, literal1, match length), checks uint32 addition and doubling overflow, updates offsets after successful realloc, and retains original ownership on failure. Reserved type3 returns0 without a new TLS error. Final block success does not validate Adler32 or consume/check all compressed bytes.",
+            "scanlines": "926E0 owns checked destination allocation plus two packed scanline scratch rows. It verifies the minimum inflated byte count, but accepts trailing bytes. Input filter0..4 is checked before first-row remap0/1/0/5/1. Predictors operate on original packed bytes: None, Sub, Up, floor Average and Paeth with left/up/corner ties, modulo256. Packed depths use stride1; other depths use source-channels*sample-bytes.1/2/4bit samples unpack MSB-first; gray alone scales255/85/17, non-gray indices/channels remain unscaled.16bit big-endian input is byte-swapped to native little-endian words; added alpha is255/65535.93C10 actual r8=width and r9=source-channels are present even though the caller pseudocode omits them. It expands backwards for gray+alpha or RGB+alpha.91D40 runs seven bound Adam7 origin/step tables, skips empty passes, advances by each pass's actual filtered-byte size and scatters into a separately owned full destination.",
+            "postprocess": "92120/92220 compare all original gray/RGB samples exactly and clear matching alpha; nonmatches retain appended max alpha. Palette expansion indexes a1024byte stack table and allocates3/4 channels, preserving initialized tRNS alpha; it does not compare pixel indices with PLTE count, so uninitialized palette entries are not assigned invented values. CgBI conversion reads TLS value32/present36 before global1F8DA8; unpremultiply reads TLS24/present28 before global1F8DA4. Both globals start in proven PE loader zero-fill storage;89310/89300 merely assign them and captured setter entry references are retained. Conversion swaps B/R; optional nonzero-alpha unpremultiply uses(alpha//2+255*channel)//alpha and stores the low byte, without clamp. Alpha0 only swaps. The caller guards output-channels>=3 but has no depth16 guard, so the bytewise operation is not described as word-aware. Current image caller does not force these flags.",
+            "ownership_and_failure": "Inflate wrapper failure frees its current realloc-owned output. PNG frees/nulls IDAT after successful inflate and inflated bytes after successful reconstruction/postprocessing.926E0 frees two-row scratch on success or invalid filter; its partial pixel destination stays owned by the PNG context for8FA10. Adam7 frees each successful temporary pass, and on failure frees the separate full destination while leaving current pass cleanup to8FA10. Palette allocation failure leaves indices owned by the context; success frees and replaces them.8FA10 transfers pixels by nulling the owner and common exit frees/nulls any remaining pixel/inflated/IDAT owners. Invalid req_comp or impossible post-success depth return before common cleanup. Channel-conversion failure also returns early, but the selected converters have consumed/freed transferred input and successful parsing has already nullified IDAT/inflated. No asynchronous decoder cancellation API is observed; synchronous file closure and the later16to8 failure leak retain their earlier codec boundaries. CRT allocation/reallocation/free thunks bind actual HeapAlloc/HeapReAlloc/HeapFree owners; process allocation-handler policy is not claimed as a decoder cancellation mechanism."},
+        "fixed_vectors": {"scanlines": [
+            {"name": "paeth_two_rows", "width": 3, "height": 2, "channels": 1, "depth": 8,
+                "color_type": 0, "output_channels": 1, "interlace": False,
+                "input_hex": "040a0a0a04050505", "expected_hex": "0a141e0f1923"},
+            {"name": "packed_gray2_odd_width", "width": 5, "height": 1, "channels": 1, "depth": 2,
+                "color_type": 0, "output_channels": 1, "interlace": False,
+                "input_hex": "001b40", "expected_hex": "0055aaff55"},
+            {"name": "packed_palette4_no_gray_scale", "width": 3, "height": 1, "channels": 1, "depth": 4,
+                "color_type": 3, "output_channels": 1, "interlace": False,
+                "input_hex": "001f80", "expected_hex": "010f08"},
+            {"name": "sub16_endian_before_alpha", "width": 2, "height": 1, "channels": 1, "depth": 16,
+                "color_type": 0, "output_channels": 2, "interlace": False,
+                "input_hex": "0112344444", "expected_hex": "3412ffff7856ffff"},
+            {"name": "adam7_three_by_three", "width": 3, "height": 3, "channels": 1, "depth": 8,
+                "color_type": 0, "output_channels": 1, "interlace": True,
+                "input_hex": "000100030007090002000800040506", "expected_hex": "010203040506070809"}],
+            "actual_dll_results": False, "scope": "Synthetic defined pixels only; not a native decoder or malformed-input execution"},
+        "dependencies": [{"receipt": ".analysis/results/host-current/local-audit.json",
+                "section": "lighting_media_codec_boundaries",
+                "scope": "Reuse current4-channel image caller, file callbacks,9-format selection, generic channel conversion and later8bit reduction; only PNG internals continue here"},
+            {"receipt": ".analysis/results/host-current/local-audit.json", "section": "lighting_media_resampler",
+                "scope": "Existing synchronous32x32 layout4/type0 resampling unchanged"}],
+        "remaining_chains": [
+            {"owner": "BMP8B910, GIF945C0, PSD8CD70, PIC95910, JPEG98C80, PNM9BBC0/8E010, HDR8E160, TGA8EDA0",
+                "status": "PNG compressed-pixel internals are now reviewed separately; the other eight format-specific pixel/malformed-input/cleanup chains remain independent and unreviewed"},
+            {"owner": "HDR setters/compiler pow, AI1.0.1.0 and actual product Quick branches",
+                "status": "Independent prior mutation, arithmetic and product dependencies unchanged"},
+            {"owner": "independent Rust PNG codec/UI/backend and functional official DLL comparison",
+                "status": "Maintenance synthetic models are not product implementation; real DLL/fixture results, all consumers, device comparison and runtime acceptance remain unverified"}],
+        "selected_png_decoder_semantics_reviewed": True, "source_chain_complete": False,
+        "target_execution": False, "product_code_modified": False, "real_device_operations": False,
+        "rust_independent_implementation": "existing_not_revalidated", "ui_backend_wiring": "unverified",
+        "actual_dll_comparison": "unverified", "runtime_acceptance": "unverified", "failures": [],
+        "maintenance_lifecycle": {"temporary_artifacts_created": [], "analysis_sessions_created": [],
+            "reused_complete_native_captures": True}}
+    report["complete_originals"] = list(audit.sources.values())
+    report["complete_source_owners"] = list(audit.owners.values())
+    report["reviewed_selection_sha256"] = hashlib.sha256(json.dumps(_lighting_png_decoder_projection(report),
+        ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+    report["verified_artifacts"] = list(audit.artifacts.values())
+    report["changed_during_query"] = audit.final_snapshot()
+    report["snapshot_stable"] = not report["changed_during_query"]
+    report["verification"] = _verify_lighting_png_decoder_chain(report)
+    return report
+
+
+def _lighting_pnm_decoder_synthetic(data):
+    """Check complete resident synthetic bytes; callback EOF and allocation are not executed."""
+    if not isinstance(data, bytes) or len(data) > 65536:
+        raise ValueError("PNM synthetic input is outside the reviewed model")
+    cursor = 2
+    errors = []
+    result = {"success": False, "error_writes": errors, "raster_offset": 0}
+    if data[:2] not in (b"P5", b"P6"):
+        return result
+    result["format"] = data[:2].decode("ascii")
+    result["channels"] = 1 if data[1] == 53 else 3
+
+    def read_byte():
+        nonlocal cursor
+        value = data[cursor] if cursor < len(data) else 0
+        cursor += cursor < len(data)
+        return value
+
+    lookahead = read_byte()
+
+    def skip():
+        nonlocal lookahead
+        while cursor < len(data):
+            if lookahead in (9, 10, 11, 12, 13, 32):
+                lookahead = read_byte()
+            elif lookahead == 35:
+                while cursor < len(data) and lookahead not in (10, 13):
+                    lookahead = read_byte()
+            else:
+                return
+
+    def integer():
+        nonlocal lookahead
+        value = 0
+        while cursor < len(data) and 48 <= lookahead <= 57:
+            digit = lookahead - 48
+            lookahead = read_byte()
+            value = value * 10 + digit
+            signed_next = lookahead if lookahead < 128 else lookahead - 256
+            if value > 214748364 or value == 214748364 and signed_next >= 56:
+                errors.append("integer parse overflow")
+                return 0
+        return value
+
+    skip()
+    width = integer()
+    result["width"] = width
+    if not width:
+        errors.append("invalid width")
+        return result
+    skip()
+    height = integer()
+    result["height"] = height
+    if not height:
+        errors.append("invalid width")
+        return result
+    skip()
+    maximum = integer()
+    result["maxval"] = maximum
+    if maximum >= 65536:
+        errors.append("max value > 65535")
+        return result
+    bits = 16 if maximum >= 256 else 8
+    result.update(bits=bits, raster_offset=cursor)
+    size = result["channels"] * width * height * (bits // 8)
+    result["raster_bytes"] = size
+    if width > 16777216 or height > 16777216 or size > 2147483647:
+        errors.append("too large")
+        return result
+    if len(data) - cursor < size:
+        errors.append("bad PNM")
+        return result
+    raster = data[cursor:cursor + size]
+    result.update(success=True, raster_hex=raster.hex(),
+        rgba8_hex=_lighting_media_codec_rgba8(raster, width, height, result["channels"], bits=bits).hex())
+    return result
+
+
+def _lighting_pnm_decoder_boundaries():
+    return {
+        "entry": {"selected_decoder_rva": "0x8e010", "header_rva": "0x9bbc0",
+            "magic": ["P5", "P6"], "channels": {"P5": 1, "P6": 3},
+            "current_requested_channels": 4, "header_restores_saved_window_first": True,
+            "signature_failure_restores_saved_window": True, "signature_failure_sets_new_error": False},
+        "header": {"whitespace_bytes": [9, 10, 11, 12, 13, 32],
+            "comment_introducer": 35, "comment_terminators": [10, 13],
+            "skip_before_width_height_and_maxval": True, "skip_after_maxval": False,
+            "magic_following_whitespace_required": False, "maxval_separator_whitespace_checked": False,
+            "integer_overflow_guard_is_after_digit": True, "integer_guard_threshold": 214748364,
+            "integer_guard_equal_threshold_next_signed_char_limit": 56,
+            "integer_failure_returns": 0, "width_or_height_zero_error": "invalid width",
+            "maxval_positive_required": False, "maxval_digits_required": False,
+            "maxval_upper_exclusive": 65536, "sixteen_bit_maxval_threshold": 256,
+            "maxval_zero_or_parse_failure_selects_bits": 8,
+            "maxval_parse_failure_error_can_survive_success": True,
+            "numeric_parser_consumes_one_lookahead_after_number": True,
+            "crlf_lf_after_maxval_can_be_first_pixel": True},
+        "pixels": {"maximum_dimension": 16777216, "checked_size_factors": [
+                "source_channels", "width", "height", "bits/8"],
+            "maximum_signed_byte_product": 2147483647, "exact_raster_read": True,
+            "raster_bytes_copied_unchanged": True, "maxval_rescaling": False,
+            "sample_values_checked_against_maxval": False, "sixteen_bit_input_byte_swap": False,
+            "sixteen_bit_converter_reads_native_little_endian_words": True,
+            "current_requested_rgba_uses_existing_converter": True,
+            "current_later_rgba8_uses_native_word_high_byte": True,
+            "trailing_raster_bytes_rejected": False,
+            "flip_resampler_or_other_decoder_revalidated": False},
+        "ownership": {"no_pixel_allocation_before_header_success": True,
+            "size_failure_allocates_pixels": False, "allocation_failure_error": "outofmem",
+            "short_read_frees_pixels_before_error": True, "short_read_error": "bad PNM",
+            "conversion_takes_source_ownership": True,
+            "conversion_frees_source_on_failure": True,
+            "successful_without_conversion_transfers_source": True,
+            "separate_async_cancellation_api_observed": False,
+            "file_closure_and_later_reducer_ownership_reused": True},
+        "scope": {"selected_pnm_decoder_semantics_reviewed": True,
+            "other_decoders_repeated": False, "actual_dll_execution": False,
+            "synthetic_model_is_product_implementation": False}}
+
+
+def _lighting_pnm_decoder_projection(report):
+    return {name: report[name] for name in ("current_native_release", "native", "instruction_evidence",
+        "boundaries", "reviewed_semantics", "fixed_vectors", "dependencies", "remaining_chains")}
+
+
+def _verify_lighting_pnm_decoder_chain(report):
+    if report.get("boundaries") != _lighting_pnm_decoder_boundaries():
+        raise ValueError("PNM decoder boundary requires semantic review")
+    if (report.get("schema_version") != 1 or report.get("query") != "lighting-pnm-decoder-chain"
+            or report.get("kind") != "current_lighting_pnm_decoder_chain"
+            or report.get("selected_pnm_decoder_semantics_reviewed") is not True
+            or any(report.get(name) is not False for name in ("source_chain_complete", "target_execution",
+                "product_code_modified", "real_device_operations"))
+            or any(report.get(name) != "unverified" for name in ("actual_dll_comparison", "runtime_acceptance", "ui_backend_wiring"))
+            or report.get("rust_independent_implementation") != "existing_not_revalidated"
+            or report.get("failures") or report.get("changed_during_query") or report.get("snapshot_stable") is not True):
+        raise ValueError("PNM decoder static boundary was promoted or snapshot failed")
+    native = report["native"]
+    if (native["selected_pseudocode_failures"] or native["all_pseudocode_captured"] is not False
+            or len(native["failures"]) != 10):
+        raise ValueError("PNM decoder capture failure was hidden")
+    digest = hashlib.sha256(json.dumps(_lighting_pnm_decoder_projection(report), ensure_ascii=False,
+        sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+    if digest != "3a2811e32ff0247e5b3b1148eb6ff0eff01964a7fc380a3360dfd3064f6f304b" or report.get("reviewed_selection_sha256") != digest:
+        raise ValueError("PNM decoder selected bytes require semantic review: " + digest)
+    return {"selected_native_functions": len(native["complete_selected_functions"]),
+        "actual_direct_edges": len(native["verified_call_edges"]),
+        "selected_native_failures": 0, "global_native_failures_retained": 10,
+        "selected_pnm_decoder_semantics_reviewed": True, "all_format_decoders_complete": False,
+        "actual_dll_comparison": "unverified", "reviewed_selection_sha256": digest}
+
+
+def collect_lighting_pnm_decoder_chain(audit):
+    """Bind only the selected current P5/P6 decoder and its retained shared boundaries."""
+    original, release = _lighting_ripple_native_source(audit)
+    roles = {0x8e010: "selected_pnm_raster_decoder", 0x9bbc0: "pnm_header_and_depth",
+        0x9be70: "pnm_skip_whitespace_and_comments", 0x9bfc0: "pnm_integer_and_overflow",
+        0x9c090: "pnm_whitespace_classifier", 0x9c0c0: "pnm_decimal_digit_classifier",
+        0x9bdd0: "pnm_checked_four_factor_size", 0x9be30: "pnm_checked_pixel_allocation",
+        0x8f9a0: "existing_restore_saved_window", 0x8f9b0: "existing_refill_eof_zero",
+        0x91c90: "existing_exact_read", 0x8b440: "existing_file_eof_callback",
+        0x90680: "existing_byte_channel_conversion", 0x910a0: "existing_word_channel_conversion",
+        0x93d60: "existing_signed_product_range", 0x93d90: "existing_signed_add_range",
+        0x88fc0: "existing_allocate_thunk", 0x87e20: "existing_thread_local_error",
+        0x14fba0: "existing_free_thunk"}
+    pairs = [(0x8e010, target) for target in (0x9bbc0, 0x9bdd0, 0x9be30, 0x91c90,
+        0x910a0, 0x90680, 0x87e20, 0x14fba0)]
+    pairs.extend((0x9bbc0, target) for target in (0x8f9a0, 0x8f9b0, 0x9be70, 0x9bfc0, 0x87e20))
+    pairs.extend([(0x9be70, 0x8f9b0), (0x9be70, 0x9c090), (0x9bfc0, 0x8f9b0),
+        (0x9bfc0, 0x9c0c0), (0x9bfc0, 0x87e20), (0x9bdd0, 0x93d60),
+        (0x9bdd0, 0x93d90), (0x9be30, 0x9bdd0), (0x9be30, 0x88fc0)])
+    slots = [{"role": role, "vtable_rva": "0x1f59c0", "slot_byte_offset": offset,
+        "target_rva": hex(target)} for role, offset, target in (
+            ("read", 0, 0x8b3e0), ("eof", 16, 0x8b440))]
+    native, functions = _lighting_type_media_native(audit, original, roles, slots, pairs)
+    raw = audit.read(original)
+    pe = inspect_pe(raw)
+    native["verified_data_regions"] = [_lighting_timed_constant(raw, pe, role, rva, size, sha)
+        for role, rva, size, sha in (
+            ("read_callback_leaf_and_padding", 0x8b3e0, 32, "679362342bb92e67c293d010d6df6554c76d92abf497a3ee5b3efa3068fa0d38"),
+            ("file_callback_table", 0x1f59c0, 24, "70442b0c747a28fa481eb8c01fbe99a210a86445551cfad556bad00a0568a212"))]
+    instruction_evidence = {}
+    for role, owner, first, last in (
+            ("header_saved_window_reset", 0x9bbc0, 0x9bbe5, 0x9bbf8),
+            ("p5_p6_actual_magic_and_channels", 0x9bbc0, 0x9bc8f, 0x9bcb4),
+            ("width_height_zero_and_maxval_bits", 0x9bbc0, 0x9bd30, 0x9bda4),
+            ("numeric_postdigit_overflow_and_consumed_lookahead", 0x9bfc0, 0x9c03a, 0x9c074),
+            ("checked_dimensions_and_size_arguments", 0x8e010, 0x8e056, 0x8e0ba),
+            ("raw_raster_read_without_swap_or_scale", 0x8e010, 0x8e0c4, 0x8e0e3),
+            ("word_converter_actual_width_height_channels", 0x8e010, 0x8e0e5, 0x8e115),
+            ("byte_converter_actual_width_height_channels", 0x8e010, 0x8e150, 0x8e15c),
+            ("short_raster_read_frees_before_error", 0x8e010, 0x8e13f, 0x8e14e)):
+        rows = [row for row in functions[owner]["assembly"] if first <= int(row["rva"], 16) <= last]
+        if not rows:
+            raise ValueError("PNM decoder instruction owner is absent: " + role)
+        instruction_evidence[role] = {"rva": hex(owner), "instructions": rows}
+    report = {"schema_version": 1, "query": "lighting-pnm-decoder-chain",
+        "kind": "current_lighting_pnm_decoder_chain", "current_native_release": release,
+        "native": native, "instruction_evidence": instruction_evidence,
+        "boundaries": _lighting_pnm_decoder_boundaries(),
+        "reviewed_semantics": {
+            "header": "8E010 invokes9BBC0 after the existing PNM selection.9BBC0 first restores the saved context window and accepts only ASCII P5/P6, yielding1/3 channels. Magic failure restores the window without a new error.9BE70 skips bytes9..13/32 and# comments ending at CR or LF before width,height,maxval. It does not enforce whitespace after magic.9BFC0 consumes a digit plus the next lookahead, then checks accumulated value against214748364; equality also requires signed next character<56. This post-digit guard is not an INT_MAX-accepting parser. No initial digit returns0 without a new error; guard failure writes integer parse overflow and returns0. Width or height0 fails with the same invalid width text. Maxval only rejects values>=65536;0,missing-digit or parser-error0 still select8bit, while256..65535 select16bit. A maxval parser error can survive a successful decode in the TLS error pointer. No skip or whitespace validation follows maxval: one consumed lookahead is discarded, extra spaces/comments or the LF of CRLF can become raster bytes.",
+            "raster_and_parameters": "8E010 bounds each dimension at2^24 and9BDD0 checks source-channels*width*height*(bits/8) through signed-product and final-add guards, at most INT_MAX bytes.9BE30 repeats that check before allocation.91C90 copies exactly the raw raster bytes; there is no byte swapping, normalization by maxval, or sample<=maxval check. Unused trailing bytes are not rejected. For differing required channels, assembly supplies converter rcx=pixels,edx=source channels,r8d=requested channels,r9d=width,stack=height; the pseudocode omits several real arguments.16bit data goes directly to910A0 as native little-endian words, despite the conventional file big-endian expectation; the later existing16to8 reducer selects each native word high byte. Thus raw12 34 becomes native3412 and yields byte34, not12. This original behavior is preserved, not silently repaired. Existing channel conversion, flip, file seek/close and resampler facts are dependencies, not new decoder work.",
+            "ownership_and_failure": "Header/size failures own no pixel allocation.9BE30 allocation failure writes outofmem. A failed91C90 frees the allocated buffer before writing bad PNM and returningnull. A successful no-conversion path transfers the original buffer. Otherwise the existing byte/word converter takes ownership and frees source on success or failure; a null conversion result returns directly. The decoder itself exposes no asynchronous cancellation boundary. Existing synchronous file close and later reducer allocation-failure ownership remain separately recorded. Source acquisition, selected static semantics, synthetic vectors, independent Rust implementation and actual DLL/device execution are not combined."},
+        "fixed_vectors": {"resident_inputs": [
+            {"name": "p5_no_maxval_scale", "input_hex": "50350a3120310a31350a0f",
+                "expected": {"success": True, "channels": 1, "bits": 8, "maxval": 15,
+                    "raster_hex": "0f", "rgba8_hex": "0f0f0fff", "error_writes": []}},
+            {"name": "p6_16bit_bytes_unchanged", "input_hex": "50360a3120310a36353533350a123456789abc",
+                "expected": {"success": True, "channels": 3, "bits": 16, "maxval": 65535,
+                    "raster_hex": "123456789abc", "rgba8_hex": "3478bcff", "error_writes": []}},
+            {"name": "maxval_zero_accepted", "input_hex": "50350a3120310a300a7f",
+                "expected": {"success": True, "bits": 8, "maxval": 0, "raster_hex": "7f",
+                    "rgba8_hex": "7f7f7fff", "error_writes": []}},
+            {"name": "crlf_lf_is_raster", "input_hex": "50350d0a3120310d0a3235350d0a7f",
+                "expected": {"success": True, "bits": 8, "raster_hex": "0a",
+                    "rgba8_hex": "0a0a0aff", "error_writes": []}},
+            {"name": "maxval_overflow_zero_still_decodes", "input_hex": "50350a3120310a3231343734383336350a7f",
+                "expected": {"success": True, "bits": 8, "maxval": 0, "raster_hex": "7f",
+                    "rgba8_hex": "7f7f7fff", "error_writes": ["integer parse overflow"]}},
+            {"name": "short_raster", "input_hex": "50350a3220310a3235350a7f",
+                "expected": {"success": False, "bits": 8, "raster_bytes": 2, "error_writes": ["bad PNM"]}}],
+            "actual_dll_results": False,
+            "scope": "Complete resident synthetic inputs only; callback EOF, allocation failures and target code are not executed"},
+        "dependencies": [{"receipt": ".analysis/results/host-current/local-audit.json",
+                "section": "lighting_media_codec_boundaries",
+                "scope": "Reuse current required4 caller, file read/refill/EOF, source-byte/native-word channel conversion, later16to8/flip and synchronous close; do not repeat9-format routing"},
+            {"receipt": ".analysis/results/host-current/local-audit.json", "section": "lighting_png_decoder_chain",
+                "scope": "Previously closed PNG stays independent; no PNG or DEFLATE recapture"},
+            {"receipt": ".analysis/results/host-current/local-audit.json", "section": "lighting_media_resampler",
+                "scope": "Existing32x32 output consumer unchanged"}],
+        "remaining_chains": [
+            {"owner": "BMP8B910, GIF945C0, PSD8CD70, PIC95910, JPEG98C80, HDR8E160, TGA8EDA0",
+                "status": "PNM P5/P6 and prior PNG have separate selected semantic reviews; the other seven format-specific pixels/malformed-input/cleanup chains remain unreviewed"},
+            {"owner": "HDR setters/compiler pow, AI1.0.1.0 and actual product Quick branches",
+                "status": "Independent existing mutation, arithmetic and product dependencies unchanged"},
+            {"owner": "independent Rust PNM codec/UI/backend and functional official DLL comparison",
+                "status": "Static receipt/synthetic vectors do not implement product behavior or verify actual DLL/device results, all consumers or runtime acceptance"}],
+        "selected_pnm_decoder_semantics_reviewed": True, "source_chain_complete": False,
+        "target_execution": False, "product_code_modified": False, "real_device_operations": False,
+        "rust_independent_implementation": "existing_not_revalidated", "ui_backend_wiring": "unverified",
+        "actual_dll_comparison": "unverified", "runtime_acceptance": "unverified", "failures": [],
+        "maintenance_lifecycle": {"temporary_artifacts_created": [], "analysis_sessions_created": [],
+            "reused_complete_native_captures": True}}
+    report["complete_originals"] = list(audit.sources.values())
+    report["complete_source_owners"] = list(audit.owners.values())
+    report["reviewed_selection_sha256"] = hashlib.sha256(json.dumps(_lighting_pnm_decoder_projection(report),
+        ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+    report["verified_artifacts"] = list(audit.artifacts.values())
+    report["changed_during_query"] = audit.final_snapshot()
+    report["snapshot_stable"] = not report["changed_during_query"]
+    report["verification"] = _verify_lighting_pnm_decoder_chain(report)
+    return report
+
+
+def _lighting_bmp_tga_decoder_mask(value, mask):
+    """Evaluate defined BMP mask samples using the reviewed PE multiplier/shift tables."""
+    bits = mask.bit_count()
+    if not mask or bits > 8 or mask > 0xffffffff or not 0 <= value <= 0xffffffff:
+        raise ValueError("BMP synthetic mask is outside the reviewed branch")
+    shift = mask.bit_length() - 8
+    aligned = (value & mask) >> shift if shift >= 0 else ((value & mask) << -shift) & 0xffffffff
+    return ((0, 255, 85, 73, 17, 33, 65, 129, 1)[bits]
+        * (aligned >> (8 - bits))) >> (0, 0, 0, 1, 0, 2, 4, 6, 0)[bits]
+
+
+def _lighting_bmp_tga_decoder_bmp_pixels(data, width, signed_height, bits, *, palette=None,
+        masks=None, alpha_accumulator_zero=False):
+    """Check bounded, defined BMP pixel branches; header and unsafe palette holes are separate."""
+    height = abs(signed_height)
+    if (not 0 < width * height <= 1048576 or bits not in (1, 4, 8, 16, 24, 32)
+            or bits <= 8 and (palette is None or any(len(row) != 3 for row in palette))):
+        raise ValueError("BMP synthetic pixels are outside the reviewed model")
+    if masks is None and bits in (16, 32):
+        masks = (0x7c00, 0x3e0, 0x1f, 0) if bits == 16 else (0xff0000, 0xff00, 0xff, 0xff000000)
+    if masks is not None and (len(masks) != 4 or any(not mask or mask.bit_count() > 8 for mask in masks[:3])
+            or masks[3].bit_count() > 8):
+        raise ValueError("BMP synthetic bad masks")
+    stride = ((width * bits + 31) // 32) * 4
+    output = bytearray()
+    for y in range(height):
+        row = data[y * stride:(y + 1) * stride]
+        for x in range(width):
+            if bits <= 8:
+                packed = row[x * bits // 8] if x * bits // 8 < len(row) else 0
+                index = (packed >> (8 - bits - x * bits % 8)) & ((1 << bits) - 1)
+                if index >= len(palette):
+                    raise ValueError("BMP original palette index selects uninitialized entries")
+                pixel = tuple(palette[index]) + (255,)
+            elif bits == 24:
+                pixel = tuple((row[3 * x:3 * x + 3] + bytes(3))[:3][::-1]) + (255,)
+            else:
+                size = bits // 8
+                value = int.from_bytes((row[size * x:size * x + size] + bytes(size))[:size], "little")
+                pixel = tuple(_lighting_bmp_tga_decoder_mask(value, mask) for mask in masks[:3])
+                pixel += (_lighting_bmp_tga_decoder_mask(value, masks[3]) if masks[3] else 255,)
+            output.extend(pixel)
+    if alpha_accumulator_zero and not any(output[3::4]):
+        output[3::4] = bytes([255]) * (width * height)
+    if signed_height > 0:
+        row_size = width * 4
+        output = bytearray(b"".join(output[y * row_size:(y + 1) * row_size]
+            for y in range(height - 1, -1, -1)))
+    return bytes(output)
+
+
+def _lighting_bmp_tga_decoder_tga_pixels(data, width, height, bits, *, image_type=2,
+        descriptor=32, palette=None, palette_bits=24):
+    """Check defined TGA packets; ignored raw-row short reads remain undefined, not invented zeros."""
+    sample_depth = palette_bits if palette is not None else bits
+    rgb16 = sample_depth == 15 or sample_depth == 16 and (palette is not None or image_type not in (3, 11))
+    channels = 3 if rgb16 else (2 if sample_depth == 16 else sample_depth // 8)
+    if (not 0 < width * height <= 1048576 or channels not in (1, 2, 3, 4)
+            or bits not in (8, 15, 16, 24, 32) or image_type not in (1, 2, 3, 9, 10, 11)):
+        raise ValueError("TGA synthetic pixels are outside the reviewed model")
+    if palette is not None and (not palette or any(len(row) != channels for row in palette)):
+        raise ValueError("TGA synthetic bad palette")
+    if palette is None and image_type < 8 and not rgb16 and len(data) < width * height * channels:
+        raise ValueError("TGA raw short read leaves native allocation bytes unobserved")
+    cursor = 0
+
+    def read(count):
+        nonlocal cursor
+        value = data[cursor:cursor + count]
+        cursor += count
+        return value + bytes(count - len(value))
+
+    def pixel():
+        if palette is not None:
+            index = int.from_bytes(read(1 if bits == 8 else 2), "little")
+            return tuple(palette[index if index < len(palette) else 0])
+        if rgb16:
+            value = int.from_bytes(read(2), "little")
+            return tuple(((value >> shift) & 31) * 255 // 31 for shift in (10, 5, 0))
+        return tuple(read(channels))
+
+    pixels = []
+    while len(pixels) < width * height:
+        packet = read(1)[0] if image_type >= 8 else 0
+        count = (packet & 127) + 1 if image_type >= 8 else 1
+        repeated = pixel() if packet & 128 else None
+        for _ in range(min(count, width * height - len(pixels))):
+            pixels.append(repeated if repeated is not None else pixel())
+    if not descriptor & 32:
+        pixels = [pixel_value for y in range(height - 1, -1, -1)
+            for pixel_value in pixels[y * width:(y + 1) * width]]
+    output = bytearray()
+    for value in pixels:
+        if channels >= 3 and not rgb16:
+            value = (value[2], value[1], value[0]) + value[3:]
+        if channels == 1:
+            value = (value[0],) * 3 + (255,)
+        elif channels == 2:
+            value = (value[0],) * 3 + (value[1],)
+        elif channels == 3:
+            value += (255,)
+        output.extend(value)
+    return bytes(output)
+
+
+def _lighting_bmp_tga_decoder_boundaries():
+    return {
+        "bmp": {"entry": "0x8b910", "header": "0x93fa0", "dib_sizes": [12, 40, 56, 108, 124],
+            "planes": 1, "negative_offset_rejected": True, "rle1_rle2_rejected": True,
+            "compression_signed_ge4_rejected": True, "all_other_compression_values_unconditionally_rejected": False,
+            "dimension_maximum": 16777216, "zero_dimensions_explicitly_rejected": False,
+            "negative_height_is_top_down": True, "positive_height_flips_rows": True,
+            "source_channels_with_alpha_mask": 4, "source_channels_without_alpha_mask": 3,
+            "current_requested_channels": 4, "checked_destination_size": True,
+            "palette_count_from_offset_not_clr_used": True,
+            "core_palette_count_formula": "trunc((offset-extra_read-24)/3)",
+            "other_palette_count_formula": "(offset-(dib_size+extra_read))>>2",
+            "palette_maximum_checked": 256, "palette_index_actual_count_checked": False,
+            "palette_entry_bgr_reserved_alpha_discarded": True,
+            "palette_bits": [1, 4, 8], "packed_palette_msb_first": True,
+            "row_alignment_bytes": 4, "bgr24_and_standard_bgra32_fast_path": True,
+            "default_rgb16_masks": [31744, 992, 31, 0],
+            "default_rgb32_masks": [16711680, 65280, 255, 4278190080],
+            "rgb_masks_nonzero_required": True, "mask_popcount_maximum": 8,
+            "mask_contiguity_required": False, "all_mask_overlaps_rejected": False,
+            "mask_expansion": "highest-bit alignment and PE multiplier/right-shift table",
+            "rgb16_default_alpha_bit_ignored": True,
+            "default_rgb32_all_zero_alpha_becomes_opaque": True,
+            "explicit_alpha_masks_force_all_zero_opaque": False,
+            "scalar_pixel_short_reads_may_supply_zero": True,
+            "raster_exact_read_failure_gate": False,
+            "bad_masks_palette_layout_or_bpp_releases_destination": True},
+        "tga": {"entry": "0x8eda0", "channels_helper": "0x9c380", "rgb555_helper": "0x9c3e0",
+            "dimensions_from_unsigned16": True, "checked_destination_size": True,
+            "descriptor_vertical_bit": 32, "descriptor_horizontal_bit16_applied": False,
+            "descriptor_low_alpha_bits_drive_channels": False,
+            "color_map_first_index_subtracts_from_pixel_index": False,
+            "color_map_first_index_skipped_as_raw_bytes": True,
+            "empty_palette_fails_after_destination_allocation": True,
+            "palette_entry_depth_controls_channels": True,
+            "palette_index8_otherwise16": True,
+            "out_of_range_palette_index_selects_zero": True,
+            "palette_non_rgb16_exact_read_checked": True,
+            "palette_rgb16_scalar_reads_not_exact_checked": True,
+            "raw_nonpalette_non_rgb16_exact_row_return_checked": False,
+            "raw_row_short_read_can_expose_uninitialized_destination": True,
+            "rgb15_rgb16_are_rgb555_no_alpha": True,
+            "rgb555_scale": "floor(value5*255/31)", "gray16_is_gray_alpha": True,
+            "raw_bgr_and_bgra_swap_red_blue_after_decode": True,
+            "rgb555_skips_red_blue_swap": True,
+            "rle_packet_length": "(header&127)+1", "rle_repeat_flag": 128,
+            "rle_packets_may_cross_rows": True, "rle_excess_at_final_pixel_rejected": False,
+            "rle_and_scalar_short_reads_may_supply_zero": True,
+            "bottom_origin_flips_rows": True, "odd_middle_row_self_swap_observed": True,
+            "palette_short_read_releases_palette_and_destination": True,
+            "palette_allocation_failure_releases_destination": True,
+            "successful_palette_released_before_channel_conversion": True},
+        "shared": {"read_refill_skip_allocation_and_channel_owners_reused": True,
+            "skip_callback_result_checked": False, "conversion_takes_source_ownership": True,
+            "conversion_failure_frees_source": True, "decoder_async_cancel_observed": False,
+            "separate_file_close_and_later_reducer_boundaries_unchanged": True,
+            "actual_dll_execution": False, "rust_product_implementation": "existing_not_revalidated"}}
+
+
+def _lighting_bmp_tga_decoder_projection(report):
+    return {name: report[name] for name in ("current_native_release", "native", "instruction_evidence",
+        "boundaries", "reviewed_semantics", "fixed_vectors", "dependencies", "remaining_chains")}
+
+
+def _verify_lighting_bmp_tga_decoder_chain(report):
+    if report.get("boundaries") != _lighting_bmp_tga_decoder_boundaries():
+        raise ValueError("BMP/TGA decoder boundary requires semantic review")
+    if (report.get("schema_version") != 1 or report.get("query") != "lighting-bmp-tga-decoder-chain"
+            or report.get("kind") != "current_lighting_bmp_tga_decoder_chain"
+            or report.get("selected_bmp_tga_decoder_semantics_reviewed") is not True
+            or any(report.get(name) is not False for name in ("source_chain_complete", "target_execution",
+                "product_code_modified", "real_device_operations"))
+            or any(report.get(name) != "unverified" for name in ("actual_dll_comparison", "runtime_acceptance", "ui_backend_wiring"))
+            or report.get("rust_independent_implementation") != "existing_not_revalidated"
+            or report.get("failures") or report.get("changed_during_query") or report.get("snapshot_stable") is not True):
+        raise ValueError("BMP/TGA decoder static boundary was promoted or snapshot failed")
+    native = report["native"]
+    if (native["selected_pseudocode_failures"] or native["all_pseudocode_captured"] is not False
+            or len(native["failures"]) != 10):
+        raise ValueError("BMP/TGA decoder capture failure was hidden")
+    digest = hashlib.sha256(json.dumps(_lighting_bmp_tga_decoder_projection(report), ensure_ascii=False,
+        sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+    if digest != "5d45e58109401cead15f7d4c74132646f92f91e4ba1b31f6c21806bbd95ef4be" or report.get("reviewed_selection_sha256") != digest:
+        raise ValueError("BMP/TGA decoder selected bytes require semantic review: " + digest)
+    return {"selected_native_functions": len(native["complete_selected_functions"]),
+        "actual_direct_edges": len(native["verified_call_edges"]),
+        "selected_native_failures": 0, "global_native_failures_retained": 10,
+        "selected_bmp_tga_decoder_semantics_reviewed": True, "all_format_decoders_complete": False,
+        "actual_dll_comparison": "unverified", "reviewed_selection_sha256": digest}
+
+
+def collect_lighting_bmp_tga_decoder_chain(audit):
+    """Bind selected BMP/TGA pixels and failure ownership without repeating other codecs."""
+    original, release = _lighting_ripple_native_source(audit)
+    roles = {0x8b910: "bmp_selected_pixels_and_cleanup", 0x93fa0: "bmp_header_and_compression",
+        0x94300: "bmp_mask_highest_bit", 0x94370: "bmp_mask_popcount",
+        0x943c0: "bmp_mask_channel_expansion", 0x94400: "bmp_default_masks_and_alpha_accumulator",
+        0x8eda0: "tga_selected_pixels_rle_palette_and_cleanup", 0x9c380: "tga_depth_channels",
+        0x9c3e0: "tga_rgb555_samples", 0x93ec0: "existing_little_endian32",
+        0x93ef0: "existing_little_endian16", 0x91b50: "existing_stream_skip",
+        0x91c90: "existing_exact_read", 0x8f9b0: "existing_refill_eof_zero",
+        0x8b400: "existing_file_skip_callback", 0x90680: "existing_byte_channel_conversion",
+        0x93b10: "existing_checked_triple_size", 0x93ad0: "existing_checked_triple_allocation",
+        0x93ba0: "existing_checked_pair_allocation", 0x93b60: "existing_checked_pair_size",
+        0x93d60: "existing_product_guard", 0x93d90: "existing_add_guard",
+        0x88fc0: "existing_allocation_thunk", 0x14fba0: "existing_free_thunk",
+        0x87e20: "existing_tls_error_pointer"}
+    pairs = [(0x8b910, target) for target in (0x93fa0, 0x94300, 0x94370, 0x943c0,
+        0x93b10, 0x93ad0, 0x91b50, 0x8f9b0, 0x93ef0, 0x93ec0, 0x14fba0, 0x90680, 0x87e20)]
+    pairs.extend((0x93fa0, target) for target in (0x8f9b0, 0x93ec0, 0x93ef0, 0x94400, 0x87e20))
+    pairs.extend((0x8eda0, target) for target in (0x9c380, 0x9c3e0, 0x93ef0, 0x8f9b0,
+        0x91b50, 0x91c90, 0x93b10, 0x93ad0, 0x93ba0, 0x14fba0, 0x90680, 0x87e20))
+    pairs.extend([(0x9c3e0, 0x93ef0), (0x93ec0, 0x93ef0), (0x93ef0, 0x8f9b0),
+        (0x93ad0, 0x93b10), (0x93ad0, 0x88fc0), (0x93ba0, 0x93b60),
+        (0x93ba0, 0x88fc0), (0x93b10, 0x93d60), (0x93b10, 0x93d90),
+        (0x93b60, 0x93d60), (0x93b60, 0x93d90)])
+    slots = [{"role": role, "vtable_rva": "0x1f59c0", "slot_byte_offset": index * 8,
+        "target_rva": hex(target)} for index, (role, target) in enumerate(
+            (("read", 0x8b3e0), ("skip", 0x8b400)))]
+    native, functions = _lighting_type_media_native(audit, original, roles, slots, pairs)
+    raw = audit.read(original)
+    pe = inspect_pe(raw)
+    native["verified_data_regions"] = [_lighting_timed_constant(raw, pe, role, rva, size, sha)
+        for role, rva, size, sha in (
+            ("bmp_channel_multipliers", 0x1ae110, 36, "ed0cb54984a296fabc52c07afe2e18863a2cc3a3747ecbbb6edc5064e2286879"),
+            ("bmp_channel_shifts", 0x1ae140, 36, "bd004f507737afe9a5127b20a212a1a346e309dd991562336a3cff3e941b8142"),
+            ("bmp32_default_masks", 0x1af300, 16, "d66794070fece48ae9a5339b749540fdb778fdd83ca49e1cf1a35a633ba014c9"),
+            ("read_callback_leaf_and_padding", 0x8b3e0, 32, "679362342bb92e67c293d010d6df6554c76d92abf497a3ee5b3efa3068fa0d38"))]
+    instruction_evidence = {}
+    for role, owner, first, last in (
+            ("bmp_height_abs_and_dimension_limit", 0x8b910, 0x8b95e, 0x8b97b),
+            ("bmp_offset_guard_and_skip_length", 0x8b910, 0x8bb3c, 0x8bbc1),
+            ("bmp_pixel_offset_skip_length", 0x8b910, 0x8bc09, 0x8bc23),
+            ("bmp_bad_masks_release", 0x8b910, 0x8c129, 0x8c138),
+            ("bmp_mask_converter_real_three_arguments", 0x8b910, 0x8c18c, 0x8c1f8),
+            ("bmp_one_bit_row_padding", 0x8b910, 0x8c3a6, 0x8c3c0),
+            ("tga_id_length_skip", 0x8eda0, 0x8f081, 0x8f09b),
+            ("tga_palette_origin_raw_byte_skip", 0x8eda0, 0x8f17a, 0x8f19b),
+            ("tga_raw_bottom_row_result_unchecked", 0x8eda0, 0x8f0f0, 0x8f108),
+            ("tga_raw_top_row_result_unchecked", 0x8eda0, 0x8f600, 0x8f618),
+            ("tga_palette_index_out_of_range_to_zero", 0x8eda0, 0x8f2fd, 0x8f320),
+            ("tga_rle_length_and_repeat_flag", 0x8eda0, 0x8f35f, 0x8f38a),
+            ("tga_palette_short_read_both_frees", 0x8eda0, 0x8f77e, 0x8f7a9),
+            ("tga_palette_failure_release_and_errors", 0x8eda0, 0x8f73d, 0x8f762)):
+        rows = [row for row in functions[owner]["assembly"] if first <= int(row["rva"], 16) <= last]
+        if not rows:
+            raise ValueError("BMP/TGA decoder instruction owner is absent: " + role)
+        instruction_evidence[role] = {"rva": hex(owner), "instructions": rows}
+    report = {"schema_version": 1, "query": "lighting-bmp-tga-decoder-chain",
+        "kind": "current_lighting_bmp_tga_decoder_chain", "current_native_release": release,
+        "native": native, "instruction_evidence": instruction_evidence,
+        "boundaries": _lighting_bmp_tga_decoder_boundaries(),
+        "reviewed_semantics": {
+            "bmp_header": "93FA0 reads BM, ignores declared file size/reserved words, accepts DIB12/40/56/108/124, rejects negative raster offset and planes!=1. CORE dimensions are LE16; other dimensions are LE32, height is signed before8B910 takes abs. Width/abs-height above2^24 fail; zero dimensions lack an explicit rejection here. Compression1/2 fails BMP RLE; signed>=4 fails BMP JPEG/PNG; remaining negative/unusual values are not universally rejected. For16/32bit compression0 uses94400 defaults;3 reads masks (V4/V5 header fields or following smaller headers); the small-header equal-mask gate only rejects all RGB masks equal, not every overlap. V4/V5 remaining fields are consumed without interpreting color management. Palette counts derive from offset, not clrUsed: CORE trunc((offset-extra_read-24)/3), other(offset-(header+extra_read))>>2. The nonpalette/empty-count path checks actual buffered header position<=1024 and offset gap0..1024, then skips that real gap. Pixel/palette skips preserve actual signed lengths; no successful file seek is inferred.",
+            "bmp_pixels": "8B910 chooses source3/4 from alpha mask and current required4 as actual destination stride; checked allocation precedes pixels. Indexed1/4/8 uses MSB bits/nibbles and a1024byte stack palette read as BGR, discarding any fourth reserved byte and supplying alpha255. Count>=257 or invalid palette layout frees destination; actual pixel index is not checked against initialized count. Rows align4 bytes.24bit BGR and standard32bit BGRA have direct paths;16bit defaults RGB555 and ignores bit15. Other mask paths require nonzero RGB and popcounts<=8, without contiguity or full disjointness checks.94300 highest-bit and94370 popcount feed943C0's bound multiplier/shift tables, so5bit16 maps132; this is not TGA's floor255*16/31=131.24bit padding is width&3;16bit is2*width&3;indexed rows use packed byte length. Scalar EOF supplies zero instead of an exact raster failure.94400 only resets the alpha accumulator for default32bit; when its accumulated alpha remains0, the decoder sets all alpha255. Explicit bitfield alpha zero remains zero. Positive original height flips floor(height/2) full row pairs; negative height stays top-down. Generic channel conversion only runs when actual/requested stride differs and takes source ownership.",
+            "tga_header_palette": "8EDA0 reads ID length,color-map flag,type,first index,length,palette depth,ignored origins,LE16 width/height,pixel depth anddescriptor.9C380 maps8->1,15->RGB555/3,16->RGB555/3 except grayscale type3/11->gray+alpha/2,24/32->3/4;palette depth instead determines channels for mapped images. The decoder reuses prior routed structural selection rather than adding a new type gate. Checked destination allocation precedes ID skip. A mapped length0 frees destination and errors bad palette; allocation failure frees destination. Palette first-index is skipped as an unscaled raw byte count, not subtracted from later indices. Non-RGB16 palette entries must exact-read, failure frees both allocations;RGB555 palettes scalar-read each entry with no exact gate. Index depth8 reads one byte, otherwiseLE16; index>=palette length selects entry0. Palette success is freed before generic conversion.",
+            "tga_pixels_and_failure": "Raw nonmapped non-RGB16 images read each complete row directly into top/bottom destination selected by descriptor bit5, but ignore91C90 return: short input can leave heap bytes uninitialized and still return an image. No synthetic color is assigned to those bytes. Other paths scalar-read pixels/palette indices. Type>=8 uses packet count(header&127)+1 and highbit repeat, allowing packets across row boundaries; final raster stops at width*height without rejecting excess packet length. RLE/scalar EOF may supply0.9C3E0 expandsRGB555 with floor(value5*255/31), ignoring bit15 alpha, and skips later B/R swap; ordinary3/4 channels swapB/R after decode, grayscale16 preservesY/A. Descriptor low alpha bits and horizontal bit4 are ignored. Bottom-origin reconstructs full rows in reverse; the general inversion loop additionally self-swaps an odd middle row. No new asynchronous cancellation entry exists. Output/palette ownership is explicit on format,allocation and checked palette-read errors, but unchecked raw-row reads are not promoted to safe failure cleanup. Shared skip/refill/channel/free,file closure and later reducer facts remain dependencies."},
+        "fixed_vectors": {"bmp_pixels": [
+            {"name": "bgr24_padded_bottom_up", "input_hex": "ff00000000ff0000", "width": 1,
+                "signed_height": 2, "bits": 24, "expected_rgba8_hex": "00ff00ff0000ffff"},
+            {"name": "rgb555_table_not_tga_divide", "input_hex": "10420000", "width": 1,
+                "signed_height": -1, "bits": 16, "expected_rgba8_hex": "848484ff"},
+            {"name": "default_bgra_all_zero_alpha", "input_hex": "10203000", "width": 1,
+                "signed_height": -1, "bits": 32, "alpha_accumulator_zero": True,
+                "expected_rgba8_hex": "302010ff"}],
+            "tga_pixels": [
+                {"name": "rle_repeat_then_raw_cross_row", "input_hex": "820000ff0000ff00", "width": 2,
+                    "height": 2, "bits": 24, "image_type": 10, "descriptor": 32,
+                    "expected_rgba8_hex": "ff0000ffff0000ffff0000ff00ff00ff"},
+                {"name": "rgb555_floor", "input_hex": "1042", "width": 1,
+                    "height": 1, "bits": 16, "image_type": 2, "descriptor": 32,
+                    "expected_rgba8_hex": "838383ff"},
+                {"name": "gray_alpha16", "input_hex": "2080", "width": 1,
+                    "height": 1, "bits": 16, "image_type": 3, "descriptor": 32,
+                    "expected_rgba8_hex": "20202080"}],
+            "actual_dll_results": False, "scope": "Defined synthetic pixel buffers only; no full header parser, allocator or official decoder execution"},
+        "dependencies": [{"receipt": ".analysis/results/host-current/local-audit.json",
+                "section": "lighting_media_codec_boundaries",
+                "scope": "Reuse actual selected format callers/current required4, read/refill/skip/channel/free and later normalization; do not repeat routing or RGBA8"},
+            {"receipt": ".analysis/results/host-current/local-audit.json", "section": "lighting_png_decoder_chain",
+                "scope": "Existing shared allocation/read evidence unchanged; PNG semantics remain independent"},
+            {"receipt": ".analysis/results/host-current/local-audit.json", "section": "lighting_pnm_decoder_chain",
+                "scope": "PNM header and raster remain independent; no PNM recapture"},
+            {"receipt": ".analysis/results/host-current/local-audit.json", "section": "lighting_media_resampler",
+                "scope": "Existing32x32 layout4/type0 downstream unchanged"}],
+        "remaining_chains": [
+            {"owner": "GIF945C0, PSD8CD70, PIC95910, JPEG98C80, HDR8E160",
+                "status": "BMP/TGA selected semantic review joins prior PNG/PNM; other five format-specific pixels/malformed-input/cleanup chains remain independent and unreviewed"},
+            {"owner": "HDR setters/compiler pow, AI1.0.1.0 and actual product Quick branches",
+                "status": "Existing arithmetic,mutation and product-specific dependencies unchanged"},
+            {"owner": "independent Rust BMP/TGA codec/UI/backend and functional official DLL comparison",
+                "status": "Static receipt and synthetic defined pixels do not verify actual DLL allocation/short-read results, production Rust/UI/backend or runtime acceptance"}],
+        "selected_bmp_tga_decoder_semantics_reviewed": True, "source_chain_complete": False,
+        "target_execution": False, "product_code_modified": False, "real_device_operations": False,
+        "rust_independent_implementation": "existing_not_revalidated", "ui_backend_wiring": "unverified",
+        "actual_dll_comparison": "unverified", "runtime_acceptance": "unverified", "failures": [],
+        "maintenance_lifecycle": {"temporary_artifacts_created": [], "analysis_sessions_created": [],
+            "reused_complete_native_captures": True}}
+    report["complete_originals"] = list(audit.sources.values())
+    report["complete_source_owners"] = list(audit.owners.values())
+    report["reviewed_selection_sha256"] = hashlib.sha256(json.dumps(_lighting_bmp_tga_decoder_projection(report),
+        ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+    report["verified_artifacts"] = list(audit.artifacts.values())
+    report["changed_during_query"] = audit.final_snapshot()
+    report["snapshot_stable"] = not report["changed_during_query"]
+    report["verification"] = _verify_lighting_bmp_tga_decoder_chain(report)
+    return report
+
+
+def _lighting_pic_decoder_synthetic(data, width, height):
+    """Check bounded complete packet streams; no callback EOF or native allocation is executed."""
+    if (not isinstance(data, bytes) or not 0 <= width <= 65535 or not 0 <= height <= 65535
+            or width * height > 1048576 or len(data) > 1048576):
+        raise ValueError("PIC synthetic input is outside the reviewed model")
+    cursor = 0
+    packets = []
+    channels = 0
+    output = bytearray([255]) * (width * height * 4)
+
+    def read(count):
+        nonlocal cursor
+        if cursor + count > len(data):
+            raise ValueError("bad file")
+        value = data[cursor:cursor + count]
+        cursor += count
+        return value
+
+    def sample(mask):
+        return {index: read(1)[0] for index, flag in enumerate((128, 64, 32, 16)) if mask & flag}
+
+    def store(row, x, value):
+        for index, byte in value.items():
+            output[(row * width + x) * 4 + index] = byte
+
+    try:
+        while True:
+            if len(packets) == 10:
+                raise ValueError("bad format")
+            chained, size, compression, mask = read(4)
+            if size != 8:
+                raise ValueError("bad format")
+            packets.append((compression, mask))
+            channels |= mask
+            if not chained:
+                break
+        for row in range(height):
+            for compression, mask in packets:
+                if compression not in (0, 1, 2):
+                    raise ValueError("bad format")
+                x = 0
+                while x < width:
+                    if compression == 0:
+                        store(row, x, sample(mask))
+                        x += 1
+                    elif compression == 1:
+                        count = min(read(1)[0], width - x)
+                        value = sample(mask)
+                        for offset in range(count):
+                            store(row, x + offset, value)
+                        x += count
+                    else:
+                        count_byte = read(1)[0]
+                        if count_byte >= 128:
+                            count = int.from_bytes(read(2), "big") if count_byte == 128 else count_byte - 127
+                            if count > width - x:
+                                raise ValueError("bad file")
+                            value = sample(mask)
+                            for offset in range(count):
+                                store(row, x + offset, value)
+                        else:
+                            count = count_byte + 1
+                            if count > width - x:
+                                raise ValueError("bad file")
+                            for offset in range(count):
+                                store(row, x + offset, sample(mask))
+                        x += count
+    except ValueError as error:
+        return {"success": False, "error": str(error), "bytes_consumed": cursor,
+            "selected_channels": 4 if channels & 16 else 3, "packet_count": len(packets)}
+    return {"success": True, "error": None, "bytes_consumed": cursor,
+        "selected_channels": 4 if channels & 16 else 3, "packet_count": len(packets),
+        "rgba8_hex": output.hex()}
+
+
+def _lighting_pic_decoder_boundaries():
+    return {
+        "entry": {"selected_rva": "0x8dc40", "packet_owner_rva": "0x95910",
+            "selected_channel_reader_rva": "0x95ec0", "selected_channel_copy_rva": "0x960e0",
+            "header_prefix_bytes_skipped": 92, "dimension_order": "big endian u16 width,height",
+            "ignored_after_dimensions": ["big endian u32", "big endian u16", "big endian u16"],
+            "zero_dimensions_explicitly_rejected": False, "checked_output_size_channels": 4,
+            "output_initial_byte": 255, "current_requested_components": 4,
+            "working_pixel_stride": 4, "output_component_metadata_is_working_stride": False},
+        "packets": {"maximum_descriptors": 10,
+            "descriptor_fields": ["chained", "size", "compression", "channel mask"],
+            "descriptor_size_required": 8, "chained_nonzero_continues": True,
+            "channel_bits_rgba": [128, 64, 32, 16], "other_mask_bits_select_channels": False,
+            "at_least_one_selected_channel_required": False,
+            "logical_components_with_any_alpha_bit": 4, "logical_components_without_alpha_bit": 3,
+            "scan_order": "each row, then each packet, then each pixel/run",
+            "later_packets_can_overwrite_same_channel": True,
+            "compression0": "one selected-channel sample for every pixel",
+            "compression1": "raw u8 run length; read one sample; clip run to remaining row width",
+            "compression1_zero_count_rejected": False,
+            "compression1_zero_count_consumes_sample_without_progress": True,
+            "compression2_literal": "count byte0..127 means count+1 selected-channel samples",
+            "compression2_repeat_short": "count byte129..255 means count-127 copies",
+            "compression2_repeat_long": "count byte128 then big endian u16 count",
+            "compression2_repeat_zero_rejected": False,
+            "compression2_zero_repeat_consumes_sample_without_progress": True,
+            "compression2_run_must_fit_remaining_row": True,
+            "runs_cross_scanline_boundaries": False,
+            "unknown_compression_error": "bad format", "length_or_eof_error": "bad file",
+            "compression_validated_before_zero_height_return": False,
+            "vertical_flip_or_bgr_swap": False, "trailing_bytes_rejected": False},
+        "failure_and_ownership": {"header_skipping_has_no_per_byte_eof_failure": True,
+            "eof_callback_and_buffer_gates_observed": True,
+            "selected_channel_reads_check_eof_before_each_channel": True,
+            "callback_refill_can_still_supply_zero_sample": True,
+            "global_exact_raster_read_gate": False,
+            "allocation_failure_error": "outofmem", "size_failure_error": "too large",
+            "packet_helpers_do_not_own_heap_allocations": True,
+            "decode_failure_frees_rgba_buffer": True,
+            "decode_failure_updates_width_height_outputs": True,
+            "decode_failure_still_reaches_channel_converter": True,
+            "current_converter_source_and_required_components": [4, 4],
+            "current_null_converter_result_is_direct_null_return": True,
+            "pseudocode_omitted_requested_components_arguments_bound_by_assembly": True,
+            "optional_component_pointer_is_full_width": True,
+            "current_required4_avoids_req0_uninitialized_component_fallback": True,
+            "converter_on_success_can_return_existing_buffer": True,
+            "separate_decoder_async_cancel_observed": False,
+            "file_close_and_later_normalization_ownership_revalidated": False},
+        "scope": {"selected_pic_decoder_semantics_reviewed": True,
+            "other_decoders_or_routing_repeated": False, "actual_dll_execution": False,
+            "synthetic_model_is_product_rust_or_callback_execution": False}}
+
+
+def _lighting_pic_decoder_projection(report):
+    return {name: report[name] for name in ("current_native_release", "native", "instruction_evidence",
+        "boundaries", "reviewed_semantics", "fixed_vectors", "dependencies", "remaining_chains")}
+
+
+def _verify_lighting_pic_decoder_chain(report):
+    if report.get("boundaries") != _lighting_pic_decoder_boundaries():
+        raise ValueError("PIC decoder boundary requires semantic review")
+    if (report.get("schema_version") != 1 or report.get("query") != "lighting-pic-decoder-chain"
+            or report.get("kind") != "current_lighting_pic_decoder_chain"
+            or report.get("selected_pic_decoder_semantics_reviewed") is not True
+            or any(report.get(name) is not False for name in ("source_chain_complete", "target_execution",
+                "product_code_modified", "real_device_operations"))
+            or any(report.get(name) != "unverified" for name in ("actual_dll_comparison", "runtime_acceptance", "ui_backend_wiring"))
+            or report.get("rust_independent_implementation") != "existing_not_revalidated"
+            or report.get("failures") or report.get("changed_during_query") or report.get("snapshot_stable") is not True):
+        raise ValueError("PIC decoder static boundary was promoted or snapshot failed")
+    native = report["native"]
+    if (native["selected_pseudocode_failures"] or native["all_pseudocode_captured"] is not False
+            or len(native["failures"]) != 10):
+        raise ValueError("PIC decoder capture failure was hidden")
+    digest = hashlib.sha256(json.dumps(_lighting_pic_decoder_projection(report), ensure_ascii=False,
+        sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+    if digest != "decd518ea6867b280916f6d9c6045a1d3cfc2b321b23c24d48bd61e0a8df70bf" or report.get("reviewed_selection_sha256") != digest:
+        raise ValueError("PIC decoder selected bytes require semantic review: " + digest)
+    return {"selected_native_functions": len(native["complete_selected_functions"]),
+        "actual_direct_edges": len(native["verified_call_edges"]),
+        "selected_native_failures": 0, "global_native_failures_retained": 10,
+        "selected_pic_decoder_semantics_reviewed": True, "all_format_decoders_complete": False,
+        "actual_dll_comparison": "unverified", "reviewed_selection_sha256": digest}
+
+
+def collect_lighting_pic_decoder_chain(audit):
+    """Bind PIC packets, selected channels and actual required4 failure cleanup."""
+    original, release = _lighting_ripple_native_source(audit)
+    roles = {0x8dc40: "pic_header_rgba_allocation_and_release",
+        0x95910: "pic_channel_packets_and_scanlines", 0x95ec0: "pic_selected_channel_read",
+        0x960e0: "pic_selected_channel_copy", 0x91be0: "existing_big_endian16",
+        0x91bb0: "existing_big_endian32", 0x8f9b0: "existing_refill_eof_zero",
+        0x8b440: "existing_file_eof_callback", 0x93b10: "existing_checked_size",
+        0x93ad0: "existing_checked_allocation", 0x93d60: "existing_product_guard",
+        0x93d90: "existing_add_guard", 0x88fc0: "existing_allocate_thunk",
+        0x14fba0: "existing_free_thunk", 0x87e20: "existing_tls_error",
+        0x90680: "existing_byte_channel_conversion"}
+    pairs = [(0x8dc40, target) for target in (0x8f9b0, 0x91be0, 0x91bb0, 0x93b10,
+        0x93ad0, 0x95910, 0x14fba0, 0x90680, 0x87e20)]
+    pairs.extend((0x95910, target) for target in (0x8f9b0, 0x91be0, 0x95ec0, 0x960e0, 0x87e20))
+    pairs.extend([(0x95ec0, 0x8f9b0), (0x95ec0, 0x87e20), (0x91be0, 0x8f9b0),
+        (0x91bb0, 0x91be0), (0x93ad0, 0x93b10), (0x93ad0, 0x88fc0),
+        (0x93b10, 0x93d60), (0x93b10, 0x93d90)])
+    slots = [{"role": role, "vtable_rva": "0x1f59c0", "slot_byte_offset": offset,
+        "target_rva": hex(target)} for role, offset, target in (
+            ("read", 0, 0x8b3e0), ("eof", 16, 0x8b440))]
+    native, functions = _lighting_type_media_native(audit, original, roles, slots, pairs)
+    raw = audit.read(original)
+    pe = inspect_pe(raw)
+    native["verified_data_regions"] = [_lighting_timed_constant(raw, pe, role, rva, size, sha)
+        for role, rva, size, sha in (
+            ("read_callback_leaf_and_padding", 0x8b3e0, 32, "679362342bb92e67c293d010d6df6554c76d92abf497a3ee5b3efa3068fa0d38"),
+            ("file_callback_table", 0x1f59c0, 24, "70442b0c747a28fa481eb8c01fbe99a210a86445551cfad556bad00a0568a212"))]
+    instruction_evidence = {}
+    for role, owner, first, last in (
+            ("header_prefix_loop", 0x8dc40, 0x8dc72, 0x8dcad),
+            ("full_width_component_pointer_and_dimensions", 0x8dc40, 0x8dcaf, 0x8dccd),
+            ("checked_rgba_size_and_allocation", 0x8dc40, 0x8dd02, 0x8dd4b),
+            ("rgba_fill255_and_packet_real_arguments", 0x8dc40, 0x8dd51, 0x8dd81),
+            ("current_converter_actual_source4_width_height", 0x8dc40, 0x8dd87, 0x8ddac),
+            ("packet_failure_free_then_common_converter", 0x8dc40, 0x8de09, 0x8de24),
+            ("packet_limit", 0x95910, 0x95945, 0x9595a),
+            ("packet_chaining_and_source_components", 0x95910, 0x95b04, 0x95b45),
+            ("packet_compression_dispatch", 0x95910, 0x95b83, 0x95bad),
+            ("mixed_literal_run_bound", 0x95910, 0x95c35, 0x95c6c),
+            ("mixed_repeat_bound_and_selected_copy", 0x95910, 0x95c95, 0x95ce8),
+            ("pure_repeat_clips_and_zero_count_consumes", 0x95910, 0x95d83, 0x95dd7)):
+        rows = [row for row in functions[owner]["assembly"] if first <= int(row["rva"], 16) <= last]
+        if not rows:
+            raise ValueError("PIC decoder instruction owner is absent: " + role)
+        instruction_evidence[role] = {"rva": hex(owner), "instructions": rows}
+    report = {"schema_version": 1, "query": "lighting-pic-decoder-chain",
+        "kind": "current_lighting_pic_decoder_chain", "current_native_release": release,
+        "native": native, "instruction_evidence": instruction_evidence,
+        "boundaries": _lighting_pic_decoder_boundaries(),
+        "reviewed_semantics": {
+            "header_and_storage": "After the already reviewed signature selection,8DC40 advances92 header bytes without per-byte failure, reads BE16 width/height and applies callback/buffer EOF gates. It checks width*height*4, then ignores BE32 and twoBE16 fields, allocates the checked4-byte pixel destination and fills every byte255. No additional nonzero-dimension gate is present. Optional component pointer uses full64bit CMOV, not the truncated assignment inferred by pseudocode.95910 returns logical3/4 from the OR of packet alpha bits, but actual storage remains4 channels. Current requested4 is a separate real stack argument and never changes storage layout.",
+            "packet_layout": "95910 reads at least one four-byte descriptor(chained,size,compression,channel mask), continuing on any nonzero chained value and refusing an11th descriptor. Size must8. Stored descriptors retain size/type/mask, not chained. Mask128/64/32/16 selects R/G/B/A in that order; lower bits are ignored, empty masks are allowed, and unset channels retain255. Any alpha bit makes reported components4, otherwise3. Rows are outermost, packet descriptors next and pixels/runs innermost, so later packets can overwrite earlier channel values. There is no BGR swap or row flip. Unknown compression is rejected while processing rows; height0 returns before that validation.",
+            "compression": "Type0 calls95EC0 for each pixel's selected channels. Type1 reads a raw byte run length (not length+1), clips it to remaining row width, reads one selected-channel sample and960E0 copies only its selected channels. Count0 still reads the sample and makes no pixel progress. Type2 byte0..127 is a literal count+1,129..255 is repeat count-127, and128 reads a BE16 repeat count. Both literal and repeat must fit the remaining row; unlike type1, overflow fails bad file. Extended repeat0 still consumes a sample without progress. Runs restart for each row and packet; they do not spill across scanlines. Remaining input after the raster is not checked.",
+            "eof_and_cleanup": "Packet fields/counts and95EC0 use the actual callback EOF/read-enabled and buffered-cursor gates;95EC0 checks before each selected channel. A callback that has not yet reportedEOF can still reach8F9B0 and receive its zero fallback, so no universal exact-raster-read claim is made. Missing/overflowing mixed runs fail bad file; bad size,too many descriptors or unknown row compression fail bad format. Helpers own no heap allocations.8DC40 allocation failure writes outofmem; packet failure frees the RGBA buffer, sets it null, still writes width/height and reaches90680. Assembly binds converter source4, actual requested components, width and stack height. For current requested4 the existing equality branch returns the same pointer, including null, so a failed parse is not turned into a null dereference or new conversion success. The noncurrent requested0 fallback can read component metadata even after early packet failure; it is not used by the current required4 caller or modeled as a safe generic fallback. No independent decoder cancellation is observed; file-close and later normalization ownership remain earlier dependencies."},
+        "fixed_vectors": {"packet_streams": [
+            {"name": "raw_rgb_unset_alpha255", "width": 2, "height": 1,
+                "input_hex": "000800e0102030405060", "expected": {"success": True,
+                    "selected_channels": 3, "packet_count": 1, "rgba8_hex": "102030ff405060ff"}},
+            {"name": "two_channel_packets_preserve_and_overwrite", "width": 2, "height": 1,
+                "input_hex": "010800e000080090102030405060aa018002", "expected": {"success": True,
+                    "selected_channels": 4, "packet_count": 2, "rgba8_hex": "aa20300180506002"}},
+            {"name": "pure_repeat_clips_to_row", "width": 2, "height": 1,
+                "input_hex": "000801e005102030", "expected": {"success": True,
+                    "selected_channels": 3, "packet_count": 1, "rgba8_hex": "102030ff102030ff"}},
+            {"name": "mixed_literal_and_extended_repeat", "width": 4, "height": 1,
+                "input_hex": "0008028001102080000230", "expected": {"success": True,
+                    "selected_channels": 3, "packet_count": 1,
+                    "rgba8_hex": "10ffffff20ffffff30ffffff30ffffff"}},
+            {"name": "mixed_repeat_rejects_row_overrun", "width": 2, "height": 1,
+                "input_hex": "000802e082102030", "expected": {"success": False,
+                    "error": "bad file", "packet_count": 1}},
+            {"name": "zero_repeat_consumes_sample_then_progresses", "width": 1, "height": 1,
+                "input_hex": "00080280800000aa0033", "expected": {"success": True,
+                    "selected_channels": 3, "packet_count": 1, "rgba8_hex": "33ffffff"}}],
+            "actual_dll_results": False,
+            "scope": "Complete bounded synthetic packet payloads; no header allocation/callback EOF or official decoder execution"},
+        "dependencies": [{"receipt": ".analysis/results/host-current/local-audit.json",
+                "section": "lighting_media_codec_boundaries",
+                "scope": "Reuse actual PIC selection/current required4, file callbacks/refill, generic channel/free and downstream normalization; no routing or RGBA8 repetition"},
+            {"receipt": ".analysis/results/host-current/local-audit.json", "section": "lighting_bmp_tga_decoder_chain",
+                "scope": "Previously closed decoder/allocation boundaries remain independent; continue only its PIC remaining owner"},
+            {"receipt": ".analysis/results/host-current/local-audit.json", "section": "lighting_media_resampler",
+                "scope": "Existing32x32 output downstream unchanged"}],
+        "remaining_chains": [
+            {"owner": "GIF945C0, PSD8CD70, JPEG98C80, HDR8E160",
+                "status": "PIC selected semantic review joins prior PNG/PNM/BMP/TGA; four other format-specific pixels/malformed-input/cleanup chains remain independent and unreviewed"},
+            {"owner": "HDR setters/compiler pow, AI1.0.1.0 and actual product Quick branches",
+                "status": "Existing mutation/arithmetic/product-specific dependencies unchanged"},
+            {"owner": "independent Rust PIC codec/UI/backend and functional official DLL comparison",
+                "status": "Static receipt and synthetic packet vectors do not verify real DLL EOF/allocation/failure behavior, production Rust/UI/backend or runtime acceptance"}],
+        "selected_pic_decoder_semantics_reviewed": True, "source_chain_complete": False,
+        "target_execution": False, "product_code_modified": False, "real_device_operations": False,
+        "rust_independent_implementation": "existing_not_revalidated", "ui_backend_wiring": "unverified",
+        "actual_dll_comparison": "unverified", "runtime_acceptance": "unverified", "failures": [],
+        "maintenance_lifecycle": {"temporary_artifacts_created": [], "analysis_sessions_created": [],
+            "reused_complete_native_captures": True}}
+    report["complete_originals"] = list(audit.sources.values())
+    report["complete_source_owners"] = list(audit.owners.values())
+    report["reviewed_selection_sha256"] = hashlib.sha256(json.dumps(_lighting_pic_decoder_projection(report),
+        ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+    report["verified_artifacts"] = list(audit.artifacts.values())
+    report["changed_during_query"] = audit.final_snapshot()
+    report["snapshot_stable"] = not report["changed_during_query"]
+    report["verification"] = _verify_lighting_pic_decoder_chain(report)
+    return report
+
+
+def _lighting_gif_decoder_dependencies(previous=None):
+    """Recheck exact prior scope and shared codec ownership without retaining the joint receipt."""
+    import analysis as a
+    if previous is None:
+        previous = json.loads((a.ROOT / ".analysis/results/host-current/local-audit.json").read_bytes())
+    dependencies = []
+    for pointer, digest, scope in (
+            ("/lighting_psd_decoder_chain/remaining_chains/0",
+                "431c356c4b9da04e1df4d1a50f6ff19035bfef7471be756c628126733e0130a2",
+                "Continue only its selected GIF945C0 owner; other reviewed formats and remaining owners retain their own receipts"),
+            ("/lighting_media_codec_boundaries",
+                "46f721c8b4b99194dfadf11c7ff8d0b9c41c5715f1f0a1265025d3249132374f",
+                "Reuse current caller4/bpc8, signature routing, callback EOF/skip, channel conversion, file close and decoded-pixel handoff")):
+        try:
+            value = previous
+            for token in pointer.strip("/").split("/"):
+                value = value[int(token)] if isinstance(value, list) else value[token]
+            parent = previous[pointer.strip("/").split("/")[0]]
+            actual = hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True,
+                separators=(",", ":")).encode("utf-8")).hexdigest()
+            if (actual != digest or parent["failures"] or not parent["bounded_observation_complete"]
+                    or not parent["snapshot_stable"] or parent["target_execution"]):
+                raise ValueError("upstream identity or acceptance changed")
+        except (KeyError, TypeError, ValueError, IndexError) as error:
+            raise ValueError("GIF decoder upstream pointer requires review: " + pointer) from error
+        dependencies.append({"receipt": ".analysis/results/host-current/local-audit.json",
+            "pointer": pointer, "canonical_sha256": digest, "scope": scope})
+    return dependencies
+
+
+def _lighting_gif_decoder_synthetic(data):
+    """Model bounded complete first-image inputs; never execute the DLL or its file callbacks."""
+    position = 0
+
+    def read(count=1):
+        nonlocal position
+        if position + count > len(data):
+            raise ValueError("unobserved callback-dependent short GIF input")
+        result = data[position:position + count]
+        position += count
+        return result
+
+    def byte():
+        return read()[0]
+
+    def word():
+        return int.from_bytes(read(2), "little")
+
+    def fail(error, stop="decode_error"):
+        return {"success": False, "error": error, "stop": stop, "bytes_consumed": position}
+
+    if read(6) not in (b"GIF87a", b"GIF89a"):
+        return fail("not GIF")
+    width, height, flags, background, _ = word(), word(), byte(), byte(), byte()
+    if 4 * width * height > 0x7fffffff:
+        return fail("too large")
+    if not width or not height:
+        raise ValueError("unobserved allocator-dependent zero-size GIF canvas")
+    if width * height > 1048576:
+        raise ValueError("GIF input outside the reviewed synthetic model size")
+    global_palette = [bytearray(4) for _ in range(256)]
+
+    def palette(count, transparent=-1):
+        result = [bytearray(4) for _ in range(256)]
+        for index in range(count):
+            r, g, b = read(3)
+            result[index][:] = bytes((b, g, r, 0 if index == transparent else 255))
+        return result
+
+    if flags & 128:
+        global_palette = palette(2 << (flags & 7))
+    pixels, history = bytearray(4 * width * height), bytearray(width * height)
+    control, transparent, delay = 0, -1, 0
+    while True:
+        marker = byte()
+        if marker == 0x3b:
+            return fail(None, "trailer_before_image")
+        if marker == 0x21:
+            label = byte()
+            if label == 0xf9:
+                count = byte()
+                if count == 4:
+                    control, delay = byte(), 10 * word()
+                    if transparent >= 0:
+                        global_palette[transparent][3] = 255
+                    if control & 1:
+                        transparent = byte()
+                        global_palette[transparent][3] = 0
+                    else:
+                        read()
+                        transparent = -1
+                else:
+                    read(count)
+            while True:
+                count = byte()
+                if not count:
+                    break
+                read(count)
+            continue
+        if marker != 0x2c:
+            return fail("unknown code")
+        left, top, image_width, image_height = word(), word(), word(), word()
+        if left + image_width > width or top + image_height > height:
+            return fail("bad Image Descriptor")
+        image_flags = byte()
+        if image_flags & 128:
+            selected_palette = palette(2 << (image_flags & 7), transparent if control & 1 else -1)
+            table = "local"
+        elif flags & 128:
+            selected_palette, table = global_palette, "global"
+        else:
+            return fail("missing color table")
+        minimum = byte()
+        if minimum > 12:
+            return fail(None, "minimum_code_size_above12")
+        clear, end = 1 << minimum, (1 << minimum) + 1
+        roots = {i: bytes((i & 255,)) for i in range(clear)}
+        dictionary = dict(roots)
+        available, code_size, mask = clear + 2, minimum + 1, (2 << minimum) - 1
+        reservoir = valid_bits = block_remaining = 0
+        seen_clear, old = False, None
+        x, y, bottom, right = left, top, top + image_height, left + image_width
+        step, passes = (8, 3) if image_flags & 64 else (1, 0)
+        if not image_width:
+            y = bottom
+        symbols, clipped = 0, 0
+
+        def emit(sequence):
+            nonlocal x, y, step, passes, symbols, clipped
+            for index in sequence:
+                if y >= bottom:
+                    clipped += 1
+                    continue
+                offset = y * width + x
+                history[offset] = 1
+                entry = selected_palette[index]
+                if entry[3] >= 129:
+                    pixels[4 * offset:4 * offset + 4] = bytes((entry[2], entry[1], entry[0], entry[3]))
+                symbols += 1
+                x += 1
+                if x >= right:
+                    x, y = left, y + step
+                    while y >= bottom and passes > 0:
+                        step = 1 << passes
+                        y = top + step // 2
+                        passes -= 1
+
+        while True:
+            while valid_bits < code_size:
+                if not block_remaining:
+                    block_remaining = byte()
+                    if not block_remaining:
+                        stop = "zero_subblock"
+                        break
+                reservoir |= byte() << valid_bits
+                valid_bits += 8
+                block_remaining -= 1
+            else:
+                code = reservoir & mask
+                reservoir >>= code_size
+                valid_bits -= code_size
+                if code == clear:
+                    dictionary = dict(roots)
+                    available, code_size, mask = clear + 2, minimum + 1, (2 << minimum) - 1
+                    seen_clear, old = True, None
+                    continue
+                if code == end:
+                    read(block_remaining)
+                    while True:
+                        count = byte()
+                        if not count:
+                            break
+                        read(count)
+                    stop = "end_code"
+                    break
+                if code > available:
+                    return fail("illegal code in raster")
+                if not seen_clear:
+                    return fail("no clear code")
+                if old is None:
+                    if code == available:
+                        return fail("illegal code in raster")
+                else:
+                    if available >= 8192:
+                        return fail("too many codes")
+                    suffix = dictionary[old][:1] if code == available else dictionary[code][:1]
+                    dictionary[available] = dictionary[old] + suffix
+                    available += 1
+                emit(dictionary[code])
+                if not available & mask and available < 4096:
+                    code_size += 1
+                    mask = (1 << code_size) - 1
+                old = code
+                continue
+            break
+        if background > 0:
+            global_palette[background][3] = 255
+            for index, touched in enumerate(history):
+                if not touched:
+                    pixels[4 * index:4 * index + 4] = global_palette[background]
+        return {"success": True, "width": width, "height": height, "source_components": 4,
+            "bits_per_channel": 8, "pixels_rgba8_hex": pixels.hex(), "history_hex": history.hex(),
+            "bytes_consumed": position, "stop": stop, "palette": table, "delay_ms": delay,
+            "decoded_symbols": symbols, "clipped_symbols": clipped, "first_image_only": True}
+
+
+def _lighting_gif_decoder_boundaries():
+    return {
+        "caller": {"wrapper_rva": "0x8cc40", "decoder_rva": "0x945c0", "state_zero_bytes": 34928,
+            "decoder_calls_per_wrapper": 1, "previous_frame_pointer": None, "current_required_components": 4,
+            "current_bits_per_channel": 8, "multi_frame_disposal_branch_reached": False,
+            "delay_drives_current_playback": False, "trailer_before_image_is_success": False},
+        "header": {"signatures": ["GIF87a", "GIF89a"], "dimensions": "little endian uint16 width,height",
+            "explicit_positive_dimension_gate": False, "checked_canvas_bytes": "4*width*height <= signed32 max",
+            "palette_entries": "2 << (packed&7)", "palette_internal_layout": "B,G,R,A",
+            "palette_missing_entries_zero_initialized": True, "palette_index_checked_against_declared_count": False,
+            "source_components_written_before_raster_success": 4, "pixel_aspect_used": False},
+        "extensions": {"graphics_control_payload_size": 4, "other_payload_sizes_skipped": True,
+            "delay_ms": "10*little_endian_uint16", "transparent_alpha": 0,
+            "previous_global_transparent_alpha_restored": 255, "other_extensions": "skip length-prefixed subblocks",
+            "application_loop_count_or_comments_consumed_as_product_state": False},
+        "image": {"bounds": "left+width<=canvas_width and top+height<=canvas_height",
+            "zero_width_or_height_explicitly_rejected": False, "local_palette_precedes_global": True,
+            "no_local_and_no_global_error": "missing color table", "output_layout": "R,G,B,A uint8 canvas",
+            "interlace_rows": "0 mod8,4 mod8,2 mod4,1 mod2 within image rectangle",
+            "transparent_pixels_mark_history_before_skipping_write": True, "opaque_alpha_cutoff_inclusive": 129,
+            "extra_decoded_symbols_dropped_after_rectangle_full": True, "exact_rectangle_population_required": False,
+            "first_background_fill_condition": "global background index>0 and history byte==0",
+            "first_background_fill_bytes": "raw global palette B,G,R,A; force alpha255",
+            "background_index0_filled": False, "background_uses_local_palette": False},
+        "lzw": {"accepted_minimum_code_sizes": [0, 12], "above12_sets_specific_error": False,
+            "root_symbol": "low8(root index)", "clear_code": "1<<minimum", "end_code": "clear+1",
+            "initial_code_bits": "minimum+1", "bit_order": "least significant first across subblocks",
+            "first_ordinary_code_requires_clear": True, "end_or_zero_block_requires_clear": False,
+            "dictionary_entries": 8192, "code_width_growth": "(available&mask)==0 and available<4096",
+            "special_code_equal_available": "old sequence followed by old first symbol",
+            "errors": ["illegal code in raster", "no clear code", "too many codes"],
+            "end_code_drains_remaining_subblocks": True, "zero_subblock_returns_canvas": True,
+            "end_code_requires_full_raster": False, "zero_subblock_requires_end_code": False},
+        "ownership": {"allocations": ["4*pixels canvas", "4*pixels background", "pixels history"],
+            "all_three_allocations_attempted_before_failure_test": True, "buffers_zeroed_only_after_all_allocate": True,
+            "null_or_context_sentinel_frees_canvas": True, "background_and_history_always_freed": True,
+            "successful_current4_canvas_transferred": True, "requested0_or4_bypasses_converter": True,
+            "generic_converter_actual_args": "pixels,source4,requested,width,height",
+            "width_height_written_before_optional_converter": True, "converter_failure_reverts_dimensions": False,
+            "raster_helper_owns_heap": False, "short_scalar_reads_can_supply_zero": True,
+            "universal_truncation_failure": False, "separate_async_cancel_observed": False,
+            "file_close_and_downstream_resampler_revalidated": False},
+        "scope": {"selected_gif_first_image_semantics_reviewed": True, "actual_dll_execution": False,
+            "animation_capability_inferred": False, "other_formats_repeated": False,
+            "synthetic_model_is_product_rust_or_file_callback_execution": False}}
+
+
+def _lighting_gif_decoder_projection(report):
+    return {name: report[name] for name in ("current_native_release", "native", "instruction_evidence",
+        "boundaries", "reviewed_semantics", "fixed_vectors", "dependencies", "remaining_chains")}
+
+
+def _lighting_gif_decoder_verify(report):
+    if report.get("boundaries") != _lighting_gif_decoder_boundaries():
+        raise ValueError("GIF decoder boundary requires semantic review")
+    if (report.get("schema_version") != 1 or report.get("query") != "lighting-gif-decoder-chain"
+            or report.get("kind") != "current_lighting_gif_decoder_chain"
+            or report.get("selected_gif_decoder_semantics_reviewed") is not True
+            or any(report.get(name) is not False for name in ("source_chain_complete", "target_execution",
+                "product_code_modified", "real_device_operations"))
+            or any(report.get(name) != "unverified" for name in ("actual_dll_comparison", "runtime_acceptance", "ui_backend_wiring"))
+            or report.get("rust_independent_implementation") != "existing_not_revalidated"
+            or report.get("failures") or report.get("changed_during_query") or report.get("snapshot_stable") is not True):
+        raise ValueError("GIF decoder static boundary was promoted or snapshot failed")
+    native = report["native"]
+    if (native["selected_pseudocode_failures"] or native["all_pseudocode_captured"] is not False
+            or len(native["failures"]) != 10):
+        raise ValueError("GIF decoder capture failure was hidden")
+    digest = hashlib.sha256(json.dumps(_lighting_gif_decoder_projection(report), ensure_ascii=False,
+        sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+    if digest != "2eae2a51a542025e56f8fb41f084836d6d4b512d4b15c277c6237996eea35bff" or report.get("reviewed_selection_sha256") != digest:
+        raise ValueError("GIF decoder selected bytes require semantic review: " + digest)
+    return {"selected_native_functions": len(native["complete_selected_functions"]),
+        "actual_direct_edges": len(native["verified_call_edges"]), "selected_native_failures": 0,
+        "global_native_failures_retained": 10, "selected_gif_decoder_semantics_reviewed": True,
+        "all_format_decoders_complete": False, "actual_dll_comparison": "unverified",
+        "reviewed_selection_sha256": digest}
+
+
+def collect_lighting_gif_decoder_chain(audit):
+    """Bind the current first GIF image, real LZW/color layout and all selected failure releases."""
+    dependencies = _lighting_gif_decoder_dependencies()
+    original, release = _lighting_ripple_native_source(audit)
+    roles = {0x8cc40: "gif_first_image_and_complete_release", 0x945c0: "gif_first_image_blocks_and_canvas",
+        0x94c30: "gif_header_global_palette_and_source_components", 0x94f50: "gif_palette_bgra_and_transparency",
+        0x95090: "gif_lzw_subblocks_and_dictionary", 0x95450: "gif_recursive_emit_rgba_and_interlace",
+        0x93ef0: "existing_little_endian16", 0x91b50: "existing_signed_skip",
+        0x8f9b0: "existing_refill_eof_zero", 0x88fc0: "existing_allocate_thunk",
+        0x14fba0: "existing_free_thunk", 0x93b10: "existing_checked_size",
+        0x93d60: "existing_product_guard", 0x93d90: "existing_add_guard", 0x87e20: "existing_tls_error",
+        0x90680: "existing_generic_byte_conversion", 0x8b400: "existing_file_skip", 0x8b440: "existing_file_eof"}
+    pairs = [(0x8cc40, target) for target in (0x945c0, 0x90680, 0x14fba0)]
+    pairs.extend((0x945c0, target) for target in (0x94c30, 0x93b10, 0x88fc0, 0x93ef0,
+        0x91b50, 0x94f50, 0x95090, 0x87e20, 0x8f9b0))
+    pairs.extend((0x94c30, target) for target in (0x8f9b0, 0x93ef0, 0x87e20, 0x94f50))
+    pairs.extend([(0x94f50, 0x8f9b0), (0x95090, 0x8f9b0), (0x95090, 0x91b50),
+        (0x95090, 0x95450), (0x95090, 0x87e20), (0x95450, 0x95450),
+        (0x93ef0, 0x8f9b0), (0x93b10, 0x93d60), (0x93b10, 0x93d90)])
+    slots = [{"role": role, "vtable_rva": "0x1f59c0", "slot_byte_offset": offset,
+        "target_rva": hex(target)} for role, offset, target in (
+            ("read", 0, 0x8b3e0), ("skip", 8, 0x8b400), ("eof", 16, 0x8b440))]
+    native, functions = _lighting_type_media_native(audit, original, roles, slots, pairs)
+    raw = audit.read(original)
+    pe = inspect_pe(raw)
+    native["verified_data_regions"] = [_lighting_timed_constant(raw, pe, role, rva, size, sha)
+        for role, rva, size, sha in (
+            ("read_callback_leaf_and_padding", 0x8b3e0, 32, "679362342bb92e67c293d010d6df6554c76d92abf497a3ee5b3efa3068fa0d38"),
+            ("file_callback_table", 0x1f59c0, 24, "70442b0c747a28fa481eb8c01fbe99a210a86445551cfad556bad00a0568a212"))]
+    instruction_evidence = {}
+    for role, owner, first, last in (
+            ("one_zero_state_and_previous_null_call", 0x8cc40, 0x8cc72, 0x8cc93),
+            ("null_or_context_releases_canvas", 0x8cc40, 0x8cc98, 0x8ccbc),
+            ("actual_converter_parameters_and_dimension_commit", 0x8cc40, 0x8ccbe, 0x8ccee),
+            ("unconditional_history_and_background_release", 0x8cc40, 0x8ccf1, 0x8cd00),
+            ("header_little_endian_and_component4", 0x94c30, 0x94d89, 0x94f35),
+            ("three_allocations_before_test_then_zero", 0x945c0, 0x94663, 0x94710),
+            ("control_size_delay_and_global_transparency", 0x945c0, 0x94828, 0x948f1),
+            ("descriptor_rectangle_and_interlace", 0x945c0, 0x9495e, 0x94a62),
+            ("local_palette_selection_and_single_raster_return", 0x945c0, 0x94b7c, 0x94bcb),
+            ("background_nonzero_untouched_raw_bgra_copy", 0x945c0, 0x94bd1, 0x94c24),
+            ("palette_internal_bgra_and_alpha", 0x94f50, 0x94f8d, 0x94fa4),
+            ("lzw_accepts_zero_through12", 0x95090, 0x950d6, 0x95106),
+            ("subblock_zero_and_eof_return_existing_canvas", 0x95090, 0x9524e, 0x952a0),
+            ("lzw_actual_dictionary_admission_and_growth", 0x95090, 0x95307, 0x953c5),
+            ("end_code_drains_subblocks_and_error_paths", 0x95090, 0x953ca, 0x9543e),
+            ("history_precedes_transparency_and_rgba_emit", 0x95450, 0x95471, 0x954e6),
+            ("full_rectangle_clip_and_interlace_passes", 0x95450, 0x954ea, 0x9555c)):
+        rows = [row for row in functions[owner]["assembly"] if first <= int(row["rva"], 16) <= last]
+        if not rows:
+            raise ValueError("GIF decoder instruction owner is absent: " + role)
+        instruction_evidence[role] = {"rva": hex(owner), "instructions": rows}
+    report = {"schema_version": 1, "query": "lighting-gif-decoder-chain", "kind": "current_lighting_gif_decoder_chain",
+        "current_native_release": release, "native": native, "instruction_evidence": instruction_evidence,
+        "boundaries": _lighting_gif_decoder_boundaries(),
+        "reviewed_semantics": {
+            "first_image": "8CC40 zeroes34928bytes of stack state, calls945C0 once with previous-frame pointer null and does not iterate images.945C0 therefore enters its first allocation/header branch, not its existing-canvas disposal2/3 path. It parses GIF87a/89a and little-endian uint16 canvas dimensions; checked4*width*height precedes three allocations4*pixels,4*pixels,pixels. All three allocations are attempted before failure is checked, and all three buffers are zeroed only on success. Zero dimensions are not explicitly rejected; zero-byte allocator behavior is not assumed. Header source-components4 can be written before raster failure. The current dispatcher already initializes result-bpc8 and current caller requests4; no16bit or animation playback is inferred.",
+            "tables_and_extensions": "94F50 reads RGB triples into internal B,G,R,A entries and sets alpha255 except the selected transparent index. Unread entries remain zero from wrapper initialization; palette indices are not checked against declared color count. Global table is optional when an image local table exists, and local table takes precedence. Graphics-control payload is interpreted only when its length is4: packed flags,10*LE16 delay and transparent index; a previous global transparent alpha is restored255 before the next control, and current transparency sets alpha0. Other lengths and other extension types are skipped as subblocks. Delay, disposal bits and application extension bytes do not make this first-image caller a player.",
+            "raster": "Image descriptor accepts any nonnegative uint16 rectangle whose right/bottom fit the canvas, with no positive rectangle-size gate.95450 follows dictionary prefixes, clips emission once the rectangle is full, marks history before testing palette alpha>=129, and only then writes R,G,B,A uint8. Thus transparent symbols still mark touched pixels. Interlace follows rows0 mod8,4 mod8,2 mod4,1 mod2 relative to the image top. After the first raster only, background index>0 fills untouched pixels from the global table, forces its alpha255 and copies its raw B,G,R,A dword without the normal emitter channel swap. Background index0 is not filled; local tables never supply that background. Missing or early-terminated pixels can therefore remain zero or receive this actual background fill.",
+            "lzw": "95090 accepts minimum code sizes0..12, rejecting values>12 with null and no new specific error. Roots have signed-prefix sentinel and low8 index symbols. Codes are LSB-first across length-prefixed subblocks; clear resets available=clear+2, width=minimum+1 and old-code state. An ordinary code requires a preceding clear; code>available and first code==available are illegal. With old code, the next entry appends current first symbol, including old first for code==available. Storage has8192 entries; insertion at available>=8192 fails too many codes. Width grows only when available&mask==0 and available<4096. End code skips the current subblock remainder and subsequent subblocks to zero; a zero subblock returns the existing canvas immediately. Neither path requires a full rectangle or even a preceding clear, and excess emitted symbols are dropped instead of rejecting the raster.",
+            "failure_and_release": "Header,checked-size,missing-table,bad-descriptor,unknown-block and illegal/no-clear/too-many-code errors remain distinct. Shared exhausted scalar reads can provide zeros, and raster zero-block/end exits are successful canvas returns, so universal truncation rejection is false.945C0 owns no separate cleanup on its null or context-pointer trailer sentinel;8CC40 frees any allocated canvas on either outcome, then always frees history and background. Success transfers canvas for requested0/4. Other requested counts call90680 with actual pixels,source4,requested,width,height; width/height have already been committed and remain changed if converter returns null. Its earlier shared receipt owns source-free behavior. No raster helper heap, async cancellation API or additional file/resize handling is invented; those selected wrappers remain prior dependencies."},
+        "fixed_vectors": {"first_images": [
+            {"name": "opaque_rgb_first", "input_hex": "474946383961010001008000001122334455662c00000000010001000002024401003b",
+                "expected": {"success": True, "pixels_rgba8_hex": "112233ff", "history_hex": "01", "stop": "end_code"}},
+            {"name": "background_raw_bgra", "input_hex": "474946383961020001008001001122334455662c00000000010001000002024401003b",
+                "expected": {"success": True, "pixels_rgba8_hex": "112233ff665544ff", "history_hex": "0100"}},
+            {"name": "transparent_history_blocks_background", "input_hex": "4749463839610200010080010011223344556621f90401000000002c00000000010001000002024401003b",
+                "expected": {"success": True, "pixels_rgba8_hex": "00000000665544ff", "history_hex": "0100"}},
+            {"name": "early_zero_subblock", "input_hex": "474946383961010001008000001122334455662c00000000010001000002003b",
+                "expected": {"success": True, "pixels_rgba8_hex": "00000000", "history_hex": "00", "stop": "zero_subblock"}},
+            {"name": "dictionary_equal_available", "input_hex": "474946383961030001008000001122334455662c0000000003000100000202840b003b",
+                "expected": {"success": True, "pixels_rgba8_hex": "112233ff112233ff112233ff", "decoded_symbols": 3}},
+            {"name": "width_grows_to_four_bits", "input_hex": "474946383961040001008000001122334455662c0000000004000100000203441005003b",
+                "expected": {"success": True, "pixels_rgba8_hex": "112233ff445566ff112233ff445566ff", "decoded_symbols": 4}}],
+            "actual_dll_results": False,
+            "scope": "Hand-packed complete first-image byte streams; expected colors/order from bound PE operations, no official decoder,file-callback,allocator or product Rust execution"},
+        "dependencies": dependencies,
+        "remaining_chains": [
+            {"owner": "HDR8E160", "status": "HDR format-specific pixels,malformed-input and cleanup remain independent; JPEG is reviewed in the sibling lighting_jpeg_decoder_chain, without expanding this GIF slice"},
+            {"owner": "HDR setters/compiler pow, AI1.0.1.0 and actual product Quick branches", "status": "Existing mutation,arithmetic and product-specific dependencies unchanged"},
+            {"owner": "independent Rust GIF codec/UI/backend and functional official DLL comparison", "status": "Static first-image semantics and bounded complete-input vectors do not verify actual callback short reads,allocation failure,production Rust/UI/backend or real DLL/runtime results"}],
+        "selected_gif_decoder_semantics_reviewed": True, "source_chain_complete": False,
+        "target_execution": False, "product_code_modified": False, "real_device_operations": False,
+        "rust_independent_implementation": "existing_not_revalidated", "ui_backend_wiring": "unverified",
+        "actual_dll_comparison": "unverified", "runtime_acceptance": "unverified", "failures": [],
+        "maintenance_lifecycle": {"temporary_artifacts_created": [], "analysis_sessions_created": [],
+            "reused_complete_native_captures": True}}
+    report["complete_originals"] = list(audit.sources.values())
+    report["complete_source_owners"] = list(audit.owners.values())
+    report["reviewed_selection_sha256"] = hashlib.sha256(json.dumps(_lighting_gif_decoder_projection(report),
+        ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+    report["verified_artifacts"] = list(audit.artifacts.values())
+    _lighting_gif_decoder_dependencies()
+    report["changed_during_query"] = audit.final_snapshot()
+    report["snapshot_stable"] = not report["changed_during_query"]
+    report["verification"] = _lighting_gif_decoder_verify(report)
+    return report
+
+
+def _lighting_psd_decoder_pixels(data, width, height, channels, depth, compression, requested_bpc=8):
+    """Check bounded complete pixel payloads after headers/table; callback EOF and allocation are unobserved."""
+    if (not isinstance(data, bytes) or not 0 <= width <= 16777216 or not 0 <= height <= 16777216
+            or width * height > 1048576 or len(data) > 1048576 or not 0 <= channels <= 16
+            or depth not in (8, 16) or compression not in (0, 1) or requested_bpc not in (8, 16)):
+        raise ValueError("PSD synthetic input is outside the reviewed model")
+    count = width * height
+    output_bpc = 16 if requested_bpc == depth == 16 and compression == 0 else 8
+    maximum = (1 << output_bpc) - 1
+    pixels = [[0, 0, 0, maximum] for _ in range(count)]
+    cursor = 0
+
+    def read(size):
+        nonlocal cursor
+        if cursor + size > len(data):
+            raise ValueError("PSD short input has unobserved callback-dependent values")
+        value = data[cursor:cursor + size]
+        cursor += size
+        return value
+
+    for channel in range(min(channels, 4)):
+        if compression == 0:
+            for index in range(count):
+                if depth == 16:
+                    value = int.from_bytes(read(2), "big")
+                    if output_bpc == 8:
+                        value >>= 8
+                else:
+                    value = read(1)[0]
+                pixels[index][channel] = value
+        else:
+            index = 0
+            while index < count:
+                control = read(1)[0]
+                if control == 128:
+                    continue
+                length = control + 1 if control < 128 else 257 - control
+                if length > count - index:
+                    return {"success": False, "error": "corrupt", "bytes_consumed": cursor,
+                        "bits_per_channel": output_bpc}
+                values = read(length) if control < 128 else read(1) * length
+                for value in values:
+                    pixels[index][channel] = value
+                    index += 1
+    if channels >= 4:
+        f = _lighting_media_f32
+        for pixel in pixels:
+            alpha = pixel[3]
+            if alpha not in (0, maximum):
+                inverse = f(1.0 / f(float(alpha) / float(maximum)))
+                bias = f(f(1.0 - inverse) * float(maximum))
+                for channel in range(3):
+                    value = f(f(float(pixel[channel]) * inverse) + bias)
+                    pixel[channel] = int(value) & maximum
+    size = output_bpc // 8
+    return {"success": True, "error": None, "bytes_consumed": cursor,
+        "bits_per_channel": output_bpc,
+        "pixels_le_hex": b"".join(value.to_bytes(size, "little") for pixel in pixels for value in pixel).hex()}
+
+
+def _lighting_psd_decoder_boundaries():
+    return {
+        "entry": {"selected_rva": "0x8cd70", "packet_owner_rva": "0x95570",
+            "signature_big_endian": "0x38425053", "version": 1, "reserved_bytes_skipped": 6,
+            "reserved_bytes_must_be_zero": False, "channel_count_range": [0, 16],
+            "dimensions_order": ["big endian u32 height", "big endian u32 width"],
+            "dimension_upper_gate_signed": True, "maximum_dimension": 16777216,
+            "negative_dimensions_rejected_by_checked_size": True, "zero_dimensions_explicitly_rejected": False,
+            "allowed_depths": [8, 16], "color_mode_required": 3,
+            "length_prefixed_sections_skipped": ["color mode data", "image resources", "layer and mask data"],
+            "skip_return_checked": False, "compression_values": [0, 1],
+            "current_requested_components": 4, "current_requested_bits_per_channel": 8},
+        "storage": {"first_size_guard_channels": 4, "working_components": 4,
+            "raw16_retained_only_when_requested_bpc16": True,
+            "retained16_allocation_size_channels_bytes": 8,
+            "retained16_sets_result_bpc_before_allocation_success_check": True,
+            "all_other_paths_output_bpc": 8,
+            "raw16_current8_sample": "big endian u16 then high byte; no rounding",
+            "retained16_sample": "big endian u16 stored in native little endian word",
+            "compressed16_uses_same_byte_plane_decoder": True,
+            "missing_rgb_channel_value": 0, "missing_alpha_value": "255 or65535 by output depth",
+            "consumed_pixel_channels_maximum": 4, "extra_channel_pixels_consumed_or_skipped": False,
+            "source_component_metadata_always": 4, "vertical_flip_or_bgr_swap": False},
+        "rle": {"row_length_table_skip_bytes": "signed32(2 * header_channels * height)",
+            "row_length_entries_used_to_bound_runs": False,
+            "packet_destination_stride": 4, "packet_target_count": "width*height per channel",
+            "packet_has_width_or_scanline_argument": False, "runs_can_cross_rows": True,
+            "literal_control_range": [0, 127], "literal_length": "control+1",
+            "repeat_control_range": [129, 255], "repeat_length": "257-control",
+            "control128_noop": True, "overflow_clipped": False,
+            "overflow_helper_returns": 0, "overflow_outer_error": "corrupt",
+            "helper_sets_error_itself": False, "exhausted_scalar_reads_can_supply_zero": True,
+            "exact_plane_read_required": False, "trailing_payload_bytes_rejected": False},
+        "alpha": {"only_when_header_channels_at_least_four": True,
+            "zero_and_maximum_alpha_leave_rgb_unchanged": True,
+            "partial_alpha_formula": "inverse=f32(1/f32(alpha/max)); bias=f32(f32(1-inverse)*max); rgb=trunc(f32(f32(rgb*inverse)+bias))",
+            "arithmetic": "separate float32 division,multiply,subtract,add; no fused arithmetic",
+            "result_storage": "low byte or word of signed truncated integer",
+            "clamp_before_storage": False, "alpha_modified": False,
+            "actual_dll_float_parity_verified": False},
+        "ownership": {"header_error_precedes_pixel_allocation": True,
+            "allocation_failure_error": "outofmem", "compressed_overflow_frees_pixels_before_error": True,
+            "raw_short_read_always_fails": False, "rle_short_read_always_fails": False,
+            "helper_owns_heap_allocation": False, "requested0_or4_bypasses_channel_converter": True,
+            "other_requested_converter_source_components": 4,
+            "converter_actual_width_height_bound_by_assembly": True,
+            "converter_failure_consumes_source_and_returns_null": True,
+            "width_height_component_outputs_written_only_after_success": True,
+            "separate_async_cancel_observed": False, "file_close_and_normalization_revalidated": False},
+        "scope": {"selected_psd_decoder_semantics_reviewed": True, "actual_dll_execution": False,
+            "other_decoders_or_routing_repeated": False, "synthetic_model_is_product_rust_or_callback_execution": False}}
+
+
+def _lighting_psd_decoder_projection(report):
+    return {name: report[name] for name in ("current_native_release", "native", "instruction_evidence",
+        "boundaries", "reviewed_semantics", "fixed_vectors", "dependencies", "remaining_chains")}
+
+
+def _verify_lighting_psd_decoder_chain(report):
+    if report.get("boundaries") != _lighting_psd_decoder_boundaries():
+        raise ValueError("PSD decoder boundary requires semantic review")
+    if (report.get("schema_version") != 1 or report.get("query") != "lighting-psd-decoder-chain"
+            or report.get("kind") != "current_lighting_psd_decoder_chain"
+            or report.get("selected_psd_decoder_semantics_reviewed") is not True
+            or any(report.get(name) is not False for name in ("source_chain_complete", "target_execution",
+                "product_code_modified", "real_device_operations"))
+            or any(report.get(name) != "unverified" for name in ("actual_dll_comparison", "runtime_acceptance", "ui_backend_wiring"))
+            or report.get("rust_independent_implementation") != "existing_not_revalidated"
+            or report.get("failures") or report.get("changed_during_query") or report.get("snapshot_stable") is not True):
+        raise ValueError("PSD decoder static boundary was promoted or snapshot failed")
+    native = report["native"]
+    if (native["selected_pseudocode_failures"] or native["all_pseudocode_captured"] is not False
+            or len(native["failures"]) != 10):
+        raise ValueError("PSD decoder capture failure was hidden")
+    digest = hashlib.sha256(json.dumps(_lighting_psd_decoder_projection(report), ensure_ascii=False,
+        sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+    if digest != "fc9e1cd8de43ac2a2b52e48419c2fdb4d9e9d173155e14eafb3f33c89c7a9bee" or report.get("reviewed_selection_sha256") != digest:
+        raise ValueError("PSD decoder selected bytes require semantic review: " + digest)
+    return {"selected_native_functions": len(native["complete_selected_functions"]),
+        "actual_direct_edges": len(native["verified_call_edges"]),
+        "selected_native_failures": 0, "global_native_failures_retained": 10,
+        "selected_psd_decoder_semantics_reviewed": True, "all_format_decoders_complete": False,
+        "actual_dll_comparison": "unverified", "reviewed_selection_sha256": digest}
+
+
+def collect_lighting_psd_decoder_chain(audit):
+    """Bind PSD planar pixels, byte PackBits, actual bit depth and failure ownership."""
+    original, release = _lighting_ripple_native_source(audit)
+    roles = {0x8cd70: "psd_header_planes_alpha_and_ownership", 0x95570: "psd_byte_packbits_plane",
+        0x91bb0: "existing_big_endian32", 0x91be0: "existing_big_endian16",
+        0x91b50: "existing_signed_payload_skip", 0x8f9b0: "existing_refill_eof_zero",
+        0x8b440: "existing_file_eof_callback", 0x93b10: "existing_checked_size",
+        0x93ad0: "existing_checked_allocation", 0x93d60: "existing_product_guard",
+        0x93d90: "existing_add_guard", 0x88fc0: "existing_allocate_thunk",
+        0x14fba0: "existing_free_thunk", 0x87e20: "existing_tls_error",
+        0x90680: "existing_byte_channel_conversion", 0x910a0: "existing_word_channel_conversion"}
+    pairs = [(0x8cd70, target) for target in (0x91bb0, 0x91be0, 0x91b50, 0x87e20,
+        0x93b10, 0x93ad0, 0x88fc0, 0x95570, 0x14fba0, 0x8f9b0, 0x910a0, 0x90680)]
+    pairs.extend([(0x95570, 0x8f9b0), (0x91be0, 0x8f9b0), (0x91bb0, 0x91be0),
+        (0x93ad0, 0x93b10), (0x93ad0, 0x88fc0), (0x93b10, 0x93d60), (0x93b10, 0x93d90)])
+    slots = [{"role": role, "vtable_rva": "0x1f59c0", "slot_byte_offset": offset,
+        "target_rva": hex(target)} for role, offset, target in (
+            ("read", 0, 0x8b3e0), ("skip", 8, 0x8b400), ("eof", 16, 0x8b440))]
+    native, functions = _lighting_type_media_native(audit, original, roles, slots, pairs)
+    raw = audit.read(original)
+    pe = inspect_pe(raw)
+    native["verified_data_regions"] = [_lighting_timed_constant(raw, pe, role, rva, size, sha)
+        for role, rva, size, sha in (
+            ("read_callback_leaf_and_padding", 0x8b3e0, 32, "679362342bb92e67c293d010d6df6554c76d92abf497a3ee5b3efa3068fa0d38"),
+            ("file_callback_table", 0x1f59c0, 24, "70442b0c747a28fa481eb8c01fbe99a210a86445551cfad556bad00a0568a212"),
+            ("alpha_byte_maximum", 0x1acfd8, 4, "270696d298cc689d8e5bd75897918aa617a25a5030ccae98017053dddd974995"),
+            ("alpha_word_maximum", 0x1ad160, 4, "5bd7a8186a831b11273227a383429269feeb7f624315c92f1bcc4c011879334a"),
+            ("alpha_inverse_one", 0x1a9690, 4, "e00e5eb9444182f352323374ef4e08ebcb784725fdd4fd612d7730540b3e0c8c"))]
+    instruction_evidence = {}
+    for role, owner, first, last in (
+            ("header_signature_version_reserved_channels", 0x8cd70, 0x8cd91, 0x8cddf),
+            ("dimensions_depth_rgb_and_sections", 0x8cd70, 0x8cde3, 0x8ce85),
+            ("compression_checked_size_and_storage_selection", 0x8cd70, 0x8ce8a, 0x8cf2f),
+            ("rle_table_skip_and_full_plane_size", 0x8cd70, 0x8cf35, 0x8cf7d),
+            ("raw16_current_high_byte", 0x8cd70, 0x8d2ab, 0x8d2e3),
+            ("raw16_requested_word_storage", 0x8cd70, 0x8cfc0, 0x8cffa),
+            ("rle_full_plane_parameters", 0x95570, 0x95580, 0x955ac),
+            ("rle_noop_and_literal_bounds", 0x95570, 0x955b2, 0x95602),
+            ("rle_literal_exhausted_zero_values", 0x95570, 0x9563b, 0x9565e),
+            ("rle_repeat_bounds", 0x95570, 0x95663, 0x9566e),
+            ("compressed_failure_release_before_error", 0x8cd70, 0x8d27d, 0x8d2a6),
+            ("alpha_only_after_four_channels", 0x8cd70, 0x8d930, 0x8d956),
+            ("alpha16_float_and_word_truncation", 0x8cd70, 0x8d984, 0x8d9fd),
+            ("alpha8_float_and_byte_truncation", 0x8cd70, 0x8da36, 0x8dab7),
+            ("converter_actual4_and_current_bypass", 0x8cd70, 0x8dadb, 0x8db2a),
+            ("success_output_metadata", 0x8cd70, 0x8db30, 0x8db41)):
+        rows = [row for row in functions[owner]["assembly"] if first <= int(row["rva"], 16) <= last]
+        if not rows:
+            raise ValueError("PSD decoder instruction owner is absent: " + role)
+        instruction_evidence[role] = {"rva": hex(owner), "instructions": rows}
+    report = {"schema_version": 1, "query": "lighting-psd-decoder-chain",
+        "kind": "current_lighting_psd_decoder_chain", "current_native_release": release,
+        "native": native, "instruction_evidence": instruction_evidence,
+        "boundaries": _lighting_psd_decoder_boundaries(),
+        "reviewed_semantics": {
+            "header": "8CD70 requires BE32 signature38425053,version1, skips6 reserved bytes without checking zero and accepts channel counts0..16. It reads BE32 height then width with signed upper comparisons against16777217; the subsequent checked4*width*height guard rejects negative dimensions, but no explicit positive-dimension gate is added. Depth must8 or16 and color mode3. Three BE32-length-prefixed color-mode/resources/layer-mask sections are passed as actual signed skip lengths; skip return is not checked. Compression must0 or1 before pixel allocation. Source signature selection and current required4/requested-bpc8 are prior dependencies, not new routing work.",
+            "storage_and_planes": "Working pixels always have4 components. Only raw16 plus requested-bpc16 uses checked8*width*height allocation and sets result-bpc16 before testing allocation success; all other paths use the checked4-byte raster size and retain result-bpc8. Raw input is planar, consumes at most4 channels and leaves extra channel pixels unread. Missing RGB planes are zero and missing alpha is255 or65535. Raw16 current8 reads BE16 and keeps its high byte; retained16 stores the BE16 value as native little-endian word. Scalar reads can supply zero after refill disables reads; no universal exact-raster gate exists. No BGR swap, vertical flip or trailing-byte rejection is added. Zero-size output remains subject to the actual allocator, not a fabricated successful allocation.",
+            "packbits": "Compression1 skips signed32(2*header_channels*height) bytes of row lengths but does not inspect them.95570 uses actual r8 pixel-count width*height, not width/r9; each channel is decoded as one plane, so runs may cross scanlines. This same byte decoder is used even for header depth16 and requested-bpc16; it does not decode16bit samples or set result-bpc16. Control0..127 copies count+1 literal bytes,129..255 repeats one byte257-count times and128 is a no-op. Either run must fit remaining pixels in the whole plane, otherwise helper returns0 without setting an error. Scalar EOF can provide zeros, including a zero control followed by a zero literal, so missing bytes are not a guaranteed error. Only the first4 channel planes are processed; no extra-pixel channel skip follows.",
+            "alpha": "When header channels>=4, both raw and compressed paths remove white matte from RGB for alpha strictly between0 and max. Actual SSE uses separate float32 alpha/max, reciprocal,1-inverse, times-max, RGB-times-inverse and addition, followed by truncation toward zero. The final signed integer is stored to its low byte or word, with no clamp, so negative results wrap. Alpha0/max leaves RGB unchanged; alpha itself is unchanged.16bit R/G share SIMD arithmetic and B uses scalar arithmetic in the same operation order. All three actual float constants are bound to PE bytes; no real DLL floating-point parity is claimed.",
+            "failure_and_handoff": "Header/format/size failures return null before pixels exist. Allocation failure sets outofmem; raw retained16 may already have changed result-bpc. On compressed run overflow the owner frees pixels before reporting corrupt.95570 owns no heap and no separate async cancellation was found. Requested0 or4 bypasses channel conversion; current4 directly transfers the4-component destination. Other requested counts call existing byte/word converters with source4, actual requested count,width and stack height; converter failure consumes its input and returns null before dimension/component outputs are committed. Success sets optional source-components4, then height and width. Existing file-close, reduction/flip/resampler and their earlier failure boundaries are not revalidated or promoted."},
+        "fixed_vectors": {"pixel_payloads": [
+            {"name": "raw_rgb_planar", "input_hex": "104020503060", "width": 2, "height": 1,
+                "channels": 3, "depth": 8, "compression": 0,
+                "expected": {"success": True, "bits_per_channel": 8, "bytes_consumed": 6,
+                    "pixels_le_hex": "102030ff405060ff"}},
+            {"name": "raw16_current8_big_endian_high_byte", "input_hex": "123456789abc", "width": 1, "height": 1,
+                "channels": 3, "depth": 16, "compression": 0,
+                "expected": {"success": True, "bits_per_channel": 8, "bytes_consumed": 6, "pixels_le_hex": "12569aff"}},
+            {"name": "raw16_requested16_native_words", "input_hex": "123456789abc", "width": 1, "height": 1,
+                "channels": 3, "depth": 16, "compression": 0, "requested_bpc": 16,
+                "expected": {"success": True, "bits_per_channel": 16, "bytes_consumed": 6,
+                    "pixels_le_hex": "34127856bc9affff"}},
+            {"name": "partial_alpha_white_matte_wraps_negative", "input_hex": "aa00ff55", "width": 1, "height": 1,
+                "channels": 4, "depth": 8, "compression": 0,
+                "expected": {"success": True, "bits_per_channel": 8, "bytes_consumed": 4, "pixels_le_hex": "0002ff55"}},
+            {"name": "rle_plane_packets_cross_rows", "input_hex": "ff10012030ff40", "width": 1, "height": 2,
+                "channels": 3, "depth": 8, "compression": 1,
+                "expected": {"success": True, "bits_per_channel": 8, "bytes_consumed": 7,
+                    "pixels_le_hex": "102040ff103040ff"}},
+            {"name": "rle16_still_byte_planes", "input_hex": "00120056009a", "width": 1, "height": 1,
+                "channels": 3, "depth": 16, "compression": 1, "requested_bpc": 16,
+                "expected": {"success": True, "bits_per_channel": 8, "bytes_consumed": 6, "pixels_le_hex": "12569aff"}}],
+            "actual_dll_results": False,
+            "scope": "Complete bounded pixel payloads after section/row-table skipping; no header,callback EOF,allocator or official decoder execution"},
+        "dependencies": [{"receipt": ".analysis/results/host-current/local-audit.json",
+                "section": "lighting_pic_decoder_chain", "scope": "Continue its remaining PSD owner only; PIC stays separately reviewed"},
+            {"receipt": ".analysis/results/host-current/local-audit.json", "section": "lighting_media_codec_boundaries",
+                "scope": "Reuse source selection,current required4/bpc8, callbacks,8/16bit conversion, normalization and file-close; no routing/reducer repetition"},
+            {"receipt": ".analysis/results/host-current/local-audit.json", "section": "lighting_png_decoder_chain",
+                "scope": "Reuse signed skip, BE, refill,checked allocation/free and converter ownership"},
+            {"receipt": ".analysis/results/host-current/local-audit.json", "section": "lighting_media_resampler",
+                "scope": "Existing32x32 output downstream unchanged"}],
+        "remaining_chains": [
+            {"owner": "GIF945C0, JPEG98C80, HDR8E160",
+                "status": "PSD selected semantic review joins prior PNG/PNM/BMP/TGA/PIC; three other format-specific pixels/malformed-input/cleanup chains remain independent and unreviewed"},
+            {"owner": "HDR setters/compiler pow, AI1.0.1.0 and actual product Quick branches",
+                "status": "Existing mutation/arithmetic/product-specific dependencies unchanged"},
+            {"owner": "independent Rust PSD codec/UI/backend and functional official DLL comparison",
+                "status": "Static receipt and synthetic complete pixels do not verify real DLL short-read/allocation/floating-point behavior, production Rust/UI/backend or runtime acceptance"}],
+        "selected_psd_decoder_semantics_reviewed": True, "source_chain_complete": False,
+        "target_execution": False, "product_code_modified": False, "real_device_operations": False,
+        "rust_independent_implementation": "existing_not_revalidated", "ui_backend_wiring": "unverified",
+        "actual_dll_comparison": "unverified", "runtime_acceptance": "unverified", "failures": [],
+        "maintenance_lifecycle": {"temporary_artifacts_created": [], "analysis_sessions_created": [],
+            "reused_complete_native_captures": True}}
+    report["complete_originals"] = list(audit.sources.values())
+    report["complete_source_owners"] = list(audit.owners.values())
+    report["reviewed_selection_sha256"] = hashlib.sha256(json.dumps(_lighting_psd_decoder_projection(report),
+        ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+    report["verified_artifacts"] = list(audit.artifacts.values())
+    report["changed_during_query"] = audit.final_snapshot()
+    report["snapshot_stable"] = not report["changed_during_query"]
+    report["verification"] = _verify_lighting_psd_decoder_chain(report)
+    return report
+
+
+def _lighting_jpeg_decoder_block(coefficients):
+    """Bounded scalar integer-IDCT witness, after entropy/dequantization only."""
+    if len(coefficients) != 64 or any(type(value) is not int or not -32768 <= value <= 32767 for value in coefficients):
+        raise ValueError("JPEG scalar block witness requires 64 signed16 coefficients")
+
+    def signed(value):
+        value &= 0xffffffff
+        return value - 0x100000000 if value >= 0x80000000 else value
+
+    def transform(x, bias, shift):
+        p1 = signed(2217 * signed(x[2] + x[6]))
+        t2, t3 = signed(p1 - 7567 * x[6]), signed(p1 + 3135 * x[2])
+        t0, t1 = signed(signed(x[0] + x[4]) << 12), signed(signed(x[0] - x[4]) << 12)
+        even = [signed(t0 + t3), signed(t1 + t2), signed(t1 - t2), signed(t0 - t3)]
+        t0, t1, t2, t3 = x[7], x[5], x[3], x[1]
+        p1, p2 = signed(t0 + t3), signed(t1 + t2)
+        p3, p4 = signed(t0 + t2), signed(t1 + t3)
+        p5 = signed(4816 * signed(p3 + p4))
+        p1, p2, p3, p4 = signed(-3685 * p1), signed(-10497 * p2), signed(-8034 * p3 + p5), signed(-1597 * p4 + p5)
+        odd = [signed(1223 * t0 + p1 + p3), signed(8410 * t1 + p2 + p4),
+            signed(12586 * t2 + p2 + p3), signed(6149 * t3 + p1 + p4)]
+        sums = [signed(even[i] + odd[3 - i]) for i in range(4)]
+        sums += [signed(even[3 - i] - odd[i]) for i in range(4)]
+        return [signed(value + bias) >> shift for value in sums]
+
+    workspace = [0] * 64
+    for column in range(8):
+        values = [coefficients[column + row * 8] for row in range(8)]
+        output = transform(values, 512, 10) if any(values[1:]) else [4 * values[0]] * 8
+        for row, value in enumerate(output):
+            workspace[column + row * 8] = value
+    result = []
+    for row in range(8):
+        result.extend(max(0, min(255, value)) for value in transform(workspace[row * 8:row * 8 + 8], 16842752, 17))
+    return bytes(result)
+
+
+def _lighting_jpeg_decoder_resample(near, far, horizontal, vertical):
+    """Current complete bounded byte rows; no callback, allocation or scan execution."""
+    near, far = bytes(near), bytes(far)
+    if not near or len(near) != len(far) or horizontal not in (1, 2, 3, 4) or vertical not in (1, 2, 3, 4):
+        raise ValueError("JPEG row witness is outside the reviewed sampling range")
+    if horizontal == vertical == 1:
+        return near
+    if horizontal == 1 and vertical == 2:
+        return bytes((3 * a + b + 2) >> 2 for a, b in zip(near, far))
+    if horizontal == 2 and vertical == 1:
+        if len(near) == 1:
+            return near * 2
+        result = [near[0], (3 * near[0] + near[1] + 2) >> 2]
+        for index in range(1, len(near) - 1):
+            result.extend(((3 * near[index] + near[index - 1] + 2) >> 2,
+                (3 * near[index] + near[index + 1] + 2) >> 2))
+        result.extend(((3 * near[-2] + near[-1] + 2) >> 2, near[-1]))
+        return bytes(result)
+    if horizontal == vertical == 2:
+        combined = [3 * a + b for a, b in zip(near, far)]
+        if len(combined) == 1:
+            return bytes([(combined[0] + 2) >> 2] * 2)
+        result = [(combined[0] + 2) >> 2]
+        for previous, current in zip(combined, combined[1:]):
+            result.extend(((current + 3 * previous + 8) >> 4, (previous + 3 * current + 8) >> 4))
+        result.append((combined[-1] + 2) >> 2)
+        return bytes(result)
+    return bytes(value for value in near for _ in range(horizontal))
+
+
+def _lighting_jpeg_decoder_row(planes, color, *, simd=False):
+    """Current requested4 row witness, preserving both compiled color kernels."""
+    planes = [bytes(row) for row in planes]
+    required = {"gray": 1, "rgb": 3, "ycbcr": 3, "cmyk": 4, "ycck": 4}.get(color)
+    if required is None or len(planes) != required or not planes[0] or len({len(row) for row in planes}) != 1:
+        raise ValueError("JPEG color witness requires complete equal-width component rows")
+    width, result = len(planes[0]), bytearray()
+    mul = lambda a, b: (a * b + ((a * b + 128) >> 8) + 128) >> 8
+    clamp = lambda value: max(0, min(255, value))
+    for index in range(width):
+        pixel = [row[index] for row in planes]
+        if color == "gray":
+            rgb = pixel * 3
+        elif color == "rgb":
+            rgb = pixel
+        elif color == "cmyk":
+            rgb = [mul(value, pixel[3]) for value in pixel[:3]]
+        else:
+            y, cb, cr = pixel[:3]
+            cb, cr = cb - 128, cr - 128
+            if simd and index < width // 8 * 8:
+                base = (y << 4) + 8
+                rgb = [clamp((base + (cr * 5743 >> 8)) >> 4),
+                    clamp((base + (cb * -1410 >> 8) + (cr * -2925 >> 8)) >> 4),
+                    clamp((base + (cb * 7258 >> 8)) >> 4)]
+            else:
+                green = (-360960 * cb) & 0xffff0000
+                if green >= 0x80000000:
+                    green -= 0x100000000
+                base = (y << 20) + 0x80000
+                rgb = [clamp((base + 1470208 * cr) >> 20), clamp((base - 748800 * cr + green) >> 20),
+                    clamp((base + 1858048 * cb) >> 20)]
+            if color == "ycck":
+                rgb = [mul(255 - value, pixel[3]) for value in rgb]
+        result.extend((*rgb, 255))
+    return bytes(result)
+
+
+def _lighting_jpeg_decoder_boundaries():
+    return {
+        "entry": {"wrapper_rva": "0x8deb0", "decoder_rva": "0x98c80", "context_allocation_bytes": 18568,
+            "context_zero_bytes_after_pointer": 18560, "current_requested_components": 4, "requested_components_range": [0, 4],
+            "soi": 216, "sof_markers": [192, 193, 194], "progressive_marker": 194, "sample_bits": 8,
+            "component_counts": [1, 3, 4], "nonzero_width_and_height_required": True, "dnl_creates_missing_height": False,
+            "sof_length": "8+3*component_count", "sampling_factors": [1, 4], "maximum_factors_divisible_by_each_component": True,
+            "quantization_table_indices": [0, 3], "dimensions_checked_before_component_storage": True},
+        "tables_and_markers": {"dqt_sample_bits": [8, 16], "dqt_entries": 64, "dqt_applies_zigzag": True,
+            "dht_dc_ac_tables_each": 4, "dht_symbol_count_max": 256, "huffman_max_bits": 16, "fast_prefix_bits": 9,
+            "canonical_overfull_codes_rejected": True, "fast_ac_combines_run_amplitude_and_consumed_bits": True,
+            "app0_jfif_and_app14_adobe_recognized": True, "other_app_and_comment_skipped": True,
+            "dri_length": 4, "dnl_length": 4, "dnl_must_equal_header_height": True,
+            "marker_scan_skips_ff_fill": True, "entropy_ff00_is_literal_ff": True,
+            "entropy_nonzero_marker_cached_and_zero_padded": True, "exhausted_scalar_reads_may_supply_zero": True,
+            "unsupported_marker_in_body_can_return_success": True, "body_marker_error_runs_progressive_finish": False},
+        "scans": {"single_component_and_interleaved_mcu_paths": True, "sos_count_range": [1, 4],
+            "sos_count_cannot_exceed_frame_components": True, "sos_length": "6+2*scan_component_count",
+            "sos_ids_match_frame": True, "duplicate_scan_ids_explicitly_rejected": False,
+            "baseline_spectral_start_and_successive_bits_must_be_zero": True,
+            "baseline_spectral_end_overwritten_to63": True, "progressive_spectral_range": [0, 63],
+            "progressive_successive_high_low_max": 13, "scan_history_or_high_low_relation_validated": False,
+            "baseline": "Zero64 signed16 words; canonical DC delta with signed receive/extend, checked signed32 predictor addition and signed16 DC*quant product; AC uses fast prefix or run/size Huffman, EOB and ZRL, zigzag and low16 product",
+            "progressive": "DC first zeroes the block and stores checked predictor<<successive_low; DC refine adds its bit. AC first stores receive/extend<<low, supports EOB runs and ZRL; AC refine consumes correction bits for existing signed words and inserts only size1 coefficients, positive or negative. EOB count persists across blocks within a scan",
+            "progressive_finish": "Only the EOI path calls finish: all retained coefficient blocks are dequantized by low16 multiplication and sent to the selected IDCT",
+            "restart": "Reset bitbuffer, cached marker, all four DC predictors and EOB count; todo=DRI or INT_MAX. Each interval consumes any RST0..7 without validating sequence; missing RST returns success early",
+            "missing_restart_always_fails": False, "eoi_required_for_all_success": False},
+        "pixels": {"idct": "Complete8x8 separable fixed-point transform, column bias512>>10 and row bias16842752>>17, signed arithmetic shifts and clamp0..255; scalar AC-zero column shortcut uses4*DC",
+            "simd_selection": "CPUID leaf1 EDX bit26 selects SSE2 IDCT, YCbCr and hv2 callbacks; scalar callbacks are the default. Both compiled paths retained without assuming malformed-coefficient parity",
+            "simd_idct": "Word add/sub wraps16, paired signed multiply-add wraps32, first pass arithmetic>>10 then signed16 saturating pack; transpose, second pass adds16842752 and arithmetic>>17, signed16 then unsigned8 saturation; stores8 rows of8 bytes at actual stride",
+            "resampling": "1x1 returns near row;1x2=(3*near+far+2)>>2;2x1 uses3:1 horizontal interpolation including original last pair weighted toward previous sample;2x2 interpolates combined3*near+far with horizontal3:1 and+8>>4; other integer factors replicate near samples",
+            "horizontal2_last_inner_uses_previous_weight3": True, "row_scratch_allocation": "width+3 per decoded component",
+            "output": "Tight top-to-bottom interleaved RGB/RGBA8; requested4 always appends alpha255, including four-component CMYK/YCCK input; source metadata is1 or3, not output stride4",
+            "is_rgb": "frame has3 components and either IDs R,G,B in order or Adobe transform0 without JFIF",
+            "cmyk_adobe0": "mul8(C,K),mul8(M,K),mul8(Y,K)", "ycck_adobe2": "YCbCr then mul8(255-channel,K)",
+            "other_four_component_transform": "Use YCbCr of first3 and ignore fourth component",
+            "mul8": "(a*b+((a*b+128)>>8)+128)>>8",
+            "scalar_ycbcr": "R=(Y*2^20+1470208*(Cr-128)+2^19)>>20; G=(Y*2^20-748800*(Cr-128)+2^19+((-360960*(Cb-128))&0xffff0000))>>20; B=(Y*2^20+1858048*(Cb-128)+2^19)>>20; clamp0..255",
+            "simd_ycbcr": "Requested4 groups8: signed16 chroma<<8, signed high products5743/-1410/-2925/7258, Y*16+8, arithmetic>>4 and unsigned8 saturation; tail uses scalar exact constants",
+            "unrequested_branches_retained": "req0 chooses1/3; req1/2 uses weighted77/150/29 RGB gray only for directRGB/CMYK, firstY for ordinaryYCbCr, and invertedY*K forYCCK; req2 appends255. Current caller asks4"},
+        "ownership": {"component_byte_planes_aligned16": True, "progressive_word_planes_aligned16": True,
+            "size_product_and_addition_checked_before_allocation": True,
+            "component_allocation_failure_frees_partial_components": True, "decode_failure_frees_components_and_context": True,
+            "output_allocation_failure_frees_components_and_context": True, "success_frees_intermediate_planes_and_row_buffers": True,
+            "success_transfers_output_allocation": True, "cleanup_clears_owned_pointers": True,
+            "output_dimensions_committed_only_after_success": True, "strict_short_read_or_eoi_guarantee": False,
+            "marker_error_can_leave_uninitialized_component_or_coefficient_data": True,
+            "cpp_exception_unwind_or_heap_fault_recovery_established": False, "separate_async_cancel_observed": False,
+            "downstream_file_close_flip_and_resize": "Exact reviewed shared dependencies; not re-captured or reinterpreted"},
+        "scope": {"selected_jpeg_decoder_semantics_reviewed": True, "other_format_pixels_reviewed_by_this_slice": False,
+            "synthetic_model_executes_jpeg_stream_or_simd": False, "actual_dll_results": False}}
+
+
+def _lighting_jpeg_decoder_dependencies(previous=None):
+    import analysis as a
+    previous = previous if previous is not None else json.loads((a.ROOT / ".analysis/results/host-current/local-audit.json").read_bytes())
+    specs = (("lighting_psd_decoder_chain", "/remaining_chains/0", "431c356c4b9da04e1df4d1a50f6ff19035bfef7471be756c628126733e0130a2"),
+        ("lighting_media_codec_boundaries", "/reviewed_selection_sha256", "ce65095eca1283483eaacf1e4126c145a992ce373a0a5c5d041d993249cfbde6"),
+        ("lighting_media_resampler", "/reviewed_selection_sha256", "ad4d10d5541beaf62befc22025fee1ff24e95800ba8956b48fba0922ae955675"))
+    verifiers = {"lighting_psd_decoder_chain": _verify_lighting_psd_decoder_chain,
+        "lighting_media_codec_boundaries": _verify_lighting_media_codec_boundaries,
+        "lighting_media_resampler": _verify_lighting_media_resampler}
+    result = []
+    for section, suffix, expected in specs:
+        report = previous[section]
+        verifiers[section](report)
+        value = report["remaining_chains"][0] if suffix.endswith("/0") else report["reviewed_selection_sha256"]
+        digest = hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+        if digest != expected:
+            raise ValueError("JPEG decoder exact upstream pointer changed: " + section + suffix)
+        result.append({"receipt": ".analysis/results/host-current/local-audit.json", "pointer": "/" + section + suffix,
+            "canonical_sha256": digest})
+    return result
+
+
+def _lighting_jpeg_decoder_projection(report):
+    return {name: report[name] for name in ("current_native_release", "native", "instruction_evidence",
+        "boundaries", "reviewed_semantics", "fixed_vectors", "dependencies", "remaining_chains")}
+
+
+def _lighting_jpeg_decoder_verify(report):
+    if report.get("boundaries") != _lighting_jpeg_decoder_boundaries():
+        raise ValueError("JPEG decoder boundary requires semantic review")
+    if (report.get("schema_version") != 1 or report.get("query") != "lighting-jpeg-decoder-chain"
+            or report.get("kind") != "current_lighting_jpeg_decoder_chain"
+            or report.get("selected_jpeg_decoder_semantics_reviewed") is not True
+            or any(report.get(name) is not False for name in ("source_chain_complete", "target_execution", "product_code_modified", "real_device_operations"))
+            or any(report.get(name) != "unverified" for name in ("actual_dll_comparison", "runtime_acceptance", "ui_backend_wiring"))
+            or report.get("rust_independent_implementation") != "existing_not_revalidated"
+            or report.get("failures") or report.get("changed_during_query") or report.get("snapshot_stable") is not True):
+        raise ValueError("JPEG decoder static boundary was promoted or snapshot failed")
+    native = report["native"]
+    if native["selected_pseudocode_failures"] or native["all_pseudocode_captured"] is not False or len(native["failures"]) != 10:
+        raise ValueError("JPEG decoder capture failure was hidden")
+    digest = hashlib.sha256(json.dumps(_lighting_jpeg_decoder_projection(report), ensure_ascii=False,
+        sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    if digest != "d4c4549a3678d00f9f0f9617fd533e39d2749e68a5b4313d77a2453f2ea79d7d" or report.get("reviewed_selection_sha256") != digest:
+        raise ValueError("JPEG decoder selected bytes require semantic review: " + digest)
+    return {"selected_native_functions": len(native["complete_selected_functions"]),
+        "actual_direct_edges": len(native["verified_call_edges"]), "selected_native_failures": 0,
+        "global_native_failures_retained": 10, "selected_jpeg_decoder_semantics_reviewed": True,
+        "all_format_decoders_complete": False, "actual_dll_comparison": "unverified", "reviewed_selection_sha256": digest}
+
+
+def collect_lighting_jpeg_decoder_chain(audit):
+    """Bind complete current JPEG entropy, both pixel kernels and failure ownership."""
+    original, release = _lighting_ripple_native_source(audit)
+    dependencies = _lighting_jpeg_decoder_dependencies()
+    roles = {0x8deb0: "jpeg_context_owner", 0x98c80: "jpeg_complete_component_to_output",
+        0x96130: "jpeg_scalar_sse2_callback_assignment", 0x96ac0: "jpeg_sse2_bit_selection", 0x97910: "jpeg_cpuid_leaf1",
+        0x961a0: "jpeg_soi_sof_selection", 0x97930: "jpeg_marker_reader", 0x979e0: "jpeg_dqt_dht_app_dri",
+        0x98340: "jpeg_frame_header_and_component_storage", 0x98950: "jpeg_canonical_huffman_tables", 0x98b30: "jpeg_fast_ac_table",
+        0x995d0: "jpeg_complete_scan_marker_loop", 0x99cc0: "jpeg_sos_validation", 0x9a000: "jpeg_mcu_scan_traversal",
+        0x9a720: "jpeg_post_scan_marker_search", 0x9a830: "jpeg_progressive_finish_idct", 0x9a970: "jpeg_restart_reset",
+        0x9a9e0: "jpeg_baseline_block_huffman_dequantize", 0x9aec0: "jpeg_entropy_ff_stuffing_and_padding",
+        0x9b020: "jpeg_progressive_dc_first_refine", 0x9b320: "jpeg_progressive_ac_first_refine_eob",
+        0x9ba10: "jpeg_predictor_add_guard", 0x9ba40: "jpeg_signed16_product_guard", 0x9baa0: "jpeg_progressive_dequantize_words",
+        0x962c0: "jpeg_scalar_full_integer_idct", 0x96ae0: "jpeg_sse2_full_integer_idct",
+        0x96720: "jpeg_scalar_ycbcr", 0x972f0: "jpeg_sse2_ycbcr_and_scalar_tail",
+        0x96820: "jpeg_scalar_hv2_row", 0x97550: "jpeg_sse2_hv2_and_scalar_tail",
+        0x99730: "jpeg_resample_identity", 0x99740: "jpeg_resample_vertical2", 0x99940: "jpeg_resample_horizontal2",
+        0x99b70: "jpeg_resample_general_nearest", 0x99ca0: "jpeg_cmyk_mul8", 0x93da0: "existing_rgb_gray_weights",
+        0x99720: "jpeg_cleanup_component_count", 0x98be0: "jpeg_owned_plane_and_row_cleanup",
+        0x93ad0: "existing_checked_allocation", 0x93b10: "existing_checked_size", 0x93ba0: "jpeg_checked_plane_allocation",
+        0x93b60: "jpeg_checked_plane_size", 0x93d60: "existing_product_guard", 0x93d90: "existing_add_guard",
+        0x88fc0: "existing_allocate_thunk", 0x14fba0: "existing_free_thunk", 0x87e20: "existing_tls_error",
+        0x8f9b0: "existing_refill_eof_zero", 0x91be0: "existing_big_endian16", 0x91b50: "existing_signed_payload_skip",
+        0x8b440: "existing_file_eof_callback"}
+    graph = {0x8deb0: (0x96130, 0x98c80, 0x88fc0, 0x14fba0, 0x87e20),
+        0x98c80: (0x995d0, 0x99720, 0x93ad0, 0x88fc0, 0x99ca0, 0x93da0, 0x87e20),
+        0x96130: (0x96ac0,), 0x96ac0: (0x97910,),
+        0x995d0: (0x961a0, 0x97930, 0x99cc0, 0x9a000, 0x9a720, 0x979e0, 0x91be0, 0x9a830, 0x87e20),
+        0x961a0: (0x97930, 0x979e0, 0x98340, 0x87e20), 0x97930: (0x8f9b0,),
+        0x979e0: (0x91be0, 0x91b50, 0x8f9b0, 0x98950, 0x98b30, 0x87e20),
+        0x98340: (0x91be0, 0x8f9b0, 0x93b10, 0x93ba0, 0x93ad0, 0x98be0, 0x87e20),
+        0x99cc0: (0x91be0, 0x8f9b0, 0x87e20), 0x9a000: (0x9a970, 0x9b320, 0x9b020, 0x9a9e0, 0x9aec0),
+        0x9a720: (0x8f9b0,), 0x9a830: (0x9baa0,), 0x98950: (0x87e20,),
+        0x9a9e0: (0x9aec0, 0x9ba10, 0x9ba40, 0x87e20), 0x9b020: (0x9aec0, 0x9ba10, 0x9ba40, 0x87e20),
+        0x9b320: (0x9aec0, 0x87e20), 0x9aec0: (0x8f9b0,), 0x99720: (0x98be0,), 0x98be0: (0x14fba0,),
+        0x91be0: (0x8f9b0,), 0x93ad0: (0x93b10, 0x88fc0), 0x93b10: (0x93d60, 0x93d90),
+        0x93ba0: (0x93b60, 0x88fc0), 0x93b60: (0x93d60, 0x93d90)}
+    pairs = [(caller, target) for caller, targets in graph.items() for target in targets]
+    slots = [{"role": role, "vtable_rva": "0x1f59c0", "slot_byte_offset": offset, "target_rva": hex(target)}
+        for role, offset, target in (("read", 0, 0x8b3e0), ("skip", 8, 0x8b400), ("eof", 16, 0x8b440))]
+    native, functions = _lighting_type_media_native(audit, original, roles, slots, pairs)
+    raw = audit.read(original)
+    pe = inspect_pe(raw)
+    native["verified_data_regions"] = [_lighting_timed_constant(raw, pe, role, rva, size, sha) for role, rva, size, sha in (
+        ("zigzag_padding_and_RGB_ids", 0x1ae170, 82, "071cd2b31ab9a57bcf015ede8b232785345298511e066fc73f183e6c1d017c82"),
+        ("entropy_masks", 0x1ae1d0, 68, "cf64d219c0ba56cece4e41e0c8bf3af538f4510fa9a2b00f38da09e548270e5c"),
+        ("entropy_negative_bias", 0x1ae220, 64, "4c0a60625340fe660c27d4a2ba915e2e5ad493c57113163c76eb86f59568d77a"),
+        ("jpeg_simd_coefficients", 0x1af310, 352, "3fd7e1d918d1db6880113b739349dd5e353457b8f34b93cef4a0b0794e7b04a0"),
+        ("simd_dword_u8_mask", 0x1af2d0, 16, "d349d24f97678f2f35d766033c4349492e752cb2e9475b78dad72e2bd4f6c6fa"),
+        ("file_callback_table", 0x1f59c0, 24, "70442b0c747a28fa481eb8c01fbe99a210a86445551cfad556bad00a0568a212"))]
+    instruction_evidence = {}
+    for role, owner, first, last in (
+        ("context_allocation_and_release", 0x8deb0, 0x8deb0, 0x8df3f),
+        ("scalar_sse_callback_assignment", 0x96130, 0x96130, 0x9619a),
+        ("cpuid_sse2_selection", 0x96ac0, 0x96ac0, 0x96ad3),
+        ("frame_header_sampling_and_checked_storage", 0x98340, 0x98340, 0x98949),
+        ("sos_scan_parameter_validation", 0x99cc0, 0x99cc0, 0x99ff0),
+        ("body_marker_early_success_and_eoi_finish", 0x995d0, 0x99680, 0x99710),
+        ("baseline_actual_idct_callback", 0x9a000, 0x9a288, 0x9a2ef),
+        ("restart_missing_marker_returns_success", 0x9a000, 0x9a481, 0x9a4ab),
+        ("progressive_actual_finish_callback", 0x9a830, 0x9a908, 0x9a928),
+        ("entropy_stuffing_and_marker_zero_padding", 0x9aec0, 0x9aec0, 0x9b013),
+        ("scalar_complete_idct", 0x962c0, 0x962c0, 0x96719),
+        ("sse2_complete_idct", 0x96ae0, 0x96ae0, 0x972ee),
+        ("scalar_complete_ycbcr", 0x96720, 0x96720, 0x96817),
+        ("sse2_ycbcr_and_tail", 0x972f0, 0x972f0, 0x97549),
+        ("horizontal2_original_last_weight", 0x99940, 0x99b1e, 0x99b4d),
+        ("current_rgba_row_and_opaque_alpha", 0x98c80, 0x9906d, 0x9910e),
+        ("output_commit_and_component_cleanup", 0x98c80, 0x9950e, 0x995bd),
+        ("owned_plane_cleanup", 0x98be0, 0x98be0, 0x98c73)):
+        rows = [row for row in functions[owner]["assembly"] if first <= int(row["rva"], 16) <= last]
+        if not rows or int(rows[0]["rva"], 16) != first or int(rows[-1]["rva"], 16) != last:
+            raise ValueError("JPEG decoder exact instruction boundary changed: " + role)
+        instruction_evidence[role] = {"owner_rva": hex(owner), "first_rva": hex(first), "last_rva": hex(last), "instructions": rows}
+    native["verified_dynamic_dispatch"] = {
+        "context_slots": [{"byte_offset": offset, "scalar_target": hex(scalar), "sse2_target": hex(simd)}
+            for offset, scalar, simd in ((18544, 0x962c0, 0x96ae0), (18552, 0x96720, 0x972f0), (18560, 0x96820, 0x97550))],
+        "component_row_targets": ["0x99730", "0x99740", "0x99940", "0x99b70", "context+18560"],
+        "call_sites": [{"owner_rva": hex(owner), "instruction": next(row for row in functions[owner]["assembly"] if int(row["rva"], 16) == site)}
+            for owner, site in ((0x9a000, 0x9a2ac), (0x9a000, 0x9a63d), (0x9a830, 0x9a928),
+                (0x98c80, 0x98f15), (0x98c80, 0x9943b), (0x98c80, 0x98fd3))]}
+    report = {"schema_version": 1, "query": "lighting-jpeg-decoder-chain", "kind": "current_lighting_jpeg_decoder_chain",
+        "current_native_release": release, "native": native, "instruction_evidence": instruction_evidence,
+        "boundaries": _lighting_jpeg_decoder_boundaries(),
+        "reviewed_semantics": {
+            "complete_codec": "8DEB0 allocates/zeroes its18568byte context, selects scalar/SSE2 callbacks, calls98C80 and frees context. Header961A0 accepts SOI plus SOF0/1/2 only,98340 validates8bit,1/3/4 components and divisibility-compatible sampling1..4 and allocates aligned byte planes plus progressive signed16 coefficient planes using checked products and additions.",
+            "entropy": "979E0 parses8/16bit quantization with actual zigzag table, canonical DC/AC Huffman and9bit fast paths, DRI, JFIF and Adobe.9AEC0 consumes FF00, skips FF fill and caches markers; exhaustion or cached markers can supply zero padding.995D0 owns SOS scans and marker transitions;99CC0 validates field ranges but not scan history/duplicate IDs.9A000 covers single-component blocks and interleaved MCUs, with baseline9A9E0 and progressive9B020/9B320 including DC/AC first/refine, signed coefficient correction, EOB runs and restart resets.",
+            "pixels": "Complete scalar962C0 and SSE296AE0 IDCT are retained with actual coefficient vectors, shifts, saturation and strided8row stores. Baseline invokes selected IDCT per decoded block; progressive EOI9A830 dequantizes all signed16 coefficient blocks via9BAA0 then invokes it.98C80 selects actual row upsamplers, performs full gray/directRGB/YCbCr/CMYK/YCCK conversion and produces tight requested4 RGBA8 with opaque alpha. Both color and hv2 SIMD paths and their tails are retained; no float/library-JPEG substitution or bitwise parity claim is made.",
+            "failure_and_release": "Ordinary header/SOS/entropy failures return0 and98C80 calls99720/98BE0 to free partial raw byte planes, progressive coefficient allocations and row scratch; output OOM also cleans intermediates. Success cleans intermediates and commits dimensions/source1or3 before returning owned output. Wrapper always frees its context after a normal return. The post-header marker handler failure path in995D0 instead returns1 without progressive finish; missing RST also returns1 early and does not prove EOI or initialized pixels. No guaranteed exception unwind, heap-fault recovery, native async cancellation or complete malformed-memory safety is inferred.",
+            "caller": "Reuse exact reviewed shared dispatch/current required4,bpc8, synchronous file-close/optional-flip and32x32 resampler contracts. Decoded component metadata1or3 is distinct from requested4 allocation stride; this review does not re-run other codecs or product lifecycles."},
+        "fixed_vectors": {"scalar_blocks": [{"name": "zero_DC", "coefficients": [0] * 64, "expected_pixels_hex": "80" * 64},
+            {"name": "positive_DC", "coefficients": [8] + [0] * 63, "expected_pixels_hex": "81" * 64},
+            {"name": "negative_DC", "coefficients": [-8] + [0] * 63, "expected_pixels_hex": "7f" * 64},
+            {"name": "positive_clamp", "coefficients": [32767] + [0] * 63, "expected_pixels_hex": "ff" * 64},
+            {"name": "negative_clamp", "coefficients": [-32768] + [0] * 63, "expected_pixels_hex": "00" * 64},
+            {"name": "row_AC", "coefficients": [0, 32] + [0] * 62, "expected_pixels_hex": "868583817f7d7b7a" * 8},
+            {"name": "column_AC", "coefficients": [0] * 8 + [32] + [0] * 55,
+                "expected_pixels_hex": "86" * 8 + "85" * 8 + "83" * 8 + "81" * 8 + "7f" * 8 + "7d" * 8 + "7b" * 8 + "7a" * 8}],
+            "rows": [{"name": "direct_RGB", "color": "rgb", "planes_hex": ["10", "20", "30"], "expected_rgba_hex": "102030ff"},
+                {"name": "gray", "color": "gray", "planes_hex": ["7f"], "expected_rgba_hex": "7f7f7fff"},
+                {"name": "neutral_YCbCr", "color": "ycbcr", "planes_hex": ["80", "80", "80"], "expected_rgba_hex": "808080ff"},
+                {"name": "CMYK", "color": "cmyk", "planes_hex": ["ff", "80", "00", "80"], "expected_rgba_hex": "804000ff"},
+                {"name": "YCCK", "color": "ycck", "planes_hex": ["80", "80", "80", "ff"], "expected_rgba_hex": "7f7f7fff"},
+                {"name": "YCbCr_group8_plus_tail", "color": "ycbcr",
+                    "planes_hex": ["0050ff50508001fe50", "0000ff018c8080808c", "0000ff80c8808080c8"],
+                    "expected_rgba_hex": "008700ff00d700ffff79ffff507c00ffb51865ff808080ff010101fffefefeffb51865ff"}],
+            "resampling": [{"name": "identity", "near_hex": "0a64", "far_hex": "32c8", "horizontal": 1, "vertical": 1, "expected_hex": "0a64"},
+                {"name": "vertical2", "near_hex": "0a64", "far_hex": "32c8", "horizontal": 1, "vertical": 2, "expected_hex": "147d"},
+                {"name": "horizontal2_original_tail", "near_hex": "0a64", "far_hex": "32c8", "horizontal": 2, "vertical": 1, "expected_hex": "0a212164"},
+                {"name": "both2", "near_hex": "0a64", "far_hex": "32c8", "horizontal": 2, "vertical": 2, "expected_hex": "142e637d"},
+                {"name": "generic3_ignores_far", "near_hex": "0a64", "far_hex": "32c8", "horizontal": 3, "vertical": 4, "expected_hex": "0a0a0a646464"}],
+            "actual_dll_results": False, "scope": "Bounded scalar signed16 coefficient blocks and complete component rows only; not JPEG stream/callback/SIMD or official DLL execution"},
+        "dependencies": dependencies,
+        "remaining_chains": [{"owner": "HDR8E160", "status": "HDR format-specific pixels and failure cleanup remain independent; GIF is reviewed in the sibling lighting_gif_decoder_chain, without expanding this JPEG slice"},
+            {"owner": "HDR setters/compiler pow, AI1.0.1.0 and actual product Quick branches", "status": "Independent existing mutation/arithmetic/product-specific dependencies unchanged"},
+            {"owner": "independent Rust JPEG codec/UI/backend and functional official DLL comparison", "status": "Static complete JPEG semantics and bounded scalar witnesses do not verify DLL entropy/EOF/allocation/SIMD results, production Rust/UI/backend or runtime acceptance"}],
+        "selected_jpeg_decoder_semantics_reviewed": True, "source_chain_complete": False,
+        "target_execution": False, "product_code_modified": False, "real_device_operations": False,
+        "rust_independent_implementation": "existing_not_revalidated", "ui_backend_wiring": "unverified",
+        "actual_dll_comparison": "unverified", "runtime_acceptance": "unverified", "failures": [],
+        "maintenance_lifecycle": {"temporary_artifacts_created": [], "analysis_sessions_created": [], "reused_complete_native_captures": True}}
+    if _lighting_jpeg_decoder_dependencies() != dependencies:
+        raise ValueError("JPEG decoder exact upstream dependency changed during query")
+    report["complete_originals"] = list(audit.sources.values())
+    report["complete_source_owners"] = list(audit.owners.values())
+    report["reviewed_selection_sha256"] = hashlib.sha256(json.dumps(_lighting_jpeg_decoder_projection(report),
+        ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    report["verified_artifacts"] = list(audit.artifacts.values())
+    report["changed_during_query"] = audit.final_snapshot()
+    report["snapshot_stable"] = not report["changed_during_query"]
+    report["verification"] = _lighting_jpeg_decoder_verify(report)
+    return report
+
+
+def _lighting_hdr_decoder_rgbe(pixel, requested=4):
+    """Finite RGBE arithmetic witness; no native CRT or floating-point environment execution."""
+    pixel = bytes(pixel)
+    if len(pixel) != 4 or requested not in (1, 2, 3, 4):
+        raise ValueError("HDR RGBE witness requires four bytes and1..4 output components")
+    def f32(value):
+        try:
+            return struct.unpack("<f", struct.pack("<f", value))[0]
+        except OverflowError:
+            return float("inf") if value > 0 else float("-inf")
+    factor = 2.0 ** (pixel[3] - 136) if pixel[3] else 0.0
+    values = [f32(value * factor) for value in pixel[:3]]
+    if requested < 3:
+        values = [f32(f32(sum(pixel[:3]) * factor) / 3.0)]
+    if requested in (2, 4):
+        values.append(1.0)
+    return values
+
+
+def _lighting_hdr_decoder_quantize(samples):
+    """Finite binary32 post-pow/linear byte conversion only; never substitutes host pow."""
+    import math
+    f32 = lambda value: struct.unpack("<f", struct.pack("<f", value))[0]
+    result = bytearray()
+    for value in samples:
+        value = f32(value)
+        if not math.isfinite(value):
+            raise ValueError("HDR byte witness excludes unreviewed nonfinite math/environment results")
+        try:
+            value = f32(f32(value * 255.0) + 0.5)
+        except OverflowError:
+            value = float("inf") if value > 0 else float("-inf")
+        result.append(int(max(0.0, min(255.0, value))))
+    return bytes(result)
+
+
+def _lighting_hdr_decoder_pixels(data, requested=4):
+    """Bounded ASCII header and RGBE payload witness, preserving observed fallback semantics."""
+    data, position = bytes(data), 0
+    if requested not in (1, 2, 3, 4):
+        raise ValueError("HDR synthetic model requires1..4 requested components")
+    width = height = source_components = None
+    paths, fallback_rows = [], []
+
+    def result(error=None, values=None):
+        return {"success": error is None, "error": error, "width": width, "height": height,
+            "source_components": source_components, "requested_components": requested, "bytes_consumed": position,
+            "float_le_hex": b"".join(struct.pack("<f", value) for value in (values or [])).hex(),
+            "paths": paths, "fallback_rows": fallback_rows}
+
+    def scalar():
+        nonlocal position
+        if position == len(data):
+            return 0
+        value = data[position]
+        position += 1
+        return value
+
+    def exact_four():
+        nonlocal position
+        if position + 4 > len(data):
+            raise ValueError("unobserved callback-dependent HDR raw short-read stack contents")
+        value = data[position:position + 4]
+        position += 4
+        return value
+
+    def line():
+        nonlocal position
+        end = data.find(b"\n", position)
+        if end < 0:
+            raise ValueError("unobserved callback-dependent HDR unterminated header line")
+        value = data[position:end][:1023]
+        position = end + 1
+        return value
+
+    def decimal(value, start):
+        match = re.match(rb"[ \t\r\v\f]*([+-]?)([0-9]+)", value[start:])
+        if not match:
+            return 0, start
+        negative = match[1] == b"-"
+        number = min(int(match[2]), 0x80000000 if negative else 0x7fffffff)
+        return -number if negative else number, start + match.end()
+
+    if line() not in (b"#?RADIANCE", b"#?RGBE"):
+        return result("not HDR")
+    found_format = False
+    while True:
+        value = line()
+        if not value:
+            break
+        found_format |= value == b"FORMAT=32-bit_rle_rgbe"
+    if not found_format:
+        return result("unsupported format")
+    layout = line()
+    if not layout.startswith(b"-Y "):
+        return result("unsupported data layout")
+    height, end = decimal(layout, 3)
+    while end < len(layout) and layout[end] == 32:
+        end += 1
+    if layout[end:end + 3] != b"+X ":
+        height = None
+        return result("unsupported data layout")
+    width, _ = decimal(layout, end + 3)
+    if width > 16777216 or height > 16777216:
+        width = height = None
+        return result("too large")
+    source_components = 3
+    if width < 0 or height < 0 or width * height * requested * 4 > 0x7fffffff:
+        return result("too large")
+    if width == 0 or height == 0:
+        raise ValueError("unobserved allocator-dependent zero-size HDR image")
+    if width * height > 1048576:
+        raise ValueError("HDR input outside the reviewed synthetic model size")
+    values = [None] * (width * height * requested)
+
+    def store(index, pixel):
+        start = index * requested
+        values[start:start + requested] = _lighting_hdr_decoder_rgbe(pixel, requested)
+
+    def flat(start):
+        paths.append("flat")
+        for index in range(start, width * height):
+            store(index, exact_four())
+
+    if not 8 <= width < 32768:
+        flat(0)
+        return result(values=values)
+    for row in range(height):
+        first = [scalar(), scalar(), scalar()]
+        if first[:2] != [2, 2] or first[2] >= 128:
+            store(0, bytes(first + [scalar()]))
+            fallback_rows.append(row)
+            flat(1)
+            return result(values=values)
+        if (first[2] << 8 | scalar()) != width:
+            return result("invalid decoded scanline length")
+        paths.append("rle")
+        scanline = bytearray(width * 4)
+        for channel in range(4):
+            output = 0
+            while output < width:
+                count = scalar()
+                if count > 128:
+                    value, count = scalar(), count & 127
+                    if count > width - output:
+                        return result("corrupt")
+                    for index in range(count):
+                        scanline[(output + index) * 4 + channel] = value
+                else:
+                    if count == 0 or count > width - output:
+                        return result("corrupt")
+                    for index in range(count):
+                        scanline[(output + index) * 4 + channel] = scalar()
+                output += count
+        for column in range(width):
+            store(row * width + column, scanline[column * 4:column * 4 + 4])
+    return result(values=values)
+
+
+def _lighting_hdr_decoder_boundaries():
+    return {
+        "entry": {"decoder_rva": "0x8e160", "rgbe_rva": "0x9c280", "byte_converter_rva": "0x8e920",
+            "current_requested_components": 4, "current_output_bits": 8, "source_components": 3,
+            "signatures": ["#?RADIANCE", "#?RGBE"], "format_line": "FORMAT=32-bit_rle_rgbe",
+            "format_line_exact_with_terminal_zero": True, "line_maximum_retained_bytes": 1023,
+            "line_overflow_drains_through_lf_or_eof": True, "cr_stripped": False,
+            "layout_prefix": "-Y ", "second_axis": "+X ", "other_orientations_supported": False,
+            "decimal_parse": "Signed32 base10 CRT parser; locale whitespace/sign accepted by parser, between height and +X only ASCII spaces skipped; width end pointer is not checked, trailing text accepted",
+            "dimension_upper_gate_signed": 16777216, "explicit_nonzero_dimension_check": False,
+            "checked_nonnegative_product_limit": 2147483647, "output_metadata_committed_before_allocation_and_decode": True,
+            "requested0_defaults_to3": True},
+        "encoding": {"new_rle_width_inclusive_range": [8, 32767], "new_scanline_header": [2, 2, "width_hi_without_high_bit", "width_lo"],
+            "scanline_encoded_width_must_equal_header_width": True, "planes_in_order": ["R", "G", "B", "E"],
+            "literal_counts": [1, 128], "repeat_code_range": [129, 255], "repeat_count": "code&127",
+            "zero_count_rejected": True, "counts_cannot_exceed_component_row_remainder": True,
+            "new_scanlines_allocate_width_times4_scratch_once": True,
+            "legacy_111_repeat_marker_expanded": False, "flat_pixel_is_four_raw_rgbe_bytes": True,
+            "mismatched_new_header_falls_back_to_flat": True,
+            "fallback": "First non-new pixel is written to the beginning of the entire output, row is reset0 and column1, remaining whole-image pixels read flat; earlier decoded rows are overwritten even if fallback occurs after row0",
+            "flat_exact_read_return_checked": False, "truncated_flat_can_use_uninitialized_or_previous_stack_bytes": True,
+            "scalar_exhaustion_may_supply_zero": True, "all_truncated_payloads_rejected": False},
+        "pixels": {"rgb_exponent_zero": [0.0, 0.0, 0.0], "nonzero_exponent": "float32(byte*float32(ldexp(double1,E-136)))",
+            "range_of_ldexp_argument": [-135, 119], "rgb_half_unit_bias_added": False,
+            "requested1or2_gray": "float32(float32((R+G+B)*factor)/float32(3)); sum*factor may overflow before division", "alpha": 1.0,
+            "native_ldexp_review": "Complete helper retained; current double1 and bounded exponent follow normal double reconstruction. Binary32 conversion and MXCSR subnormal/rounding behavior are distinct execution boundaries",
+            "byte_color_channels": "channels+(channels&1)-1: current4 transforms first3 with powf(float32(sample*scale),inverse_gamma)",
+            "byte_quantization": "float32(result*255),float32(+0.5),MAXSS against0,MINSS against255,CVTTSS2SI,store lowbyte",
+            "byte_alpha_uses_pow": False, "one_component_converter_uses_gamma": False,
+            "default_inverse_gamma": 0.45454543828964233, "default_scale": 1.0,
+            "nonfinite_and_mxcsr_or_compiler_pow_bitwise_parity_established": False},
+        "ownership": {"float_allocation": "checked(width*height*requested*4)", "scratch_allocation": "checked(width*4)",
+            "rle_error_frees_float_and_existing_scratch": True, "scratch_oom_frees_float": True,
+            "successful_rle_frees_scratch": True, "flat_fallback_frees_scratch": True,
+            "successful_decoder_transfers_float_output": True, "byte_converter_frees_float_on_success_or_output_oom": True,
+            "strict_raw_short_read_failure_or_initialized_output_guarantee": False,
+            "cpp_exception_unwind_or_heap_fault_recovery_established": False, "separate_async_cancel_observed": False,
+            "shared_file_close_flip_resize_and_pixel_free": "Reuse exact reviewed route/normalization/resampler dependencies"},
+        "scope": {"selected_hdr_pixel_semantics_reviewed": True, "synthetic_model_executes_callback_or_crt": False,
+            "synthetic_quantization_executes_pow": False, "setters_and_compiler_pow_reviewed_by_this_slice": False,
+            "actual_dll_results": False}}
+
+
+def _lighting_hdr_decoder_dependencies(previous=None):
+    import analysis as a
+    previous = previous if previous is not None else json.loads((a.ROOT / ".analysis/results/host-current/local-audit.json").read_bytes())
+    specs = (("lighting_jpeg_decoder_chain", "/remaining_chains/0", "bfe8c1ef706e1d01f7334a024fd4c9e7c4d2caa7db40dd60987b50c6a4fb389a", _lighting_jpeg_decoder_verify),
+        ("lighting_media_codec_boundaries", "/reviewed_selection_sha256", "ce65095eca1283483eaacf1e4126c145a992ce373a0a5c5d041d993249cfbde6", _verify_lighting_media_codec_boundaries),
+        ("lighting_media_resampler", "/reviewed_selection_sha256", "ad4d10d5541beaf62befc22025fee1ff24e95800ba8956b48fba0922ae955675", _verify_lighting_media_resampler))
+    result = []
+    for section, suffix, expected, verify in specs:
+        report = previous[section]
+        verify(report)
+        value = report["remaining_chains"][0] if suffix.endswith("/0") else report["reviewed_selection_sha256"]
+        digest = hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+        if digest != expected:
+            raise ValueError("HDR decoder exact upstream pointer changed: " + section + suffix)
+        result.append({"receipt": ".analysis/results/host-current/local-audit.json", "pointer": "/" + section + suffix,
+            "canonical_sha256": digest})
+    return result
+
+
+def _lighting_hdr_decoder_projection(report):
+    return {name: report[name] for name in ("current_native_release", "native", "instruction_evidence", "boundaries",
+        "reviewed_semantics", "fixed_vectors", "dependencies", "remaining_chains")}
+
+
+def _lighting_hdr_decoder_verify(report):
+    if report.get("boundaries") != _lighting_hdr_decoder_boundaries():
+        raise ValueError("HDR decoder boundary requires semantic review")
+    if (report.get("schema_version") != 1 or report.get("query") != "lighting-hdr-decoder-chain"
+            or report.get("kind") != "current_lighting_hdr_decoder_chain"
+            or report.get("selected_hdr_pixel_semantics_reviewed") is not True
+            or any(report.get(name) is not False for name in ("source_chain_complete", "target_execution", "product_code_modified", "real_device_operations"))
+            or any(report.get(name) != "unverified" for name in ("actual_dll_comparison", "runtime_acceptance", "ui_backend_wiring"))
+            or report.get("rust_independent_implementation") != "existing_not_revalidated"
+            or report.get("failures") or report.get("changed_during_query") or report.get("snapshot_stable") is not True):
+        raise ValueError("HDR decoder static boundary was promoted or snapshot failed")
+    native = report["native"]
+    if native["selected_pseudocode_failures"] or native["all_pseudocode_captured"] is not False or len(native["failures"]) != 10:
+        raise ValueError("HDR decoder capture failure was hidden")
+    digest = hashlib.sha256(json.dumps(_lighting_hdr_decoder_projection(report), ensure_ascii=False,
+        sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    if digest != "690f5b1fa546065f3e0b4307e8247fac9dcea57ae6bbc132d830e07df324a01e" or report.get("reviewed_selection_sha256") != digest:
+        raise ValueError("HDR decoder selected bytes require semantic review: " + digest)
+    return {"selected_native_functions": len(native["complete_selected_functions"]),
+        "actual_direct_edges": len(native["verified_call_edges"]), "selected_native_failures": 0,
+        "global_native_failures_retained": 10, "selected_hdr_pixel_semantics_reviewed": True,
+        "compiler_pow_and_setters_reviewed": False, "actual_dll_comparison": "unverified", "reviewed_selection_sha256": digest}
+
+
+def collect_lighting_hdr_decoder_chain(audit):
+    """Review current RGBE pixels and original failures without extending compiler pow or setters."""
+    original, release = _lighting_ripple_native_source(audit)
+    dependencies = _lighting_hdr_decoder_dependencies()
+    roles = {0x8e160: "hdr_header_rle_flat_and_owned_float", 0x9c0d0: "hdr_bounded_line_reader", 0x9c280: "hdr_rgbe_to_float_components",
+        0x8e920: "hdr_owned_float_to_byte", 0x1530f0: "current_double_one_exponent_reconstruction",
+        0x1593f0: "hdr_signed_decimal32_wrapper", 0x15a860: "hdr_signed_decimal32_parser", 0x9bdd0: "hdr_float_size_guard",
+        0x9be30: "hdr_checked_float_allocation", 0x93ba0: "hdr_scratch_checked_allocation", 0x93b60: "existing_two_product_size_guard",
+        0x93ad0: "existing_byte_output_allocation", 0x93b10: "existing_three_product_size_guard",
+        0x93d60: "existing_nonnegative_product_guard", 0x93d90: "existing_nonnegative_add_guard",
+        0x88fc0: "existing_allocate_thunk", 0x14fba0: "existing_free_thunk", 0x87e20: "existing_tls_error",
+        0x8f9b0: "existing_refill_eof_zero", 0x91c90: "existing_exact_read_ignored_by_hdr_flat", 0x8b440: "existing_file_eof_callback"}
+    graph = {0x8e160: (0x9c0d0, 0x1593f0, 0x9bdd0, 0x9be30, 0x8f9b0, 0x93ba0, 0x9c280, 0x91c90, 0x14fba0, 0x87e20),
+        0x9c0d0: (0x8f9b0,), 0x9c280: (0x1530f0,), 0x8e920: (0x93ad0, 0x154300, 0x14fba0, 0x87e20),
+        0x1593f0: (0x15a860,), 0x9bdd0: (0x93d60, 0x93d90), 0x9be30: (0x9bdd0, 0x88fc0),
+        0x93ba0: (0x93b60, 0x88fc0), 0x93b60: (0x93d60, 0x93d90), 0x93ad0: (0x93b10, 0x88fc0), 0x93b10: (0x93d60, 0x93d90)}
+    pairs = [(caller, target) for caller, targets in graph.items() for target in targets]
+    slots = [{"role": role, "vtable_rva": "0x1f59c0", "slot_byte_offset": offset, "target_rva": hex(target)}
+        for role, offset, target in (("read", 0, 0x8b3e0), ("skip", 8, 0x8b400), ("eof", 16, 0x8b440))]
+    native, functions = _lighting_type_media_native(audit, original, roles, slots, pairs)
+    raw = audit.read(original)
+    pe = inspect_pe(raw)
+    native["verified_data_regions"] = [_lighting_timed_constant(raw, pe, role, rva, size, sha) for role, rva, size, sha in (
+        ("format_exact_overlapping_strings", 0x1af290, 32, "351344622aca26c3f534a8fd91b1b125ab1d4e2a42df10961156e96066ea6aed"),
+        ("vector255_half_and_byte_mask", 0x1af2b0, 48, "096446ad6be6aad6f8f987a974b6ae3105d30738ff84897ff54344da20d06681"),
+        ("default_inverse_gamma_and_scale", 0x1f5998, 8, "cd13f453e31481db3654ad06d3b350c6f7d5060822431624115c971594e44c2d"),
+        ("double_one", 0x1aadd8, 8, "6c3c396ed6b5c36dcae172271f462051b1266b851e92df3deea8ac65478fd712"),
+        ("float_three", 0x1abfa8, 4, "ea2845900b5856c9bf354b1aa9761b5aa6888e5ed61738fe9579ca42bc0f6054"),
+        ("float255", 0x1acfd8, 4, "270696d298cc689d8e5bd75897918aa617a25a5030ccae98017053dddd974995"),
+        ("float_half", 0x1ac160, 4, "d99e58435243d9fef9c88273b8d553b4fba4d0baf8009d29eae74fa99e0d9f57"),
+        ("rgbe_zero_component_branch_table", 0x1aff24, 16, "b258fcb9ad5a285eb3927dda9786e0da1b9eebd42a38abe52cb9e6667a4b4513"),
+        ("file_callback_table", 0x1f59c0, 24, "70442b0c747a28fa481eb8c01fbe99a210a86445551cfad556bad00a0568a212"))]
+    evidence = {}
+    for role, owner, first, last in (
+        ("header_format_layout_metadata_and_alloc", 0x8e160, 0x8e160, 0x8e3b4),
+        ("new_rle_marker_counts_planes_and_float_rows", 0x8e160, 0x8e3f8, 0x8e764),
+        ("rle_errors_fallback_release_and_ignored_raw_read", 0x8e160, 0x8e7ef, 0x8e91e),
+        ("bounded_line_reader", 0x9c0d0, 0x9c0d0, 0x9c279),
+        ("complete_rgbe_conversion", 0x9c280, 0x9c280, 0x9c372),
+        ("bounded_double_ldexp_normal_branch", 0x1530f0, 0x153281, 0x1532cc),
+        ("bounded_double_ldexp_reconstruct", 0x1530f0, 0x153402, 0x15342c),
+        ("current_pow_operands_and_opaque_linear_alpha", 0x8e920, 0x8e985, 0x8ea77),
+        ("byte_allocation_failure_release", 0x8e920, 0x8ea83, 0x8ea99),
+        ("unrequested_gray_linear_vector_and_tail", 0x8e920, 0x8ea9e, 0x8eb81),
+        ("byte_normal_release", 0x8e920, 0x8eb83, 0x8ebac)):
+        rows = [row for row in functions[owner]["assembly"] if first <= int(row["rva"], 16) <= last]
+        if not rows or int(rows[0]["rva"], 16) != first or int(rows[-1]["rva"], 16) != last:
+            raise ValueError("HDR decoder exact instruction boundary changed: " + role)
+        evidence[role] = {"owner_rva": hex(owner), "first_rva": hex(first), "last_rva": hex(last), "instructions": rows}
+    report = {"schema_version": 1, "query": "lighting-hdr-decoder-chain", "kind": "current_lighting_hdr_decoder_chain",
+        "current_native_release": release, "native": native, "instruction_evidence": evidence,
+        "boundaries": _lighting_hdr_decoder_boundaries(), "dependencies": dependencies,
+        "reviewed_semantics": {
+            "header": "8E160/9C0D0 accept exact RADIANCE/RGBE signature and exact FORMAT=32-bit_rle_rgbe among header lines. LF ends lines, CR remains,1023 bytes retained while overlong remainder drains. Only-Y height +X width is supported.1593F0/15A860 parse signed32 base10; width trailing text is not checked. Signed upper gates and checked nonnegative size products precede float allocation, but no explicit nonzero dimension test; dimensions/source3 are committed before size/allocation/decode failures.",
+            "encoding": "Width8..32767 probes each row for2,2,nonnegative high,low and matching width, then four independent interleaved-scratch components. Codes1..128 are literals,129..255 repeat(code&127); zero and counts beyond remaining row fail. Other widths use raw4byte pixels; legacy1,1,1,count is not expanded. Non-new row headers enter global flat fallback: first pixel writes output0, resets row0/column1 and overwrites prior rows. Fixed raw read91C90 return is ignored; no deterministic initialized output or strict truncation failure is claimed. Scalar missing values may be zero, so new RLE value exhaustion differs from zero count exhaustion.",
+            "pixels": "9C280 uses exponent0 black or byte*float32(ldexp(double1,E-136)), with no0.5 mantissa bias. Requested4 appends alpha1;1/2 use(R+G+B)*factor/3 and2 appends1.1530F0 current bounded input follows ordinary double exponent reconstruction before CVTSD2SS.8E920 current4 feeds first3 float32(sample*scale),inverse_gamma to154300 then binary32*255,+.5,MAXSS0,MINSS255,CVTTSS2SI; alpha uses same linear quantization without pow. The retained unrequested one-component converter is linear as compiled. PE defaults and arithmetic instruction order are bound; compiler pow/setter lifetime,MXCSR and nonfinite bitwise results remain independent.",
+            "ownership": "Checked float allocation and one width*4 scratch owner are separate. Invalid RLE width/count frees both, scratch OOM frees output, successful RLE or flat fallback frees scratch. Successful decoder transfers float output to byte converter, which frees float on output OOM and normal return. No exception/heapfault recovery or distinct async cancel was established. File close,optional flip,resampler and final byte free reuse exact shared dependencies."},
+        "fixed_vectors": {"rgbe": [{"input_hex": "ff804000", "requested": 4, "expected_float_le_hex": "0000000000000000000000000000803f"},
+            {"input_hex": "80402081", "requested": 4, "expected_float_le_hex": "0000803f0000003f0000803e0000803f"},
+            {"input_hex": "01000001", "requested": 4, "expected_float_le_hex": "0040000000000000000000000000803f"},
+            {"input_hex": "ff0000ff", "requested": 4, "expected_float_le_hex": "0000ff7e00000000000000000000803f"},
+            {"input_hex": "80402081", "requested": 2, "expected_float_le_hex": "5555153f0000803f"},
+            {"input_hex": "ffffffff", "requested": 2, "expected_float_le_hex": "0000807f0000803f"}],
+            "quantization": [{"samples": [-1.0, 0.0, 0.5, 1.0, 2.0], "expected_hex": "000080ffff"},
+                {"samples": [0.001953125, 0.00390625, 0.25, 0.75], "expected_hex": "000140bf"}],
+            "actual_dll_results": False, "scope": "Finite arithmetic and complete bounded ASCII/RGBE streams only; quantization starts after pow and never substitutes host pow or native callback/CRT execution"},
+        "remaining_chains": [{"owner": "HDR setters/compiler pow", "status": "Selected HDR header/pixels/normal error ownership reviewed; global mutation lifetime,actual compiler pow and floating-point environment results remain independent"},
+            {"owner": "AI1.0.1.0 and actual product Quick branches", "status": "Existing model/pattern and product-specific dependencies unchanged"},
+            {"owner": "independent Rust image codecs/UI/backend and functional official DLL comparison", "status": "All nine selected format pixel slices now reviewed individually; static witnesses do not verify production Rust/UI/backend,callback short reads,allocator/environment results or official DLL execution"}],
+        "selected_hdr_pixel_semantics_reviewed": True, "source_chain_complete": False, "target_execution": False,
+        "product_code_modified": False, "real_device_operations": False, "rust_independent_implementation": "existing_not_revalidated",
+        "ui_backend_wiring": "unverified", "actual_dll_comparison": "unverified", "runtime_acceptance": "unverified", "failures": [],
+        "maintenance_lifecycle": {"temporary_artifacts_created": [], "analysis_sessions_created": [], "reused_complete_native_captures": True}}
+    if _lighting_hdr_decoder_dependencies() != dependencies:
+        raise ValueError("HDR decoder exact upstream dependency changed during query")
+    report["complete_originals"] = list(audit.sources.values())
+    report["complete_source_owners"] = list(audit.owners.values())
+    report["reviewed_selection_sha256"] = hashlib.sha256(json.dumps(_lighting_hdr_decoder_projection(report),
+        ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    report["verified_artifacts"] = list(audit.artifacts.values())
+    report["changed_during_query"] = audit.final_snapshot()
+    report["snapshot_stable"] = not report["changed_during_query"]
+    report["verification"] = _lighting_hdr_decoder_verify(report)
+    return report
+
+
+def _lighting_hdr_parameters_dependencies(previous=None):
+    import analysis as a
+    previous = previous if previous is not None else json.loads((a.ROOT / ".analysis/results/host-current/local-audit.json").read_bytes())
+    section = previous["lighting_hdr_decoder_chain"]
+    _lighting_hdr_decoder_verify(section)
+    result = []
+    for pointer, value, expected in (
+            ("/lighting_hdr_decoder_chain", section, "729d0cfc94834dd357e1abe5dc1373c47c6f4fe1600bbe9edcc42da7ec57e639"),
+            ("/lighting_hdr_decoder_chain/remaining_chains/0", section["remaining_chains"][0],
+                "fb7dcaed7089208eb1cab7f36d479791c8910a5408fce5f65b432cddbc60d9cd")):
+        digest = hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+        if digest != expected:
+            raise ValueError("HDR parameters exact upstream pointer changed: " + pointer)
+        result.append({"receipt": ".analysis/results/host-current/local-audit.json", "pointer": pointer,
+            "canonical_sha256": digest})
+    return result
+
+
+def _lighting_hdr_parameters_references(assembly, raw, image_base):
+    """Inventory the two actual globals within the retained instruction stream and PE bytes."""
+    import struct
+    references = []
+    for line in assembly.splitlines():
+        row = re.fullmatch(r"0x([0-9a-fA-F]+)  ([0-9a-fA-F]+)  (.+)", line)
+        if row is not None and re.search(r"\b(?:dword|qword)_1801F599(?:8|C)\b", row[3], re.IGNORECASE):
+            references.append({"instruction_rva": hex(int(row[1], 16) - image_base),
+                "bytes": row[2], "text": row[3]})
+    pointers = {}
+    for rva in (0x1f5998, 0x1f599c):
+        needle, offsets, offset = struct.pack("<Q", image_base + rva), [], -1
+        while (offset := raw.find(needle, offset + 1)) >= 0:
+            offsets.append(offset)
+        pointers[hex(rva)] = offsets
+    return {"captured_instruction_references": references, "absolute_va_file_offsets": pointers,
+        "scope": "All retained function assembly and file-backed absolute VA bytes in this exact module; not an assertion about uncaptured indirect writes or other modules"}
+
+
+def _lighting_hdr_parameters_boundaries():
+    return {
+        "parameters": {"inverse_gamma_rva": "0x1f5998", "scale_rva": "0x1f599c", "storage": "module_shared_writable_data",
+            "thread_local": False, "captured_read_references": ["0x8ea00", "0x8ea0d"], "captured_write_references": [],
+            "absolute_pointer_references": [], "exported_setter_established": False,
+            "ui_control_or_mutation_api_inferred": False, "originals_or_formal_evidence_deleted": False},
+        "consumer": {"requested_components": 4, "rgb": "powf(float32(sample*scale),inverse_gamma)",
+            "alpha": "linear_float32_quantization", "alpha_reads_hdr_parameters": False,
+            "reverse_ldr_float_converter_is_current_byte_loader": False, "pow_error_checked_before_quantization": False},
+        "pow": {"actual_abi": "float_xmm0_base_float_xmm1_exponent_to_float_xmm0",
+            "decompiler_signature_trusted": False, "normal_intermediate": "binary64_table_polynomial_then_binary32",
+            "dispatch_global_rva": "0x1f9b54", "dispatch_zero": "SSE", "dispatch_nonzero": "AVX_FMA",
+            "avx_near_one_rejoins_sse_exponent_reconstruction": True, "exact_floating_environment_results_verified": False,
+            "allocator_or_device_operation_in_pow": False, "separate_async_cancel_established": False},
+        "errors": {"error_owner_rva": "0x183890", "quiet_nan_owner_rva": "0x17c740",
+            "quiet_nan_mask": "0x400000", "kind_3_4_5_quiet_return": True,
+            "kind_2": {"matherr_selector": 2, "exception_mask": 4, "errno_argument": 34},
+            "kind_6": {"matherr_selector": 1, "exception_mask": 8, "errno_argument": 33},
+            "kind_7": {"matherr_selector": 4, "exception_mask": 18, "errno_argument": 34},
+            "kind_9": {"matherr_selector": 3, "exception_mask": 17, "errno_argument": 34},
+            "errno_mapper_only_sets_selectors": [1, 2, 3], "kind_7_sets_errno_through_mapper": False,
+            "pow_wrapper_consumes_matherr_return_value": False,
+            "decoder_error_string_same_as_crt_errno": False, "exception_unwind_releases_converter_input_proven": False}}
+
+
+def _lighting_hdr_parameters_projection(report):
+    return {name: report[name] for name in ("current_native_release", "native", "reference_inventory", "actual_exports",
+        "instruction_evidence", "boundaries", "reviewed_semantics", "upstream_sections", "remaining_chains")}
+
+
+def _lighting_hdr_parameters_verify(report):
+    if report.get("boundaries") != _lighting_hdr_parameters_boundaries():
+        raise ValueError("HDR parameters boundary requires semantic review")
+    if (report.get("schema_version") != 1 or report.get("query") != "lighting-hdr-parameters-chain"
+            or report.get("kind") != "current_lighting_hdr_parameters_chain"
+            or report.get("selected_hdr_parameters_pow_static_semantics_reviewed") is not True
+            or any(report.get(name) is not False for name in ("source_chain_complete", "target_execution", "product_code_modified", "real_device_operations"))
+            or any(report.get(name) != "unverified" for name in ("actual_dll_comparison", "runtime_acceptance", "ui_backend_wiring", "actual_pow_numerical_results"))
+            or report.get("rust_independent_implementation") != "existing_not_revalidated"
+            or report.get("failures") or report.get("changed_during_query") or report.get("snapshot_stable") is not True):
+        raise ValueError("HDR parameters static boundary was promoted or snapshot failed")
+    native = report["native"]
+    if native["selected_pseudocode_failures"] or native["all_pseudocode_captured"] is not False or len(native["failures"]) != 10:
+        raise ValueError("HDR parameters capture failure was hidden")
+    digest = hashlib.sha256(json.dumps(_lighting_hdr_parameters_projection(report), ensure_ascii=False,
+        sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    if digest != "9ab222f201e37fe3bc1061c92892aa045b0afcbe8fdedfb85036f22816702d76" or report.get("reviewed_selection_sha256") != digest:
+        raise ValueError("HDR parameters selected bytes require semantic review: " + digest)
+    return {"selected_native_functions": len(native["complete_selected_functions"]),
+        "actual_direct_edges": len(native["verified_call_edges"]), "selected_native_failures": 0,
+        "global_native_failures_retained": 10, "selected_hdr_parameters_pow_static_semantics_reviewed": True,
+        "captured_parameter_write_references": 0, "actual_pow_numerical_results": "unverified", "reviewed_selection_sha256": digest}
+
+
+def collect_lighting_hdr_parameters_chain(audit):
+    """Review actual HDR globals, powf instructions and CRT effects without executing the DLL."""
+    original, release = _lighting_ripple_native_source(audit)
+    upstream = _lighting_hdr_parameters_dependencies()
+    roles = {0x8e920: "hdr_rgb_pow_and_linear_alpha_consumer", 0x9c5b0: "separate_reverse_ldr_to_float_consumer",
+        0x154300: "actual_float_pow_sse_and_avx_fma", 0x183890: "pow_special_result_and_error_dispatch",
+        0x17c740: "quiet_nan_payload_return", 0x17c750: "crt_float_exception_matherr_errno_wrapper",
+        0x17c630: "crt_mxcsr_mask_and_status_dispatch", 0x173b50: "crt_encoded_matherr_presence",
+        0x173b70: "crt_encoded_matherr_callback_dispatch", 0x181280: "crt_errno_selector_mapping",
+        0x149c8c: "crt_errno_pointer_or_static_fallback", 0x17ca40: "crt_actual_cpu_dispatch_initializer",
+        0x87e20: "distinct_decoder_tls_error_string"}
+    graph = {0x8e920: (0x154300, 0x14fba0, 0x87e20), 0x9c5b0: (0x154300, 0x9be30, 0x14fba0, 0x87e20),
+        0x154300: (0x183890,), 0x183890: (0x17c740, 0x17c750),
+        0x17c750: (0x17c630, 0x181640, 0x173b50, 0x173b70, 0x181280),
+        0x17c630: (0x17c4c0, 0x17c500, 0x17c4d0, 0x17c590),
+        0x181280: (0x149c8c,), 0x149c8c: (0x16b5dc,)}
+    native, functions = _lighting_type_media_native(audit, original, roles, (),
+        [(caller, target) for caller, targets in graph.items() for target in targets])
+    raw, pe = audit.read(original), inspect_pe(audit.read(original))
+    native["verified_data_regions"] = [_lighting_timed_constant(raw, pe, role, rva, size, sha) for role, rva, size, sha in (
+        ("separate_ldr_and_hdr_global_defaults", 0x1f5990, 16, "496eada1ea432fdbf0408f9dd384f64ea276ac42cbe93743f6182b99d707ec66"),
+        ("pow_error_kind_constants", 0x1b5964, 32, "b06e51b2494d439f5e151692ca393efc3c52cdfddcc377be789356250b9860a6"),
+        ("pow_scalar_and_near_one_constants", 0x1b5984, 140, "16682375ae5d503d007d7aea0171eeb8d0c21be4aae76f23b9507496a07febcf"),
+        ("pow_reduction_masks_and_scale", 0x1b5a10, 64, "b23296990bdb89e2698db096e54228213e3129a3fed0e8c8a30d473a11bdcb64"),
+        ("pow_log257_table", 0x1b5a50, 2056, "6e3c1a3efc4d537e009d971c928441d68e508b8e09a7de1ef09aa3c5bf740bb4"),
+        ("pow_reciprocal257_table", 0x1bd1c0, 2056, "229d2459bbb3cb9c459844b78a6abdd8fddf1bdaefdb4057f4ea6679bf6cde24"),
+        ("pow_exp64_table", 0x1bac10, 512, "88c233557c8c42e92e6e0af7bd1704fcad9d649c3c5aeef5a87004915d81d98f"),
+        ("pow_error_switch9_table", 0x1839dc, 36, "564a8e6e6c9e76e628fbc4c317d49268163fbf48b90040813c5a1dfc282a600b"),
+        ("cpu_initializer_pointer", 0x1c5888, 8, "73efc99a803ab205cf8a9e86dc603aebc662e25347d0d35ad73516641ccd1923"),
+        ("sse_isa_initial_level", 0x1f4e80, 4, "67abdd721024f0ff4e0b3f4c2fc13bc5bad42d0b7851d456d88d203d15aaa450"),
+        ("actual_powf_error_label", 0x1bd9d0, 5, hashlib.sha256(b"powf\0").hexdigest()))]
+    capture_path = audit.a.ROOT / native["capture_receipt"]["path"]
+    capture = json.loads(audit.artifact(capture_path, native["capture_receipt"]))
+    if capture["capture_complete"] is not True or capture["functions_captured"] != 8694:
+        raise ValueError("HDR parameters reference inventory requires the retained complete function capture")
+    asm, = [row for row in capture["outputs"] if row["path"] == "all-functions.asm"]
+    asm_raw = audit.artifact(capture_path.parent / asm["path"], asm)
+    inventory = _lighting_hdr_parameters_references(asm_raw.decode("utf-8"), raw, int(native["image_base"], 16))
+    expected_references = [{"instruction_rva": "0x8ea00", "bytes": "f30f100d906f1600", "text": "movss   xmm1, cs:dword_1801F5998"},
+        {"instruction_rva": "0x8ea0d", "bytes": "f30f5905876f1600", "text": "mulss   xmm0, cs:dword_1801F599C"}]
+    if (inventory["captured_instruction_references"] != expected_references
+            or inventory["absolute_va_file_offsets"] != {"0x1f5998": [], "0x1f599c": []}):
+        raise ValueError("HDR parameters actual references require semantic review")
+    inventory["retained_assembly"] = {**asm, "path": audit.a.rel(capture_path.parent / asm["path"])}
+    inventory["complete_captured_functions"] = capture["functions_captured"]
+    section, = [row for row in pe["sections"] if row["rva"] <= 0x1f5998 < row["rva"] + row["bytes"]]
+    tls, = [row for row in pe["sections"] if row["name"] == ".tls"]
+    if section["name"] != ".data" or tls["rva"] <= 0x1f5998 < tls["rva"] + tls["virtual_bytes"]:
+        raise ValueError("HDR parameters actual storage section differs")
+    inventory["parameter_storage_section"], inventory["separate_tls_section"] = section, tls
+    evidence = {}
+    for role, owner, first, last in (
+            ("hdr_rgb_operands_linear_alpha_and_release", 0x8e920, 0x8e985, 0x8ebac),
+            ("reverse_ldr_distinct_gamma_and_scale", 0x9c5b0, 0x9c687, 0x9c734),
+            ("pow_entry_sse_table_polynomial_and_return", 0x154300, 0x154300, 0x1544a5),
+            ("sse_negative_base_mxcsr_restore_and_near_one", 0x154300, 0x1544b0, 0x1545a4),
+            ("sse_signed_zero_infinity_nan_and_error_routes", 0x154300, 0x1545b0, 0x154ab5),
+            ("avx_fma_table_polynomial_and_return", 0x154300, 0x154ab6, 0x154c46),
+            ("avx_near_one_rejoins_sse_and_special_routes", 0x154300, 0x154c50, 0x1551b5),
+            ("pow_special_result_preserved_over_crt_wrapper", 0x183890, 0x183890, 0x1839d9),
+            ("crt_callback_result_errno_and_exception_entry", 0x17c750, 0x17c750, 0x17c88f),
+            ("cpu_dispatch_global_writes", 0x17ca40, 0x17ca40, 0x17caf1)):
+        rows = [row for row in functions[owner]["assembly"] if first <= int(row["rva"], 16) <= last]
+        if not rows or int(rows[0]["rva"], 16) != first or int(rows[-1]["rva"], 16) != last:
+            raise ValueError("HDR parameters exact instruction boundary changed: " + role)
+        evidence[role] = {"owner_rva": hex(owner), "first_rva": hex(first), "last_rva": hex(last), "instructions": rows}
+    report = {"schema_version": 1, "query": "lighting-hdr-parameters-chain", "kind": "current_lighting_hdr_parameters_chain",
+        "current_native_release": release, "native": native, "reference_inventory": inventory, "actual_exports": pe["exports"],
+        "instruction_evidence": evidence, "boundaries": _lighting_hdr_parameters_boundaries(), "upstream_sections": upstream,
+        "reviewed_semantics": {
+            "parameters": "1F5998/1F599C are shared writable .data floats,initial inverse_gamma0.45454543828964233 and scale1. Retained complete8694function assembly has only8EA00/8EA0D reads; no captured store,address-taken absolute VA or matching exported setter is established. This closes the assumed setter boundary only for this exact module and capture; it creates no mutation API/UI control and does not assert arbitrary indirect writes are impossible. Decoder error string87E20 instead uses module TLS+8.",
+            "consumers": "Current requested4 byte conversion uses float32(sample*scale) inXMM0 and inverse_gamma inXMM1,receives floatXMM0 and continues existing float32 quantization without testing pow errno/result status. Alpha never reads either HDR parameter or calls pow. Separate9C5B0 has three real pow call sites,uses1F5990 gamma2.200000047683716 and1F5994 post-scale1 for byte/255 color; its alpha is linear. It is not substituted for the current HDR byte-loader. Existing converter OOM/normal input free remain upstream; unhandled CRT exceptions do not establish unwind cleanup.",
+            "pow": "154300 is actual powf despite incorrect int/double Hex-Rays signature and local-allocation warning. Bit tests classify exponent/base zero,infinity,NaN and negative base integral/odd exponent. Finite normal paths use binary64 range reduction,257entry reciprocal/log tables,log polynomial,exponent multiplication and64entry exp reconstruction,then CVTSD2SS. Near-one uses abs(x-1)<.0625 and its own polynomial. y*log(x)>88.72283935546875 or <=-103.2789306640625 reaches overflow/underflow handlers. Shared1F9B54 zero selects SSE; nonzero selects AVX/FMA with fused arithmetic,except near-one explicitly rejoins1543FE SSE exponent arithmetic. CPUID1 ECX mask18001000 andXGETBV mask6 establish1; CPUID7 EBX20 may promote3. Initializer pointer1C5888 andactual CPU writes are retained. These static instructions do not establish host CPU choice,MXCSR,subnormal/trap behavior or bitwise numerical parity.",
+            "special_errors": "183890 dispatches real kind constants2..9.3/4/5 quiet the candidate float withbit400000 through17C740;2/6/7/9 send powf/function29,selectors2/1/4/3,exception masks4/8/18/17 anderrno arguments34/33/34/34 to17C750.17C630 inspects/restores MXCSR masks/status andmay reach181640/_raise_excf; registered matherr callback is decoded from shared cookie-protected1F9AF8.181280 only writeserrno33 forselector1,34 for2/3,soselector4 underflow is not unconditionally errno34.149C8C gets CRT per-thread state+32 orstatic fallback. Crucially183890 preservescandidate inXMM6 andrestoresXMM0 after17C750,ignoring its potentially modified return; callbacks andtraps maystill have effects. No pow allocator,device I/O orasync cancel is established. Generic CRT thread-state allocation,exception delivery andcallback outcomes stay separate from decoder-owned image release."},
+        "remaining_chains": [
+            {"owner": "pow actual numerical comparison and floating-point environment", "status": "Current globals,all captured references,actual float ABI,SSE/FMA arithmetic and immediate CRT error consumers reviewed; actual CPU/MXCSR/subnormal/nonfinite/trap/callback results and exception-unwind image ownership remain unverified"},
+            {"owner": "AI1.0.1.0 and actual product Quick branches", "status": "Existing model/pattern and product-specific dependencies unchanged"},
+            {"owner": "independent Rust image codecs/UI/backend and functional official DLL comparison", "status": "Static parameter/pow findings do not implement or verify production Rust/UI/backend or official DLL execution"}],
+        "selected_hdr_parameters_pow_static_semantics_reviewed": True, "source_chain_complete": False,
+        "target_execution": False, "product_code_modified": False, "real_device_operations": False,
+        "rust_independent_implementation": "existing_not_revalidated", "ui_backend_wiring": "unverified",
+        "actual_pow_numerical_results": "unverified", "actual_dll_comparison": "unverified", "runtime_acceptance": "unverified", "failures": [],
+        "maintenance_lifecycle": {"temporary_artifacts_created": [], "analysis_sessions_created": [], "reused_complete_native_captures": True}}
+    if _otfm_macro_encoding_dependency_changes(upstream):
+        raise ValueError("HDR parameters exact upstream dependency changed during query")
+    report["complete_originals"] = list(audit.sources.values())
+    report["complete_source_owners"] = list(audit.owners.values())
+    report["reviewed_selection_sha256"] = hashlib.sha256(json.dumps(_lighting_hdr_parameters_projection(report),
+        ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    report["verified_artifacts"] = list(audit.artifacts.values())
+    report["changed_during_query"] = audit.final_snapshot()
+    report["snapshot_stable"] = not report["changed_during_query"]
+    report["verification"] = _lighting_hdr_parameters_verify(report)
+    return report
+
+
+def _lighting_ai_model_primary_colors():
+    return [127, 65535, 802917, 2460111, 3753048, 4894788, 8008747, 8323327,
+        8388352, 10517857, 13421772, 16553138, 16711680, 16744192, 16776960, 16777215]
+
+
+def _lighting_ai_model_rank(scores, colors=None):
+    """Witness the native strict-greater insertion ranking over finite float32 scores."""
+    import math
+    import struct
+    colors = _lighting_ai_model_primary_colors() if colors is None else colors
+    if (len(scores) != 16 or len(colors) != 16
+            or any(type(value) not in (float, int) or not math.isfinite(value) for value in scores)
+            or any(type(value) is not int or not 0 <= value <= 0xffffffff for value in colors)):
+        raise ValueError("AI rank witness needs sixteen finite scores and uint32 primary colors")
+    ranked = []
+    for index, value in enumerate(scores):
+        try:
+            score = struct.unpack("<f", struct.pack("<f", value))[0]
+        except OverflowError as error:
+            raise ValueError("AI rank witness needs finite float32 scores") from error
+        if not math.isfinite(score):
+            raise ValueError("AI rank witness does not model nonfinite float32 scores")
+        position = len(ranked)
+        while position and score > ranked[position - 1][0]:
+            position -= 1
+        ranked.insert(position, (score, index))
+    return [colors[index] for _, index in ranked]
+
+
+def _lighting_ai_model_normalize(pixel_bytes):
+    """Project each native four-byte pixel's first three channels, without inference."""
+    import struct
+    if not isinstance(pixel_bytes, bytes) or len(pixel_bytes) % 4:
+        raise ValueError("AI input witness needs complete four-byte pixels")
+    return [struct.unpack("<f", struct.pack("<f", value / 255.0))[0]
+        for start in range(0, len(pixel_bytes), 4) for value in pixel_bytes[start:start + 3]]
+
+
+def _lighting_ai_model_dependencies(previous=None):
+    import analysis as a
+    previous = previous if previous is not None else json.loads((a.ROOT / ".analysis/results/host-current/local-audit.json").read_bytes())
+    specs = (("lighting_hdr_decoder_chain", "/remaining_chains/1",
+        "402638b3c05ddbb6cddb952a3b044ccd62bfe69fbef397577713bf674009c66c", _lighting_hdr_decoder_verify),
+        ("lighting_media_calculations", "/reviewed_selection_sha256",
+            "841e17e0d9991f251fde74acaaa026dee91dcb66981428e1a95e9364b1ae8fda", _verify_lighting_media_calculations),
+        ("lighting_type_media_chain", "/reviewed_selection_sha256",
+            "45a142f0e48214f1f54751c533b8e236d58bafcfff828b2960523455751b3f55", _verify_lighting_type_media_claims))
+    result = []
+    for section, suffix, expected, verify in specs:
+        report = previous[section]
+        verify(report)
+        value = report["remaining_chains"][1] if suffix.endswith("/1") else report["reviewed_selection_sha256"]
+        digest = hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+        if digest != expected:
+            raise ValueError("AI model exact upstream pointer changed: " + section + suffix)
+        result.append({"receipt": ".analysis/results/host-current/local-audit.json", "pointer": "/" + section + suffix,
+            "canonical_sha256": digest})
+    return result
+
+
+def _lighting_ai_model_sources(audit, previous):
+    media = previous["lighting_type_media_chain"]
+    owners = {row["id"]: row for row in media["complete_source_owners"]}
+    selected = {role: owners[media["selected"][role]] for role in
+        ("initialize_ai_generator", "initialize_ai_action", "media_parameters", "generator_choices", "panel")}
+    startup = next(row for row in previous["dynamic_lighting"]["complete_source_owners"]
+        if "lighting_native_startup_lifecycle" in row["roles"])
+    if (startup["id"] != "8c9f7074401b54927c5dc49f68a5bf66467ef415ce5655ea5808b48c6681efd3:1608359:1611821"
+            or startup["body_sha256"] != "9b12cfae75b3684098993950ebc969cfba05240fc74d4713a9ed9d493139e25c"):
+        raise ValueError("AI model actual startup caller needs renewed review")
+    selected["startup"] = startup
+    roles = {}
+    for role, owner in selected.items():
+        body = audit.read(owner["original"])[owner["byte_start"]:owner["byte_end"]]
+        if body.decode() != owner["body"] or hashlib.sha256(body).hexdigest() != owner["body_sha256"]:
+            raise ValueError("AI model actual source owner differs: " + role)
+        roles[role] = audit.retain_range("lighting_ai_model_" + role, owner["original"],
+            owner["byte_start"], owner["byte_end"], owner["syntax"])
+    body = startup["body"]
+    colors = ",".join(map(str, _lighting_ai_model_primary_colors()))
+    if any(token not in body for token in ('if(console.log(`${e} ==>`),!(0,u.I4)())return',
+            's&&(await(async()=>', '"RzChromaAIColorGenDLL"===e.name', 'await t.A.initChromaAiColorGen(n,[' + colors + '])')):
+        raise ValueError("AI model actual startup gate or primary colors differ")
+    return roles
+
+
+def _lighting_ai_model_native_specs():
+    roles = {
+        0x2350: "AiColorGen_Create", 0x2410: "embedded_model_resource", 0x2490: "AiColorGen_Destroy",
+        0x24c0: "AiColorGen_Generate", 0x1000: "owned_generator_constructor", 0x1090: "owned_generator_cleanup",
+        0x10f0: "generate_dispatch", 0x1140: "normalize_invoke_rank", 0x1570: "model_interpreter_initialization",
+        0xca60: "build_memory_model", 0xc6a0: "owned_model_publication", 0xcce0: "model_allocation_and_identifier",
+        0xdff0: "model_identifier_gate", 0xcbb0: "buffer_zero_diagnostic", 0x298ef0: "borrowed_model_memory",
+        0x18b90: "model_root_thunk", 0x18ba0: "model_root_offset", 0xe090: "model_cleanup",
+        0x2560: "builtin_resolver_constructor", 0x1e1e0: "register_builtin_versions", 0x1e0f0: "register_builtin_copy",
+        0x4c10: "interpreter_builder_constructor", 0x8960: "interpreter_builder", 0x5030: "model_opcode_registration",
+        0x281d90: "model_builtin_code", 0x281e50: "resolve_model_opcode_version", 0x53c0: "model_node_configuration",
+        0x294570: "builtin_options_thunk", 0x294580: "builtin_options_dispatch", 0x7c20: "model_tensor_configuration",
+        0x28bcc0: "schema_to_runtime_tensor_type", 0x28ce50: "conv_options", 0x28f6c0: "pool_options",
+        0x28fcc0: "reshape_options", 0x28dd80: "dense_options", 0x292210: "softmax_options",
+        0x284820: "node_init_and_registration_copy", 0x286e10: "node_init_dispatch",
+        0x1a6c0: "allocate_tensors", 0x1a6f0: "apply_default_delegates", 0x1b180: "graph_already_delegated",
+        0x1b190: "apply_delegate_to_subgraphs", 0x285ee0: "subgraph_allocate_tensors",
+        0x286690: "prepare_plan_and_arena", 0x287b60: "prepare_nodes", 0x2879c0: "node_prepare_dispatch",
+        0x1ab20: "interpreter_invoke", 0x287eb0: "subgraph_invoke_report", 0x287ee0: "subgraph_invoke",
+        0x287a90: "node_invoke_dispatch", 0x19d70: "interpreter_cleanup", 0x8930: "reset_interpreter_cleanup",
+        0x4eb0: "builder_cleanup", 0x17b0: "resolver_cleanup",
+        0x4dd00: "register_conv", 0x42fc0: "register_pool", 0x11fa90: "register_reshape",
+        0xb6990: "register_dense", 0x2ec90: "register_softmax",
+        0x4bcf0: "conv_init", 0x4bd60: "conv_free", 0x4db30: "conv_prepare", 0x4db40: "conv_invoke",
+        0x4bf90: "conv_prepare_types_dimensions_scratch", 0x95220: "conv_float_route", 0x96840: "conv_float_kernel_route",
+        0x41ee0: "pool_init", 0x41ef0: "pool_free", 0x42370: "pool_prepare", 0x42d90: "pool_invoke",
+        0x491e0: "pool_float_route", 0x49720: "pool_float_maximum_and_clamp",
+        0x11fa70: "reshape_init", 0x11fa80: "reshape_free", 0x11f7b0: "reshape_prepare",
+        0x11f9a0: "reshape_invoke", 0x11f250: "reshape_dimensions",
+        0xb1df0: "dense_init", 0xb1e40: "dense_free", 0xb6270: "dense_prepare", 0xb6340: "dense_invoke",
+        0xb2380: "dense_prepare_types_dimensions", 0xbc440: "dense_float_route", 0xbe050: "dense_float_gemm_route",
+        0x23db0: "softmax_init", 0x23df0: "softmax_free", 0x2eca0: "softmax_prepare", 0x2f9c0: "softmax_invoke",
+        0x25d90: "softmax_float_route", 0x262f0: "softmax_float_workers", 0x32f20: "softmax_float_normalization",
+        0x4ab0: "default_delegate_creator", 0x281d10: "default_delegate_options",
+        0x2eef60: "default_delegate_option_initialization", 0x2eefd0: "default_delegate_create",
+        0x31f4d0: "delegate_backend_initialize", 0x31f57c: "delegate_weights_cache_create",
+        0x2ef970: "delegate_prepare_graph", 0x2efdb0: "delegate_select_supported_nodes",
+        0x2f1b90: "delegate_operator_dispatch", 0x2fc4b0: "delegate_dense_configuration",
+        0x3024c0: "delegate_partition_create_runtime", 0x304800: "delegate_partition_free",
+        0x304990: "delegate_partition_prepare", 0x3049a0: "delegate_partition_invoke",
+        0x2ef6a0: "delegate_free", 0x289750: "subgraph_apply_delegate_report",
+        0x2891b0: "subgraph_apply_delegate", 0x289610: "restore_original_plan"}
+    pairs = ((0x2350, 0x2410), (0x2350, 0x1000), (0x1000, 0x1570), (0x24c0, 0x10f0),
+        (0x10f0, 0x1140), (0x2490, 0x1090), (0x1090, 0x19d70), (0x1090, 0xe090),
+        (0x1570, 0xca60), (0xca60, 0x298ef0), (0xca60, 0xc6a0), (0xc6a0, 0xcce0),
+        (0xc6a0, 0xcbb0), (0xcce0, 0xdff0), (0xcce0, 0x18b90), (0x18b90, 0x18ba0),
+        (0x1570, 0x2560), (0x1570, 0x4c10), (0x1570, 0x8960), (0x1570, 0x1a6c0),
+        (0x1570, 0x19d70), (0x1570, 0x4eb0), (0x1570, 0x17b0), (0x8960, 0x5030),
+        (0x5030, 0x281d90), (0x5030, 0x281e50), (0x281e50, 0x281d90),
+        (0x8960, 0x7c20), (0x7c20, 0x28bcc0), (0x8960, 0x53c0), (0x53c0, 0x294570),
+        (0x294570, 0x294580), (0x53c0, 0x284820), (0x284820, 0x286e10),
+        (0x1a6c0, 0x1a6f0), (0x1a6c0, 0x285ee0), (0x1a6f0, 0x1b180), (0x1a6f0, 0x1b190),
+        (0x285ee0, 0x286690), (0x286690, 0x287b60), (0x287b60, 0x2879c0),
+        (0x1140, 0x1ab20), (0x1ab20, 0x287eb0), (0x287eb0, 0x287ee0), (0x287ee0, 0x287a90),
+        (0x8960, 0x8930), (0x8930, 0x19d70), (0x1e1e0, 0x1e0f0),
+        (0x2560, 0x4dd00), (0x2560, 0x42fc0), (0x2560, 0x11fa90), (0x2560, 0xb6990), (0x2560, 0x2ec90),
+        (0x294580, 0x28ce50), (0x294580, 0x28f6c0), (0x294580, 0x28fcc0),
+        (0x294580, 0x28dd80), (0x294580, 0x292210), (0x4db30, 0x4bf90),
+        (0x4db40, 0x95220), (0x95220, 0x96840), (0x42d90, 0x491e0), (0x491e0, 0x49720),
+        (0x11f7b0, 0x11f250), (0x11f9a0, 0x11f250), (0xb6270, 0xb2380),
+        (0xb6340, 0xbc440), (0xbc440, 0xbe050), (0x2f9c0, 0x25d90),
+        (0x25d90, 0x262f0), (0x262f0, 0x32f20), (0x4ab0, 0x281d10),
+        (0x281d10, 0x2eef60), (0x281d10, 0x2eefd0), (0x2eefd0, 0x31f4d0), (0x2eefd0, 0x31f57c),
+        (0x2ef970, 0x2efdb0), (0x2efdb0, 0x2f1b90), (0x2f1b90, 0x2fc4b0),
+        (0x3024c0, 0x2f1b90), (0x1b190, 0x289750), (0x289750, 0x2891b0), (0x2891b0, 0x289610))
+    return roles, pairs
+
+
+def _lighting_ai_model_boundaries():
+    return {
+        "caller": {"mounted_effect": 18, "studio_module": 2474, "quick_all_products_reviewed": False,
+            "startup_requires_razer_app_engine": True, "startup_requires_use_lighting_driver": True,
+            "primary_colors": _lighting_ai_model_primary_colors(), "model_downloaded_at_inference": False,
+            "media_input": [32, 32, 4], "pattern_formulas_reused": True},
+        "model": {"schema_version": 3, "subgraphs": 1, "tensors": 21, "operators": 9, "buffers": 24,
+            "opcode_versions": {"3": 1, "17": 1, "22": 1, "9": 1, "25": 1},
+            "input": {"tensor": 0, "shape": [1, 32, 32, 3], "schema_type": 0, "runtime_type": 1},
+            "output": {"tensor": 20, "shape": [1, 16], "schema_type": 0, "runtime_type": 1}},
+        "initialization": {"model_memory_borrowed_from_loaded_resource": True, "native_checks_complete_flatbuffer_bounds": False,
+            "builder_schema_version_required": 3, "builder_looks_up_actual_opcode_and_version": True,
+            "builder_uses_actual_tensor_buffers_and_node_options": True, "allocate_tensors_status_checked": True,
+            "allocate_failure_deletes_interpreter": True, "builder_missing_interpreter_clears_model_without_release": True,
+            "outer_create_requires_valid_interpreter": False},
+        "input": {"nonzero_dimensions_pointer_and_width_times_height_eq_count": True,
+            "requires_exact_model_width_height": False, "checks_input_tensor_float_type": True,
+            "checks_typed_input_pointer_before_pixel_writes": False, "pixel_stride_bytes": 4,
+            "channels_copied": [0, 1, 2], "channel_divisor": 255, "channel_mean_or_std_subtraction": False,
+            "native_resize_in_generator": False, "input_buffer_size_or_tensor_shape_checked": False},
+        "output": {"scores_read": 16, "ranking": "descending strict-greater insertion; equal finite scores retain original index",
+            "returns_primary_colors_not_scores": True, "outer_true_checks_only_three_pointers": True,
+            "invoke_status_checked_by_rank_caller": False, "structural_guard_failure_outputs_sixteen_zeros": True,
+            "zero_output_is_inference_success": False},
+        "execution": {"five_actual_builtin_types_reviewed": True, "unrelated_registered_ops_expanded": False,
+            "default_delegate_creator_registered": True, "delegate_enabled_unconditionally_on_every_host": False,
+            "delegate_can_replace_execution_plan": True, "delegate_apply_failure_can_restore_original_plan": True,
+            "selected_kernel_float_routes_reviewed": True, "all_optimized_microkernel_numeric_semantics_reviewed": False,
+            "actual_inference_or_float_environment_compared": False},
+        "lifetime": {"destroy_order": ["interpreter_and_subgraphs", "model_memory_allocation_wrapper", "generator", "export_wrapper"],
+            "builder_and_resolver_temporaries_destroyed": True, "delegate_partition_and_backend_destroyed": True,
+            "native_cancel_callback_supported_in_generic_interpreter": True,
+            "generator_exports_expose_cancel_or_install_callback": False, "generator_export_inflight_drain": False,
+            "global_module_unload_owned": False, "exception_oom_and_concurrent_destroy_verified": False}}
+
+
+def _lighting_ai_model_projection(report):
+    owners = {row["id"]: row for row in report["complete_source_owners"]}
+    selected = {}
+    for role, key in report["selected"].items():
+        row = owners[key]
+        body = row["body"].encode("utf-8")
+        if len(body) != row["byte_end"] - row["byte_start"] or hashlib.sha256(body).hexdigest() != row["body_sha256"]:
+            raise ValueError("AI model complete source owner differs: " + role)
+        selected[role] = {name: row[name] for name in ("original", "syntax", "byte_start", "byte_end", "body_sha256")}
+    return {"selected": selected, **{name: report[name] for name in ("current_ai_release", "native", "model",
+        "operator_bindings", "instruction_evidence", "boundaries", "reviewed_semantics", "fixed_vectors", "dependencies", "remaining_chains")}}
+
+
+def _lighting_ai_model_verify(report):
+    if report.get("boundaries") != _lighting_ai_model_boundaries():
+        raise ValueError("AI model current input/output/operator boundary differs")
+    if (report.get("schema_version") != 1 or report.get("query") != "lighting-ai-model-chain"
+            or report.get("kind") != "current_lighting_ai_model_chain" or report.get("selected_model_execution_semantics_reviewed") is not True
+            or any(report.get(name) is not False for name in ("source_chain_complete", "target_execution", "product_code_modified", "real_device_operations"))
+            or any(report.get(name) != "unverified" for name in ("actual_dll_comparison", "runtime_acceptance", "ui_backend_wiring"))
+            or report.get("rust_independent_implementation") != "existing_not_revalidated"
+            or report.get("failures") or report.get("changed_during_query") or report.get("snapshot_stable") is not True):
+        raise ValueError("AI model static boundary was promoted or snapshot failed")
+    native = report["native"]
+    if native["selected_pseudocode_failures"] or native["all_pseudocode_captured"] is not False or len(native["failures"]) != 1:
+        raise ValueError("AI model selected capture failed or original failure was hidden")
+    digest = hashlib.sha256(json.dumps(_lighting_ai_model_projection(report), ensure_ascii=False,
+        sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    if digest != "c55daf36bc0a40b5cdf1588bb7ced9ff8aceb0347ae1ee470a985c2897f49102" or report.get("reviewed_selection_sha256") != digest:
+        raise ValueError("AI model selected bytes require semantic review: " + digest)
+    return {"selected_native_functions": len(native["complete_selected_functions"]),
+        "actual_direct_edges": len(native["verified_call_edges"]), "selected_native_failures": 0,
+        "global_native_failures_retained": 1, "model_operators": 9, "builtin_types": 5,
+        "all_optimized_microkernel_numeric_semantics_reviewed": False,
+        "actual_dll_comparison": "unverified", "reviewed_selection_sha256": digest}
+
+
+def collect_lighting_ai_model_chain(audit):
+    """Bind the current embedded model to its real five-op runtime and media consumer."""
+    import analysis as a
+    previous = json.loads((a.ROOT / ".analysis/results/host-current/local-audit.json").read_bytes())
+    dependencies = _lighting_ai_model_dependencies(previous)
+    selected = _lighting_ai_model_sources(audit, previous)
+    original, release = _lighting_type_media_color_source(audit)
+    roles, pairs = _lighting_ai_model_native_specs()
+    slots = [{"role": "default_delegate_creator", "vtable_rva": "0x48b588", "slot_byte_offset": 16, "target_rva": "0x4ab0"}]
+    slots.extend({"role": "delegate_partition_" + role, "vtable_rva": "0x4a5f50", "slot_byte_offset": index * 8,
+        "target_rva": hex(target)} for index, (role, target) in enumerate(
+            (("init", 0x3024c0), ("free", 0x304800), ("prepare", 0x304990), ("invoke", 0x3049a0))))
+    native, functions = _lighting_type_media_native(audit, original, roles, slots, pairs)
+    raw, pe = audit.read(original), inspect_pe(audit.read(original))
+    model = _lighting_ai_flatbuffer_resource(raw)
+    specs = ((3, "CONV_2D", 0x4dd00, 0x51e080, (0x4bcf0, 0x4bd60, 0x4db30, 0x4db40), [1, 8],
+            "1f9054a1e4a0c1179a034e0039a0b9b10ef99fc13c93e277e2cb096ed6286ec9"),
+        (17, "MAX_POOL_2D", 0x42fc0, 0x51dec8, (0x41ee0, 0x41ef0, 0x42370, 0x42d90), [1, 3],
+            "78f36de538afceaf0a19446fbafaeac836f33347a4dc19ca9b8f6808ba7f32d0"),
+        (22, "RESHAPE", 0x11fa90, 0x525968, (0x11fa70, 0x11fa80, 0x11f7b0, 0x11f9a0), [1, 1],
+            "560caff0db68762a32baebd9e8860109cc0cc2c7ba976765da6629193463ec56"),
+        (9, "FULLY_CONNECTED", 0xb6990, 0x524700, (0xb1df0, 0xb1e40, 0xb6270, 0xb6340), [1, 11],
+            "37786745fa92481e1ffb26beea7bde709e585ed480a490a8a1ae7eecafd5cfe4"),
+        (25, "SOFTMAX", 0x2ec90, 0x51d990, (0x23db0, 0x23df0, 0x2eca0, 0x2f9c0), [1, 3],
+            "6bbb95eb019743a037e5ca06d805dd0f98d1a695966f3cc01ab07a8636ac26c3"))
+    operator_bindings, regions = [], []
+    import struct
+    image_base = int(pe["image_base"], 16)
+    for code, name, register, table, targets, versions, sha in specs:
+        region = _lighting_timed_constant(raw, pe, name + "_registration", table, 88, sha)
+        if struct.unpack("<4Q", bytes.fromhex(region["raw_hex"])[:32]) != tuple(image_base + value for value in targets):
+            raise ValueError("AI model actual operator callbacks differ: " + name)
+        regions.append(region)
+        operator_bindings.append({"builtin_code": code, "name": name, "model_version": 1,
+            "registered_versions_inclusive": versions, "registration_function_rva": hex(register),
+            "registration_rva": hex(table), "callbacks": dict(zip(("init", "free", "prepare", "invoke"), map(hex, targets)))})
+    regions.extend(_lighting_timed_constant(raw, pe, name, rva, size, sha) for name, rva, size, sha in (
+        ("default_delegate_creator_vtable", 0x48b588, 32, "c9a6eae57afa87d3d0b19d9d54897f17b5e3adc881fadf962ab474d044023d12"),
+        ("delegate_partition_registration", 0x4a5f50, 88, "968231b0e8d85b9e21e82c879b7ad6ee6f8047f62ed0421cf58ee4ca4a2cf756")))
+    native["verified_data_regions"] = regions
+    instruction_evidence = {}
+    for name, rva, first, last in (("input_guards_normalization_unchecked_invoke_and_ranking", 0x1140, 0x1140, 0x156c),
+            ("model_build_allocate_and_failure_ownership", 0x1570, 0x1570, 0x16df),
+            ("actual_pool_and_conv_versions", 0x2560, 0x2717, 0x2796),
+            ("actual_dense_and_softmax_versions", 0x2560, 0x286f, 0x28e7),
+            ("actual_reshape_version", 0x2560, 0x2a94, 0x2ab0),
+            ("actual_default_delegate_registration", 0x2560, 0x3b68, 0x3bfe)):
+        rows = [row for row in functions[rva]["assembly"] if first <= int(row["rva"], 16) <= last]
+        if not rows:
+            raise ValueError("AI model instruction evidence is absent: " + name)
+        instruction_evidence[name] = {"rva": hex(rva), "instructions": rows}
+    report = {"schema_version": 1, "query": "lighting-ai-model-chain", "kind": "current_lighting_ai_model_chain",
+        "current_ai_release": release, "selected": selected, "native": native, "model": model,
+        "operator_bindings": operator_bindings, "instruction_evidence": instruction_evidence,
+        "boundaries": _lighting_ai_model_boundaries(), "dependencies": dependencies,
+        "reviewed_semantics": {
+            "caller": "Actual engine startup first requires RazerAppEngine and useRzLightingDriver. It selects the current local RzChromaAIColorGenDLL installed-resource path and awaits initChromaAiColorGen with sixteen fixed primary colors; it does not condition AI init on chroma-app success. Current Studio mounts media18/module2474 and ai/procedural choices. Exact prior media and calculations receipts retain real file/frame/palette consumers and pattern formulas; no Quick product applicability is invented.",
+            "model_and_builder": "The actual PE resource is the sole model. CA60 borrows resource memory through MemoryAllocation, checks the TFL3 identifier, then takes the root offset; no complete FlatBuffer verifier or arbitrary-corruption safety is observed.8960 requires schema3,5030 reads actual model opcode/version and resolves via281E50,7C20 consumes tensor shape/type/buffer/quantization,53C0 consumes actual node inputs/outputs/options and284820 runs init/copies registration. Runtime float type1 is schema type0. The five model v1 registrations use the actual PE callback tables; unused builtin registrations are not expanded.",
+            "options_and_float_routes": "Actual nine-node graph/options and constants are recorded directly from model bytes.294570/294580 selects the five option converters. Conv float route4DB40->95220->96840 selects existing reference/optimized/threaded implementations; configuration uses real padding,stride,dilation,bias and fused ReLU. Pool42D90->491E0->49720 takes maxima per channel then clamps activation. Reshape11F7B0/11F9A0 uses the constant shape input and preserves linear element order with alias/copy paths. DenseB6340->BC440->BE050 applies float weight/bias GEMM and activation. Softmax2F9C0->25D90->262F0->32F20 normalizes exponentials after subtracting the row maximum; its optimized exp/SSE approximation and accumulation order are not replaced by host math as proof of numeric parity.",
+            "default_delegate": "Builtin resolver also registers creator vtable48B588+16->4AB0->281D10. Default options2EEF60 use flags3;2EEFD0 first initializes the backend and weights cache, and can return null.1A6C0/1A6F0 attempts default delegation.2EF970/2EFDB0 and2F1B90 select supported nodes, validating actual five float operators; SOFTMAX requires beta1,CONV and dense require the actual static weights/bias,RESHAPE uses prepared shape.3024C0 builds partitions and runtime;3049A0 sets external buffers and invokes it, reporting setup/invoke failures.2891B0 can restore the original execution plan after failed application. Exact delegated partitions and CPU kernels are host-state results, not inferred from registration or model topology.",
+            "input_output_and_failures": "1140 requires nonzero width,height,data,width*height==count and interpreter. It does not require32x32 or compare tensor capacity,so smaller inputs can retain prior tensor values and larger inputs are unsafe. It selects typed float input but does not guard a null typed_data result before writes. Each4byte pixel contributes channels0,1,2 divided by255,alpha ignored; no local resize,mean or std normalization. Invoke status is ignored before reading sixteen output floats. Strict-greater insertion ranks finite equal scores stably and maps indices to fixed primary colors. Structural outer guard failure writes sixteen zero colors; this is not an inference status. Generate export returns bool based on its three pointer checks and cannot certify inference success.",
+            "lifetime": "1570 checks AllocateTensors and deletes/clears failed interpreter; builder-null-interpreter path sets model pointer0 without releasing its retained model wrapper. Create can still return a nonnull outer wrapper. Builder/resolver temporaries are destroyed normally. Destroy releases interpreter/subgraphs and owned delegates before model wrapper,generator and export wrapper; borrowed resource bytes belong to the loaded module. Generic subgraph Invoke has cancellation hooks,but the three generator exports do not expose/install one and do not drain concurrent Generate before Destroy. Global Lighting loader module leak and media effect ownership remain exactly upstream; no exception/OOM/concurrent-destroy guarantee is claimed."},
+        "fixed_vectors": {"normalization_rgba": {"input_hex": "007fff1101fe8022", "expected_float32_hex": "00000000fffefe3e0000803f8180803bfffe7e3f8180003f"},
+            "rank_all_equal_primary_order": _lighting_ai_model_primary_colors(),
+            "rank_scores_ascending": list(reversed(_lighting_ai_model_primary_colors())),
+            "structural_failure": {"output_uint32": [0] * 16, "inference_executed": False},
+            "actual_inference_results": "not_executed"},
+        "remaining_chains": [
+            {"owner": "AI selected optimized CPU/GEMM/exp and XNNPACK microkernel numeric behavior",
+                "status": "Model graph,constants,actual five-op registration,float routes,delegate setup and ownership reviewed; bit-exact kernels,host CPU partition selection,float environment,OOM/cancel/concurrent-destroy outcomes and actual DLL inference comparison remain"},
+            {"owner": "actual product Quick consumers and HDR setters/compiler pow",
+                "status": "Independent current product and arithmetic branches remain; media pattern formulas and all nine decoder slices already have their own receipts and are not repeated"},
+            {"owner": "independent Rust model/media implementation,UI/backend and functional comparison",
+                "status": "Static model/runtime binding and finite ranking witnesses do not establish production Rust execution,UI/backend wiring or real DLL/device acceptance"}],
+        "selected_model_execution_semantics_reviewed": True, "source_chain_complete": False,
+        "target_execution": False, "product_code_modified": False, "real_device_operations": False,
+        "rust_independent_implementation": "existing_not_revalidated", "ui_backend_wiring": "unverified",
+        "actual_dll_comparison": "unverified", "runtime_acceptance": "unverified", "failures": [],
+        "maintenance_lifecycle": {"temporary_artifacts_created": [], "analysis_sessions_created": [], "reused_complete_native_captures": True}}
+    if _lighting_ai_model_dependencies() != dependencies:
+        raise ValueError("AI model exact upstream dependency changed during query")
+    report["complete_originals"] = list(audit.sources.values())
+    report["complete_source_owners"] = list(audit.owners.values())
+    report["reviewed_selection_sha256"] = hashlib.sha256(json.dumps(_lighting_ai_model_projection(report),
+        ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    report["verified_artifacts"] = list(audit.artifacts.values())
+    report["changed_during_query"] = audit.final_snapshot()
+    report["snapshot_stable"] = not report["changed_during_query"]
+    report["verification"] = _lighting_ai_model_verify(report)
+    return report
+
+
+def collect_lighting_media_codec_boundaries(audit):
+    """Bind current codec routing and RGBA8 normalization without promoting compressed decoders."""
+    original, release = _lighting_ripple_native_source(audit)
+    roles = {0x8b130: "current_image_consumer", 0x87d60: "file_open_decode_close",
+        0x87e40: "file_context_decode_seek", 0x87ef0: "file_context_callbacks",
+        0x88370: "context_initial_read", 0x8f9b0: "context_refill_eof_zero_byte",
+        0x8f9a0: "restore_saved_buffer_window", 0x87f00: "requested8bit_and_optional_flip",
+        0x8b480: "ordered_format_dispatch", 0x8b660: "sixteen_bit_high_byte_reduction",
+        0x8b750: "vertical_row_swap", 0x90680: "byte_channel_conversion_current_rgba",
+        0x910a0: "word_channel_conversion_current_rgba", 0x8e920: "hdr_float_to_byte",
+        0x87e20: "thread_local_error_pointer", 0x88fc0: "decoder_allocate",
+        0x93ad0: "checked_product_allocation", 0x93b10: "checked_product_size",
+        0x93d60: "signed_multiply_range", 0x93d90: "signed_add_range",
+        0x87d10: "media_decoded_pixel_free", 0x8fa10: "png_result_depth_and_cleanup",
+        0x8f7b0: "png_signature", 0x93de0: "bmp_signature_and_header_size",
+        0x94450: "gif87a_or89a_signature", 0x91bb0: "big_endian_u32",
+        0x91be0: "big_endian_u16", 0x93ec0: "little_endian_u32", 0x93ef0: "little_endian_u16",
+        0x95760: "pic_signature_and_pict", 0x957e0: "four_byte_signature",
+        0x96130: "jpeg_function_selection", 0x961a0: "jpeg_soi_probe",
+        0x97930: "jpeg_marker_reader", 0x9d9c0: "hdr_line_signature",
+        0x9bbc0: "pnm_header_rewinds_before_parse",
+        0x8b400: "file_skip_callback", 0x8b440: "file_eof_callback"}
+    routes = [
+        ("png", 0x8b850, 0x8b880, "89 50 4e 47 0d 0a 1a 0a; saved window restored"),
+        ("bmp", 0x8b8e0, 0x8b910, "BM and DIB size12/40/56/108/124; saved window restored"),
+        ("gif", 0x8cc10, 0x8cc40, "GIF87a or GIF89a; saved window restored"),
+        ("psd", 0x8cd40, 0x8cd70, "big-endian38425053; saved window restored"),
+        ("pic", 0x8dc10, 0x8dc40, "53 80 f6 34 then84byte skip then PICT; saved window restored"),
+        ("jpeg", 0x8de30, 0x8deb0, "marker reader finds SOI D8;18568byte probe owner allocated/freed"),
+        ("pnm", 0x8df40, 0x8e010, "P5 or P6; success consumes2bytes; decoder rewinds before header"),
+        ("hdr", 0x88d00, 0x8e160, "#?RADIANCE newline or #?RGBE newline; saved window restored"),
+        ("tga", 0x8ebb0, 0x8eda0, "last structural probe; palette flag0/1, real type/depth/dimension gates")]
+    for name, probe, decoder, _ in routes:
+        roles[probe] = name + "_probe"
+        roles[decoder] = name + "_selected_decoder_entry"
+    pairs = [(0x8b130, 0x87d60), (0x87d60, 0x87e40), (0x87e40, 0x87ef0),
+        (0x87ef0, 0x88370), (0x88370, 0x8f9b0), (0x87e40, 0x87f00),
+        (0x87f00, 0x8b480), (0x87f00, 0x8b660), (0x87f00, 0x8b750),
+        (0x8b480, 0x8e920), (0x8b480, 0x87e20), (0x8b130, 0x87d10),
+        (0x8b850, 0x8f7b0), (0x8b8e0, 0x93de0), (0x8cc10, 0x94450),
+        (0x8cd40, 0x91bb0), (0x8dc10, 0x95760), (0x95760, 0x957e0),
+        (0x8de30, 0x88fc0), (0x8de30, 0x96130), (0x8de30, 0x961a0),
+        (0x961a0, 0x97930), (0x88d00, 0x9d9c0), (0x8e010, 0x9bbc0),
+        (0x9bbc0, 0x8f9a0), (0x8b880, 0x8fa10), (0x8fa10, 0x90680), (0x8fa10, 0x910a0),
+        (0x90680, 0x93ad0), (0x910a0, 0x88fc0), (0x8b660, 0x88fc0),
+        (0x8e920, 0x93ad0), (0x93ad0, 0x93b10), (0x93ad0, 0x88fc0),
+        (0x93b10, 0x93d60), (0x93b10, 0x93d90)]
+    pairs.extend((0x8b480, target) for _, probe, decoder, _ in routes for target in (probe, decoder))
+    pairs.extend((probe, 0x8f9a0) for _, probe, _, _ in routes)
+    slots = [{"role": role, "vtable_rva": "0x1f59c0", "slot_byte_offset": index * 8,
+        "target_rva": hex(target)} for index, (role, target) in enumerate(
+            (("read", 0x8b3e0), ("skip", 0x8b400), ("eof", 0x8b440)))]
+    native, functions = _lighting_type_media_native(audit, original, roles, slots, pairs)
+    raw = audit.read(original)
+    pe = inspect_pe(raw)
+    native["verified_data_regions"] = [_lighting_timed_constant(raw, pe, role, rva, size, sha)
+        for role, rva, size, sha in (
+            ("pic_signature", 0x1af98c, 4, "c8c1d03df303054a937a6b18b38a6f117ac69c1b45648595079c9a7e1b7cec81"),
+            ("hdr_default_inverse_gamma_and_scale", 0x1f5998, 8, "cd13f453e31481db3654ad06d3b350c6f7d5060822431624115c971594e44c2d"),
+            ("file_context_callback_table", 0x1f59c0, 24, "70442b0c747a28fa481eb8c01fbe99a210a86445551cfad556bad00a0568a212"),
+            ("read_callback_leaf_and_padding", 0x8b3e0, 32, "679362342bb92e67c293d010d6df6554c76d92abf497a3ee5b3efa3068fa0d38"),
+            ("output255", 0x1acfd8, 4, "270696d298cc689d8e5bd75897918aa617a25a5030ccae98017053dddd974995"),
+            ("rounding_half", 0x1ac160, 4, "d99e58435243d9fef9c88273b8d553b4fba4d0baf8009d29eae74fa99e0d9f57"))]
+    instruction_evidence = {}
+    for role, owner, first, last in (
+            ("current_required_rgba_parameter", 0x8b130, 0x8b17b, 0x8b195),
+            ("result8bit_and_real_conversion_parameters", 0x87f00, 0x87f2a, 0x87f6f),
+            ("thread_flip_override_and_unchecked_reduction_result", 0x87f00, 0x87f72, 0x87fb5),
+            ("all_ordered_format_branches", 0x8b480, 0x8b4b1, 0x8b653),
+            ("png_preserves_pointer_and_requested_channels", 0x8b880, 0x8b884, 0x8b8b5),
+            ("pnm_success_returns_without_rewind", 0x8df40, 0x8dfe3, 0x8e00a),
+            ("word_high_byte_vector_scalar_and_failure_ownership", 0x8b660, 0x8b667, 0x8b738),
+            ("flip_full_row_chunk_swap", 0x8b750, 0x8b778, 0x8b81e),
+            ("hdr_actual_pow_arguments_rgb_only", 0x8e920, 0x8e9f6, 0x8ea77),
+            ("decoded_free_before_unchecked_resize_available_flag", 0x8b130, 0x8b1e1, 0x8b250)):
+        rows = [row for row in functions[owner]["assembly"] if first <= int(row["rva"], 16) <= last]
+        if not rows:
+            raise ValueError("Media codec instruction owner is absent: " + role)
+        instruction_evidence[role] = {"rva": hex(owner), "instructions": rows}
+    report = {"schema_version": 1, "query": "lighting-media-codec-boundaries",
+        "kind": "current_lighting_media_codec_boundaries", "current_native_release": release,
+        "native": native, "instruction_evidence": instruction_evidence,
+        "format_routes": [{"format": name, "probe_rva": hex(probe), "decoder_rva": hex(decoder),
+            "signature_and_cursor": description} for name, probe, decoder, description in routes],
+        "boundaries": _lighting_media_codec_boundaries(),
+        "reviewed_semantics": {
+            "routing": "8B480 initializes result bits8 and tests PNG/BMP/GIF/PSD/PIC/JPEG/PNM/HDR/TGA in order. Matching dispatch returns that decoder result directly, including null; it does not retry another format. Probes use saved buffer-window restoration, not filesystem rewind. PNM success deliberately keeps2 consumed bytes, but9BBC0 starts by restoring the saved window. JPEG probe owns a18568byte temporary allocation; allocation failure logs outofmem and returns0. Generic TGA structural recognition is last.",
+            "pixels": "Current8B130 requests4 components. 90680/910A0 current output4 replicate Y, preserve a supplied alpha, or append255/65535; existing4 returns same buffer. Replacements free source on success and allocation failure. Word channel allocation uses a direct signed32 product, unlike checked byte-channel allocation. 87F00 passes actual width/height and required-or-source channels to8B660; its packed/vector and scalar paths select each native word high byte without rounding. This reducer frees old pixels only after successful allocation; on allocation failure it returns null without freeing old pixels, and87F00 has no new null test before optional flip. This original failure is not rewritten as safe cleanup.",
+            "flip": "After bit reduction, TLS override presence at+20 selects TLS flip value+16, otherwise global1F8DA0. 8B750 exchanges floor(height/2) full row pairs using2048byte stack scratch, repeating chunks for wider rows; the odd middle row is untouched. The current caller does not force flip, and no asynchronous per-decode cancellation entry is observed.",
+            "hdr": "8B480 sends selected HDR floats to8E920 with real width/height/required channels. For current4 channels RGB uses pow(float*scale,inverse_gamma), then*255,+.5,clamp0..255,trunc; alpha uses linear*255,+.5,clamp,trunc. Default PE globals are float inverse_gamma0.45454543828964233 and scale1. No setter lifetime or bitwise pow parity is inferred. Converter frees float input on both normal and allocation-failure paths.",
+            "file_and_consumer": "87D60 owns open/decode/close;87E40 builds128byte callback buffering, seeks unused bytes back only on nonnull return. 8F9B0 exhausted callbacks disable further reads and supply a single zero byte. Error87E20 stores a thread-local message pointer. After decode,8B130 frees pixels for nonpositive dimensions or after synchronous resize; only positive dimensions reach supplied32x32 output. It still ignores resize return and sets available. Earlier resampler/lifecycle receipts keep their own historical boundaries."},
+        "fixed_vectors": {"decoded_pixels": [
+            {"channels": 1, "bits": 8, "input_hex": "207f", "width": 2, "height": 1, "flip": False,
+                "expected_hex": "202020ff7f7f7fff"},
+            {"channels": 2, "bits": 8, "input_hex": "20007fff", "width": 2, "height": 1, "flip": False,
+                "expected_hex": "202020007f7f7fff"},
+            {"channels": 3, "bits": 8, "input_hex": "102030a0b0c0", "width": 1, "height": 2, "flip": True,
+                "expected_hex": "a0b0c0ff102030ff"},
+            {"channels": 4, "bits": 16, "input_hex": "ff00ff7f0080ffff", "width": 1, "height": 1, "flip": False,
+                "expected_hex": "007f80ff"}], "actual_dll_results": False},
+        "dependencies": [{"receipt": ".analysis/results/host-current/local-audit.json",
+            "section": "lighting_media_calculations", "scope": "Reuse actual media image caller and file wrapper; selected current codec boundary continues below wrapper"},
+            {"receipt": ".analysis/results/host-current/local-audit.json", "section": "lighting_media_resampler",
+                "scope": "Current decoded RGBA8 goes to existing layout4/type0 supplied32x32 output; do not recapture resampling"},
+            {"receipt": ".analysis/results/host-current/local-audit.json", "section": "lighting_type_media_chain",
+                "scope": "Mounted media18, input/action and owning generator/file/frame/teardown remain in original source review"}],
+        "remaining_chains": [
+            {"owner": "PNG8FB40, BMP8B910, GIF945C0, PSD8CD70, PIC95910, JPEG98C80, PNM9BBC0/8E010, HDR8E160, TGA8EDA0",
+                "status": "Dispatch entries and current normalization are bound; all format-specific compressed pixels, malformed data and decoder-internal cleanup require their own semantic review, not implied by complete captured entry functions"},
+            {"owner": "1F5998/1F599C setters and compiler pow", "status": "Current PE defaults and actual RGB/alpha arguments reviewed; mutation lifetime and actual DLL floating-point parity unverified"},
+            {"owner": "AI1.0.1.0 and actual product Quick branches", "status": "Independent remaining dependencies unchanged"},
+            {"owner": "independent Rust codec/UI/backend and functional official DLL comparison", "status": "Implementation, all consumers, real DLL/device results and runtime acceptance unverified"}],
+        "selected_codec_boundaries_reviewed": True, "source_chain_complete": False,
+        "target_execution": False, "product_code_modified": False, "real_device_operations": False,
+        "rust_independent_implementation": "existing_not_revalidated", "ui_backend_wiring": "unverified",
+        "actual_dll_comparison": "unverified", "runtime_acceptance": "unverified", "failures": [],
+        "maintenance_lifecycle": {"temporary_artifacts_created": [], "analysis_sessions_created": [],
+            "reused_complete_native_captures": True}}
+    report["complete_originals"] = list(audit.sources.values())
+    report["complete_source_owners"] = list(audit.owners.values())
+    report["reviewed_selection_sha256"] = hashlib.sha256(json.dumps(_lighting_media_codec_projection(report),
+        ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+    report["verified_artifacts"] = list(audit.artifacts.values())
+    report["changed_during_query"] = audit.final_snapshot()
+    report["snapshot_stable"] = not report["changed_during_query"]
+    report["verification"] = _verify_lighting_media_codec_boundaries(report)
     return report
 
 
@@ -13854,6 +17352,22 @@ def _profile_gog_clr(raw):
         name, namespace = string(integer(at + 4, string_size)), string(integer(at + 4 + string_size, string_size))
         first = integer(at + 4 + 2 * string_size + typedef + index(4), index(6))
         types.append({"type": namespace + "." + name if namespace else name, "first_method": first})
+    nested_parents = {}
+    for row in range(rows.get(41, 0)):
+        at = offsets[41] + row * sizes[41]
+        child, parent = integer(at, index(2)), integer(at + index(2), index(2))
+        if not (0 < child <= len(types) and 0 < parent <= len(types)) or child in nested_parents:
+            raise ValueError("GOG CLR nested type ownership is invalid")
+        nested_parents[child] = parent
+    for number, value in enumerate(types, 1):
+        chain, seen, current = [], set(), number
+        while current:
+            if current in seen:
+                raise ValueError("GOG CLR nested type ownership contains a cycle")
+            seen.add(current)
+            chain.append(types[current - 1]["type"])
+            current = nested_parents.get(current)
+        value["ancestry"] = chain[::-1]
     methods = {}
     for row in range(rows.get(6, 0)):
         at = offsets[6] + row * sizes[6]
@@ -13863,9 +17377,14 @@ def _profile_gog_clr(raw):
                   < (types[i + 1]["first_method"] if i + 1 < len(types) else rows[6] + 1)]
         if len(owners) != 1:
             raise ValueError("GOG CLR MethodDef declaring type is ambiguous")
+        implementation_flags = integer(at + 4, 2)
+        implementation_kind = ("il", "native", "optil", "runtime")[implementation_flags & 3]
         record = {"token": hex(token), "rva": hex(rva), "name": string(integer(at + 8, string_size)),
-                  "declaring_type": owners[0]["type"]}
-        if rva:
+                  "declaring_type": owners[0]["type"], "declaring_type_ancestry": owners[0]["ancestry"],
+                  "implementation_flags": hex(implementation_flags),
+                  "method_flags": hex(integer(at + 6, 2)), "implementation_kind": implementation_kind,
+                  "metadata_row_hex": tables[at:at + sizes[6]].hex(), "body_decoded": False}
+        if rva and implementation_kind == "il":
             lead = read(rva, 1)[0]
             if lead & 3 == 2:
                 header_size, code_size = 1, lead >> 2
@@ -13907,6 +17426,7 @@ def _profile_gog_clr(raw):
                         break
                     section_rva = (section_rva + size + 3) & ~3
             record["exception_sections"] = sections
+            record["body_decoded"] = True
         methods[token] = record
     member_refs = {}
     parent_size = coded(3, (2, 1, 26, 6, 27))
@@ -13966,6 +17486,7 @@ def _profile_gog_clr(raw):
 
 def _profile_gog_il_methods(original, text, metadata, selections):
     """Keep complete IL methods and verify their identities against original PE bytes."""
+    selected_tokens = metadata.get("selected_method_tokens")
     classes = []
     for match in re.finditer(r"(?m)^(\t*)\.class[^\r\n]*", text):
         end = re.search(r"(?m)^" + re.escape(match[1]) + r"\} // end of class ([^\r\n]+)", text[match.end():])
@@ -13983,7 +17504,7 @@ def _profile_gog_il_methods(original, text, metadata, selections):
         root, label = ancestry[0].split(".")[-1], end[1]
         choices = selections.get(root, ())
         method_name = label.rsplit("::", 1)[-1].strip("'")
-        if not any((choice == method_name or choice.startswith("<")
+        if selected_tokens is None and not any((choice == method_name or choice.startswith("<")
                 and any(choice in name for name in [method_name, *ancestry[1:]])) for choice in choices):
             continue
         body = text[match.start():finish]
@@ -13992,6 +17513,15 @@ def _profile_gog_il_methods(original, text, metadata, selections):
         if not rva or not size:
             continue
         candidates = [row for row in metadata["methods"].values() if row["rva"] == rva[1].lower()]
+        if selected_tokens is not None:
+            candidates = [row for row in candidates
+                          if row["declaring_type_ancestry"] == [name.replace("'", "") for name in ancestry]]
+            named = [row for row in candidates if row["name"] == method_name]
+            if not named and any(int(row["token"], 16) in selected_tokens for row in candidates):
+                raise ValueError("GOG captured IL MethodDef identity/code size differs: " + label)
+            candidates = [row for row in named if int(row["token"], 16) in selected_tokens]
+        if selected_tokens is not None and not candidates:
+            continue
         if len(candidates) != 1 or candidates[0]["name"] != method_name or candidates[0]["code_size"] != int(size[1]):
             raise ValueError("GOG captured IL MethodDef identity/code size differs: " + label)
         method = candidates[0]
@@ -14023,6 +17553,9 @@ def _profile_gog_il_methods(original, text, metadata, selections):
             "complete_il": body, "il_sha256": hashlib.sha256(body.encode()).hexdigest(),
             "raw_code_hex": method["code"].hex(), "raw_code_sha256": hashlib.sha256(method["code"]).hexdigest(),
             "calls": calls, "instructions": instructions, "whole_il_independently_decoded": False})
+    if selected_tokens is not None and (len(selected) != len(selected_tokens)
+            or {int(row["token"], 16) for row in selected} != selected_tokens):
+        raise ValueError("GOG exact selected MethodDef identity/unique ownership differs")
     if not selected:
         raise ValueError("GOG selected managed IL methods are absent")
     return selected
@@ -17558,6 +21091,371 @@ def _otfm_device_writeback_sources(audit):
     return selections, originals
 
 
+_OTFM_MACRO_ENCODING_UPSTREAM = "638c24b4e124c923495b1d0f0a78072c3283e98bda04d604c74d6e85bd3a6a17"
+_OTFM_MACRO_ENCODING_REVIEWED = "291a41cb23cf15fc03099667904838835deeca0fe2de727821e1c29e48b0b799"
+
+
+def _otfm_macro_encoding_digest(value):
+    return hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True,
+        separators=(",", ":"), allow_nan=False).encode()).hexdigest()
+
+
+def _otfm_macro_encoding_dependency_changes(upstream):
+    """Freeze exact sections while allowing independent queries in the same receipt."""
+    import analysis as a
+    changes, documents = [], {}
+    for row in upstream:
+        label = str(row.get("receipt", "")) + "#" + str(row.get("pointer", "")) if isinstance(row, dict) else "invalid upstream section"
+        try:
+            path = a.resolve(row["receipt"], ".analysis/results")
+            if row["receipt"] not in documents:
+                documents[row["receipt"]] = json.loads(path.read_bytes())
+            value = documents[row["receipt"]]
+            for key in row["pointer"].strip("/").split("/"):
+                token = key.replace("~1", "/").replace("~0", "~")
+                if isinstance(value, list):
+                    if re.fullmatch(r"0|[1-9][0-9]*", token) is None:
+                        raise ValueError("Shared section pointer has an invalid array index")
+                    value = value[int(token)]
+                else:
+                    value = value[token]
+            if _otfm_macro_encoding_digest(value) == row["canonical_sha256"]:
+                continue
+        except (OSError, ValueError, KeyError, TypeError, IndexError, UnicodeError):
+            pass
+        changes.append(label)
+    return changes
+
+
+def _otfm_macro_encoding_dependencies(audit):
+    receipt = ".analysis/results/host-current/local-audit.json"
+    section = json.loads((audit.a.ROOT / receipt).read_bytes())["otfm_device_writeback"]
+    digest = _otfm_macro_encoding_digest(section)
+    if (digest != _OTFM_MACRO_ENCODING_UPSTREAM or section["failures"]
+            or not section["bounded_observation_complete"] or not section["snapshot_stable"]
+            or section["target_execution"] or section["product_id"] != 756):
+        raise ValueError("OTFM macro encoding upstream section requires review")
+    selections, files = _otfm_device_writeback_sources(audit)
+    if any(selections[role]["acquisition"] != section["source_selections"][role]["acquisition"]
+            for role in ("product", "background")):
+        raise ValueError("OTFM macro encoding current source selection differs")
+    allowed = {(row["path"], row["sha256"]) for row in files["product"]}
+    owners = {row["id"]: row for row in section["complete_source_owners"]}
+    reused = {}
+    for role in ("macro_worker", "macro_fw_items", "macro_fw_bytes", "macro_data", "macro_allocate",
+            "macro_protocol", "macro_local", "macro_add", "macro_name", "macro_runner", "macro_add_recovery",
+            "send_command", "ack", "frame", "checksum"):
+        owner = owners[section["selected"][role]]
+        raw = audit.read(owner["original"])[owner["byte_start"]:owner["byte_end"]]
+        if ((owner["original"]["path"], owner["original"]["sha256"]) not in allowed
+                or raw.decode() != owner["body"] or hashlib.sha256(raw).hexdigest() != owner["body_sha256"]):
+            raise ValueError("OTFM macro encoding reused complete owner differs: " + role)
+        reused[role] = audit.retain_range("otfm_macro_encoding_" + role, owner["original"],
+            owner["byte_start"], owner["byte_end"], owner["syntax"])
+    # Reuse qualified native evidence; this query adds no native capture or semantics.
+    native = section["native"]
+    audit.read(native["input"])
+    audit.artifact(audit.a.ROOT / native["capture_receipt"]["path"], native["capture_receipt"])
+    for row in native["complete_selected_functions"]:
+        if not row["assembly_captured"] or not row["pseudocode_captured"] or not row["input_chunks_verified"] or row["failures"]:
+            raise ValueError("OTFM macro encoding reused native boundary is incomplete")
+        audit.artifact(audit.a.ROOT / row["artifact"]["path"], row["artifact"])
+    upstream = [{"receipt": receipt, "pointer": "/otfm_device_writeback", "canonical_sha256": digest,
+        "recaptured": False, "reused_roles": list(reused), "reused_native_functions": len(native["complete_selected_functions"])}]
+    return section, selections, files["product"], reused, upstream
+
+
+def _otfm_macro_encoding_literal(node):
+    """Decode only the static integer/string forms used by the selected tables."""
+    import families
+    if node.type == "number":
+        return families.javascript_integer_literal(node.text.decode())
+    if node.type == "string":
+        return json.loads(node.text)
+    if node.type == "call_expression" and node.child_by_field_name("function").text == b"parseInt":
+        args = node.child_by_field_name("arguments").named_children
+        if len(args) == 2 and args[0].type == "string" and args[1].type == "number":
+            return int(_otfm_macro_encoding_literal(args[0]), _otfm_macro_encoding_literal(args[1]))
+    if node.type == "object":
+        result = {}
+        for pair in node.named_children:
+            if pair.type != "pair":
+                raise ValueError("OTFM macro encoding table has a non-literal field")
+            key = pair.child_by_field_name("key").text.decode()
+            if key in result:
+                raise ValueError("OTFM macro encoding table repeats a field")
+            result[key] = _otfm_macro_encoding_literal(pair.child_by_field_name("value"))
+        return result
+    raise ValueError("OTFM macro encoding static literal requires review: " + node.type)
+
+
+def _otfm_macro_encoding_sources(audit, files, roles):
+    """Resolve the actual worker realm, initialized key table and OBM imports."""
+    roles = dict(roles)
+    exports = {}
+
+    def keep(role, source, anchor, kinds):
+        roles[role], = audit.retain("otfm_macro_encoding_" + role, source, anchor, kinds)
+        return audit.owners[roles[role]]
+
+    def imported(role, caller, namespace, member, originals):
+        match = re.search(r'\b' + re.escape(namespace) + r'\.' + re.escape(member) + r'\b', caller["body"])
+        if match is None:
+            raise ValueError("OTFM macro encoding import has no actual caller: " + role)
+        bound = audit.binding("otfm_macro_encoding_" + role + "_import", caller["original"], namespace,
+            caller["byte_start"] + len(caller["body"][:match.start()].encode()))
+        required = re.fullmatch(r'\w+=\w+\((\d+)\)', bound.get("body", ""))
+        if bound.get("resolution") != "declaration" or required is None:
+            raise ValueError("OTFM macro encoding import is not a lexical module: " + role)
+        result = audit.webpack_export("otfm_macro_encoding_" + role, originals, int(required[1]), member)
+        roles[role] = result["binding"]["owner_id"]
+        exports[role] = result
+        return result
+
+    items = audit.owners[roles["macro_fw_items"]]
+    obm, worker = items["original"], audit.owners[roles["macro_worker"]]["original"]
+    # Module65350 is also bundled in the protocol chunk; the actual OBM realm owns this copy.
+    for role, namespace, member, originals in (
+            ("event_types", "a", "JS", [obm]), ("opcodes", "c", "JO", [obm]),
+            ("high_byte", "s", "E4", files), ("low_byte", "s", "l7", files),
+            ("high_word", "s", "KI", files), ("low_word", "s", "rP", files),
+            ("status_success", "l", "STATUS_SUCCESS", files), ("status_fail", "l", "STATUS_FAIL", files)):
+        imported(role, items, namespace, member, originals)
+    imported("worker_operation", audit.owners[roles["macro_runner"]], "m", "executeWorkerOperation", files)
+    keep("worker_message", worker, 's.addEventListener("message",function(e)', {"call_expression"})
+    for name in ("getRelativeValue",):
+        _, roles["worker_" + name] = audit.callable_member("otfm_macro_encoding_worker_" + name,
+            worker, audit.tree(worker).root_node, name)
+    for name in ("okResponse", "errorResponse"):
+        _, roles["worker_" + name] = audit.callable_member("otfm_macro_encoding_worker_" + name,
+            worker, audit.tree(worker).root_node, name)
+    keep("worker_chunk_request", worker, "n.x=()=>n.e(1451).then(t)", {"assignment_expression"})
+    filename = keep("worker_chunk_filename", worker, 'n.u=e=>e+".d334c935ecafd99b2709.js"', {"assignment_expression"})
+    keep("worker_chunk_import", worker, "e[t]||importScripts(n.p+n.u(t))", {"arrow_function"})
+    suffix = re.search(r'\+"([^"]+)"', filename["body"])
+    chunk, = [row for row in files if Path(row["path"]).name == "1451" + suffix[1]]
+    wrappers = audit.webpack_factories([worker], 96634)
+    if len(wrappers) != 1:
+        raise ValueError("OTFM macro encoding worker key wrapper is ambiguous")
+    _, node, _ = wrappers[0]
+    roles["worker_keys_wrapper"] = audit.retain_range("otfm_macro_encoding_worker_keys_wrapper", worker,
+        node.start_byte, node.end_byte, node.type)
+    for role, module in (("worker_keys_factory", 22574), ("worker_initializer_factory", 51625)):
+        definitions = audit.webpack_factories([chunk], module)
+        if len(definitions) != 1:
+            raise ValueError("OTFM macro encoding worker key initialization is unresolved")
+        source, node, _ = definitions[0]
+        roles[role] = audit.retain_range("otfm_macro_encoding_" + role, source, node.start_byte, node.end_byte, node.type)
+    keys = keep("worker_keys_assignment", chunk, "n=t.KEYS=[", {"assignment_expression"})
+    node = audit.tree(chunk).root_node.descendant_for_byte_range(keys["byte_start"], keys["byte_end"] - 1)
+    while node is not None and node.type != "assignment_expression":
+        node = node.parent
+    while node is not None and node.type == "assignment_expression":
+        node = node.child_by_field_name("right")
+    if node is None or node.type != "array":
+        raise ValueError("OTFM macro encoding initialized key list is not a static array")
+    key_rows = []
+    for entry in node.named_children:
+        if entry.type != "object":
+            raise ValueError("OTFM macro encoding key list contains a dynamic entry")
+        fields = {}
+        for pair in entry.named_children:
+            key = pair.child_by_field_name("key").text.decode()
+            if key in {"scancode", "flag", "outputFlag", "HID", "inputID"}:
+                if key in fields:
+                    raise ValueError("OTFM macro encoding key list repeats an identity field")
+                fields[key] = _otfm_macro_encoding_literal(pair.child_by_field_name("value"))
+        key_rows.append(fields)
+    macro_worker = audit.owners[roles["macro_worker"]]
+    reference = macro_worker["body"].index("o[e.HID]")
+    bound = audit.binding("otfm_macro_encoding_worker_hid_to_scan", worker, "o",
+        macro_worker["byte_start"] + len(macro_worker["body"][:reference].encode()))
+    if bound.get("resolution") != "declaration":
+        raise ValueError("OTFM macro encoding HID table is not lexical")
+    roles["worker_hid_to_scan"] = bound["owner_id"]
+    hid_node = _help_binding_node(audit, worker, bound).child_by_field_name("value")
+    hid_to_scan = _otfm_macro_encoding_literal(hid_node)
+    inline = keep("scancode_to_hid", obm, "switch(Number(e))", {"arrow_function"})
+    raw = audit.read(obm)
+    position = raw.index(b"switch(Number(e))", inline["byte_start"], inline["byte_end"])
+    switch = audit.tree(obm).root_node.descendant_for_byte_range(position, position)
+    while switch.type != "switch_statement":
+        switch = switch.parent
+    scan_to_hid, pending = {}, []
+    for case in switch.child_by_field_name("body").named_children:
+        if case.type == "switch_case":
+            pending.append(_otfm_macro_encoding_literal(case.child_by_field_name("value")))
+        returned = [child for child in case.named_children if child.type == "return_statement"]
+        if not returned:
+            continue
+        value = _otfm_macro_encoding_literal(returned[0].named_children[0])
+        if case.type == "switch_default" and value != 0:
+            raise ValueError("OTFM macro encoding unknown scancode result differs")
+        for scancode in pending:
+            if str(scancode) in scan_to_hid:
+                raise ValueError("OTFM macro encoding scancode switch repeats an input")
+            scan_to_hid[str(scancode)] = value
+        pending.clear()
+    opcodes = _otfm_macro_encoding_literal(_help_binding_node(audit, exports["opcodes"]["original"],
+        exports["opcodes"]["binding"]).child_by_field_name("value"))
+    protocol = audit.owners[roles["macro_protocol"]]
+    for role, symbol in (("macro_header", "ft"), ("macro_description", "At")):
+        call = protocol["body"].index("t.sendCommand(ft,At,")
+        bound = audit.binding("otfm_macro_encoding_" + role, protocol["original"], symbol,
+            protocol["byte_start"] + len(protocol["body"][:call].encode()))
+        if bound.get("resolution") != "declaration":
+            raise ValueError("OTFM macro encoding protocol header is unresolved")
+        roles[role] = bound["owner_id"]
+    return roles, exports, {"opcodes": opcodes, "keys": key_rows, "hid_to_scan": hid_to_scan, "scan_to_hid": scan_to_hid}
+
+
+def _otfm_macro_encoding_contract(selected, owners, tables):
+    identities = {}
+    for role, key in selected.items():
+        owner = owners[key]
+        raw = owner["body"].encode()
+        if (hashlib.sha256(raw).hexdigest() != owner["body_sha256"]
+                or len(raw) != owner["byte_end"] - owner["byte_start"]):
+            raise ValueError("OTFM macro encoding source owner identity differs: " + role)
+        identities[role] = {"original_sha256": owner["original"]["sha256"],
+            **{name: owner[name] for name in ("byte_start", "byte_end", "syntax", "body_sha256")}}
+    digest = _otfm_macro_encoding_digest({"owners": identities, "tables": tables})
+    if digest != _OTFM_MACRO_ENCODING_REVIEWED:
+        raise ValueError("OTFM macro encoding selection requires review: " + digest)
+    return {"worker": {"move_modes": ["none", "relative"], "other_mode_result": "SUCCESS payload undefined",
+            "relative": "first mouseMove supplies baseline; negative delta adds65536 once; no range clamp",
+            "filters": ["undefined event", "delay with numeric ms===0", "mouseMove with numeric x===0 and y===0"],
+            "none_mutates_original_keyboard_objects": True, "relative_clones_events": True,
+            "keyboard": "first initialized KEYS match by (outputFlag||flag) and scancode; HID map then flag%=2",
+            "bad_event_or_missing_events": "worker ERROR message; no conversion result",
+            "correlation": "timerTick only", "listener_removed_on_matching_response": True,
+            "timeout_abort_or_worker_error_listener": False},
+        "firmware": {"types": ["mouse", "keyboard", "delay", "mouseMove"], "opcodes": tables["opcodes"],
+            "keyboard_flags": {"0": "make", "1": "break"}, "unknown_scancode": "FAIL; byte0 unknown code is not accepted",
+            "mouse": {"set_masks": [1, 4, 16, 64, 256], "clear_masks": [2, 8, 16, 128, 512],
+                "same16_mask_sets_then_clears_middle_bit": True, "wheel_id": 1024,
+                "wheel": "numeric data120 -> byte1; every other value -> byte255; state remains unchanged",
+                "horizontal_wheel2048_has_no_dedicated_branch": True},
+            "delay": {"thresholds": [256, 65536, 16777216], "widths": [1, 2, 3, 4], "byte_order": "big endian",
+                "source_validates_negative_nonfinite_or_fractional_range": False},
+            "move": "opcode21 followed by big-endian low16 bits of X then Y",
+            "batch": {"initial_mouse_mask": 0, "first_failure": "break and return prior bytes/size, without aggregate failure",
+                "yields_after_success_indices_divisible_by5000_including0": True,
+                "original_num_items_preserved_in_name_and_cache": True}},
+        "writer": {"command": [80, 6, 9], "chunk_data_limit": 72, "prefix_bytes": 7,
+            "prefix": "macroId16, offset32 big endian, chunkLength8", "frame_payload_override": "chunkLength+7",
+            "caller_slice": "data.slice(offset,offset+totalLength); can exceed chunkLength",
+            "frame_copy_limit": "min(payload.length,advertised payload length); extra slice tail is not sent",
+            "ack_is_independent_full_macro_readback": False, "name_stores_original_event_count": True,
+            "local_name_or_data_write_error_propagation": False},
+        "reviewed_selection_sha256": digest, "static_projection_is_vendor_execution": False}
+
+
+def _otfm_macro_encoding_project_event(event, mouse_state, tables):
+    """Bounded integer sample projection; never executes vendor JavaScript or a device."""
+    opcodes = tables["opcodes"]
+    kind = event.get("type")
+    if kind == "mouse":
+        button = event.get("id", 0)
+        for bit, mask in enumerate((1, 4, 16, 64, 256)):
+            if button & mask:
+                mouse_state |= 1 << bit
+        for bit, mask in enumerate((2, 8, 16, 128, 512)):
+            if button & mask:
+                mouse_state &= ~(1 << bit)
+        data = [opcodes["BUTTON"], mouse_state & 255]
+        if button == 1024:
+            data = [opcodes["SCROLL_WHEEL"], 1 if int(event.get("data", 0)) == 120 else 255]
+        return True, data, mouse_state
+    if kind == "keyboard":
+        code = tables["scan_to_hid"].get(str(event.get("scancode")), 0)
+        flag = event.get("flag")
+        if not code or flag not in (0, 1):
+            return False, [], mouse_state
+        return True, [opcodes["KEY_MAKE" if flag == 0 else "KEY_BREAK"], code], mouse_state
+    if kind == "delay":
+        value = event["ms"]
+        width = 1 if value < 256 else 2 if value < 65536 else 3 if value < 16777216 else 4
+        return True, [opcodes["DELAY_" + str(width)]] + [value >> shift & 255 for shift in range((width - 1) * 8, -1, -8)], mouse_state
+    if kind == "mouseMove":
+        x, y = event["x"], event["y"]
+        return True, [opcodes["CURSOR"], x >> 8 & 255, x & 255, y >> 8 & 255, y & 255], mouse_state
+    return False, [], mouse_state
+
+
+def _otfm_macro_encoding_project_worker(macro, tables):
+    """Project well-formed integer samples from the reviewed worker source only."""
+    engine = macro["appEngine"]
+    mode = engine.get("mouseMoveType")
+    if mode not in ("none", "relative"):
+        return None
+    events = engine["events"]
+    if any(not isinstance(event, dict) for event in events):
+        raise ValueError("OTFM macro static projection accepts structured sample events only")
+    if mode == "relative":
+        first = next((event for event in events if event["type"] == "mouseMove"), None)
+        x, y = (first["x"], first["y"]) if first else (0, 0)
+        projected = []
+        for event in events:
+            if event["type"] == "mouseMove":
+                dx, dy = event["x"] - x, event["y"] - y
+                projected.append({"type": "mouseMove", "x": dx + 65536 if dx < 0 else dx,
+                    "y": dy + 65536 if dy < 0 else dy})
+                x, y = event["x"], event["y"]
+            else:
+                projected.append(dict(event))
+        events = projected
+    def numeric_zero(value):
+        return type(value) in (int, float) and value == 0
+    events = [event for event in events if not (event["type"] == "delay" and numeric_zero(event["ms"])
+        or event["type"] == "mouseMove" and numeric_zero(event["x"]) and numeric_zero(event["y"]))]
+    for event in events:
+        if event["type"] != "keyboard":
+            continue
+        flag = event["flag"] - event["flag"] % 2
+        if event.get("scancode"):
+            key = next((row for row in tables["keys"] if (row.get("outputFlag") or row["flag"]) == flag
+                and row["scancode"] == event["scancode"]), {})
+            event["HID"] = int(key.get("HID", "0"))
+        event["scancode"] = tables["hid_to_scan"].get(str(event.get("HID")), event.get("scancode"))
+        event["flag"] %= 2
+    return {"guid": macro.get("guid"), "name": macro.get("name"), "numItems": len(events), "macroItemList": events}
+
+
+def _otfm_macro_encoding_project_batch(events, tables):
+    data, mouse_state = [], 0
+    for event in events:
+        ok, encoded, next_state = _otfm_macro_encoding_project_event(event, mouse_state, tables)
+        if not ok:
+            break
+        data.extend(encoded)
+        mouse_state = next_state
+    return {"fwMacroData": data, "fwMacroDataSize": len(data), "original_num_items": len(events)}
+
+
+def collect_otfm_macro_encoding_chain(audit):
+    """Close one selected integer event encoding slice into its established writer/ACK."""
+    upstream, selections, files, reused, dependencies = _otfm_macro_encoding_dependencies(audit)
+    selected, exports, tables = _otfm_macro_encoding_sources(audit, files, reused)
+    contract = _otfm_macro_encoding_contract(selected, audit.owners, tables)
+    changes = _otfm_macro_encoding_dependency_changes(dependencies)
+    if changes:
+        raise ValueError("OTFM macro encoding dependency changed during collection: " + ", ".join(changes))
+    return {"schema_version": 1, "kind": "current_otfm_macro_encoding_chain", "product_id": 756,
+        "scope": "Current wired PID756 OTFM worker and firmware event encoding through the retained macro writer/ACK; no V3 actuation, UI or other product expansion",
+        "source_selections": selections, "upstream_sections": dependencies, "selected": selected,
+        "cross_chunk_exports": exports, "tables": tables, "verified_contract": contract,
+        "native_evidence_reuse": {"input": upstream["native"]["input"], "capture_receipt": upstream["native"]["capture_receipt"],
+            "new_native_captures": 0, "new_native_semantics_claimed": False},
+        "selected_encoding_semantics_reviewed": True, "source_chain_complete": False, "whole_product_complete": False,
+        "target_execution": False, "real_device_operations": False, "product_code_modified": False,
+        "actual_dll_comparison": "unverified", "rust_independent_implementation": "not_implemented_by_this_query",
+        "ui_backend_wiring": "unverified", "runtime_acceptance": "unverified", "failures": [],
+        "new_analysis_sessions": 0, "temporary_files_created": [],
+        "remaining_chains": ["Actual corresponding official DLL/device execution, full macro-byte readback, cancellation, recovery and concurrent worker/transport teardown remain unverified; static integer sample projections are not vendor-function tests.",
+            "Selected V3 actuation/rapidTrigger and mounted UI consumers, changed background utility dependencies, other actual product/firmware/transport branches and independent Rust migration remain separately unresolved."]}
+
+
 def _otfm_device_writeback_host(audit):
     """Rebind the existing selected HID semantics to the actual current host package."""
     indexed = json.loads(audit.artifact(audit.a.ROOT / ".analysis/inputs.json"))
@@ -18139,6 +22037,207 @@ def collect_mapping_analog_key_routing(audit):
         "target_execution": False, "real_device_operations": False, "product_code_modified": False,
         "rust_independent_implementation": "not_implemented_by_this_query", "ui_backend_wiring": "unverified",
         "actual_dll_comparison": "unverified", "runtime_acceptance": "unverified", "failures": []}
+
+
+def _mapping_trigger_outputs_dependencies(previous=None):
+    """Reuse the exact ordinary routing and selected existing output boundaries."""
+    import analysis as a
+    receipt = ".analysis/results/host-current/local-audit.json"
+    if previous is None:
+        previous = json.loads((a.ROOT / receipt).read_bytes())
+    expected = {
+        "/mapping_analog_key_routing": "82f8d884f7137f88b9bcf0df6573eb9d9cf9054bd94547fad1426fcb48168f29",
+        "/keypad_mapping_current_native/native/complete_selected_functions/16": "3fa711a23c62e7e7a7199ecd96f86e45f2a58658a300af2fc1fa96ecb372f1a7",
+        "/keypad_mapping_current_native/native/complete_selected_functions/21": "f5e8c31e82f9ce63714079d3c457e5f831428f1051e9e2bb4f1a9b68964385a7",
+        "/keypad_mapping_current_native/native/complete_selected_functions/22": "43210c7ed594bbb60e7e85cd7d668b7a5b0362a5c9187688fffd0242fb2127d8",
+        "/keypad_mapping_current_native/native/complete_selected_functions/42": "983376f9bbed4ab221ea3deb3c2e1cc72ddae0b7593ba3990282779fcc37f882",
+    }
+    dependencies = []
+    for pointer, digest in expected.items():
+        try:
+            value = previous
+            for token in pointer.strip("/").split("/"):
+                value = value[int(token)] if isinstance(value, list) else value[token]
+            parent = previous[pointer.strip("/").split("/")[0]]
+            actual = hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True,
+                separators=(",", ":")).encode()).hexdigest()
+            if (actual != digest or parent["failures"] or not parent["bounded_observation_complete"]
+                    or not parent["snapshot_stable"] or parent["target_execution"] or parent["whole_product_complete"]):
+                raise ValueError("upstream identity or acceptance changed")
+        except (KeyError, TypeError, ValueError, IndexError) as error:
+            raise ValueError("Mapping trigger outputs upstream pointer requires review: " + pointer) from error
+        dependencies.append({"receipt": receipt, "pointer": pointer, "canonical_sha256": digest})
+    return previous, dependencies
+
+
+def _mapping_trigger_outputs_proof(raw, native, reused):
+    """Bind trigger parsing and ordinary threshold consumers to complete PE owners."""
+    import struct
+    _, functions, regions, instruction_count, _ = verify_retained_native_pe(raw, native, "Mapping trigger outputs")
+    expected = {
+        0xef6f0: "5344b0b199bc77b63eb391da0927ec1a1788b9f5dd17569eae08dc6cfb46f546",
+        0xf4211: "d3874da336275a69253a09efce62d8414e02ebfff1a866f87620d55c40fd37c1",
+        0xfbdf4: "5950ac97b76dca3ae685e25f265ff183d2f03e4ca326cf1295d5c1a1ebb31234",
+        0xdbaf3: "79401397cae51e2ee3767f4ffdf80fd6acb30b86203e4238da39bc59a4a2b013",
+        0x1b5110: "f6f22ec7c4aa31003e597fe0bea67249ec6ef4780206d5b0585b412c282e819b",
+        0x1c0520: "3625eb4dd78ac953866730ff6589eb06361d187ef7df9a868fa962392b80b931",
+        0xf69b2: "3925ca00dbc9c17a944d4c88ebd470d8ca9a0222442681e5af4b14af8f691b97",
+        0xf6ab0: "12ec365ea89b6d246fba6f44b7c948cad95bae83d8736a2ccfeaf58f73275ebe",
+        0xf6904: "cbc6e53d29f1e812739b7e34f83b13cb3ecc733daf4e66917f11ec9848a0c56a",
+        0xf6948: "b59f0b97daa4f0fce77b4768c427a324e04f2efe3e6b1e4dfbe449b50ff7ade8",
+        0x104cb0: "06c55f76b0a3d3a50239369b5fe5fdb32866a2b72341de36e0820226ab0ea906",
+        0x105100: "18de9a5e2f6097b67682c525438dd91b3d1d249058e8eb060cb9307c9501cdcc",
+        0x104678: "18bb5134923c65e6dc700c5c30cb83e6df36ec100c2519970ab33fc0529afaee",
+        0x1046a0: "021e276d6c36248860d76053d0cbab93b7b2f5e55810cee381dfc2f8de274dda",
+        0x1046b0: "b0f50956cdf68a3bf29c4333e4d7e2271c12ccd4b60c4a01ca6fce2543bf4a02",
+        0x104cc0: "407074eee1ca8abb595493ba84f1359393c288fab62f601dbad0abbe0f6119b3",
+        0x96f02: "001ddcab933d6399c5ae48c5e0079002ca2cc4907f23af596630b56a88c33aa0",
+        0x9719e: "ae8393367369b94e98c0ca8fc20a68e8feebf505b0fdf4eb5c85bcf2a7879fad",
+        0x98156: "a7d4a8807d4f2621a1dc0b13b3fa603d11936db16e60d7a7a5cce7e24285bcf2",
+        0x986bc: "e334c6715344a2764dcf117eda24ed9a41f9f8a6d12597014342010372c6c4d9",
+        0x9743a: "0e8758ea5a64c66296e77d323238e06ffac3556b3dea6bfd319da8e97a120513",
+        0x9bd6a: "2a8bad7bfc9ec26827fcee3f23bd542731ccd63f0297111762e277d7d8b9b49b",
+        0x6566a: "2cd6258fb2d75488cc85e67f00cbc34bc43b9629c1f60489b21218822be47855",
+        0xf220a: "66978111c87cc67791992b4104b50518967c2332ff4ab69ece783ebc3513e1eb",
+        0xf4d71: "d575886813e0d4f971dc99c05b0870dbf2247663146d2d6fc5664a1601c0556f",
+        0xf50b4: "11db37b1c15b2b8739617b96e61044ceabcea3cbf9af1df228c929b0f5c99df0",
+        0xff49c: "4f2a4c575197928d22e2d8232218282d2fe6018ff5fce1b68333694c822a53fe",
+        0x953a0: "f249f96c6dddc2a73090898d38dd3c0a930c7dc78da87a6ac2429b7a4d2799d6",
+    }
+    if set(functions) != set(expected):
+        raise ValueError("Mapping trigger outputs selected native scope changed")
+    for rva, digest in expected.items():
+        body = "\n".join(line["text"] for line in functions[rva]["pseudocode"]["lines"])
+        if hashlib.sha256(body.encode()).hexdigest() != digest:
+            raise ValueError("Mapping trigger outputs complete native boundary changed: " + hex(rva))
+    reused_slice = {"image_base": native["image_base"], "complete_functions": reused, "verified_data_regions": []}
+    _, prior, _, _, _ = verify_retained_native_pe(raw, reused_slice, "Mapping trigger outputs dependency")
+    if set(prior) != {0x9307e, 0x9474e, 0x93fdb, 0xfab8e, 0x88b60, 0xad0cc, 0xadd50, 0xfa7cc}:
+        raise ValueError("Mapping trigger outputs shared native scope changed")
+    functions.update(prior)
+    for index, name, rva in ((15, "doubleMapping", 0x2e3e4a), (19, "joystick", 0x2e4022),
+            (21, "keyboard", 0x2e403d), (38, "triggers", 0x2e4547), (41, "xboxGamepad", 0x2e45c6)):
+        pointer = struct.unpack("<Q", regions["type_pointer_" + str(index)])[0]
+        if pointer != 0x180000000 + rva or regions["type_name_" + str(index)] != name.encode() + b"\0":
+            raise ValueError("Mapping trigger outputs actual type identity changed")
+    table = regions["triggers_vtable"]
+    verified_slots = []
+    for offset, target in ((0, 0x1046a0), (16, 0x1046b0), (48, 0x104cc0)):
+        if struct.unpack_from("<Q", table, offset)[0] != 0x180000000 + target:
+            raise ValueError("Mapping trigger outputs virtual owner changed")
+        verified_slots.append({"vtable_rva": "0x2f0398", "slot_byte_offset": offset, "target_rva": hex(target)})
+    edges = (
+        (0xef6f0, 0xf4211), (0xf50b4, 0xf4211), (0xf4211, 0xfbdf4),
+        (0xf4211, 0xdbaf3), (0xdbaf3, 0x1b5110), (0xf4211, 0x1c0520), (0xf4211, 0xf69b2),
+        (0xf69b2, 0xf6ab0), (0xf4211, 0x104cb0), (0x104cb0, 0x105100),
+        (0x105100, 0xf6904), (0xf6904, 0xf6948), (0x1046b0, 0xf6904), (0x104cc0, 0xf6904),
+        (0x9307e, 0x96f02), (0x9307e, 0x9719e), (0x96f02, 0x98156), (0x9719e, 0x986bc),
+        (0x96f02, 0x9bd6a), (0x9719e, 0x9bd6a), (0x98156, 0x9474e), (0x986bc, 0x9474e),
+        (0x9474e, 0x9743a), (0x9474e, 0x93fdb), (0x98156, 0xfa7cc), (0x986bc, 0xfa7cc),
+        (0x98156, 0x6566a), (0x986bc, 0x6566a), (0x98156, 0x88b60), (0x98156, 0x8d952),
+        (0x98156, 0xad0cc), (0x986bc, 0xadd50), (0x986bc, 0x8cc6a),
+        (0xf220a, 0xf4d71), (0xf220a, 0xf50b4), (0xf220a, 0xff49c),
+        (0xff49c, 0x6566a), (0x953a0, 0xfa7cc), (0x953a0, 0x9307e), (0x953a0, 0x92748))
+    verified_edges = []
+    for owner, target in edges:
+        sites = [line["rva"] for line in functions[owner]["assembly"]
+            if any(edge["code"] and int(edge["to"], 16) == 0x180000000 + target
+                and edge["type"] in (17, 19) for edge in line.get("xrefs_from", []))]
+        if not sites:
+            raise ValueError("Mapping trigger outputs actual consumer edge changed: " + hex(owner) + " -> " + hex(target))
+        verified_edges.append({"owner_rva": hex(owner), "target_rva": hex(target), "instruction_rvas": sites})
+    anchors = ((0xf434d, "81bc249c00000000000100"), (0xf4731, "41b826000000"),
+        (0xdbb57, "0fb7442454"), (0x9701e, "0fb75020"), (0x972ba, "0fb75020"), (0xf6968, "488b4030"))
+    instructions = {int(line["rva"], 16): line for function in functions.values() for line in function["assembly"]}
+    for rva, encoded in anchors:
+        if instructions.get(rva, {}).get("bytes") != encoded:
+            raise ValueError("Mapping trigger outputs physical width or type changed: " + hex(rva))
+    return {"new_complete_functions": len(expected), "reused_complete_functions": len(prior),
+        "instructions_verified": instruction_count, "verified_complete_boundary_hashes": [
+            {"rva": hex(rva), "pseudocode_text_sha256": digest} for rva, digest in expected.items()],
+        "verified_consumer_edges": verified_edges, "verified_indirect_slots": verified_slots,
+        "verified_instruction_anchors": [{"rva": hex(rva), "bytes": encoded} for rva, encoded in anchors],
+        "type": {"triggers": 38, "doubleMapping": 15, "joystick": 19, "keyboard": 21, "xboxGamepad": 41},
+        "parser": {"outputs": "required nonempty object", "output_id": "base10 key parsed to uint32 and required <65536; zero, leading zeros and optional plus accepted",
+            "actuation": "required JSON int32; low16 copied without range validation", "mapping": "required object and type string",
+            "order": "numeric output ID; make ascending, break descending; thresholds are not sorted",
+            "duplicate_numeric_id": "reject insertion and release retained partial tree", "nested_unsupported_type": "construct unsupported mapping; no recursive triggers case in nested switch",
+            "atomic_tree_transfer": "move complete parsed tree into pooled MappingDataTriggers; clear temporary root"},
+        "ordinary_consumer": {"selector": "9307E type38; key ID in device+992 selects9719E, otherwise96F02",
+            "per_output_admission": "9474E crossing, then9743A pair(keyId,outputId) admission; equal samples do not execute",
+            "make": "previous<=actuation<=current except zero/zero special case; needs current pending identity and absent held pair",
+            "break": "93FDB actual full-scale/zero crossing; remove held pair before execution",
+            "ordinary_nested": "98156 emits existing sample/input notifications, clones mapped key, replaces nested output; 41->8D952,19->88B60,others->AD0CC",
+            "device_992_nested": "986BC still admits/emits/clones but executes only mode29->8CC6A or keyboard21 whose output break predicate is true->ADD50",
+            "notifications_prove_output_success": False, "per_output_result_aggregated": False},
+        "double_mapping": "F220A requires analog and digital. F4D71 allows analog0/1/4/5; F50B4 digital permits triggers.953A0 ignores the selected analog executor result, then clones and replaces output with digital and uses real rapid config92748 or ordinary9307E. Absent analog also reaches digital; an unsupported analog type logs and skips digital.",
+        "release": "local nested references and clones decremented on selected paths; partial tree recursively releases nested output via slot48 and frees nodes; pooled reset/destructor clears owned tree",
+        "whole_executor_family_complete": False, "firmware_publication_proven": False,
+        "all_pending_tasks_cancelled_or_drained": False, "actual_device_or_os_result_observed": False}
+
+
+def retain_mapping_trigger_outputs(audit):
+    """Retain the bounded shared software trigger chain inside its real product caller."""
+    previous, dependencies = _mapping_trigger_outputs_dependencies()
+    original, provenance = _mapping_physical_input_inputs(audit)
+    if (original["sha256"], original["bytes"]) != (
+            "c64e539437b50da2b1f2e4155d8cbb0fb1c3e1ebaad894caf509bad97e9857f9", 3948744):
+        raise ValueError("Mapping trigger outputs current native requires review")
+    raw = audit.read(original)
+    if [row["tree"].get("file_version") for row in inspect_pe(raw)["version_resources"]] != ["1.3.17.2"]:
+        raise ValueError("Mapping trigger outputs actual native version changed")
+    rvas = (0xef6f0, 0xf4211, 0xfbdf4, 0xdbaf3, 0x1b5110, 0x1c0520, 0xf69b2, 0xf6ab0, 0xf6904,
+        0xf6948, 0x104cb0, 0x105100, 0x104678, 0x1046a0, 0x1046b0, 0x104cc0,
+        0x96f02, 0x9719e, 0x98156, 0x986bc, 0x9743a, 0x9bd6a, 0x6566a,
+        0xf220a, 0xf4d71, 0xf50b4, 0xff49c, 0x953a0)
+    type_names = ((15, "doubleMapping", 0x2e3e4a), (19, "joystick", 0x2e4022),
+        (21, "keyboard", 0x2e403d), (38, "triggers", 0x2e4547), (41, "xboxGamepad", 0x2e45c6))
+    regions = [{"role": "triggers_vtable", "rva": 0x2f0398, "bytes": 56}]
+    for index, name, rva in type_names:
+        regions.extend(({"role": "type_pointer_" + str(index), "rva": 0x2ee830 + index * 8, "bytes": 8},
+            {"role": "type_name_" + str(index), "rva": rva, "bytes": len(name) + 1}))
+    native = audit.native_slice(original, [], depth=0, rvas=rvas, regions=tuple(regions))
+    if native["failures"] or native["decompiler_failures"] or not native["all_selected_pseudocode_captured"]:
+        raise ValueError("Mapping trigger outputs selected complete capture remains unresolved")
+    reused, reused_references = [], []
+    for section, rvas in (("mapping_analog_key_routing", (0x9307e, 0x9474e, 0x93fdb, 0xfab8e)),
+            ("keypad_mapping_current_native", (0x88b60, 0xad0cc, 0xadd50, 0xfa7cc))):
+        retained = previous[section]["native"]
+        if retained["input"] != native["original"]:
+            raise ValueError("Mapping trigger outputs shared native original changed")
+        audit.artifact(audit.a.ROOT / retained["capture_receipt"]["path"], retained["capture_receipt"])
+        for rva in rvas:
+            matches = [(index, row) for index, row in enumerate(retained["complete_selected_functions"])
+                if row["rva"] == hex(rva)]
+            if len(matches) != 1:
+                raise ValueError("Mapping trigger outputs reused owner is absent or ambiguous")
+            index, row = matches[0]
+            capture = json.loads(audit.artifact(audit.a.ROOT / row["artifact"]["path"], row["artifact"]))
+            body = "\n".join(line["text"] for line in capture["pseudocode"]["lines"])
+            if (capture["rva"] != hex(rva) or hashlib.sha256(body.encode()).hexdigest() != row["pseudocode_text_sha256"]
+                    or not row["input_chunks_verified"] or row["failures"]):
+                raise ValueError("Mapping trigger outputs reused native boundary changed")
+            reused.append({"capture": capture})
+            reused_references.append({"receipt": dependencies[0]["receipt"],
+                "pointer": "/" + section + "/native/complete_selected_functions/" + str(index), **row})
+    proof = _mapping_trigger_outputs_proof(raw, native, reused)
+    _mapping_trigger_outputs_dependencies()
+    return {"schema_version": 1, "kind": "current_mapping_trigger_outputs",
+        "scope": "Shared Mapping1.3.17.2 software triggers parser, ordinary per-output thresholds and selected nested dispatch/release; no product firmware publication inferred",
+        "native_identity": native["original"], "provenance": provenance, "dependencies": dependencies,
+        "native": native, "reused_native": reused_references, "verified_contract": proof,
+        "reviewed_semantics": {"parser": proof["parser"], "ordinary_consumer": proof["ordinary_consumer"],
+            "double_mapping": proof["double_mapping"], "release": proof["release"]},
+        "selected_static_semantics_reviewed": True, "source_chain_complete": False, "whole_product_complete": False,
+        "target_execution": False, "real_device_operations": False, "actual_dll_comparison": "unverified",
+        "rust_independent_implementation": "not_implemented_by_this_query", "ui_backend_wiring": "unverified",
+        "runtime_acceptance": "unverified", "failures": [],
+        "remaining_chains": [
+            "Join this shared software compiler output to the current product's actual successful publication and selected firmware/transport input. Compiled triggers do not prove a two-stage hardware write or live qualification.",
+            "Rapid-trigger nested executor behavior, every accepted nested mapping family, device+992 membership publication, all pending/held state shutdown and asynchronous executor cancellation remain separate boundaries; selected call/threshold closure is not whole executor completion.",
+            "Independent Rust, UI/backend wiring, behavior tests and actual official DLL/device or OS result comparison, restoration and runtime acceptance remain unfinished."],
+        "cleanup": {"temporary_files_created": [], "private_databases_created": [],
+            "retained_reason": "Reuse indexed current originals and complete captures in memory; no analysis session, target execution or scratch output"}}
 
 
 def _mapping_input_producer_frontend(audit):
@@ -19030,6 +23129,324 @@ def collect_mapping_delayed_task_lifecycle(audit):
         "product_code_modified": False, "rust_independent_implementation": "not_implemented_by_this_query",
         "ui_backend_wiring": "unverified", "actual_dll_comparison": "unverified",
         "runtime_acceptance": "unverified", "failures": []}
+
+
+def _mapping_engine_shutdown_dependencies(audit):
+    """Reuse exact reviewed sections without freezing unrelated receipt siblings."""
+    receipt = ".analysis/results/host-current/local-audit.json"
+    document = json.loads(audit.a.resolve(receipt, ".analysis/results").read_bytes())
+    dependencies = []
+    for section, digest in (
+            ("mapping_delayed_task_lifecycle", "52112abe05873379a95e735fc93ae2cd0fddba147aa52b7ecf80f8cee3210277"),
+            ("mapping_input_shutdown_chain", "accdf50528e85216263429144ed409d3e80f1a1bb8d0bebf07af016c13cb01e4")):
+        value = document.get(section)
+        if (_otfm_macro_encoding_digest(value) != digest or not isinstance(value, dict)
+                or value.get("selected_static_semantics_reviewed") is not True or value.get("failures") != []):
+            raise ValueError("Mapping engine shutdown upstream section requires review: " + section)
+        for label in ("native", "addon_native"):
+            native = value.get(label)
+            if native is None:
+                continue
+            audit.artifact(audit.a.ROOT / native["capture_receipt"]["path"], native["capture_receipt"])
+            for row in native["complete_selected_functions"]:
+                audit.artifact(audit.a.ROOT / row["artifact"]["path"], row["artifact"])
+        dependencies.append({"receipt": receipt, "pointer": "/" + section,
+            "canonical_sha256": digest, "recaptured": False,
+            "scope": "Reuse device cleanup/destructor, runner/queue disposal and independent callback ownership; verify exact section and its retained native artifacts"})
+    return dependencies
+
+
+def _mapping_engine_shutdown_sources(audit, provenance):
+    """Retain the actual synchronous FFI proxy from the same official ASAR."""
+    addon, sources, selected, ffi = _mapping_delayed_task_sources(audit, provenance)
+    indexed = json.loads(audit.artifact(audit.a.ROOT / ".analysis/inputs.json"))
+    members = current_host_asar_members(audit, indexed, verified_host_release_receipt(index=indexed))
+    archive = provenance["host_archive"]
+    packed = audit.read(archive)
+    for role, name, size, digest, anchor in (
+            ("ffi_library", "library.js", 2205, "ec21e2a569ce708384cafadb62bb796d27ce6e50e02f8f9ba57e07b711ffaf03", "function Library ("),
+            ("ffi_foreign", "foreign_function.js", 1404, "705e490c7b558da777c17cc48fb54e6ad984ac413a131d4f7ff3fc619a64d8e5", "function ForeignFunction ("),
+            ("ffi_proxy", "_foreign_function.js", 3642, "55b15de548d85992bf6f8e0d85dd0358860896925f95fb86851c958db42d18c5", "function ForeignFunction (")):
+        suffix = "node_modules/ffi-napi-rz/lib/" + name
+        rows = [row for row in members if row["path"].endswith("/" + suffix)]
+        if len(rows) != 1 or (rows[0]["bytes"], rows[0]["sha256"]) != (size, digest):
+            raise ValueError("Mapping engine shutdown FFI source requires review: " + name)
+        row = rows[0]
+        body = audit.read(row)
+        if (row.get("container") != archive["path"] or row.get("container_sha256") != archive["sha256"]
+                or row.get("unpacked") or type(row.get("offset")) is not int
+                or packed[row["offset"]:row["offset"] + len(body)] != body):
+            raise ValueError("Mapping engine shutdown FFI ASAR ancestry differs: " + name)
+        sources[suffix] = row
+        selected[role], = audit.retain("mapping_engine_shutdown_" + role, row, anchor, {"function_declaration"})
+    ffi["complete_source_originals"] = list(sources.values())
+    return addon, selected, ffi
+
+
+def _mapping_engine_shutdown_delay_imports(raw):
+    """Bind selected call instructions to the actual PE delay INT/IAT names."""
+    pe = inspect_pe(raw)
+    if pe.get("architecture") != "x64" or pe.get("image_base") != "0x180000000":
+        raise ValueError("Mapping engine shutdown addon PE architecture differs")
+
+    def region(rva, size):
+        for section in pe["sections"]:
+            delta = rva - section["rva"]
+            if 0 <= delta and delta + size <= section["bytes"]:
+                offset = section["file_offset"] + delta
+                if offset + size <= len(raw):
+                    return offset
+        raise ValueError("Mapping engine shutdown addon PE range differs: " + hex(rva))
+
+    def string(rva):
+        start = region(rva, 1)
+        end = raw.find(b"\0", start, start + 256)
+        if end < 0:
+            raise ValueError("Mapping engine shutdown addon import name is incomplete")
+        region(rva, end - start + 1)
+        return raw[start:end].decode("ascii")
+
+    optional = struct.unpack_from("<I", raw, 0x3c)[0] + 24
+    if struct.unpack_from("<H", raw, optional)[0] != 0x20b:
+        raise ValueError("Mapping engine shutdown addon optional header differs")
+    directory, size = struct.unpack_from("<II", raw, optional + 112 + 13 * 8)
+    imports = {}
+    for index in range(size // 32):
+        descriptor = struct.unpack_from("<8I", raw, region(directory + index * 32, 32))
+        if not any(descriptor):
+            break
+        attributes, name, _, iat, names, _, _, _ = descriptor
+        if attributes != 1 or string(name) != "node.exe":
+            raise ValueError("Mapping engine shutdown addon delay-import module differs")
+        for slot in range(1024):
+            entry = struct.unpack_from("<Q", raw, region(names + slot * 8, 8))[0]
+            if entry == 0:
+                break
+            if entry >> 63:
+                continue
+            address = iat + slot * 8
+            region(address, 8)
+            if address in imports:
+                raise ValueError("Mapping engine shutdown addon duplicate delay-import IAT")
+            imports[address] = string(entry + 2)
+        else:
+            raise ValueError("Mapping engine shutdown addon delay imports are incomplete")
+    calls = ((0xa246, "ff15bcfb0200", 0x39e08, "uv_async_send"),
+        (0xa254, "ff15d6fb0200", 0x39e30, "uv_cond_wait"),
+        (0x9483, "ff1597090300", 0x39e20, "uv_cond_signal"),
+        (0x7411, "48ff25a8280300", 0x39cc0, "uv_close"),
+        (0x7030, "ff15622c0300", 0x39c98, "napi_get_uv_event_loop"),
+        (0x7046, "ff15c42d0300", 0x39e10, "uv_async_init"),
+        (0x72d5, "ff15bd2a0300", 0x39d98, "napi_set_instance_data"),
+        (0x243e, "ff15f4780300", 0x39d38, "napi_make_callback"),
+        (0x8634, "ff159e170300", 0x39dd8, "napi_call_function"))
+    verified = []
+    for rva, encoded, iat, name in calls:
+        instruction = bytes.fromhex(encoded)
+        offset = region(rva, len(instruction))
+        displacement = struct.unpack_from("<i", instruction, len(instruction) - 4)[0]
+        if (raw[offset:offset + len(instruction)] != instruction
+                or rva + len(instruction) + displacement != iat or imports.get(iat) != name):
+            raise ValueError("Mapping engine shutdown actual delay-import binding differs: " + name)
+        verified.append({"instruction_rva": hex(rva), "bytes": encoded, "iat_rva": hex(iat),
+            "module": "node.exe", "symbol": name, "actual_pe_bytes_verified": True})
+    return verified
+
+
+def _mapping_engine_shutdown_chain_proof(native, addon, owners, selected, addon_raw):
+    """Check staged closure order, actual completion/release and the environment boundary."""
+    functions = [{int(row["capture"]["rva"], 16): row["capture"]
+                  for row in report["complete_selected_functions"]} for report in (native, addon)]
+    anchors = (((0x20d3, "807f5000"), (0x20dd, "c6475000"),
+        (0x223b, "488b4840"), (0x224b, "488b4008"),
+        (0x246f, "48c7473800000000"), (0x247f, "488b4008"),
+        (0x2539, "874140"), (0x19c4d, "874140"), (0x1fea8, "8605b2583700"),
+        (0x57205, "488d9958010000"), (0x57214, "4883bf7801000000"),
+        (0x572b7, "488b4040"), (0x57ee9, "4883bf7801000000"),
+        (0x57ef3, "4883bf5801000000"), (0x5efec, "4883bed000000000"),
+        (0x1b960, "488b4620"), (0x1b96c, "4c8b4638"),
+        (0x1b978, "48c7463800000000")),
+        ((0xa246, "ff15bcfb0200"), (0xa254, "ff15d6fb0200"),
+         (0x9483, "ff1597090300"), (0x7411, "48ff25a8280300"), (0x275e, "8605bc870300")))
+    edges = (((0x1fed0, 0x1e454), (0x1e454, 0x1000), (0x1000, 0x1060),
+        (0x1fed0, 0x1fdd0), (0x1fed0, 0x51990), (0x1fed0, 0x519b0),
+        (0x2090, 0x2510), (0x2090, 0x1b9cb0), (0x2090, 0x1ba770), (0x2090, 0x17ac),
+        (0x1ba770, 0x1ba790), (0x1ba790, 0x1aa5d0),
+        (0x1ba10, 0x1ba6b0), (0x1ba6b0, 0x1aa5c0),
+        (0x1b9a0, 0x1b9c6), (0x1a620, 0x56b40), (0x1a620, 0x1a9d0),
+        (0x571e0, 0x57e60), (0x56f10, 0x5efb0),
+        (0x57e60, 0x6269e), (0x5efb0, 0x62d5c),
+        (0x57090, 0x127c0a), (0x57090, 0x5de50),
+        (0x1a4c0, 0xb2a52), (0x1a4c0, 0x1a8e0),
+        (0x1a440, 0x1b1f8), (0x1a3c0, 0x1b350),
+        (0x1a290, 0xbaa90), (0x1a290, 0x1b290),
+        (0x1a150, 0xc2b68), (0x1a150, 0x1acd0),
+        (0x1a010, 0xc836c), (0x1a010, 0x1ae50),
+        (0x19ed0, 0xca706), (0x19ed0, 0x1b180),
+        (0x19d30, 0xd7f9c), (0x19d30, 0x1aba0),
+        (0x1b9510, 0x1b8d60), (0x1b8d60, 0x1b90b0), (0x1b8d60, 0x1a9ee0),
+        (0x1b90b0, 0x1b91f0), (0x1b91f0, 0x200c00),
+        (0x17ac, 0x1cffd0), (0x1cffd0, 0x1d00d0)),
+        ((0x7250, 0x7400), (0x7250, 0x6d80), (0x6d80, 0x93e0),
+         (0xa0f0, 0x8c20), (0x93e0, 0x8c20), (0x8c20, 0x23a0),
+         (0x8c20, 0x8580), (0x7400, 0x2750), (0x2750, 0x7b20)))
+    digests = ("9e5289f93342e61ed5af6f69653f08983d44eb11113963ea6f6fbebf09fb4dc1",
+               "fe2cb72265a0f35cca6ef21dc4634355c7202d3b9c95f2235692e00f7d988d70")
+    evidence = {}
+    for index, (label, report, captures) in enumerate(zip(("mapping", "addon"), (native, addon), functions)):
+        instructions = {int(line["rva"], 16): line["bytes"]
+                        for capture in captures.values() for line in capture["assembly"]}
+        for rva, encoded in anchors[index]:
+            if instructions.get(rva) != encoded:
+                raise ValueError("Mapping engine shutdown " + label + " owner/order anchor differs: " + hex(rva))
+        base = int(report["image_base"], 16)
+        for owner, target in edges[index]:
+            if not any(int(xref["to"], 16) - base == target for line in captures[owner]["assembly"]
+                       for xref in line.get("xrefs_from", [])):
+                raise ValueError("Mapping engine shutdown " + label + " actual reference edge differs: "
+                                 + hex(owner) + " -> " + hex(target))
+        bodies = [{"rva": hex(rva), "pseudocode_text_sha256": hashlib.sha256("\n".join(
+            line["text"] for line in captures[rva]["pseudocode"]["lines"]).encode()).hexdigest()}
+            for rva in sorted(captures)]
+        if _otfm_macro_encoding_digest(bodies) != digests[index]:
+            raise ValueError("Mapping engine shutdown " + label + " complete boundary set differs")
+        evidence[label] = {"complete_boundary_set_sha256": digests[index],
+            "verified_complete_boundary_hashes": bodies,
+            "verified_instruction_anchors": [{"rva": hex(rva), "bytes": encoded} for rva, encoded in anchors[index]],
+            "verified_reference_edges": [{"owner_rva": hex(owner), "target_rva": hex(target)} for owner, target in edges[index]]}
+    source_contracts = {
+        "callDLL": ("a4b6efaa15e6b4783a3abcd520532a2806d63ac54afb88988adc3451d5ab6ccb",
+            ('case"mappingEngineShutdown"', 'this.cbMap.set(o,r)', 'this.libFFI[n.action](r)', 'this.cbMap.delete(o)', 'this.isInit=!1,!0')),
+        "initDll": ("db7b94c1ab5068b59238e5c7adb035a99f18e425ad0e462bbc24c5654d442729",
+            ('mappingEngineShutdown:["void",["pointer"]]',)),
+        "ffi_library": ("57a52263abc8b5b8a27868d8988a7d9c660008a2900749e7ce69f4e57ebf5e0a",
+            ('const fopts = info[2]', 'lib[func] = async ? ff.async : ff')),
+        "ffi_foreign": ("af390606e70ea9381d02fa58694e27c830817e41e5ecd6210070acd161cae438",
+            ('return _ForeignFunction(cif, funcPtr, returnType, argTypes)',)),
+        "ffi_proxy": ("f9852ffd21f434fce7ca8bf9fca132d22bcc9a5d7e6d6cb8a9d7f0574b07b942",
+            ('bindings.ffi_call(cif, funcPtr, result, argsList)', 'proxy.async = function ()', 'bindings.ffi_call_async'))}
+    for role, (digest, required) in source_contracts.items():
+        owner = owners[selected[role]]
+        if (owner["body_sha256"] != digest or hashlib.sha256(owner["body"].encode()).hexdigest() != digest
+                or not all(fragment in owner["body"] for fragment in required)):
+            raise ValueError("Mapping engine shutdown complete source owner differs: " + role)
+    orders = []
+    for rva, expected in ((0x2510, [0x1a620, 0x1a4c0, 0x1a440, 0x1a3c0, 0x1a290,
+                                  0x1a150, 0x1a010, 0x19ed0, 0x19d30, 0x19cb0, 0x19c30]),
+                          (0x56b40, [0x571e0, 0x57090, 0x56f10, 0x56e70])):
+        body = "\n".join(line["text"] for line in functions[0][rva]["pseudocode"]["lines"])
+        constructed = [int(value, 16) for value in re.findall(
+            r"\*\(_QWORD \*\)\(v\d+ \+ 32\) = sub_180([0-9A-F]+);", body)]
+        if constructed[::-1] != expected:
+            raise ValueError("Mapping engine shutdown nested continuation order differs: " + hex(rva))
+        orders.append([hex(value) for value in constructed[::-1]])
+    return {"native_evidence": evidence, "verified_delay_import_bindings": _mapping_engine_shutdown_delay_imports(addon_raw),
+        "engine_stage_execution_rvas": orders[0], "manager_stage_execution_rvas": orders[1],
+        "engine_initialize_byte_offset": 80, "engine_state_offset": 64,
+        "engine_main_thread_offset": 56, "manager_device_count_offset": 376,
+        "manager_device_continuation_offset": 344, "manager_executor_count_offset": 208,
+        "engine_main_shutdown_order_reviewed": True, "nested_disposer_executes_next_stage": False,
+        "manager_device_erase_and_destructor_precede_next_stage": True,
+        "main_stage_signal_precedes_main_thread_join": True,
+        "main_join_precedes_external_completion": True,
+        "external_completion_precedes_global_sample_gate_clear": True,
+        "external_completion_precedes_at_exit_owner_release": True,
+        "host_shutdown_uses_synchronous_ffi_call": True, "host_shutdown_has_timeout_or_cancel": False,
+        "shutdown_post_result_checked": False, "native_event_wait_has_deadline_or_js_loop_pump": False,
+        "addon_js_call_precedes_waiter_signal": True, "addon_async_send_result_checked": False,
+        "addon_environment_close_is_engine_shutdown": False,
+        "environment_queue_destructor_signals_waiting_producers": False,
+        "global_event_loop_drain_proven": False, "actual_concurrent_teardown_verified": False}
+
+
+def collect_mapping_engine_shutdown_chain(audit):
+    """Close exact engine/main-thread shutdown ordering, retaining independent environment limits."""
+    original, source, provenance = _mapping_external_input_source(audit)
+    if (original["sha256"], original["bytes"]) != (
+            "c64e539437b50da2b1f2e4155d8cbb0fb1c3e1ebaad894caf509bad97e9857f9", 3948744):
+        raise ValueError("Mapping engine shutdown native requires semantic review")
+    if source["sha256"] != "32b0dab3a1a83a970b2501608d53c6544cab0c9a2b47054d7bd9a660fe4133c0":
+        raise ValueError("Mapping engine shutdown Host source requires semantic review")
+    if [row["tree"].get("file_version") for row in inspect_pe(audit.read(original))["version_resources"]] != ["1.3.17.2"]:
+        raise ValueError("Mapping engine shutdown native version differs")
+    upstream = _mapping_engine_shutdown_dependencies(audit)
+    addon_original, selected, ffi = _mapping_engine_shutdown_sources(audit, provenance)
+    for name in ("callDLL", "initDll"):
+        _, selected[name] = audit.callable_member("mapping_engine_shutdown_" + name,
+            source, audit.tree(source).root_node, name)
+    roles = {0x1fed0: "shutdown_export", 0x1e454: "singleton_thunk", 0x1000: "engine_singleton",
+        0x1060: "actual_engine_vtable_constructor", 0x2090: "engine_synchronous_shutdown",
+        0x2510: "main_runner_nested_shutdown_stages", 0x1fdd0: "completion_then_global_gate_clear",
+        0x51990: "export_completion_invoker", 0x519b0: "export_completion_disposer",
+        0x1b940: "nested_stage_invoker", 0x1b9a0: "nested_stage_disposer_thunk",
+        0x1b9c6: "nested_stage_disposer_does_not_invoke_next", 0x1cbc00: "once_callback_move_assignment",
+        0x1ba10: "shutdown_event_signal_invoker", 0x1ba6b0: "event_signal_wrapper", 0x1aa5c0: "actual_set_event",
+        0x1ba770: "unbounded_event_wait", 0x1ba790: "event_wait_owner", 0x1aa5d0: "wait_for_single_object",
+        0x17ac: "clear_final_at_exit_owner", 0x1cffd0: "at_exit_owner_destructor", 0x1d00d0: "at_exit_registered_callbacks",
+        0x19c30: "state4_then_signal_continuation", 0x19cb0: "release_engine_storage",
+        0x19d30: "shutdown_owner160", 0x19ed0: "shutdown_owner288", 0x1a010: "shutdown_owner224",
+        0x1a150: "shutdown_owner200", 0x1a290: "shutdown_owner144", 0x1a3c0: "release_owner312",
+        0x1a440: "release_owner304", 0x1a4c0: "shutdown_owner96", 0x1a620: "shutdown_device_manager",
+        0x1a8e0: "release_owner96_then_continue", 0x1a9d0: "destroy_manager_then_continue",
+        0x1aba0: "release_owner160_then_continue", 0x1acd0: "release_owner200_then_continue",
+        0x1ae50: "release_owner224_then_continue", 0x1b180: "release_owner288_then_continue",
+        0x1b290: "release_owner144_then_continue", 0x1b1f8: "release_owner304", 0x1b350: "release_owner312",
+        0x56b40: "manager_nested_shutdown_stages", 0x571e0: "cleanup_devices_with_stored_continuation",
+        0x57e60: "erase_device_then_resume_if_empty", 0x57090: "request_selected_tasks_cancel",
+        0x56f10: "shutdown_executors_with_stored_continuation", 0x5efb0: "erase_executor_then_resume_if_empty",
+        0x56e70: "release_manager_storage_then_post_next", 0x1b9510: "actual_thread_deleting_destructor",
+        0x1b8d60: "thread_stop_join_release", 0x1b90b0: "post_stop_soon", 0x1b91f0: "quit_when_idle",
+        0x1a9ee0: "thread_handle_wait_and_close", 0x1b92f0: "thread_entry_destroys_owned_delegate",
+        0x1b9cb0: "zero_delay_post_wrapper", 0x1aa4b0: "shutdown_waitable_event_constructor"}
+    slots = [("engine_shutdown", 0x2e0010, 16, 0x2090),
+             ("thread_deleting_destructor", 0x2ffbe0, 8, 0x1b9510)]
+    native = audit.families.verify_native_functions(original, roles,
+        [{"role": role, "vtable_rva": table, "slot_byte_offset": offset, "target_rva": target}
+         for role, table, offset, target in slots], exports={"mappingEngineShutdown": 0x1fed0})
+    addon = audit.families.verify_native_functions(addon_original,
+        {0x7250: "environment_owner_finalizer_registration", 0x6d80: "bind_uv_loop_and_async_queue",
+         0xa0f0: "cross_thread_send_and_condition_wait", 0x93e0: "invoke_js_then_signal_producer",
+         0x8c20: "actual_callback_and_error_paths", 0x23a0: "napi_make_callback_owner",
+         0x8580: "napi_error_callback_owner", 0x7400: "request_uv_close",
+         0x2750: "uv_close_callback_releases_environment", 0x7b20: "queue_storage_release_without_signal"}, [])
+    for label, report in (("mapping", native), ("addon", addon)):
+        for row in report["complete_selected_functions"]:
+            if not row["pseudocode_captured"] or row["failures"]:
+                raise ValueError("Mapping engine shutdown " + label + " native function remains incomplete: " + row["role"])
+    proof = _mapping_engine_shutdown_chain_proof(native, addon, audit.owners, selected, audit.read(addon_original))
+    for report in (native, addon):
+        for row in report["complete_selected_functions"]:
+            capture = row.pop("capture")
+            row["rva"] = capture["rva"]
+            row["pseudocode_text_sha256"] = hashlib.sha256("\n".join(
+                line["text"] for line in capture["pseudocode"]["lines"]).encode()).hexdigest()
+            audit.artifact(audit.a.ROOT / row["artifact"]["path"], row["artifact"])
+        audit.artifact(audit.a.ROOT / report["capture_receipt"]["path"], report["capture_receipt"])
+    if _otfm_macro_encoding_dependency_changes(upstream):
+        raise ValueError("Mapping engine shutdown upstream section changed during query")
+    return {"schema_version": 1, "query": "mapping-engine-shutdown-chain",
+        "kind": "current_mapping_engine_shutdown_chain", "provenance": provenance,
+        "scope": "Current Mapping1.3.17.2 engine/main-runner shutdown ordering through actual packaged NAPI/libuv environment boundary; reuse device and queue owners without expanding service/output internals",
+        "ffi_provenance": ffi, "upstream_sections": upstream, "selected": selected,
+        "native": native, "addon_native": addon, "verified_contract": proof,
+        "reviewed_semantics": {
+            "host_call": "Host callDLL retains one completion buffer in cbMap, synchronously invokes ordinary ffi_call via the actual no-options shutdown declaration, awaits completion, deletes that entry and sets isInit=false. Its async JS method does not select ffi_call_async. No timeout, cancellation, device-map clear or other callback-map clear is present in this owner.",
+            "engine_entry_and_wait": "Actual export1FED0 -> singleton1E454/1000/1060 -> table2E0010+16/2090 clears initialized+80 under lock before posting2510 to the distinct engine+56 main runner. The zero-delay post result is ignored.1BA770/1BA790/1AA5D0 waits with INT64_MAX/WaitForSingleObject(INFINITE), without selected deadline, cancellation or JS event-loop pump. The already-uninitialized path only invokes completion and releases its lock after that callback.",
+            "staged_order": "2510 sets state+64=3 and nests eleven once-callbacks; actual execution reverses construction: device manager+152, owner96,304,312,144,200,224,288,160,storage88,then19C30 state4/signal. Each present asynchronous service retains its actual release/next continuation; absent owners advance immediately.1B940 moves next+56 into the target invocation, while1B9C6 only disposes it. Selected service shutdown calls establish boundaries, not full semantics for their independent business/output owners.",
+            "manager_order": "56B40 likewise runs571E0 device cleanup first,57090 task cancellation requests second,56F10 executor shutdown third,56E70 storage release last.571E0 stores next at+344 and calls each device cleanup virtual+64;57E60 first erases identity and synchronously destroys/joins the actual device, then posts next only at count+376=0. Prior exact input-shutdown evidence owns the destructor.56F10 stores next+176 and5EFB0 erases completed executors before proceeding at count+208=0. Finally1A9D0 clears engine+152 and destroys the manager before continuing. Task cancellation/output restoration semantics remain with their existing owner.",
+            "join_completion_and_release": "19C30 signals the event through1BA10/1BA6B0/1AA5C0 only after the staged chain reaches state4.2090 then clears engine+56 and invokes actual2FFBE0+8/1B9510:1B8D60 posts StopSoon/1B91F0/QuitWhenIdle, waits and closes the actual thread HANDLE.1B92F0 destroys the owned delegate before returning; exact prior queue receipt proves disposal of that runner's retained unexecuted tasks. After join the external1FDD0 invokes Host completion first, then clears global sample gate395760. Only after completion returns does2090 clear engine+48/17AC/1CFFD0 and process the AtExit owner. Completion does not mean that final release has already occurred or that independent queues drained.",
+            "napi_uv_boundary": "Actual addon PE delay imports bind the selected calls to node.exe napi_get_uv_event_loop,uv_async_init,napi_set_instance_data,napi_make_callback,napi_call_function,uv_async_send,uv_cond_wait,uv_cond_signal anduv_close. A0F0 queues raw callback/argument pointers, ignores uv_async_send result and waits without timed cancellation.93E0 invokes JS through8C20 before signaling; its selected callback/error path does not establish a finally signal on every exception. The environment finalizer7400 requests uv_close only for handle type1;2750 then closes the global gate and frees queue storage via7B20 without producer signaling/join. Engine shutdown does not invoke this environment finalizer. These owners prove neither a universal drain barrier nor an inevitable deadlock; actual concurrent teardown/error/rejection interleavings remain unverified."},
+        "remaining_chains": [
+            "Actual packaged runtime loader selection and concurrent NAPI/libuv environment close, in-flight/unreturned JS callbacks, rejected native posts/async sends, error unwinding and producer release require explicit official DLL/environment comparison; no global drain is established by these static owners.",
+            "Continue only real selected output/SnapTap recovery/cancellation and actual product writer/publication/HID/firmware qualification in their existing owners; engine stage boundaries do not finish those business chains.",
+            "After full semantic reverse work, implement independent Rust owners and UI/backend consumers; official DLL/device ordering, reconnect, cancellation, recovery and release comparison remains unverified."],
+        "engine_main_shutdown_order_reviewed": True, "selected_static_semantics_reviewed": True,
+        "global_event_loop_drain_proven": False, "source_chain_complete": False, "whole_product_complete": False,
+        "target_execution": False, "real_device_operations": False, "product_code_modified": False,
+        "rust_independent_implementation": "not_implemented_by_this_query", "ui_backend_wiring": "unverified",
+        "actual_dll_comparison": "unverified", "runtime_acceptance": "unverified", "failures": [],
+        "new_native_captures": 0, "new_analysis_sessions": 0, "temporary_files_created": 0,
+        "cleanup": {"new_temporary_files": [], "retained": "Existing official inputs and formal complete captures remain dependencies; no new clone, database, extraction, log or intermediate file was created"}}
 
 
 def _mapping_ble_analog_stick_tables(raw):
@@ -20062,6 +24479,598 @@ def collect_keypad_mapping_current_native(audit):
             "retained_inputs": "Existing current original/capture and complete referenced function artifacts; cleanup of unrelated scratch is coordinated separately"}}
 
 
+_keypad_two_tap_reviewed_dependencies = {
+    "keypad_mapping_consumers": "e3e7b8baf246962626120c6c253eeeacb3245ccd87eabfc93bd07d276a154dab",
+    "keypad_temporary_keymap_chain": "8a19dce5f3e6e40c86a06bdd01357f9a09002165ead08d970431a4261fa8ab07",
+    "mapping_input_producer_eligibility": "01bf909a44ca54235284a39713acb6e60076787d0a8acedfc0e68f1d08ed0a1a",
+    "mapping_analog_key_routing": "82f8d884f7137f88b9bcf0df6573eb9d9cf9054bd94547fad1426fcb48168f29",
+}
+_keypad_two_tap_reviewed_source = "b77428fbed74d86072b80e4868fdaee678eb22cf1cb580deee0808a29b9f5546"
+
+
+def _keypad_two_tap_dependencies(audit, selections, sources):
+    """Pin only the already reviewed common compiler/storage/input slices."""
+    receipt = ".analysis/results/host-current/local-audit.json"
+    document = json.loads((audit.a.ROOT / receipt).read_bytes())
+    upstream, reused = [], {}
+    for name, expected in _keypad_two_tap_reviewed_dependencies.items():
+        section = document[name]
+        digest = _keypad_temporary_keymap_digest(section)
+        if (digest != expected or section.get("failures") or section.get("target_execution") is not False
+                or section.get("bounded_observation_complete") is not True
+                or section.get("snapshot_stable") is not True
+                or section.get("selected_static_semantics_reviewed") is not True):
+            raise ValueError("Keypad two-tap shared section requires renewed review: " + name)
+        upstream.append({"receipt": receipt, "pointer": "/" + name,
+            "canonical_sha256": digest, "recaptured": False})
+    common = document["keypad_mapping_consumers"]
+    if (common.get("product_id") != 747 or any(selections[side]["acquisition"] !=
+            common["source_selections"][side]["acquisition"] for side in ("ui", "mw"))
+            or any(common["reviewed_inputs"][role] != source for role, source in sources.items())):
+        raise ValueError("Keypad two-tap current source selection differs from shared consumers")
+    roles = {
+        "keypad_mapping_consumers": ("product_obm", "mapping_task", "projection", "compiler_import",
+            "compiler_adapter", "compiler_export", "mapping_guard", "mapping_dispatch", "obm_updates",
+            "mapping_runner", "mapping_enqueue", "keypad_slot_writer", "single_key_writer",
+            "ui_product_mount", "ui_editor_mount", "ui_save", "ui_parent_save", "ui_parent_discard",
+            "ui_parent_dismiss", "ui_mapping_action", "ui_mapping_post", "storage_post_hook", "mapping_publication"),
+        "keypad_temporary_keymap_chain": ("temporary_mapping_task", "mapping_ui_result", "mapping_memory_result",
+            "persist", "publication", "context_factory", "storage_hook_owner", "window_publication"),
+    }
+    for section_name, names in roles.items():
+        section = document[section_name]
+        owners = {row["id"]: row for row in section["complete_source_owners"]}
+        for role in names:
+            row = owners[section["selected"][role]]
+            body = audit.read(row["original"])[row["byte_start"]:row["byte_end"]]
+            if body.decode() != row["body"] or hashlib.sha256(body).hexdigest() != row["body_sha256"]:
+                raise ValueError("Keypad two-tap reused owner changed: " + role)
+            reused[role] = {"receipt": receipt, "pointer": "/" + section_name + "/selected/" + role,
+                **{key: row[key] for key in ("id", "original", "syntax", "byte_start", "byte_end", "body_sha256")}}
+    return upstream, reused
+
+
+def _keypad_two_tap_source_owners(audit, originals, sources):
+    selected, bindings, exports = {}, {}, {}
+
+    def retain(role, source, anchor, kinds):
+        selected[role], = audit.retain("keypad_two_tap_" + role, source, anchor, kinds)
+        return audit.owners[selected[role]]
+
+    def binding(role, source, name, reference):
+        row = audit.binding("keypad_two_tap_" + role, source, name, reference)
+        if row.get("resolution") != "declaration":
+            raise ValueError("Keypad two-tap lexical owner is unresolved: " + role)
+        bindings[role], selected[role] = row, row["owner_id"]
+        return audit.owners[row["owner_id"]]
+
+    def exported(role, module, name, side="mw"):
+        row = audit.webpack_export("keypad_two_tap_" + role, originals[side], module, name)
+        exports[role], selected[role] = row, row["binding"]["owner_id"]
+        return audit.owners[selected[role]]
+
+    def member(role, source, root, name):
+        node, selected[role] = audit.callable_member("keypad_two_tap_" + role, source, root, name)
+        return node
+
+    two = [row for row in originals["ui"] if Path(row["path"]).name == "TwoTapKeyMapping.3a49feee.chunk.js"]
+    if (len(two) != 1 or two[0]["bytes"] != 15821
+            or two[0]["sha256"] != "74668c4e5e79615b71f0e4f69ab56dc96099d97b215b1d3ad8c8263e86db8ec8"):
+        raise ValueError("Keypad two-tap current mounted67742 source differs")
+    two = two[0]
+    retain("ui_product_gate", sources["ui_product"], "this.setState({isTwoTapMapping:e})", {"method_definition"})
+    retain("ui_popup", sources["ui_customize"], "i.bind(i,67742)", {"assignment_expression"})
+    factory = audit.webpack_factories(originals["ui"], 67742)
+    if len(factory) != 1 or factory[0][0] != two:
+        raise ValueError("Keypad two-tap mounted factory identity differs")
+    exported("ui_two_tap_export", 67742, "default", "ui")
+    root = retain("ui_two_tap_class", two, "class M extends", {"class_declaration"})
+    cls = audit.tree(two).root_node.descendant_for_byte_range(root["byte_start"], root["byte_end"] - 1)
+    for name in ("checkSecondaryIsExist", "setRefForTwoTap", "getTwoTapMapping", "getDefaultMapping",
+            "onActuationPointChange", "onCheckboxCustomReleaseChange", "closeMapping", "clear",
+            "componentDidMount", "componentDidUpdate", "componentWillUnmount", "render"):
+        member("ui_two_tap_" + name, two, cls, name)
+    for role, name in (("ui_initial_mapping", "T"), ("ui_empty_mapping", "w"), ("ui_two_tap_connector", "P")):
+        binding(role, two, name, root["byte_start"])
+    editor = sources["ui_editor"]
+    for name in ("saveTwoTapChanges", "isDefaultMapping", "saveAction", "enableSave", "getCustomItems"):
+        member("ui_editor_" + name, editor, audit.tree(editor).root_node, name)
+    retain("ui_editor_gap_gate", editor, "n-i<16380", {"method_definition"})
+    retain("ui_editor_save_route", editor, "void this.saveTwoTapChanges(e)", {"assignment_expression"})
+    reference = audit.owners[selected["ui_editor_saveTwoTapChanges"]]["byte_start"]
+    binding("ui_mapping_identity", editor, "Ht", reference)
+    exported("ui_product_info", 78193, "DeviceInfo", "ui")
+    exported("ui_threshold_converter", 31867, "fH", "ui")
+    retain("ui_actuation_preconfig", sources["ui_main"], "case P.q_k:", {"switch_case"})
+    exported("ui_preconfig_event", 13254, "q_k", "ui")
+    tasks, compiler, keypad, protocol = (sources[role] for role in ("tasks", "compiler", "keypad", "protocol"))
+    retain("mw_product_info", sources["main"], "isFWAnalogMapping:!0", {"variable_declarator"})
+    retain("mw_analog_registration", sources["main"], 'useFeature("analogV3","yes"', {"call_expression"})
+    retain("mw_obm_registration", sources["main"], 'engineType:"obmEngineKeypadCalMaxMem"', {"call_expression"})
+    retain("mw_converter_setup", tasks, "vt.A.enableUseTwoBytesActuation(c.mappingEngineActuationInfo)", {"function_declaration", "variable_declarator"})
+    exported("mw_threshold_converter", 3327, "fH")
+    exported("mw_preconfig_event", 93490, "q_k")
+    exported("mw_initialize_keymap_defaults", 51765, "initializeDefaultKeyMapData")
+    binding("mw_default_provider", tasks, "iu", 1610450)
+    binding("mw_default_provider_import", tasks, "Q", 1610450)
+    exported("mw_default_provider_selector", 72889, "v")
+    exported("mw_keypad_default_export", 24255, "default")
+    binding("mw_keypad_default_object", tasks, "G", 2177667)
+    binding("mw_keypad_default_config", tasks, "C", 2175413)
+    binding("mw_keypad_actuation_presets", tasks, "m", 2165298)
+    binding("mw_keypad_rapid_presets", tasks, "h", 2165298)
+    for role, name in (("firmware_mapping_projection", "wl"), ("disable_software_owned_input", "Tl"),
+            ("analog_updates", "Ku"), ("collect_primary_analog", "ju"), ("primary_actuation_payload", "$u"),
+            ("primary_rapid_payload", "Wu"), ("analog_enqueue", "Gu"), ("rapid_clamp", "xu"), ("rapid_min", "Hu")):
+        binding(role, tasks, name, 1610450)
+    exported("convert_obm", 51765, "convertToObmMappings")
+    convert = audit.owners[selected["convert_obm"]]["byte_start"]
+    for role, name in (("obm_analog_v3_projection", "q"), ("obm_scalar_projection", "J"), ("obm_support", "te"),
+            ("analog_v3_keypad_gate", "Ge")):
+        binding(role, tasks, name, convert)
+    for role, name in (("actuation_runner", "yv"), ("rapid_runner", "xX")):
+        exported(role, 34737, name)
+    for name in ("getAnalogMapping", "generateAnalogMappings", "getOutputTypeForAnalog",
+            "generateAppEngineAnalogMappings", "enableUseTwoBytesActuation"):
+        member("compiler_" + name, compiler, audit.tree(compiler).root_node, name)
+    for name in ("Ke", "kt", "bt", "De", "ve", "Te", "be", "Ot", "ft", "_t", "rt", "qe"):
+        binding("compiler_" + name, compiler, name, 126241)
+    for role, name in (("compiler_actuation_import", "v"), ("compiler_rapid_import", "i"),
+            ("compiler_key_table_import", "z")):
+        binding(role, compiler, name, 126241)
+    # These actual CommonJS modules contain the analog actuation/rapid conversion.
+    for module, role in ((83025, "compiler_keypad_key_table"), (3691, "compiler_keyboard_key_table"),
+            (7148, "compiler_map_actuation"), (20779, "compiler_rapid_trigger")):
+        source, _, factory = audit.webpack_factories([compiler], module)[0]
+        selected[role] = audit.retain_range("keypad_two_tap_" + role, source,
+            factory.start_byte, factory.end_byte, factory.type)
+    for name in ("setActuationPoint", "setRapidTrigger", "setTargetObmKeymap"):
+        member("engine_" + name, keypad, audit.tree(keypad).root_node, name)
+    source, _, factory = audit.webpack_factories([keypad], 96236)[0]
+    selected["engine_keyboard_cal_parent"] = audit.retain_range("keypad_two_tap_engine_keyboard_cal_parent",
+        source, factory.start_byte, factory.end_byte, factory.type)
+    member("engine_batchSetButtonAssignmentsProperty", sources["keyboard"], audit.tree(sources["keyboard"]).root_node,
+        "batchSetButtonAssignmentsProperty")
+    member("engine_convertUIRapidTriggerToFW", sources["keyboard"], audit.tree(sources["keyboard"]).root_node,
+        "convertUIRapidTriggerToFW")
+    for name in ("setMultiAnalogKeyActuationPoint", "setMultiAnalogKeyRapidTrigger"):
+        node = member("protocol_" + name, protocol, audit.tree(protocol).root_node, name)
+        binding("protocol_" + ("actuation_decoder" if "Actuation" in name else "rapid_decoder"), protocol,
+            "$" if "Actuation" in name else "k", node.start_byte)
+    for name in ("iPi", "UmA", "MzU", "K0r"):
+        exported("protocol_constant_" + name, 48967, name)
+    return selected, bindings, exports, two
+
+
+def _keypad_two_tap_source_proof(selected, owners):
+    rows, bodies = [], {}
+    for role, oid in sorted(selected.items()):
+        owner = owners.get(oid, {})
+        body = owner.get("body", "")
+        if not body or hashlib.sha256(body.encode()).hexdigest() != owner.get("body_sha256"):
+            raise ValueError("Keypad two-tap complete owner body differs: " + role)
+        rows.append({"role": role, **{key: owner[key] for key in ("syntax", "byte_start", "byte_end", "body_sha256")},
+            "source_sha256": owner["original"]["sha256"]})
+        bodies[role] = body
+    checks = {
+        "ui_product_gate": ("keyPadGroup", "ge.bFI.Keypad", "isTwoTapMapping:e"),
+        "ui_popup": ('"AnalogInput"', "i.bind(i,67742)", "disableActuationPoint:this.props.disableActuationPoint"),
+        "ui_initial_mapping": ('"AnalogInput"===n&&i===s', '"mapping[0].actuationPoint"'),
+        "ui_two_tap_getTwoTapMapping": ("this.mappingRefs.primaryMappingRef", "this.mappingRefs.secondaryMappingRef", "delete t.inputID", "this.keymapping.mapping[1]=this.getDefaultMapping()"),
+        "ui_editor_saveTwoTapChanges": ("Ht(t,e)", "isHyperShift:!t.isHyperShift", "e.mapping[0].actuationPoint=D", "this.props.setMappingList(e)"),
+        "ui_editor_gap_gate": ("n-i<16380", '"analogV1"', "n-i<120"),
+        "ui_actuation_preconfig": ("case P.q_k:", '"number"!==typeof t.defaultValue', "j.fH.updateConverter(n)"),
+        "mw_default_provider": ("(0,Q.v)(r.isKeypadCategory)",),
+        "mw_default_provider_selector": ("e?i(24255).default:i(72233).Ay",),
+        "mw_keypad_default_config": ('e||"__only_get_common_default__"',
+            "this.defaultPresetActuation.get(e)||this.defaultActuation", "o&&i.includeSpecific||(o=n.rest)"),
+        "mw_initialize_keymap_defaults": ("t.config.getDefaultActuation(null,e)", "type:o.q_k", "defaultValue:a"),
+        "firmware_mapping_projection": ("i.push(Tl(e))", 'c.every(e=>"keyboardGroup"===e)', 'e.inputType="KeyInput"'),
+        "obm_analog_v3_projection": ("e.mapping?e.mapping[0]:e",),
+        "obm_scalar_projection": ("uiThresholdL:0,uiThresholdH:0",),
+        "collect_primary_analog": ('n.isHyperShift||"AnalogInput"!==n.inputType', "const l=n.mapping[0]", "getDefaultActuation(null,u)"),
+        "primary_actuation_payload": ("thresholdL:n?i.thresholdL:t.actuationPoint[0]", "thresholdH:n?256:t.actuationPoint[1]"),
+        "rapid_clamp": ("Math.max(Hu,Math.min(16380,e))",),
+        "rapid_min": ("=1638",),
+        "engine_convertUIRapidTriggerToFW": ("Math.round(1638*e)",),
+        "rapid_runner": ("setRapidTrigger(n.profileId,n.keys)", "setRapidTrigger(n.profileId,n.keys,n.keymapId)"),
+        "engine_setActuationPoint": ("yield this.setTargetObmKeymap(o)", "this.rzDevice.setMultiAnalogKeyActuationPoint(0,e,l)", "r.status=a.STATUS_SUCCESS"),
+        "protocol_setMultiAnalogKeyActuationPoint": ("o.length>15", "d[n+3]=a.E4(o[t].thresholdH)", "d[n+5]=a.E4(o[t].thresholdL)", "const s=2+5*o.length"),
+        "protocol_setMultiAnalogKeyRapidTrigger": ("o.length>13", "d[n+3]=o[t].enabled", "const s=2+6*o.length"),
+        "compiler_generateAppEngineAnalogMappings": ('outputType:"doubleMappingGroup"', "Ke[X.DUAL_KEY_GROUP]", "kt(e,Ke[X.DOUBLE_MAPPING_GROUP]"),
+        "compiler_De": ('type:"triggers"', "actuation:p,mapping:u.downOutput", "actuation:i,mapping:r.downOutput"),
+        "compiler_ve": ('type:"doubleMapping"', 'digital:{type:"triggers",outputs:{}}'),
+        "compiler_ft": ('t.type="analogKey",a.type="analogKey"',),
+        "compiler_map_actuation": ("t.MapActuation_default=", '"analogV1"===e.analogGeneration?Math.max(p.actuationPoint[0],16)', "return u=p&&!l.keyboardGroup&&d?"),
+        "compiler_rapid_trigger": ("t.RapidTrigger_default=", "p=e.isAnalogGen2?1628:12", "isEnableUpStroke"),
+        "protocol_constant_iPi": ("new Uint8Array([80,2,25])",),
+        "protocol_constant_UmA": ("new Uint8Array([80,2,26])",),
+        "protocol_constant_MzU": ("=15",), "protocol_constant_K0r": ("=13",),
+    }
+    for role, needles in checks.items():
+        if role not in bodies or any(needle not in bodies[role] for needle in needles):
+            raise ValueError("Keypad two-tap reviewed semantic boundary differs: " + role)
+    digest = _keypad_temporary_keymap_digest(rows)
+    if digest != _keypad_two_tap_reviewed_source:
+        raise ValueError("Keypad two-tap complete source selection needs semantic review: " + digest)
+    return {"selected_source_owners": len(rows), "reviewed_source_selection_sha256": digest,
+        "actual_ui_module": 67742, "actual_compiler_module": 4325, "inline_compiler_substituted": False,
+        "precise_input_identity": ["inputID", "AnalogInput", "isHyperShift"],
+        "secondary_mapping_is_same_as_hypershift_layer": False,
+        "save_syncs_primary_actuation_between_layers": True,
+        "middleware_recomputes_release_for_each_stage": True,
+        "firmware_obm_projection_uses_primary_stage_only": True,
+        "analog_v3_threshold_collector_ignores_hypershift": True,
+        "secondary_threshold_transmitted_by_primary_actuation_command": False,
+        "ui_save_waits_for_device_confirmation": False,
+        "independent_post_write_get": False, "rollback_on_cancel": False,
+        "set_target_keymap_boolean_checked_by_analog_writer": False,
+        "rapid_runner_calls_default_then_requested_keymap": True,
+        "default_config_actual_module": 24255,
+        "ui_initial_device_default": 32760, "mw_device_info_default": 39312,
+        "ui_default_can_be_updated_by_keymap_preconfig": True,
+        "software_rapid_two_byte_multiplier": 1628, "obm_rapid_multiplier": 1638,
+        "obm_rapid_min": 1638, "obm_rapid_max": 16380,
+        "actuation_command": [80, 2, 25], "rapid_command": [80, 2, 26],
+        "actuation_batch_limit": 15, "rapid_batch_limit": 13}
+
+
+def collect_keypad_two_tap_chain(audit):
+    selections, originals, sources = _keypad_mapping_consumer_sources(audit)
+    upstream, reused = _keypad_two_tap_dependencies(audit, selections, sources)
+    selected, bindings, exports, two = _keypad_two_tap_source_owners(audit, originals, sources)
+    proof = _keypad_two_tap_source_proof(selected, audit.owners)
+    shared = retain_mapping_trigger_outputs(audit)
+    for dependency in shared.get("dependencies", []):
+        if dependency not in upstream:
+            upstream.append(dependency)
+    return {"schema_version": 1, "kind": "current_keypad_two_tap_chain", "product_id": 747,
+        "scope": "Current747 mounted AnalogInput two-tap identity, draft/save/cancel, selected432 software compilation, primary-only analogV3 OBM projection and actual threshold/rapid command/result consumers",
+        "source_selections": selections, "reviewed_inputs": {**sources, "ui_two_tap": two},
+        "selected": selected, "bindings": bindings, "cross_chunk_exports": exports,
+        "upstream_sections": upstream, "reused_source_owners": reused, "verified_contract": proof,
+        "shared_trigger_outputs": shared,
+        "reviewed_semantics": {
+            "identity_and_draft": "The current747 product turns two-tap on only for its actual keypad active input;3496 additionally requires AnalogInput before loading67742. The product passes disableActuationPoint=true.67742 finds exact inputID/AnalogInput/isHyperShift, retains primary actuation/rapid and non-default secondary actuation, then collects two child refs into one root identity with two nested mapping stages. Secondary stage is not the Hypershift layer. Missing draft containers/default actuation are source-local editor defaults, not device observation or initialization proof.",
+            "save_and_cancel": "saveTwoTapChanges matches root inputID and exact layer, merges/removes default mappings, synchronizes primary make actuation to the opposite layer and may add its explicit empty keyboard baseline. It retains source rapid behavior and removes rapid when selected outputs require it. The16380 gap gate applies to the current non-analogV1 branch. Save optimistically posts the full list; the reused save callback does not await MW/device. Cancel clears the selected input/panel; dirty-close uses the parent's save prompt. Neither action restores hardware. Scroll/DOM cleanup remains separate from backend cancellation.",
+            "actual_middleware": "The exact reused mapping task selects its analogV3-OBM keypad branch. Before selected432 compilation it recomputes every AnalogInput stage break as max(make-actuationValue,actuationMin), so saved custom release cannot be treated as the final threshold. Actual747 isFWAnalogMapping=true: wl keeps/software-projects applicable AnalogInput combinations and appends an explicit disabled KeyInput for software-owned combinations; scalar digital branches are projected separately. The selected compiler is32226.A->4325, not the duplicate inline implementation. Its analog mapping chooses DualKey/De or DoubleMapping/ve with kt/bt by actual output types, emits analogKey down/up identities, ordered trigger make thresholds and optional actuation/rapid config. Existing Fe remains the independently reviewed direction slice.",
+            "default_and_scale_sources": "The actual iu->72889.v keypad branch selects24255.default.config C. getDefaultActuation(null,keymapGuid) selects the preset rest; getDefaultRapidTrigger(inputID,keymapGuid) selects specific input when truthy or rest. Missing preset uses source global defaults; these are configuration defaults, not device reads. Presets use actuation32760/31122 for keymaps1,4-8;19656/18018 for2;13104/11466 for3. Rapid keymap2 has enabled WASD specifics,3/4 enabled rest, other rest disabled. UI DeviceInfo starts32760 and MW DeviceInfo says39312, but actual initializeDefaultKeyMapData publishes SET_ACTUATION_PRECONFIG defaultValue from selected keymap; UI merges that numeric payload and updates its converter. Software compiler RapidTrigger uses literal1628 for isAnalogGen2 and12 otherwise; the actual inherited OBM converter instead rounds1638*x, then xu clamps1638..16380. These distinct source constants are preserved without normalization.",
+            "obm_primary_only": "convertToObmMappings under actual analogV3 uses q: only mapping[0] is projected through J, which sets uiThresholdL/H=0. Empty primary keyboard is omitted. This is distinct from the unselected legacy X threshold projection. Yu->Ku separately collects only non-Hypershift AnalogInput mapping[0], resolves its actual fwID/default configuration, then queues primary actuation and rapid parameters. No selected primary-only command transmits the second stage threshold. Keymap selection/default1, profile-slot1 and software trigger behavior are distinct identities.",
+            "commands_and_ack": "Actual747 setActuationPoint batches15 and setRapidTrigger batches13 after awaiting setTargetObmKeymap without checking its boolean. Commands[80,2,25]/[80,2,26] send dataType0/profileId followed by keyId and little-endian H/L or enabled/up/down words, advertising2+5N or2+6N bytes. The actual inherited transaction/class/id/status ACK and shared HID/storage route are reused. Decoders require SUCCESS and packetSizeReturned>0 but iterate the reported length without a separate complete-record remainder check. Engine updates requested caches after resolved sends, catches batch errors and can overwrite aggregate status with a later successful batch; no GET follows.",
+            "results_and_cleanup": "The actuation runner logs mappingConflict and returns; otherwise it catches writer errors without checking its receipt. Rapid runner first calls setRapidTrigger with default keymap1, then again with the supplied keymap for keypad; both results lack an independent status/readback check. Analog enqueue completion callbacks only log. Reused mapping local completed/postprocess, asynchronous storage publication, native config application, software trigger output and real device confirmation remain separate. No new cancellation/rollback/connection generation barrier is introduced by these selected owners."},
+        "two_tap_producer_slice_complete": True, "selected_static_semantics_reviewed": True,
+        "source_chain_complete": False, "whole_product_complete": False, "target_execution": False,
+        "real_device_operations": False, "product_code_modified": False,
+        "rust_independent_implementation": "not_implemented_by_this_query", "ui_backend_wiring": "unverified",
+        "actual_dll_comparison": "unverified", "runtime_acceptance": "unverified", "failures": [],
+        "remaining_chains": [
+            "Current747 two-tap producer/ordinary software trigger and selected primary analogV3 write semantics are bounded observations; actual firmware/transport eligibility, hardware behavior and full mixed analog/digital output executors retain the shared remaining boundaries.",
+            "Full configuration-version/hash consumers, pending output/session cancellation, restoration and stale-generation rejection across disconnect/reconnect remain independently unfinished; no queue acceptance or completed callback is a drain proof.",
+            "After full semantic reverse work, implement independent Rust and actual UI/backend callers, test pure/simulated failures/recovery and compare corresponding actual official DLL/service/device results; runtime acceptance remains unverified."],
+        "cleanup": {"temporary_files_created": [], "private_databases_created": [], "new_capture_created": False,
+            "retained_reason": "Reuse indexed current originals, exact formal shared sections and existing complete native captures"}}
+
+
+def _keypad_temporary_keymap_digest(value):
+    return hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True,
+        separators=(",", ":"), allow_nan=False).encode()).hexdigest()
+
+
+def _keypad_temporary_keymap_dependency_changes(upstream):
+    """Recheck exact shared sections immediately before this query is published."""
+    import analysis as a
+    changes, documents = [], {}
+    for row in upstream:
+        label = str(row.get("receipt", "")) + "#" + str(row.get("pointer", "")) if isinstance(row, dict) else "invalid upstream section"
+        try:
+            path = a.resolve(row["receipt"], ".analysis/results")
+            if row["receipt"] not in documents:
+                documents[row["receipt"]] = json.loads(path.read_bytes())
+            value = documents[row["receipt"]]
+            for key in row["pointer"].strip("/").split("/"):
+                token = key.replace("~1", "/").replace("~0", "~")
+                if isinstance(value, list):
+                    if re.fullmatch(r"0|[1-9][0-9]*", token) is None:
+                        raise ValueError("Shared section pointer has an invalid array index")
+                    value = value[int(token)]
+                else:
+                    value = value[token]
+            if _keypad_temporary_keymap_digest(value) == row["canonical_sha256"]:
+                continue
+        except (OSError, ValueError, KeyError, TypeError, IndexError, UnicodeError):
+            pass
+        changes.append(label)
+    return changes
+
+
+def _keypad_temporary_keymap_source_owners(audit, originals, sources):
+    """Follow the mounted747 editor, actual432 compiler and temporary producers."""
+    selected, bindings, exports = {}, {}, {}
+
+    def retain(role, source, anchor, kinds):
+        selected[role], = audit.retain("keypad_temporary_keymap_" + role, source, anchor, kinds)
+        return audit.owners[selected[role]]
+
+    def binding(role, source, name, reference, *, destructured=False):
+        row = audit.binding("keypad_temporary_keymap_" + role, source, name, reference)
+        if destructured:
+            if row.get("resolution") != "destructuring_requires_value_analysis":
+                raise ValueError("Temporary keypad storage destructuring differs")
+            row["owner_id"] = audit.retain_range("keypad_temporary_keymap_" + role, source,
+                row["start_byte"], row["end_byte"], row["syntax"])
+        elif row.get("resolution") != "declaration":
+            raise ValueError("Temporary keypad lexical owner is unresolved: " + role)
+        bindings[role], selected[role] = row, row["owner_id"]
+        return audit.owners[selected[role]]
+
+    def exported(role, module, name):
+        row = audit.webpack_export("keypad_temporary_keymap_" + role, originals["mw"], module, name)
+        exports[role], selected[role] = row, row["binding"]["owner_id"]
+        return audit.owners[selected[role]]
+
+    tasks, compiler = sources["tasks"], sources["compiler"]
+    ui_maps = [item for item in originals["ui"] if item["path"].endswith("/MapSwitchKeymap.cde2a910.chunk.js")]
+    if len(ui_maps) != 1 or (ui_maps[0]["bytes"], ui_maps[0]["sha256"]) != (6084,
+            "e16e7f018bdd0d59071a7156b705cddc65c50a13fc447c23b15da0b51b559f42"):
+        raise ValueError("Temporary keypad current mounted keymap editor differs")
+    ui = ui_maps[0]
+    retain("ui_editor_loader", sources["ui_editor"], 'i.bind(i,32989)', {"pair"})
+    for name in ("getMappingData", "saveMapping", "setRadioValue"):
+        _, selected["ui_" + name] = audit.callable_member("keypad_temporary_keymap_ui_" + name,
+            ui, audit.tree(ui).root_node, name)
+    retain("ui_select_keymap", sources["ui_main"],
+        'payload:{keymapGuid:t.payload,keymaps:e.keymaps}', {"variable_declarator"})
+    factories = audit.webpack_factories(originals["mw"], 21369)
+    if len(factories) != 1 or factories[0][0] != compiler:
+        raise ValueError("Temporary keypad actual compiler keymap module differs")
+    source, _, factory = factories[0]
+    selected["actual_keymap_compiler"] = audit.retain_range("keypad_temporary_keymap_actual_keymap_compiler",
+        source, factory.start_byte, factory.end_byte, factory.type)
+    retain("actual_keymap_dispatch", compiler, '[`${X.KEYMAP_GROUP}`]:m.Keymap_default', {"pair"})
+    binding("actual_keymap_import", compiler, "m", 115316)
+    retain("actual_mapping_entry", compiler, 'this.getAppEngineMapping=e=>', {"assignment_expression"})
+    binding("actual_mapping_inputs", compiler, "Tt", 122796)
+    exported("unsupported_registration", 68451, "mK")
+    binding("unsupported_consumer", tasks, "ee", 643443)
+    binding("switch_keymap_event", tasks, "ge", 643443)
+    retain("unsupported_mount", tasks, '(0,Di.mK)(o.device,', {"call_expression"})
+    retain("keymap_guard", tasks, 'ON_SET_KEYMAP_PROFILE:[', {"pair"})
+    retain("keymap_dispatch", tasks, 'case"ON_SET_KEYMAP_PROFILE":', {"switch_case"})
+    retain("mapping_dispatch", tasks, 'case"ON_SET_KEYMAPPING":', {"switch_case"})
+    exported("selection_task", 1610, "taskMakerSetKeymapProfile")
+    retain("temporary_mapping_task", tasks, 'isTemporaryKeymapSwitch:a=!1', {"function_expression"})
+    for role, module, name in (("clutch_predicate", 55665, "rl"), ("load_mappings", 10745, "loadKeyMappings"),
+            ("context_helpers", 5281, "Ay"), ("persist", 89423, "setLocalStorageDeviceCache"),
+            ("publication", 51765, "mappingEngineSetLocalStorage"),
+            ("window_publication", 51765, "saveDeviceDataToWindowStorage")):
+        exported(role, module, name)
+    selected["context_factory"] = exports["context_helpers"]["complete_factory_owner"]
+    reference = audit.owners[selected["temporary_mapping_task"]]["byte_start"]
+    for role, name in (("snapshot", "Ol"), ("save_snapshot", "Bl"), ("clear_snapshot", "Ml"),
+            ("mapping_ui_result", "Nu"), ("mapping_memory_result", "Lu"),
+            ("typing_mode_event", "Vu"), ("keymap_indicator", "vu")):
+        binding(role, tasks, name, reference)
+    binding("storage_hooks", tasks, "E", 2246413)
+    binding("storage_dedupe", tasks, "k", 2246413, destructured=True)
+    for module, role in ((91684, "storage_hook_adapter"), (67403, "storage_hook_owner")):
+        factory_source, _, node = audit.webpack_factories(originals["mw"], module)[0]
+        selected[role] = audit.retain_range("keypad_temporary_keymap_" + role, factory_source,
+            node.start_byte, node.end_byte, node.type)
+    for role, name in (("window_enabled", "re"), ("window_projection", "oe"), ("window_merge", "se")):
+        binding(role, tasks, name, 2263307)
+    retain("keyboard_enable_event", tasks, 'eventKey:"ON_SET_ENABLE_KEYBOARD_KEYS"', {"variable_declarator"})
+    for name in ("resolveDeviceDataForAppEngine", "updateDeviceData", "setEnableKeyboardKeys"):
+        _, selected["keyboard_" + name] = audit.callable_member("keypad_temporary_keymap_keyboard_" + name,
+            tasks, audit.tree(tasks).root_node, name)
+    factory_source, _, facade = audit.webpack_factories(originals["mw"], 65200)[0]
+    for name in ("localStorageSetItem", "registerUnsupportedMapping"):
+        _, selected["facade_" + name] = audit.callable_member("keypad_temporary_keymap_facade_" + name,
+            factory_source, facade, name)
+    exported("cleanup_device", 10745, "cleanUpDevice")
+    return selected, bindings, exports, ui
+
+
+_keypad_temporary_keymap_reviewed_dependencies = {
+    "keypad_mapping_consumers": "e3e7b8baf246962626120c6c253eeeacb3245ccd87eabfc93bd07d276a154dab",
+    "keypad_mapping_current_native": "f774fdfbd9baa0c6eb481dc7a1de617f2a96701743f23638dcec12c977e7add9",
+    "mapping_input_producer_eligibility": "01bf909a44ca54235284a39713acb6e60076787d0a8acedfc0e68f1d08ed0a1a",
+}
+
+
+def _keypad_temporary_keymap_source_proof(selected, owners):
+    rows = []
+    for role, oid in sorted(selected.items()):
+        owner = owners.get(oid, {})
+        body = owner.get("body", "")
+        if not body or hashlib.sha256(body.encode()).hexdigest() != owner.get("body_sha256"):
+            raise ValueError("Temporary keypad complete source owner differs: " + role)
+        rows.append({"role": role, **{key: owner[key] for key in (
+            "syntax", "byte_start", "byte_end", "body_sha256")}, "source_sha256": owner["original"]["sha256"]})
+    reviewed = _keypad_temporary_keymap_digest(rows)
+    if reviewed != "4d8da00c8729a2ca535009f1fe9c1e9c272cf1422c5dc53b59ee80ca22de8a63":
+        raise ValueError("Temporary keypad complete reviewed source selection differs: " + reviewed)
+    return {"selected_source_owners": len(rows), "reviewed_source_selection_sha256": reviewed,
+        "actual_compiler_module": 21369, "inline_same_named_compiler_selected": False,
+        "temporary_predicate": ["switchKeymap", "specificKeymap", "matching_stored_clutch_guid"],
+        "clutch_release_output_has_specific_keymap_id": False,
+        "temporary_persistence_copies": ["matching_profile.appEngine"],
+        "temporary_active_keymap_id_persisted": False, "temporary_mapping_version_incremented": False,
+        "restoring_non_temporary_mapping_clears_matching_context_in_finally": True,
+        "temporary_failure_always_clears_context": False,
+        "storage_post_hook_awaited": False, "mapping_publication_dedupe_updates_before_native_storage_result": True,
+        "mapping_publication_dedupe_checks_active_keymap_id": False,
+        "ui_completed_is_native_application_or_device_confirmation": False,
+        "current_window_cleanup_explicitly_resets_temporary_context": False,
+        "whole_reconnect_generation_drain_proven": False}
+
+
+def _keypad_temporary_keymap_dependencies(audit, selections, sources, original):
+    """Reuse shared storage and selected output semantics by exact formal sections."""
+    receipt = ".analysis/results/host-current/local-audit.json"
+    document = json.loads((audit.a.ROOT / receipt).read_bytes())
+    upstream, reused = [], []
+    for name, reviewed in _keypad_temporary_keymap_reviewed_dependencies.items():
+        section = document[name]
+        digest = _keypad_temporary_keymap_digest(section)
+        if (digest != reviewed or section["failures"] or section["target_execution"]
+                or not section["selected_static_semantics_reviewed"]):
+            raise ValueError("Temporary keypad upstream section requires review: " + name)
+        upstream.append({"receipt": receipt, "pointer": "/" + name,
+            "canonical_sha256": digest, "recaptured": False})
+    consumer = document["keypad_mapping_consumers"]
+    if (consumer["product_id"] != 747 or any(selections[role]["acquisition"] !=
+            consumer["source_selections"][role]["acquisition"] for role in ("ui", "mw"))
+            or consumer["verified_contract"]["actual_compiler_path"] !=
+                ["1610.B", "32226.A", "4325.RzAppEngineMapping_default", "Fe"]
+            or any(consumer["reviewed_inputs"][role] != sources[role] for role in sources)):
+        raise ValueError("Temporary keypad actual source selection differs from its shared consumers")
+    for name, rvas in (("keypad_mapping_current_native", (0x66d10, 0xad0cc, 0x656ca, 0x9acfa)),
+            ("mapping_input_producer_eligibility", (0x20920, 0x2fa0, 0x3160, 0xd496c, 0xd4b80, 0x65cc0, 0xe3f10))):
+        native = document[name]["native"]
+        if any(native["input"][key] != original[key] for key in ("path", "bytes", "sha256")):
+            raise ValueError("Temporary keypad shared native input differs")
+        audit.artifact(audit.a.ROOT / native["capture_receipt"]["path"], native["capture_receipt"])
+        rows = {int(row["rva"], 16): row for row in native["complete_selected_functions"]}
+        for rva in rvas:
+            row = rows[rva]
+            if not row["input_chunks_verified"] or not row["pseudocode_captured"] or row["failures"]:
+                raise ValueError("Temporary keypad shared native owner is incomplete")
+            capture = json.loads(audit.artifact(audit.a.ROOT / row["artifact"]["path"], row["artifact"]))
+            text = "\n".join(line["text"] for line in capture["pseudocode"]["lines"])
+            if hashlib.sha256(text.encode()).hexdigest() != row["pseudocode_text_sha256"]:
+                raise ValueError("Temporary keypad shared native interpretation differs")
+            if rva == 0xad0cc and not any(int(xref["to"], 16) == int(native["image_base"], 16) + 0x8563e
+                    for line in capture["assembly"] for xref in line.get("xrefs_from", [])):
+                raise ValueError("Temporary keypad actual unsupported output edge differs")
+            reused.append({"receipt": receipt, "pointer": "/" + name + "/native/complete_selected_functions/" +
+                str(native["complete_selected_functions"].index(row)), "rva": hex(rva),
+                "artifact": row["artifact"], "pseudocode_text_sha256": row["pseudocode_text_sha256"]})
+    owner_id = document["mapping_input_producer_eligibility"]["selected"]["host_storage_set"]
+    owner = next(row for row in document["mapping_input_producer_eligibility"]["complete_source_owners"]
+        if row["id"] == owner_id)
+    body = audit.read(owner["original"])[owner["byte_start"]:owner["byte_end"]]
+    if body.decode() != owner["body"] or hashlib.sha256(body).hexdigest() != owner["body_sha256"]:
+        raise ValueError("Temporary keypad shared Host storage bridge differs")
+    shared_bridge = {key: owner[key] for key in ("id", "original", "byte_start", "byte_end", "body_sha256")}
+    return upstream, reused, shared_bridge
+
+
+_keypad_temporary_keymap_native_roles = {
+    0x549e0: "storage_observer_cache_value", 0x5546c: "register_storage_key_observer",
+    0x55484: "read_key_with_owned_completion", 0x555b0: "cache_success_nonempty_then_continue",
+    0x77c50: "schedule_device_key_reads", 0x77df0: "ordered_device_key_candidates",
+    0x784d0: "return_last_read_continuation_to_device_runner",
+    0x78920: "create_and_select_initial_device_data", 0x5d104: "own_device_data_reference",
+    0xe3d90: "device_data_constructor_and_sequence", 0x8563e: "unsupported_output_notification_queue",
+    0xa3afc: "owned_unsupported_notification_closure", 0xaa2c8: "apply_configuration_output_boundary",
+}
+
+_keypad_temporary_keymap_native_reviewed = {
+    0x549e0: "6ead33204f95d4b412d0f6e509ad8d2e767e0b54cd951f9c61a7481267963d17",
+    0x5546c: "74f4491fbca492934259a3fb44f4da9f9c75d3ee8dd5df624af7069bfba0c9c0",
+    0x55484: "22ce326ede41027062b6be0de9c5c5de762a730fd02f068ae8a95058ecce8011",
+    0x555b0: "5c1d1b16d10cad0259472ff4933603cdd0493e88e0f77eb465bc06defa538504",
+    0x77c50: "27d198fa34f2a560b33ed3ec59e745eaa686c4f6221910eefb5704e2296820a8",
+    0x77df0: "0db97105c7c62e4bb20b224cb6b72708f41d6ff558cb0399907e323beacb35a0",
+    0x784d0: "71500198272b9b2dd8836c31b61e197abf967753880c63cece2641b08ed8b213",
+    0x78920: "c418dedc951b77228e7227f61b1047288adc59131cefd6f7b23a9a361d33ef5e",
+    0x5d104: "c644061b7132d16234a41fdca3d553cc2ce8d545be318929119988a0a2a97c53",
+    0xe3d90: "d447697bd135f5c3c9dac89f72961ee622cc966397cdf1aa5acb0b41e2266ac8",
+    0x8563e: "684a49a8b5ce347d8ece55a2f37d1f854fbf19445284647c99c2a81806d4aa31",
+    0xa3afc: "63c4beca1c05c33dff7ac56a4805e99aeeaa2baf4e7fdb150455adb5b25fa790",
+    0xaa2c8: "351429177db7d8ac040200d9eec27411f1a104e0b482ed924be332a7db72a036",
+}
+
+
+def _keypad_temporary_keymap_native_proof(raw, native):
+    base, functions, _, instructions, actual = verify_retained_native_pe(raw, {
+        "image_base": native["image_base"], "complete_functions": native["complete_selected_functions"],
+        "verified_data_regions": []}, "Temporary keypad native")
+    if set(functions) != set(_keypad_temporary_keymap_native_roles):
+        raise ValueError("Temporary keypad selected native owner differs")
+    for rva, digest in _keypad_temporary_keymap_native_reviewed.items():
+        text = "\n".join(line["text"] for line in functions[rva]["pseudocode"]["lines"])
+        if hashlib.sha256(text.encode()).hexdigest() != digest:
+            raise ValueError("Temporary keypad complete reviewed native owner differs: " + hex(rva))
+    slots = ((0x2e6a18, 8, 0x65cc0), (0x2e6a18, 16, 0x65cc0),
+        (0x2ed2e8, 8, 0xe3f10), (0x2ed2e8, 16, 0xe5bb0), (0x2ed2e8, 24, 0xe5c50))
+    for table, offset, target in slots:
+        if int.from_bytes(actual(table + offset, 8), "little") != base + target:
+            raise ValueError("Temporary keypad actual storage/configuration slot differs")
+    edges = ((0x77c50, 0x77df0), (0x77df0, 0x5546c), (0x77df0, 0x55484),
+        (0x77df0, 0x784d0), (0x5546c, 0xd427a), (0x55484, 0xd4560),
+        (0x55484, 0x555b0), (0x78920, 0xe3d90), (0x78920, 0x5d104),
+        (0x8563e, 0xa3afc), (0x8563e, 0x1b9cb0), (0xaa2c8, 0x7b350))
+    for owner, target in edges:
+        if not any(int(xref["to"], 16) == base + target for line in functions[owner]["assembly"]
+                for xref in line.get("xrefs_from", [])):
+            raise ValueError("Temporary keypad native continuation/publication edge differs: " + hex(owner))
+    return {"functions_verified": len(functions), "instructions_verified": instructions,
+        "verified_edges": [{"owner_rva": hex(owner), "target_rva": hex(target)} for owner, target in edges],
+        "verified_slots": [{"table_rva": hex(table), "offset": offset, "target_rva": hex(target)}
+            for table, offset, target in slots], "device_data_owner_offset": 256,
+        "storage_value_cache_offset": 80, "storage_read_empty_or_failed_still_continues": True,
+        "last_key_read_is_a_generation_barrier": False, "base_storage_observer_proves_747_transport_eligibility": False,
+        "configuration_publication_is_device_readback": False, "whole_output_executor_drain_proven": False}
+
+
+def collect_keypad_temporary_keymap_chain(audit):
+    """Close747 temporary selection/restore producers at their actual shared consumers."""
+    selections, originals, sources = _keypad_mapping_consumer_sources(audit)
+    selected, bindings, exports, ui = _keypad_temporary_keymap_source_owners(audit, originals, sources)
+    source_proof = _keypad_temporary_keymap_source_proof(selected, audit.owners)
+    original, provenance = _mapping_physical_input_inputs(audit)
+    if (original["sha256"], original["bytes"]) != (
+            "c64e539437b50da2b1f2e4155d8cbb0fb1c3e1ebaad894caf509bad97e9857f9", 3948744):
+        raise ValueError("Temporary keypad current native input requires semantic review")
+    upstream, reused, bridge = _keypad_temporary_keymap_dependencies(audit, selections, sources, original)
+    slots = [{"role": role, "vtable_rva": table, "slot_byte_offset": offset, "target_rva": target}
+        for role, table, offset, target in (("base_storage_added", 0x2e6a18, 8, 0x65cc0),
+            ("base_storage_changed", 0x2e6a18, 16, 0x65cc0),
+            ("device_data_set", 0x2ed2e8, 8, 0xe3f10), ("device_data_clear", 0x2ed2e8, 16, 0xe5bb0),
+            ("device_data_key", 0x2ed2e8, 24, 0xe5c50))]
+    native = audit.families.verify_native_functions(original, _keypad_temporary_keymap_native_roles, slots)
+    for row in native["complete_selected_functions"]:
+        if not row["assembly_captured"] or not row["pseudocode_captured"] or row["failures"]:
+            raise ValueError("Temporary keypad selected native owner is incomplete")
+    native_proof = _keypad_temporary_keymap_native_proof(audit.read(original), native)
+    for row in native["complete_selected_functions"]:
+        capture = row.pop("capture")
+        row["rva"] = capture["rva"]
+        row["pseudocode_text_sha256"] = hashlib.sha256("\n".join(
+            line["text"] for line in capture["pseudocode"]["lines"]).encode()).hexdigest()
+        audit.artifact(audit.a.ROOT / row["artifact"]["path"], row["artifact"])
+    audit.artifact(audit.a.ROOT / native["capture_receipt"]["path"], native["capture_receipt"])
+    return {"schema_version": 1, "kind": "current_keypad_temporary_keymap_chain", "product_id": 747,
+        "scope": "Current747 mounted keymap clutch maker, temporary runtime/persistent selection and restore, shared native storage publication plus selected key-read/notification/configuration boundaries; no two-tap or other output-family expansion",
+        "source_selections": selections, "reviewed_inputs": {**sources, "ui_keymap": ui},
+        "selected": selected, "bindings": bindings, "cross_chunk_exports": exports,
+        "upstream_sections": upstream, "reused_native_owners": reused, "reused_host_storage_bridge": bridge,
+        "provenance": provenance, "native": native,
+        "verified_contract": {"source": source_proof, "native": native_proof},
+        "reviewed_semantics": {
+            "actual_editor_and_compiler": "Mounted3807 lazy-loads9582/32989. MapSwitchKeymap saves specificKeymap target GUID and optional isClutch/previousKeymapGuid from the selected keymap; navigation outputs force clutch=false. The real1610.B->32226->4325 compiler dispatches Keymap_default from21369, not the other inline compiler. Its down output has type=switchKeymap, target guid and id=specificKeymap. Its clutch up output has type=switchKeymap and previous guid but no id; nonclutch up is disabled. Tt pairs these with the actual down/up inputs.",
+            "event_to_selection": "Current68451.mK registers unsupportedmapping and in Electron filters productId before parsing input/output JSON in ee. The switchKeymap consumer ge preserves the raw output as unsupportedMappingEvent and passes guid to ON_SET_KEYMAP_PROFILE; navigation ids take the separate navigate event. The actual dispatch passes that raw event as oA's eighth argument.55665.rl accepts only switchKeymap + specificKeymap with a stored specificKeymap/isClutch=true/GUID match. The release output lacks id and therefore takes normal restore, rather than creating another temporary context. UI selection has no unsupported event and also takes the normal branch.",
+            "temporary_selection": "The actual747 analogV3/OBM branch clears the previous mapping snapshot, reads the persisted active profile, and clones device data only for that clutch predicate. It changes the runtime activeKeymapId, ensures/hydrates the target, sends indicator/UI state, saves the old mappings snapshot by profileGuid/keymapGuid, and stores deviceData/keymapGuid/profileGuid/appliedMappings in the singleton temporary context. loadKeyMappings(...,true) skips the normal OBM active-map sync and queues ON_SET_KEYMAPPING carrying isTemporaryKeymapSwitch=true. The non-temporary branch updates durable activeKeymapId, runs the existing OBM active-map/default initialization, persists and queues false; oA adds a version only for UI-origin selection. Its catch clears the snapshot and reports error without a universal context rollback.",
+            "mapping_restore_and_failures": "The747 Uu branch resolves a cloned runtime document only when the temporary flag and context.deviceData both exist; otherwise it reads durable data. Previous mappings use a matching saved profile/keymap snapshot first, then matching temporary appliedMappings when restoring, then the current profile mappings. It clears the snapshot, runs the already selected projection, updates mappings and requested UI state. Ordinary restore increments version and finalizes durable persistence; temporary flow does neither, updates appliedMappings after Nu, and finalizes temporary publication. Non-temporary work matching the context profile clears that context in finally, including failure; the temporary failure path has no unconditional context reset. Missing active profile/keymap throws to the real error path. Nu can already publish completed before temporary persistence finishes; later errors do not retroactively turn that earlier notification into device success.",
+            "runtime_and_storage": "5281 finalizes temporary data by rereading durable storage and cloning only the matching runtime profile.appEngine into the matching durable profile; it preserves durable activeKeymapId, mappings and other profile fields. Missing durable data/profile GUID takes the direct mapping publisher path. The runtime window projection publishes productId/activeProfile and profile names/GUIDs, not an independent device result. ON_SET_KEYMAPPING forwards the same temporary flag to keyboard-enable;61450 resolves the same context, changes the runtime appEngine and, when temporary, merges only appEngine into durable data and updates context.deviceData. It does not promote runtime keyboard-enable or keymap selection into a confirmed device state.",
+            "publication_and_acknowledgment": "89423's hash excluding version is updated before LocalStorageHook.67403 awaits its prehook and setItem but invokes PostSetLocalStorage without awaiting its asynchronous conversion/publication.51765 updates its appEngine/default/analog/profile/gamemode dedupe cache before awaiting65200.localStorageSetItem; the predicate does not independently compare activeKeymapId. The current747 facade storage method is byte-identical to the reused shared method. Exact shared receipt sections retain Host bool/string completion and current20920->2FA0->3160->D496C->D4B80 mutation/observer semantics. Storage completion, successful format/publication, output queue completion and actual device readback remain separate.",
+            "native_key_read_and_config": "77C50 schedules77DF0 on the manager sequence when present.77DF0 builds the base synapse_PID key, its uint32 identity suffix and optional successive descriptor string suffixes, then registers observers before reads in most-specific-to-base order, omitting empty optional candidates. Only the final base read carries784D0; the others use empty continuations.555B0 writes a successful nonempty value into device+80's keyed cache and always continues, including failure/empty.78920 creates E3D90 DeviceData at device+256, whose actual set/clear/key slots are E3F10/E5BB0/E5C50, and tries cached data in map iteration order until SetData succeeds. Common input-device storage slots8/16 resolve the shared65CC0 observer. The already reviewed E3F10 sequence/parse/change gate moves staged+48 to published+56; this query does not complete E419E's other parser versions or infer747 transport eligibility from the base table.",
+            "affected_output_and_connection_boundary": "The shared65CC0 observer applies a successful changed config via AA2C8. Its full retained body queues actual configuration/executor work, gathers only its selected keyboard/mouse output types and clears its named bookkeeping containers; it supplies no universal pending-output or session quiescence guarantee. Existing66D10 break continues to use the active mapped-object snapshot, and the already reviewed dpad pending list/destructor limits remain unchanged. AD0CC's actual current unsupported edge is8563E: gate device+728 bit0 and callback+736, serialize input/output, supply a timestamp if absent, then queue the owned A3AFC closure to device+16. This return is queue acceptance.784D0 also merely posts its continuation to that runner. Neither owner adds an epoch barrier. The current747 cleanup awaits removeUsbDevice in its real common path and requests stopRunningTurbosAndMacros before closing the MW window; it has no explicit temporary-context setter or general in-flight drain acknowledgment. Full pending-output restoration, late callback rejection and reconnect generation closure retain their existing pending status."},
+        "temporary_keymap_producer_slice_complete": True, "selected_static_semantics_reviewed": True,
+        "source_chain_complete": False, "whole_product_complete": False, "target_execution": False,
+        "real_device_operations": False, "product_code_modified": False,
+        "rust_independent_implementation": "not_implemented_by_this_query", "ui_backend_wiring": "unverified",
+        "actual_dll_comparison": "unverified", "runtime_acceptance": "unverified", "failures": [],
+        "remaining_chains": [
+            "Finish747 AnalogInput/two-tap as its separate actual mounted producer chain; this query closes only keymap clutch selection, runtime publication and normal restore producers.",
+            "Continue actual747 firmware/transport caller qualification and full configuration-version/hash/mode consumers only where still unresolved; shared E419E parser retention is not semantic closure of every version.",
+            "Close pending output/session cancellation, restoration and stale-generation rejection across actual disconnect/reconnect and remaining output executors; queue acceptance and a base-key continuation do not establish quiescence.",
+            "After full semantic reverse work, implement independent Rust and actual UI/backend callers, then verify pure/simulated failures/recovery and corresponding actual official DLL/service/device results; runtime acceptance remains unverified."],
+        "cleanup": {"temporary_files_created": [], "private_databases_created": [], "new_capture_created": False,
+            "retained_reason": "Reuse indexed current originals and exact formal shared sections; all added native owners already exist in the complete current capture"}}
+
+
 def _mapping_physical_input_inputs(audit):
     """Select the input decoder from the current release-owned package."""
     indexed = json.loads(audit.artifact(audit.a.ROOT / ".analysis/inputs.json"))
@@ -20523,8 +25532,673 @@ def collect_mapping_kernel_input_producer(audit):
         "actual_dll_comparison": "unverified", "runtime_acceptance": "unverified", "failures": []}
 
 
+def _keyboard_ble_power_transport_source_plan():
+    """Complete current owners for the selected Windows write/notify/release slice."""
+    return (
+        ("win_resolve", "node_modules/node-ble-rz/lib/resolve-bindings.js", "const os =", "program", "9612b2b98642259c76f50c5679410cfa812ee3da89b17147e0f8a8a4dd9fb2a4"),
+        ("win_binding", "node_modules/node-ble-rz/lib/win/bindings.js", "const { EventEmitter }", "program", "989878bb19ba5fb6baf74e9549394e0488d12c34a46d6a739734ee863d13e989"),
+        ("gyp_entry", "node_modules/node-gyp-build/index.js", "const runtimeRequire", "program", "a7ed0d5ae218a19bdbdf15a590d0893790ddf536313b66a787554693cfaae078"),
+        ("gyp_program", "node_modules/node-gyp-build/node-gyp-build.js", "var fs =", "program", "134f0585f7c665db89f332a379158c6f113274422e42aaf54e0aa9d5ac37f577"),
+        ("gyp_resolve", "node_modules/node-gyp-build/node-gyp-build.js", "load.resolve = load.path =", "assignment_expression", "f710c0fcd9242114a3179f4578d20f01c7c19110e832aab4e3c8a9a2b7fe5868"),
+        ("gyp_get_first", "node_modules/node-gyp-build/node-gyp-build.js", "function getFirst", "function_declaration", "30298bbc30685292c50dada5a7865cf3214757ba2850c64b62784627d9f5cda9"),
+        ("gyp_match_build", "node_modules/node-gyp-build/node-gyp-build.js", "function matchBuild", "function_declaration", "1f0b16ab964d00895ebdc3be40d55d8d9466928ecfdbd9054433bbe662c16e1c"),
+        ("gyp_read_dir", "node_modules/node-gyp-build/node-gyp-build.js", "function readdirSync", "function_declaration", "5e2b4f9359e52ccd3037b1648913e0ef8cc2893aa802aeb1eff2110e68f9eb57"),
+        ("protocol_write", "electron/modules/noble/strategy/protocol30.js", "write(r,o,s,n,i,c)", "method_definition", "7d52ee389c1c1c291329a19a9ef0b1fb65d84d56822873f178decea1b9765c71"),
+        ("protocol_connect", "electron/modules/noble/strategy/protocol30.js", "connect(t,o,a,s)", "method_definition", "e29293b93339638454764f65d90685ad9ad7d373f540548753807b72612a993c"),
+        ("protocol_disconnect", "electron/modules/noble/strategy/protocol30.js", "disconnect(e)", "method_definition", "658f1c3962aadc1921910b5f92397d1de4659973f30f73d9ac9bacdbef3ab4a7"),
+        ("protocol_read", "electron/modules/noble/strategy/protocol30.js", "read(r,o)", "method_definition", "cf8a7b504801324dcea8220442bebb546adbc5696aec3705e106567c615c3ade"),
+        ("host_send", "electron/modules/noble/index.js", 'te.set("ble.send",', "call_expression", "5a5db9afa1fadf53ed653b851d8d116428c19845fb2193e192170fe1e8c00e6a"),
+        ("host_connect", "electron/modules/noble/index.js", 'te.set("ble.connect",', "call_expression", "6300e0b10136618bcb74dab0d62d21ccb1b33d754e3f3c4e6f397f82636bf1b9"),
+        ("host_disconnect", "electron/modules/noble/index.js", 'te.set("ble.disconnect",', "call_expression", "2cfaaba90a26b30ff48aa698b1ad971c6f0d27cada1d6a620ea7eed57ea3cde7"),
+        ("host_cache_remove", "electron/modules/noble/index.js", "function W(e)", "function_declaration", "d240691f50dc9ebbd3029f54f44760649691d8bc8be6b126faaedb8e0addf062"),
+        ("host_strategy", "electron/modules/noble/index.js", "function R(e)", "function_declaration", "464f08e829e602ce9a2aa532bd882d0df6c446b9e1e3d43116204f8b538e0211"),
+        ("host_strategies", "electron/modules/noble/index.js", "U=[{strategyName:", "variable_declarator", "820d080280d0ec0ad325504203ec32ca66e10036d94e5eff32cef5b69f127d2e"),
+        ("host_protocol_import", "electron/modules/noble/index.js", 't=require("./strategy/protocol30")', "variable_declarator", "09e192471b3ad548d93f9d4496a1ecb7a840d5b7cc523f175e746ce040c6d44c"),
+        ("host_stop", "electron/modules/noble/index.js", "stopBLEEndpointMonitoring:function", "pair", "9f5d633e7b3246419d22b6c0166ae0c6f5eb5799697aa8494a7cd801854ad3c0"),
+        ("util_platform", "electron/modules/noble/util.js", '"darwin"===process.platform', "expression_statement", "2f3cd42f6c4f90f658533194c3a18698cac0eea76b97e9957bcbf53f5180acde"),
+        ("util_write_data", "electron/modules/noble/util.js", "writeProtocol30Data:function", "pair", "9e6bc2785d7213773c314223337a9adf925f08a4b708839551e12b7685b96d73"),
+        ("win_write_data", "electron/modules/noble/cross-platform/win/common.js", "writeProtocol30Data:function", "pair", "2567d62bed0908dcf39da4c065b2abcdd475f95d5d2840eb28addfd1fdf6df35"),
+        ("win_write_header", "electron/modules/noble/cross-platform/win/common.js", "writeProtocol30header:function", "pair", "63bfccb0ca839982db94376777bfb9696b44de0e4545cf416d54c8f7c3f3135d"),
+        ("constants", "electron/modules/noble/constants.js", "module.exports=", "assignment_expression", "8638f380ecc180263bcc0a91083079022ba7713f1cadf15c5582b843bc435fe9"),
+        ("host_ipc", "electron/main.js", '"rzBleDeviceAction"', "call_expression", "9ba1e3b96d321b8865b700c16166e8f750dee02b1d26dd83536c5fe34dbb59d4"),
+        ("preload_ipc", "electron/preload.js", "doBleDeviceAction:", "pair", "d98e8ee5e2b7610dd2df8a13a6acc28942cd6e8768d471db6a924585ba432821"),
+    )
+
+
+def _keyboard_ble_power_transport_first_build(names):
+    """Static projection of getFirst's case-sensitive filter; preserve input order."""
+    return next((name for name in names if name.endswith(".node")), None)
+
+
+def _keyboard_ble_power_transport_inputs(audit):
+    """Bind current JS offsets and signed unpacked native bytes to one official package."""
+    indexed = json.loads(audit.artifact(audit.a.ROOT / ".analysis/inputs.json"))
+    release = verified_host_release_receipt(index=indexed)
+    if release["version"] != "4.0.896":
+        raise ValueError("Keyboard BLE transport requires a new current release review")
+    audit.artifact(audit.a.ROOT / release["receipt"]["path"], release["receipt"])
+    for row in release["verified_dependencies"]:
+        audit.artifact(audit.a.ROOT / row["path"], row)
+    members = current_host_asar_members(audit, indexed, release)
+    originals = {row["path"]: row for row in indexed["inputs"]}
+    suffixes = {row[1] for row in _keyboard_ble_power_transport_source_plan()}
+    suffixes.update("node_modules/node-ble-rz/" + suffix for suffix in (
+        "index.js", "package.json", "lib/noble.js", "lib/characteristic.js", "lib/peripheral.js",
+        "build/Release/binding.node", "build/Release/noble.node"))
+    suffixes.add("node_modules/node-gyp-build/package.json")
+    sources, archives = {}, {}
+    package = None
+    for suffix in sorted(suffixes):
+        matches = [row for row in members if row["path"].endswith("/" + suffix)]
+        if len(matches) != 1:
+            raise ValueError("Current keyboard BLE member is absent or ambiguous: " + suffix)
+        row = matches[0]
+        archive = originals.get(row.get("container"))
+        packages = [item for item in release["files"] if archive is not None
+                    and item["path"] == archive.get("container")
+                    and item["sha256"] == archive.get("container_sha256")]
+        if (archive is None or len(packages) != 1
+                or archive["sha256"] != "e7a524aca1771251ca4f851441a97cac1c33929891b291ed34deb7adfc1831ec"
+                or row["container_sha256"] != archive["sha256"]):
+            raise ValueError("Current keyboard BLE package/ASAR ancestry differs: " + suffix)
+        if package is not None and packages[0]["path"] != package["path"]:
+            raise ValueError("Keyboard BLE members use different official packages")
+        package = packages[0]
+        body = audit.read(row)
+        archive_raw = audit.read(archive)
+        if suffix.endswith(".node"):
+            mirrors = [item for item in current_host_extracted_inputs(indexed, release)
+                       if item["path"].endswith("/resources/app.asar.unpacked/" + suffix)]
+            if (not row.get("unpacked") or row.get("offset") is not None or len(mirrors) != 1
+                    or mirrors[0].get("container") != package["path"]
+                    or mirrors[0].get("container_sha256") != package["sha256"]
+                    or audit.read(mirrors[0]) != body):
+                raise ValueError("Current keyboard BLE unpacked native/package bytes differ: " + suffix)
+            if suffix.endswith("/binding.node") and row["sha256"] != "caa1bf44e236d00361af6294bce93433f1a3fcc597a1dc708601321bd69443ad":
+                raise ValueError("Current NobleWinrt native identity requires review")
+        elif (row.get("unpacked") or type(row.get("offset")) is not int
+                or archive_raw[row["offset"]:row["offset"] + len(body)] != body):
+            raise ValueError("Current keyboard BLE member differs from actual ASAR offset: " + suffix)
+        sources[suffix] = row
+        archives[archive["path"]] = archive
+    audit.artifact(audit.a.ROOT / package["path"], package)
+    archive, = archives.values()
+    raw = audit.read(archive)
+    size, header_size, payload_size, json_size = struct.unpack_from("<IIII", raw)
+    if size != 4 or payload_size + 4 != header_size or json_size + 8 > header_size:
+        raise ValueError("Current keyboard BLE ASAR header differs")
+    header = json.loads(raw[16:16 + json_size])
+    directory = header
+    for part in "node_modules/node-ble-rz/build/Release".split("/"):
+        directory = directory["files"][part]
+    order = list(directory["files"])
+    if _keyboard_ble_power_transport_first_build(order) != "binding.node":
+        raise ValueError("Current keyboard BLE first native build requires selection review")
+    if json.loads(audit.read(sources["node_modules/node-ble-rz/package.json"]))["name"] != "node-ble-rz":
+        raise ValueError("Keyboard BLE package prebuild environment key differs")
+    gyp_package = json.loads(audit.read(sources["node_modules/node-gyp-build/package.json"]))
+    if gyp_package.get("main") != "index.js" or gyp_package.get("version") != "4.8.4":
+        raise ValueError("Keyboard BLE node-gyp-build package entry requires review")
+    ble_package = header["files"]["node_modules"]["files"]["node-ble-rz"]["files"]
+    nested_modules = ble_package.get("node_modules", {}).get("files", {})
+    if "node-gyp-build" in nested_modules:
+        raise ValueError("Keyboard BLE nested node-gyp-build shadows the selected loader")
+    return sources, {"version": release["version"], "acquisition": release["receipt"],
+        "official_package": package, "asar": archive, "members": list(sources.values()),
+        "loader": {"windows_minimum": "10.0.15063", "package_prebuild_key": "NODE_BLE_RZ_PREBUILD",
+            "retained_archive_release_order": order, "first_matching_native": "binding.node",
+            "conditions": "Windows local binding, no websocket/distributed/HCI override; runtimeRequire.addon absent, PREBUILDS_ONLY false, NODE_BLE_RZ_PREBUILD unset, fs listing agrees with retained archive order",
+            "algorithm": "first case-sensitive .node in Release; then Debug; then prebuild selection; it does not select a filename or inspect NobleWinrt exports",
+            "runtime_environment_or_listing_observed": False}}
+
+
+def _keyboard_ble_power_transport_source_proof(selected, owners, reused_expected=None):
+    expected = {row[0]: row[4] for row in _keyboard_ble_power_transport_source_plan()}
+    expected.update(reused_expected or {})
+    verified = []
+    for role, digest in expected.items():
+        owner = owners[selected[role]]
+        if owner["body_sha256"] != digest or hashlib.sha256(owner["body"].encode()).hexdigest() != digest:
+            raise ValueError("Keyboard BLE complete source boundary differs: " + role)
+        verified.append({"role": role, "owner_id": owner["id"], "body_sha256": digest})
+    return verified
+
+
+def _keyboard_ble_power_transport_owners(audit, sources):
+    selected = {}
+    for role, suffix, anchor, syntax, _ in _keyboard_ble_power_transport_source_plan():
+        selected[role], = audit.retain("keyboard_ble_power_transport_" + role,
+                                       sources[suffix], anchor, {syntax})
+    review_name = ".analysis/results/reverse-pending/review-sources/328fa8a84bd909ee4dba270bb2830ac9916cb58b3050fd4a8db8ac9174fe6e64.json"
+    review_identity = {"path": review_name, "bytes": 4034078,
+                       "sha256": "328fa8a84bd909ee4dba270bb2830ac9916cb58b3050fd4a8db8ac9174fe6e64"}
+    review = json.loads(audit.artifact(audit.a.ROOT / review_name, review_identity))
+    previous = review["host_ble_transport"]
+    reused, changed = {}, []
+    for role, key in previous["chain_owners"].items():
+        old = review["complete_owners"][key]
+        suffix = old["original"]["path"].split("/asar/", 1)[1].split("/", 1)[1]
+        current = sources.get(suffix)
+        if current is None or current["sha256"] != old["original"]["sha256"]:
+            changed.append(role)
+            continue
+        start, end = old["byte_start"], old["byte_end"]
+        node = audit.tree(current).root_node.descendant_for_byte_range(start, end - 1)
+        while node is not None and (node.start_byte != start or node.end_byte != end):
+            node = node.parent
+        if node is None or node.type != old["syntax"] or audit.read(current)[start:end] != old["body"].encode():
+            raise ValueError("Reused keyboard BLE owner differs from current complete AST: " + role)
+        name = "reused_" + role
+        selected[name] = audit.retain_range("keyboard_ble_power_transport_" + name, current, start, end, node.type)
+        reused[name] = old["body_sha256"]
+    proof = _keyboard_ble_power_transport_source_proof(selected, audit.owners, reused)
+    return selected, proof, {"review": review_identity, "pointer": "/host_ble_transport",
+        "previous_owner_count": len(previous["chain_owners"]), "byte_identical_current_roles": list(reused),
+        "old_roles_not_transferred_as_current": changed,
+        "scope": "Reuse unchanged current node-ble-rz owners; changed host write, dispatch, strategy and shutdown consumers have separate complete current owners above"}
+
+
+def _keyboard_ble_power_transport_native_proof(native):
+    functions = {int(row["capture"]["rva"], 16): row["capture"]
+                 for row in native["complete_selected_functions"]}
+    expected = {
+        0x446f0: "8993d8953a5fa9862b83b41bf70e6301f0df23331fe4a29a38f5cdc791210d79",
+        0x45460: "2000fb7f777123a912fe692fc9c52eecdd499ab45fd88afc259f6ffe174cb35a",
+        0x32310: "2d9a47dc03ad41ae70f838a0aedf6f2b41c9c81a4da884100543747bdf6b0eef",
+        0x325e0: "ced1de863fb7d4e5de84ca334b552aa67110e3004f85abffd9379e76d4b69e4f",
+        0x1a330: "ec93655245dd35e9a762978919df3cdf344402eb964c8522ee791628682d8d62",
+        0x533b0: "dd9f71585f663ca005291343e9aabe919c810f4ef5fd78af56ea7a52faa28e94",
+        0x4fde0: "e96b589ed69b6bab0cc74a231cf5cb91dec0bc7a468e6ba8a29cd9746b077191",
+        0x17240: "31dce1222cc9bcf15a9507105dc9df7e2bdac0487900830f0c37828273ca3eb5"}
+    for rva, digest in expected.items():
+        text = "\n".join(row["text"] for row in functions[rva]["pseudocode"]["lines"])
+        if hashlib.sha256(text.encode()).hexdigest() != digest:
+            raise ValueError("Keyboard BLE native completion/release boundary differs: " + hex(rva))
+    required = ((0x159a0, 0x43d90), (0x15db0, 0x44820), (0x14840, 0x3f1d0),
+        (0x17240, 0x173b0), (0x173b0, 0x1a330), (0x173b0, 0x1a0a0),
+        (0x140c0, 0x356b0), (0x356b0, 0x50410), (0x50410, 0x4fa10),
+        (0x4bf70, 0x44270), (0x4bcc0, 0x44bb0), (0x446f0, 0x52ab0),
+        (0x45460, 0x52c00), (0x45460, 0x32710), (0x45920, 0x528a0),
+        (0x44bb0, 0x32310), (0x44bb0, 0x32100), (0x3f1d0, 0x325e0),
+        (0x3f1d0, 0x26e00), (0x3f4f0, 0x325e0), (0x1a0a0, 0x26380),
+        (0x50650, 0x4fbf0), (0x4fdc0, 0x4fde0), (0x4fde0, 0x4f800),
+        (0x178c0, 0x159a0), (0x178c0, 0x15db0), (0x44270, 0x446f0),
+        (0x159a0, 0x24f80), (0x24f80, 0x25430),
+        (0x44bb0, 0x45460), (0x45460, 0x45920), (0x18520, 0x18380))
+    base = int(native["image_base"], 16)
+    edges = []
+    for owner, target in required:
+        matches = [(line, ref) for line in functions[owner]["assembly"]
+                   for ref in line.get("xrefs_from", []) if int(ref["to"], 16) == base + target]
+        if not matches:
+            raise ValueError("Keyboard BLE actual call/callback edge differs: " + hex(owner) + " -> " + hex(target))
+        edges.extend({"owner_rva": hex(owner), "target_rva": hex(target), "instruction_rva": line["rva"],
+                      "instruction_hex": line["bytes"], "xref_type": ref["type"], "code": ref["code"]}
+                     for line, ref in matches)
+    return edges
+
+
+def _keyboard_ble_power_transport_native(audit, original):
+    roles = {
+        0x18520: "napi_export", 0x18380: "noble_winrt_export", 0x178c0: "napi_registration",
+        0x140c0: "napi_init", 0x356b0: "manager_construct", 0x50410: "event_callback_construct",
+        0x24f80: "js_buffer_to_vector", 0x25430: "copy_js_buffer_bytes",
+        0x4fa10: "uv_callback_construct", 0x159a0: "napi_write", 0x15db0: "napi_notify",
+        0x14840: "napi_disconnect", 0x17240: "napi_cleanup", 0x173b0: "manager_destruct",
+        0x1a330: "notification_map_destruct", 0x1a0a0: "peripheral_map_destruct",
+        0x26380: "peripheral_destruct", 0x26e00: "peripheral_disconnect",
+        0x3f1d0: "manager_disconnect", 0x3f4f0: "connection_status_callback",
+        0x325e0: "drop_peripheral_notification_keys", 0x43d90: "manager_write",
+        0x44270: "write_characteristic_callback", 0x4bf70: "write_characteristic_invoke",
+        0x4ba80: "write_completed_invoke", 0x446f0: "write_completed",
+        0x4bf20: "write_capture_buffer_destruct", 0x44820: "manager_notify",
+        0x44bb0: "notify_characteristic_callback", 0x4bcc0: "notify_characteristic_invoke",
+        0x48450: "notify_completed_construct", 0x4be00: "notify_completed_invoke",
+        0x45460: "notify_completed", 0x4bc00: "value_changed_invoke", 0x45920: "value_changed",
+        0x32100: "notification_key_exists", 0x32310: "remove_value_changed_token",
+        0x32710: "store_value_changed_token", 0x528a0: "enqueue_read",
+        0x52ab0: "enqueue_write", 0x52c00: "enqueue_notify", 0x50650: "enqueue_event",
+        0x4fbf0: "uv_queue_push", 0x4fde0: "uv_queue_drain", 0x4fdc0: "uv_async_callback",
+        0x502c0: "uv_close_callback", 0x533b0: "uv_shared_owner_dispose",
+        0x543e0: "js_read_event", 0x541e0: "js_write_event", 0x53f90: "js_notify_event",
+        0x50980: "copy_notification_to_js_buffer", 0x4f800: "js_emit_callback"}
+    slots = [{"role": role, "vtable_rva": table, "slot_byte_offset": offset, "target_rva": target}
+        for role, table, offset, target in (
+            ("write_characteristic", 0xbf378, 16, 0x4bf70), ("write_capture_release", 0xbf378, 32, 0x4bf20),
+            ("write_completed", 0xbf2b8, 24, 0x4ba80), ("notify_characteristic", 0xbf058, 16, 0x4bcc0),
+            ("notify_completed", 0xbf328, 24, 0x4be00), ("value_changed", 0xbef78, 24, 0x4bc00),
+            ("read_event", 0xc1880, 16, 0x543e0), ("write_event", 0xc1a30, 16, 0x541e0),
+            ("notify_event", 0xc1ac0, 16, 0x53f90), ("uv_shared_owner_release", 0xc1b50, 0, 0x533b0))]
+    native = audit.families.verify_native_functions(original, roles, slots,
+        exports={"napi_register_module_v1": 0x18520})
+    if native["capture_receipt"]["sha256"] != "23c6f14d0e3736373ff89a3264955dae058d6da74927e9b366bee93fdeddebbf":
+        raise ValueError("Keyboard BLE complete native capture requires semantic review")
+    audit.artifact(audit.a.ROOT / native["capture_receipt"]["path"], native["capture_receipt"])
+    edges = _keyboard_ble_power_transport_native_proof(native)
+    for row in native["complete_selected_functions"]:
+        function = row["capture"]
+        if not row["pseudocode_captured"] or row["failures"] or not function.get("assembly"):
+            raise ValueError("Keyboard BLE selected native function is incomplete")
+        audit.artifact(audit.a.ROOT / row["artifact"]["path"], row["artifact"])
+        row["rva"], row["instruction_count"] = function["rva"], len(function["assembly"])
+        del row["capture"]
+    raw = audit.read(original)
+    pe = inspect_pe(raw)
+    part, = [row for row in pe["sections"] if row["rva"] <= 0xbe2c0 < row["rva"] + row["bytes"]]
+    offset = part["file_offset"] + 0xbe2c0 - part["rva"]
+    iid = raw[offset:offset + 16]
+    if iid.hex() != "3e663c3fd4936b40b817db81f8ed53b3":
+        raise ValueError("Keyboard BLE IGattCharacteristic3 actual IID differs")
+    native["gatt_interface"] = {"iid": "3f3c663e-93d4-406b-b817-db81f8ed53b3", "rva": "0xbe2c0",
+        "file_offset": offset, "raw_hex": iid.hex(), "actual_pe_bytes_verified": True,
+        "write_with_result_and_option_slot": 88, "cccd_with_result_slot": 96,
+        "put_completed_slot": 48, "value_changed_add_slot": 160, "value_changed_remove_slot": 168}
+    supplement_path = audit.a.ROOT / ".analysis/results/native" / original["sha256"] / "supplements/811db07bd325a4c9/capture.json"
+    supplement = json.loads(audit.artifact(supplement_path))
+    if (supplement.get("input_sha256") != original["sha256"] or not supplement.get("capture_complete")
+            or supplement.get("failures") or {row["rva"] for row in supplement["functions"]} != {"0x722b8", "0x7d544", "0x7d5f0"}):
+        raise ValueError("Keyboard BLE retained native supplemental status differs")
+    native["retained_successful_supplement"] = {"artifact": audit.families.identity(supplement_path),
+        "function_rvas": [row["rva"] for row in supplement["functions"]], "selected_by_this_slice": False,
+        "capture_complete": True, "failures": []}
+    return native, edges
+
+
+def collect_keyboard_ble_power_transport(audit):
+    """Close the selected current Windows BLE write/notify/teardown semantics statically."""
+    sources, current = _keyboard_ble_power_transport_inputs(audit)
+    selected, proof, dependency = _keyboard_ble_power_transport_owners(audit, sources)
+    native, edges = _keyboard_ble_power_transport_native(audit,
+        sources["node_modules/node-ble-rz/build/Release/binding.node"])
+    return {"schema_version": 1, "kind": "current_keyboard_ble_power_transport",
+        "query": "keyboard-ble-power-transport", "current_host": current,
+        "selected": selected, "verified_source_owners": proof, "native": native,
+        "actual_native_edges": edges, "semantic_dependencies": [dependency],
+        "scope": "Current Windows NobleWinrt characteristic writes, CCCD completion, ValueChanged bytes/tokens and manager/uv release; reuse source-specific keyboard Power qualification without extending it to other products or transports",
+        "write": {"napi_arguments": ["peripheral id", "service UUID", "characteristic UUID", "Buffer", "withoutResponse Boolean"],
+            "manager_bool_return_reaches_js": False, "buffer": "copy Buffer into native vector, copy into characteristic callback; DataWriter.WriteBytes and DetachBuffer before async write; no borrowed JS buffer survives",
+            "gatt_write_options": {"false": 0, "true": 1}, "call": "IGattCharacteristic3.WriteValueWithResultAndOptionAsync",
+            "synchronous_hresult": "QI, DataWriter and async initiation/Completed registration check negative HRESULT and throw through native exception handling",
+            "completion_status": "a3 is AsyncStatus: Completed=1, not GattCommunicationStatus.Success=0",
+            "reads_gatt_write_result": False, "reads_gatt_status_or_protocol_error": False,
+            "emits_write_on_async_failure": True, "emits_write_when_native_peripheral_missing": True,
+            "js_event_fields": ["write", "peripheral id", "service UUID", "characteristic UUID"],
+            "js_consumer": "Noble.onWrite routes characteristic, Characteristic once invokes callback(null); no async status or per-request identity reaches that callback",
+            "device_power_confirmation": "Only separate protocol30 notification parsing and product-level GET/SET consumers can establish their stated response/readback; write event is not device confirmation"},
+        "notify": {"call": "IGattCharacteristic3.WriteClientCharacteristicConfigurationDescriptorWithResultAsync",
+            "cccd_enable": "2 when CharacteristicProperties has bit 0x20 (Indicate), otherwise 1 (Notify); disable=0",
+            "reads_gatt_cccd_result": False, "add_token_gate": "AsyncStatus==1 and enable, without GetResults/status validation",
+            "already_in_state": "Existing subscription enable or absent subscription disable emits requested notify state immediately",
+            "completion_failure": "log only, no notify completion event; notifyAsync may stay pending before the protocol command timer is armed",
+            "token_key": ["peripheral id", "service UUID", "characteristic UUID"], "token_storage": "manager+1008 map, node+80 stores int64 token; callback captures raw manager pointer",
+            "disable_order": "RemoveValueChanged(token), erase map entry, then issue CCCD=0 async write; token removal HRESULT is not checked here",
+            "value_changed": "read characteristic buffer, DataReader.UnconsumedBufferLength/ReadBytes; copy native vector through uv event queue and napi_create_buffer_copy, emit read(peripheral,service,characteristic,Buffer,true)",
+            "js_notify_state_is_confirmation": False},
+        "protocol30_current_delta": {"source": sources["electron/modules/noble/strategy/protocol30.js"],
+            "command_timeout_ms": 500, "read_timeout_ms": 5000, "header_bytes": 8, "data_chunk_bytes": 20,
+            "clear_write_timer_before_filter": False,
+            "write_timer_clear": "matching non-success first packet, complete assembled response, or read-handler exception; ignored/non-notify/partial packets retain the armed timer",
+            "write_catch": "long-frame synchronous write catch returns after resolving false, so it does not arm another timer",
+            "unchanged_limits": "timer still starts after notifyAsync and writes; protocol30.read still clears its 5000ms timer before filtering; header-only withoutResponse still does not resolve; writes do not await native write events",
+            "response_match": "first packet transaction/status=2, LE24 length; no class/id/checksum check; continuation bytes untagged",
+            "host_result": "current ble.send returns the awaited strategy result unchanged; outer rzBleDeviceAction IPC logs rejection and returns undefined. noResponseData remains shadowed by Promise resolve and options is beyond declared parameters"},
+        "release": {"explicit_disconnect": "Peripheral clears services and revokes ConnectionStatusChanged; manager drops notification keys by peripheral then emits disconnect, even when peripheral was absent",
+            "disconnect_calls_remove_value_changed": False, "bulk_notification_key_drop_calls_remove_value_changed": False,
+            "cleanup": "cleanUp destructs/frees manager and nulls Napi owner manager pointer; notification map destructor frees key/token nodes without explicit ValueChanged revocation",
+            "manager_destructor_calls_remove_value_changed": False,
+            "uv": "manager releases shared callback owner; last shared release sets stop flag and sends uv_async. Queue consumer drains queued events, then uv_close; close callback destroys remaining queue payloads, deletes callback/receiver Napi references and frees uv state",
+            "queued_event_drain_is_gatt_operation_drain": False, "gatt_cancel_or_join_proven": False,
+            "host_shutdown": "current stopBLEEndpointMonitoring stops endpoint monitor and calls cached peripheral.disconnect; it does not invoke NobleWinrt.cleanUp in this owner",
+            "device_value_restoration_proven": False},
+        "remaining_chains": [
+            "The native selection is conditional on the actual runtime require.addon/environment/fs directory-order branches; retained ASAR order selects binding.node, but no runtime environment or directory listing was executed/observed. Other native candidates and override branches are outside this slice.",
+            "Continue independent keyboard product/firmware/transport gaps from current Power receipts; this shared host slice does not transfer historical 35-owner deployment identity, complete all BLE discovery/connection branches, or establish complete host shutdown/pending GATT cancellation and callback quiescence.",
+            "After full semantic reverse work, implement independent Rust and all UI/backend consumers, then compare actual official native/device inputs, responses, failures, cancellation, restoration and release through permitted explicit tests; runtime acceptance remains unverified."],
+        "selected_static_semantics_reviewed": True, "selected_windows_native_transport_reviewed": True,
+        "source_chain_complete": False, "whole_product_complete": False, "target_execution": False,
+        "real_device_operations": False, "product_code_modified": False, "new_native_captures": 0,
+        "new_analysis_sessions": 0, "temporary_files_created": [],
+        "rust_independent_implementation": "not_implemented_by_this_query", "ui_backend_wiring": "unverified",
+        "actual_dll_comparison": "unverified", "runtime_acceptance": "unverified", "failures": []}
+
+
 def collect_common_driver_install_selection(audit):
     return audit.families.collect_common_driver_install_selection(audit)
+
+
+def _common_driver_install_consumer_inputs(audit):
+    """Bind the concrete driver action to the selected current package and ASAR bytes."""
+    indexed = json.loads(audit.artifact(audit.a.ROOT / ".analysis/inputs.json"))
+    release = verified_host_release_receipt(index=indexed)
+    audit.artifact(audit.a.ROOT / release["receipt"]["path"], release["receipt"])
+    for dependency in release["verified_dependencies"]:
+        audit.artifact(audit.a.ROOT / dependency["path"], dependency)
+    if release["version"] != "4.0.896":
+        raise ValueError("Current common driver consumers require a new release review")
+    packages = {row["path"]: row for row in release["files"] if row.get("manifest_identity_verified")}
+    drivers = [row for row in packages.values()
+        if row.get("declaration", {}).get("resourceName") == "NormalDriver_RzComDriver"]
+    if len(drivers) != 1:
+        raise ValueError("Current common driver declaration is absent or ambiguous")
+    driver = drivers[0]
+    if (driver["sha256"] != "d17bbc15e025bcee12948655ed5956bfe855019e626e497dd10ed40cb9a5e0dc"
+            or driver["declaration"]["resourceVersion"] != "23.0.6.0"
+            or driver["declaration"]["action"] != {"saveToDisk": {"filePath": "Drivers", "runOnInstall": "/S /LAUNCH"}}
+            or driver["declaration"]["path"] != "" or driver["declaration"]["overwriteApp"] != ""):
+        raise ValueError("Current common driver install action requires semantic review")
+    driver_raw = audit.read(driver)
+    originals = {row["path"]: row for row in indexed["inputs"]}
+    selected, ancestry = {}, []
+    members = current_host_asar_members(audit, indexed, release)
+    for suffix in ("electron/main.js", "electron/preload.js", "electron/modules/simple_service/index.js",
+            "electron/modules/simple_service/win/index.js", "electron/modules/sysutil/index.js",
+            "electron/modules/sysutil/win/index.js", "electron/modules/ffi/ffiMain.js"):
+        candidates = [row for row in members if row["path"].endswith("/" + suffix)]
+        if len(candidates) != 1:
+            raise ValueError("Current common driver source is absent or ambiguous: " + suffix)
+        source = candidates[0]
+        archive = originals[source["container"]]
+        package = packages.get(archive["container"])
+        if (package is None or archive["container_sha256"] != package["sha256"]
+                or source["container_sha256"] != archive["sha256"] or source.get("unpacked")
+                or type(source.get("offset")) is not int):
+            raise ValueError("Current common driver package/ASAR ancestry differs: " + suffix)
+        raw = audit.read(source)
+        if audit.read(archive)[source["offset"]:source["offset"] + len(raw)] != raw:
+            raise ValueError("Current common driver member differs from actual ASAR bytes: " + suffix)
+        audit.artifact(audit.a.ROOT / package["path"], package)
+        for row in (archive, source):
+            dependency = row.get("extraction_receipt")
+            if dependency:
+                audit.artifact(audit.a.ROOT / dependency["path"], dependency)
+        selected[suffix] = source
+        ancestry.append({"member": source, "archive": archive, "official_package": package,
+                         "member_offset_verified": True})
+    native = {}
+    for name, digest in (("simple_service.dll", "f8e3886c1d83e37accebd40d4b72d5f26c1d3b5d09a6b72707a27f089c196f2b"),
+            ("SysUtilsNative.dll", "bc0387a0913c882a9cd82aa1a8e147d6408fc7bb7f77519f4f8860f16c5b17c8")):
+        rows = [row for row in current_host_extracted_inputs(indexed, release)
+                if row["path"].endswith("/CommonDLL/" + name)]
+        if len(rows) != 1 or rows[0]["sha256"] != digest:
+            raise ValueError("Current common driver native identity requires review: " + name)
+        row = rows[0]
+        if not any(item["official_package"]["path"] == row["container"]
+                and item["official_package"]["sha256"] == row["container_sha256"] for item in ancestry):
+            raise ValueError("Current common driver native and JS package ancestry differs: " + name)
+        audit.read(row)
+        native[name] = row
+    return selected, native, driver, driver_raw, {"version": release["version"],
+        "receipt": release["receipt"], "host_members": ancestry, "driver_package": driver}
+
+
+def _common_driver_install_consumer_owners(audit, host_sources, installer):
+    """Retain actual installer instances, current IPC routes and their complete consumers."""
+    selected, bindings = {}, {}
+
+    def keep(role, source, anchor, kinds):
+        key, = audit.retain("common_driver_install_consumer_" + role, source, anchor, kinds)
+        selected[role] = key
+
+    raw = audit.read(installer)
+    for name in ("Ka", "$l", "yl", "Il", "Bl", "kl", "Ya", "Mt", "Wt", "Tr", "qr", "$r", "gn"):
+        reference = raw.index((name + "=").encode()) + len(name) + 1
+        value = audit.binding("common_driver_install_consumer_" + name, installer, name, reference)
+        if value["resolution"] != "declaration":
+            raise ValueError("Common driver installer callable binding differs: " + name)
+        selected[name], bindings[name] = value["owner_id"], value
+    for role, anchor, kinds in (
+            ("prepare_resource", "fileName:g.url.substring", {"arrow_function"}),
+            ("user_launch", "async simpleLaunchUserAppProcessJson(", {"method_definition"}),
+            ("razer_launch", "async simpleLaunchRazerApp(", {"method_definition"}),
+            ("driver_info", 'E(this,"getDriverInfo",', {"call_expression"}),
+            ("electron_bridge", 'E(this,"callElectronAction",', {"call_expression"}),
+            ("service_bridge", 'E(this,"callSimpleServiceAction",', {"call_expression"}),
+            ("cancel", 't.msg==="install-cancel"', {"arrow_function"})):
+        keep(role, installer, anchor, kinds)
+    for role, suffix, anchor, kinds in (
+            ("service_selector", "modules/simple_service/index.js", '"win32"===process.platform', {"program"}),
+            ("sysutil_selector", "modules/sysutil/index.js", '"win32"===process.platform', {"program"}),
+            ("preload_service", "preload.js", "doSimpleServiceAction:async", {"pair"}),
+            ("preload_electron", "preload.js", "doElectronAction:async", {"pair"}),
+            ("host_service_ipc", "main.js", 'n.handle("simpleServiceAction",', {"call_expression"}),
+            ("host_electron_ipc", "main.js", 'n.handle("electronAction",', {"call_expression"}),
+            ("host_loader", "main.js", 'let n="SysUtilsNative.dll"', {"arrow_function"}),
+            ("host_common_directory", "main.js", 'o="win32"===process.platform?', {"variable_declarator"}),
+            ("ffi_sync", "modules/ffi/ffiMain.js", "exports.callDLLMain=", {"assignment_expression"})):
+        keep(role, host_sources["electron/" + suffix], anchor, kinds)
+    for prefix, suffix, names in (
+            ("simple", "modules/simple_service/win/index.js", ("initDll", "callDLL", "simpleLaunchUserAppProcess", "simpleLaunchRazerApp")),
+            ("sysutil", "modules/sysutil/win/index.js", ("initDll", "callDLL"))):
+        source = host_sources["electron/" + suffix]
+        for name in names:
+            _, key = audit.callable_member("common_driver_install_consumer_" + prefix + "_" + name,
+                                          source, audit.tree(source).root_node, name)
+            selected[prefix + "_" + name] = key
+    for role, source, name, reference_role, expected in (
+            ("service_instance", installer, "q", "Ka", "q=new Ta"),
+            ("system_instance", installer, "Ce", "kl", "Ce=new ya"),
+            ("service_api", installer, "qe", "service_bridge", "{apiElectron:qe}=window.top"),
+            ("system_api", installer, "J", "electron_bridge", "{apiElectron:J}=window.top"),
+            ("host_simple_instance", host_sources["electron/main.js"], "ao", "host_service_ipc", "ao=new to({dllRegistry:Ze})"),
+            ("host_simple_factory", host_sources["electron/main.js"], "to", "host_service_ipc", '{FFISimpleService:to}=require("./modules/simple_service")'),
+            ("host_sysutil_instance", host_sources["electron/main.js"], "po", "host_electron_ipc", "po=new lo(Ye)"),
+            ("host_sysutil_factory", host_sources["electron/main.js"], "lo", "host_electron_ipc", '{FFISysUtils:lo}=require("./modules/sysutil")'),
+            ("host_sysutil_ffi", host_sources["electron/main.js"], "Ye", "host_electron_ipc", 'Ye=require("./modules/ffi/ffiMain")')):
+        value = audit.binding("common_driver_install_consumer_" + role, source, name,
+                              audit.owners[selected[reference_role]]["byte_start"])
+        if value.get("body") != expected or value["resolution"] not in ("declaration", "destructuring_requires_value_analysis"):
+            raise ValueError("Common driver actual lexical producer differs: " + role)
+        selected[role] = audit.retain_range("common_driver_install_consumer_" + role, source,
+            value["start_byte"], value["end_byte"], value["syntax"])
+        bindings[role] = value
+    return selected, bindings
+
+
+def _common_driver_install_consumer_proof(selected, owners):
+    """Reject changes to the reviewed branch, result shape and cancellation consumers."""
+    expected = {
+        "Ka": "964e77f873aa649590d55026b5bfa83ce2f064d09f0a45406d62d7a52365228c",
+        "$l": "f346139d777d70d166636354775701846849014bc38d638f27996589e36500bd",
+        "yl": "9fd468b1a2546279a962ec727aeba6183108a02386d6d416fb067f67bee3316c",
+        "Il": "b54e97a52fbae742088cc4cd8eb4a14ae5a4e21080524acd0940b7ec76d1abae",
+        "Bl": "c869ed9a732aeabf24d85df91c5f00b5bcbf51dbb57218fec2e2e7fe8d63c7d2",
+        "kl": "fa40626cc16b6b9f9fdf127a3eeaf1af54e3769f48efa7614f4d8f5696bed652",
+        "Ya": "60f9523d9c4bd400789b42c359c811c024ef3c728af8c6cf085e529f83ab1165",
+        "Mt": "e59490dbf620fd446ea2ed1dfb565a172fa13fc21e08b0598b9d1dbcd4968b0e",
+        "Wt": "7e5a1b7064295535066c4579de63f8e9a4dd9c5a5f7c2e60e4d3b40d0c5b97a8",
+        "Tr": "0cda3ba26cdc98345c66c873a1eb1e93c89fddd0401d8529fb018f80d3f49d1a",
+        "qr": "7ab643bf9e34327c1e23a85671c39ed2f41ec8947a5462dc5e709d45de2edb60",
+        "$r": "190736bec113b3ae79f90f53cdab1b09417e4c328ac76f46819c3be17f7eccdb",
+        "gn": "8e64dc0b447e43cb0adcf23a47462e832771f7adc79192e4d5bf18c7ac55bc0b",
+        "prepare_resource": "0d07d9682e8c91decd0779ba098a20305802e2cdcf2f8e87cbd1aceb9bb76904",
+        "user_launch": "250e82ae3c4c9fa566e52d1213df05a67ca4178b5af5cb29ef7bd345be7150aa",
+        "razer_launch": "b7cf0e42632655071eeb18785517940ae8348c92495a2523f1aa2e486f5bc9a6",
+        "driver_info": "cbe53c186ccda32e7ba82ce8e2a0c4d8e04ce4e458376186066839ebe29c98df",
+        "electron_bridge": "1247ba5f1262444a014e3a767b787374cef94ab972b0e8d2915f1dc188b575f0",
+        "service_bridge": "e96ffd057d922945ebc02a8cf895f6018c36721a6dc0c14469f52b0404cb726a",
+        "cancel": "31b24dca686ea92b2b829c5f0ce94c1207cf91d5e21a5c3703139de1e5d9cb45",
+        "service_selector": "a4a4cfa9fa210dd681db25a374be47b5961d71fc81966c943db45e8b26f6280f",
+        "sysutil_selector": "a4a4cfa9fa210dd681db25a374be47b5961d71fc81966c943db45e8b26f6280f",
+        "preload_service": "dc6c9b9531cc991363800629ddc6437f189f325763639118c6c658a48bcf3b21",
+        "preload_electron": "476db09d6e320b1519ae4ce21a92490ec363d073fbadda68b1a80b9f79149e59",
+        "host_service_ipc": "b4f3557c715dbcdba34a7cdb35d282272952a06ae9f258a032284a80126acb90",
+        "host_electron_ipc": "e5c6fe1e21b827dd0dbd9aed5ced7676af1e09bdc957dfe010e2f1fe191e9fc6",
+        "host_loader": "58c2b418b5f2a8c6aabd80e1733a87e863734845b36c73636b88fceede1b5dd8",
+        "host_common_directory": "9045fb569eb0861c5aa8aacab5c7581abddbf28fc34c025850c7ab7e8437c80c",
+        "ffi_sync": "2e3684198a622fef27b6924bef5b573c826cc0f5db9811580bc678c75b9c7c50",
+        "simple_initDll": "a2f05b9d4ce38bdcc7db922517bf1c6a72dff14a754bca5f7eab04d6f24ca9b5",
+        "simple_callDLL": "8eee456a28b1b9db67d8a403dd6485d0c95db1dccb37cf3771324593f95d1a08",
+        "simple_simpleLaunchUserAppProcess": "747d45f1f0e0db685ab063863632d1d6c8fdcef31c862e80f2ab0adf677feda7",
+        "simple_simpleLaunchRazerApp": "42b242bda42910acf80bf3bdb34172da4d2b45bd5ca8895af7d4437360edcd7b",
+        "sysutil_initDll": "a1dc75e9694c9310c67fbf8d7485d4de9c5461ddb16dee50d07ffa78182e126f",
+        "sysutil_callDLL": "7c2330830736cbd051304b359eeb49804db3edd1bf34ec81c12eb5c742a49f6d",
+    }
+    verified = []
+    for role, digest in expected.items():
+        owner = owners[selected[role]]
+        if owner["body_sha256"] != digest or hashlib.sha256(owner["body"].encode()).hexdigest() != digest:
+            raise ValueError("Common driver complete source boundary differs: " + role)
+        verified.append({"role": role, "owner_id": owner["id"], "body_sha256": digest})
+    return verified
+
+
+def _common_driver_install_consumer_native(audit, originals):
+    """Reuse complete captures for the concrete entry/return routes and registry producer."""
+    roles = {
+        "simple_service.dll": {
+            0x1000: ("engine_instance", "c54f1fd1a4a6130c8043ba4f27973c262a54052ded169ed6ef05b310ca833e66"),
+            0xd754: ("engine_instance_thunk", "a159df6d1d50d49c577d16400db115a5425c5fa7118187a49936ca4223b997a8"),
+            0x12280: ("user_process_export", "b4185019ca9b6a58726a828962c66cd25d8815319a4e95fe9a5b8646027a40dd"),
+            0x12060: ("user_process_result", "2e77d68978e40561bf43aac70b734588dd42443e4b383aa593712585e9bcae47"),
+            0x14760: ("razer_process_export", "60c47c1fb8cf131c57fb0bce2da7e2665bb43626421756f88c45d9ab105c3ae3"),
+            0x14540: ("razer_process_result", "d1b9f1d86deec8895b07909de448474df4dd352458a0b7d53958cad9f286ff61"),
+            0x3720: ("user_main_queue", "03c4c5203feb1008796afdcd572911fb5f95f8d444e15bb44d6944cb07e19b10"),
+            0x3920: ("user_main_consumer", "55b07a6899f84d9006b9a7328a413b036c20c330268bf6321ba787b7c86ae91d"),
+            0x23052: ("user_apps_queue", "194d54be575e15a61cedc4f588f6353985a98cfd4979c9d4703914b1990d393f"),
+            0x23250: ("user_apps_consumer", "debd0f4085d63611df97b1c12469347c3995ad992dafba27eefa9ab461c11bcb"),
+            0x1d5e8: ("user_io_queue", "d0ab36e2d03251f9068623cc70e5b64886225997cf29fa2403d7a8c470fe780c"),
+            0x284d0: ("user_io_consumer", "86b9f607ca575492633902ba1ab7550eb8be8b25931dfdb3e9adedb6d05f869b"),
+            0x3f90: ("razer_main_queue", "33daa235501b4b17dddf2d23aa25531e5ef0937fb2195692de60b94cddf11d6d"),
+            0x4170: ("razer_main_consumer", "074c86e37d30083b7dfd6565908912909b7f44e93fcf5f75b49511aebbf19486"),
+            0x23a26: ("razer_apps_queue", "411c5f32f45f76bfb88fd296eb0aad4151f66f30dd11623060efd78d2d5d95c2"),
+            0x23c10: ("razer_apps_consumer", "a7fbd9e7b88cede48eb6fa1a3a59ac12b243ef01ea01292e19582894b9fd96ec"),
+            0x1d9f0: ("razer_io_queue", "f59473534ade6f469340f7e7d85e375a2390345ce698da7f477be332ac24e6f5"),
+            0x2af90: ("razer_io_consumer", "aaaab10d94ee60e048ebf353bfbe6ca290c44bbbc569803dd4988fd958ed8664"),
+            0x4dfa8: ("pe_elevation_selector", "41c5743c0dd4ce40ae9a7b2abecb0116720bdc070de2e4fde9a020a94928b48e"),
+            0x2e152: ("shared_waiting_com_launch", "ec1f41fdc7d0c86aa2b1c49cf73afd6f22ac017ba29760c69026c4e2e9f40716"),
+            0x2e804: ("shared_com_sink_release", "4376e9c895302f2159bce472e316eba438f55fcc708a0d3600ee0cd1312137f7"),
+            0x79da0: ("shared_local_wait", "fd8f6fa10d39934688de103661d7bf1af93570700139f5d05f3e9d8fa4833e33")},
+        "SysUtilsNative.dll": {
+            0x72340: ("get_driver_info_export", "a9f51da9e70a0fa53464b08df3e130a9695dafdddbae35398c8d022587f19da8"),
+            0x61e20: ("get_driver_info_registry", "a9823e9037bbb75632b451baa329602ee4c4c49a5b61be4baf6b9a6b9a57f5cd"),
+            0x5a690: ("registry_string_read", "6810a027917dce335489ec66df3ad303a81f5ce28a3c22c9c83b9c59015da021"),
+            0x61630: ("driver_info_json_reply", "d7786d7cbbeb25c43473c742fbd0dff3525b3ecf478287eb4f5df9d9522ac0f5"),
+            0x69d10: ("free_driver_info_reply", "c41a700e1e4c17968d7a1ef95adb80071511cac9f8ed7aa68f9f65b0cc8f4940")}}
+    reports = {}
+    for name, selected in roles.items():
+        exports = ({"simpleLaunchUserAppProcess": 0x12280, "simpleLaunchRazerApp": 0x14760}
+                   if name == "simple_service.dll" else {"GetDriverInfo": 0x72340, "FreeMalloc": 0x69d10})
+        slots = ([{"role": role, "vtable_rva": 0x1f2040, "slot_byte_offset": offset, "target_rva": rva}
+                  for role, offset, rva in (("user_process", 104, 0x3720), ("razer_process", 128, 0x3f90))]
+                 if name == "simple_service.dll" else [])
+        report = audit.families.verify_native_functions(originals[name],
+            {rva: row[0] for rva, row in selected.items()}, slots, exports=exports)
+        audit.artifact(audit.a.ROOT / report["capture_receipt"]["path"], report["capture_receipt"])
+        for row in report["complete_selected_functions"]:
+            function = row["capture"]
+            rva = int(function["rva"], 16)
+            if (row["artifact"]["sha256"] != selected[rva][1] or not row["pseudocode_captured"]
+                    or row["failures"] or not function.get("assembly")):
+                raise ValueError("Common driver complete native boundary differs: " + name + ":" + hex(rva))
+            audit.artifact(audit.a.ROOT / row["artifact"]["path"], row["artifact"])
+            row["instruction_count"] = len(function["assembly"])
+            row["rva"] = function["rva"]
+            del row["capture"]
+        reports[name] = report
+    return reports
+
+
+def _common_driver_install_consumer_manifest(driver_raw):
+    import xml.etree.ElementTree as ET
+    leaves = [row for row in pe_resource_entries(driver_raw)
+              if (row["type"], row["name"], row["language"]) == (24, 1, 1033)]
+    if len(leaves) != 1:
+        raise ValueError("Common driver executable manifest is absent or ambiguous")
+    leaf = leaves[0]
+    text = driver_raw[leaf["file_offset"]:leaf["file_offset"] + leaf["bytes"]].decode("utf-8-sig").rstrip("\0")
+    levels = ET.fromstring(text).findall(".//{urn:schemas-microsoft-com:asm.v3}requestedExecutionLevel")
+    if (leaf["sha256"] != "64853bb3de406ea1dd1ca7b2acdf1e5f011236e25cf8271042b952be01e8f040"
+            or len(levels) != 1 or levels[0].attrib != {"level": "requireAdministrator", "uiAccess": "false"}):
+        raise ValueError("Common driver executable elevation manifest requires review")
+    return {**leaf, "requested_execution_level": levels[0].attrib, "xml": text,
+            "static_resource_parse_only": True, "target_loaded_or_executed": False}
+
+
+def collect_common_driver_install_consumers(audit):
+    """Close the concrete RzComDriver installer/host consumers without recapturing SYS code."""
+    sources, native_inputs, driver, driver_raw, provenance = _common_driver_install_consumer_inputs(audit)
+    source_set, files = audit.source_set("installer-current")
+    installers = [row for row in files if row["sha256"] == "227bda5512114a4af2bab7d154ba4be11704a69c798fa5c93465f3ae64881b7b"]
+    if len(installers) != 1:
+        raise ValueError("Common driver installer deployment requires source review")
+    installer = installers[0]
+    selected, bindings = _common_driver_install_consumer_owners(audit, sources, installer)
+    verified_source = _common_driver_install_consumer_proof(selected, audit.owners)
+    manifest = _common_driver_install_consumer_manifest(driver_raw)
+    native = _common_driver_install_consumer_native(audit, native_inputs)
+    shared_path = audit.a.ROOT / ".analysis/results/host-current/installation-elevation-client.json"
+    shared = json.loads(audit.artifact(shared_path))
+    if shared["native_origin"]["original"]["sha256"] != native_inputs["simple_service.dll"]["sha256"]:
+        raise ValueError("Common driver shared process evidence belongs to other native bytes")
+    calls = []
+    for role, callee, count in (("Ka", "q.simpleLaunchUserAppProcessJson", 2),
+            ("$l", "Ka", 1), ("$l", "U.setInstalledResource", 1), ("$l", "Ya", 1),
+            ("Il", "$l", 1), ("yl", "Il", 1), ("Bl", "kl", 1), ("Bl", "U.removeInstalledProduct", 1),
+            ("kl", "Ce.getDriverInfo", 1), ("kl", "q.simpleLaunchRazerApp", 1),
+            ("kl", "U.removeInstalledResource", 1), ("host_service_ipc", "ao.callDLL", 1)):
+        owner = audit.owners[selected[role]]
+        source = owner["original"]
+        root = audit.tree(source).root_node.descendant_for_byte_range(owner["byte_start"], owner["byte_end"] - 1)
+        found = [node for node in _help_nodes(root) if node.type == "call_expression"
+                 and node.child_by_field_name("function").text.decode() == callee]
+        if len(found) != count:
+            raise ValueError("Common driver actual source call differs: " + role + " -> " + callee)
+        calls.extend({"owner_id": owner["id"], "callee": callee, "byte_start": node.start_byte,
+            "byte_end": node.end_byte, "arguments": node.child_by_field_name("arguments").text.decode()} for node in found)
+    return {"schema_version": 1, "kind": "current_common_driver_install_consumers",
+        "query": "common-driver-install-consumers",
+        "scope": "NormalDriver_RzComDriver 23.0.6.0 current Host 4.0.896 installer/IPC/process/registry/result/cancel/cleanup consumers; shared selector and SYS semantics are dependencies",
+        "current_host": provenance, "installer_source_set": source_set, "selected": selected, "bindings": bindings,
+        "verified_complete_source_owners": verified_source, "actual_source_calls": calls,
+        "native": native, "executable_manifest": manifest,
+        "concrete_action": {"resource_name": "NormalDriver_RzComDriver", "version": "23.0.6.0",
+            "app": "current installApp; overwriteApp is empty", "file_path": "Drivers/RzComDriver_v23.0.6.0.exe or verified existInfo.name",
+            "params": "/S /LAUNCH", "js_action": "simpleLaunchUserAppProcess", "js_force_elevated": False,
+            "js_pid_drv_ascii_branch": False, "native_wait": True,
+            "native_manifest_selection": "requireAdministrator selects waiting elevation COM after file/signature gates; source-defined local fallback remains possible",
+            "native_selected_route_actually_executed": False, "no_install_skip_is_device_success": False,
+            "host_pid_3010_notification_matches_this_filename": False},
+        "driver_info": {"export_rva": "0x72340", "registry_owner_rva": "0x61e20",
+            "registry_key": "HKLM/SOFTWARE/WOW6432Node/Razer/Synapse3/RzComDriver",
+            "values": ["ProductVersion", "UninstallPath"], "is_installed": "version or uninstallPath is nonempty; not an SCM/device health query",
+            "first_open_access": "0x20119", "value_open_access": "0x20019",
+            "value_read": "first RegQueryValueExW obtains size; second return and registry type are not validated",
+            "reply": ["name", "isInstalled", "version", "uninstallPath", "uninstallArg", "reason"],
+            "uninstall_arg": "empty; not read from registry", "malformed_or_missing_reply": "JS fallback reason=undefined is unobserved, not an actual not-installed result",
+            "string_release": "ffiMain readCString then FreeMalloc only after successful conversion; conversion throw does not establish release"},
+        "result_consumers": {
+            "install": "Ka broadcasts result/reason/exitCode; $l throws only installerError or result===false, then stores resource, sets restartRequired for 3010 or manifest, and awaits optional Ya removal",
+            "native_result_is_business_success": False, "install_checks_exit_code_zero": False,
+            "install_file_removal_confirmed": False,
+            "uninstall_name": "URL basename split at _v gives RzComDriver",
+            "uninstall_gates": "installed product version exact match, getDriverInfo.isInstalled truthy, driver version exact string match",
+            "uninstall_launch": {"action": "simpleLaunchRazerApp", "file_path": "actual getDriverInfo.uninstallPath.trim()", "params": ""},
+            "uninstall": "kl awaits the whole result object, removes installed resource, returns non-null result unchanged; Bl treats a failed object as truthy and may remove product, run pending cleanup and publish COMPLETED",
+            "uninstall_checks_result_or_exit_code": False, "registry_or_device_post_uninstall_readback": False},
+        "cancellation_and_cleanup": {"installer": "cancel sets CANCELED and isCancelling, $r waits only fetch abort signals; yl checks flag at entry only, Bl/kl do not check it",
+            "process_callback": "FFI void(bool,string,int), retained cbMap entry removed after callback/launch exception; no source timeout or per-install cancel",
+            "native_wait": "shared direct path waits process/stop handles; shared COM path has no corresponding stop-event parameter; neither proves process termination or state restoration",
+            "normal_finish": "gn clears transient state/cache and releases installer lock; no external process confirmation or rollback",
+            "uninstall_failure_after_launch": "resource/product record removal is not coupled to actual uninstall result; storage rejection remains a rejected Promise"},
+        "semantic_dependencies": [
+            {"receipt": ".analysis/results/host-current/local-audit.json", "section": "common_driver_install_selection",
+             "scope": "Reuse current OS/INF/SYS choice and NSIS/plugin install result consumers; do not transfer either SYS semantics to its sibling"},
+            {"receipt": ".analysis/results/host-current/installation-elevation-client.json",
+             "identity": audit.artifacts[audit.a.rel(shared_path)], "scope": "Same current simple_service.dll bytes; reuse COM launch/result/events/Unadvise/shutdown and source-defined fallback boundaries; retained server latest official identity remains unverified"}],
+        "remaining_chains": [
+            "Continue unresolved product/firmware/transport qualification and selected SYS cancellation/full pending-I/O drain from current receipts; this concrete installer consumer slice does not close those chains.",
+            "Acquire and bind the elevation service's current official deployed bytes/dependency closure before promoting the retained installed-server evidence to current official server semantics.",
+            "After full semantic reverse work, implement independent Rust and all production UI/backend consumers, then compare actual install/uninstall inputs/results/state/restore/cleanup through permitted explicit tests; installation execution and runtime acceptance remain unverified."],
+        "selected_static_semantics_reviewed": True, "concrete_installer_host_consumers_reviewed": True,
+        "source_chain_complete": False, "whole_product_complete": False, "target_execution": False,
+        "real_device_operations": False, "product_code_modified": False, "new_native_captures": 0,
+        "new_analysis_sessions": 0, "temporary_files_created": [],
+        "rust_independent_implementation": "not_implemented_by_this_query", "ui_backend_wiring": "unverified",
+        "actual_dll_comparison": "unverified", "runtime_acceptance": "unverified", "failures": []}
+
+
+def collect_common_driver_legacy_notification(audit):
+    return audit.families.collect_common_driver_legacy_notification(audit)
 
 
 def audit_host_local(args):
@@ -20582,16 +26256,30 @@ def audit_host_local(args):
             "current_mapping_input_shutdown_chain", "Mapping input shutdown chain"),
         "mapping-delayed-task-lifecycle": (collect_mapping_delayed_task_lifecycle, "mapping_delayed_task_lifecycle",
             "current_mapping_delayed_task_lifecycle", "Mapping delayed task lifecycle"),
+        "mapping-engine-shutdown-chain": (collect_mapping_engine_shutdown_chain, "mapping_engine_shutdown_chain",
+            "current_mapping_engine_shutdown_chain", "Mapping engine shutdown chain"),
         "mapping-input-producer-eligibility": (collect_mapping_input_producer_eligibility, "mapping_input_producer_eligibility",
             "current_mapping_input_producer_eligibility", "Mapping input producer eligibility"),
         "mapping-kernel-input-producer": (collect_mapping_kernel_input_producer, "mapping_kernel_input_producer",
             "current_mapping_kernel_input_producer", "Mapping kernel input producer"),
+        "mapping-hardware-notification-chain": (collect_mapping_hardware_notification_chain, "mapping_hardware_notification_chain",
+            "current_mapping_hardware_notification_chain", "Mapping hardware notification chain"),
         "common-driver-install-selection": (collect_common_driver_install_selection, "common_driver_install_selection",
             "current_common_driver_install_selection", "Common driver install selection"),
+        "common-driver-legacy-notification": (collect_common_driver_legacy_notification, "common_driver_legacy_notification",
+            "current_common_driver_legacy_notification", "Common driver legacy notification"),
+        "common-driver-install-consumers": (collect_common_driver_install_consumers, "common_driver_install_consumers",
+            "current_common_driver_install_consumers", "Common driver install consumers"),
+        "keyboard-ble-power-transport": (collect_keyboard_ble_power_transport, "keyboard_ble_power_transport",
+            "current_keyboard_ble_power_transport", "Keyboard BLE power transport"),
         "keypad-mapping-consumers": (collect_keypad_mapping_consumers, "keypad_mapping_consumers",
             "current_keypad_mapping_consumers", "Keypad mapping consumers"),
         "keypad-mapping-current-native": (collect_keypad_mapping_current_native, "keypad_mapping_current_native",
             "current_keypad_mapping_current_native", "Keypad current native mapping"),
+        "keypad-temporary-keymap-chain": (collect_keypad_temporary_keymap_chain, "keypad_temporary_keymap_chain",
+            "current_keypad_temporary_keymap_chain", "Keypad temporary keymap chain"),
+        "keypad-two-tap-chain": (collect_keypad_two_tap_chain, "keypad_two_tap_chain",
+            "current_keypad_two_tap_chain", "Keypad two-tap chain"),
         "lighting-ripple-chain": (collect_lighting_ripple_chain, "lighting_ripple_chain",
             "current_lighting_ripple_chain", "Lighting Ripple chain"),
         "lighting-reactive-radiate-chain": (collect_lighting_reactive_radiate_chain, "lighting_reactive_radiate_chain",
@@ -20606,6 +26294,28 @@ def audit_host_local(args):
             "current_lighting_media_calculations", "Lighting media calculations"),
         "lighting-media-resampler": (collect_lighting_media_resampler, "lighting_media_resampler",
             "current_lighting_media_resampler", "Lighting media resampler"),
+        "lighting-media-codec-boundaries": (collect_lighting_media_codec_boundaries, "lighting_media_codec_boundaries",
+            "current_lighting_media_codec_boundaries", "Lighting media codec boundaries"),
+        "lighting-png-decoder-chain": (collect_lighting_png_decoder_chain, "lighting_png_decoder_chain",
+            "current_lighting_png_decoder_chain", "Lighting PNG decoder chain"),
+        "lighting-pnm-decoder-chain": (collect_lighting_pnm_decoder_chain, "lighting_pnm_decoder_chain",
+            "current_lighting_pnm_decoder_chain", "Lighting PNM decoder chain"),
+        "lighting-bmp-tga-decoder-chain": (collect_lighting_bmp_tga_decoder_chain, "lighting_bmp_tga_decoder_chain",
+            "current_lighting_bmp_tga_decoder_chain", "Lighting BMP/TGA decoder chain"),
+        "lighting-pic-decoder-chain": (collect_lighting_pic_decoder_chain, "lighting_pic_decoder_chain",
+            "current_lighting_pic_decoder_chain", "Lighting PIC decoder chain"),
+        "lighting-psd-decoder-chain": (collect_lighting_psd_decoder_chain, "lighting_psd_decoder_chain",
+            "current_lighting_psd_decoder_chain", "Lighting PSD decoder chain"),
+        "lighting-gif-decoder-chain": (collect_lighting_gif_decoder_chain, "lighting_gif_decoder_chain",
+            "current_lighting_gif_decoder_chain", "Lighting GIF decoder chain"),
+        "lighting-jpeg-decoder-chain": (collect_lighting_jpeg_decoder_chain, "lighting_jpeg_decoder_chain",
+            "current_lighting_jpeg_decoder_chain", "Lighting JPEG decoder chain"),
+        "lighting-hdr-decoder-chain": (collect_lighting_hdr_decoder_chain, "lighting_hdr_decoder_chain",
+            "current_lighting_hdr_decoder_chain", "Lighting HDR decoder chain"),
+        "lighting-hdr-parameters-chain": (collect_lighting_hdr_parameters_chain, "lighting_hdr_parameters_chain",
+            "current_lighting_hdr_parameters_chain", "Lighting HDR parameters chain"),
+        "lighting-ai-model-chain": (collect_lighting_ai_model_chain, "lighting_ai_model_chain",
+            "current_lighting_ai_model_chain", "Lighting AI model chain"),
         "profile-local-applications": (collect_profile_local_applications, "profile_local_applications",
             "current_profile_local_applications", "Profile local applications"),
         "profile-alternate-icons": (collect_profile_alternate_icons, "profile_alternate_icons",
@@ -20628,6 +26338,8 @@ def audit_host_local(args):
             "current_macro_native_recorder", "Macro native recorder"),
         "otfm-device-writeback": (collect_otfm_device_writeback, "otfm_device_writeback",
             "current_otfm_device_writeback", "OTFM device writeback"),
+        "otfm-macro-encoding-chain": (collect_otfm_macro_encoding_chain, "otfm_macro_encoding_chain",
+            "current_otfm_macro_encoding_chain", "OTFM macro encoding chain"),
     }
     if args.query in static_queries:
         collector, section, kind, label = static_queries[args.query]
@@ -20647,6 +26359,21 @@ def audit_host_local(args):
             complete_originals=list(audit.sources.values()), complete_source_owners=list(audit.owners.values()),
             verified_artifacts=list(audit.artifacts.values()))
         changed = audit.final_snapshot()
+        if args.query in {"otfm-macro-encoding-chain", "mapping-hardware-notification-chain",
+                          "mapping-engine-shutdown-chain", "lighting-hdr-parameters-chain"}:
+            changed += _otfm_macro_encoding_dependency_changes(report.get("upstream_sections", []))
+        if args.query in {"keypad-temporary-keymap-chain", "keypad-two-tap-chain"}:
+            changed += _keypad_temporary_keymap_dependency_changes(report.get("upstream_sections", []))
+        if args.query in {"lighting-gif-decoder-chain", "lighting-jpeg-decoder-chain", "lighting-hdr-decoder-chain", "lighting-ai-model-chain"} and "dependencies" in report:
+            recheck = {"lighting-gif-decoder-chain": _lighting_gif_decoder_dependencies,
+                "lighting-jpeg-decoder-chain": _lighting_jpeg_decoder_dependencies,
+                "lighting-hdr-decoder-chain": _lighting_hdr_decoder_dependencies,
+                "lighting-ai-model-chain": _lighting_ai_model_dependencies}[args.query]
+            try:
+                if recheck() != report["dependencies"]:
+                    changed.append(args.query + " upstream dependencies")
+            except (OSError, ValueError, KeyError, TypeError, IndexError) as error:
+                changed.append(args.query + " upstream dependencies: " + str(error))
         if changed:
             report["failures"].extend(label + " input changed during query: " + name for name in changed)
             report["bounded_observation_complete"] = False
@@ -21404,3 +27131,236 @@ def audit_host_local(args):
 
 def run(args):
     {"acquire-installed": acquire_installed, "acquire-host": acquire_host, "inspect-host": inspect_host, "analyze-host": analyze_host}[args.command](args)
+
+
+def _mapping_hardware_notification_native_specs():
+    """Only the missing hardware subscription dispatch and USB lifetime owners."""
+    return (
+        (0x1e454, "engine_singleton_thunk", "230efcd9c7bb26eb835802efae9ada88389fb83f92330ad39513cdf1ff684ed1"),
+        (0x1000, "engine_singleton", "bd37c672ffb0ac2e10f812d4f69eeb01b44d3be4a0854bb296e946a9fa56f54f"),
+        (0x1060, "engine_constructor", "ca8febf30314651918945bdeb8b61a1f8d4271010733d9b42fd3fc8d5d58c0b9"),
+        (0x29720, "query_export", "dba5cc46b8732dc3b897f6ccf0448862ffc11462cdb7c0e5670fbb8baa0d53a7"),
+        (0x29420, "query_completion", "90e8f62b68fbadb28ddfbf7c396965c004af15aabb686e54a875bcdae88b60d1"),
+        (0x29f30, "register_export", "f7e071b06826dc40d9e1769eebe199919292dbd160ee2a121299bc4799056d16"),
+        (0x29c80, "register_completion", "bc18aef7fb44535cdc52cbe4ef6e0670f1ff1ed77de32ccd22a26f5e1ea7add8"),
+        (0x2af60, "unregister_export", "88bdcc2a20cc96a759b1bd2529a96023c6b636a807865d182e6b3e58a65d1382"),
+        (0x2acb0, "unregister_completion", "80ffe8795a0f916c0fb27d7ca75390102aa8da3f4382b08a7ff91d3e6a1b9c59"),
+        (0x2b4c0, "callback_set_completion", "aca524dcd7fbe09118e83e7d04922ccf6930875b26959db06b3a94b8a0e21ac5"),
+        (0x7350, "query_engine_queue", "ed1ff71e46d85a41be061591f5a659bbb0877a7fb6e279a219bee27e735baca1"),
+        (0x7520, "query_engine_dispatch", "a56dde5f3494e6b33435e60f14bd27fd6552361f6cad8bf99faddbaf03d95811"),
+        (0x7610, "register_engine_queue", "d198f1ea12b2950696541b8eadf93f7de89a15e502a4d6c2d8cf494997840dbd"),
+        (0x7800, "register_engine_dispatch", "4ffa4c591a8e9f16614f5dfd46e4d5a7147052c11b5f79170576126e9f7e76fa"),
+        (0x78f0, "unregister_engine_queue", "ad6007e1a1e811971853d93806309be6e46d88771a89d23615c455b720a12335"),
+        (0x7ac0, "unregister_engine_dispatch", "7bc57b733daa4549b58955d019a73b067aa63273677127cc1fe01e941355a922"),
+        (0x7bb0, "callback_set_engine_queue", "b5e72198af09f613014582f0352e41210b8ce0540dab4de18bc3741241c9ad7e"),
+        (0x7de0, "callback_set_engine_dispatch", "3ff662709ae5a4b5ba9454868f21eeec94e4f8f489cbedd51d15ce6ee75ace10"),
+        (0x58650, "query_manager_dispatch", "bbd3edbd4eb151f6adae0b6432b595732861e9e75964c23d58fbac801684e469"),
+        (0x58790, "register_manager_dispatch", "248e1c218d1078408b1082e0232ef86509bef07bfcf7170ef882576b1c5e4dc8"),
+        (0x588c0, "unregister_manager_dispatch", "6abcf7294a9680274a9157f41fdba80878c24850a4040366af16540f60b1fd98"),
+        (0x589e0, "callback_set_manager_dispatch", "32a709c99c544c31b8353d750d90849fbf1e667b5e552fc81838de357338bcdb"),
+        (0x6b4f0, "registered_flag_query", "3972894a6b4a2250006f3ad430a67ab375cd8cea42444db8a8afaf3032ece4ef"),
+        (0x52540, "usb_initialization_sequence", "6a962ccd073e1257454573cbed454101e5e35b4d643d09c4f16ee7512670ea80"),
+        (0xa8fe0, "usb_deleting_destructor", "e861dd3e242a8f64273de8cdb8e565dc4bcbdbc388a8bf1d6945f4dfb97c7e55"),
+        (0xa896c, "usb_destructor", "f445d9da59760ddfe4815ac6d10f8afe5225a632b0497a43448c8ab51b96f763"))
+
+
+def _mapping_hardware_notification_source_specs():
+    return (
+        ("mapping_external_input_routing", "selected", "registerHardwareEvent", "6d8fc8f10bf7a2afef7b5d5e8f2cab8120a0f45c996510ad372b17d47e52d899"),
+        ("mapping_external_input_routing", "selected", "unregisterHardwareEvent", "b96032b796b5c8526423840a0dad5a26f765508f191a125c3c7985dd25f188d7"),
+        ("mapping_external_input_routing", "selected", "setHardwareEventCallback", "3571252279ecf409766d5e99cc336c0e04776d97e7c98a3be0feb3d25e537955"),
+        ("mapping_external_input_routing", "selected", "createCbHardwareEvent", "c2fdc740d1faaea05c573c7a1b7d5fb0e5f62a4ad7e9ec9699f01aadb0104f73"),
+        ("mapping_external_input_routing", "selected", "createAPIData", "49861b417f3acd18fe9b84f931b640ea5a2194d995fe258ccc9f0f6e514b1926"),
+        ("mapping_external_input_routing", "selected", "createDeviceKey", "8206b5774c5ca60dff682c4e521635ffab7e1a1bf7708836b456c338e420f1a8"),
+        ("mapping_external_input_routing", "selected", "getUSBDeviceInfoFromDeviceMap", "29a86973a8811c44598358ee41ede2e92bba4f258f07ee28b67fd650b2373673"),
+        ("mapping_input_producer_eligibility", "selected", "host_add_usb", "a71e84b911b6f6e33654a0f9a1a0c0dc35de992599c1f94b3e910e157246b8c6"),
+        ("mapping_input_producer_eligibility", "selected", "host_remove_usb", "f55bcc57322f7afa8b701fb2bb4a2d080f38130660c9087aa77b7433ca5fe869"),
+        ("mapping_input_producer_eligibility", "frontend", "product_report_ids", "702034559a7442023c1026d2d1cd3f8770ee3408bdcb3e2103cad7866f28a945"),
+        ("mapping_input_producer_eligibility", "frontend", "facade_add_usb", "104a451a78cca544ca33775c399a73cf79c90cfd50ce8b0ded99ae84764a4cc2"),
+        ("keyboard_756_calibration_session_chain", "roles", "hardware_lifecycle", "f7792d0302ae369f16ef8f0a923b8332d599ff37af4a35ebc8003f5fd42a0586"),
+        ("keyboard_756_calibration_session_chain", "roles", "hardware_service", "df43adfe65716dd41de82707f636fdaded05b7da8f78a575d0a9a3c937ca3494"),
+        ("keyboard_756_calibration_session_chain", "roles", "hardware_parser", "d88d18d648ed87b740dd51aeef59ef3518768bb606e35f9d5a148cfcfa1986cb"),
+        ("keyboard_756_calibration_session_chain", "roles", "mapping_registerHardwareEvent", "bd07dde1b9e77c244796f93931d85c30805a268ef329a8d0b16777b413bb47e1"),
+        ("keyboard_756_calibration_session_chain", "roles", "mapping_unregisterHardwareEvent", "f1d0f59f7eea021415dd41bd7511042f6082136a4c7ed0729434c27a19b2de53"),
+        ("keyboard_756_calibration_session_chain", "roles", "mapping_callMappingEngineAction", "88083d8899fa95c4bea8f75a569f1170a66edf603ab354dbdfb81df02457396a"))
+
+
+def _mapping_hardware_notification_dependencies(audit):
+    """Reuse exact current sections without snapshotting the mutable combined report."""
+    receipts = {
+        ".analysis/results/host-current/local-audit.json": (
+            ("mapping_external_input_routing", "ff4d6dc83556a703172678f1422a3098080dcc41ff666f00b5276ec381f10294"),
+            ("mapping_input_producer_eligibility", "01bf909a44ca54235284a39713acb6e60076787d0a8acedfc0e68f1d08ed0a1a"),
+            ("mapping_input_shutdown_chain", "accdf50528e85216263429144ed409d3e80f1a1bb8d0bebf07af016c13cb01e4")),
+        ".analysis/results/frontend/keyboard-main-audit.json": (
+            ("keyboard_756_calibration_session_chain", "a458befb2fae191b4cc2c6a7de4724cc3ed6fceea91e0a083960d79ef084b569"),)}
+    sections, upstream = {}, []
+    for receipt, specs in receipts.items():
+        document = json.loads((audit.a.ROOT / receipt).read_bytes())
+        for name, digest in specs:
+            section = document[name]
+            if (_otfm_macro_encoding_digest(section) != digest or section["failures"]
+                    or not section["bounded_observation_complete"] or not section["snapshot_stable"]
+                    or section["target_execution"]):
+                raise ValueError("Mapping hardware notification upstream requires review: " + name)
+            sections[name] = section
+            upstream.append({"receipt": receipt, "pointer": "/" + name,
+                "canonical_sha256": digest, "recaptured": False})
+    selected = {}
+    for section_name, branch, role, digest in _mapping_hardware_notification_source_specs():
+        section = sections[section_name]
+        roles = section["frontend"]["selected"] if branch == "frontend" else section[branch]
+        owner = next(row for row in section["complete_source_owners"] if row["id"] == roles[role])
+        raw = audit.read(owner["original"])[owner["byte_start"]:owner["byte_end"]]
+        if raw.decode() != owner["body"] or hashlib.sha256(raw).hexdigest() != digest:
+            raise ValueError("Mapping hardware notification reused source differs: " + role)
+        selected[role] = audit.retain_range("mapping_hardware_notification_" + role, owner["original"],
+            owner["byte_start"], owner["byte_end"], owner["syntax"])
+    reused = []
+    native_specs = {
+        "mapping_external_input_routing": (
+            0x64e8c, 0xdb242, 0xdb1d4, 0xdb462, 0x7d260, 0xab530, 0x11a982,
+            0xabd80, 0xac590, 0x123c00, 0x123fe4, 0x124130, 0x1255a0,
+            0x1234b8, 0x1237c0, 0x1237d8, 0x123ae0, 0x1249c0, 0x124cfa,
+            0x6a330, 0x9d558, 0x9d682, 0x9d6f2, 0x9d510, 0x9d5f6, 0x6a470,
+            0x7f17e, 0xa0544, 0xa0610, 0x2b770, 0x2ba40,
+            0x6b500, 0x6b720, 0x6b910, 0x6bb20, 0x123880, 0x124d80,
+            0xb12d0, 0x123aa0, 0x1247ee, 0x124950, 0xac730, 0xac860, 0x123e2a, 0x123650),
+        "mapping_input_producer_eligibility": (0x277d0, 0x57380, 0xa8730, 0xa8b20, 0xe5cf4, 0xe5dec),
+        "mapping_input_shutdown_chain": (0x9e1d0, 0x18db0, 0x26650, 0x28140, 0x6630, 0x6800,
+            0x57ac0, 0x57e60, 0x5f917, 0x53090, 0x656ca, 0x1b8e40, 0x1a9ee0)}
+    for name, rvas in native_specs.items():
+        native = sections[name]["native"]
+        audit.read(native["input"])
+        audit.artifact(audit.a.ROOT / native["capture_receipt"]["path"], native["capture_receipt"])
+        rows = {int(row["rva"], 16): row for row in native["complete_selected_functions"]}
+        for rva in rvas:
+            row = rows[rva]
+            if not (row["assembly_captured"] and row["pseudocode_captured"]
+                    and row["input_chunks_verified"]) or row["failures"]:
+                raise ValueError("Mapping hardware notification reused native is incomplete: " + hex(rva))
+            audit.artifact(audit.a.ROOT / row["artifact"]["path"], row["artifact"])
+            reused.append({"pointer": "/" + name, "rva": row["rva"], "role": row["role"],
+                "artifact": row["artifact"], "recaptured": False})
+    return selected, upstream, reused
+
+
+def _mapping_hardware_notification_verify(native, owners, selected):
+    functions = {int(row["capture"]["rva"], 16): row["capture"]
+        for row in native["complete_selected_functions"]}
+    for rva, role, digest in _mapping_hardware_notification_native_specs():
+        function = functions.get(rva)
+        if function is None or hashlib.sha256("\n".join(line["text"] for line in
+                function["pseudocode"]["lines"]).encode()).hexdigest() != digest:
+            raise ValueError("Mapping hardware notification complete native owner differs: " + role)
+    sources = [(role, digest) for _, _, role, digest in _mapping_hardware_notification_source_specs()]
+    sources.extend((
+        ("isHardwareEventRegistered", "df8bf9f6a7f225f1bd11d7f9e8a87ed4a7f6d07a5f0195b8c5235a34b2b51c48"),
+        ("initDll", "db7b94c1ab5068b59238e5c7adb035a99f18e425ad0e462bbc24c5654d442729")))
+    for role, digest in sources:
+        owner = owners[selected[role]]
+        if hashlib.sha256(owner["body"].encode()).hexdigest() != digest or owner["body_sha256"] != digest:
+            raise ValueError("Mapping hardware notification complete source owner differs: " + role)
+    instructions = {int(line["rva"], 16): line["bytes"] for function in functions.values()
+        for line in function["assembly"]}
+    anchors = ((0x2a170, "488b8008010000"), (0x2a17a, "4531c0"),
+        (0x2b1a0, "488b8010010000"), (0x756c, "488b4030"),
+        (0x784c, "488b4038"), (0x7b0c, "488b4040"), (0x7e5f, "488b4048"),
+        (0x52b2c, "80bfb100000000"))
+    for rva, encoded in anchors:
+        if instructions.get(rva) != encoded:
+            raise ValueError("Mapping hardware notification ABI or HID gate differs: " + hex(rva))
+    return {"selected_product_id": 756, "native_version": "1.3.17.2",
+        "actual_constructor_type": "usb", "engine_vtable_rva": "0x2e0010",
+        "manager_vtable_rva": "0x2e5a88", "manager_base_offset": 152,
+        "usb_primary_vtable_rva": "0x2e8d38", "usb_hardware_vtable_rva": "0x2e8de8",
+        "usb_hardware_subobject_offset": 128, "usb_input_vtable_rva": "0x2e8e18",
+        "usb_input_subobject_offset": 136, "read_capacity": 100,
+        "feature_report_io_is_notification_provider": False,
+        "selected_report_ids": [5, 9], "selected_event_id": 128,
+        "published_special_report_ids": [4, 11], "unmapped_report_category": 8,
+        "category8_strips_prefix": False, "callback_type": 0,
+        "callback_abi": "void(const char*, int32, const char*, uint64)",
+        "registration_result_consumes_callback_set_result": False,
+        "register_is_physically_confirmed_notification": False,
+        "unregister_clears_callback": False, "unregister_cancels_io": False,
+        "unregister_proves_callback_drain": False, "whole_connection_generation_drain_proven": False,
+        "actual_notification128_observed": False,
+        "instruction_anchors": [{"rva": hex(rva), "bytes": value} for rva, value in anchors]}
+
+
+def collect_mapping_hardware_notification_chain(audit):
+    """Close the selected USB hardware notification path using retained provider evidence."""
+    original, source, provenance = _mapping_external_input_source(audit)
+    if (original["sha256"], original["bytes"]) != (
+            "c64e539437b50da2b1f2e4155d8cbb0fb1c3e1ebaad894caf509bad97e9857f9", 3948744):
+        raise ValueError("Mapping hardware notification current native requires semantic review")
+    if source["sha256"] != "32b0dab3a1a83a970b2501608d53c6544cab0c9a2b47054d7bd9a660fe4133c0":
+        raise ValueError("Mapping hardware notification current Host requires semantic review")
+    selected, upstream, reused = _mapping_hardware_notification_dependencies(audit)
+    for name in ("isHardwareEventRegistered", "initDll"):
+        _, selected[name] = audit.callable_member("mapping_hardware_notification_" + name,
+            source, audit.tree(source).root_node, name)
+    slots = [("engine_query", 0x2e0010, 256, 0x7350),
+        ("engine_register", 0x2e0010, 264, 0x7610),
+        ("engine_unregister", 0x2e0010, 272, 0x78f0),
+        ("engine_callback", 0x2e0010, 280, 0x7bb0),
+        ("manager_query", 0x2e5a88, 48, 0x58650),
+        ("manager_register", 0x2e5a88, 56, 0x58790),
+        ("manager_unregister", 0x2e5a88, 64, 0x588c0),
+        ("manager_callback", 0x2e5a88, 72, 0x589e0),
+        ("usb_initialize", 0x2e8d38, 56, 0x52540),
+        ("usb_cleanup", 0x2e8d38, 64, 0x53090),
+        ("usb_destructor", 0x2e8d38, 0, 0xa8fe0),
+        ("usb_hardware_observer", 0x2e8de8, 16, 0x6a330),
+        ("usb_hardware_consumer", 0x2e8de8, 24, 0xa8b20),
+        ("usb_query", 0x2e8e18, 48, 0x6b4f0),
+        ("usb_register", 0x2e8e18, 56, 0x6b500),
+        ("usb_unregister", 0x2e8e18, 64, 0x6b720),
+        ("usb_callback", 0x2e8e18, 72, 0x6b910)]
+    native = audit.families.verify_native_functions(original,
+        {rva: role for rva, role, _ in _mapping_hardware_notification_native_specs()},
+        [{"role": role, "vtable_rva": table, "slot_byte_offset": offset, "target_rva": target}
+         for role, table, offset, target in slots],
+        exports={"isHardwareEventRegistered": 0x29720, "registerHardwareEvent": 0x29f30,
+            "unregisterHardwareEvent": 0x2af60, "setHardwareEventCallback": 0x2ba40})
+    for row in native["complete_selected_functions"]:
+        if not row["pseudocode_captured"] or row["failures"]:
+            raise ValueError("Mapping hardware notification native function remains incomplete: " + row["role"])
+    proof = _mapping_hardware_notification_verify(native, audit.owners, selected)
+    for row in native["complete_selected_functions"]:
+        capture = row.pop("capture")
+        row["rva"] = capture["rva"]
+        row["pseudocode_text_sha256"] = hashlib.sha256("\n".join(
+            line["text"] for line in capture["pseudocode"]["lines"]).encode()).hexdigest()
+        audit.artifact(audit.a.ROOT / row["artifact"]["path"], row["artifact"])
+    audit.artifact(audit.a.ROOT / native["capture_receipt"]["path"], native["capture_receipt"])
+    return {"schema_version": 1, "query": "mapping-hardware-notification-chain",
+        "kind": "current_mapping_hardware_notification_chain", "failures": [],
+        "scope": "Current PID756 nonBLE calibration notification128 -> exact USB hardware provider, ordinary registration, Host delivery and bounded native release; no new capture or target execution",
+        "provenance": provenance, "selected": selected, "native": native,
+        "upstream_sections": upstream, "reused_native_functions": reused, "verified_contract": proof,
+        "reviewed_semantics": {
+            "actual_caller": "Reuse the current756 session's real93182/22967 path: nonBLE registerDevice -> Mapping facade addUsbDevice(default skipFilterDriver=false) then registerHardwareEvent. Current Host addUsbDevice and native277D0/57380 select exact usb/A8730. The existing service stores its container entry only after a true registration result, then sends hardwareevent through Protocol25 to calibration event128. BLE, OLED, separate hid.registerHidDeviceEvent and interval registrations are not selected by this bounded nonBLE chain.",
+            "registration": "Host register validates init, VID/PID/container and actual USB map. The first URL uses native registerHardwareEvent; after a true native result it adds the URL and interval0, awaits setHardwareEventCallback but ignores its boolean and returns the register result. Later ordinary subscribers only add their URL; interval-mode mismatch fails. There is no hardware-event mutex or timeout around these FFI promises. cbMap owns each completion until settlement. A successful register sets a native publishing flag; it does not prove a HID report or notification128 has arrived.",
+            "native_dispatch": "DB02A parses/owns the device identity; invalid container/VID/PID or allocation failure completes false. Current singleton1000/1060 installs engine table2E0010. Export slots256/264/272/280 resolve7350/7610/78F0/7BB0 and post to the engine runner. Their7520/7800/7AC0/7DE0 handlers use manager+152, table2E5A88 slots48/56/64/72; manager58650/58790/588C0/589E0 looks up identity, RTTI-adjusts to InputInterface+136 and dispatches slots48/56/64/72. Missing engine runner, manager, device or device runner has its real false completion. Register assembly passes packed interval0 in R8. Shared6B500/6B720/6BB20 owns registered+640, interval+656 and callback+648/+704; query6B4F0 reads only registered, not an active endpoint or observed notification.",
+            "provider": "Actual USB root table2E8D38 uses52540. Its main sequence includes7D260 only under connectHid at base+177, separately from connectFilterDriver+176. Reuse the exact current raw-HID provider from mapping_external_input_routing: actual PID/container endpoint discovery, GENERIC_READ overlapped CreateFile,100-byte double-buffer ReadFile, successful completion/actual length, owned completed bytes and device-runner queue. This is the same retained provider with USB's own vtable2E8DE8+16/+24, not the external subclass handler and not feature HID send/get or the304-byte filter-driver receive frame.",
+            "selected_raw_reports": "Reuse A8B20/E5CF4/E5DEC from the current producer receipt. Published bluetoothLE selects raw[0] or raw[1] for classification and requires1 or2 bytes. Current756's explicit report map contains4 and11; unmapped IDs5/9 classify as8. That class directly calls7F17E with the unchanged vector: unlike classes0..6 it does not remove a prefix even when bluetoothLE is true. For the selected nonBLE reports5/9, the unchanged record reaches the current Protocol25 parser, whose event128 bytes2/3/4 are already reviewed by the session receipt. This establishes static handling of such incoming bytes, not firmware production or a live128 observation.",
+            "callback": "Shared7F17E requires global enable, registered+640 and normal callback+648. A0544 retains callback/vector/tick before posting9E1D0/18DB0; that queued event does not re-read registered.2B770 serializes unsigned bytes, preserves tick and calls the shared FFI callback with type0. Host checks the actual USB key/map, matching subscribed URL and live webContents, then sends hardwareevent with identity, parsed buffer and timeTick. It does not check calibration phase, selected keys or connection generation. Destroyed/crashed/disposed or unsubscribed consumers drop delivery; a reused URL/container is not a generation token.",
+            "unregister_and_failure": "Host removes the sender URL before attempting native unregister when the list becomes empty; failure does not restore that URL. Native6B720 clears registered and interval flags, then posts its completion. It does not clear callback pointers, cancel ReadFile or wait for an owned callback already queued on the owner runner. Query returns native registered AND this URL present; a false native result clears the Host subscriber list. The MW service deletes its deviceMap entry even after false unregister, may separately removeUsbDevice when no input service subscription remains, while93182 only detaches its own listener on true result. Native completion callbacks are themselves suppressed by the shared global enable byte, so that guard cannot be treated as successful promise settlement.",
+            "device_release": "Full remove is separate from unsubscribe. Reuse exact manager identity removal/main cleanup from mapping_input_shutdown_chain; USB primary cleanup slot64 is53090, which sequences AC730. Hardware cleanup1247EE/124950 invokes each endpoint shutdown123AA0: CancelIo then close handle. AC860 deletes the hardware thread;123E2A joins it before releasing endpoint ownership. USB deleting destructor A8FE0 -> A896C ->656CA joins the device runner before destroying input state and releasing normal/batch callbacks. The retained original does not expose a universal barrier draining owner-runner, FFI/Anne and Electron queues, and Host URL/map deletion is not that barrier. No target shutdown, cancellation or live comparison was executed."},
+        "dependencies": [{"receipt": row["receipt"], "pointer": row["pointer"],
+            "scope": "Reuse exact formal evidence; original identities and selected artifacts are rechecked"}
+            for row in upstream],
+        "remaining_chains": [
+            "Actual notification128 firmware/device production, current transport/firmware qualification and official DLL/device read/error/cancel/reconnect/release comparison remain unverified; no target code or device was executed.",
+            "Complete only actually selected missing owner-runner/FFI/Anne/Electron in-flight cancellation and reconnect-generation contracts; ordinary unregister and native thread joins do not prove universal drain.",
+            "Calibration full-list/reset/switch-reconcile, BLE and other mounted product branches remain separate; this shared provider receipt does not establish audio tap67 applicability or its parser.",
+            "After full semantic reverse work, independently implement Rust and real UI/backend consumers with true read/write/confirmation and lifecycle tests."],
+        "bounded_observation_complete": True, "source_chain_complete": False, "whole_product_complete": False,
+        "selected_static_semantics_reviewed": True, "target_execution": False,
+        "real_device_operations": False, "actual_dll_comparison": "unverified", "runtime_acceptance": "unverified",
+        "product_code_modified": False, "new_native_captures": 0, "new_analysis_sessions": 0,
+        "temporary_files_created": 0, "rust_independent_implementation": "unimplemented",
+        "ui_backend_wiring": "unimplemented", "cleanup": {"new_temporary_files": [],
+            "retained_dependencies": "Current original DLL/JS, formal receipts and native captures remain referenced"}}

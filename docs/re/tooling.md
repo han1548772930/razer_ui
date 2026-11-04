@@ -127,6 +127,10 @@ Profiles 的 Windows 枚举／图标来源与语义统一见 [Profiles 专题](.
 
 Profiles／GMS 查询复用[完整托管捕获](../../.analysis/results/host-current/managed/capture.json)，独立核对 CLR MethodDef、tiny／fat 方法头、token、RVA、code size、选定调用／分支原字节、EH／TypeRef catch 类型及 #US 字符串。所选集合可能重叠，计数不累加为全策略覆盖，也不宣称全部托管 IL 已独立逐指令验证。实际查询范围、输入身份和诊断由[主机收据](../../.analysis/results/host-current/local-audit.json)维护。
 
+混合 CLR／native 程序集按 MethodDef 的 ImplFlags 判断方法实现类型，只有 IL 方法解析 tiny／fat 头及 IL；native、OPTIL、runtime 方法保留 token、RVA、声明类型和原始元数据行，明确标为未解码。IL 头损坏仍须报错，不能因同一程序集含原生方法而忽略。反编译器未解析的 SDK 类型和调用目标继续保留在完整 IL、诊断及对应产品收据中。
+
+精确方法选择还核对原 PE NestedClass 表形成的完整类型归属，保留完整 MethodDef 映射，先按 RVA、完整类型及实际方法名辨认正文，再筛选所选 token，逐项校验代码长度和 IL 所有者，拒绝缺项及重复 token。同类型、同 RVA／长度的 mixed CLR 别名仍分别核验；同名构造器或共享 RVA 不能借用另一嵌套类型的正文。接口的空方法选择仅保留来源原文，不记为方法捕获。未使用精确选择的既有查询仍按原选择规则复核。
+
 | 功能链 | 语义与版本边界 |
 | --- | --- |
 | 服务发现、任务与结果 | [服务发现与退出](../products/host/profiles.md#gms-服务发现排队添加与任务退出)、[路径与去重](../products/host/profiles.md#本机扫描的路径去重与结果发布)、[解析与发现通知](../products/host/profiles.md#解析依赖与发现通知的完成边界) |

@@ -208,7 +208,7 @@ OTFM 测试须覆盖表内每类／接口／双链分支、枚举局部失败、
 
 PID 756 明确选择 `obmEngineKeyboardCalMaxMem`，并启用 `analogKeyboardV3`；继承的初始化显式将 `analogKeyboard=false`。因此这里的基础宏绑定实际走 **`setSingleKeyAssignment`**，不能凭模拟轴功能名换成旧 analog 单键写入。其参数为 profile、button、mode、fnId、fnDataLength 和功能字节，命令头 `[80,2,13]`，当前调用将有效载荷长度设为 10。Once 固件投影的次数为 1；UI 对象中的 `repeatCount=2` 不改变 Once 语义。触发阈值／Rapid Trigger 另有成对排队任务，基础映射应答不证明这两项已写入。
 
-OBM 先从 IDB 取宏，按实际 active／未锁定配置的引用选择待增删宏，再排各槽的默认／新映射任务；不适合固件的宏投影为 disableGroup。worker 4795 接收 `none` 或 `relative` 移动模式，归一化键盘 flag／scancode 后交给固件字节转换器。宏写入先分配空间，随后将 250 字节名称结构按 64 字节分块、宏数据按 72 字节分块提交，并查询存储容量。**名称写入与 `addMacroLocal` 均存在捕获异常后继续的原版路径**，之后的缓存宏列表或容量查询成功不证明全部宏字节已写入；没有完整宏内容的独立读回。内存不足时的 standby 清理可以删除待机宏，也不能概括成无副作用重试。
+OBM 先从 IDB 取宏，按实际 active／未锁定配置的引用选择待增删宏，再排各槽的默认／新映射任务；不适合固件的宏投影为 disableGroup。固件事件编码详见下节。宏写入先分配空间，随后将 250 字节名称结构按 64 字节分块、宏数据按 72 字节分块提交，并查询存储容量。**名称写入与 `addMacroLocal` 均存在捕获异常后继续的原版路径**，之后的缓存宏列表或容量查询成功不证明全部宏字节已写入；没有完整宏内容的独立读回。内存不足时的 standby 清理可以删除待机宏，也不能概括成无副作用重试。
 
 当前协议构建 90 字节报文，字节 88 为字节 2–87 的 XOR。Electron 经 `apiElectron.doRzDeviceAction` → `rzDeviceAction` IPC → 当前宿主 `UsbRzDeviceAction` 调用 HID。发送返回长度符合后再 `getFeatureReport`，核对 transaction、class、command 与状态 2；busy、错关联和失败依源码限次重试，不支持／未知状态停止重试。当前消费者未验证接收长度／校验和，也没有独立查询单键或完整宏数据。命令 `finally` 等待受支持的 HID mutex 释放；宿主还检查释放者 URL，返回 false 不等于已释放。
 
@@ -222,6 +222,18 @@ OBM 先从 IDB 取宏，按实际 active／未锁定配置的引用选择待增�
 | [协议原件](../../../.analysis/inputs/frontend/keyboard-mw-756-current-refresh-ec3db4b29c5a/raw/apps.razer.com/synapse/products/756/mw/rzDevice25.2f39d1d815a9b796d2ea.js)：单键参数／发送／应答 | `[174991,175721)`／`[116968,121393)`／`[113928,116968)` |
 
 5 项专属维护测试验证完整 JSON 往返、当前来源、真实分支与反例拒绝；这不是设备功能测试。其余产品／固件／传输、完整阈值与取消恢复、Rust 独立实现、UI 接线及真实 DLL／设备写回对照继续保持未完成／未验证。本批未创建临时数据库、额外捕获或解压副本。
+
+### PID 756：Worker 到固件宏字节
+
+`audit-host-local --query otfm-macro-encoding-chain` 接续上述 `otfm_device_writeback`，结果归入同一[统一收据](../../../.analysis/results/host-current/local-audit.json)的 `otfm_macro_encoding_chain`。完整所有者包括 [Worker 原件](../../../.analysis/inputs/frontend/keyboard-mw-756-current-refresh-ec3db4b29c5a/raw/apps.razer.com/synapse/products/756/mw/obmHelper.worker.ab6c95167a59966efb52.js)的 `createNewObmMacroData [35928,37027)`、`macroItemToFWData [43349,48487)`、`convertMacroItemsToByteArray [55905,56332)`，以及 6737 分块的 `executeWorkerOperation [2380336,2380716)`。键表来自 [1451 原件](../../../.analysis/inputs/frontend/keyboard-mw-756-current-refresh-ec3db4b29c5a/raw/apps.razer.com/synapse/products/756/mw/1451.d334c935ecafd99b2709.js)模块 22574，经模块 51625 的初始化器和 Worker 包装模块 96634 实际接入；opcode 采用实际 OBM 文件中的模块 65350，不与协议分块的另一份同号模块混淆。
+
+Worker 只处理 `none`／`relative` 移动模式；relative 以首个移动点为基线，负差只加一次 65536，不校验范围。它过滤 undefined、数值为零的 delay 和双轴均为数值零的 move。键盘先去掉 flag 最低位，以 `(outputFlag || flag)` 与 scancode 查初始化 KEYS 的首项，再转 HID／固定 scan 表，最终只保留 flag 的 0／1。其他移动模式返回 undefined，包装器仍发送 SUCCESS；异常另发 ERROR。调用方仅用 timerTick 关联并在收到匹配消息时移除监听，没有 timeout、AbortSignal 或 error 监听。
+
+实际编码类型为 `keyboard`、`mouse`、`delay`、`mouseMove`：键盘 make／break 使用 opcode 1／2，未知 scan 失败；表内 POWER／MEDIA 的 3–6 没有对应事件分支。鼠标 BUTTON 为 8，五个置位掩码为 `[1,4,16,64,256]`，清位掩码为 `[2,8,16,128,512]`，中键的 16 同时置位／清位是当前源码行为。滚轮 id1024 使用 opcode 10，data 为数值 120 时输出 1，否则输出 255；id2048 没有水平滚轮分支。delay 按 `<256`、`<65536`、`<16777216`、其余选择 opcode 17–20 与 1–4 字节大端，无负数／非有限／小数校验。move 使用 opcode 21 和两轴低 16 位大端。
+
+批量转换从鼠标掩码 0 开始，**首个 FAIL 只终止循环并返回成功前缀 bytes／size，没有汇总失败；名称／缓存仍使用原 numItems**。例如 A make、未知 scan、delay 三项只生成 `[1,4]`，事件数仍为 3。下游复用前节已核实的 macro_data writer／ACK：每块最多 72 字节，7 字节前缀携带宏 ID、偏移与块长；frame 仅拷贝声明的 payload，调用方 slice 的额外尾部不会发送。ACK 不等于完整宏内容读回。
+
+10 项定向维护测试核对完整来源、Worker 初始化、独立字节样例、边界与失败前缀，以及来源／依赖变化时拒绝发布。测试仅验证静态提取和整数样例投影；没有执行厂商 JS、DLL 或真实设备，未提升 Rust 实现、设备写回或其他产品的完成状态。本批复用原件与既有 HID 捕获，未创建临时数据库或额外捕获。
 
 ## XML 导入、导出与文件写入
 

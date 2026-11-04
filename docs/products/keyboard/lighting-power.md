@@ -120,9 +120,21 @@ dim/power 新 runner 在 adapter 后检查取消并写 memory cache，但上述 
 
 Windows 分支把八字节头与二十字节 payload 分片逐个写出，没有逐片等待 native write callback。普通回复由 notify characteristic 的 `read` 事件拼接：首包只核 transaction 和 status=2，以头部 LE24 长度收集后续字节，没有 class/id 或 checksum 比较；续包是无请求标记的数据。`sendCommand` 先按二十字节头切片，长度不符时再尝试八字节头布局，两种切片不能合并成固定响应头。遇到明确失败、BUSY、timeout 与本机错误的重试路径继续由当前产品完整 owner 决定。
 
-500 ms 命令计时器在 `notifyAsync(true)` 完成后才建立。`read` callback 一进入就清除此计时器，之后才检查是否为 notification、transaction 是否匹配；被忽略的消息不会重新启动计时器。因此缺失 notify callback，或到达无关/非通知数据，都可能使 Promise 保持未完成。另一路 `protocol30.read` 也先清除其 5000 ms 计时器再检查 notification/ready。八字节及以下的 `withoutResponse` 写入没有 resolve，只有长帧分片分支会立即设置本地完成；这些源码行为没有被写成硬件成功。
+当前 Host 4.0.896 的 500 ms 命令计时器仍在 `notifyAsync(true)` 完成和写出后才建立，但 `write` 的通知 callback 现在仅在匹配的失败首包、完整响应或解析异常时清除计时器；无关、非通知及尚未拼完的数据保留已建立的计时器。长帧同步写异常现在 resolve false 后立即 return，不再继续建立计时器。旧 4.0.827 收据中“任意消息先清计时器”的结论只保留其原版本身份。另一路 `protocol30.read` 仍先清除 5000 ms 计时器再检查 notification/ready；缺失 notify callback 时，命令计时器仍未建立。八字节及以下的 `withoutResponse` 写入仍没有 resolve，只有长帧分片分支立即设置本地完成，这不代表硬件成功。
 
-`Characteristic.write/notify` 用同一 characteristic 上的 `once` 关联回调，随后调用 `callback(null)`；`Noble.onWrite` 不提供原生错误，notify 的 state 也被该 callback 丢弃。回调没有请求 ID、取消或超时，同对象的多个等待者可能消费同一事件。`protocol30.disconnect` 请求断开后立即返回 true；`Noble.onDisconnect` 只更新 peripheral 状态并发事件，主机删除自己的缓存也不等于清除所有 characteristic 监听器、排空 native 操作或恢复设备原值。上述完整 35 个主机/JS 所有者与参数作用域证明在统一审查的 `host_ble_transport`；原生 GATT 结果、通知 token 和管理器释放另按实际原生收据核验。
+`Characteristic.write/notify` 用同一 characteristic 上的 `once` 关联回调，随后调用 `callback(null)`；`Noble.onWrite` 不提供原生错误，notify 的 state 也被该 callback 丢弃。回调没有请求 ID、取消或超时，同对象的多个等待者可能消费同一事件。`protocol30.disconnect` 请求断开后立即返回 true；`Noble.onDisconnect` 只更新 peripheral 状态并发事件，主机删除缓存也不等于清除所有 characteristic 监听器、排空 native 操作或恢复设备原值。统一审查的 `host_ble_transport` 保留原 35 个主机/JS 所有者；当前批次按实际 4.0.896 字节复用其中 17 个未变角色，并单独保留变化文件中本批的完整 dispatch、write、disconnect、分片和停止消费者。
+
+### Windows BLE 原生写入、通知与释放
+
+通过 `python -X utf8 tools/workspace.py audit-host-local --query keyboard-ble-power-transport` 复核，正式 section 为[主机静态收据](../../../.analysis/results/host-current/local-audit.json)的 `keyboard_ble_power_transport`。输入绑定 Host 4.0.896 官方包、ASAR `e7a524aca177…` 的实际成员 offset，以及 unpacked [binding.node](../../../.analysis/inputs/host-current/asar/e7a524aca177/node_modules/node-ble-rz/build/Release/binding.node) SHA-256 `caa1bf44e236d00361af6294bce93433f1a3fcc597a1dc708601321bd69443ad`。Windows 默认本地分支取得 `NobleWinrt`；`node-gyp-build` 实际取目录枚举中首个大小写精确匹配 `.node` 的文件，保留的 ASAR 顺序先匹配 `binding.node`。这受 `require.addon`、环境覆盖及实际目录顺序约束，静态结果不冒充现场加载观测。
+
+Napi `write` 核对三个字符串、Buffer 与 Boolean，把 Buffer 复制到原生 vector，再复制给异步 characteristic 回调；DataWriter 写入并分离 Buffer 后，调用 `IGattCharacteristic3.WriteValueWithResultAndOptionAsync`，false/true 对应写选项 0/1。同步 HRESULT 为负会进入异常处理，但 [OnWrite 0x446f0](../../../.analysis/results/native/caa1bf44e236d00361af6294bce93433f1a3fcc597a1dc708601321bd69443ad/functions/446f0.json)只判断 `AsyncStatus==1`，没有取得 GATT write result、通信状态或 protocol error。完成和失败状态都会发布只带 peripheral/service/characteristic 的 `write` 事件，缺失 peripheral 的分支也发该事件；manager 的 bool 返回未传给 JS。因此 `callback(null)` 不能证明真实 Power 写入。当前 `ble.send` 返回 strategy 结果，外层 IPC 对 rejection 仅记日志并返回 undefined。
+
+notify 通过 `IGattCharacteristic3` 的 CCCD 异步写接口启停：有 Indicate 属性位 `0x20` 时写 2，否则写 1；关闭写 0。[OnNotify 0x45460](../../../.analysis/results/native/caa1bf44e236d00361af6294bce93433f1a3fcc597a1dc708601321bd69443ad/functions/45460.json)同样只按 `AsyncStatus==1` 决定订阅和发事件，没有读取 CCCD 的 GATT result。成功启用后保存 `ValueChanged` token，key 为 peripheral、service UUID 和 characteristic UUID；收到数据后经 DataReader 读取字节，复制进入 uv 队列，再复制为 JS Buffer 并发 `read(..., true)`。失败完成只记录日志，不发 notify 完成事件，因而 `notifyAsync` 可能持续等待。
+
+显式关闭 notify 会先调用 `RemoveValueChanged(token)` 并删 key，再异步写 CCCD=0；该撤销调用的 HRESULT 没有在此检查。按 peripheral 批量断开时，[0x325e0](../../../.analysis/results/native/caa1bf44e236d00361af6294bce93433f1a3fcc597a1dc708601321bd69443ad/functions/325e0.json)只删通知 key；管理器析构也只释放通知表节点，没有显式逐项撤销 `ValueChanged`。peripheral 断开另行清 services、撤销连接状态事件。`cleanUp` 析构管理器并清空 Napi 持有的 manager 指针；最后一个共享 callback owner 释放后标记停止、唤醒 uv，排空事件队列后 `uv_close`，关闭回调释放队列、Napi 引用与 uv 对象。事件队列排空不证明所有 GATT 操作已取消或回调已静止，当前 host 停止 owner 也没有调用 `NobleWinrt.cleanUp`。
+
+本片复用已有捕获，核验 52 个完整原生函数、34 条实际调用／callback 引用和 10 个 PE 槽位；基础捕获原有单个 Hex-Rays 失败及成功补查分别保留，未重新捕获全库。只闭合上述共享 Windows 语义，不扩展产品资格或其他 BLE 分支；独立 Rust、UI／后端接线、实际原生／设备对照和运行时验收仍分别未验证。
 
 ## 756 Rust 恢复 worker 的读写与结算边界
 

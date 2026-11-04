@@ -4,19 +4,15 @@
 
 ## 配置档的真实来源与重连
 
-当前 2636 的完整导入所有者位于 `.analysis/inputs/frontend/gamepad-mw-2636-current/raw/apps.razer.com/synapse/products/2636/mw/main.f0ca95429464cd09cbdb.js`，模块 11365，bytes `[1271752,1282718)`；`Z [1279480,1279946)`、`oe [1280816,1282718)`。2676 对应当前原件为 `.analysis/inputs/frontend/gamepad-mw-2676-current/raw/apps.razer.com/synapse/products/2676/mw/main.1a6971221454393778e3.js`，同模块 `[1279467,1290523)`，`Z [1287222,1287688)`、`oe [1288558,1290523)`。原件来源、实际字节身份和版本见 [2636 MW 获取收据](../../../.analysis/inputs/frontend/gamepad-mw-2636-current/acquisition.json) 与 [2676 MW 获取收据](../../../.analysis/inputs/frontend/gamepad-mw-2676-current/acquisition.json)，并与 `.analysis/inputs.json` 核对。以下初始化结论以这两款原件为已核对范围，不由共享名称扩展到其余产品。
+2636 已接续当前部署 [main.f3d3e2116ff224e8ddf5.js](../../../.analysis/inputs/frontend/gamepad-mw-2636-current-refresh-ec3db4b29c5a/raw/apps.razer.com/synapse/products/2636/mw/main.f3d3e2116ff224e8ddf5.js) 的模块 11365：完整模块 bytes `[1288302,1299268)`，`Z [1296036,1296493)`、`oe [1297366,1299267)`。来源与当前选择复用 [Reset 收据](../../../.analysis/results/frontend/gamepad-mw-audit.json#/profile_reset_chain)，完整导入编排见[本页专节](#2636-当前-import-编排与部分失败边界)。旧部署的偏移不作为当前部署定位。
 
-`oe` 在进入时即设置一次初始化 guard，随后读取或创建工作的本机 document；按其 **Object.keys 实际字段顺序**处理根字段，再执行 `DY`。2636 根分发表只有 `powerSaving`，新 document 的 `audioHapticIntensity` 仅产生未知功能警告；2676 根分发表支持 `powerSaving` 和 `controllerMode`，新 document 也按这一字段顺序读取。已有 document 缺少某字段时不会合成该字段的 getter。2676 的 `controllerMode` 经模块 38063 `[1364694,1366483)` 的 `getUsbDeviceEnumerate` 实读 0/1/2，分别投影 HID/Xbox/Xinput；未知值及失败保持失败，不能跳过这一阶段声称根导入完整。
+2676 的已核验原件为 `.analysis/inputs/frontend/gamepad-mw-2676-current/raw/apps.razer.com/synapse/products/2676/mw/main.1a6971221454393778e3.js`，同模块 `[1279467,1290523)`，`Z [1287222,1287688)`、`oe [1288558,1290523)`；来源、实际字节身份及版本见 [2676 MW 获取收据](../../../.analysis/inputs/frontend/gamepad-mw-2676-current/acquisition.json)。本批不重新核对该产品，也不由共享名称扩展其他产品。
 
-`DY` 首次初始化引擎的实际设备 I/O 顺序是 **getButtonIDList → getProfileIDList → getActiveProfileID → getNumberOfProfiles → 按每个真实 ID 读取 getProfileNameStructure**，2636 引擎 `init [2504404,2505517)`、2676 `[2558675,2559788)`。2636 的实际导出 `DY` 为 `T [2515148,2515949)`，2676 为 `A [2569410,2570211)`。上层 `11365.Z` 在 `DY` 返回后访问 ID、active、names、count 是已有引擎缓存的投影，不能当成新的 HID 次序。名称读取按 UTF-16 处理 80 字节的 64+16 块，最多三轮，并在临时调整等待后恢复；2636 完整方法 `[2507687,2509510)`、2676 `[2561958,2563781)`。
+两款 `oe` 均在第一次 I/O 前设置导入 guard，再按工作 document 的 **Object.keys 实际字段顺序**读取根字段；缺 document 才构造默认工作容器，默认值不是设备实测。2636 根分发表只有 `powerSaving`；2676 另有 `controllerMode`，经模块 38063 `[1364694,1366483)` 的 `getUsbDeviceEnumerate` 实读 0/1/2，分别投影 HID/Xbox/Xinput。既有 document 缺字段不会补读；逐字段失败继续、最终导入返回不能证明全部读取成功。
 
-槽对照函数将设备结果与本地集合匹配；找不到该设备槽时，源码创建一个有新 GUID 的 profile，并使用设备返回的名称和 `obmSlotId`。遍历真实 ID 时更新 active profile，再按该 profile 的实际字段顺序读取功能。导入结束依次保存 document、记录序列号对应 active GUID、更新运行时 metadata 与 `obmData/initCompleted`，最后经 `50350.pH` 发布。
+`DY` 首次实际设备 I/O 顺序是 **getButtonIDList → getProfileIDList → getActiveProfileID → getNumberOfProfiles → 按每个真实 ID 读取 getProfileNameStructure**，其后 `11365.Z` 的 ID／active／names／count 来自引擎缓存。当前 2636 `DY` 为 `T [2564175,2564970)`、完整引擎 `init [2553425,2556123)`；2676 的 `DY` 为 `A [2569410,2570211)`、`init [2558675,2559788)`。名称读取按 UTF-16 处理 80 字节的 64+16 块，最多三轮，并恢复临时等待调整；2676 完整方法为 `[2561958,2563781)`，2636 名称链复用正式 mapping／polling 收据。
 
-字段分发表包括 brightness、quickEffects、mappings、pollingRate/pollingRateWireless、analog circularity、D-pad diagonals、digital/analog actuation、deadzone、sensitivity、haptic/audio haptic 和硬件 lighting effects；是否执行由当前 profile 的字段与挂载 feature 决定。`name/guid/obmSlotId/switchOffLighting` 不作为设备功能 getter。仅 `switchOffLighting` 和符合键身份、模式、输出类型条件的 `keyboardGroup.keyGroup` 从既有本机配置保留。最后依次保存 profile/document、记录序列号对应 active GUID、更新运行时信息并向 UI 发布。
-
-源码的每个字段 getter 错误会被其循环捕获、记录并继续其他字段；整个 `oe` 返回不代表每个字段读取成功。源码还在缺本机 document 时构造默认 document，这个对象是读取工作的容器，不能把它的默认字段报告为设备实读。
-
-2636 的启动所有者是模块 43001 的 `dn [1625087,1625700)`，2676 实际是模块 62885 的 `gn [1669824,1670437)`：先检查本机 document，仅在整个 document 不存在且注册 `loadProfileDataFromDevice` 时进入导入，已有 document 单独缺 `powerSaving` 不会因此启动导入。连接事件处理分别为 `hn [1650465,1650673)`、`On [1696514,1696722)`，先调用设备导入，再向 GenericFeatureManager 发布 DeviceConnected，最后执行 runtime 同步。`oe` 失败也不会自动清除 guard，普通重连不能据此声称重新读取所有槽；reset 的明确入口清除导入 guard，但不会自动清除 `DY` 自己的引擎初始化 guard。
+2636 当前启动 `Sn [1659804,1660417)`、连接 `kn [1686243,1686451)`；2676 分别为 `gn [1669824,1670437)`、`On [1696514,1696722)`。启动仅在整个 document 不存在且注册 `loadProfileDataFromDevice` 时导入；连接在已注册时调用同一 importer，再通知 GenericFeatureManager，最后同步 runtime。导入失败不自动清 guard；Reset 明确入口只清导入 guard，不清 `DY` 的独立引擎 guard，普通重连不能据此声称重读全部目录。
 
 映射 getter 由模块 11365 的 `f.getDataFromDevice` → `obmEngine.getAllButtonAssignmentInfo(slot)` → `y` 处理。`y` 与产品 `DEFAULTMAPPINGS` 比较 input ID、输入/输出类型与 controller assignment，仅保留与默认不同的映射。默认映射表不是设备返回；保留本机 keyGroup 也不是设备读回。修改由具体 ON_SET/ON_CHANGE 任务进入 feature queue、存储和真实 setter，不应把普通本机 profile 编辑描述成设备 OBM 写入确认。
 
@@ -70,7 +66,19 @@
 
 2636 官方 `main.d624c214.js` 的实际 Customize 为 `Kh → Wh → Yh → Vh`；完整 `Vh [7421814,7448114)`、render `[7446451,7448113)` 保留映射面板与编辑消费者，`saveChanges [7438900,7439132)`、`dontSave [7439133,7439239)` 分别调用 `saveMapRef(true/false)` 后继续各自待执行动作。这里只把实际存在的本机编辑、保存和取消链作为还原依据；联网/账户动作仍按项目范围排除。
 
-当前 polling 的 `choice("/profile/pollingRate") → write` 同样没有具名设备请求，且页面没有因此自动同步 `/profile/pollingRateWireless`。官方2636 MW 完整 `97901 [1334683,1336614)` 会按真实连接选择有线/无线字段、保存并排 runner，runner 获取当前档真实槽后先读 rate、不同才 setter；2647/2676 的双字段同步另由各自挂载配置决定。不能由有线菜单的当前数字推定无线字段或设备已变更。
+当前 Rust polling 的 `choice("/profile/pollingRate") → write` 仍没有具名设备请求，也不会因此自动同步 `/profile/pollingRateWireless`。PID2636 最新完整输入选自 [MW 获取收据](../../../.analysis/inputs/frontend/gamepad-mw-2636-current-refresh-ec3db4b29c5a-2/acquisition.json)与 [UI 获取收据](../../../.analysis/inputs/frontend/gamepad-2636-current-refresh-ec3db4b29c5a/acquisition.json)，限定链记录于[当前 polling 静态收据](../../../.analysis/results/frontend/gamepad-mw-audit.json#/polling_native_chain)，入口为 `audit-family-function --family gamepad --function mw --query gamepad-polling-native-chain`。原文档的旧版偏移只作旧边界索引，下面以当前完整 owner 为准。
+
+当前 Customize 实际挂载 `Qm → qm`，有线菜单只有 250／1000，无线只有 250；一个选项时组件直接呈现 active，不能把视觉选中当成实读。`Fm`／`Hm` 先更新 reducer 的请求值，再经 `ON_POLLING_RATE` 进入当前 MW `97901.N → p`。dispatch 用无线 payload 是否定义区分输入，并以 `wireless || wired` 取请求；maker 再按执行时的 `10511._` 判断保存 `pollingRateWireless` 或 `pollingRate`。当前产品未设置 `syncWiredAndWirelessPollingRate`，不能套用其他型号双字段同步规则。卡片自己拥有 focus listener 和 1500ms 检查 interval，卸载时移除／清除；非点击导致的 prop 改变还能重新派发设置，不能把每次 action 等同一次物理写入。
+
+maker 先取得当前 document／active profile、改版本并 `await Pf` 保存，再广播本地完成，最后按授权排 `NORMAL_SKIPPABLE/pollingRate`。`Pf` 在缺 serialNumber 时可直接返回而不保存，外层没有据此区分保存失败。runner `f` 只在 GET 前检查 abort，随后重新取得活动 profile，`Fk` 取其 `obmSlotId[0]`；源码缺值回 0 并对 controller 将 0 转 wire1，这不是设备实际返回的槽。runner 调用 `87887.gN`，仅返回 rate 与请求不同才调用 `_4`，忽略 setter 的返回对象；完成回调以 `value.status=completed` 或 `error=skipped` 发布完成。没有独立写后 GET、应答 profileId 等值校验或自动回滚。GET 传输异常在 helper 内被捕获并返回 0，可使 runner 随后继续尝试 SET；`jsonData.pollingRate` 的访问位于该 catch 之后，不能把所有异常都概括为回 0。
+
+PID2636 注册 `isObm.yes.pollingRate=true`，未注册 high-speed polling；当前实际走 `getProfilePollingRate`／`setProfilePollingRate`。GET 头为 `[2,0,0x8e]`，SET 为 `[2,0,0x0e]`，payload 为 profile ID／period code。1000、500、333、250、200、125、100 分别编码为 1、2、3、4、5、8、10，SET 拒绝其他 rate；这组协议值域与当前 UI 两档不同。decoder `j` 无 status／长度门控，直接解 `data[1]`，未知或缺 period 会投影为 100；该源码回退不能被 Rust 冒充设备实测。继承链为 `Sage → Controller → rzDevice25`，reportId 为 4、数据报文 90 字节、期望 OUT count 为 91；IN 按当前继承实现匹配 transaction／class／command 和 SUCCESS 状态。公共 Host 4.0.896／HID 原生 feature-report、Promise、队列与释放结论复用[已核公共子段](../../../.analysis/results/frontend/audio-mw-audit.json#/auto_pause_hid_chain/shared_feature_transport)，用其精确 pointer／canonical SHA 绑定并在发布前重核。
+
+初始化按实际存在的 profile 字段遍历，`pollingRate`／`pollingRateWireless` 都映射到同一个 getter feature，产品 override 按连接观察选择保存其中一个。首次启动仅在 document 缺失时导入；连接也调用同一 once guard，guard 在 I/O 前置位，失败不会自动清除。连接判断来自 dock probe 的 SUCCESS；catch 保留源码本地 false，不能据此证明有线连接。controller 的 `updateUI` 取所选字段但统一发 `MW_SET_POLLING_RATE_TO_UI`，UI wired／wireless 状态仍分别存在。
+
+恢复 profile 的无线分支调用 `96183.z3`，这是本地缓存 rate／1000 clamp 和 productId 门控，没有 GET。它另行比较 MW `DeviceInfo.dongleId/bleId`，而当前2636 MW 未定义这两个字段；UI `DeviceInfo.dongleId=2636` 不能代入 MW。因此即使 `controllerDeviceInfo.isDongle=true`，实际 PID2636 也不会通过 z3 的产品门禁，不能声称该分支完成了设备恢复。`POLLING_RATE_CHANGE` 通知则按枚举文案数字发布 rate，是独立观察消费者。任务没有把 AbortSignal 传入 HID，transport 的 finally 只请求释放 mutex；卡片卸载、任务取消和 mutex 释放都不证明在途 I/O／callback 已排空或设备已恢复。
+
+本片只闭合2636当前挂载 polling 的有限静态语义与结果消费者。映射保存与配置应用分别见下文对应收据；其他产品／固件／传输、通知订阅、独立 Rust 与实际 UI／后端接线仍须分别完成。纯维护测试、官方实际 addon／设备对照及窗口验收分别记录，不能由本地保存或 completed 广播推定硬件已确认。
 
 两种动作都经 [source_workspace](../../../crates/razer-pages/src/features/workspace/source_workspace.rs) 的 `GamepadProductChanged → capture(snapshot)` 更新当前 profile，再发 `WorkspaceEvent::Changed`。当前 [Shell 分发](../../../crates/razer-shell/src/shell.rs) 对普通 Changed 只同步本机状态；这条路径没有将手柄 mapping/polling 转成实际 OBM 或设备 rate 写入。真正具名的 ControllerTrigger/Lighting/Chroma 请求另有订阅，不能借用它们证明普通 Changed 也传输了设备命令。
 
@@ -96,28 +104,125 @@ SOCD 执行时重新选择 active profile，经当前 `10511.Fk [212431,212559)`
 
 以上闭合的是 4115 当前页面、两类存储、设备命令、结果和恢复消费者的静态语义。当前 Rust 的 Mode／SOCD `choice → write` 尚未接通这些具名设备请求；用户写回、全部 profile/reset 分支迁移、实际 DLL／设备功能对照和真实窗口仍未完成。本次没有执行厂商 JS、DLL 或设备，没有新增临时副本或分析数据库。
 
-### 2636 的 OBM 映射读写原件边界
+### 2636 当前 OBM 映射保存与结果边界
 
-2636 的 MW 并不是把 Customize 的 `choice → write` 直接当成设备映射写入。当前 [main.f0ca95429464cd09cbdb.js](../../../.analysis/inputs/frontend/gamepad-mw-2636-current/raw/apps.razer.com/synapse/products/2636/mw/main.f0ca95429464cd09cbdb.js) 的 controller OBM owner 位于模块 11365 `[1271752,1282718)`；初始化后由 `obmEngineController` 维护真实 `rzDevice`、`buttonIdList`、`profileIdList` 与 `activeProfileId`。`getDataFromDevice` 先取得本机 document，再按真实活动槽调用 `getAllButtonAssignmentInfo(profileId)`；后者逐个调用 `getSingleButtonAssignment(profileId, buttonId, NormalMode, 10)`。每一项只在 `STATUS_SUCCESS && packetSizeReturned>0` 时解析 `classId, buttonId, mode, functionId, dataSize, dataArray[5]`，单项异常记录并继续，不是整张映射表原子读取。`functionId` 为 Controller 且其返回的第一个数据字节等于当前 button ID 或为零时，该项会被跳过；其余项再按 `fwIDToMapping/HIDToMapping` 转换为 UI 映射，并与 `DEFAULTMAPPINGS` 比较。默认映射和本机 document 是比较基线，不是设备读回结果。
+当前 MW 选择为 `gamepad-mw-2636-current-refresh-ec3db4b29c5a-2`，实际复用已核验的 [main.f3d3e2116ff224e8ddf5.js](../../../.analysis/inputs/frontend/gamepad-mw-2636-current-refresh-ec3db4b29c5a/raw/apps.razer.com/synapse/products/2636/mw/main.f3d3e2116ff224e8ddf5.js)；UI 选择为 `gamepad-2636-current-refresh-ec3db4b29c5a`。Customize 父组件挂载 [6793 映射编辑器](../../../.analysis/inputs/frontend/gamepad-2636-current-refresh-ec3db4b29c5a/raw/apps.razer.com/synapse/products/2636/ui/static/js/6793.d778641f.chunk.js)，Save 取得当前子编辑器的映射，按 `inputID/isHyperShift` 合并或移除默认项，再调用 `setMappingList`；Cancel 清理并关闭，未保存的关闭动作使用原版保存提示。UI 先替换 `mappingList`，随后发送 `ON_SET_KEYMAPPING`，该乐观草稿不代表设备实测状态。
 
-写入入口是同一 owner 的 `setSingleButtonMapping(profileId, mapping)`（原件约 `[2512007,2512600)`）。`buttonMappingToFnDataByte` 先用 `inputIDToMapping.controller.NormalMode[inputID].fwID` 取得固件按钮 ID，再只为原件已有的 `DisableGroup`、`MouseGroup`、`KeyboardGroup`、`RazerKeyGroup`、`MultimediaGroup`、`ControllerGroup` 转出 `fnId`、`fnDataByte` 和 `fnDataByteSize`；未知 output type 只记录 warning，不会凭 UI 文案生成新的协议类别。该转换器把 `buttonMode` 固定为 `NormalMode`，所以它不能证明 Hypershift 层已写入；Hypershift 必须沿另一条有明确 mode 的 producer 单独核对。`DisableGroup` 的 payload 长度为零，其余 payload 会补零到命令缓冲区的 80 字节。
+当前实际分支是产品 `mappingOverrides.taskMakerSetKeyMapping = 21445.Hw` → controller mapping feature → `59639.ew` → `10511.obmEngineController.setSingleButtonMapping`。产品同时选择 `storageOverrides.localStorageHandler` 和 `serialNumberBasedProfileStorage`：活动 profile 从 `profileData[当前 serialNumber].profiles` 按该项的 `activeProfile` 查找。maker 先更新映射与版本、保存本地 document、刷新 runtime profile 信息并发布 `MW_SET_MAPPING_TO_UI`、本地 completed／postprocess，随后才排 `NORMAL/obm` 任务。任务依次提交过滤后的映射及已移除映射的 `BUTTON_LIST` 默认项；当前只使用 `Fk` 取出的首个槽，不走通用 `mt` 的多槽循环。源码的 controller 槽 `0 → 1` 转换与缺失值回退不能当作设备实读槽位。
 
-2636 `rzDevice25` 的实际命令头及其解析器如下（均为 class `0x02`）：
+转换器固定使用 `NormalMode`；当前产品声明支持 Disable、Keyboard、Controller、Multimedia 四类，通用转换器额外含 Mouse／RazerKey 分支不能据此扩大本产品能力。Controller UI 名称先转换为编码枚举，键盘转换使用当前 HID／修饰键表，Multimedia 再交换相邻字节。实际按钮命令如下：
 
-| 原生 owner | 命令头 | 请求／应答字段 |
+| owner | 命令头 | 请求与结果 |
 | --- | --- | --- |
-| `setSingleButtonAssignment` `[1089569,1091400)` | `[80,2,0x0c]` | `profileId, buttonId, mode, functionId, dataSize, dataBytes…`，不足 80 字节补零；仅传输结果由 `hn` 解析为 `STATUS_SUCCESS`／`packetSizeReturned` 与五字节 `dataArray` |
-| `getSingleButtonAssignment` 同一 owner 后半段 | `[80,2,0x8c]` | 请求前三字节 `profileId, buttonId, mode`；成功且有 payload 才产生 `functionId/dataSize/dataArray`，缺 payload 保持未观测 |
-| `setSingleKeyAssignment` `[1091400,1093500)` | `[80,2,0x0d]` | 与普通按钮相同的五字节函数数据，解析器 `An` 以 `keyId` 命名输入身份 |
-| `getSingleKeyAssignment` 同一 owner 后半段 | `[80,2,0x8d]` | 请求 `profileId, keyId, mode`；成功且有 payload 才产生 `functionId/dataSize/dataArray` |
-| `getButtonAssignmentList` | `[80,2,0x8e]` | 返回 `classId, mode, idOffset, byteData`；它不是 `getAllButtonAssignmentInfo` 的逐按钮结果 |
-| `getKeyAssignmentList` | `[80,2,0x8f]` | 返回 `classId, mode, keyIdList`；与按钮列表使用不同命令和身份字段 |
-| `setSingleAnalogKeyAssignment` `[1099000,1101200)` | `[80,2,0x12]` | 额外带 `thresholdL/thresholdH` 后再带函数数据；`Nn` 只有成功且有 payload 才填充阈值、函数和数据 |
-| `getSingleAnalogKeyAssignment` | `[80,2,0x92]` | 请求 `profileId, keyId, mode`，回读包含 `thresholdL/thresholdH` 与函数数据 |
+| `setSingleButtonAssignment` | `[80,2,0x0c]` | `profileId, buttonId, mode, functionId, dataSize, dataBytes…`，不足 80 字节补零；源码此处没有独立的超长或 profileId 校验 |
+| `getSingleButtonAssignment` | `[80,2,0x8c]` | 请求前三字节 `profileId, buttonId, mode`；`Pn` 仅在 `SUCCESS && packetSizeReturned>0` 时解析，函数数据固定取 `data[5..10]` |
 
-上表中的 GET 头 `0x8c/0x8d/0x8e/0x8f/0x92` 来自同一当前 MW 原件的常量表（约 `[993769,994300)`），不能用普通 setter 的 `0x0c/0x0d/0x12` 代替。每个 setter 先校验数值、`Uint8Array` 和 NaN；校验失败在发送前抛 `ERROR_INVALID_INPUT_VALUE`，因此本地实现不能把类型错误折叠成设备失败。`sendCommand` 返回成功也只代表当前报告的协议状态；官方 owner 没有在 `setSingleButtonMapping` 后追加逐项 GET，`getDataFromDevice` 的下一次读取属于另一个生命周期。
+实际 Sage → Controller → protocol25 继承、report ID `4`、90 字节报告体／91 字节 OUT、transaction／class／command 与 SUCCESS 应答门槛，以及 Host／原生 HID 传输和 mutex 释放，复用正式收据的精确 `polling_native_chain` 与共享 HID section。setter 后没有独立 GET。另一个读取生命周期逐按钮读取、逐项捕获异常，跳过 Controller 自映射／零映射，再与 `DEFAULTMAPPINGS` 比较并投影；默认表与本地配置均不是读回结果。
 
-板载任务 `Et`（原件约 `[1982411,1983500)`）先检查 abort，再按 `obmSlotIds` 顺序逐槽调用 `obmEngine.setSingleButtonMapping`；单槽异常只记录并继续。循环结束后再次检查 abort，随后才写 task-runner memory storage 并标记 `completed`。因此 runner 的 `completed` 不能解释为所有槽都收到成功应答；取消可能发生在部分槽已经写入之后，也没有原件提供的自动回滚。Rust 侧当前 `set_mapping` 只更新 `/profile/mappings` 并发 `GamepadProductChanged`，没有调用上述 profile/slot/mode/函数数据命令；这正是“页面草稿存在”与“设备映射已写回”之间尚未闭合的边界。
+专用 runner 在单次写入前后检查 abort，但会捕获写入异常，随后仍可能更新 memory storage 并标记 completed；没有自动回滚，取消时可能已有部分映射写入。本地 `_9Q/Bl$` 由 Customize reducer 按 timerTick 消费；设备 `Pxp/N2z` 发往独立 OBM reducer，没有匹配 pending entry 时直接忽略。两类消费者均不触发 GET。存储 override 无 serialNumber 时也可直接返回，因此 completed 不能证明落盘、设备成功或读回确认。
+
+统一复核命令为 `python -B -X utf8 tools/workspace.py audit-family-function --family gamepad --function mw --query gamepad-obm-mapping-chain --product 2636`。[正式 MW 审计](../../../.analysis/results/frontend/gamepad-mw-audit.json) 的 `obm_mapping_chain` 保留 128 个角色、158 个完整 AST owner、19 个复用 owner 引用及两个精确上游 section；10 项定向静态测试覆盖真实分支、报文、保存顺序、异常、取消、消费者、依赖变更和失败发布。本片只闭合当前普通按钮映射 Save／结果片段；配置应用、Reset 与 Import 编排由后续专节分别复核，通知生命周期及其他产品／固件／传输另行接续。Rust `set_mapping` 仍只更新草稿／profile mappings 并发 `GamepadProductChanged`，本片 OBM 生产请求、UI／后端接线及实际 DLL／设备对照未完成。本片未执行厂商 JS、DLL、设备或应用，未创建临时副本、数据库或捕获目录。
+
+### 2636 当前配置切换与全部设置字段应用
+
+沿用上文同一当前 UI／MW 获取收据，限定链见 [profile_apply_chain](../../../.analysis/results/frontend/gamepad-mw-audit.json#/profile_apply_chain)。统一复核入口为 `python -B -X utf8 tools/workspace.py audit-family-function --family gamepad --function mw --query gamepad-profile-apply-chain --product 2636`，复用已有 polling、OBM mapping 及公共 Host／HID 的精确 section，不重抓原件。
+
+真实挂载顺序为产品 render → 导航的 `renderProfileBar` → `o_/i_` → dropdown → profile GUID → `Qr` → `SET_SELECTED_PROFILE`。reducer 先乐观更新所选 GUID，再广播 `ON_SWITCH_PROFILE`；调整模式与 dropdown 的禁用条件保留原行为。产品 bootstrap 将切档 override 指向 `31759.NC`，state guard 只授予 exclusive 本地存储动作。maker 先按当前序列号保存 active GUID、version、metadata 与 profile stack，再发布 runtime；UI／系统来源才核对活动槽。
+
+该槽核对读取 `obmEngine.obmJson.activeProfileId` 缓存；不同时才发 `[1,5,4]` SET，SUCCESS 才更新缓存。协议虽提供 `[1,5,132]` GET，当前切档核对没有调用这个 GET。槽 SET 失败在内层只记录日志，仍继续配置应用与 completed；源码也没有随后 GET 或自动恢复旧选中项。document 读取位于外层 try 前，异常可能直接拒绝，不能把所有失败都概括成相同结果事件。
+
+当前 `69427.DEFAULTPROFILE` 有 `guid/name` 两个身份字段与以下 13 个设置字段，未导出 `PROFILE_DATA_PATCH`；导入附加的 `obmSlotId` 是槽元数据。
+
+|实际字段|应用路径|
+|---|---|
+|`switchOffLighting`|由 brightness 分支消费，无独立设备事件；diff 只有该字段时不会自行触发 brightness|
+|`brightness`|`ON_INIT_BRIGHTNESS`，依真实开关注册显示器／idle 事件并执行亮度链|
+|`controllerLightingEffects`|generic init → `ON_SET_CONTROLLER_EFFECTS` → `50077/70784`|
+|`pollingRate`、`pollingRateWireless`|依实际连接选择字段；有线排 `ON_POLLING_RATE`，无线走已有 `z3` 门控，保留上文未写回的真实边界|
+|`mappings`|先投影 UI，再携整份 list、diff 和 version 进入 `ON_SET_KEYMAPPING`；当前 controller wrapper 忽略 diff 参数，从当前 active profile 投影完整映射列表|
+|`controllerDigitalActuation`|只处理 active 行，先 mode1，再 point／rapid|
+|`controllerAnalogActuation`|只处理 active 行，先 mode0，再 start／end|
+|`controllerAnalogCircularity`|standard0、其余1，依次写 controller1、2|
+|`controllerDeadzone`|逐行发送 deadzone 与 preventDoubleDeadzone，softBumper／delta 为0|
+|`controllerDPadIgnoreDiagonals`|布尔值转换0／1后 SET|
+|`controllerSensitivity`|逐行发送 controllerId／value|
+|`hapticIntensity`|产品 `ce` override，将源档位映射后依次写 motor5、6、7、8|
+
+`74867.IF/Gn` 以 serial profile handler 选活动配置，完整调用按实际键顺序遍历，diff 调用只遍历 diff 键；先发布列表与选择，再排字段事件。generic default 的 `ye(...).catch` 没有 await，六项 init 重新读取当时配置并先投影 UI。最终 await 的 `GenericFeatureManager.restoreDeviceData` 会逐 handler 捕获异常，不是设备队列排空。因此 profile completed、字段本地保存和设备成功必须分别记录。
+
+六项 generic setter 共用实际 controller 协议：mode `[3,12,21]`、digital `[4,12,22]`、analog `[4,12,19]`、circularity `[3,12,18]`、zones `[9,12,5]`、diagonals `[2,12,23]`、sensitivity `[3,12,2]`。zones 的三个 16 位量由 `76912.E4/l7/Jz` 明确按**高字节在前**编码／解码；不能套用其他命令端序。decoder 仅在 SUCCESS 且返回字节数大于0时投影；上层不比较回显字段，也没有写后 GET。generic runner 还会把已解析对象的 status 改为 completed，只在操作后检查 abort，未把 signal 传入 HID；本地保存失败、跳过、部分写入、取消均不能冒充实测成功。
+
+UI 的 profile 结果按 timerTick 维护 pending／error，不回滚所选 GUID；六项设置的 UI 发布消费本地配置。circularity／diagonals 的结果 case 使用 `CIRCULARITY_MODE/D_PAD_DIRECTIONS`，generic maker 发布 `CONTROLLER_ANALOG_CIRCULARITY/CONTROLLER_DPAD_IGNORE_DIAGONALS`，这些 case 不构成对应 generic ACK 的确认。sensitivity 发布仍保留源码 `Object.assign({}, sensitivityValues)` 的对象投影。卸载清除 profile storage listener、timer 和 dropdown click／blur listener，但不代表在途设备队列已取消或排空。
+
+该收据保留 136 个主链角色及 113 个亮度／灯效／震动角色，共 249 个完整 AST owner，并分别固定正文摘要与精确依赖。这里只确认 PID2636 当前切档／应用的静态语义；Reset 与 Import 编排由后续专节单独核对，通知及其他产品分支继续保留原边界。独立 Rust 实现、生产 UI／后端接线、官方实际 DLL／设备对照与窗口验收仍未完成。本片未执行厂商 JS、DLL、设备或应用，未创建临时捕获、数据库或副本。
+
+### 2636 当前 Reset 的三个实际入口
+
+[profile_reset_chain](../../../.analysis/results/frontend/gamepad-mw-audit.json#/profile_reset_chain) 沿用普通 Apply 的同一当前 UI／MW 获取收据，精确引用 `profile_apply_chain` 及其 mapping／polling／Host-native 依赖。统一复核入口为 `python -B -X utf8 tools/workspace.py audit-family-function --family gamepad --function mw --query gamepad-profile-reset-chain --product 2636`；不重跑 13 个设置字段的普通写入链。
+
+|实际入口|当前源码的动作与边界|
+|---|---|
+|配置栏菜单 Reset → `qr` 的 Reset Profile|按所选 GUID 进入 `ON_RESET_PROFILE` → 产品 `31759.IH`。克隆 edition0／128／129 共用的默认档，保留原 name／guid／obmSlotId；先替换序列号配置、递增 version、保存并发布 runtime，再依旧 mappings 逐按钮恢复官方默认映射，最后完整调用普通 `IF`。`IF` 应用的是当前 active profile；重置其他 GUID 不会自动切档。这里没有 `setProfileReset` 命令。|
+|同一确认框的 Reset Keybinds|实际挂载未传 `isCustomShowReset`，因此该按钮可见；`cXd` 先乐观清空 UI mappingList，再发 `ON_SET_KEYMAPPING`，参数为 `mappingList:[]/isResetKeybinds:true`。存储、移除映射的默认值恢复、真实传输和结果消费者复用上文 mapping；其余 12 个设置字段不因此重置。|
+|Help 页 Factory Reset|产品导航实际挂 `SN({}) → ON`，connector 未传 `resetObm`、等待 OBM 完成或 overlay 参数，所以确认后广播 `ON_RESET_DEVICE`。共享 dispatcher 先检查已注册 generic handler；产品 `resetDevice` override 为 `ne`，不能把另一条 `ON_RESET_OBM → dsf` 当成这个按钮的路径。|
+
+配置档 Reset 逐次等待旧映射的 `setSingleButtonMapping`，但不检查已解析返回的 status，也没有写后 GET。`Vir completed/yqg postprocess` 在普通 `IF` 排队后发布，随后才写 task memory；后一步失败仍可能在 completed 之后发 error。结果继续由 Apply 的 timerTick pending／error 消费者处理，不回滚已保存默认档，也不构成设备写入全部结束的屏障。
+
+设备 override 先将本产品文档替换成 `getDeviceDefaultLocalData + next version`，等待保存；再从 linked-game 各项的 devices 数组中移除本 PID，保留其他产品关系及空的 game 项。随后以默认 UserData 调用实际 Controller `setDeviceReset(0)`：有效头为 `[2,0,11]`，载荷 `[1,0]`。源码另有 mode1 条件分支，当前无参调用没有选择它。该层直接返回共享 `sendCommand`，复用精确 HID/native 与 mutex 释放契约，没有额外 Reset decoder、status 检查或独立 Reset GET。
+
+SET promise 返回后才清除导入 guard `te`，接 `DD` 的重新导入入口、DeviceConnected handlers、runtime 同步，最后 DeviceReset handlers。它不清除另一份引擎初始化 guard `S`，所以不能据此断言重新读取了所有 OBM 元数据。导入主体与逐字段编排由下一节的 `profile_import_chain` 接续；本节只确认 Reset 如何调用它。`ne` 捕获并记录异常，没有关联的 Reset success／error 事件，也没有恢复已保存文档、linked-game 关系或部分写入。
+
+两种确认框的外部点击仅取消确认。`qr` 卸载移除 click listener；设备确认框移除 listener 并清除两个布局 timer。Help 自身没有 `componentWillUnmount`，重置创建的匿名 2 秒 timer 未被清除；timer 恢复按钮不代表设备 ACK、重新导入或队列排空。三个 Reset owner 均未向 HID 传递取消信号，也没有旧连接代次检查、补偿写入或在途工作排空。
+
+本节保留 60 个角色、80 个完整 AST owner 和 38 个精确复用 owner 引用；13 项定向静态测试覆盖三个挂载入口、身份与槽保留、保存／写入顺序、默认分支、guard 分离、报文、失败、取消清理、CLI 及依赖变化时拒绝完成。只确认当前 PID2636 这一片静态语义；Import 编排见下一节，通知、其他产品／固件／传输、独立 Rust 与生产 UI／后端、实际官方 DLL／设备结果及窗口验收仍未完成。本批未运行厂商 JS、DLL、设备或应用，未创建临时捕获、数据库或副本。
+
+### 2636 当前 Import 编排与部分失败边界
+
+[profile_import_chain](../../../.analysis/results/frontend/gamepad-mw-audit.json#/profile_import_chain) 从 Reset 的导入缺项接续，精确复用 Reset／Apply／OBM mapping／polling 及共享 HID 依赖。统一复核入口为 `python -B -X utf8 tools/workspace.py audit-family-function --family gamepad --function mw --query gamepad-profile-import-chain --product 2636`。本节核对 module11365 的根字段、目录、逐槽读取、保存与消费者，不重捕 native，也不扩展到 2676 或其他字段底层协议。
+
+`oe` 在第一次 await 前设置 `te=true`，失败不自动清除；`11365.ho` 只清这份标记。`DY` 的 `S` 独立存在，实际 engine.init 返回后才置位，已置位时跳过初始化。导入先读取 document，缺失才创建默认工作容器；按根字段实际键序执行，分发表只有 `powerSaving`。新容器的 `audioHapticIntensity` 仅记录未知字段，不会调用 profile 的音频震动 getter。Power 先读 autoSleep enabled，enabled 才读取秒数并四舍五入为分钟；禁用或时间失败时保留的源码默认5不属于实测时长。
+
+`Z` 先等待 `DY`，然后取得缓存的 profile IDs／active／names／count。目录重建只遍历真实 `profileIDList`，按旧槽匹配仅复用 GUID，创建默认 profile 并替换当前序列号列表；数量不生成额外槽。逐真实 ID 查找 profile，必要时创建新容器，真实 active 匹配时才选择相应 GUID。源码 `setProfiles` 先选择首项，空目录可能抛错，active 不匹配时可能仍选首项；这些本机选择不是设备 active 观测。一个旧 GUID 匹配多个槽时，后续按 GUID 的 `find` 可能只找到首项，源码没有新增冲突校验。
+
+当前默认容器实际 getter 顺序为 `brightness → controllerLightingEffects → pollingRate → pollingRateWireless → mappings → controllerDigitalActuation → controllerAnalogActuation → controllerAnalogCircularity → controllerDeadzone → controllerDPadIgnoreDiagonals → controllerSensitivity → hapticIntensity`。`name/guid/obmSlotId/switchOffLighting` 不进入 getter；分发表虽声明 quickEffects／audioHaptic，当前重建容器没有这些字段，不据此增加读取。每字段的 undefined／error 被单独记录后继续，`status:"FAIL"` 本身不是这一层独立拒绝条件，因此部分结果及默认工作值仍可能留在 document。每槽结束按首个 `obmSlotId` 匹配旧 profile，仅保留 `switchOffLighting` 和 inputID／isHyperShift／outputType／keyboard key 均匹配的 `keyboardGroup.keyGroup`，不复制旧 modifiers、turbo 或任意映射扩展。
+
+目录阶段的外层 catch 之后仍继续：第一次 `Pf(document)` 保存 → `kS` 记录序列号 active GUID → `EA` 更新 profile stack → 第二次 `Pf(document,runtime)` → `qw` 更新 metadata／window storage → 设置 `obmData` 与 `initCompleted` → `50350.pH` 发布。最终保存或发布失败会拒绝，没有原子回滚。READY／isObm 条件下，`pH` 发布 `N_y` 列表／容量、`XAX` 完成与序列号门控的 `Bj5`，再由 `47399.Q` 广播 `REDUX_STORE_UPDATE`，UI OBM reducer 克隆 profiles／macros 并设置初始化标记。源码容量为0，不是实测容量；完成标记与广播均不证明全部 getter 成功。
+
+这条 importer 没有 AbortSignal、旧连接代次检查、独立 timer／订阅／handle 或 finally 清理，也不构成借用 engine／HID 在途工作的排空屏障。收据保留 44 个差量角色、66 个完整 AST owner 与 46 个既有 getter／存储／UI owner 引用；12 项定向静态测试核对实际字节、当前部署变化、两 guard、根与字段顺序、空目录／active、逐项失败、保留规则、两次保存与消费者。已有 Rust 初始化实现及纯／模拟事实继续由下文独立记录；当前编排语义尚未完成对应 Rust 迁移、生产接线或实际 DLL／设备与窗口验收。本批未运行厂商 JS、DLL、设备或应用，未创建临时捕获、数据库、副本或日志。
+
+### 2636 配置任务取消、连接替换与退出
+
+[profile_lifecycle_2636_chain](../../../.analysis/results/frontend/gamepad-mw-audit.json#/profile_lifecycle_2636_chain) 接续 Import 的生命周期缺项，使用相同当前 UI／MW 获取收据，精确引用 Import／Apply／Reset／mapping／polling 及共享 HID。复核入口为 `python -B -X utf8 tools/workspace.py audit-family-function --family gamepad --function mw --query gamepad-2636-profile-lifecycle-chain --product 2636`。本批新增 28 个角色、47 个完整 AST owner，引用 39 个既有产品 owner 与共享 Host／17 个原生函数；未重新捕获 native 或创建分析会话。
+
+任务管理器在当前 MW 上下文只初始化一次，按任务名称建队列，以容器 ID 组成 WebLock 名；任务 ID 区分活动任务，不是连接代次。普通队列取最早任务，可跳过队列取最新任务并对替代项发布 `skipped/result:false`。待执行取消会移除任务、发布 `canceled/result:false` 并释放 ID；运行取消则把任务移入 `cancellingTask`，abort 后立即清空 `currentTask`，由未来 settlement 负责移除和释放。等待 WebLock 的 AbortError 单独发布 `aborted`，不能与 handler 失败、原生 I/O 取消或完成排空混同。
+
+完整当前 MW 的 AST 共找到 3 处 `cancelTask/cancelAllTasks` 调用：两处是管理器内部转发，第三处属于通用 OBM Reset。2636 实际挂载 `deviceResetOverrides.taskMakerResetOBM=ne`，该产品 override 不调用上述取消接口。实际 disconnect、cleanUpDevice 与连接替换所有者也没有调用它们；因此不能从取消 API 存在推断页面退出已经取消全部任务。事件 FIFO 与设备任务队列分别存在；maker 的本机保存／发布、import 与 profile switch 也不能据设备任务的 AbortController 视为可撤销。
+
+`connectCurrentDevice` 可复用当前设备元数据，按容器及产品／BLE／dongle ID 选择，再构建新对象。`connectRZDevice` 在 connectDevice 重试完成之前就替换当前 `window.rzDevice`；所选完整所有者没有连接代次检查或旧任务 abort。Importer 的 `te`、引擎的 `S` 和 setup 防重入标记职责不同，不能作为迟到结果屏障。已有 engine 及其设备引用的复用仍遵循前述独立 guard。这里记录的是已读完整所有者的实际行为；外部通知 producer 尚未展开的部分继续作为依赖，不把它们判为不存在。
+
+产品 onLoad 注册 USB disconnect、BLE remove／disconnect 与 `exitApp` 消费者。移除事件只核容器和当前产品 ID，遵守 ignore 标记，然后重置 runtime metadata 门并调用 cleanUpDevice，没有 await、usbInstanceId 或连接代次检查。`exitApp` 另按 appName、runningApps 和实际 feature 条件决定忽略或清理，不能把每个 exitApp 都视为已经执行关闭。
+
+完整 cleanUpDevice 先执行共享清理并捕获当前设备，再尝试源码规定的退出模式，缺显式配置时为 `[0,0]`；随后关闭设备 BroadcastChannel／移除其事件 listener、清理共享状态、请求 Mapping 移除设备、调用可选 terminate／handleBeforeUnload、等待已有 feature shutdown，最后关闭 MW 窗口。可选 terminate／handleBeforeUnload 没有 await；soft reload 分支跳过窗口关闭。模式失败独立记录，主清理 catch 删除 runtime metadata；入口 try 之前的失败也不能记为完整清理成功。beforeunload 的广播清理只移除 listener，显式 close 才另关闭 channel；两者都不撤销已启动 Promise 或排空设备任务。
+
+Mapping 的 `removeUsbDevice` 请求与 `hid.removeDevice` 是不同调用链。共享当前 Host 构造器把相应厂商的 `nodeUSBEvent-remove` 交给 HID remove，按产品／容器及可选 usbInstanceId 关闭句柄、取消 mutex 并删除 map；窗口 tabDestroyed 仅释放匹配 URL 的 mutex，所选 commonDestroyed 回调只记录日志。既有 17 个原生函数已核对请求复制、deferred 完成、CancelIo／句柄关闭／指针清空，但显式 close 没有 join feature worker 或证明队列／deferred callback 排空。协议 finally 的 mutex 释放也不等于设备完成或旧连接结果失效。
+
+13 项定向静态测试覆盖实际调用方、产品 override、取消与 settlement、旧连接替换、退出顺序、广播清理、共享 HID 边界、当前输入变化及失败发布。Mapping 移除内部的产品接线已由下节接续；USB／BLE producer 与各 feature shutdown 仍保留明确依赖。独立 Rust、生产 UI／后端、实际 DLL／设备并发移除／重连与恢复对照、窗口验收仍分别未完成或未验证。本批未执行厂商 JS、DLL、设备或应用，新增临时资源为零。
+
+### 2636 Mapping 设备移除与最后窗口引用
+
+[device_removal_2636_chain](../../../.analysis/results/frontend/gamepad-mw-audit.json#/device_removal_2636_chain) 将上一节的实际 `Cn／Mn` 及 facade `removeUsbDevice [606027,606660)` 接到当前 Host 4.0.896／Mapping 1.3.17.2。复核入口为 `audit-family-function --family gamepad --function mw --query gamepad-2636-device-removal-chain --product 2636`。本批保留 39 个完整 AST owner、34 个角色，复用并核对 19 个既有原生函数和 6 个实际 PE 虚槽；共享清理复用[既有本机收据](../../../.analysis/results/host-current/local-audit.json)的 `mapping_input_shutdown_chain`，USB 构造／析构另精确引用已有 provider 与 hardware-notification 证据，不借用其他产品的通知资格。
+
+当前 DeviceInfo 声明 PID 2636、VID 5426、接口 1，未声明独立 BLE／dongle PID。连接仍按当前源码核对实际容器和候选产品；`controllerDevice.isWireless` 的界面特征不改变 Mapping 所有者类型。`Mn` 先捕获当前设备，并经实际 `X7` helper 取得 Mapping 目标：非 dual-link 或已是 primary 时保留原对象，仅在真实 dual-link 门槛及 primary 不同的条件下查主设备。退出模式作用于先前捕获的当前对象，随后移除取得的目标 descriptor；`Cn` 则直接移除自己捕获的 `e.device`。调用方都没有把 remove 返回的 boolean 作为完整设备清理确认，模式返回也不是 remove 应答。
+
+真实链为 `facade → window.top.apiElectron → packed preload mappingEngineAction → main io.callDLL → win Mapping Host.removeUsbDevice`。payload 保留真实 descriptor。Host 以 `product-container-instance` 建 key，先精确查 map，再按源码的产品／容器及可选实例规则 fallback；取得 fallback 项不会改写稍后使用的请求 key。`createAPIData` 保留 VID、PID、container、instance，并取当前 map 的 guid；不存在或不适用的值不能补成另一设备身份。
+
+共享设备的引用身份是**调用窗口 URL**。add 已就绪设备时仅在 URL 不存在时追加；remove 在 `mutexUsbDevice` 内先滤掉当前 URL。仍有其他 URL 时返回本地 true，不调用原生，也不关闭其他窗口持有的 Mapping 设备；URL 列表为空才保留 completion callback 并进入 native remove。回调 ABI 是 `void(bool,string,string)`，所选 Promise 没有 timeout／AbortSignal。未初始化、参数不符和未找到设备分别返回当前失败结果。
+
+本产品的实际旧式 `addUsbDevice` 在原生明确设置 `type:"usb"`，manager 因而选择 USB 构造与主虚表 `0x2e8d38`。最后引用移除走 `removeUsbDevice 0x28140 → engine+200／0x6630／0x6800 → manager+8／0x57ac0`，复用已核待执行／运行任务取消请求和 USB cleanup `+64／0x53090`。共享 manager 在完成回调前删除并析构其拥有的设备；实际 USB deleting destructor 为 `0xa8fe0 → 0xa896c → 0x656ca`，再沿已核设备线程 join 释放输入状态。不能把共享 BLE deleting destructor `0x54000` 当作 2636 实际 USB 分支，也不重新分析已经完成的共享清理。
+
+原生无效身份、线程、manager 或设备的失败继续保留。最后 URL 的 native completion 为 false 或 FFI 同步抛错后，Host 仍删除请求 key，并不恢复 URL；调用方不检查 false，不能据此声称原生清理成功。普通 remove 持有 mutex 到 completion；已核 `removeUsbDeviceImp` 和 USB／BLE 移除消费者的所有权、锁及错误行为分别复用共享收据。物理移除消费者可以不经过 URL 最后引用门槛，但这些消费者不证明全部通知 producer 已展开。
+
+所选移除与 map 删除没有核对当前连接代次／同一 guid，已有延迟或已发布回调也不会因 URL／map 删除自动失效。局部析构、线程 join 和成功 completion 的已核顺序，只证明相应所有者释放，不证明未来 delayed task 或已入 main-runner／FFI／Electron／JS 队列全部排空。14 项定向静态测试覆盖当前身份、完整桥接、URL 门槛、false／异常、fallback key、实际 USB 虚槽、共享释放边界及输入变化／失败发布；未执行厂商代码，新增捕获、分析会话和临时资源均为零。通知 producer、各 feature shutdown、既有共享队列边界、独立 Rust／UI 接线和实际 DLL／设备对照仍在各自现有任务中保留。
 
 ### Triggers 与 Thumbsticks：已有独立传输链
 
@@ -185,6 +290,8 @@ bootstrap的实际适配选择分别为2636 `rzDevice25Sage`（三个等待均10
 两款当前`81988 [553,10730)`队列保留current/pending/cancelling所有者：skippable取最新待执行项并跳过、释放其余pending；运行任务cancel发abort，等任务settle后调用结果回调、调度后续和dispose；pending取消直接发送`value:null,error:"canceled"`。Power组件没有Cancel按钮或卸载时恢复原值的动作，abort只在runner的SET前后检查，不能撤销已传输的SET，且该runner未在GET返回后再检查abort。另有须实际对照的源异常边界：`IvY`的error分支直接取`a.value.params`，而pending取消及等锁AbortError会传`value:null`；不能把该链描述为所有取消均已可靠清理。应用实现与对照测试须分别记录任务取消、真实设备当前值和资源释放结果，不能自行新增默认值覆盖或伪造回滚成功。
 
 #### Rust独立实现与观察边界
+
+本节保留已有实现与纯／模拟验证事实；其中旧 2636 部署偏移只说明原实现的取证范围，当前 Import 编排以[当前收据](../../../.analysis/results/frontend/gamepad-mw-audit.json#/profile_import_chain)为准。部分失败后的默认值保留、恢复 setter 与发布边界仍须在后续迁移中逐项对齐，不能由本批静态闭合提升已有实现的完成范围。
 
 [页面runtime](../../../crates/razer-pages/src/features/gamepad/gamepad_sleep_runtime.rs) → `WorkspaceEvent::ControllerSleepRequested` → [Shell owner](../../../crates/razer-shell/src/shell/gamepad/controller_sleep.rs) → 当前唯一HID collection → [类型化IPC](../../../crates/razer-ipc/src/controller_sleep.rs) → [服务适配](../../../crates/razer-service/src/runtime/controller_sleep.rs) → [独立Rust协议](../../../crates/razer-device/src/gamepad/controller_sleep.rs)构成生产链。服务核对VID、当前逻辑/物理产品、interface、descriptor中的91字节report、连接身份和期限；每次真实传输前后重新核实collection。协议使用前述实际产品端序，SET异常保留后继续独立GET，以原始秒值严格判定确认或差异，不以UI四舍五入相同、setter成功或本地文件写入成功替代。
 
@@ -381,7 +488,34 @@ delegate 析构 `1B9650` 先减 queue handle 引用，再销毁 sequence manager
 
 buffer finalizer `A440 → A480 → 87D0` 删除两个 NAPI 引用并释放 closure。环境 finalizer `7250 / 7400` 则申请 `uv_close`，关闭回调 `2750` 才置全局门 `3AF20` 并释放队列存储；`7B20` 的存储清理没有证明已唤醒在途等待者。loader 还保留 native resolver、`FFI_NAPI_RZ_PREBUILD` 和 prebuild 选择；这里核实的是当前安装包候选的来源、字节与调用链，实际运行时选中项仍未验证。
 
-[9 项专属静态测试](../../../tools/test_host.py)覆盖来源变化、不完整任务捕获、runner／heap／disposer 偏移、完整析构／等待／finalizer 边界、嵌套任务与 addon 引用边、实际虚槽混淆，以及 Anne／CIF／loader／Host callback AST 变化，并复核 JSON 往返与输入快照。后续仅需接实际 engine／main runner 的完整关闭顺序及所需 NAPI／libuv 环境关闭交界；本专题不展开全部 addon 框架。新增静态捕获与临时会话的保留／清理由统一批次收据记录。本专题未改 Rust／UI，未执行官方 JS／DLL／设备；独立实现、接线、实际对照与运行时验收继续保持未完成或未验证。
+[9 项专属静态测试](../../../tools/test_host.py)覆盖来源变化、不完整任务捕获、runner／heap／disposer 偏移、完整析构／等待／finalizer 边界、嵌套任务与 addon 引用边、实际虚槽混淆，以及 Anne／CIF／loader／Host callback AST 变化，并复核 JSON 往返与输入快照。engine／main runner 的关闭顺序及所需 NAPI／libuv 环境交界接续见下一节；本专题不展开全部 addon 框架。新增静态捕获与临时会话的保留／清理由统一批次收据记录。本专题未改 Rust／UI，未执行官方 JS／DLL／设备；独立实现、接线、实际对照与运行时验收继续保持未完成或未验证。
+
+## Engine 与主任务线程的完整关闭顺序
+
+维护入口 `audit-host-local --query mapping-engine-shutdown-chain` 接续上一节的剩余项，结果归入[现有本机链收据](../../../.analysis/results/host-current/local-audit.json)的 `mapping_engine_shutdown_chain`。[collector](../../../tools/host.py)核对当前 Mapping 1.3.17.2 的 57 个完整函数、同包 ffi-napi-rz 1.0.11 的 10 个完整 addon 函数、2 个实际 PE 虚槽、15 个源码 AST 和 9 处实际 delay-import 调用。设备析构与任务队列的详细语义绑定上一节及输入关闭节的精确 section，不因同一收据新增其他专题而重复捕获。
+
+| 时点 | 真实顺序与边界 |
+| --- | --- |
+| 进入关闭 | 导出 `1FED0` 经真实 engine 表 `2E0010 +16 → 2090`，锁内清 initialized `+80`，再把 `2510` 投往 engine `+56` 主线程 |
+| 主线程串行阶段 | `2510` 置 state `+64=3`；先设备 manager，再 owner `96 → 304 → 312 → 144 → 200 → 224 → 288 → 160 → 88`，最后 `19C30` 置 state 4 并 signal |
+| 设备 manager | `571E0` 清理设备，`57090` 请求任务取消，`56F10` 关闭 executor，`56E70` 释放 storage；设备／executor 完成并从实际表移除后才推进 |
+| 主线程退出 | `2090` 等到上述 signal 后才清 thread 指针并调 `2FFBE0 +8 → 1B9510`；实际 StopSoon／QuitWhenIdle、HANDLE 等待和 delegate 销毁在外部 completion 之前 |
+| 外部 completion | `1FDD0` **先调用 Host callback，再清全局 sample 门 `395760`**；不能把该门记为进入 shutdown 时已关闭 |
+| 最终释放 | completion 返回后，`2090 → 17AC → 1CFFD0` 才清 engine `+48` 的 AtExit owner，并按原件处理其注册 callback |
+
+`2510` 构造 once-continuation 的顺序与执行顺序相反：每个新 stage 持有上一条链，最后构造的 `1A620` 最先执行。`1B940` 从 bind `+32/+48/+56` 移出目标、owner 和 next 后调用目标；disposer `1B9C6` 只释放 next／owner，**不会执行 next**。各实际存在的异步 owner 持有自己的释放／next 回调，缺失 owner 则立即继续；这些调用边确认关闭阶段的串行顺序，不代替各服务或 output 的业务逆向。
+
+manager 的 `56B40` 同样反序执行。`571E0` 把 next 放入 `+344`，遍历设备并调用实际 cleanup 虚槽 `+64`；`57E60` 先移除身份、同步析构并等待设备线程，再在设备数 `+376=0` 时投下一阶段。设备 join／delayed sample 销毁复用上一节证据。`56F10` 持有 next `+176`，由 `5EFB0` 删除已完成 executor 并在计数 `+208=0` 后继续；最后 `1A9D0` 清 engine `+152`、析构 manager，再进入余下 engine 阶段。`57090` 的任务取消请求继续由已有 output／SnapTap owner 负责，不能由请求已发出推断恢复完成。
+
+`2090` 没有检查 shutdown post 返回值；`1BA770 → 1BA790 → 1AA5D0` 使用 `INT64_MAX`，实际进入 `WaitForSingleObject(INFINITE)`，所选等待链没有 deadline、取消或 JS loop pump。已未初始化的分支只调用 completion，并在 callback 返回后释放锁，不重复执行关闭／join。正常 signal 仅证明串行阶段已经走到 state 4；随后的 thread 析构才请求退出并等 HANDLE。`1B92F0` 在退出线程入口前销毁 delegate，所拥有队列的未执行任务按上一节的真实 disposer 释放；这不排空独立 addon、Host 或 Electron 队列。
+
+同一官方 ASAR 的 `library.js`、`foreign_function.js` 与 `_foreign_function.js` 已核实际字节、offset、SHA 和完整 AST。Host `initDll` 的 shutdown 定义只有 `void(pointer)`、没有 async options；`Library` 因而选普通 proxy，直接调用 `bindings.ffi_call`。Host 方法写成 `async` 不代表该 DLL 调用进入线程池。`callDLL` 仅在 `cbMap` 保留本次 completion，收到 callback 后删除它并置 `isInit=false`；完整 owner 没有 timeout／取消，也没有清掉设备表或所有 callback。
+
+addon 的实际 PE delay INT／IAT 把所选指令分别绑定到 `node.exe` 的 `napi_get_uv_event_loop`、`uv_async_init`、`napi_set_instance_data`、`napi_make_callback`、`napi_call_function`、`uv_async_send`、`uv_cond_wait`、`uv_cond_signal` 与 `uv_close`，没有只依赖分析器符号名。跨线程 `A0F0` 入队原参数／closure 指针，忽略 `uv_async_send` 返回值并无期限等待；`93E0` **先执行 JS，再 signal**，所选异常路径没有证明所有抛出都经 finally 唤醒等待者。
+
+环境 finalizer `7400` 只在 handle type 1 时请求 `uv_close`；`2750` 的 close callback 才将全局环境门 `3AF20` 置为 1、释放队列存储，`7B20` 不 signal 或 join producer。engine shutdown 没有调用该环境 finalizer。现已静态确认 engine 与主线程关闭的准确完成／释放边界；没有证据把环境存储析构当作全局排空，也不能据此断言必然死锁。实际运行时 addon 选择、并发 environment close、未返回 JS callback、post／send 拒绝、异常退出及 producer 最终释放，仍须在显式对照入口逐项验证。
+
+[14 项专属静态测试](../../../tools/test_host.py)检查来源／依赖 section 变化、不完整函数、逆序阶段与非执行 disposer、initialized／state／计数／回调时点、真实引用边与虚槽、完整 Host／FFI AST、实际 import 名及 IAT 错配，并验证 CLI 失败／输入变化不能升级为完成。本批复用正式捕获，新增 native capture、分析会话、临时数据库、解压、中间文件与日志均为 0；原始证据与正式收据仍是后续复核依赖。本批未修改 Rust／UI，未执行官方 JS／DLL／设备；完整产品语义、独立实现、UI／后端接线、实际对照及运行时验收分别保持未完成或未验证。
 
 ## 验证与未验证范围
 

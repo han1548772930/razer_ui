@@ -58,6 +58,36 @@ PID158 `mousePowerSavingReducer` 先更新本地编辑值并发送 `ON_SET_POWER
 
 当前 generic helper 还含另一套 powerSaving `{isEnabled,value}` 路径，会读取 autoSleepMode 和 timeToSleep 后按条件写入；这个 helper 存在并不说明普通鼠标 Power 页都会调用。dimLighting 则读取 batteryId 和 timeToDim，按 `enabled`、分钟和亮度 20 写回。
 
+## PID190：当前休眠消费者与缓存边界
+
+本链通过当前路由的 `current_source_selection` 选择 UI `mouse-190-snapshot-7a9576b5` 与 MW `mouse-mw-190-snapshot-44b54d19ebd53e129c9c`，不将旧 `mouse-190-current` 的完整捕获当成新部署已完成。新部署的选定函数直接从完整 AST 保留，两个部署的完整捕获缺项分别保留。统一入口为 `audit-family-function --family mouse --function mw --query mouse-power-190-consumers`，正式证据归 `.analysis/results/frontend/mouse-mw-audit.json` 的 `mouse_power_190_consumers`。
+
+实际导航挂载 `pl/Pl`，左列给 `Cl` 传空 props；`Cl` 读取 `mousePowerSavingReducer.powerSavingValue` 并连接 `setPowerSaving → Sl → S1_`。因此 `ul` 使用 1～15、步长 1 的分钟滑块，没有启用可选秒值按钮。reducer 初始值 5 与用户修改后的乐观编辑值均独立于设备读取；控件没有 Apply／Cancel，也没有卸载时取消任务的方法。
+
+当前 MW 主入口明确启用 `isBattery.yes.alwaysReadPowerSavingFromDevice=true`。模块 `45601.Ee` 在 READY、存在电池 feature 且当前 `powerStatus` 为真时，无参数等待 `96204.q`，将 `getTimeToSleep().jsonData.timeToSleep / 60` 发布为 `MW_SET_POWER_SAVING_VALUE_TO_UI`，对应 UI `WDf`。读取 helper 捕获异常后返回默认参数 5；这是原版失败分支，不能当成已观测设备值或本项目读取成功。
+
+`powerSavingAction` 的实际 guard 根据来源和宏录制状态给出本地更新／设备访问权限。宏未录制时，UI、runtime、device 来源可更新本地并访问设备，local-storage 来源仅访问设备；录制时，非 local-storage 来源只允许本地更新，local-storage 来源被忽略。dispatcher 把这些真实权限、版本和值传入 `25947.gn`。上述 feature 使 `gn` 跳过配置文档的省电值及版本写入；它先发布本地 completed，再按权限排入 `NORMAL_SKIPPABLE` 的设备任务或发布后处理完成，不能将本地 completed 当设备确认。
+
+UI `Le/Pe` 为动作记录生成本地 `Date.now()`，广播却显式携带 `timerTick:undefined`；实际发送器原样包装这份数据。MW `ye` 收到后重新生成 `Date.now()` 并覆盖事件 payload 的 `timertick`。UI 的本地、设备及完成消费者只按 `timertick` 精确匹配，未命中时保留原状态。两个异步时刻是否实际相同尚未对照，不能补造时间戳一致、自动关联或自动回滚。
+
+`96571.wt` 先检查取消，按普通分钟值乘 60 后 SET，再检查取消、GET 并精确比较秒数；通过后先设置 `value.status=completed/fromDevice`，再处理宿主缓存。当前实际注入的 initializer `a` 未建立 PowerSaving maker／runner 根字段，序列化的 `memoryStorageCache.taskMaker/taskRunner` 也未挂相应键。模块 `36532` 在根字段缺失时建立独立 Proxy，没有把新对象写回 `window`；`gn` 写入 `Al` 的 `taskMakerPowerSavingMemoryStorageCache`，`wt` 写入 `OF` 后又直接访问 `window.taskRunnerPowerSavingValueMemoryStorageCache[setting]` 的值及版本。本链已核的当前声明脚本没有建立这三个根字段的直接赋值；外部或动态生产者仍待取证，不能据此宣称现场必然失败，也不能假定 Proxy 已进入宿主整包。
+
+若后续根字段访问或宿主缓存拒绝，可能已发生真实 SET／GET，并且 completed 已先设置。当前任务 wrapper 在 reject 后仍于 `finally` 交付同一状态，没有重写其 error／status；`kt` 又以 `value.status=completed` 或 `error=skipped` 进入完成分支。因此缓存抛错不能直接改写成 UI 设备错误。其他结果会发布错误及后处理完成；UI 保留乐观编辑数值，按匹配动作记录 local/device 回执与 `errorActions`，没有回滚或把确认 getter 结果重新发布到编辑器的步骤。
+
+宿主存储已按当前 Host 4.0.896 的官方包、ASAR 成员和实际字节绑定。`setMemoryStorageItem` 按 sender URL 维护进程内缓存、返回旧值，并通知符合条件的其他页面；它不表示磁盘持久化或设备确认。Power 卡片及响应 wrapper 没有额外卸载清理；共享 UI 的 `beforeunload` 移除已注册回调，单次发送关闭临时 BroadcastChannel。MW `shouldClose` 进入共享关闭所有者，完整宿主退出、在途任务静默与设备恢复继续由其独立链复核。独立 Rust、UI／后端接线、真实时间戳、DLL／设备结果与窗口验收仍为未验证。
+
+## PID196：实际挂载与当前省电 feature
+
+统一入口 `audit-family-function --family mouse --function mw --query mouse-power-196-consumers` 从既有 task-memory 批次的产品条目 `/queries/mouse-receiver-polling/power_task_memory_batch/products/58` 接续，正式结果归[鼠标 MW 收据](../../../.analysis/results/frontend/mouse-mw-audit.json)的 `mouse_power_196_consumers`。当前路由实际选择 [UI 刷新收据](../../../.analysis/inputs/frontend/mouse-196-current-refresh-ec3db4b29c5a/acquisition.json)与 [MW 第二次刷新收据](../../../.analysis/inputs/frontend/mouse-mw-196-current-refresh-ec3db4b29c5a-2/acquisition.json)；后者合法复用第一次刷新目录的原件。两层当前部署均无完整捕获，本链直接保留所需完整 AST，未将旧捕获提升为当前。
+
+普通显示根 `yh → Pm/Lm` 在 READY 后挂载 `Dm/cm`；导航 id3 选择 `jS=XS`。其左列给 `wS` 传空 props，`wS` 连接 `KS`、reducer 与 `yS → S1_`，因此实际使用 1～15、步长 1 的分钟滑块，没有启用可选秒值按钮或额外 Apply／Cancel。当前产品定义明确为 PID196／dongle197，未声明 `singleProfileDevice`，故任务使用分钟乘 60 的普通分支。
+
+实际 bootstrap 启用 `isBattery.yes.alwaysReadPowerSavingFromDevice=true`，READY 消费者仍要求当前 `powerStatus` 为真才读取休眠秒数并除以 60；原版读取 helper 的异常返回 5 仍是失败回退，不是设备观测。导航初始化还可从本地根 `powerSavingValue` 单独发布 `WDf`。上述 feature 让 maker 跳过该本地字段及版本的写入，本地 completed、设备 SET／GET 精确比较及宿主缓存仍分别判断。
+
+当前 READY、guard、dispatcher、maker／runner、完成／错误／取消及任务 wrapper 等 17 个完整共享所有者与已审 PID190 同字节，直接复用其明确边界。PID196 自己的注入 initializer 同样没有建立 PowerSaving maker／runner 根字段，也没有将对应键接入整包 task cache；外部／动态生产者继续待取证。UI 本地 tick 与 MW 接收 tick 分别生成，回执只按精确 timertick 匹配；消费者保留乐观数值并维护动作记录，没有补造关联、回滚或卸载取消。
+
+10 项定向维护测试覆盖当前路由、实际挂载／feature、共享复用与事件接线，以及来源篡改、缺失所有者和发布前依赖变化的拒绝。它们仅验证静态提取；独立 Rust、UI／后端、真实时间戳、DLL／设备结果和完整宿主释放仍未验证。本批没有新建临时目录、捕获或分析会话。
+
 ## 打开、事件、失败与退出
 
 亮度、效果、idle、lowPowerMode 等字段由各产品挂载的 profile restore 和对应 MW_SET 消费者载入；设备电量／充电事件通过 batteryReducer 更新状态，不能用电量事件推断配置已保存。

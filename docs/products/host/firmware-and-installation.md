@@ -587,7 +587,7 @@ callDLL／callDLLAsync 的 FreeFFI 分支直接 return true，未调用空的 `_
 | --- | --- |
 | 缺 action 或 saveToDisk | 本次动作失败 |
 | 文件后缀为 .dll | 不作为可执行安装器运行；文件替换/写回另由本地文件发布和清理链管理 |
-| manifest 设置 NO_INSTALL | 跳过执行；原件把跳过记作成功，不能据此认定驱动/服务安装完成 |
+| 本地 NO_INSTALL 标志为真 | 跳过执行；原件把跳过记作成功，不能据此认定驱动/服务安装完成 |
 | Windows 且有 stop-service 动作 | 先执行已声明的服务停止，再进入安装动作 |
 | 非 ASCII 路径且满足驱动/文件/服务版本分支 | 通过实际 ASCII 复制路径启动；不能泛化为所有平台都需要提权 |
 | manifest 明确要求 elevated | 使用对应提升入口；其他分支使用普通本机进程入口 |
@@ -614,7 +614,41 @@ entry `61–78` 依次调用 `GetCurrentProcess`、`IsWow64Process2`、`IsWow64P
 
 `nsExec` 的实际 `0x1096` 所有者处理进程、管道、退出码和关闭句柄；当前命令没有超时参数。它保留 `error/timeout` 字符串，正常退出码按有符号十进制入栈。entry `85–90` 只取 `0x40000000` 重启位，命中才设置最终退出码 `3010`，两条路径均把该位值写入 HKCU `Volatile Environment/RzComDriver`。单独失败位没有在这里检查；`-1` 也含重启位，非数值文本会转成零；跳过 Exec 后的 Pop 也不能当作新退出结果。它们均不能证明驱动、服务或设备已就绪。
 
-本查询选定 28 个语义函数，并将安装器 105、System 62、nsExec 17 个完整捕获函数的 chunks／指令与原始 PE 核对；System 调用桥的正栈警告仍保留。两套 SYS 已有的 121／105 函数完整捕获只核身份和可用性，legacy `1.0.0.71` 的通知、取消和释放语义仍须独立复核，不能继承 universal 结论。Rust 独立实现、完整安装／卸载调用方、实际 DLL／设备对照及运行验收分别保持未完成或未验证。
+本查询选定 28 个语义函数，并将安装器 105、System 62、nsExec 17 个完整捕获函数的 chunks／指令与原始 PE 核对；System 调用桥的正栈警告仍保留。该选择查询对两套 SYS 的 121／105 函数完整捕获只核身份和可用性；legacy 的选定通知、文件队列和释放链由后节独立复核，不继承 universal 结论。当前实例的安装／卸载宿主消费者见下节；Rust 独立实现、实际 DLL／设备对照及运行验收仍分别未完成或未验证。
+
+### 当前 RzComDriver 的安装与卸载宿主消费者
+
+查询 `audit-host-local --query common-driver-install-consumers` 将具体 `NormalDriver_RzComDriver` 实例接入统一主机收据的 `common_driver_install_consumers`。当前 Host `4.0.896` 的 main、preload、SimpleService、SysUtils 与 FFI 源码均重新核对所属官方包、ASAR、成员 offset 和实际字节；不沿用旧宿主 JS 的来源身份。installer 仍为已保留的 `index.325f8759.js` 原件，`Ka/$l/Bl/kl` 完整所有者与前述共享分析相同。本片保留 44 个角色所对应的 43 个完整 AST 所有者、13 个实际调用位置，复核 27 个现有原生函数的 4,760 条指令、实际导出与两个进程入口虚表槽位；没有重新捕获 SYS、创建分析数据库或临时副本。
+
+当前 manifest 的 `path/overwriteApp` 为空，发布与执行使用本轮 `installApp` 和 `Drivers/RzComDriver_v23.0.6.0.exe`；存在且摘要匹配的文件使用其真实 `existInfo.name`。`Ka` 保留参数 `/S /LAUNCH`，选择 `simpleLaunchUserAppProcessJson → simpleLaunchUserAppProcess`。该文件名不含 `PID`，不能进入同时要求 `PID/Drv/.exe` 的 ASCII 特殊驱动分支；manifest 也没有 `runForceElevated` 或 `runStopService`。Host 3010 分支中的 `PID…Drv` 正则同样不会匹配这个文件名，不能据共享入口宣称产生了产品 PID 的通知。
+
+前端普通入口仍受原生提升选择约束：当前包 EXE 的实际 manifest 资源 `24/1/1033` 位于文件 `35712`、长 `841 B`，声明 `requestedExecutionLevel=requireAdministrator`。`0x12280 → 0x3720/0x3920 → 0x23052/0x23250 → 0x1d5e8/0x284d0` 在文件与签名门槛之后，`0x4dfa8` 解析该声明并选择等待版 COM `0x2e152`；COM 失败后的本地启动分支仍按共享原件保留。无版本 SimpleService 的当前官方包原件与[既有提升客户端分析](../../../.analysis/results/host-current/installation-elevation-client.json)是相同字节，因此复用其 COM 应答、事件、Unadvise、等待和 shutdown 边界；这不把保留服务副本提升为最新官方部署，也不证明实际启动过进程。
+
+卸载入口 `Bl` 由资源 URL basename 去掉 `_v…` 得到 `RzComDriver`。`Ce.getDriverInfo` 经当前 preload 的 `electronAction`、main 的 SysUtils 分派与 `ffiMain.callDLLMain`，进入[当前 SysUtils 完整捕获](../../../.analysis/results/native/bc0387a0913c882a9cd82aa1a8e147d6408fc7bb7f77519f4f8860f16c5b17c8/capture.json)的 `GetDriverInfo 0x72340 → 0x61e20`。它只查询 `HKLM\SOFTWARE\WOW6432Node\Razer\Synapse3\RzComDriver` 的 `ProductVersion/UninstallPath`；初次 open 使用 `0x20119`，随后值查询使用 `0x20019`，句柄分别关闭。`isInstalled` 是两个字符串任一非空，不是 SCM 或设备健康查询；值读取 helper `0x5a690` 不检查第二次 `RegQueryValueExW` 的返回或类型。`0x61630` 序列化六个字段，`uninstallArg` 保持空串。FFI 先 `readCString`，成功转换后才在 finally 调用 `FreeMalloc 0x69d10`；转换抛错不能视为已释放。JS 解析失败的 `reason="undefined"` 回退对象属于未观测，不能冒充实际未安装结果。
+
+`kl` 要求 `isInstalled` 为真且版本与 `23.0.6.0` 精确相等，再用实际 `uninstallPath.trim()`、空参数调用 `simpleLaunchRazerApp`；其独立入口沿 `0x14760 → 0x3f90/0x4170 → 0x23a26/0x23c10 → 0x1d9f0/0x2af90`，不能复用安装入口的 app 相对路径。两条 JS 进程桥都保留 `{result,reason,exitCode}`，但消费者不同：`$l` 仅对 `installerError` 或 `result===false` 抛错，未要求退出码为零；`kl` 不检查这两个结果字段，先删除资源记录并原样返回非空对象，失败对象仍使 `Bl` 的判断为真。没有后续驱动／设备读回确认；安装文件的 `Ya` 删除也只记录返回值，不能作为实际删除成功收据。
+
+取消、正常结束和异常释放沿[共享依赖、卸载和取消](#共享依赖卸载和取消)的同一完整所有者：本轮 `$r` 仍只等下载 abort，`yl` 只在入口检查取消，`Bl/kl` 不检查；当前 SimpleService callback Map 在收到结果或捕获启动异常后删除，没有逐安装取消或超时参数。主机状态、资源／产品记录、真实退出、文件删除及驱动状态分别记录。本片闭合所选实例的宿主静态消费者，未选 SYS／产品分支、完整 drain、最新官方提升服务来源、独立 Rust／UI 接线、实际对照及运行验收继续保留未完成或未验证；没有执行安装器、DLL、驱动或应用。
+
+### Legacy RzCommon 的通知、文件队列与释放
+
+查询 `audit-host-local --query common-driver-legacy-notification` 对应统一主机收据的 `common_driver_legacy_notification`。输入为同包保留别名 `RzCommon_1.sys`，实际官方安装文件名仍为 `RzCommon.sys`；版本 `1.0.0.71`、52,072 B、SHA-256 `3faca8cbb6f82a26c8d1af808d2f1d8d979a56422d503ed1dc109d1ec9935a80`。[完整捕获](../../../.analysis/results/native/3faca8cbb6f82a26c8d1af808d2f1d8d979a56422d503ed1dc109d1ec9935a80/capture.json)保留 105/105 函数且无失败；本片复核 33 个完整 owner、2,454 条指令、28 条实际边、30 个关键指令位置、3 段实际常量和 6 个 WDF 调用槽位，没有新建捕获、数据库或临时文件。
+
+`0x8090` 的实际绑定为 WDF `1.9.7600`、396 个函数、函数表 `0x8180`。`C000` 创建的接口为 `e3be005d-d130-4910-88ff-09ae02f680e9`；`24F0` 用 size=40/version=1 查询 provider `14cc0596-cfa5-4379-a5ab-fa24e681d040`。`462C` 获取其真实路径，`46E4` 经 provider vtable `+24` 注册 category 2 → `4C1C/32A8` 键盘、category 1 → `4C7C/3514` 鼠标。这些是旧 SYS 自身的证据；其他 category 和旧 WDF 的完整运行行为没有由此认定完成。
+
+| 边界 | 当前原件的行为 |
+| --- | --- |
+| 订阅与读取 | `19F8 → 2790` 取得实际请求 buffer；`0x88883018` 要求输出至少 304 B，按请求所属的真实 file 选择 manual queue。`0x88883038` 要求输入至少 4 B，但只读首字节作为开关；`4DA8` 修改该 file 的 mask 4，`4FD0` 汇总后写入 device `+1358`。 |
+| 键盘通知 | `4C1C → 32A8` 遍历 12 B 记录，通知写 event=4（frame `+8`）、type=1（`+16`）及完整输入（`+20`）。`6194` 仅在 type=1、mapping context `+48` 为真且 scan=69 时拒绝通知。redirect 完整成功时不会进入通知回退；redirect 中途失败后的通知从原始输入起点遍历，不能自行去重或仅保留未处理尾部。 |
+| 鼠标通知 | `4C7C → 3514` 遍历 24 B 记录；通知还要求输入 DWORD `+4` 非零，写 event=4/type=2 并复制完整 24 B。纯移动且该 DWORD 为零时不经此分支通知；后续拆按钮、映射与输入回注是其他消费者。 |
+| 文件与 ring | `1934` 为 file 清零 `0x4C040`（311,360 B）上下文。`4E48` 的 1024×304 B ring 内联于 file `+44`，write/read 为 `+311340/+311344`，锁为 `+311352`；不是 universal 的按需独立 memory。manual queue 以 file 为 parent；创建 queue 失败后仍尝试加入 client collection，返回原 queue 状态。 |
+| 接收与完成 | `4DE8` 调用真实 queue-forward 槽位后直接丢弃返回，调用 `5090` 尝试完成一个请求，始终返回 `STATUS_PENDING=259`。`51C0` 只对 mask 与 event 相交的 client 入 ring，索引按 1024 回绕，碰撞时推进 read 丢弃最旧项。`5090` 的输出 memory 获取失败不推进 read；取得 memory 后即使复制失败也推进 read。完成函数收到实际失败／成功 status 及 information=304，不能把后者解释为成功读取。 |
+
+键盘／鼠标的选定通知 owner 没有清零整个 304 B 栈帧，首 8 B 与未覆盖的 reserved 字节没有由这些写入定义；不得将其当作确定零值或补成新协议字段。`2790` 遇到不匹配的 context magic 时直接返回 0 而未执行请求，该值同样不能冒充真实操作。相同接口、IOCTL 与 frame 字段接回已复核的 Mapping `1.3.17.2` 读取、解析与下游 callback 链，沿用原正式收据，不重复捕获。
+
+file close／cleanup 的 `185C/18C8 → 4D80` 经 `53C0` 从 collection 删除真实 file。关键汇编 `4D86` 把 file 放入 RDX，`4D92` 把 manager 放入 RCX，`4D9B` 再清 file `+8`；伪代码遗漏的第二个参数不能据此丢弃。设备移除 `1780 → 219C` 删除设备归属，调用实际只返回 0 的 `5414`，将已记录 category 0—13 以空 callback 注销，并清 provider `+56` 和 context magic。这里没有完整 pending-I/O／上层 callback 的 drain 保证，WDF parent、注销尝试或 `5414` 的零值均不能代替该证明。
+
+本片闭合选定旧 SYS 通知与释放的静态语义，安装选支与当前实例宿主消费者分别引用前两节；真实安装状态、未选 category／映射／产品报告分支、取消及完整 drain、独立 Rust／UI 接线和实际 DLL／驱动／设备对照仍分别未完成或未验证。没有执行安装器、驱动或应用。
 
 ### InterHaptics 安装与卸载的旧进程退出链
 

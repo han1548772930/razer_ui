@@ -119,7 +119,19 @@ Hue 实际有 HOME 与灯具页面，不能由共享 Help 模块或曾经遗漏�
 
 profile ports restore 依次保存、发布/diff 与真实设备任务；缺少端口 diff 时会恢复全部激活热端口。当前 UI port maker 同一原 diff 会重复保存/restore 两次，队列不去重；相等值导致 diff 缺失也可能两次全恢复。模式任务由 deviceAccess 控制，不能添加不存在的“写盘成功才写设备”条件。执行器捕获异常但未逐项检查全部返回 status；日志不代表核对每个应答。
 
-Hanbo 没注册 `usesExternalPowerSupply` 或 `hasFanPowerStatus`，Elsa 也不实现通用供电 getter。热模块 fault bits 不能改作外部电源观测。其 reportLength=65 与 host 前缀组合形成 66 字节参数而写入计数比较 65；静态 host 链会转发并 padding，不能假定 Windows 自动截断；实际接受性仍未运行验证。
+Hanbo 没注册 `usesExternalPowerSupply` 或 `hasFanPowerStatus`，Elsa 也不实现通用供电 getter。热模块 fault bits 不能改作外部电源观测。其 reportLength=65 与接口前缀组合形成 66 字节参数而写入计数比较 65；Host 转发全部字节，native 仅在短于输出报告容量时补零，不截断超长参数；实际接受性仍未运行验证。
+
+### 当前 Hanbo HID 写入、返回计数与关闭消费者
+
+[配件收据](../../../.analysis/results/frontend/accessories-main-audit.json)的 `hanbo_hid_write_current_chain` 将既有 66／65 结论重绑到当前 [Elsa](../../../.analysis/inputs/frontend/accessories-mw-3893-current-refresh-ec3db4b29c5a/raw/apps.razer.com/synapse/products/3893/mw/rzDeviceElsa.76719b0fe17f032c90d4.js)、Host 4.0.896 和该安装包实际携带的 `node-rz-hid 0.0.31`。来源选择复用当前系统监测获取收据；Host JS 核对 ASAR 偏移，已解包 HID.node 与同包 ASAR 条目的实际字节一致。三个 Elsa owner 与 Host `hidRead` 的完整正文均与既有收据一致，旧结论无须重新推导。没有运行安装包、前端、addon 或设备。
+
+真实转发为 `Elsa → MW 88382.dA → window.top.apiElectron.doRzDeviceAction → preload rzDeviceAction → main UsbRzDeviceAction.handleAction`。Host 将 `dataSend` 全部交给 `write`，不读取 `reportLength` 截断。`nodehid.js` 构造器把 native prototype 方法绑定到 raw HID 实例；当前所选 `write/readTimeout/close` 分别注册到 RVA `0xa110/0x6fb0/0x94e0`，不能根据相似方法名改走 feature report 或 `getInputReport`。
+
+仅返回计数 **65** 才进入间隔等待和 HID 读取；返回 66 本身不满足该条件。Host 最多调用五次 `readTimeout(10)`，忽略 payload 的 reportId／reportLength；native 只移除首字节为零的报告 ID。Elsa 要求响应恰为 64 字节且前两字节匹配，读取失败可继续下一次写入，分别受 `maxRetryIn/maxRetryOut` 限制。Host 写异常返回未定义、读异常返回空数组；所选发送 try 内抛出的异常退出写重试循环，最终按源码抛失败，不能标为设备成功。该方法没有所选 AbortSignal 或连接代次校验。
+
+原生证据复用[完整捕获](../../../.analysis/results/native/5f185c3c865fb37a8cfb85d52a61704555543d70ea954bead84bbadda66fcfac/capture.json)的七个函数，均重新核对实际 PE 函数块；无新 IDA 捕获。`hid_write 0x175e0` 保留完整输入长度，只补齐短缓冲；挂起写入等 1000 ms，完成后取真实计数。NAPI `0xa110` 将该 signed 计数转换为 JS number，返回寄存器传递另按实际指令核对。所选同步 `WriteFile` 成功分支仍保留初始负返回值，不能补造与异步成功相同的计数；写等待失败也未见该函数调用 CancelIo。
+
+Host `hid.removeDevice` 对匹配对象先 close、取消 mutex，再删设备与打开锁的索引。实际 close 回调进入 `0x6170`：CancelIo、关闭两个事件和设备句柄、释放错误及读取缓冲、清空 native device 指针。该函数没有等待在途 I/O／回调排空；不能由 close 已返回推定整个连接安全静止。Windows／设备是否接受 66 字节而返回 65、实际响应、失败、取消、恢复与释放对照仍为未验证；其他 Hanbo 分支、独立 Rust、UI／后端接线及运行验收分别保留缺项。
 
 ### GPU 温度 target 1 的真实生产和释放
 
@@ -131,7 +143,49 @@ NVAPI 分支先核实实际 provider 与设备索引，探测 `-220` 睡眠状�
 
 服务读取 class 32、kind `0x2000` 的真实有效传感器，再用独立阈值过滤并把当前值和极值保留 2 位小数，按源码顺序消费各设备首个符合条件的结果。getter 本身不刷新硬件，也不保证 target 1 胜过其他实际传感器或 provider。BSTR 名称由 wrapper 释放，导出的 JSON 使用对应 `FreeMalloc` 释放。
 
-单个 Display API monitor 的 stop 虚槽为空，不能据此判定释放结束。SDK close 先停止接口与 provider，再销毁 monitor、其缓冲区和传感器视图，随后由全局传感器所有者释放传感器缓冲区与分配；NVAPI unload 与模块 `FreeLibrary` 也各有所有者。选定同步调用没有逐次取消 token 或代次保护。CPU、其他 GPU provider／温度 target、时钟与利用率仍须继续逆向，独立 Rust、UI 接线及实际 DLL／设备对照均未验证。
+单个 Display API monitor 的 stop 虚槽为空，不能据此判定释放结束。SDK close 先停止接口与 provider，再销毁 monitor、其缓冲区和传感器视图，随后由全局传感器所有者释放传感器缓冲区与分配；NVAPI unload 与模块 `FreeLibrary` 也各有所有者。选定同步调用没有逐次取消 token 或代次保护。CPU Package 的六组 Intel 分支见下节；其他 CPU／GPU provider、温度 target、时钟与利用率仍须继续逆向，独立 Rust、UI 接线及实际 DLL／设备对照均未验证。
+
+### CPU Package 温度的 Intel MSR 生产、消费和释放
+
+[配件收据](../../../.analysis/results/frontend/accessories-main-audit.json)的 `hanbo_cpu_monitor_chain` 接续当前版本与 GPU 收据，核对 Hanbo 实际读取的 `CPUInfo[0].Temperatures.Package.cur`。本批复用 [CPUID SDK 完整捕获](../../../.analysis/results/native/c67f23ef5fd6e5a1db8f96d9a0509447f9657969e7a2c7fed7b293b72240cfb7/capture.json)的 39 个函数和 [Service 1.0.30.0 完整捕获](../../../.analysis/results/native/645d8ffdcaefe57b06ab4dd9888a7ce028fe25052f87762c23c452d3936a3cf8/capture.json)的 8 个函数，保留 17 个完整 JS 所有者并按实际 PE 核对 22 个间接调用槽；没有新增捕获、分析会话或临时副本。Host／SDK 的声明版本分别为 4.0.896／1.3.7.6，实际安装与加载版本未观测。
+
+SDK 先按真实 CPU vendor 选 Intel／AMD／Hygon owner；Intel `0x1766a0` 再按 family／model 选择具体构造器和虚表。已核对 Sandy Bridge、Haswell、Skylake、Silvermont、Goldmont 和 family `0x12` 六组的初始化槽 `+40`、温度槽 `+64` 及完整正文。温度入口 `0x13bff0` 依次尝试 owner `+32 → +24 → +16`，前一结果非正才继续；六组分支的存在不证明本机选中了它们，也不替代更高优先级 provider 的分析。
+
+MSR getter `0x13f930` 缓存寄存器对象，每次仍通过 `0x14e58` 真实读取。mode 1 使用 IOCTL `1`、4 字节输入、40 字节输出容量；mode 2 使用 `0x9c402440`、4 字节输入、8 字节输出容量。无效 handle、不支持的 mode、调用失败或两个返回 word 均为全 1 时失败；源码未检查 BytesReturned，不能自行补成完整协议确认。CPU affinity worker 的实际执行受源码 flag 控制，外层 mutex 等待 100 ms、driver lock 尝试 50 ms，循环 sleep 1000 ms；这些静态常量不表示已在本机运行。
+
+六组 Package 路径读取 MSR `0x1a2` 的 target、MSR `0x1b1` 的 status；core 的 `0x19c` 不替代 Package。初次创建须满足该 family 的真实 capability、MSR 读取成功和 status bit 31 有效，创建名为 `Package`、标识 `0x1802001`、owner offset 1264 的传感器。已有传感器刷新不再核 bit 31，按 `(target - ((status >> 16) & 0x7f)) * multiplier` 更新当前值和有效极值；后续读取失败跳过更新，保留 current／min／max。Package target 的源码默认值 100℃和保留的旧值均不能记为本次硬件实测。
+
+Hanbo 当前回调走 `GetAllHardwareInfo 0x47ed0 → snapshot 0x16000 → sensor consumer 0x15070`。该消费者遍历初始化列表中 kind `0x2000` 的全部有效传感器，使用 SDK byte-BSTR 名称建立温度字段，按阈值过滤 current，并把 cur／min／max 保留两位小数；它与 `GetCPUAndGPUClockAndTemperature` 的首个传感器查询路径不同。byte-BSTR 与 malloc JSON 分别由 Service `0x5420`／`0x45090` 释放。MW 转换器仅在 initStatus 正常且 CPU 启用时读取首 CPU 的 Package，其他情况保留源码零值；Hanbo 不再核对投影 CPUStatus，并在 await Elsa 之前发布及更新 last-temperature。同值写入失败不会单凭这个缓存自然重试，零值和缓存均不代表新读回成功。
+
+CPU stop `0xbb2c0` 设置停止 flag，对保留的 system／CPU worker handle 等待 INFINITE，再 close／clear，未区分等待失败。worker 经 provider 槽 `+120` 停止；CPU owner、SDK 全局 sensor owner 与温度析构分别承担自己的释放责任。该局部 join 不能推定整个 Service 回调已排空，所选读取没有逐次取消 token；产品未 await 的 `DeviceTerminate` 仍仅记录日志。
+
+AMD 分派及 K10／K12 的共享 PCI Package 链已由[后续专题](#amd-k10k12-package-温度的-pci-读取与恢复)接续；其他 Intel family／model 及优先 owner `+32` 仍保留独立缺项。Hygon 默认 provider 的结论见下节。须沿实际 vendor／family 门槛继续追温度生产与释放，不能从型号名称推定 Package 能力。全 CPU／全产品逆向、独立 Rust、UI／后端接线和实际 DLL／设备对照仍未完成；本节只确认上述六组及其实际消费者边界。
+
+### Hygon 默认温度 provider 与 Package 缺测语义
+
+[配件收据](../../../.analysis/results/frontend/accessories-main-audit.json)的 `hanbo_hygon_package_chain` 接续 `hanbo_cpu_monitor_chain/remaining_chains/1`，复用同一 SDK 的 19 个完整函数、14 个实际 PE 虚槽，以及已确认的 17 个 JS 所有者和 8 个 Service 结果函数；没有新增捕获、分析会话或临时副本。
+
+真实 vendor 必须等于 `HygonGenuine`。vendor 初始化在支持 CPUID `0x80000001` 时把 base family 与 extended family 相加；只有 family `0x18` 才经 `0x17a3e0 → 0x178740` 创建 `Hygon_C86_Infos`，挂到 CPU owner `+24`。初始化槽 `+40`、标识槽 `+32／+48` 与温度槽 `+64` 分别核对，不能把初始化中的 PCI、时钟、电压或功耗读取当成温度读取。
+
+该 C86 温度槽实际指向 `0x1785d0`，直接返回 PE `0x30f930` 的 float `-1.0`；vendor fallback `0x38b0` 也返回同一负值。两条温度调用都没有系统／驱动／SMU 温度读取、单位转换、传感器分配或 Package 刷新。它们只说明当前选定默认 provider 不产生 Package，不能推定所有 Hygon 系统都没有温度能力：CPU owner `+32` 优先于 C86，仍由原 CPU 收据的独立缺项继续分析。
+
+Service 仍按真实传感器名称生成结果；负函数返回不会自动变成 Package 字段。没有其他实际 provider 产生该测量时，首 CPU 转换器使用源码零值，Hanbo 会格式化、发布并可能转发，且在 Elsa 完成前更新 last-temperature。这个零值不是实测 0℃。所选温度调用没有逐次资源或取消 token；provider stop `+120` 为空，CPU thread 析构仍经 provider `+112` 调用删除包装器、继承的 owned-control 析构并释放分配。局部 stop 不证明 Service 回调已排空；本节不覆盖其他初始化能力、独立 Rust、UI／后端接线或实际 DLL／设备验收。
+
+### AMD K10／K12 Package 温度的 PCI 读取与恢复
+
+[配件收据](../../../.analysis/results/frontend/accessories-main-audit.json)的 `hanbo_amd_package_chain` 精确接续 `hanbo_cpu_monitor_chain/remaining_chains/0`，复用同一 SDK 的 67 个完整函数、33 个实际 PE 槽、17 个 JS 所有者和既有 Service／CPU worker 结果与释放证据，没有新增捕获、分析会话或临时副本。本节确认 K10 family `0x10／0x11` 和 K12 family `0x12` 的共享 Package 路径，其他 AMD provider 分开继续。
+
+vendor 必须实际等于 `AuthenticAMD`，支持 CPUID `0x80000001` 时把 base family 与 extended family 相加，再由 `0x1a6d50` 选择构造器。K10 与 K12 分别经虚表 `0x304c98／0x304d58` 的 `+40` 初始化，初始化内部就调用一次温度槽 `+64`，不是只等周期 worker。后续仍遵循 CPU owner `+32 → +24 → +16` 的实际优先级；family 名称不保证存在温度，也不排除更高优先级 provider。
+
+两条路径按实际启用的 PCI vendor `0x1022`、根设备和 socket 身份找到同 bus／device 的设备。K10 从 `0x1203／0x1303`，K12 从 `0x1703` 读寄存器 `0xa4`，调用保留的普通 PCI owner `+56`。第一次读取成功才建立或使用 `Package`，其真实名称取自 PE 字节，标识 `0x1802001`，挂在 CPU offset 1264 并加入共享 sensor 列表。第二次读取才用于当前值，却先把 raw 设为 `0xffffffff` 且忽略调用返回，随后按 `((raw >> 21) * 0.125 + offset) * multiplier` 换算并更新有效极值。因此第二次失败可能产生源码数值 255.875℃；第一次失败则返回负值并保留已有传感器。两种情况都不能记为新硬件实测成功。
+
+已核普通 PCI、PCI2、PCI3 的实际 `+56` 槽及当前 driver 的 IOCTL／CF8、CFC 端口读取链。dword IOCTL 核返回 payload 长度为 4，却没有核 OS 的 BytesReturned；mode 1 的缓冲循环忽略嵌套读失败，PCI3 也忽略最后一次端口读返回。CF8 恢复只有前序操作均成功才会到达。`0xab660` 的反编译文本把一处 Express owner 赋值写为 device `+16`，而完整汇编 `0xabc02` 的实际字节 `4c897318` 明确写入 `+24`；结论以汇编为准并保留原反编译记录，普通读取 owner 仍在 `+16`。
+
+初始化可能保存 PCI `0x8c` bit 14，再经 ECS command 的 `+16` 设置该位；源码不检查保存读和启用结果。SDK stop 经 `0x1ba140` 对共享 command 列表逐项调用 `+24`，用保存的 bit 恢复，然后停止接口并释放列表。恢复同样忽略读写结果且没有确认读回，静态存在恢复调用不等于真实恢复成功。K10／K12／vendor 的 `+120` stop 为空；CPU thread 经 `+112` 删除 provider，K10 另释放自身 offset 112 的分配，继承析构处理其所有的控制对象与列表。Package 由共享 SDK sensor 所有者释放。沿用现有 worker join、Service BSTR／malloc 释放事实，不据此推定整个 Service 回调排空或逐次取消已实现。
+
+Service 与 Hanbo 仍使用本页前述真实 `Package` 消费链；源码的数值有效性没有携带本次传输成功事实。缺少 Package 时的投影零值、提前更新的 last-temperature 缓存以及上述失败数值，均与设备实测状态分开记录。本项目已有 K17 温度／时钟 Rust 实现；它与本批 K10／K12 是不同分支，本批没有修改或重新验收该实现，独立 Rust、UI／后端接线和实际 DLL／设备对照仍分别未验证。
+
+后续独立入口保留为 K8 `0x17d850`、K15 `0x19d2c0`、K16 `0x195330`、K17／K19／family `0x1a` 共用的 `0x1841d0`，以及 K14 `0x19ed50` 与旧 family／default 的实际温度槽。K10／K12 初始化中非温度的 FIDVID／clock／control 依赖、优先 owner `+32` 和全服务取消／恢复也未由本节宣称闭合；具体入口统一留在本收据的 `remaining_chains`。
 
 ## 3900 PWM 风扇控制器
 
@@ -213,4 +267,4 @@ Service 的更新、快照／结果遍历、设备变更重初始化及 SDK 销�
 
 Service 初始化预载系统 `msctf.dll`／`imm32.dll`，保留隐藏窗口线程 handle 与 ID；预载或线程创建失败没有阻止初始化标志置真。关闭先释放 SDK，再反复发送 WM_CLOSE／WM_QUIT，每次等 200 ms、最多 5000 ms。超时返回 false，并保留窗口 owner 与初始化标志；源码把所有非 WAIT_TIMEOUT 结果当作退出，没有独立区分 WAIT_FAILED。当前 server 的 `0x32280` 实际消费 Terminate=false，保留模块映射并跳过 FreeLibrary；没有 Terminate 导出则仍可卸载。但所选 server 退出函数仍在设置线程池关闭标志和停止 worker **之前**调用模块释放；worker 等 10000 ms，任何非零等待结果都会强制终止，再等 1000 ms。这些边界不能表述为整个任务／回调队列已排空。
 
-产品 stop 仍先 await 注销 container，再调用未 await 的 DeviceTerminate；该原生方法只日志，并不执行 Common Terminate 或 CloseAPPServer。当前 Host 的三个 FFI 消费者与既有函数正文一致：`void(string)` JSON 解码、保留 callback map、复制 malloc 字符串并在 finally 中 FreeMalloc。全部选定输入通过静态复核；其余实际传感器／provider／时钟与利用率分支、server 在途任务与回调静止、Hanbo write66／accepted-count65、独立 Rust、UI／后端接线及实际 DLL／设备对照仍未完成。
+产品 stop 仍先 await 注销 container，再调用未 await 的 DeviceTerminate；该原生方法只日志，并不执行 Common Terminate 或 CloseAPPServer。当前 Host 的三个 FFI 消费者与既有函数正文一致：`void(string)` JSON 解码、保留 callback map、复制 malloc 字符串并在 finally 中 FreeMalloc。Hanbo write66／accepted-count65 的当前静态链与六组 Intel CPU Package 分支分别见前文专题；其余实际传感器／provider／时钟与利用率分支、server 在途任务与回调静止、独立 Rust、UI／后端接线及实际 DLL／设备对照仍未完成。

@@ -223,6 +223,48 @@ Ambient 的源码与 native owner 为 `0x5ce60/0x5cf80/0x5d0b0`：screen rect �
 
 旧附片的 `followup_plans`／`remaining` 等字段保留其历史收据语义。冻结基线的 61 项静态复核现为 0 未决、0 失败，当前结果见 [unresolved-current](../../../.analysis/results/reverse-pending/unresolved-current.json)；这不等于全部 Rust 功能、界面接线或设备验收完成，也不要求重复执行已完整捕获的静态提取。
 
+### PID1446 QuickEffect 的实际软件帧与停止边界
+
+[`audio-mw-audit.json`](../../../.analysis/results/frontend/audio-mw-audit.json) 的 `quick_output_1446_chain` 从 `mute_mapping_1446_chain.unresolved_chains[1]` 接续。统一入口为 `python -B -X utf8 tools/workspace.py audit-family-function --family audio --function mw --product 1446 --query audio-1446-quick-output-chain`。本批复用共享完整捕获，核对当前 MW／LE 选择、真实 manifest、完整 AST 与所选原生函数的实际 PE 字节；不重新捕获灯效算法。
+
+当前 manifest 的 `isHardwareEffectsOnly=false`，LE 实际创建 `rzDevice25AudioCamyT3V2`，与音频控制页的 `rzDevice25AudioCamyT2V3R` 分开。`ON_SET_EFFECTS` maker 保存 active profile 的 `quickEffects`；LE 的实际触发是设备配置存储变更，经当前 serial 的 active GUID 选择 profile，再进入软件分支。runtime／窗口存储发布本身不是设备写入。该 manifest 两个硬件效果同步标志都缺省为 false；5×12 逻辑矩阵按 manifest 映射到 1×10 设备 RGB，不能由几何推断协议帧格式。
+
+| 边界 | 当前实际结果 |
+| --- | --- |
+| 软件输出所有者 | 25 fps Basic engine，移除旧 effect 后添加当前菜单对应效果；region 0 不附加 mask。软件状态下设置 mode 3／CustomFrame 8，再按原版条件启用 engine。八种菜单参数与已有共享算法的精确绑定见下一节 |
+| 原生驱动选择 | `AddDevice` 传入完整类名 `rzDevice25AudioCamyT3V2`；Host 不归一化。驱动注册表只有 `rzDevice25AudioCamy`，当前 base-class override 集合也不含此类；精确查询失败，不能借同族 Camy 或 3942 Marci translator 认定写帧成功 |
+| 未消费帧 | 驱动保留未消费事件并调用原 JS callback；当前 `processEvent` 沿设备实际继承方法进入 `setChromaFrameLightingEngine → 6411.Cx → 677.y` 或 Camy `sendCommand` |
+| PID1446 实际帧 | 命令 `[80,15,3]`，payload 为 profile 0／region／row／start 0／end／RGB；10 个实际位置提供 30 B RGB。Camy body 为 64 B，XOR body `[0,62)` 写 body[62]，前置 report ID 7，实际 FeatureReport 共 65 B |
+| 完成与失败 | batch 能力可用且处于 CustomFrame 时排队并 await `hid.sendFeatureReportInBatch`；否则等待 65 B 发送计数，帧调用不读取应答。逐行异常会记录后继续，flush 拒绝可向上传播；正常返回仍会赋 `SUCCESS`，未检查 flush 结果，不能视为设备 ACK／读回 |
+| 停止与恢复 | JS exiting／lighting-off／filter／held-lock 能抑制后续帧；native timer／worker 的局部等待不等于 Host Promise 排空。driver Shutdown 只清 callback 并停止／join timer watcher；HID close／worker 的边界保留原证据。当前退出目标是 mode 0 与 manifest Spectrum 3，真实恢复及跨层排空均未验证 |
+
+本批只闭合所选产品从已确认 maker 到输出、失败和停止的静态边界。独立 Rust、UI／后端接线、官方 DLL／真实设备对照与恢复验收分别保持未验证；没有运行厂商 JS、DLL、应用或设备操作，也没有新建临时原件副本、分析会话或捕获。
+
+### PID1446 Quick 参数到共享计算的精确绑定
+
+同一 [`audio-mw-audit.json`](../../../.analysis/results/frontend/audio-mw-audit.json) 的 `quick_effect_binding_1446_chain` 接续旧 `quick_output_1446_chain.unresolved_chains[0]`。统一入口为 `python -B -X utf8 tools/workspace.py audit-family-function --family audio --function mw --product 1446 --query quick-effect-binding-1446-chain`。本片只核对实际菜单／默认输入 → `convertUItoLighting` → `getEffectParams` → facade／Action33 → 参数记录 → factory／实际虚表；数值算法、帧传输和 stop 沿原收据复用。
+
+当前 manifest 的分类是 `BROADCASTER`，configure 规范化为 `broadcaster`。它没有 Wheel 中心定制字段；不能套用 mouse、keyboard 或 gamepad 的转换分支。八项真实菜单及计算所有者如下，RVA 均属于当前已核验的 Lighting 4.0.55.0 原件：
+
+| UI 效果 → native ID | 本产品实际参数与分支 | constructor → initialize → render |
+| --- | --- | --- |
+| Audio Meter 12 → 12 | 只转换 `colorBoost`／`flow??0`，不消费 color1；固定绿／黄／红停点，AutoBoost0、Decay1000、Auto0 | `0x5ef00 → 0x5f0b0 → 0x5f3e0` |
+| Breathing 2 → 5 | color1 为 no-color 时用 color2；单色 5 停点／7000ms，双有效颜色 9 停点／14000ms，random 空停点／mode1／7000ms；不走 gamepad duration | `0x650f0 → 0x651c0 → 0x65570` |
+| Fire 8 → 8 | converter 无参数；固定橙／红／黑停点，Rate160、Seed100、Cycles-1 | `0x62420 → 0x624a0 → 0x633b0` |
+| Spectrum 3 → 4 | converter 无参数；共享十停点，Duration37740、Mode0、Cycles-1、Pause0 | `0x61dc0 → 0x61e90 → 0x62130` |
+| Starlight 7 → 7 | duration1／2／default／3 对应 500／1700／1700／2000ms；random 空停点，第二色大于0时双峰；MaxStar20、Regen10、Cycles1 | `0x601a0 → 0x603b0 → 0x60790` |
+| Static 1 → 6 | color1 经 no-color／`0x` 转换，facade 只投影 Color | `0x68c00 → 0x68c30 → 0x68c70` |
+| Wave 4 → 2 | broadcaster 走 default：严格 direction===1 为 left／270°，其余 right／90°；不转 speed／split／counterclockwise；Speed25、Width100、Mode0 | `0x659b0 → 0x65a80 → 0x666b0` |
+| Wheel 13 → 13 | `2===+direction`，数字字符串也会转换；先 await 引擎实际 cols／rows，5×12 时中心为 col6／row2；任一 undefined 先返回错误；Speed360、Mode1024／2048 | `0x66a80 → 0x66b40 → 0x66d60` |
+
+Spectrum 和 Fire 没有菜单默认 settings 条目，不补造产品默认对象。当前八种 Quick 均未提供 playback 参数。界面参数来自 active local profile；它们与设备实测状态分开。颜色进入 Action33 前统一 RGB/BGR 交换，透明 sentinel 保留。
+
+原生参数记录先清零 **313 B**：effect ID 在 offset0，最多10项 Stop／Color 分别从 offset4／44起。Audio 的 Flow 是 offset96 的低16位，BoostLevel 是 offset98 的 float32；`0x2380f/0x23813/0x23866` 的实际指令保留了 double→float 与 packed 写入依据。Wave 虽发送 Duration0，parser 不读该字段；Audio 的 supplied Mode／Auto 也不替代内部 style0。完整逐效果布局保存在 `native_contract.field_layouts`。
+
+Action33 parser `0x21ac0` 经 engine 虚表+64 → `0x4c740 → 0x521e0 → 0x51200`。factory 按实际 native ID 分配并构造对象，以首虚表+8初始化，失败调用删除析构并返回错误，成功才给 handle；+16指向表中已有 render。该 handle 和 JS 完成均不证明设备 ACK：facade 捕获错误后可返回 undefined，底层 AddEffect 直接取 `effect_handle`，未检查 Status。
+
+本片复核15个新增完整 AST owner、16个精确引用的已有 owner、29个既有原生函数及17个实际 PE 虚表槽；没有重新逆向八种数值算法。10项定向维护器测试覆盖分类／默认值／映射、单双色及 random、Wheel 几何、packed 参数、factory／虚表篡改、精确上游变化和发布前快照。它们只验证静态收据；独立 Rust、UI／后端接线和实际 DLL／设备输出、取消及恢复对照仍未验证。本片没有执行官方代码，也未新建临时副本、数据库、分析会话或捕获。
+
 ### 当前 Advanced Profile 的层顺序、区域 mask 与 native 合成
 
 统一入口 `python -X utf8 tools/workspace.py audit-host-local --query lighting-static-layer` 将[当前 LE 原件](../../../.analysis/inputs/frontend/synapse-lighting-engine-snapshot-1d1be731/acquisition.json)的 Profile 消费者接到[已有 4.0.55.0 完整 native 捕获](../../../.analysis/results/native/cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa/capture.json)，结果归[同一主机收据的 lighting_static_layer](../../../.analysis/results/host-current/local-audit.json#lighting_static_layer)。本片保留 41 个完整 AST owner，重新核对 71 份完整 native 函数与 26 个实际 PE 虚表槽；正文及 chunk 引用复用既有捕获，不重复启动 IDA 或复制数据库。旧 `lighting_frame_lifecycle` 的 Marci 范围及失败事实独立保留。
@@ -421,7 +463,7 @@ Type15 的原生 JSON 只接受大小写精确的 `Type="Destiny2"` 并生成 su
 
 Generate 外层只检查三个指针，返回 true 不能证明推理成功。[内部 `0x1140`](../../../.analysis/results/native/20604ff3a2193710a76147931da4528ae1092ad89149e517f7b95c8996d3e191/functions/1140.json)将每个 4 B 像素的前三个通道除以 255 后送入解释器，再按 16 个输出 score 降序排列 primary colors；结构条件失败时输出 16 个零。媒体调用失败或生成器缺失时，原版确有 procedural／fallback 分支；这项源码事实不能成为独立实现隐藏 AI 失败的理由。
 
-该收据保留的 Lighting `0x6ef70/0x6f410/0x6f870/0x700a0/0x87d60/0x8a440` 依赖已由下节接续：pattern、procedural 与 fallback 算式已复核，解码／缩放包装已明确实际核心。AI `0x1570 → 0xca60/0x4c10/0x8960/0x1a6c0`、`0x1140 → 0x1ab20` 及模型原件、codec／resampler 内部计算仍待接续；均复用已有捕获。各产品 Quick 真实挂载、固件和传输分支继续分别核对；接口调用及完整函数捕获不等于这些语义已完成。
+该收据保留的 Lighting `0x6ef70/0x6f410/0x6f870/0x700a0/0x87d60/0x8a440` 依赖已由下节接续：pattern、procedural 与 fallback 算式已复核，解码／缩放包装已明确实际核心。AI `0x1570 → 0xca60/0x4c10/0x8960/0x1a6c0`、`0x1140 → 0x1ab20` 及模型原件由下文[AI 模型接续](#当前-ai-模型算子选路与生成边界)核对；codec／resampler 同样复用已有捕获。各产品 Quick 真实挂载、固件和传输分支继续分别核对；接口调用及完整函数捕获不等于这些语义已完成。
 
 12 项专题维护器测试通过，覆盖 Type15 真实 PE 落入与错误消费者、媒体／历史／删除／取消边界、资源与导出、AST 原件、篡改反例、严格 JSON 与稳定快照。它们验证静态收据；完整 Rust 独立实现、UI／后端接线、实际 DLL／设备对照和窗口验收仍未验证。本批没有执行官方代码，没有新增临时文件、数据库副本或分析会话。
 
@@ -455,7 +497,7 @@ phase 为 `uint64(truncate(scalarSigned*N*spread + abs(speed)*(t/90))) % 100`；
 图片的 [`0x87d60`](../../../.analysis/results/native/cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa/functions/87d60.json)是文件包装：打开失败记录 `can't fopen` 并返回 null；成功经 `0x87e40 →0x87f00 →0x8b480` 解码，随后关闭文件。当前消费者要求 4 通道、8 bit；非 8 bit 转换与可选翻转分别进入 `0x8b660`、`0x8b750`。[`0x8a440`](../../../.analysis/results/native/cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa/functions/8a440.json)经 `0x8a580 →0x89840 →0x8a2f0` 准备输出并执行缩放。实际 layout4 经 PE 表取值5，对应4通道、每通道1 B，32×32 的 row 为128 B、frame为4,096 B；当前传入 media owner 的现成缓冲，包装不会另配输出，也不会在失败时释放该缓冲。仅在未提供缓冲时才分配并在失败时释放自有输出。实际调用方仍不检查缩放返回就标记图片可用。
 
 
-本片只确认解码／缩放包装及 row 字节计算，当前 caller 的 resampler 内部由下节接续；格式分派、压缩像素展开、位深转换／翻转继续取证。AI 模型算子和实际产品 Quick 分支沿前节继续。本片 10 项专属维护器测试通过，覆盖九种 scalar 固定向量、64 位负值回绕、speed／时间、混合阈值、8 项 fallback、隐藏寄存器参数、常量、篡改拒绝、严格 JSON 与稳定快照；没有执行官方代码、创建新捕获、临时副本或分析会话。Rust 独立实现、UI／后端接线、实际 DLL／设备对照和窗口验收均未由本片验证。
+本片只确认解码／缩放包装及 row 字节计算，当前 caller 的 resampler 内部、格式分派与 RGBA8 归一化由后续两节接续；各格式像素由下文独立收据接续。AI 的模型图、五类算子与默认 delegate 见[AI 模型接续](#当前-ai-模型算子选路与生成边界)，剩余数值微核及实际产品 Quick 分支仍待查。本片 10 项专属维护器测试通过，覆盖九种 scalar 固定向量、64 位负值回绕、speed／时间、混合阈值、8 项 fallback、隐藏寄存器参数、常量、篡改拒绝、严格 JSON 与稳定快照；没有执行官方代码、创建新捕获、临时副本或分析会话。Rust 独立实现、UI／后端接线、实际 DLL／设备对照和窗口验收均未由本片验证。
 
 ### 当前图片 32×32 resampler
 
@@ -471,7 +513,163 @@ phase 为 `uint64(truncate(scalarSigned*N*spread + abs(speed)*(t/90))) % 100`；
 
 0xa9ee0 使用当前 working4/working7 cost 表选择两轴先后。0x8a3a0 对 mode 非零尾调用 0xb0c70 做输出 gather；mode0 以实际 jz 尾分派 0xb0dd0，逐输入行 scatter 并 flush。环形行缓冲使用真实 modulo 地址，空行哨兵为 float 3e38。纵向每批最多8行，first/add 与 assign/add 使用四张独立表；0xb1589 与 0xb4a22 的间接 call 均带 -8 位移。横向七通道长度1..12使用精确槽，更长按长度模4选择向量循环；SIMD 与 scalar tail 的顺序不能由数学等价推断。0xac0e0 的通用 prepend 向后循环由机器码确认并原样保留。
 
-14 项专属维护器测试通过，覆盖自动 kernel／极端缩小、先归一化再 clamp、负瓣、exact4／非exact7、透明彩色／半透明、实际槽、隐藏参数、-8 调用、原始循环、常量篡改拒绝、严格 JSON 与稳定快照。摘要 SHA-256 为 cb5edf2721c2e677dffd060d5e9bf8ce490c29cd741266d56430821da1f5201c。测试仅验证静态维护工具；Rust 独立实现、UI／后端接线、实际 DLL／设备对照、SIMD 舍入及运行验收仍未验证。codec 解码、AI 模型算子与真实产品 Quick 分支继续沿现有缺项，本片没有新建捕获、副本、临时输出或分析会话。
+14 项专属维护器测试通过，覆盖自动 kernel／极端缩小、先归一化再 clamp、负瓣、exact4／非exact7、透明彩色／半透明、实际槽、隐藏参数、-8 调用、原始循环、常量篡改拒绝、严格 JSON 与稳定快照。摘要 SHA-256 为 cb5edf2721c2e677dffd060d5e9bf8ce490c29cd741266d56430821da1f5201c。测试仅验证静态维护工具；Rust 独立实现、UI／后端接线、实际 DLL／设备对照、SIMD 舍入及运行验收仍未验证。codec 解码由下文九格式收据接续，AI 模型图与算子选路见[AI 模型接续](#当前-ai-模型算子选路与生成边界)；数值微核与真实产品 Quick 分支继续待查。本片没有新建捕获、副本、临时输出或分析会话。
+
+### 当前图片格式分派与 RGBA8 归一化
+
+查询 `lighting-media-codec-boundaries` 接到[统一主机收据](../../../.analysis/results/host-current/local-audit.json)的 `lighting_media_codec_boundaries`。当前原件仍为 LightingEngine **4.0.55.0**，SHA-256 为 `cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa`。本片复用正式捕获，复核 **56 个完整函数、63 条真实直接边、3 个文件回调槽、6 段 PE 原始字节与 10 段关键汇编**。选定函数无缺失伪代码或局部失败，原全库 10 条 Hex-Rays 失败保留。read 回调叶函数不在原 IDA 函数索引中，其槽及完整叶指令／padding 由单独的实际 PE 字节区域绑定，没有伪造新的捕获函数。
+
+[`0x8b480`](../../../.analysis/results/native/cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa/functions/8b480.json)依次测试下列格式。命中后直接返回该解码器结果，包括 null；没有按扩展名选分支，也没有在解码失败后继续试其他格式。
+
+| 顺序 | probe → decoder | 实际识别边界 |
+| --- | --- | --- |
+| PNG | `0x8b850 → 0x8b880` | 完整 `89 50 4e 47 0d 0a 1a 0a` 签名 |
+| BMP | `0x8b8e0 → 0x8b910` | `BM` 且 DIB header 大小为 12／40／56／108／124 |
+| GIF | `0x8cc10 → 0x8cc40` | `GIF87a` 或 `GIF89a` |
+| PSD | `0x8cd40 → 0x8cd70` | 大端 `0x38425053`，即 `8BPS` |
+| PIC | `0x8dc10 → 0x8dc40` | `53 80 f6 34`，再跳过 84 字节并匹配 `PICT` |
+| JPEG | `0x8de30 → 0x8deb0` | marker reader 读取 SOI `D8`；probe 自有 18,568 B 对象，退出后释放，分配失败记 `outofmem` 并返回 0 |
+| PNM | `0x8df40 → 0x8e010` | `P5`／`P6`；probe 成功留下已消费的两个字节，实际 header owner `0x9bbc0` 在解析前恢复窗口 |
+| HDR | `0x88d00 → 0x8e160 → 0x8e920` | `#?RADIANCE\n` 或 `#?RGBE\n`；float 图像随后转 byte |
+| TGA | `0x8ebb0 → 0x8eda0` | 最后的结构识别：palette flag 为 0／1，随后检查真实 type、位深、非零宽高及 palette 条件 |
+
+上述 probe 的恢复指 `0x8f9a0` 恢复 context 内保存的 buffer 起止地址，不能解释成文件 seek。PNM 的成功路径例外已由真实 return／call 指令区分。`0x87e40` 建立 128 B callback buffer，只有解码返回非空时将未消费字节 seek 回去；callback EOF 后关闭进一步读取并提供一个零字节。`0x87d60` 在解码返回后关闭文件；`0x87e20` 将错误字符串指针写到 TLS。
+
+当前 `0x8b130` 实际传入 required-components **4**。byte／word 通道转换 `0x90680`／`0x910a0` 在当前 RGBA 输出下分别将单通道变为 `(Y,Y,Y,max)`、双通道变为 `(Y,Y,Y,A)`、三通道补 `max` alpha；已有四通道返回原 buffer。替换成功或分配失败都会释放旧 buffer；word 转换的大小由有符号 32 位直接乘积计算，不能套用 byte 转换的 checked-product 语义。
+
+[`0x87f00`](../../../.analysis/results/native/cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa/functions/87f00.json)真实传入 width、height 和 required-or-source 通道数给 [`0x8b660`](../../../.analysis/results/native/cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa/functions/8b660.json)。16→8 bit 的 SIMD 与 scalar 都取每个原生 word 的高字节，**不四舍五入、不按 65535 比例缩放**；`0x00ff → 0`、`0x7fff → 127`、`0x8000 → 128`。这里描述解码器交付的原生 word buffer，不据此推断所有文件格式的字节序。此 reducer 只在新分配成功后释放旧 buffer；分配失败会漏掉旧 buffer，wrapper 也没有在可选 flip 前再次检查 null。这是原版真实失败边界，不能把静态收据改写成已具备完整失败清理。
+
+flip 在位深归一化之后执行：TLS 的 override-present 标记选择 TLS flip 值，否则取全局值，当前 caller 没有强制启用。`0x8b750` 用 2,048 B 栈 scratch 分块交换 `floor(height/2)` 对完整行，宽行重复分块，奇数高的中行不变。没有观察到单次同步解码的独立异步取消入口。HDR 的当前四通道 RGB 用实际 `pow(float*scale,inverse_gamma)`，随后乘 255、加 0.5、clamp 并截整数；alpha 只线性转换。PE 默认 inverse-gamma 为 `0.45454543828964233`、scale 为 1；其 setter 生命周期与实际 DLL 舍入仍未验证。HDR converter 在正常及分配失败路径均释放 float 输入。
+
+正尺寸的非空解码结果才进入已确认的 layout4/type0、32×32 resampler，随后释放源像素；非正尺寸也释放源像素。图片 available 标记仍忽略 resize 返回值，不能据此判断缩放成功。9 项定向维护器测试通过，覆盖真实分派顺序、PNM 游标、灰度／alpha、16 bit 高字节、跨 scratch 宽行／奇数行、失败所有权、重算摘要后的篡改拒绝、稳定快照及统一缺项入账。摘要为 `281500b8ec1b49a13c9c67c74f6188f06d6c45a1cdc281b98bef1d1e30f33487`。
+
+本片闭合格式路由和当前 RGBA8 归一化边界；各格式的压缩像素、损坏输入与 decoder 内部清理分别复核，PNG 的后续结果见下一节，其他格式不能由完整入口捕获推定已完成。未重复 resampler，未扩展 AI／Quick，也没有新增临时文件、数据库或分析会话。Rust、UI／后端、官方 DLL／设备功能对照与运行验收保持未验证。
+
+### 当前 PNG 解压、滤波与像素所有权
+
+查询 `lighting-png-decoder-chain` 接到[统一主机收据](../../../.analysis/results/host-current/local-audit.json)的 `lighting_png_decoder_chain`，接续既有 codec 缺项。原件仍为 LightingEngine **4.0.55.0**；复用同一正式捕获，本片核验 **48 个完整函数、70 条实际直接边、2 个文件回调槽、13 段 PE 原始字节、1 段加载器补零区与 11 段关键汇编**。选定函数无伪代码缺失，原全库 10 条 Hex-Rays 失败继续保留；没有重做九格式路由、RGBA8 reducer 或 resampler。
+
+当前入口为 `0x8b880 → 0x8fa10 →` [`0x8fb40`](../../../.analysis/results/native/cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa/functions/8fb40.json)，scan 为 0，当前 required-components 为 4。完整签名之后要求唯一 IHDR、长度 13、非零宽高且各不超过 `2^24`、位深 1／2／4／8／16、颜色类型 0／2／3／4／6；palette 禁止 16 bit，其他低位深／颜色组合没有补上规范外的额外限制。compression／filter method 为 0，interlace 为 0／1。PLTE 最多 768 B 且长度为 3 的倍数，已初始化条目的 alpha 为 255。tRNS 在已拥有非空 IDAT buffer 后拒绝；零长度 IDAT 未必分配 buffer，不能改写成统一的“见过 IDAT”标志。
+
+IDAT 分块上限为 `0x40000000`，累计长度检查溢出，容量从 `max(4096, chunk_length)` 开始按需倍增，`0x91c90` 必须读满。scalar 读流在 EOF 可以得到零字节；payload skip 的返回值没有检查，负的 signed length 仅耗尽当前窗口。未知 critical chunk 失败，ancillary chunk 跳过；CgBI 可先于 IHDR。IEND 没有长度必须为 0 的检查。**CRC 只读取并丢弃，不校验**，不能将通过解析等同于完整 PNG 完整性校验。inflate 的初始容量估计使用 32 位直接乘加，随后最终像素的 checked allocation 是另一条边界。
+
+[`0x89010`](../../../.analysis/results/native/cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa/functions/89010.json)拥有解压输出，经 `0x88fd0 → 0x9c8d0` 处理 stored／fixed Huffman／dynamic Huffman，reserved type 3 返回失败但不设置新错误。普通 PNG 校验 zlib header 的 mod 31、compression method 8 和无 preset dictionary；CgBI 跳过 zlib header，CINFO 范围与 Adler32 都没有校验。stored 检查 LEN／NLEN 与剩余输入；dynamic 长度沿真实 permutation、repeat 16／17／18 及过界检查建表。Huffman 为 9 bit fast table 加 10..15 bit slow path；literal 256 结束，length 257..285、distance 0..29 使用已绑定 PE 表。backreference 不得早于已有输出；distance 1 采用填充，其余保留向前重叠复制。bit refill 的 EOF 补零及单次 16 bit 容许值保持原样。`0x9d7f0` 的第三参数由汇编确认：stored LEN、literal 1 或完整 match length；扩容检查 uint32 加法／倍增，realloc 失败仍由原 owner 持有 buffer。
+
+[`0x926e0`](../../../.analysis/results/native/cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa/functions/926e0.json)分配最终像素及两行 packed scratch，检查最少输入但允许末尾多余字节。filter 0..4 按 None／Sub／Up／floor Average／Paeth、模 256 还原；首行 remap 为 `[0,1,0,5,1]`，Paeth 同距顺序为 left、up、corner。低位深按 packed byte、stride 1 滤波，其他按源通道数乘样本字节数。1／2／4 bit 按 MSB-first 解包，只有灰度乘 255／85／17，palette／其他颜色不缩放；16 bit 大端样本转换为本机小端 word，新增 alpha 为 255／65535。`0x93c10` 的实际 r8／r9 是 width／source-channels，虽然 caller 伪代码漏参，仍由指令绑定，扩展 alpha 时从后向前写。`0x91d40` 依据七轮 Adam7 origin／step 表跳过空轮，按每轮真实 filtered-byte 数推进并 scatter 到独立的完整图像。
+
+tRNS 使用原始灰度／RGB 样本精确相等时清 alpha；palette 展开保留已有透明度，**没有检查像素索引是否小于实际 PLTE 条目数**，不能给未初始化项编造颜色。CgBI 的转换／unpremultiply 均先读 TLS override，再读全局值；两个全局位于已核验的加载器补零区，setter 仅赋值，运行时值没有实测。转换交换 B／R；可选 unpremultiply 使用 `(alpha//2 + 255*channel)//alpha`，结果写低字节而不 clamp，alpha 为 0 时只交换。caller 检查通道数不少于 3，**没有 depth16 guard**，因此不能把该 bytewise 函数写成具备 16 bit 语义。
+
+清理沿真实 owner：inflate 失败释放当前输出，成功后 PNG 释放并清空 IDAT；滤波 scratch 在成功及 invalid filter 时释放，部分像素留给外层。Adam7 每轮成功释放 pass pixels，失败释放完整 destination，当前 pass 由外层负责。palette 分配失败保留 indices，成功后替换并释放。`0x8fa10` 成功转交 pixels 时先清 owner，公共退出释放并清空剩余 pixels／inflated／IDAT；通道转换失败提前返回，但其输入已被转换器消耗，成功 parser 也已释放 IDAT／inflated。非法 requested-components 和不可达的成功后 depth 错误仍是实际早退。没有独立异步取消入口；此前 16→8 reducer 的分配失败泄漏不因此被改写为已修复。
+
+12 项定向维护器测试通过，覆盖滤波、packed 灰度／palette、透明色、16 bit 字节序、Adam7、CgBI 零 alpha／舍入／byte 截断、真实参数、owner／表／指令篡改拒绝和稳定快照。摘要为 `d9a72fab2c3665f9da5ab3d879a96eadf7416b5c6be06de8f8a310a083a005d4`。这些是静态证据与合成像素校验，没有执行官方 DLL。PNG 本片语义已复核；其他格式以各自下节收据为准。Rust 独立实现、UI／后端、实际 DLL／设备对照及运行验收仍未验证。本片没有新增副本、临时输出、数据库或分析会话。
+
+### 当前 PNM 头部、原样像素与失败释放
+
+查询 `lighting-pnm-decoder-chain` 接到[统一主机收据](../../../.analysis/results/host-current/local-audit.json)的 `lighting_pnm_decoder_chain`，核查当前 LightingEngine **4.0.55.0** 的 [`0x8e010 → 0x9bbc0`](../../../.analysis/results/native/cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa/functions/8e010.json)。本片复用正式捕获并绑定 **19 个完整函数、22 条真实直接边、2 个 read／EOF 回调槽、2 段 PE 字节与 9 段关键汇编**；选定函数无伪代码失败，原全库 10 条 Hex-Rays 失败保留。未重复 PNG、其他格式、路由、RGBA8 或 resampler。
+
+header 先恢复保存的 buffer window，只接受 P5／P6，源通道为 1／3。width、height、maxval 前跳过字节 9..13／32 和以 CR／LF 结束的 `#` 注释；magic 后没有强制空白。数字 parser 每处理一位先消费下一个 lookahead，再以 **214748364** 及下个 signed char 判溢出，不能描述成接受完整 `INT_MAX` 的常规 parser。width／height 为 0 都报 `invalid width`。maxval 只拒绝大于 65535，256..65535 选 16 bit，其余选 8 bit；0、非数字返回 0、解析溢出返回 0 均未增加正值校验，最后一种可以带着 TLS 的 `integer parse overflow` 继续成功。**maxval 后不再 skip 或验证分隔空白**：已消费的一个 lookahead 被丢弃，额外空格／注释、CRLF 的 LF 可以直接成为像素。
+
+每个尺寸不超过 `2^24`，`0x9bdd0`／`0x9be30` 按四个因子检查源通道数×宽×高×样本字节数不超过 signed 32 位范围。`0x91c90` 原样读满 raster，**不按 maxval 缩放、不检查样本上限、不转换 16 bit 字节序**。实际通道转换参数由汇编绑定为 pixels／源通道／requested／width／height；16 bit bytes 直接进入本机小端 word 转换，随后现有 reducer 取高字节。例如原始 `12 34` 成为本机 `0x3412`，当前 8 bit 输出为 `34`。P6 原始 `12 34 56 78 9a bc` 因而得到 RGBA `34 78 bc ff`；maxval 15、像素 `0f` 仍输出 `0f`。尾部多余字节不拒绝。这些是已核验的原版行为，未按文件格式惯例改写。
+
+header／尺寸失败前没有像素分配；分配失败报 `outofmem`；短读先释放 buffer，再报 `bad PNM`。成功时原 buffer 直接转交，或交给既有通道转换器，由它在成功／分配失败时消耗并释放源 buffer。没有额外异步取消接口，文件关闭及后续 reducer 的既有边界继续复用。11 项定向维护器测试通过，覆盖固定像素、注释／分隔、maxval／溢出异常、字节序、短读释放、真实参数及来源／语义／依赖篡改拒绝；摘要为 `3a2811e32ff0247e5b3b1148eb6ff0eff01964a7fc380a3360dfd3064f6f304b`。合成输入没有执行官方 DLL，也不是产品 Rust 实现。本片仅核定 PNM；其他格式以各自收据为准。独立 Rust、UI／后端、实际 DLL／设备对照及运行验收继续未验证。本片没有新增临时文件、副本、捕获或分析会话。
+
+### 当前 BMP／TGA 像素、调色板与失败边界
+
+查询 `lighting-bmp-tga-decoder-chain` 接到[统一主机收据](../../../.analysis/results/host-current/local-audit.json)的 `lighting_bmp_tga_decoder_chain`，继续使用 LightingEngine **4.0.55.0** 正式捕获。本片绑定 **25 个完整函数、41 条实际直接边、2 个回调槽、4 段 PE 字节与 14 段关键汇编**；选定函数无伪代码失败，原全库 10 条失败保留。仅追 [`BMP 0x8b910 → 0x93fa0`](../../../.analysis/results/native/cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa/functions/8b910.json)及 [`TGA 0x8eda0 → 0x9c380／0x9c3e0`](../../../.analysis/results/native/cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa/functions/8eda0.json)，复用已有 read／refill／skip／allocate／channel／free 边界。
+
+BMP 接受 DIB 12／40／56／108／124、planes 1，拒绝负 offset、RLE compression 1／2 与 signed compression≥4；没有把其他异常值统一修成规范校验。宽与绝对高不超过 `2^24`，本层没有单独拒绝零尺寸。palette 数量按 offset 推导，不读 `clrUsed`：CORE 为 `trunc((offset-extra_read-24)/3)`，其他为 `(offset-(dib_size+extra_read))>>2`；1／4／8 bit 按 MSB 解包，BGR palette 的保留 alpha 字节被丢弃，像素索引没有与已初始化条目数比较。每行对齐 4 B；正高度翻转行，负高度保留顶向下。24 bit BGR 与标准 32 bit BGRA 有直接路径，其他 mask 路径检查 RGB 非零及 popcount≤8，但不强制连续、不完整拒绝重叠。BMP 的 PE 扩展表使 RGB555 的 16 得到 **132**；TGA 使用 `floor(16*255/31)` 得到 **131**。默认 BMP 32 bit 的全零 alpha 被设为不透明，显式 mask 的全零 alpha 仍可透明。BMP scalar EOF 可补零，不能记作已具备整份 raster 的短读失败门槛；bad mask／palette layout／bpp 路径会释放 destination。
+
+TGA 按 palette depth 或 pixel depth 确定通道：RGB 15／16 bit 为无 alpha 的 RGB555，gray16 为 Y／A，24／32 bit 为 BGR／BGRA。ID 按真实字节数跳过；palette first-index 也直接作为未乘 entry-size 的 skip 字节数，随后索引不减 first-index，越界改选条目 0。非 RGB555 palette 必须读满，失败释放 palette 和 destination；RGB555 palette 为 scalar 读取。raw、非 palette、非 RGB555 的整行读取**忽略返回值**，短读可留下未初始化 heap 字节；合成测试将这些字节保持未观测，不编造黑色。RLE packet 为 `(header&127)+1`，高位表示重复，允许跨行，最终像素达到尺寸后不拒绝超长 packet；scalar／RLE EOF 可补零。descriptor 只应用纵向 bit 5，忽略水平 bit 4 与低位 alpha 声明；普通颜色解码后交换 B／R，RGB555 已为 RGB 而跳过交换。底向上路径翻转完整行，一般路径还会自交换奇数高的中行。
+
+11 项定向维护器测试通过，覆盖固定像素、mask 表／非连续位、palette、行方向、alpha、RLE、短读差异、释放与来源／语义／依赖变更拒绝；摘要为 `5d45e58109401cead15f7d4c74132646f92f91e4ba1b31f6c21806bbd95ef4be`。没有执行官方 DLL，也没有新增临时产物、捕获或分析会话。PIC 的接续结论见下一节；其余格式、独立实现和实际对照按统一收据分别判断。
+
+### 当前 PIC 通道 packet、行压缩与失败释放
+
+查询 `lighting-pic-decoder-chain` 接到[统一主机收据](../../../.analysis/results/host-current/local-audit.json)的 `lighting_pic_decoder_chain`，接续既有 PIC 缺项，仅追 [`0x8dc40 → 0x95910 → 0x95ec0／0x960e0`](../../../.analysis/results/native/cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa/functions/8dc40.json)。复用 LightingEngine **4.0.55.0** 正式捕获，绑定 **16 个完整函数、22 条实际直接边、2 个回调槽、2 段 PE 字节与 12 段关键汇编**；选定函数无伪代码失败，原全库 10 条失败保留。未重复 probe、路由、RGBA8 归一化或 resampler。
+
+header 跳过 92 B 后读取大端 u16 宽高，检查 `width*height*4`，再忽略一个 BE32 和两个 BE16，分配并将 RGBA 工作 buffer 全部初始化为 255；本层没有额外的零尺寸拒绝。descriptor 至少一个、最多 10 个，依次为 chained／size／compression／channel mask，size 必须为 8，chained 任意非零继续。mask 的 `0x80／0x40／0x20／0x10` 选择 R／G／B／A，低位忽略，空 mask 允许；任一 packet 含 alpha 时报告源通道 4，否则报告 3，但工作 stride 始终为 4。处理顺序为行 → packet → 像素／run，后 packet 可覆盖前值，未写通道保留 255 或之前的值。
+
+type 0 逐像素读所选通道。type 1 使用原始 u8 count，截短至本行剩余宽度；type 2 的 0..127 表示 literal `count+1`，129..255 表示 repeat `count-127`，128 后接大端 u16 repeat count，literal／repeat 越过本行都报 `bad file`。两种 repeat 的零 count 仍读取 sample，像素不前进；run 不跨行。height 为 0 时在压缩类型检查前返回，width 为 0 但有行时仍拒绝未知压缩类型。没有纵向翻转、BGR 交换或尾部多余字节拒绝。EOF 按真实 callback／read-enabled／cursor 判断；callback 尚未报 EOF 时 refill 仍可能提供零字节，不能把完整合成输入的短读模型当成实际 DLL 的统一 exact-read 行为。
+
+汇编确认可选 component pointer 使用完整 64 bit CMOV；parser 失败后释放 buffer 并置 null，仍更新宽高并进入通道转换器。实际参数是 source 4、当前 requested 4、width／height，因此既有 equality 分支直接返回原 pointer，包括 null，没有将失败变为成功。非当前 requested 0 的 fallback 可能在早期失败后读取未初始化的 component 元数据，未把它改写为安全回退。packet helpers 不拥有 heap，也未观察到独立异步取消入口；文件关闭与后续归一化复用已有所有者。
+
+11 项定向维护器测试通过，覆盖 6 组独立固定向量、mask／packet／行顺序、两种 RLE 边界与零 count、descriptor 上限、零尺寸差异、真实参数、失败释放及重新计算摘要后的篡改拒绝；摘要为 `decd518ea6867b280916f6d9c6045a1d3cfc2b321b23c24d48bd61e0a8df70bf`。本片未执行官方 DLL，没有新增临时文件、副本、捕获或分析会话。本片仅核定 PIC；其他格式以各自收据为准。独立 Rust、UI／后端、实际 DLL／设备对照及运行验收仍未验证。
+
+### 当前 PSD 平面像素、PackBits 与位深交接
+
+查询 `lighting-psd-decoder-chain` 接到[统一主机收据](../../../.analysis/results/host-current/local-audit.json)的 `lighting_psd_decoder_chain`，接续 PIC 收据中的 PSD 缺项，仅闭合 [`0x8cd70`](../../../.analysis/results/native/cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa/functions/8cd70.json)及 [`0x95570`](../../../.analysis/results/native/cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa/functions/95570.json)两个新增语义 owner，共 1,029 行完整伪代码。复用 LightingEngine **4.0.55.0** 正式捕获，本片绑定 **16 个完整函数、19 条实际直接边、3 个回调槽、5 段 PE 字节与 16 段关键汇编**；选定函数无伪代码失败，原全库 10 条失败继续保留。未重复 probe、格式路由、RGBA8 reducer 或 resampler。
+
+header 要求大端 `8BPS`、version 1，跳过 6 B reserved 而不检查零，允许 0..16 个源通道；高度先于宽度读取，signed 上界比较后由 checked-size 拒绝负值，没有额外的零尺寸检查。位深为 8／16、颜色模式为 RGB 3，依次跳过颜色数据／资源／layer-mask 三段带长度区，skip 返回值未检查。compression 仅为 0／1。像素工作通道始终为 4：缺少 RGB 填零，缺少 alpha 填 255／65535；只消费前四个源通道，额外通道的像素不继续读取或跳过。
+
+未压缩数据按通道平面读取。当前 requested-bpc 8 对源 16 bit 读取 BE16 后取高字节，不按 PNM 的原始本机 word 行为处理；只有未压缩、源 16 bit 且请求 16 bit 时才分配 8 B／pixel 并保留 word，结果 bpc 在分配成功检查前已写为 16。PackBits 先跳过 `signed32(2*源通道数*高度)` 的行长度表，但不使用表内容：`0x95570` 实际按整幅 `width*height` 解码每个 byte plane，run 可跨行。0..127 表示 literal `control+1`，129..255 表示 repeat `257-control`，128 为 no-op；越过剩余整幅平面时返回失败。**压缩的源 16 bit 也走相同 byte plane，未保留或解析 16 bit 样本**，不能按格式惯例补足。scalar EOF 可提供零字节，短读不保证失败；完整合成输入模型将缺失值保持未观测，不冒充 callback 实测。
+
+源通道不少于四个时，部分 alpha 执行白色 matte 反算：float32 的 `inverse=1/(alpha/max)`、`bias=(1-inverse)*max`，再将 `RGB*inverse+bias` 截整数并写入低 byte／word，**没有 clamp**。负结果可回绕，例如 RGBA `aa 00 ff 55` 得到 `00 02 ff 55`；alpha 为 0／最大值时 RGB 不变，alpha 本身不变。三个常量及 SSE 分步运算由实际 PE／指令绑定，没有宣称实际 DLL 浮点一致。压缩越界先释放像素再报 `corrupt`；helper 不拥有 heap。当前 required4 直接转交工作 buffer，其他 requested 通道才进入既有转换器，转换失败由其消耗输入；宽高及可选源通道 4 在成功出口写回。
+
+12 项定向维护器测试通过，覆盖 6 组固定像素、header 指令、缺少／额外通道、raw／RLE、位深差异、跨行、alpha 回绕、失败释放、来源及重新计算摘要后的篡改拒绝；摘要为 `fc9e1cd8de43ac2a2b52e48419c2fdb4d9e9d173155e14eafb3f33c89c7a9bee`。本片没有执行官方 DLL，也没有新增临时文件、副本、捕获或分析会话。本片仅核定 PSD；其他格式以各自收据为准。独立 Rust、UI／后端、实际 DLL／设备对照及运行验收仍未验证。
+
+### 当前 GIF 首图、LZW 与透明像素
+
+查询 `lighting-gif-decoder-chain` 接到[统一主机收据](../../../.analysis/results/host-current/local-audit.json)的 `lighting_gif_decoder_chain`。复用 LightingEngine **4.0.55.0** 完整捕获，核对 18 个完整函数、25 条实际调用边、3 个文件回调槽、2 个 PE 数据区和 17 组指令证据；选中失败为 0，原全库 10 条失败完整保留。
+
+当前图片调用方 `0x8cc40 → 0x945c0` 只解码首张图像。已核实 LZW 子块／字典／位宽、全局及局部色表、透明和交错布局。透明像素先标记再跳过写色；首图未触及像素仅在背景索引大于 0 时按全局表原始 **BGRA** 补填，普通已发射像素则重排为 RGBA。零子块及结束码允许画布未填满便返回，不能将截断统一判为失败。
+
+成功交出 canvas 后释放 history／background，失败及 trailer sentinel 额外释放 canvas；通道转换前已写宽高，转换失败仍可能留下维度。14 项定向维护器测试通过，包含固定像素、透明／背景差异、交错、LZW 位宽及结束边界、原件／依赖篡改和释放反例；未执行官方 DLL，也不由该链新增动画播放能力。Rust、UI／后端和实际 DLL 对照仍未验证。
+
+### 当前 JPEG 基线、渐进扫描与颜色输出
+
+查询 `lighting-jpeg-decoder-chain` 接到[统一主机收据](../../../.analysis/results/host-current/local-audit.json)的 `lighting_jpeg_decoder_chain`。复用 LightingEngine **4.0.55.0** 捕获，核对 51 个完整函数、74 条直接边、3 个回调槽、6 个 PE 区域和 18 组共 1,845 条关键指令；选中失败为 0，原全库 10 条失败保留。
+
+当前 `0x8deb0 → 0x98c80` 已核实 SOI／SOF／SOS、量化／Huffman、基线及渐进 DC／AC／EOB 与细化、重启、标量／SSE2 IDCT、采样、颜色及 RGBA8 输出和正常／失败释放。缺少 RST 可提前返回成功，普通 marker 处理失败也可能绕过 progressive finish；不能宣称所有 success 都有 EOI 或完整初始化像素。14 项定向维护器测试通过；异常展开／堆故障恢复及实际 DLL 功能对照未建立。
+
+当前 PNG／PNM／BMP／TGA／PIC／PSD／GIF／JPEG／HDR 的所选解码语义均有独立收据，格式路由、RGBA8 归一化和 resampler 按精确引用复用。HDR 参数与 compiler pow 见[参数专题](#当前-hdr-参数与实际-compiler-pow)，AI 模型图与算子选路见[AI 模型接续](#当前-ai-模型算子选路与生成边界)；实际浮点结果、AI 数值微核与真实产品 Quick 分支继续待查。独立 Rust、UI／后端和实际 DLL／设备对照仍未验证；各节的静态测试不能代替这些结果。
+
+### 当前 HDR RGBE、行编码与浮点输出
+
+查询 `lighting-hdr-decoder-chain` 接到[统一主机收据](../../../.analysis/results/host-current/local-audit.json)的 `lighting_hdr_decoder_chain`。复用 LightingEngine **4.0.55.0** 完整捕获，核对 21 个完整函数、29 条实际调用边、3 个文件回调槽、9 个 PE 数据区及 11 段共 742 条关键指令；选中失败为 0，原全库 10 条失败保留。当前调用方请求四通道、最终 8 bit；格式路由、文件关闭、可选 flip 与 32×32 resampler 按三个精确收据引用复用。
+
+[`0x8e160`](../../../.analysis/results/native/cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa/functions/8e160.json)要求精确的 `#?RADIANCE`／`#?RGBE` 签名及 `FORMAT=32-bit_rle_rgbe` 行，仅接受 `-Y height +X width` 方向。行读取保留最多 1,023 字节，过长尾部继续消费，CR 不移除。尺寸按有符号 32 位十进制解析；宽度尾部文本没有检查，没有额外的非零尺寸门禁。宽高与源通道数 3 在大小检查、分配及像素解码之前写出，后续失败不表示这些字段已回滚。
+
+宽度 8–32,767 时逐行检查 `2,2,width_hi,width_lo`，按 R／G／B／E 四平面解码：1–128 为 literal，129–255 为重复 `code & 127` 次，零 count 与超出本平面剩余宽度失败。其他宽度读取逐像素四字节，**没有展开旧式 `1,1,1,count` 重复标记**。新式行头不匹配时进入 flat 回退，但首像素写在整幅输出起点，重新从第 0 行第 1 像素继续；在后续行触发也会覆盖先前行。raw 四字节读取的返回值被忽略，截断可能使用未初始化或上次栈值；RLE 的 scalar 缺值可能补零，不能统一声称损坏输入均失败。
+
+[`0x9c280`](../../../.analysis/results/native/cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa/functions/9c280.json)将 E=0 转为黑色，否则 RGB 为 `byte × float32(ldexp(1.0,E-136))`，没有半单位 mantissa 偏移；四通道 alpha 为 1。`0x8e920` 当前 RGB 使用实际 scale／inverse-gamma 参数调用 `0x154300`，随后按 binary32 乘 255、加 0.5、clamp、截整数；alpha 只线性量化，保留的单通道 converter 分支同样线性。定向见证仅核对有限 RGBE 和 pow 之后的量化，不以宿主数学库替代官方 pow，不声称已验证 MXCSR、subnormal 或非有限结果的一致性。
+
+RLE 宽度／count 错误释放 float 输出和已持有 scratch，scratch 分配失败释放输出，成功及 flat 回退释放 scratch；float 输出交给 byte converter 后，正常与输出分配失败均释放 float。13 项定向维护器测试覆盖固定浮点字节、两种行编码、跨行回退、截断区别、量化、释放和收据篡改；未新增临时文件或分析会话。参数归属与 compiler pow 静态语义见下节，其实际数值结果、独立 Rust、UI／后端及官方 DLL 对照继续未验证。
+
+### 当前 HDR 参数与实际 compiler pow
+
+查询 `lighting-hdr-parameters-chain` 接到[统一主机收据](../../../.analysis/results/host-current/local-audit.json)的 `lighting_hdr_parameters_chain`。复用 **4.0.55.0** 原件及完整捕获，核对 13 个完整函数、21 条实际调用边、11 个 PE 数据区与 10 段共 1,106 条关键指令；选中失败为 0，原全库 10 条失败保留。解码、归一化与缩放沿用前节收据，不重做像素链。
+
+`0x1f5998` 的 inverse-gamma 初值为 `0.45454543828964233`，`0x1f599c` 的 scale 为 `1`，二者属于模块共享、可写的 `.data`，与 TLS 分离。当前 8,694 个已捕获函数的汇编仅有 `0x8ea00`／`0x8ea0d` 两处读取；PE 未发现指向二者的完整绝对地址，实际 15 个导出也未建立 setter。结论限于当前模块与捕获，不能排除未解析的间接写入，更不能由其他库的 setter 名称补出页面控件或修改接口。当前 RGB 先按单精度乘 scale，再将 base／exponent 放入 XMM0／XMM1 调用实际 `powf`；alpha 不读取这些参数，也不调用 pow。另一个 `0x9c5b0` 是反向 LDR → float 转换，读取不同的 gamma／scale，不能代替当前 byte-loader。
+
+[`0x154300`](../../../.analysis/results/native/cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa/functions/154300.json)真实返回单精度 XMM0；Hex-Rays 的 int／double 签名及局部变量分配警告不能作为 ABI。正常路径在双精度下执行 257 项 reciprocal／log 表、近 1 多项式和 64 项 exp 重建，再转单精度。共享 `0x1f9b54` 选择 SSE 或 AVX／FMA；CPU 初始化、实际常量与两个分支均保留。AVX 近 1 路径又跳回 SSE 指数运算，不能统一视作全程 fused，也不能拿宿主数学库直接替代其结果。
+
+[`0x183890`](../../../.analysis/results/native/cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa/functions/183890.json)区分 NaN quiet、零／无穷、负 base 非整数、overflow／underflow，并进入真实 CRT 浮点异常、matherr callback 和 errno 消费链。它在 callback wrapper 返回后恢复原候选 XMM6，**不消费 wrapper 可能修改的返回值**；errno mapper 只处理 selector 1／2／3，underflow 的 selector 4 不保证写 errno 34。解码器的 TLS 错误字符串是另一套机制，当前 converter 不检查 pow 的 errno，而是继续既有量化。正常与分配失败释放沿用前节；未处理的 CRT 异常是否完成图像输入释放仍未验证。
+
+11 项定向维护器测试覆盖真实引用、新增 store／绝对指针反例、单精度 ABI、RGB／alpha 与反向转换区分、完整表和调用、SSE／FMA 汇合、callback／errno 差异及收据篡改。未创建临时文件或分析会话。实际 CPU／MXCSR、subnormal／非有限数、trap／callback 结果、独立 Rust、UI／后端和官方 DLL 功能对照均保持未验证。
+
+### 当前 AI 模型、算子选路与生成边界
+
+查询 `lighting-ai-model-chain` 接到[统一主机收据](../../../.analysis/results/host-current/local-audit.json)的 `lighting_ai_model_chain`。当前宿主 4.0.896 声明的 AI 库仍为 **1.0.1.0**。本批复用其现有完整捕获，核对 109 个完整函数、83 条实际直接边、5 个默认 delegate／partition 回调槽、7 段 PE 表及 6 组共 422 条指令证据；选中失败为 0，原捕获 `0x2c83d0` 的 Hex-Rays 失败保留。未复制模型、重新捕获或创建分析会话。
+
+实际 LE startup 先检查 RazerAppEngine，再由 `useRzLightingDriver` 决定是否初始化 AI，选择本地 installed resource 并传入源码固定的 16 个 primary colors。AI 初始化没有额外的 chroma-app 成功门禁。当前挂载消费者仍是 Studio media18／module2474 的 ai／procedural；pattern、图片与视频帧、palette 及释放消费者按三个精确上游引用复用，不重领已完成分析，也不据此扩展全部产品 Quick。
+
+唯一模型取自前节的 PE 资源。其 `TFL3` schema 3、`main` 子图包含 21 个张量、24 个 buffer 和 9 个节点，输入 tensor0 为 FLOAT32 `[1,32,32,3]`，输出 tensor20 为 FLOAT32 `[1,16]`。正式结果保留图、实际 options 与格式默认值、常量 buffer 的偏移／长度／SHA；没有另存权重副本。实际五类 builtin 都用版本 1，按模型顺序执行下表；其余已注册算子不属于该模型，不扩展审阅。
+
+| 实际节点 | 已核对的计算与选路 |
+| --- | --- |
+| CONV_2D ×4 | VALID、stride 1、dilation 1、真实权重／bias、ReLU；输出空间为 30、28、12、10，均 16 通道。float 路径 `0x4db40 → 0x95220 → 0x96840` 再选既有 reference／optimized／threaded 实现 |
+| MAX_POOL_2D ×2 | VALID、2×2、stride 2，逐通道取最大值；输出空间为 14 和 5，当前 fused activation 为 NONE |
+| RESHAPE ×1 | 消费 INT32 常量 `[-1,400]`，保留线性元素顺序，进入 alias／copy 分支；输出 `[1,400]` |
+| FULLY_CONNECTED ×1 | float 权重／bias 的 GEMM，当前 fused activation 为 NONE；输出 `[1,16]` |
+| SOFTMAX ×1 | beta=1，减去行最大值后指数归一化；原生 optimized exp 与累加顺序仍需实际数值对照 |
+
+resolver 还真实注册默认 delegate creator，不能将图中每个节点都称为必走 builtin。`0x1a6c0/0x1a6f0` 尝试应用 delegate；创建可因 backend／weights cache 初始化失败返回空，支持节点扫描和 `0x2f1b90` 分别核对这五类算子。partition 的 init／free／prepare／invoke 由真实 PE 表绑定；invoke 的 external-buffer setup 与执行失败分别报告。应用失败有恢复原 execution plan 的路径，具体 status 仍须分别消费；实际分区、CPU kernel 和数值结果依赖宿主状态，不能从注册表直接推断。
+
+`0x1570` 借用模块资源字节、检查 identifier、schema 和 opcode／version，按真实张量、buffer、options 建 interpreter；未见完整 FlatBuffer 边界验证，维护器的有界 parser 不能冒充原生具有同等防护。AllocateTensors 失败会销毁并清空 interpreter；builder 没生成 interpreter 的另一条路径却将 model 指针清零而未释放其 wrapper。Create 仍可返回非空外层。正常 Destroy 依次释放 interpreter／子图、model wrapper、generator 和外层；模块原件归加载器所有，不能把本片当作全局卸载保证。
+
+`0x1140` 只核对非零宽高、像素指针、`width*height==count` 和 interpreter，没有强制 32×32、核对张量容量或在写入前补查 typed input 指针。每 4 B 像素取前三通道除以 255，忽略 alpha；本函数不 resize、不减 mean／std。它忽略 Invoke 返回状态，仍读取 16 个 float score，用严格大于的插入排序映射 primary colors；有限相等 score 保持原 index 顺序。结构门禁失败输出 16 个零，export 的 true 只反映三项指针检查，二者均不证明推理成功。通用 interpreter 有取消 hook，但三个生成器导出不安装或暴露它，也没有 Generate／Destroy 在途排空保证。
+
+11 项专属维护器测试及 7 项模型 parser 测试覆盖图／常量、版本与回调表、真实 caller、归一化固定字节、排序及平分、失败／释放差异、delegate、精确依赖及篡改拒绝。所选 CPU／GEMM／exp 与加速 microkernel 的完整数值语义、宿主分区、浮点环境、OOM／取消／并发释放结果和实际 DLL 推理对照继续未验证；独立 Rust、UI／后端接线及运行验收分别保持未验证。本批不以静态见证或模型结构代替这些结果。
 
 ### 当前 Advanced 的输入、所选按键与注销
 
@@ -1159,7 +1357,8 @@ Quick 组件首次读取主机返回列表的第一项值，再监听 `memorysto
 该环消费者的伪代码保留 **bad sp value** 警告，字段解释以完整汇编为准：记录第一个 u32 与入口保存的 this 指针低 32 位比较，不相等才打包到 `0xaef0` 的 PPL action。不能将这些不透明字段直接命名成 PID、设备 ID 或设备确认。映射失败的空指针分支与事件／停止处理分别存在，不能由对象分配成功推定共享区已可用。
 
 初始化 `0x1530` 在后续句柄与线程创建前发布全局身份，线程创建链失败会短路并返回 `GetLastError`，没有把前面所有资源完整回滚；停止 event 的创建结果也没有单独进入最终成功判断。`UnInit → 0x1990` 发出停止信号后，对四个线程句柄各等待 **1,000 ms**，没有消费四次等待结果，再关闭线程、event、mutex 并清全局身份；不能套用另一份 SDK 的 10,000 ms，不能把返回 0 当成所有线程、PPL action、事件消费者与设备链已经排空。此节没有加载 DLL 或执行共享事件，实际并发、回调顺序及 Rust／官方行为差分仍保持 Unverified。
-## Chroma 原生连接与效果引擎的下一批静态捕获
+
+## Chroma 原生连接与效果引擎静态捕获
 
 本节记录 2026-10-24 以四个 worker 并行提取的三个 Chroma 原生模块。分析只读取已校验的 PE、IDA capture、导入、字符串和 xref；没有加载 DLL、启动 Chroma 服务或访问设备。
 

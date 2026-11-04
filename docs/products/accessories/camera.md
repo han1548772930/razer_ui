@@ -45,7 +45,15 @@
 
 [当前 UI 原件](../../../.analysis/inputs/frontend/accessories-3592-current/raw/apps.razer.com/synapse/products/3592/ui/static/js/main.323f0a8a.js)中，Camera `eG` `[5341858,5342156)` 依次挂载 view、focus、exposure，没有新款 Camera 页的 source/resolution 选择块。view `[5339463,5341291)` 为 1…4 倍、step 0.1；LDC 开启且分辨率为 4K 30FPS 或 1440p 30FPS 时，一并禁用 zoom、pan/tilt、预设和快捷键并显示说明。focus `[5249862,5251820)` 的手动范围是 1…450，自动模式含对焦 mode 和 tracking；lighting 在该组件中独立出现，不能套用新款禁用 lighting 的 props。exposure `[5246370,5249855)` 包含 Reset、ISO、离散快门、metering、补偿及 1000 ms leading throttle；特定 metering 的补偿下限为 -1，其他为 -3。
 
-Processing `[5356038,5358150)` 挂载 resolution/MJPEG、HDR、LDC、低光补偿、2D/3D DNR；MJPEG `[5352885,5356037)` 包含自动开关、Performance/Quality 或手动 10…90。Image `[5362868,5366820)` 的实际调用是 `DG({})`，因此 **watermark 默认启用挂载**，包含开关及位置网格；sharpness/gain 默认不挂载。该页还挂载图像预设、anti-flicker、mirror 和 Windows 属性页。这里与 3594/3595/3596 根显式 `supportWatermark:false` 的行为不同。
+Processing `[5356038,5358150)` 挂载 resolution/MJPEG、HDR、LDC、低光补偿、2D/3D DNR；MJPEG `[5352885,5356037)` 包含自动开关、Performance/Quality 或手动 10…90。水印已续接到[当前 3592 UI](../../../.analysis/inputs/frontend/accessories-3592-current-refresh-ec3db4b29c5a/raw/apps.razer.com/synapse/products/3592/ui/static/js/main.5acdcb3b.js)的实际 Image 挂载 `AU({})`：`supportWatermark` 默认 true，sharpness/gain 默认不挂载。位置网格顺序为左下、中下、右下、左上、中上、右上；对应设备码为 3、5、0、1、4、2。开关投影为 1/0，未知位置走原版的 0 分支。开关／位置先设置加载与草稿差异标记，再乐观更新 reducer 并发送 `ON_SET_WATERMARK`。与 3594/3595/3596 显式关闭水印挂载的分支分开记录。
+
+水印当前链的正式接续入口为[相机联合收据](../../../.analysis/results/frontend/accessories-camera-local-pages-audit.json)的 `ultra_watermark_chain`。页面挂载先从活动配置档发布 `camera.watermark`；MW 配置恢复也以该值发布 UI 并排队真实写入。当前标准／高级设备读取批次不读取水印；已保留的完整当前 MW 源中，具名 `getWatermark` 只见两个包装器定义及其日志，没有接入本链的直接读取消费者。这个结论限于已取得的具名静态调用范围，未取得依赖或动态／计算属性调用仍待取证。缓存、初始 disabled/right-bottom 与设备读回分别记录。
+
+当前 [Ultra 包装器](../../../.analysis/inputs/frontend/accessories-mw-3592-current-refresh-ec3db4b29c5a/raw/apps.razer.com/synapse/products/3592/mw/rzCamKiyoProUltra.4ec469db40a63e5b1297.js)由 installer 的最新 `1.0.3` 资源清单绑定 `RzNative_0E08` **1.0.16.0**。水印修改任务只在等待停预览锁之前检查一次取消；锁为 `navigator.locks` 的 `ifAvailable` 请求，未取得锁可留下空等待列表，停预览消息等待 5000 ms。之后调用 `SetWatermark(containerId,state,position)`，将返回 bool 放入 `apiResult`，但无论 true/false 都可标记 completed；结果消费者始终设置视频重启标记，仅按 completed 记日志，不检查 bool，不做写后 GET 或回滚。该锁与任务完成都不能证明浏览器视频轨道或原生 I/O 已排空。
+
+该 DLL 自己的虚表槽 96/104 绑定 setter/getter，均走 8 字节 ISP 命令：GET `c0 08 00 00 00 00 00 00`；SET `c0 08 01 state position 00 00 00`。参数截成 u8；应答 byte 2/3 为状态／位置。实际传输通过 `IKsTopologyInfo → IKsControl.KsProperty`：32 字节头，写入属性 1／flags `0x10000002`，等待 10 ms 后读取属性 2／flags `0x10000001`，数据均为 8 字节。原版忽略 SET HRESULT，只以 GET HRESULT 等于 0 且应答首字节为 0 判断命令成功，未检查返回长度。getter 的 JSON 组装忽略底层 bool，失败仍可能把零初始化值序列化为 `Status:0,Position:0`；setter 导出丢弃应答中的位置／状态，只返回 bool。缺少实例或捕获异常的 getter 返回 `{}`，分配失败可返回空指针；指针复制与 FreeMalloc 复用已核实的共享 Host 边界。
+
+底栏 Save 是独立 `ON_SAVE_CAMERA_SETTINGS`，调用 `SaveUVCExtCmdToFlash(containerId,true)`；本 DLL 的实际类方法忽略这个 bool，发送 `c0 03 a8 00 00 00 00 00`。水印 setter 不隐式保存 Flash。Save 点击先清草稿差异、设置加载；任务仍可在 bool=false 时 completed，回调会检查 bool 并记失败日志，但成功／失败都设置视频重启标记。原生复用同 DLL 的 4000 ms bool 工作队列、超时停止和累计至少三次超时后的软件关闭／重开与单次重试；正常 KS 节点与 topology 释放保留，但设备移除的提前 break 可绕过已取得节点的释放。仅此水印／Save 静态切片已核对，完整 Ultra 生命周期、独立 Rust、UI／后端接线及实际 DLL／设备对照仍未验证。
 
 完整包装器的实际导出还包括 MicNoiseSuppression、SaveUVCExtCmdToFlash、AutoFocusMode/HDRBrightness、Watermark、ISO、FDAF、AutoFramingSetting、两类 DynamicNoiseReduction、Mirror、Metering、Shutter、EV、AutoFocusLowSensitivity、RestoreDefaults、adaptive/fixed MJPEG 和 StreamingStatus。标准属性 getter 将非空 JSON 解析成对象；ISO、metering、快门、EV、降噪与 MJPEG 使用各自 long/int/bool 结果，不能用一个 JSON decoder 处理全部 getter。未初始化时部分方法返回 0/false/空对象，这些是包装器 guard，不是设备实读。
 
@@ -105,6 +113,81 @@ runner 只在执行设备操作前检查一次 AbortSignal，依次 await setter
 读取是另一条链：产品根 `componentDidMount` 的可见性回调发 `getAdvancedCameraSettingsCache`，MW 等待四个标准 getter 的 `Promise.all`，再读其余摄像头属性，并以核对过身份的响应进入 `currentCameraSettings` reducer 与 CAMERA／SYNAPSE 差异消费者。缓存转换仍可能把缺项压成 0／false；这不是新的默认写入依据。当前两型号最新安装资源声明均指向同一 GenericCamera 1.0.35.0；八个属性导出与四个 COM owner 复用现有完整捕获。真实 `IAMVideoProcAmp` 属性号依次为 0／1／3／7，Set/Get/Release 虚表偏移为 32／40／16；auto flag=1，manual flag=2。Get 的 HRESULT 失败只记日志，仍序列化输出字段，其初值为 0／false，不能据此证明读取成功。
 
 adapter 的 terminate 在实例 lock 内注销监听、等待 `DeviceTerminate` 并清 `isInit`，catch 记录后仍返回 true；`destroy` 与 beforeUnload 不等待这条异步释放。完整队列 owner、预检查取消与单次 COM Release 均不证明所有在途任务和回调已静止。宿主边界由下节接续；独立 Rust、UI／后端和官方实际 DLL／设备对照仍保持未审阅／未执行，整页与产品未完成。
+
+## 3595／3596 当前动态降噪控件
+
+[相机联合收据](../../../.analysis/results/frontend/accessories-camera-local-pages-audit.json)的 `camera_3595_3596_processing_control_chain` 单独冻结当前 refresh 的 DNR 链。3595 与 3596 的实际 Processing 页面都挂载 2D、3D 两个开关；每次点击先置 `hasChangedSettings`，再提交完整 `{state2D,state3D}`，只翻转其中一项。Reducer 先广播，再立即替换显示值。当前 UI profile 默认两项均为 true，profile 通知也会替换这两项；已核的标准 COM 设置缓存没有 DNR 字段。这些值不能作为设备实测，也不能据此判定首次初始化。3595 的配置允许关闭预览后编辑，3596 的配置不允许；页面仍沿用各自当前的 loading、占用和 Windows 属性页禁用判定。
+
+状态机把 `updateLocalStorage` 与 `deviceAccess` 分开传给 maker，而 maker 以 `deviceAccess` 决定是否进入整个流程：读取活动 profile、递增版本、替换 `camera.dynamicNoiseReduction`，按权限保存后才排入 `NORMAL_SKIPPABLE`。保存抛错会记日志并停止该次入队；设备写入失败不会撤销已保存的 profile。全量或差异 profile 重放使用同一 DNR 事件；DNR 位于启动允许列表中，不因跳过其他 UVC 项而自动跳过。
+
+Runner 依次调用 selector 2（2D）、selector 1（3D），每次都转换为 Boolean。第一项返回 false 仍执行第二项；第一项抛错才跳过第二项。两次均正常返回时，即使结果为 false，也会记录 `status:"completed"` 和 `{result2D,result3D}`；完成消费者只按 status 记日志，不检查这两个结果，也不另做读回、flash save 或恢复原值。取消只在第一项之前检查一次，没有传进 Host/native，也没有在两项之间再检查。
+
+两款当前 manifest 均指定 GenericCamera `1.0.35.0`。沿用已有完整捕获并重新核对 7 个函数原件字节及 5 个 PE 槽，正文不重复存储：导出 `0x5d0e0` 查精确 container 后调用 `+0x98`，仅返回布尔应答，丢弃 setter 的输出字节。3595 的 base `0x4db80` 直接发送 `c0 0e selector state 00 00 00 00`。3596 的 X `0x53ed0` 先经 `+0xa0 → 0x540c0` 查询另一 selector；GET 请求为 `08 00 00 00 00 00 00 00`，selector 1 从 response[3] 取 3D，selector 2 从 response[2] 取 2D。查询成功才合并发送 `28 00 2D 3D 00 00 00 00`，查询失败不写入；写入成功后输出字节只是本次提交值。读取和写入分别经过共享 ISP guard，不能声称是一个原子的读改写事务。
+
+本条复用已确认的 Host 转发、初始化、terminate、队列和 native 生命周期证据，不重做整页或相邻控件。当前获取失败、完整页面／产品分支、跨队列退出与重连、独立 Rust/UI 实现及实际 DLL／设备对照仍分别保持未完成；本批没有执行厂商代码，没有新建分析会话或临时副本。
+
+## 3595／3596 当前低光补偿开关与 GET 缓存
+
+[相机联合收据](../../../.analysis/results/frontend/accessories-camera-local-pages-audit.json)的 `camera_3595_3596_low_light_chain` 从前节 `camera_3595_3596_processing_control_chain.remaining_local_chains[0]` 接续。维护入口为 `audit-family-function --family accessories --function main --product 3595 --product 3596 --query camera-3595-3596-low-light-chain`。本片只覆盖实际挂载的 Low-light compensation 单开关，复用已完成的 DNR 页面禁用、队列、Host 指针释放及设备生命周期证据。
+
+两个 Processing 页面都从 `advancedWebcamReducer.lowLightCompensation` 取开关值，点击先置 dirty，再经 `5305.bg` 提交逻辑反值；reducer 广播 `ON_SET_LOW_LIGHT_COMPENSATION` 后立即更新显示。3595 的实际面板模块为 9271，3596 为 4210，均把 active／onClick 传给 switch527。UI 初始值和 profile 默认值为 false，profile 通知可替换该值；这些都不是设备实测。关闭预览后的可编辑差异仍沿前节，未新增禁用规则。
+
+初始化按实际顺序连接当前设备、加载／初始化 native、准备本地文档，然后等待读取相机缓存，再进行连接后的 profile 重放。缓存先读四项图像属性，再在 advanced-camera 分支并发读七项相机属性；低光补偿是第二组第六项。Host 仍按 channel mutex 串行原生调用。Kimberly 启动时暂置 `shouldSkipUVCOnMWStartup`，camera 允许列表**不含 lowLightCompensation**，因此该次启动重放跳过低光补偿；普通全量／差量 profile 重放可排同一 SET 事件。本地文档缺失不能证明设备需要默认覆盖。
+
+GET 结果投影为 `Boolean(e[5].value)`，进入 `advancedCameraSettings`，发布后存入 UI 的 `currentCameraSettings`，不会直接替换开关的 profile 字段。adapter 未初始化、null／空字符串或原生返回 `{}` 时，缺失 value 可被投影为 false；非空字符串则为 true。原生 GET 失败也未附成功字段；异常由 reader 记录并保留旧缓存。profile 同步还可以从本地 profile 构造同名缓存，故不能把缓存值或 false 统一称为设备实测。
+
+当前根页面实际挂载差异弹窗：已定义的缓存低光值与 profile 不同时可显示差异。采用按钮把缓存值交给 `bg`，保留按钮把原 profile 值交给 `bg`；两者都会再次走真实 setter，并安排 500ms 后的缓存重读请求。该定时器不等待设备确认，缓存缺失的 false 也不因此变成已确认值。
+
+MW `30525.q_X` 在设备访问许可下读活动 profile、递增版本、替换低光字段，按保存许可等待持久化后才排 `NORMAL_SKIPPABLE`。runner `85191.GXM` 只在写前检查一次 abort，随后 await `setCameraLowLightCompensation(Number(value),false)`。原生 false 仍保留在 `apiResult` 并标记 completed；完成消费者 `85191.NsK` 只记录 status，不检查 bool，也不回滚 profile、保存闪存或独立 GET。调用没有把 AbortSignal 传到 Host／COM。
+
+| 原生边界 | 当前实际行为 |
+| --- | --- |
+| GET | `GetCameraLowLightCompensation 0x5bc80 → 0x4c270 → 0x4b8e0`，IAMCameraControl 属性19；ABI 为 `pointer(string containerId)` |
+| SET | `SetCameraLowLightCompensation 0x5c770 → 0x4c510 → 0x4b750`；ABI 为 `bool(string containerId,long value,bool isAuto)`；只将 signed value>1 限为1，负值保留；false 对应手动 flag2 |
+| 失败 | 缺 container／filter 的 GET 返回分配的 `{}`，QI 失败为空字符串。QI 成功后即使 Get HRESULT<0，仍使用最初置0的输出槽构造 value／isAuto，不能认定读取成功；SET 要求 QI 与 Set 的 HRESULT>=0 |
+| 释放 | 实例 mutex 包住 reconnect 和同步属性调用；QI 获得的接口在 Get／Set 成败后均按 +16 释放。返回字符串与 Host 的 readCString／条件 FreeMalloc 沿既有所有权；此链不用 DNR 的 ISP 命令，没有写后 GET |
+
+本片复用六个完整原生函数及六处实际 COM 调用指令，未新建捕获、原件副本、数据库或分析会话。10项定向维护器测试核对两个挂载分支、GET／profile 缓存来源、弹窗两动作、保存顺序、false／取消、启动跳过、HRESULT／释放及篡改拒绝；它们验证静态维护收据。独立 Rust、完整 UI／后端与实际 DLL／设备输入输出、失败、取消、恢复和释放对照仍未验证，其他 Processing 控件独立接续。
+
+## 3595 当前 HDR 开关、模式与预览停启
+
+[相机联合收据](../../../.analysis/results/frontend/accessories-camera-local-pages-audit.json)的 `camera_3595_hdr_chain` 接续低光补偿收据的 `remaining_local_chains[0]`。维护入口为 `audit-family-function --family accessories --function main --product 3595 --query camera-3595-hdr-chain`。当前 [main.96732b64.js](../../../.analysis/inputs/frontend/accessories-3595-current-refresh-ec3db4b29c5a/raw/apps.razer.com/synapse/products/3595/ui/static/js/main.96732b64.js) 的 Processing `nm` 挂载 `om({disableHDRSwitch:true})`；该 prop 只隐藏 MJPEG 子选择，HDR 开关和模式仍存在。3596 的当前 Processing 未挂此组件。
+
+HDR 从 reducer/profile 取完整 `{isEnabled,mode}`，初始 reducer 为 `{isEnabled:false,mode:"DarkRoom"}`，UI／MW profile 默认则为 `{isEnabled:true,mode:0}`；都不能当作设备实测。dark／bright 实际模式为 `0／1`。点击开关或模式先置 loading、dirty，再广播并立即替换显示；模式点击已选半边仍翻转，方向键则只在选项变化时触发。模式的 disabled CSS 与 Processing 的实际禁用判定分别保留。
+
+`30525.O37` 在 deviceAccess 许可下读取活动 profile、递增版本、替换 `camera.hdr`，仅在原 `hdrActive` 为真时同步该旧字段，按保存许可等待写盘后才排 `NORMAL_SKIPPABLE`。普通全量／差量重放发送同一 HDR 事件；HDR 在 Kimberly 启动允许列表内。UI profile 消费者也只在 `hdrActive` 为真时覆盖 isEnabled。本地文件缺失、profile 默认与成功写盘均不证明设备无配置或 HDR 已写入。
+
+`85191.gNJ` 先检查一次 abort，再等候 container＋PID 的预览停止锁。loading 使浏览器停止 tracks、清空视频元素并等待 1000ms 后发完成消息；缺视频元素会提前返回。锁使用 `ifAvailable:true` 和 5000ms 消息超时，未拿到锁可能产生空 promises；它不证明全部原生调用已排空。等待后没有第二次取消检查，先写 `setHDR(Number(isEnabled))`，启用时再写 `setHDRBrightness(mode)`。首调用返回 false 仍会写模式；抛异常才跳过后续。非抛异常路径总标记 completed，另存两次 bool 的 AND。回调 `85191.VGl` **先广播预览重启，再检查 completed 与 apiResult 记录结果**；预览消费者用 3000ms 定时器重启并清 flag。失败不恢复 profile，无写后 HDR GET、闪存保存或通用回滚。
+
+| 当前 3595 原生调用 | 实际请求与确认 |
+| --- | --- |
+| `SetHDR 0x57fd0 → 0xb84b8+40 → 0x4d530` | `[ff,02,enabled_u8,00,00,00,00,00]` |
+| `SetHDRBrightness 0x582f0 → 0xb84b8+64 → 0x4d660` | `[ff,07,mode_u8,00,00,00,00,00]` |
+| 共同边界 | exact container 缺失返回 false；ABI 均为 `bool(string,int)`。adapter 把 enabled 规整为 1／0，模式原样传递；native 取低 8 位，没有范围 clamp |
+| ISP 应答 | 实例 guard → 实际槽344 → topology／KsProperty。SET HRESULT 失败只记日志，仍等待 10ms 后 GET；GET HRESULT 必须恰为0且 response[0] 为0才成功。它确认交换状态，不读回 HDR 字段；COM 接口按 +16 释放 |
+
+本片复用六个完整原生函数、三个实际 PE 虚槽、37 个完整 AST 所有者和 61 个已有所有者引用，无新增捕获、临时副本或分析会话。原捕获中无关 `0x870c0` 的 Hex-Rays 失败仍保留；六个选定函数完整，不能扩大为整个 DLL 完成。12 项定向测试验证挂载、默认／重放、保存、预览、false／异常／取消、协议与篡改拒绝。独立 Rust、UI／后端及实际 DLL／设备对照仍未验证；实际挂载的 MJPEG 自动开关由下段独立接续。
+
+## 3595 MJPEG 自动画质与配置重放
+
+PID3595 MJPEG 链记录于同一[相机联合收据](../../../.analysis/results/frontend/accessories-camera-local-pages-audit.json)的 `camera_3595_mjpeg_chain`，入口为 `audit-family-function --family accessories --function main --product 3595 --query camera-3595-mjpeg-chain`。它精确接续 HDR 的 `remaining_local_chains[0]`，复用当前 UI、MW 与 GenericCamera 1.0.35.0 原件。Processing 的 `om({disableHDRSwitch:true})` 仍挂载 `autoQuality` 开关；Performance／Quality 及手动 slider 子控件被隐藏。本项只核对这些保留字段怎样被已挂载开关和配置重放消费，未据共享组件补控件。
+
+开关先设置 loading、dirty，再以完整 `{...mjpegQuality,autoQuality:!autoQuality}` 乐观更新并广播。reducer 初始 triple 为 `true／−1／80`，UI／MW 默认配置为 `true／5／80`；共享模式常量为 Performance 5、Quality 7。这些值属于页面／配置。当前设备缓存读取没有 adaptive／fixed MJPEG getter，不能视为设备实测。配置消费者发布整个 triple；full／diff camera 重放将其发回同一任务，MJPEG 位于 Kimberly 启动允许列表内，不随标准 UVC 跳过。
+
+maker 受 `deviceAccess` 门禁控制，读取当前配置并递增版本；输入 autoQuality 非 undefined 才更新该字段，存储值为 truthy 时更新 mode，仅恰好 false 时更新 manualQuality，另一分支保留。按 `updateLocalStorage` 决定保存后，才加入 `NORMAL_SKIPPABLE` 队列。runner 接收原输入，未使用 maker 合并后的对象，因此缺失字段与配置保留值不能混为同一种输入；保存失败会跳过后续入队，设备失败没有配置／UI 回滚。
+
+runner 在等待预览 stop-lock 前只检查一次取消。autoQuality 为 truthy 时调用 adaptive(true,mode)；恰好 false 时依次调用 adaptive(false,0)、fixed(manualQuality)。其他 falsy 值不调用 setter，但仍会完成。setter 的 bool 全被丢弃，adaptive 返回 false 仍继续 fixed；抛异常才中断后续调用并标记失败。结果消费者先发送视频 restart，再仅按 `completed` 控制日志；没有 ACK 门禁、设置读回、flash save 或回滚。等待之后及两次写入之间没有再次取消检查，信号也未传入 Host／native。
+
+实际 ABI 为 `bool SetAdaptiveMJPEGQuality(string,bool,long)` 与 `bool SetFixedMJPEGQuality(string,long)`。当前 PID `0x0e0b` 的 `0xb84b8` 虚表分别由 slot 256／272 指向 `0x4e190`／`0x4e290`，导出为 `0x5df30`／`0x5e160`。完整函数与 PE 原字节确认下列 8 字节命令，值取低 8 位，native 没有额外范围钳制。
+
+| 当前调用 | 实际命令 |
+| --- | --- |
+| adaptive(enabled,mode) | `c0 0e 09 enabled 00 00 mode 00` |
+| fixed(quality) | `c0 0e 0b quality 00 00 00 00` |
+
+两条命令沿已核验的 exact-container、逐命令 mutex 和 slot 344 ISP 传输；SET 之后等待 10 ms 再 GET，SET 失败不阻止 GET。ACK 要求 GET HRESULT 恰好 0 且响应字节 0 为 0；命令复制响应字节 3 到私有输出，导出丢弃该输出并返回 ACK bool，runner 又丢弃 bool。两次写入各自加锁，没有整体原子性或自动恢复。预览沿既有停止 tracks／清 src、1 秒完成消息、5 秒 lock-message 等待及 3 秒重启链恢复；这些等待不能证明硬件或全部在途任务已排空。
+
+本片复用 6 个完整原生函数、3 个 PE 虚槽及 64 个既有源码所有者引用，新增保留 25 个完整 AST 所有者；无新增捕获、临时资源或分析会话。14 项定向维护测试覆盖当前挂载、配置合并／原输入差异、false／异常／取消、实际命令、ACK 与证据篡改拒绝。独立 Rust、UI／后端行为测试及实际 DLL／设备对照仍未验证；其他已挂载动作及产品／固件分支继续从既有缺项接续。
 
 ## 3595／3596 当前 Host 转发与释放边界
 
@@ -590,6 +673,103 @@ setter 原样传递 int32 数值，自动／手动 bool 分别映射 flags `1/2`
 初次 `await X()` 媒体枚举位于后续 try/catch 之外，发生在 in-flight 标志置真之后；其 rejection 不经过该 catch 的清标志分支。停止 `Q` 会先递增代次、清 in-flight，再处理视频元素及 tracks；找不到元素时仅清 playing 后返回，单个 `track.stop()` 异常被吞掉，均没有逐 track 的 ended 确认。应分别测试枚举失败、捕获迟到、play 迟到、缺元素和停止异常，不能把这些统一标成正常关闭。
 
 挂载 effect 的卸载回调只调用折叠窗口 owner `Ae`，**没有调用 Q 或递增媒体代次**。焦点定时器 cleanup 只清尚未触发的 timer；已经进入 `getWindowStatus` await 的回调没有卸载后的复核。焦点 hook `fS` `[5050887,5051749)` 尝试调用 response 返回的取消函数，但其 `HS/getFocusTab` 异步结果也没有卸载／代次 guard；本节没有继续推定宿主 response 的实现或监听排空。媒体的 `getUserMedia/play/track.stop` 与 DLL 的 DeviceTerminate／卸载是不同边界，本 owner 不会因关预览就自动证明后者已执行。实际设备、窗口与对应恢复／释放验收仍为 **Unverified**。
+
+## 3594 当前曝光补偿编辑与设备 SET
+
+本节接续当前刷新后的 3594 UI／MW，限定 Camera 中实际挂载的补偿 stepper／slider、metering effect 到原生 SET 与结果消费者。完整 AST、获取缺口、原 PE 字节及依赖保存在[统一相机收据](../../../.analysis/results/frontend/accessories-camera-local-pages-audit.json)的 `camera_3594_exposure_chain`；本节采用的新 UI owner 不覆盖前文旧原件的字节坐标。当前 installer latest、版本资源清单及 MW `resourceManifest` 同选 `RzNativeDLLGenericCamera 1.0.36.1`；MW 清单实际复用经过 SHA 校验的共享 blob，不能读取旧 raw 同名清单代替。这里只确认静态选择，不证明已安装或已加载。
+
+当前导航的 Camera 为 `XM`，实际曝光组件是 `_M=EM`，明确传 `dynamicCompensation:false / supportLighting:false`。补偿仅在自动曝光开启时挂载，范围 **-3…3、step 0.1**，stepper 与 slider 交给同一个回调。同值不提交；改变时依次设置 dirty、调用共用的 leading 1000 ms 节流以完整旧 `autoExposure` 重申当前自动模式、提交单字段 compensation，再记 telemetry，trailing 为 false。该组件没有调用节流的 cancel。独立 effect 仍在 `initialized && metering===5 && compensation<-1` 时提交 -1；其依赖只有 `[metering]`，不检查 dynamicCompensation，也不会仅因 initialized 或 compensation 改变而重跑。不能据此把可见最小值改成 -1，或假设首次挂载必然已完成该纠正。
+
+两种 action 的 reducer 都先广播 `ON_SET_AUTO_EXPOSURE` 并更新配置意图：模式 action 带完整旧对象，补偿 action 仅带新 compensation。根从活动 profile 发布 `MW_SET_AUTO_EXPOSURE`，同样是本地配置，不能标为设备读值。MW 决策中的 `S` 是 `updateLocalStorage`，`A` 是 `deviceAccess`；task maker 只有 A 存在才进入读取／修改 cache 和排任务的分支，若 S 也存在则先等待保存，再排任务。只有 profile 自动曝光为真、payload compensation 已定义才排入 `NORMAL_SKIPPABLE / compensation`。宏录制期间可能只剩存储 action，而此 task maker 的 A gate 会跳过整段，不能按 action 名称推定已经保存。
+
+队列按实际 task name 管理，已经开始的任务保留，后续运行只取最新 pending，其余 pending 调 skipped consumer 并释放；旧对象重申可能先排入旧补偿，再排入新值。cache 版本会递增，但 runner／callback 带的是原输入版本。原版在设备结果前已经更新或保存配置，没有因 SET false 自动回滚。
+
+数值先经 `10 * compensation + 30`，JS 转换没有 clamp／round；包装器明确声明 `bool SetEVCompensation(string,long)`，未 init 返回 false。当前 x64 导出 `0x5dd80` 精确查 container，将 Windows long 的低无符号字节交给真实 Pro 虚表 `0xb9690+0xe8 → 0x52c50`。静态初始化 `0x1020` 建立 19 项、每项 8 字节的表，code `0…18` 对应数值依次为 `60,57,53,50,47,43,40,37,33,30,27,23,20,17,13,10,7,3,0`；选择绝对差最小项，只在严格更小时替换，平局保留先项。原生表按 atexit 释放。本节定向算术向量核对 `-3→0→code18`、`0→30→code9`、`3→60→code0`、`0.1→31→code9`、`0.2→32→code8`；原生输入 55 在 57／53 间平局时保留 code1。这些是静态算术见证，未执行 DLL，也不把超出 UI 的字节截断案例当作支持的 UI 范围。
+
+SET 报文为 `a0 14 01 <code> 00 00 00 00`。`0x4eea0` 在设备对象锁内检查／恢复 filter、精确核对 container，再经 `0xb9690+0x168 → 0x52f30` 完成 Pro 的节点 3 ISP 交换。KSP_NODE 为 32 字节、payload 为 8 字节，SET／GET 都用 property ID 1，flags 为 `0x10000002 / 0x10000001`，中间 Sleep 10 ms；SET HRESULT 未检查，成功要求 GET HRESULT **恰为 0** 且 response[0] 为 0，未核 returned length。Pro 在 ISP 内再次检测移除时只记日志并继续。正常路径释放节点接口和 topology；filter reconnect 的成功 break 在 property-bag Release／VariantClear 前，不能声称所有 COM 路径都已完整清理。查找返回裸实例，也不证明并发 DeviceTerminate 已排空。
+
+runner 只在 native await 前检查一次 abort，不把信号交给 native。返回 false 仍记录 `result=true / status=completed / apiResult=false`；result consumer 检查 completed 与 apiResult 后仅记成功或失败日志。异常则记录 result=false／error；本链没有 UI 回写、重试、回滚、SET 后独立 GET、隐式闪存保存或原值恢复。ISP 应答只是上述命令判断；导出还会丢弃复制出的应答字节，不能当成补偿设置的独立读回。
+
+本节复用 12 个既有完整原生函数，核对其 1,231 条原 PE 指令、9 条直调边和 2 个 Pro 槽；12 项维护器定向测试通过，没有新建原生捕获或临时产物。UI／MW 获取中仍分别保留 20／101 项 unresolved 和各 1 项 capture failure，共享 native 原失败 `0x87ad0` 也保留；选定补偿函数无反编译缺失不代表整个部署／DLL 完成。Reset／完整配置重放的后续静态结论见下一节，其他挂载功能和产品分支继续独立推进。独立 Rust、生产／UI／后端接线、官方 DLL 实际功能对照、真实设备写回／读回／恢复与窗口验收仍为 **Unverified**。
+
+## 3594 当前 Reset 与完整配置 SET 重放
+
+完整来源、默认值、调用者、结果消费者及原生指令保存在[统一相机收据](../../../.analysis/results/frontend/accessories-camera-local-pages-audit.json)的 `camera_3594_profile_replay_chain`；维护入口为 `audit-family-function --family accessories --function main --product 3594 --query camera-3594-profile-replay-chain`。本节覆盖当前实际 15 个 `camera` 默认键以及 `image`／`imageMode` 的完整与差量重放。未添加原版没有的分辨率导出、MIC 页面或统一初始化策略。
+
+当前实际设备包装器为 **Kimberly，模块 44797，类 p／default m=p**。前节曝光收据内保留了 Ultra 包装器的原始归属，本节没有修改该历史收据，也没有把它作为 3594 的实际挂载证据。本节重新核对 Kimberly 原件、类、初始化与具体方法；原生实例初始化 `0x3bcc0` 明确把 PID `0x0e0a` 接到 `0xb9690` 虚表，`0x0e0b／0x0e0c` 分支分别保留，不能按同族名称混用。
+
+### Reset：一次固件恢复与本地同步
+
+Camera 页脚实际挂载 Reset，当前 `resetAllSettingsAtOnce=true`。按钮使用 trailing 300 ms debounce，先把 UI 的默认 `viewPresets` 发到 reducer，再经 `h2 → Zy3 → BroadcastChannel` 发 `ON_CAMERA_RESTORE_DEFAULT`，并独立安排 500 ms 后的缓存刷新请求。源码的另一份逐字段 Reset 列表在此产品不执行；这份定时器也不等待设备结果。
+
+MW 在状态机入队前截获该消息，按当前 `supportFWRestoreDefault=true` 调用 `88116.XU`。初始化后的 Kimberly 只发送 `RestoreDefaults(containerId)`。实际导出为 `0x5e0c0 → Pro+256 → 0x52860`，8 字节命令为 **`a0 0a 02 00 00 00 00 00`**，复用已经核实的 ISP 应答边界。这与 `RestoreDefaultAndReboot`、完整 profile 重放及闪存保存是不同操作。
+
+只有原生返回真，MW 才读取当前本地文档和活动 profile，克隆 **MW 默认值**，替换活动项的 `camera`、`image`、`imageMode`，递增版本、等待持久化、更新运行时缓存，再广播字段和计算出的高级相机缓存。原有 profile 的名称、GUID、其他字段、其他 profile 及文档身份均保留。这里**不再次逐字段 SET，也没有独立设备读回**。
+
+原生 false／异常只记录并返回 false；MW 消息入口不消费此 bool。若固件恢复成功后，本地文档、活动项或持久化失败，设备可能已经改变而同步返回 false，源码没有回滚。按钮先前发布的 `viewPresets` 也不由这条失败恢复，不能把 UI 默认值或本地同步成功当作设备测量。
+
+UI／MW 默认值确实不同，不能混为一份：MW 的 anti-flicker 为 **2**，UI 为 **1**；MW DNR 只有 `state3D=true`，UI 同时有 2D／3D；MW 包含 `ldc=false` 和各图像预设的 sharpness／gain，UI 没有；UI 还多一个根 `camera.shutterLimitControl`，两端都保留嵌套的 `autoExposure.shutterLimitControl`。成功恢复采用 MW 的五个完整图像预设。MW edition 表只有键 0，不存在自动选另一版本默认值的回退。
+
+### 完整与差量重放的实际字段
+
+Profile 切换先更新活动身份、持久化和运行时状态，再把活动 profile 的 diff 交给 `87190.IF`；profile 重置保留名称／GUID、安装 MW 默认 profile 后调用同一入口，不带 diff。`IF` 解析到完整 `xn`。完整重放按实际字段顺序遍历，差量重放只遍历提供的键；`cameraMode`／`cameraValue` 由整份相机与 autofocus 消费，没有独立事件。
+
+| 字段／动作 | 实际设备调用与边界 |
+| --- | --- |
+| cameraMode／cameraValue | `ON_SET_CAMERA_INFO` 发送 focus(value, mode==auto)；额外 zoom 需要另一种 adapter 实例，当前 Kimberly 不走该分支 |
+| autoFocus | 自动模式：focus(0,1)、FDAF(mode,lighting)、tracking sensitivity；手动模式：focus(manual,0)、FDAF(1,lighting)。结果 bool 被忽略 |
+| autoExposure | 有 enabled 输入则发送 exposure(0,enabled)；自动分支发送提供的 metering／compensation；手动分支发送适用的 exposureValue、ISO、shutter。当前默认没有 exposureValue |
+| 嵌套 shutterLimitControl | supportShutterGuard 开启时发送 normal→1、其他→0；自定义 runner 在 false 时明确拒绝 |
+| autoFraming | 开启先发送 enabled=1，成功才写 speed／size；关闭发送 0 后恢复活动 view 的 zoom／pan／tilt。trackingSubject 仅存储，不发送 |
+| viewPresets | 注册其他视图的实际快捷键，选择活动行；zoom 使用 `Number((100*zoom).toFixed())`，pan／tilt 原值，均手动模式 |
+| resolution | 更新版本与配置缓存，按授权保存；**没有原生 setter 或队列任务** |
+| mjpegQuality | 等待停预览；自动发送 adaptive(autoQuality,mode)，手动先 adaptive(false,0) 再 fixed(manualQuality) |
+| hdr／ldc | 等待停预览后 SET；HDR 开启才写 brightness；Kimberly LDC 追加第三参数 0 |
+| lowLightCompensation | Number(value)，手动模式 |
+| dynamicNoiseReduction | 依次发送 (2,Boolean(state2D))、(1,Boolean(state3D))；缺失 2D 变 false。当前 Pro 原生忽略首参数，两次均用第二参数控制 3D |
+| antiFlicker | 保存的数值，手动模式；结果消费者只检查完成状态 |
+| watermark／mirrorVideo | 水印等待停预览并编码开关／位置；mirror 使用 Number(value)。均不自动增加读回或闪存保存 |
+| imageMode | 校验预设下标，发布模式／预设，排 brightness→contrast→saturation→可选 white balance |
+| image | 再排 image setting 及 `propertyNames:[]` 的 presets；后者按 brightness、contrast、saturation、white balance、sharpness、gain 顺序发送，基础属性可能重复写入 |
+
+初始化时 Kimberly 暂置 `shouldSkipUVCOnMWStartup=true`，camera 子字段仅保留 **mjpegQuality、hdr、dynamicNoiseReduction、mirrorVideo、watermark、autoFocus**；image／imageMode 跳过。整份 `ON_SET_CAMERA_INFO` 与嵌套 shutter 事件在过滤前已经排队，不能把这两个例外遗漏，也不能把暂时跳过解释为功能不存在。连接重放结束后恢复该标志为 false。
+
+源码在本机无文档时创建默认本地文档、迁移 schema 并保存；当前产品没有注册 `loadProfileDataFromDevice`。这是本地文档初始化条件，不能据此证明设备没有配置或自行增加设备默认值覆盖。初始化／刷新读取及其原生结果链见下一节。
+
+### 结果、取消与缓存边界
+
+这些 maker 依设备访问权限进入，先更新共享缓存和版本，再按存储权限决定是否等待保存，最后排 `NORMAL_SKIPPABLE`；来自本地配置的重放通常只有设备访问权限。队列按实际类别合并 pending 任务，多数 callback 仍带原输入版本。`xn` 排完事件后等待另一份 generic-manager 的恢复方法，不能据此认定原生队列已经排空。
+
+Autoframing 实际使用旧的 `FEATURE_EVENT_HANDLER → ve／pe` 链。通用 runner 把协议返回的 boolean 直接放进 `result.value`，随后在严格模式中对它写 `value.status`，会产生类型异常；取消检查也位于协议执行后。shutter guard 使用单独 runner，写前检查取消并在 false／异常时拒绝。图像 setting 的异常被记录后仍设 completed，presets 的 bool 结果同样未决定成功；其 white balance 缺值按源码使用 0，sharpness／gain 只在非 null 时发送。Kimberly 未初始化时 saturation／sharpness 返回 `{}`，其他设置方法返回 false，不能把该对象当成原生 bool 成功。
+
+MJPEG、HDR、LDC、水印复用真实的相机锁与停预览等待：锁使用 `ifAvailable`，未取得时可能没有等待项；新请求拒绝旧 promise 并清 timer，UI 停止确认有 5 秒超时。原生调用没有接收 AbortSignal；本节不补造回滚、连接代次检查或完整释放承诺。
+
+Reset 的刷新请求与真实 GET／缓存发布是独立边界，具体读取顺序、合成字段和失败行为统一记录于下一节。
+
+本节把 **31 个实际设置导出**与对应源码接合：Reset 1 项、controls 14 项、image／anti-flicker 7 项、view／MJPEG／autoframing／shutter 8 项，加上前节精确复用的 EV 1 项。原生分别核对 ISP、IAMCameraControl、IAMVideoProcAmp 的真实成功与释放条件，不把 OS COM 的 `HRESULT>=0` 错套成 ISP 的应答条件。7 项主链维护测试和各原生组的定向反例测试通过，无新原生捕获或临时副本；正式清理由统一维护入口验收。
+
+这完成的是当前 Reset／配置 **SET 重放的静态语义**。原生设备生命周期和 I/O／callback 排空、其他页面动作与产品分支仍独立待办，接续[统一路线图](../../re/ui-readonly-first-roadmap.md)。独立 Rust、生产／UI／后端接线、官方 DLL 实际功能对照、设备读写／恢复与窗口验收均仍为 **Unverified**。
+
+## 3594 当前初始化／刷新 GET 与缓存消费者
+
+完整证据在[统一相机收据](../../../.analysis/results/frontend/accessories-camera-local-pages-audit.json)的 `camera_3594_initial_get_chain`，维护入口为 `audit-family-function --family accessories --function main --product 3594 --query camera-3594-initial-get-chain`。只覆盖当前缓存实际调用的 **11 个 GET**，复用既有完整捕获；没有把 DLL 导出表中其余 getter 当作本产品的新需求。
+
+初始化先连接当前设备并加载／初始化原生适配器，在本地文档准备后等待读取缓存，后续连接重放仍由上一节的独立 SET 链负责。缓存 owner `87887.db → Ze` 首先并发读 brightness、contrast、saturation、white balance，完成后仅在 `isAdvancedCamera` 分支并发读 zoom、pan、tilt、focus、exposure、low-light、anti-flicker。Host 按 channel 的 mutex 串行执行实际原生调用；没有因使用 `Promise.all` 而并行访问同一 channel。
+
+| 真实 COM 接口 | 当前 GET 的属性号 |
+| --- | --- |
+| `IAMVideoProcAmp` | brightness 0、contrast 1、saturation 3、white balance 7、anti-flicker 13 |
+| `IAMCameraControl` | pan 0、tilt 1、zoom 3、exposure 4、focus 6、low-light 19 |
+
+导出使用精确 container 查找，持有对象锁、必要时重连 filter，再经 `QueryInterface(+0) → Get(+40) → Release(+16)`。value／flags 先清零，**Get 的负 HRESULT 只记日志，仍编码可能未写入或部分写入的输出**；JSON 不携带读取成功状态。`value` 是有符号整数，`isAuto` 是布尔值且仅在 flags **恰为 1** 时为真。QI 失败返回空串，缺实例／filter 返回 `{}`；没有值域查询、缩放、失败重试或写回。正常解锁／Release 不证明异常、取消或并发终止均已完整释放。
+
+11 个 JS getter 的实际 ABI 均为 `pointer(string containerId)`，非空结果直接 `JSON.parse`；未初始化、null 或空串变成空对象。原生结果经 `strlen+1` 分配并复制，Host 主进程 `ffiPreloadAsync` 链调用 `readCString`，**只有解码正常返回后**才设置 finally 中的释放标记。释放导出确实是 `FreeMalloc`（ordinal 8，RVA `0x576b0`），其 `HeapFree` 失败只设置 errno，导出仍返回 1；解码异常也不保证释放。Host 忽略 libffi callback 的 error 参数，捕获异常后可能返回 undefined；不能把这些路径解释为有效空缓存或读取成功。
+
+缓存会把图像缺值转换为 0／false；focus 的 lightingType 与 exposure 的 metering、compensation、ISO、shutter 也是合成 0。view 值直接复制，low-light 使用 `Boolean(value)`；auto exposure 或扩展 UVC gate 还可能固定 exposureValue 为 0。这些字段与真正读取值必须区分，本链没有读取 sharpness、gain、HDR 或其他 ISP 属性，也不持久化读取结果。
+
+`getAdvancedCameraSettingsCache` 等待读取后，将仍存在的缓存发布为 `MW_SET_CURRENT_CAMERA_SETTINGS`；读取异常仅日志，旧缓存可能被再次发布。`reloadAdvancedCameraSettingsCache` **只启动读取，不等待、不发布**。UI 的可见性 observer 在 `body-wrapper` 完全可见时发 get 请求；reducer 将 payload 存入初值为 null 的 `currentCameraSettings`。实际挂载的 `pm` 比较缓存与当前 profile，按差异打开 CAMERA／SYNAPSE 选择层；两按钮再走既有字段动作并在 500 ms 后请求 reload。缓存到达本身不等于用户选择，也不是 SET 的独立读回确认。unmount 只取消元素观察，不取消在途 GET 或过滤迟到结果。
+
+本节核对 24 个既有完整原生函数、3,018 条原 PE 指令，并保留真实获取／捕获失败；9 项主链定向测试与 5 项图像 GET 原生测试通过，覆盖原件／完整 owner／COM 槽篡改、缺失 getter、错误释放引用及快照变化，无新增原生捕获或临时产物。完成范围仅为这 11 个 GET 的**静态语义和消费者接线证据**；原生设备全生命周期及排空、其他功能／产品分支仍按统一路线继续，独立 Rust、UI／后端迁移、实际 DLL／设备对照与窗口验收仍为 **Unverified**。
 
 ## 收据附录：共享原生捕获失败的静态证据
 

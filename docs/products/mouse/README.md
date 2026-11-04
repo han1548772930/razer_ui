@@ -188,4 +188,65 @@ PID199、208 声明 `isHidingKeyMapping=true`、`defaultVisibleFunctionsCount=5`
 | 2594 | `main.877e745a.js` | `[43698,44585)` | `[5749106,5758320)` |
 | 45066 | `main.afdaaac9.js` | `[464435,465504)` | `[108731,118931)` |
 
+## PID182：DPI 与活动配置档、板载槽位
+
+统一入口 `audit-family-function --family mouse --function mw --product 182 --query mouse-dpi-active-slot-chain`；正式证据归 `.analysis/results/frontend/mouse-mw-audit.json#/mouse_dpi_active_slot_chain`，当前阶段与后续路线仍归[统一路线图](../../re/ui-readonly-first-roadmap.md)。该查询直接核对当前保留部署，不复用旧部署的完成状态。
+
+- 活动配置档来自当前 serial 的 `deviceMetadatas.activeProfileGuid`。普通 DPI 任务按 GUID 匹配 `obmData.profiles` 后取得实际 `slotId`；没有匹配项时不写板载槽，不能由 `OBMSlots:1` 推定槽号或配置档身份。
+- 板载库存按设备返回的 max／count／ID list 读取。原始加载器跳过列表 index 0 的身份读取，投影另排除实际 ID 1。空名称槽会按本地 `obmSlotId`、再按首个本地配置档补 GUID／名称；这属于本地关联，不能记作设备实读身份。
+- 初始化先经过 serial、本地缓存、活动配置档、供电及宏录制门槛。`ON_STAGES_INIT` 只有 deviceAccess 权限；普通启动的 DPI 恢复早于板载引擎加载，后续板载初始化另走库存读取与同步链。缺少本地文件不能作为设备需要默认值覆盖的依据。
+- 普通任务先 SET／GET 固定 profile 1，再同步 GUID 对应槽。槽同步逐槽 pre-GET、必要时 SET，没有 SET 后读回；profile 1 的确认与任务 completed 均不能证明后续板载写入已持久化。任务内存保存、UI 乐观值、ACK／读回及板载身份来源必须分开。
+- 本段仅闭合当前 PID182 的上述静态语义。独立 Rust、UI／后端接线、官方 DLL／真实设备对照与运行验收仍为未验证；其他产品及板载宏、映射、配置档增删改链继续由各自缺项接续。
+
+## PID182：实际配置重命名与板载槽条件
+
+统一入口 `python tools/workspace.py audit-family-function --family mouse --function mw --product 182 --query mouse-182-profile-slot-chain`；正式结果见 [mouse-mw-audit.json](../../../.analysis/results/frontend/mouse-mw-audit.json) 的 `mouse_182_profile_slot_chain`。当前 UI 为 `main.529a6075.js`，MW 为 `6259.dedaea65043c32c54f0d.js`；原件身份、完整所有者和获取来源归该收据。本批从上一节剩余配置链接续，只核实际菜单的重命名。
+
+- 当前 root 挂载普通 Profile 菜单，明确传 `hasOBM:false`。菜单包含 Rename；产品声明 `OBMSlots:1`。公共保存／移除槽 reducer 的存在不能证明该型号挂载手动槽面板。
+- 重命名持有已选配置 GUID；编辑器最多 32 字符，提交时 trim，拒绝空白和精确同名，包括未改变的原名。Blur／Enter 提交；Escape 传回原名，通常由同名检查阻止发送。UI 先按选中 GUID 乐观改名、排序，再发送 `ON_RENAME_PROFILE`，不以列表下标或槽号作为配置身份。
+- MW 先选择目标 runtime／serial，读取必需本机文档，按参数 GUID 改名并推进版本，依次保存文档、发布 runtime、更新关联游戏中的名称，再刷新配置列表。关联游戏名称按 `profileID` 匹配，没有额外 PID 条件。存储或后续步骤失败不自动撤回此前修改。
+- 板载改名派生只在 `deviceAccess && isOBMDevice && OBMSlots>1` 时入队，另需匹配 GUID、非槽 1 且未锁定。182 的声明为 1，当前动作不进入该分支；实际库存数量不能替换这条产品条件。该结论不推广至其他型号，也不表示本产品的 DPI／映射没有板载写入。
+- 文档存储钩子未指定 `useLockableStorage`，因此此处使用普通 `localStorage` 路径；外层事件队列的锁与文档读写不能混为一谈。去重哈希排除 version，缓存先于写入更新，失败后不能假定同内容重试一定再写。`PostSetLocalStorage` 另外启动未等待的 MappingEngine 文档同步：只比较 GUID、数量、active、hash、gamemode 等，不比较名称；热缓存纯改名可跳过，冷缓存或其他变化仍可能发布。
+- 服务文档发布复用当前 Host／MappingEngine 的精确静态证据和 7 个原生函数，不重复捕获。原生布尔结果未被该钩子核对；本机存储完成、服务观察者发布、映射实际生效及设备读回分别判断，不能把这里的 completed 当作设备确认。
+- 结果顺序为完整列表 → completed → postprocess → 任务内存保存。内存保存若最后失败，可能在完成通知之后再发 error；UI 按 timerTick 匹配并移除待办，未匹配结果会忽略，没有乐观值回滚。页面卸载取消存储订阅和计时器，但已派发重命名没有连接代次、AbortSignal 或补偿链，不能据此认定原生观察者已排空。
+
+`Mouse182ProfileSlotChainTests` 静态反例 11/11 通过，覆盖实际挂载、GUID／serial、板载条件、编辑取消、持久化顺序、缓存／失败和消费者边界。该批没有执行厂商 JS、官方 DLL、应用或设备操作，没有新增临时目录、数据库或捕获。其他配置动作须先核各自实际挂载和消费者；Rust 独立实现、UI／后端接线、实际 DLL／设备对照与运行验收仍为未完成／未验证。
+
+## PID182：实际配置档导出
+
+统一入口 `python tools/workspace.py audit-family-function --family mouse --function mw --product 182 --query mouse-182-profile-action-chain`；正式结果归 [mouse-mw-audit.json](../../../.analysis/results/frontend/mouse-mw-audit.json) 的 `mouse_182_profile_action_chain`。本批沿重命名收据的剩余配置链，只核实际挂载的 Export；复用同一当前 UI／MW 和已核验的本机存储证据，Host 保存桥另与当前官方包中的 main／preload 原件重新核对。
+
+- 普通 Profile 菜单实际挂载导出弹层，进入前须有选中 GUID。列表排除产品工厂预设 GUID；同时存在 General 与 Factory Default 时再排除后者。初始选择当前配置档及其宏，重新选中配置档会选中全部宏，全选只改变配置档选择。确认按钮使用 CSS disabled 类，没有原生 disabled 属性或处理函数守卫；确认派发后立即关闭弹层，不等待保存。
+- MW 先读本机宏库，再按目标 runtime／serial 读取必需配置文档，按所选 GUID 重新取实际配置，不导出 UI 携带的旧 profile 对象。缺少配置 GUID 会在解析时进入错误分支；找不到的宏直接跳过。共享存储读取在缺少 serial 元数据时可能在返回文档中补配置关联，导出动作自身不调用配置写入或设备／板载写入。
+- 配置只删除 `appEngine`，其余字段通过 JSON、UTF-8／base64 编码；宏 payload 只含 GUID、事件和播放选项，名称位于外层。哈希另排除顶层 hash／gamemode，按稳定排序的 JSON 转义 `<` 后计算 MD5，不能把哈希输入和导出 payload 混为一谈。原版跨配置档宏去重检查外层 guid，但实际只保存 name／payload／hash，因此同一真实宏可能重复导出；这里保留该事实。
+- 文件是带产品、分类和当前语言名称的 `.synapse4` JSON。实际路径为服务 → preload 的 Electron IPC → Host 保存对话框 → Node 文件写入；默认目录取上次未取消的保存目录或下载目录。取消不更新目录；对话框和写盘错误只记录日志，没有文件读回或原子发布确认。
+- 保存调用没有 await，completed／postprocess 先于用户选择和文件写入结果。任务内存保存若随后失败，还可能补发 error；UI 对已移除的 timerTick 不再匹配。关闭弹层及页面订阅清理不取消已派发保存，也不能证明文件回调或共享宏库通道已释放。当前 transition 不经过同名的公共导出权限 helper，不能从该 helper 推定本动作持有设备／存储锁。
+
+`Mouse182ProfileActionChainTests` 静态反例 10/10 通过，覆盖挂载、选择、GUID 重读、编码／哈希、原版去重边界、保存与完成顺序、取消、当前证据依赖和失败收据。没有执行厂商 JS、官方 DLL、应用、安装器或设备操作，没有新增临时目录、数据库或捕获。本段只覆盖导出；其他动作见下列专题，实施与验收边界以统一路线图为准。
+
+## PID182：实际配置档复制
+
+统一入口 `python tools/workspace.py audit-family-function --family mouse --function mw --product 182 --query mouse-182-profile-duplicate-chain`；正式结果归 [mouse-mw-audit.json](../../../.analysis/results/frontend/mouse-mw-audit.json) 的 `mouse_182_profile_duplicate_chain`。本批从 Export 收据的剩余配置链接续，复用同一当前 UI／MW、活动配置恢复及本机存储证据。
+
+- 普通 Profile 菜单包含 Duplicate，必须先选中配置 GUID。名称算法去掉末尾“空格＋数字括号”后缀，使用未占用的基础名或首个可用正整数后缀；GUID 使用原版 `crypto.getRandomValues` 模板生成。UI 只先加入 name／guid、排序并选择新 GUID，再将新配置的 HyperShift 及缓存设为 false；不会在此克隆完整设置。
+- 实际 transition 只取得 exclusive 存储权限，没有 deviceAccess。后台按来源 GUID 从必需本机文档深克隆完整配置，覆盖新 name／guid、追加、切换文档与 serial 的活动 GUID，再推进版本。设置、映射、宏 GUID 引用、hash 和板载关联字段原样保留；没有另行复制宏实体或关联游戏。来源不存在会报错，不能生成默认配置。
+- 目标 runtime 可按 container 选择，但此函数的文档及旧活动配置读取使用当前 runtime 默认参数，保存再使用已选目标，不能把两者改写成一致参数。后台还会异步读改写产品的 `profiles_stack`；该操作没有 await，失败不进入复制函数的 catch。随后依次保存文档、发布 runtime，再以新旧活动配置的差异交给已有恢复链。文档的 MappingEngine 钩子同样未等待原生结果，不能当成设备确认。
+- 复制来源就是此前活动配置且设置未变时，差异仅为 name／guid；当前 PID182 没有这两个初始化 handler，也没有 PROFILE_DATA_PATCH 或 genericFeature 配置，因此不会额外排队设置／HID 写入或板载改名。恢复函数仍可能读取宏录制模式并刷新 runtime／配置列表；该可选读取复用当前 Host `macro_native_recorder` 的 4 个原生所有者，存储发布另复用 7 个，均未重新捕获或实际执行。
+- 若来源与原活动配置不同，恢复链只处理实际变化字段：DPI → `ON_STAGES_INIT`，映射 → `ON_SET_KEYMAPPING`，有线 polling → `ON_POLLING_RATE`，无线 polling 走已有重读，lowPowerMode → `ON_SET_LOW_POWER_MODE`。这些动作仍受各自消费者、队列和确认约束，复制 completed 不代表排队动作已完成。复制结果顺序为恢复调用返回 → completed → postprocess → 任务内存保存；后续内存错误可能晚于完成通知，没有回滚或连接代次取消保证。
+
+`Mouse182ProfileDuplicateChainTests` 静态反例 12/12 通过，覆盖名称／GUID、乐观状态、真实权限、来源克隆、目标差异、持久化顺序、恢复条件、晚期失败及精确依赖。未创建临时目录、数据库或捕获，未执行厂商 JS、DLL、应用或设备。本段只覆盖复制；实际导入见下一专题，剩余动作与实施／验收边界以统一路线图为准。
+
+## PID182：实际本地配置档导入
+
+统一入口 `python tools/workspace.py audit-family-function --family mouse --function mw --product 182 --query mouse-182-profile-import-chain`；正式结果归 [mouse-mw-audit.json](../../../.analysis/results/frontend/mouse-mw-audit.json) 的 `mouse_182_profile_import_chain`。本批接续 Duplicate 的精确剩余项，复用同一当前 UI／MW、共享存储和 7 个原生发布函数，不重捕获已确认的链。
+
+- 实际入口为普通 Profile 菜单的 Import → `IEMode:"import"` → `Fc` 连接的 `Bc` 弹层；父组件同名空回调不是执行入口。弹层使用 Redux `importProfile`，选中配置档时选中其全部宏，派发仅保留所选配置档及其宏 GUID 并集。当前 PID182 没有禁用 HyperShift 按键、额外导入 sanitizer 或 analogSpecs 配置，不应用相应可选预处理。
+- 本地文件选择器声明 `.synapse4`，先按文本 JSON 的 profiles 字段识别当前格式，再尝试按 ZIP 的 DeviceInfo 前缀识别旧格式。当前格式按 URL-safe base64、UTF-8、JSON 解码；哈希排除顶层 hash／gamemode，使用稳定排序 JSON 的 MD5。配置按分类相同或匹配实际产品／dongle／BLE 身份接受，单项解码失败告警并继续；读取或外层 JSON 解析拒绝不在该局部 catch 内。宏通过哈希后，弹层还会递归解码字符串中的 XML 实体。
+- 宏名称按当前库去重；只有 GUID 碰撞才生成新 GUID，并修复选中映射的对应引用。宏事件先生成 appEngine 并计算哈希，再设置实际 mouseMoveType。每个宏先写 MACRO_CONFIG，之后才整体提交 IndexedDB；IDB 使用独占锁、等待事务完成再发变更通知。原生宏投影删除外层维护字段，但会修改共享 appEngine 的虚拟延迟与哈希，因此 IDB 提交和后续 runtime 发布属于不同阶段。
+- 配置浅合并当前 defaultProfile 和导入对象，生成新名称／GUID并追加。当前处理器明确调用 `qe(o.mappings,o,!1,g.concat(h))`：普通映射编译，第四参数保留其他配置档的 turbo 引用；不能套用旧 Xt 快照的第三参数语义。普通配置 handler 不修改 activeProfile，本动作不切换活动配置、不调用设备恢复，也没有对应的设备确认阶段。
+- 提交顺序是逐宏配置 → 宏 IDB → 原生宏投影 → 设备配置文档／钩子 → runtime → 配置列表／宏列表 → completed → postprocess → 可选任务内存保存。跨存储没有事务或回滚；原生布尔返回未被消费者核对，晚期内存写入失败可能在完成通知后才补发 error。弹层确认立即关闭，Cancel／关闭只关闭弹层，没有 FileReader abort、连接代次取消或已派发工作的排空保证。
+- 旧格式实际请求 `${origin}/profile-migration/worker.js`。本批只复核已保留业务 worker 的请求／响应及失败生命周期；每次 onmessage 内才创建 2 秒计时器，ready 等忽略消息留下的计时器也可能使请求拒绝，且没有 port.close。该 worker 的最新业务部署、内部 loadSyn3File／toSyn4 产品版本转换及监视器坐标分支仍须取证，不能从旧原件或 envelope 推断全部转换完成。
+
+`Mouse182ProfileImportChainTests` 静态反例 12/12 通过，包含入口、文件身份／哈希、选择与预处理、宏冲突、当前普通映射、活动配置、提交／结果顺序、取消和失效输入拒绝。未执行厂商 JS、DLL、应用或设备，新增捕获、分析会话和临时资源均为 0。后续从 `mouse_182_profile_import_chain/remaining_chains/1` 接续其余实际动作；legacy 独立缺项保留在 remaining_chains/0。既有 `PreparedMouseImport` 只是本地候选结果，其当前源码一致性、真实发布、UI／后端接线、实际 DLL／设备对照和运行验收仍分别待完成／未验证。
+
 这里记录当前官方源码语义。源码获取、逆向语义、Rust 独立实现、UI／后端接线、静态／模拟验证和真实运行验收分别判断，不能由此索引推断整族功能已完成。

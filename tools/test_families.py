@@ -1359,6 +1359,169 @@ class AudioDriverCloseQuiescenceTests(unittest.TestCase):
         self.assertEqual(self.audit.final_snapshot(), [])
 
 
+class AudioMarie1446LifecycleChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.result = families.collect_audio_marie_1446_lifecycle_chain(cls.audit)
+        cls.previous = json.loads((analysis.ROOT / ".analysis/results/frontend/audio-MapAudio-audit.json").read_bytes())
+        cls.raw = cls.audit.read(cls.result["native"]["original"])
+        cls.reference_raw = cls.audit.read(cls.previous["driver_lifecycle"]["marie"]["original"])
+
+    def verify_native(self, native=None, raw=None):
+        return families._audio_marie_1446_native_contract(self.raw if raw is None else raw, self.reference_raw,
+            self.result["native"] if native is None else native, self.previous)
+
+    def source_owners(self):
+        return {role: copy.deepcopy(self.audit.owners[owner]) for role, owner in self.result["roles"].items()}
+
+    def test_current_mounted_chain_keeps_runtime_and_implementation_separate(self):
+        result = self.result
+        self.assertEqual((result["product_id"], result["query"]), (1446, "audio-marie-1446-lifecycle-chain"))
+        self.assertEqual(result["source_set"]["name"], "audio-mw-1446-current-refresh-ec3db4b29c5a-2")
+        self.assertEqual(result["host_release"]["version"], "4.0.896")
+        self.assertIn("33422.X.getInstance().init", result["source_contract"]["mounted_route"])
+        self.assertTrue(result["source_contract"]["generic_feature_flags_are_separate_input"])
+        self.assertEqual(result["source_contract"]["supportStreamMixer_config"], {"nonAvailableInputChannels": []})
+        for key in ("source_chain_complete", "whole_product_complete", "target_execution", "real_device_operations"):
+            self.assertFalse(result[key])
+        self.assertEqual(result["official_dll_comparison"], "not_executed")
+        self.assertFalse(result["native_binding"]["installed_file_execution_observed"])
+
+    def test_current_owner_changes_cannot_fake_a_mounted_feature(self):
+        for role, before, after in (("main_generic_features", 'featureKey:"audio_streamMixer"', 'featureKey:"other"'),
+                ("registry_stream_mixer", "i.bind(i,16504)", "i.bind(i,16505)"),
+                ("manager_init", "yield t.init()", "t.init()"),
+                ("mixer_create", "new hl(e)", "new hl({})")):
+            owners = self.source_owners()
+            self.assertIn(before, owners[role]["body"])
+            owners[role]["body"] = owners[role]["body"].replace(before, after, 1)
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "complete source boundary changed"):
+                families._audio_marie_1446_source_contract(owners)
+
+    def test_bool_errors_cancel_and_unload_preserve_observed_consumer(self):
+        source = self.result["source_contract"]
+        self.assertFalse(source["device_initialize_result_controls_isInit"])
+        self.assertFalse(source["unload_awaits_termination"])
+        self.assertFalse(source["wrapper_unregisters_native_callback"])
+        self.assertFalse(source["wrapper_requests_FreeFFI"])
+        self.assertFalse(source["abort_signal_or_inflight_drain"])
+        for role, before, after in (("native_init", "yield this.deviceInitialize()", "this.isInit=yield this.deviceInitialize()"),
+                ("native_terminate", "yield this.callDLLApi(e),this.isInit=!1", "this.isInit=yield this.callDLLApi(e)"),
+                ("native_handleBeforeUnload", "this.terminate()", "await this.terminate()"),
+                ("async_export", "return n", "throw new Error()")):
+            owners = self.source_owners()
+            self.assertIn(before, owners[role]["body"])
+            owners[role]["body"] = owners[role]["body"].replace(before, after, 1)
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "complete source boundary changed"):
+                families._audio_marie_1446_source_contract(owners)
+
+    def test_native_delta_preserves_real_driver_identity_and_reuses_shared_queue(self):
+        contract = self.result["native_contract"]
+        self.assertEqual((contract["same_machine_functions"], contract["changed_address_functions"]), (17, 5))
+        self.assertEqual(len(contract["selected_functions_compared"]), 22)
+        self.assertEqual({row["capture"]["rva"] for row in self.result["native"]["complete_functions"]},
+            {"0x34a40", "0x34a60", "0x34ca0", "0x34f30", "0x35280", "0x4c0c0", "0x5a9c0"})
+        self.assertEqual(contract["driver_clsid"], "{BB4BBA6B-01EF-4028-9BB7-6E03446CC32F}")
+        guid = [row for row in contract["moved_referenced_data"] if not row["content_equal"]]
+        self.assertEqual([(row["reference_rva"], row["rva"], row["role"]) for row in guid],
+            [("0x6e090", "0x6e0b0", "driver_clsid")])
+        self.assertEqual(contract["actual_loaded_module"], "unobserved")
+        self.assertFalse(contract["other_driver_package_semantics_reused"])
+        self.assertFalse(contract["whole_session_quiescence_proven"])
+        self.assertFalse(contract["arbitrary_transitive_data_closure_claimed"])
+        self.assertTrue(contract["same_initialized_reference_windows"])
+
+    def test_native_capture_cannot_forge_code_or_guid_data(self):
+        for mode in ("instruction", "guid", "pseudocode"):
+            native = copy.deepcopy(self.result["native"])
+            if mode == "instruction":
+                function = next(row["capture"] for row in native["complete_functions"] if row["capture"]["rva"] == "0x4c0c0")
+                row = next(row for row in function["assembly"] if row["rva"] == "0x4c148")
+                row["bytes"] = "90" * (len(row["bytes"]) // 2)
+            elif mode == "guid":
+                row = next(row for row in native["verified_data_regions"] if row["role"] == "driver_clsid")
+                row["raw_hex"] = "00" * row["bytes"]
+                row["sha256"] = hashlib.sha256(bytes(row["bytes"])).hexdigest()
+            else:
+                function = next(row["capture"] for row in native["complete_functions"] if row["capture"]["rva"] == "0x34ca0")
+                row = next(row for row in function["pseudocode"]["lines"] if "v8 = 1;" in row["text"])
+                row["text"] = row["text"].replace("v8 = 1;", "v8 = 0;")
+            with self.subTest(mode=mode), self.assertRaisesRegex(ValueError, "differs|semantics require review"):
+                self.verify_native(native)
+
+    def test_shared_machine_and_initialized_reference_changes_are_rejected(self):
+        for rva in (0x33ad0, 0x82020):
+            pe = host.inspect_pe(self.raw)
+            section = next(row for row in pe["sections"] if row["rva"] <= rva < row["rva"] + row["bytes"])
+            raw = bytearray(self.raw)
+            raw[section["file_offset"] + rva - section["rva"]] ^= 1
+            with self.subTest(rva=hex(rva)), self.assertRaisesRegex(ValueError, "shared machine boundary|shared initialized reference"):
+                self.verify_native(raw=bytes(raw))
+
+    def test_exact_upstream_pointers_reject_changes_and_allow_unrelated_section_refresh(self):
+        previous = copy.deepcopy(self.previous)
+        previous["unrelated_refresh"] = {"recorded_at_utc": "changed"}
+        _, dependencies = families._audio_marie_1446_dependencies(previous)
+        self.assertEqual(dependencies, self.result["upstream_sections"])
+        self.assertTrue(all(row["pointer"].startswith("/") for row in dependencies))
+        for mode in ("missing", "changed", "unresolved"):
+            value = copy.deepcopy(previous)
+            if mode == "missing":
+                del value["driver_lifecycle"]["source_contract"]
+            elif mode == "changed":
+                value["endpoint_notification_chain"]["native_contract"]["worker"]["initialize_wait_seconds"] = 10
+            else:
+                value["driver_lifecycle"]["bounded_observation_complete"] = False
+            with self.subTest(mode=mode), self.assertRaisesRegex(ValueError, "upstream pointer requires review"):
+                families._audio_marie_1446_dependencies(value)
+
+    def test_failure_snapshot_and_final_upstream_recheck_publish_before_raising(self):
+        import argparse
+        for mode in ("collect", "snapshot", "upstream"):
+            with self.subTest(mode=mode), \
+                    patch.object(families, "collect_audio_marie_1446_lifecycle_chain", **(
+                        {"side_effect": ValueError("missing current owner")} if mode == "collect" else {"return_value": {}})), \
+                    patch.object(host.HostLocalAudit, "final_snapshot", return_value=["current-owner"] if mode == "snapshot" else []), \
+                    patch.object(families, "_audio_marie_1446_dependencies", **(
+                        {"side_effect": ValueError("upstream pointer requires review")} if mode == "upstream" else {"return_value": ({}, [])})), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"), \
+                    self.assertRaisesRegex(ValueError, "1446 lifecycle observation remains unresolved"):
+                families.audit_audio_marie_1446_lifecycle_chain(argparse.Namespace(family="audio", function="mw", product=[1446], prepare=False))
+            report, _, _, section = publish.call_args.args
+            self.assertEqual(section, "marie_1446_lifecycle_chain")
+            self.assertTrue(report["failures"])
+            self.assertFalse(report["bounded_observation_complete"])
+            self.assertFalse(report["target_execution"])
+
+    def test_dispatch_stays_in_current_audio_scope_and_rejects_preparation(self):
+        import argparse
+        parser = argparse.ArgumentParser()
+        families.add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["audit-family-function", "--family", "audio", "--function", "mw",
+            "--query", "audio-marie-1446-lifecycle-chain", "--product", "1446"])
+        with patch.object(families, "audit_audio_marie_1446_lifecycle_chain") as current, \
+                patch.object(families, "audit_audio_driver_lifecycle") as prior:
+            families.audit_family_function(args)
+        current.assert_called_once_with(args)
+        prior.assert_not_called()
+        for family, function, products, prepare in (("accessories", "mw", [1446], False),
+                ("audio", "main", [1446], False), ("audio", "mw", [1422], False), ("audio", "mw", [1446], True)):
+            with self.subTest(family=family, function=function, products=products, prepare=prepare), \
+                    self.assertRaisesRegex(ValueError, "PID1446 without production preparation"):
+                families.audit_audio_marie_1446_lifecycle_chain(argparse.Namespace(family=family, function=function, product=products, prepare=prepare))
+
+    def test_complete_owner_snapshot_and_temporary_lifecycle(self):
+        for row in self.audit.owners.values():
+            self.assertEqual(host.verify_profiles_owner(self.audit, row).text.decode(), row["body"])
+        self.assertTrue(self.result["native"]["capture_failures"])
+        self.assertTrue(all(row["input_chunks_verified"] for row in self.result["native"]["complete_functions"]))
+        self.assertEqual(json.loads(json.dumps(self.result, ensure_ascii=False)), self.result)
+        self.assertEqual(self.result["temporary_artifacts_created"], [])
+        self.assertEqual(self.result["analysis_sessions_created"], [])
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+
 class AudioEndpointLocalChainTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -2304,6 +2467,1690 @@ class CameraImagePropertyChainTests(unittest.TestCase):
                 families.audit_camera_image_properties(argparse.Namespace(family="accessories", function="main", product=[3595, 3596], prepare=False))
         self.assertFalse(publish.call_args.args[0]["bounded_observation_complete"])
         self.assertEqual(publish.call_args.args[3], "image_properties")
+
+
+class Camera3594ProfileResetNativeTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.document = json.loads((analysis.ROOT / ".analysis/results/frontend/accessories-camera-local-pages-audit.json").read_bytes())
+        cls.report = families.collect_camera_3594_profile_reset_native_chain(cls.audit, cls.document)
+        cls.raw = cls.audit.read(cls.report["native"]["original"])
+
+    def test_current_restore_export_and_packet_are_distinct_from_reboot_and_replay(self):
+        contract = self.report["native_contract"]
+        self.assertEqual(contract["export"], {"name": "RestoreDefaults", "ordinal": 57, "rva": "0x5e0c0"})
+        self.assertEqual(bytes(contract["command"]).hex(), "a00a020000000000")
+        self.assertEqual(contract["command_hex"], "a00a020000000000")
+        self.assertEqual({row["capture"]["rva"] for row in self.report["native"]["complete_functions"]}, {"0x5e0c0", "0x52860"})
+        self.assertEqual(contract["verified_instruction_count"], 71)
+        self.assertEqual({row["role"]: (row["slot_byte_offset"], row["target_rva"]) for row in contract["virtual_slots"]},
+            {"restore_defaults": (256, "0x52860"), "isp": (360, "0x52f30")})
+        self.assertIn("0x5ecf0 is a different export", contract["separate_operations"])
+        self.assertIn("does not independently query restored settings", contract["result"])
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_changed_command_lookup_or_bool_result_requires_new_review(self):
+        for rva, before, after in (("0x52860", "v2 = 133792", "v2 = 133793"),
+                ("0x52860", "v3 = 0", "v3 = 1"),
+                ("0x5e0c0", "if ( v6 )", "if ( !v6 )"),
+                ("0x5e0c0", "return v4 != 0", "return 1")):
+            native = copy.deepcopy(self.report["native"])
+            function = next(row["capture"] for row in native["complete_functions"] if row["capture"]["rva"] == rva)
+            line = next(row for row in function["pseudocode"]["lines"] if before in row["text"])
+            line["text"] = line["text"].replace(before, after, 1)
+            with self.subTest(rva=rva, before=before), self.assertRaises(ValueError):
+                families._camera_3594_profile_reset_native_contract(native, self.raw)
+
+    def test_changed_actual_instruction_virtual_slot_or_call_edge_is_rejected(self):
+        native = copy.deepcopy(self.report["native"])
+        native["complete_functions"][0]["capture"]["assembly"][0]["bytes"] = "90"
+        with self.assertRaisesRegex(ValueError, "instruction"):
+            families._camera_3594_profile_reset_native_contract(native, self.raw)
+        native = copy.deepcopy(self.report["native"])
+        native["direct_edges"] = []
+        with self.assertRaisesRegex(ValueError, "direct lookup/ISP edge"):
+            families._camera_3594_profile_reset_native_contract(native, self.raw)
+        pe = host.inspect_pe(self.raw)
+        for rva in (0xb9790, 0xb97f8):
+            raw = bytearray(self.raw)
+            section = next(row for row in pe["sections"] if row["rva"] <= rva < row["rva"] + row["bytes"])
+            raw[section["file_offset"] + rva - section["rva"]] ^= 1
+            with self.subTest(rva=hex(rva)), self.assertRaisesRegex(ValueError, "virtual target"):
+                families._camera_3594_profile_reset_native_contract(self.report["native"], bytes(raw))
+
+    def test_exact_shared_transport_dependency_rejects_changed_ack_or_old_version(self):
+        dependency, = self.report["upstream_sections"]
+        self.assertEqual(dependency, families._camera_3594_profile_reset_native_dependencies(document=self.document))
+        self.assertEqual(dependency["pointer"], "/camera_3594_exposure_chain/native_contract")
+        self.assertNotIn(dependency["receipt"], self.audit.artifacts)
+        original = self.document["camera_3594_exposure_chain"]
+        for branch in ("ack", "snapshot", "version", "failures"):
+            section = {**original, "native_contract": copy.deepcopy(original["native_contract"]),
+                "native": {"original": dict(original["native"]["original"])}}
+            if branch == "ack":
+                section["native_contract"]["transport"]["success"] = "GET HRESULT >= 0"
+            elif branch == "snapshot":
+                section["snapshot_stable"] = False
+            elif branch == "version":
+                section["native"]["original"]["sha256"] = "0" * 64
+            else:
+                section["failures"] = ["unresolved"]
+            with self.subTest(branch=branch), self.assertRaisesRegex(ValueError, "dependency"):
+                families._camera_3594_profile_reset_native_dependencies(document={"camera_3594_exposure_chain": section})
+
+    def test_selected_complete_capture_keeps_global_failure_and_execution_limits(self):
+        self.assertEqual(self.report["native"]["failures"], [])
+        self.assertEqual(self.report["native"]["decompiler_failures"], [])
+        self.assertEqual(len(self.report["native"]["capture_failures"]), 1)
+        self.assertEqual(self.report["new_native_captures"], 0)
+        self.assertEqual(self.report["temporary_artifacts_created"], [])
+        for key in ("source_chain_complete", "target_execution", "real_device_operations"):
+            self.assertFalse(self.report[key])
+        self.assertEqual(self.report["official_dll_comparison"], "not_executed")
+        self.assertEqual(self.report["runtime_acceptance"], "unverified")
+
+
+class Camera3594ProfileControlsNativeTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_camera_3594_profile_controls_native_chain(cls.audit)
+        cls.raw = cls.audit.read(cls.report["native"]["original"])
+
+    def test_real_product_initializer_exports_and_virtual_targets_match_pe(self):
+        contract = self.report["native_contract"]
+        self.assertEqual(len(self.report["native"]["complete_functions"]), 28)
+        self.assertEqual(len(contract["exports"]), 14)
+        self.assertEqual(len(contract["virtual_slots"]), 11)
+        self.assertEqual(len(contract["required_direct_edges"]), 34)
+        self.assertEqual(contract["verified_instruction_count"], 1750)
+        self.assertEqual(contract["instance_selection"]["product_id"], 3594)
+        self.assertEqual(contract["instance_selection"]["vtable_rva"], "0xb9690")
+        self.assertEqual(contract["instance_selection"]["assignment_instruction_rva"], "0x3bebe")
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_fixed_native_packets_keep_parameter_widths_order_and_ignored_dnr_field(self):
+        packet = families._camera_3594_profile_controls_native_packet
+        for name, value, secondary, expected in (
+                ("SetHDR", 1, 0, "a001010000000000"),
+                ("SetHDRBrightness", 257, 0, "a015010100000000"),
+                ("SetLDC", 1, 2, "ff01010302000000"),
+                ("SetFDAFMode", 2, 3, "c00a010200000003"),
+                ("SetAutoFocusLowSensitivity", 1, 0, "a018010000000000"),
+                ("SetAutoExposureMetering", 5, 0, "a008050000000000"),
+                ("SetISOSensitivity", -1, 0, "a01301ff00000000"),
+                ("SetShutterSpeed", 0x12345678, 0, "a009011234567800"),
+                ("SetShutterSpeed", -1, 0, "a00901ffffffff00"),
+                ("SetDynamicNoiseReduction", 1, 2, "a006020000000000"),
+                ("SetWatermark", 1, 2, "c008010102000000"),
+                ("SetMirrorVideo", 3, 0, "a007030000000000")):
+            with self.subTest(name=name):
+                self.assertEqual(packet(name, value, secondary).hex(), expected)
+        self.assertEqual(packet("SetDynamicNoiseReduction", 0, 1), packet("SetDynamicNoiseReduction", 255, 1))
+        for name, value in (("SetCameraExposure", 1), ("SetCameraFocus", 1), ("SetHDR", True), ("SetHDR", 0.5)):
+            with self.subTest(name=name, value=value), self.assertRaises(ValueError):
+                packet(name, value)
+
+    def test_uvc_and_isp_success_and_result_consumers_remain_separate(self):
+        contract = self.report["native_contract"]
+        self.assertEqual(contract["uvc"]["property_ids"],
+            {"SetCameraFocus": 6, "SetCameraExposure": 4, "SetCameraLowLightCompensation": 19})
+        self.assertEqual(contract["uvc"]["guid_hex"], "7033e1c6ac30d011a18c00a0c9118956")
+        self.assertIn("Set HRESULT>=0", contract["uvc"]["success"])
+        self.assertIn("GET HRESULT==0 and response[0]==0", contract["isp"]["transport"])
+        self.assertIn("keeping negative values", contract["uvc"]["value"])
+        self.assertIn("discarded", contract["isp"]["response_consumers"])
+        self.assertFalse(contract["uvc"]["post_write_get"])
+        self.assertFalse(contract["isp"]["post_write_get"])
+        self.assertFalse(contract["isp"]["implicit_flash_save"])
+
+    def test_changed_native_semantics_instruction_guid_slot_or_edge_is_rejected(self):
+        for rva, before, after in (("0x522f0", "v7 = a3", "v7 = a2"),
+                ("0x525c0", "v7 = HIBYTE(a2)", "v7 = a2"),
+                ("0x4b7f0", "v8 = v9 >= 0", "v8 = v9 == 0"),
+                ("0x3bcc0", "case 0xE0A:", "case 0xE0D:")):
+            native = copy.deepcopy(self.report["native"])
+            function = next(row["capture"] for row in native["complete_functions"] if row["capture"]["rva"] == rva)
+            line = next(row for row in function["pseudocode"]["lines"] if before in row["text"])
+            line["text"] = line["text"].replace(before, after, 1)
+            with self.subTest(rva=rva), self.assertRaisesRegex(ValueError, "semantic review"):
+                families._camera_3594_profile_controls_native_contract(native, self.raw)
+        native = copy.deepcopy(self.report["native"])
+        native["complete_functions"][0]["capture"]["assembly"][0]["bytes"] = "90"
+        with self.assertRaisesRegex(ValueError, "instruction"):
+            families._camera_3594_profile_controls_native_contract(native, self.raw)
+        native = copy.deepcopy(self.report["native"])
+        native["direct_edges"] = []
+        with self.assertRaisesRegex(ValueError, "direct lookup/property/ISP edge"):
+            families._camera_3594_profile_controls_native_contract(native, self.raw)
+        pe = host.inspect_pe(self.raw)
+        for rva, reason in ((0xb96b8, "virtual target"), (0xa93e8, "GUID")):
+            raw = bytearray(self.raw)
+            section = next(row for row in pe["sections"] if row["rva"] <= rva < row["rva"] + row["bytes"])
+            raw[section["file_offset"] + rva - section["rva"]] ^= 1
+            with self.subTest(rva=hex(rva)), self.assertRaisesRegex(ValueError, reason):
+                families._camera_3594_profile_controls_native_contract(self.report["native"], bytes(raw))
+
+    def test_exact_current_transport_and_global_failure_are_preserved(self):
+        self.assertEqual(self.report["upstream_sections"], [families._camera_3594_profile_reset_native_dependencies()])
+        self.assertEqual(self.report["native"]["failures"], [])
+        self.assertEqual(self.report["native"]["decompiler_failures"], [])
+        self.assertEqual(len(self.report["native"]["capture_failures"]), 1)
+        self.assertFalse(self.report["source_chain_complete"])
+        self.assertFalse(self.report["target_execution"])
+        self.assertFalse(self.report["real_device_operations"])
+        self.assertEqual(self.report["official_dll_comparison"], "not_executed")
+        self.assertEqual(self.report["new_native_captures"], 0)
+        self.assertEqual(self.report["temporary_artifacts_created"], [])
+
+
+class Camera3594GetImageNativeTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.document = json.loads((analysis.ROOT / ".analysis/results/frontend/accessories-camera-local-pages-audit.json").read_bytes())
+        cls.report = families.collect_camera_3594_get_image_native_chain(cls.audit, cls.document)
+        cls.raw = cls.audit.read(cls.report["native"]["original"])
+
+    def test_actual_five_get_exports_property_ids_com_slots_and_complete_bodies(self):
+        contract = self.report["native_contract"]
+        self.assertEqual({row["name"]: (row["ordinal"], row["rva"], row["property_id"]) for row in contract["exports"]},
+            {"GetBrightness": (15, "0x58bb0", 0), "GetContrast": (28, "0x58d90", 1),
+                "GetSaturation": (41, "0x591a0", 3), "GetWhiteBalance": (50, "0x599b0", 7),
+                "GetAntiFlicker": (10, "0x59fb0", 13)})
+        self.assertEqual(len(self.report["native"]["complete_functions"]), 16)
+        self.assertEqual(contract["verified_instruction_count"], 1938)
+        self.assertEqual(len(contract["required_direct_edges"]), 35)
+        self.assertEqual([row["slot_byte_offset"] for row in contract["com_virtual_calls"]], [0, 40, 16])
+        self.assertEqual(contract["guid"]["raw_hex"], "6033e1c6ac30d011a18c00a0c9118956")
+        self.assertEqual(contract["pro_business_virtual_slots_used"], [])
+
+    def test_failed_get_missing_filter_qi_and_numeric_boolean_types_stay_distinct(self):
+        contract = self.report["native_contract"]
+        self.assertIn("negative HRESULT only logs and still serializes", contract["get"]["result"])
+        self.assertIn("driver may overwrite either even on failure", contract["get"]["out_parameters"])
+        self.assertIn("empty string", contract["get"]["query_interface_failure"])
+        self.assertIn("flags==1 only", contract["get"]["is_auto"])
+        self.assertIn("signed integer", contract["json_result"]["value"])
+        self.assertIn("actual true/false boolean", contract["json_result"]["isAuto"])
+        self.assertEqual(contract["json_result"]["success_shape_example"], '{"isAuto":true,"value":-1}')
+        self.assertFalse(contract["get"]["range_query"])
+        self.assertFalse(contract["get"]["write_or_restore"])
+        self.assertFalse(contract["get"]["device_protocol_ack_observed"])
+        for rva, before, after in (("0x4bf10", "&v30) >= 0", "&v30) == 0"),
+                ("0x4bf10", "if ( (int)v24 < 0 )", "if ( (int)v24 >= 0 )"),
+                ("0x4bf10", "v32[0] == 1", "v32[0] & 1"),
+                ("0x4bf10", "LOBYTE(v18) = 5", "LOBYTE(v18) = 6"),
+                ("0x4bf10", "LOBYTE(v20) = 4", "LOBYTE(v20) = 5"),
+                ("0x4c820", "sub_18004BF10(a1, &v23, a3)", "sub_18004BF10(a1, &v23, 0)")):
+            native = copy.deepcopy(self.report["native"])
+            function = next(row["capture"] for row in native["complete_functions"] if row["capture"]["rva"] == rva)
+            line = next(row for row in function["pseudocode"]["lines"] if before in row["text"])
+            line["text"] = line["text"].replace(before, after, 1)
+            with self.subTest(rva=rva, before=before), self.assertRaises(ValueError):
+                families._camera_3594_get_image_native_contract(native, self.raw)
+
+    def test_allocated_c_string_free_and_internal_storage_have_separate_owners(self):
+        contract = self.report["native_contract"]
+        allocation = contract["result_allocation"]
+        self.assertEqual(allocation["free_export"], {"name": "FreeMalloc", "ordinal": 8, "rva": "0x576b0"})
+        self.assertEqual(allocation["free_chain"], ["0x576b0", "0x78210", "0x829b0", "HeapFree(hHeap,0,pointer)"])
+        self.assertIn("strlen+1", allocation["allocation"])
+        self.assertIn("terminator", allocation["copy"])
+        self.assertIn("does not free the returned char*", allocation["internal_string_cleanup"])
+        self.assertIn("returns1 regardless", allocation["free_failure"])
+        self.assertIn("export presence alone does not prove caller releases", allocation["host_release_boundary"])
+        self.assertIn("No blanket exception,cancel,drain", contract["release"])
+        native = copy.deepcopy(self.report["native"])
+        function = next(row["capture"] for row in native["complete_functions"] if row["capture"]["rva"] == "0x576b0")
+        line = next(row for row in function["pseudocode"]["lines"] if "return 1" in row["text"])
+        line["text"] = line["text"].replace("return 1", "return 0", 1)
+        with self.assertRaises(ValueError):
+            families._camera_3594_get_image_native_contract(native, self.raw)
+
+    def test_changed_bytes_guid_exports_or_edges_fail_evidence_binding(self):
+        native = copy.deepcopy(self.report["native"])
+        native["complete_functions"][0]["capture"]["assembly"][0]["bytes"] = "90"
+        with self.assertRaisesRegex(ValueError, "instruction"):
+            families._camera_3594_get_image_native_contract(native, self.raw)
+        native = copy.deepcopy(self.report["native"])
+        native["direct_edges"] = []
+        with self.assertRaisesRegex(ValueError, "direct property/result/free edge"):
+            families._camera_3594_get_image_native_contract(native, self.raw)
+        pe = host.inspect_pe(self.raw)
+        raw = bytearray(self.raw)
+        section = next(row for row in pe["sections"] if row["rva"] <= 0xa93d8 < row["rva"] + row["bytes"])
+        raw[section["file_offset"] + 0xa93d8 - section["rva"]] ^= 1
+        with self.assertRaisesRegex(ValueError, "GUID"):
+            families._camera_3594_get_image_native_contract(self.report["native"], bytes(raw))
+        for name in ("GetBrightness", "FreeMalloc"):
+            with self.subTest(name=name), patch.object(host, "inspect_pe", return_value={**pe,
+                    "exports": [row for row in pe["exports"] if name not in row["names"]]}):
+                with self.assertRaisesRegex(ValueError, "actual .*export"):
+                    families._camera_3594_get_image_native_contract(self.report["native"], self.raw)
+
+    def test_lookup_dependency_and_capture_failures_cannot_be_promoted_to_execution(self):
+        self.assertEqual(self.report["upstream_sections"], families._camera_3594_profile_image_native_dependencies(document=self.document))
+        self.assertEqual(self.report["native"]["failures"], [])
+        self.assertEqual(self.report["native"]["decompiler_failures"], [])
+        self.assertEqual(len(self.report["native"]["capture_failures"]), 1)
+        self.assertTrue(self.report["native"]["all_selected_pseudocode_captured"])
+        self.assertEqual(self.report["new_native_captures"], 0)
+        self.assertEqual(self.report["temporary_artifacts_created"], [])
+        for field in ("source_chain_complete", "target_execution", "real_device_operations"):
+            self.assertFalse(self.report[field])
+        self.assertEqual(self.report["official_dll_comparison"], "not_executed")
+        self.assertEqual(self.report["runtime_acceptance"], "unverified")
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+
+class Camera3594ProfileImageNativeTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.document = json.loads((analysis.ROOT / ".analysis/results/frontend/accessories-camera-local-pages-audit.json").read_bytes())
+        cls.report = families.collect_camera_3594_profile_image_native_chain(cls.audit, cls.document)
+        cls.raw = cls.audit.read(cls.report["native"]["original"])
+
+    def test_current_seven_exports_use_procamp_ids_without_pro_isp_override(self):
+        contract = self.report["native_contract"]
+        self.assertEqual({row["name"]: (row["ordinal"], row["rva"], row["property_id"]) for row in contract["exports"]},
+            {"SetBrightness": (69, "0x5a1c0", 0), "SetContrast": (80, "0x5a2d0", 1),
+                "SetSaturation": (96, "0x5a4f0", 3), "SetWhiteBalance": (101, "0x5a960", 7),
+                "SetSharpness": (97, "0x5a610", 4), "SetGain": (85, "0x5ab80", 9),
+                "SetAntiFlicker": (60, "0x5ac90", 13)})
+        self.assertEqual(len(self.report["native"]["complete_functions"]), 9)
+        self.assertEqual(contract["verified_instruction_count"], 684)
+        self.assertEqual(len(contract["required_direct_edges"]), 18)
+        self.assertEqual(contract["pro_business_virtual_slots_used"], [])
+        self.assertEqual(contract["guid"]["raw_hex"], "6033e1c6ac30d011a18c00a0c9118956")
+        self.assertEqual([row["slot_byte_offset"] for row in contract["com_virtual_calls"]], [0, 32, 16])
+        self.assertEqual(contract["com_virtual_calls"][1]["instruction"]["text"], "call    qword ptr [rax+20h]")
+        self.assertIn("GET HRESULT==0", contract["shared_boundary"])
+        self.assertIn("do not apply", contract["shared_boundary"])
+
+    def test_current_adapter_preserves_both_arguments_and_bool_long_abi(self):
+        self.assertEqual(set(self.report["source_roles"]), {"brightness", "contrast", "saturation", "white_balance", "sharpness", "gain", "anti_flicker"})
+        adapter = self.report["source_adapter"]
+        self.assertTrue(adapter["original"]["path"].endswith("/rzCamKimberly.663b3f567cd6e45b16b0.js"))
+        self.assertEqual((adapter["original"]["bytes"], adapter["original"]["sha256"], adapter["webpack_module"]),
+            (38444, "d5b2cf470139ab2cdd05b7b523f9f05b2c8630365046d16f0aa391f9dc3af6b9", 44797))
+        self.assertEqual(adapter["class_owner"], adapter["original"]["sha256"] + ":2161:38367")
+        self.assertEqual(adapter["class_body_sha256"], "6e853af33947de7016f5a87aac9bf6ed656d2e2ad99f085f82b86da265009848")
+        self.assertEqual((self.audit.owners[adapter["module_owner"]]["byte_start"],
+            self.audit.owners[adapter["module_owner"]]["byte_end"]), (557, 38377))
+        methods = {row[0]: (row[1], row[2]) for row in families._camera_3594_profile_image_native_specs()}
+        for field, key in self.report["source_roles"].items():
+            owner = self.audit.owners[key]
+            method, export = methods[field]
+            self.assertEqual(owner["original"], adapter["original"])
+            self.assertIn('action:"' + export + '",payload:{actionArgs:[this.containerId,t,i]}', owner["body"])
+            self.assertIn("this.isInit", owner["body"])
+            self.assertNotIn("i=", owner["body"])
+            self.assertIn(method, owner["roles"][0])
+            uninitialized = "return{}" if field in ("saturation", "sharpness") else "return!1"
+            self.assertTrue(owner["body"].endswith(uninitialized + "}))"))
+            self.assertEqual(adapter["uninitialized_results"][field],
+                "empty_object" if field in ("saturation", "sharpness") else "false")
+        self.assertIn("no undefined-to-false host coercion", self.report["native_contract"]["abi"])
+
+    def test_native_long_flag_projection_keeps_values_and_does_not_normalize_extra_bits(self):
+        expected = {"brightness": 0, "contrast": 1, "saturation": 3, "white_balance": 7,
+            "sharpness": 4, "gain": 9, "anti_flicker": 13}
+        for field, property_id in expected.items():
+            for value in (-2147483648, -1, 0, 2147483647):
+                for automatic, flag in ((0, 2), (1, 1), (2, 4), (255, 255)):
+                    with self.subTest(field=field, value=value, automatic=automatic):
+                        self.assertEqual(families._camera_3594_profile_image_native_property(field, value, automatic),
+                            {"property_id": property_id, "value_long": value, "flags": flag})
+        for args in (("unknown", 0, 0), ("gain", 2147483648, 0), ("gain", -2147483649, 0), ("gain", 0, -1),
+                ("gain", 0, 256), ("gain", True, 0), ("gain", 0, False)):
+            with self.assertRaisesRegex(ValueError, "LONG and low unsigned byte"):
+                families._camera_3594_profile_image_native_property(*args)
+        function = next(row["capture"] for row in self.report["native"]["complete_functions"] if row["capture"]["rva"] == "0x4bd80")
+        rows = {row["rva"]: row for row in function["assembly"]}
+        self.assertEqual(rows["0x4bdee"]["text"], "xor     r9d, 1")
+        self.assertEqual(rows["0x4bdf2"]["text"], "inc     r9d")
+        self.assertEqual(rows["0x4be00"]["text"], "mov     r8d, r14d")
+
+    def test_hresult_success_release_and_absent_instance_are_distinct_from_ks_ack(self):
+        contract = self.report["native_contract"]
+        self.assertIn("HRESULT>=0,including positive", contract["set"]["success"])
+        self.assertFalse(contract["set"]["device_protocol_ack_observed"])
+        self.assertFalse(contract["set"]["independent_post_set_getter"])
+        self.assertFalse(contract["set"]["retry"])
+        self.assertFalse(contract["set"]["flash_save"])
+        self.assertFalse(contract["set"]["rollback_or_restore_original"])
+        self.assertIn("QueryInterface failure returns false without that release branch", contract["release"])
+        self.assertIn("no extra nonnull guard", contract["set"]["query_interface_success"])
+        self.assertIn("no blanket exception/cancel/drain guarantee", contract["release"])
+        for rva, before, after in (("0x5a1c0", "sub_18004CAC0(v6, 0, a2, v3)", "sub_18004CAC0(v6, 1u, a2, v3)"),
+                ("0x5ac90", "0xDu, a2", "0xCu, a2"),
+                ("0x4bd80", "v8 = v9 >= 0", "v8 = v9 == 0"),
+                ("0x4bd80", "(v4 ^ 1u) + 1", "v4 + 1"),
+                ("0x4bd80", "if ( v17 )", "if ( !v17 )"),
+                ("0x4cac0", "return v12", "return 1")):
+            native = copy.deepcopy(self.report["native"])
+            function = next(row["capture"] for row in native["complete_functions"] if row["capture"]["rva"] == rva)
+            line = next(row for row in function["pseudocode"]["lines"] if before in row["text"])
+            line["text"] = line["text"].replace(before, after, 1)
+            with self.subTest(rva=rva, before=before), self.assertRaises(ValueError):
+                families._camera_3594_profile_image_native_contract(native, self.raw)
+
+    def test_actual_instruction_guid_exports_and_required_edges_are_bound(self):
+        native = copy.deepcopy(self.report["native"])
+        native["complete_functions"][0]["capture"]["assembly"][0]["bytes"] = "90"
+        with self.assertRaisesRegex(ValueError, "instruction"):
+            families._camera_3594_profile_image_native_contract(native, self.raw)
+        native = copy.deepcopy(self.report["native"])
+        native["direct_edges"] = []
+        with self.assertRaisesRegex(ValueError, "direct lookup/VideoProcAmp edge"):
+            families._camera_3594_profile_image_native_contract(native, self.raw)
+        pe = host.inspect_pe(self.raw)
+        raw = bytearray(self.raw)
+        rva = 0xa93d8
+        section = next(row for row in pe["sections"] if row["rva"] <= rva < row["rva"] + row["bytes"])
+        raw[section["file_offset"] + rva - section["rva"]] ^= 1
+        with self.assertRaisesRegex(ValueError, "GUID"):
+            families._camera_3594_profile_image_native_contract(self.report["native"], bytes(raw))
+        with patch.object(host, "inspect_pe", return_value={**pe,
+                "exports": [row for row in pe["exports"] if "SetBrightness" not in row["names"]]}):
+            with self.assertRaisesRegex(ValueError, "actual export"):
+                families._camera_3594_profile_image_native_contract(self.report["native"], self.raw)
+
+    def test_exact_current_lookup_dependency_rejects_old_version_or_changes(self):
+        self.assertEqual(self.report["upstream_sections"], families._camera_3594_profile_image_native_dependencies(document=self.document))
+        self.assertEqual([row["pointer"] for row in self.report["upstream_sections"]],
+            ["/camera_3594_exposure_chain/native_contract"])
+        self.assertNotIn(self.report["upstream_sections"][0]["receipt"], self.audit.artifacts)
+        original = self.document["camera_3594_exposure_chain"]
+        for branch in ("lookup", "snapshot", "version", "failures"):
+            section = {**original, "native_contract": copy.deepcopy(original["native_contract"]),
+                "native": {"original": dict(original["native"]["original"])},
+                "complete_source_owners": [dict(row) for row in original["complete_source_owners"]]}
+            if branch == "lookup":
+                section["native_contract"]["lifetime"] = "lookup retains instance through termination"
+            elif branch == "snapshot":
+                section["snapshot_stable"] = False
+            elif branch == "version":
+                section["native"]["original"]["sha256"] = "0" * 64
+            else:
+                section["failures"] = ["unresolved"]
+            with self.subTest(branch=branch), self.assertRaisesRegex(ValueError, "dependency"):
+                families._camera_3594_profile_image_native_dependencies(document={"camera_3594_exposure_chain": section})
+
+    def test_independent_kimberly_source_rejects_ultra_missing_module_and_byte_changes(self):
+        source = self.report["source_adapter"]["original"]
+        original = self.document["camera_3594_exposure_chain"]
+        ultra = next(row for row in original["complete_source_owners"] if row["id"] == original["roles"]["adapter"])
+        self.assertIn("rzCamKiyoProUltra", ultra["original"]["path"])
+        factory = self.audit.tree(source).root_node.descendant_for_byte_range(557, 38376)
+        with patch.object(self.audit, "webpack_factories", return_value=[(ultra["original"], None, factory)]):
+            with self.assertRaisesRegex(ValueError, "Kimberly source"):
+                families._camera_3594_profile_image_native_sources(self.audit, self.document)
+        with patch.object(self.audit, "webpack_factories", return_value=[]):
+            with self.assertRaisesRegex(ValueError, "module44797"):
+                families._camera_3594_profile_image_native_sources(self.audit, self.document)
+        read = self.audit.read
+        def changed(row):
+            raw = read(row)
+            return raw.replace(b"this.setGain=(t,i)", b"this.setGain=(i,t)", 1) if row == source else raw
+        with patch.object(self.audit, "read", side_effect=changed):
+            with self.assertRaisesRegex(ValueError, "Kimberly source"):
+                families._camera_3594_profile_image_native_sources(self.audit, self.document)
+        document = {"camera_3594_exposure_chain": {**original, "source_sets": {**original["source_sets"],
+            "mw": {"acquisition": {"path": "obsolete", "bytes": 0, "sha256": "0" * 64}}}}}
+        with self.assertRaisesRegex(ValueError, "Kimberly acquisition"):
+            families._camera_3594_profile_image_native_sources(self.audit, document)
+
+    def test_complete_capture_snapshot_and_functional_execution_boundaries_stay_separate(self):
+        self.assertEqual(self.report["native"]["failures"], [])
+        self.assertEqual(self.report["native"]["decompiler_failures"], [])
+        self.assertEqual(len(self.report["native"]["capture_failures"]), 1)
+        self.assertTrue(self.report["native"]["all_selected_pseudocode_captured"])
+        self.assertEqual(self.report["new_native_captures"], 0)
+        self.assertEqual(self.report["temporary_artifacts_created"], [])
+        for name in ("source_chain_complete", "target_execution", "real_device_operations"):
+            self.assertFalse(self.report[name])
+        self.assertEqual(self.report["official_dll_comparison"], "not_executed")
+        self.assertEqual(self.report["runtime_acceptance"], "unverified")
+        value = json.loads(json.dumps(self.report, ensure_ascii=False, sort_keys=True, allow_nan=False))
+        self.assertEqual(families._camera_3594_profile_image_native_contract(value["native"], self.raw), self.report["native_contract"])
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+
+class Camera3594ExposureChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_camera_3594_exposure_chain(cls.audit)
+        cls.owners = {role: cls.audit.owners[key] for role, key in cls.report["roles"].items()}
+        cls.native_raw = cls.audit.read(cls.report["native"]["original"])
+
+    def test_current_refresh_and_all_three_manifests_bind_the_same_native_bytes(self):
+        report, manifest = self.report, self.report["native_manifest"]
+        self.assertEqual(report["product_id"], 3594)
+        self.assertEqual(report["source_sets"]["ui"]["name"], "accessories-3594-current-refresh-ec3db4b29c5a")
+        self.assertEqual(report["source_sets"]["mw"]["name"], "accessories-mw-3594-current-refresh-ec3db4b29c5a-2")
+        self.assertEqual(manifest["current"]["path"], ".analysis/inputs/frontend-revalidation/blobs/d3e8b254fbe1a0cbd7f1a12baa61899c787831cb94cb6ef5a0b3c3a88af10dbc")
+        self.assertEqual(manifest["resource"]["resourceVersion"], "1.0.36.1")
+        self.assertEqual((report["native"]["original"]["bytes"], len(report["native"]["complete_functions"])), (914120, 12))
+        self.assertEqual(report["native"]["original"]["sha256"], "daee9fe0f5e9f9fa2a5fe83d9da56081464cc540eeb4452a81e81788c71bf3c2")
+        self.assertEqual(report["new_native_captures"], 0)
+        self.assertEqual(report["temporary_artifacts_created"], [])
+
+    def test_full_source_owners_and_every_native_instruction_match_the_actual_inputs(self):
+        self.assertEqual(len(self.report["roles"]), 63)
+        for owner in self.audit.owners.values():
+            with self.subTest(owner=owner["id"]):
+                raw = self.audit.read(owner["original"])
+                self.assertEqual(raw[owner["byte_start"]:owner["byte_end"]], owner["body"].encode())
+                self.assertEqual(hashlib.sha256(owner["body"].encode()).hexdigest(), owner["body_sha256"])
+                node = self.audit.tree(owner["original"]).root_node.descendant_for_byte_range(owner["byte_start"], owner["byte_end"] - 1)
+                while node is not None and (node.start_byte != owner["byte_start"] or node.end_byte != owner["byte_end"] or node.type != owner["syntax"]):
+                    node = node.parent
+                self.assertIsNotNone(node)
+        self.assertTrue(all(row["input_chunks_verified"] for row in self.report["native"]["complete_functions"]))
+        self.assertEqual(self.report["native_contract"]["verified_instruction_count"], 1231)
+        self.assertTrue(self.report["native"]["all_selected_pseudocode_captured"])
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_mounted_range_face_effect_and_leading_old_snapshot_order_are_distinct(self):
+        mounted, exposure = self.report["semantics"]["mounted_ui"], self.owners["ui_exposure"]["body"]
+        self.assertEqual((mounted["minimum"], mounted["maximum"], mounted["step"]), (-3, 3, 0.1))
+        self.assertEqual(mounted["face_metering"], 5)
+        self.assertTrue(mounted["automatic_mode_only"])
+        self.assertFalse(mounted["dynamic_compensation"])
+        self.assertFalse(mounted["unmount_cancels_throttle"])
+        self.assertIn("t&&r===$p&&T<-1&&(0,qI.d1)(-1)(a)},[r]", exposure)
+        order = [exposure.index(token) for token in ("e!==T&&", "(0,qI.Ys)(!0)(a),S(n)", "(0,qI.d1)(e)(a)", "Zp({...i,compensation:e})")]
+        self.assertEqual(order, sorted(order))
+        self.assertIn("1e3,{trailing:!1}", exposure)
+        self.assertNotIn("S.cancel", exposure)
+        self.assertIn("autoExposure:{...e.autoExposure,isEnabled:E.payload}", self.owners["ui_reducer"]["body"])
+        self.assertIn("autoExposure:{compensation:E.payload}", self.owners["ui_reducer"]["body"])
+        self.assertNotIn("id:5", self.owners["ui_navigation"]["body"])
+
+    def test_profile_storage_gates_and_original_task_version_precede_device_completion(self):
+        maker = self.owners["maker"]["body"]
+        self.assertIn('E.find((e=>"updateLocalStorage"===e.type))', self.owners["dispatch_S"]["body"])
+        self.assertIn('E.find((e=>"deviceAccess"===e.type))', self.owners["dispatch_A"]["body"])
+        self.assertLess(maker.index("if(r)"), maker.index("p.autoExposure.compensation=n.compensation"))
+        self.assertLess(maker.index("p.autoExposure.compensation=n.compensation"), maker.index("i&&(yield(0,y.Pf)(r))"))
+        self.assertLess(maker.index("i&&(yield(0,y.Pf)(r))"), maker.index("u.Cf5.bind("))
+        self.assertIn("u.Cf5.bind(null,u.LPV.setting,u.Sc5.version,c,n.compensation)", maker)
+        self.assertIn("const c=a", maker)
+        self.assertIn("r.version=d", maker)
+        self.assertTrue(self.report["semantics"]["submission"]["local_before_device"])
+        self.assertIn("p.autoExposure.isEnabled", maker)
+        self.assertIn('e.compensation="compensation"', self.owners["task_names"]["body"])
+        self.assertIn("type:j.Oel,payload:{...n}", self.owners["ui_root_loadActiveProfileSettings"]["body"])
+        self.assertIn('MW_SET_AUTO_EXPOSURE', self.owners["ui_constant_Oel"]["body"])
+
+    def test_false_exception_cancel_and_skipped_tasks_do_not_become_device_confirmation(self):
+        runner, consumer = self.owners["runner"]["body"], self.owners["result_consumer"]["body"]
+        self.assertIn('s.result=!0,s.value.status="completed",s.value.apiResult=n', runner)
+        self.assertIn('catch(e){s.result=!1,s.error=e}', runner)
+        self.assertIn('s.apiResult', consumer)
+        self.assertNotIn("dispatch", consumer)
+        self.assertEqual(runner.count("signal.aborted"), 1)
+        self.assertLess(runner.index("signal.aborted"), runner.index("setEVCompensation"))
+        self.assertNotIn("signal", self.owners["adapter_setEVCompensation"]["body"])
+        for token in ("getEVCompensation", "saveUVCExtCmdToFlash"):
+            self.assertNotIn(token, runner)
+        self.assertIn("this.currentTask=this.pendingTask.pop()", self.owners["scheduler_g"]["body"])
+        self.assertIn("n.resultClosure(n.id,e,i)", self.owners["scheduler_y"]["body"])
+        for key in ("post_write_get", "implicit_flash_save", "rollback"):
+            self.assertFalse(self.report["semantics"]["submission"][key])
+
+    def test_static_numeric_witnesses_cover_ui_boundaries_quantization_ties_and_native_u8(self):
+        native, normalizer = self.report["native_contract"], self.owners["normalizer"]["body"]
+        self.assertEqual(normalizer, "y=e=>10*e+30")
+        values = native["table"]["ordered_values_for_codes_0_to_18"]
+        # Fixed expected packets are from the retained initializer and SET bytes;
+        # this arithmetic witness does not execute the DLL or a product backend.
+        for ui, converted, code, expected in (
+                (-3, 0, 18, "a014011200000000"), (0, 30, 9, "a014010900000000"),
+                (3, 60, 0, "a014010000000000"), (0.1, 31, 9, "a014010900000000"),
+                (0.2, 32, 8, "a014010800000000")):
+            with self.subTest(ui=ui):
+                self.assertEqual(10 * ui + 30, converted)
+                selected = min(range(len(values)), key=lambda index: abs(values[index] - converted))
+                self.assertEqual(selected, code)
+                self.assertEqual(bytes([160, 20, 1, selected, 0, 0, 0, 0]).hex(), expected)
+        for raw, code in ((55, 1), (35, 7), (5, 16), (255, 0), (256, 18), (-1, 0)):
+            with self.subTest(native_long=raw):
+                self.assertEqual(min(range(len(values)), key=lambda index: abs(values[index] - (raw & 255))), code)
+        self.assertIn("strictly smaller", native["table"]["selection"])
+        self.assertEqual(native["command"], [160, 20, 1, "selected_code_u8", 0, 0, 0, 0])
+
+    def test_real_pro_slots_ks_ack_and_cleanup_are_preserved_without_getter_claims(self):
+        native = self.report["native_contract"]
+        self.assertEqual({row["role"]: (row["vtable_rva"], row["slot_byte_offset"], row["target_rva"]) for row in native["virtual_slots"]},
+            {"set_compensation": ("0xb9690", 232, "0x52c50"), "isp": ("0xb9690", 360, "0x52f30")})
+        self.assertEqual(len(native["required_direct_edges"]), 9)
+        self.assertEqual({key: native["transport"][key] for key in ("node", "property_header_bytes", "payload_bytes", "property_id", "delay_ms")},
+            {"node": 3, "property_header_bytes": 32, "payload_bytes": 8, "property_id": 1, "delay_ms": 10})
+        self.assertFalse(native["transport"]["set_hresult_checked"])
+        self.assertFalse(native["transport"]["returned_byte_count_checked"])
+        self.assertEqual(native["transport"]["success"], "GET HRESULT exactly 0 and response[0]==0")
+        self.assertIn("export discards", native["result"])
+        self.assertIn("bare instance", native["lifetime"])
+        self.assertIn("breaks before property-bag release/VariantClear", native["transport"]["cleanup"])
+
+    def test_changed_source_conversion_range_old_snapshot_gate_and_failure_consumers_are_rejected(self):
+        for role, before, after in (
+                ("ui_camera", "dynamicCompensation:!1", "dynamicCompensation:!0"),
+                ("ui_exposure", "stepValue:.1", "stepValue:1"),
+                ("ui_exposure", "e!==T&&", "e===T&&"),
+                ("ui_exposure", "[r]", "[r,T]"),
+                ("ui_exposure", "trailing:!1", "trailing:!0"),
+                ("ui_reducer", "...e.autoExposure,isEnabled:E.payload", "isEnabled:E.payload"),
+                ("normalizer", "10*e+30", "10*e"),
+                ("maker", "p.autoExposure.compensation=n.compensation", "p.autoExposure.compensation=0"),
+                ("maker", "if(r)", "if(i)"),
+                ("dispatch_A", '"deviceAccess"', '"updateLocalStorage"'),
+                ("runner", "s.value.apiResult=n", "s.value.apiResult=!0"),
+                ("runner", "a.signal.aborted", "a.signal.cancelled"),
+                ("result_consumer", "s.apiResult", "!s.apiResult"),
+                ("storage_set", "if(!t.serialNumber)return", "if(!1)return"),
+                ("adapter", 'SetEVCompensation:["bool",["string","long"]]', 'SetEVCompensation:["bool",["string","bool"]]')):
+            owners = copy.deepcopy(self.owners)
+            self.assertIn(before, owners[role]["body"])
+            owners[role]["body"] = owners[role]["body"].replace(before, after, 1)
+            with self.subTest(role=role), self.assertRaises(ValueError):
+                families._camera_3594_exposure_contract(owners)
+
+    def test_changed_native_table_tie_command_reply_instruction_slot_or_edge_is_rejected(self):
+        for rva, before, after in (("0x1020", "v5 = 57;", "v5 = 56;"),
+                ("0x52c50", "if ( v10 < v8 )", "if ( v10 <= v8 )"),
+                ("0x52c50", "v12 = 5280;", "v12 = 5281;"),
+                ("0x52f30", "if ( !v9 )", "if ( v9 >= 0 )"),
+                ("0x5dd80", "v3 = a2;", "v3 = 0;")):
+            native = copy.deepcopy(self.report["native"])
+            function = next(row["capture"] for row in native["complete_functions"] if row["capture"]["rva"] == rva)
+            line = next(row for row in function["pseudocode"]["lines"] if before in row["text"])
+            line["text"] = line["text"].replace(before, after, 1)
+            with self.subTest(rva=rva), self.assertRaises(ValueError):
+                families._camera_3594_exposure_native_contract(native, self.native_raw)
+        native = copy.deepcopy(self.report["native"])
+        native["complete_functions"][0]["capture"]["assembly"][0]["bytes"] = "90"
+        with self.assertRaisesRegex(ValueError, "instruction"):
+            families._camera_3594_exposure_native_contract(native, self.native_raw)
+        native = copy.deepcopy(self.report["native"])
+        native["direct_edges"] = []
+        with self.assertRaisesRegex(ValueError, "direct edge"):
+            families._camera_3594_exposure_native_contract(native, self.native_raw)
+        pe = host.inspect_pe(self.native_raw)
+        for rva, reason in ((0xb9778, "virtual target"), (0xb47f0, "property set")):
+            raw = bytearray(self.native_raw)
+            section = next(row for row in pe["sections"] if row["rva"] <= rva < row["rva"] + row["bytes"])
+            raw[section["file_offset"] + rva - section["rva"]] ^= 1
+            with self.subTest(rva=hex(rva)), self.assertRaisesRegex(ValueError, reason):
+                families._camera_3594_exposure_native_contract(self.report["native"], bytes(raw))
+
+    def test_changed_current_installer_manifest_and_resource_identity_are_rejected(self):
+        manifests = [json.loads(self.audit.read(self.report["native_manifest"][key])) for key in ("installer", "manifest", "current")]
+        self.assertEqual(families._camera_3594_exposure_manifest(*manifests), self.report["native_manifest"]["resource"])
+        for branch in ("installer", "current", "version", "size", "sha", "path", "duplicate"):
+            installer, manifest, current = copy.deepcopy(manifests)
+            if branch == "installer":
+                installer["latest"]["version"] = "0.0.0"
+            elif branch == "current":
+                current["resourceManifest"]["resources"][0]["sha256"] = "0" * 64
+            elif branch == "duplicate":
+                manifest["resources"].append(copy.deepcopy(manifest["resources"][0]))
+                current["resourceManifest"]["resources"] = copy.deepcopy(manifest["resources"])
+            else:
+                key, value = {"version": ("resourceVersion", "0.0.0"), "size": ("size", 0), "sha": ("sha256", "0" * 64), "path": ("path", "3592")}[branch]
+                manifest["resources"][0][key] = value
+                current["resourceManifest"]["resources"] = copy.deepcopy(manifest["resources"])
+            with self.subTest(branch=branch), self.assertRaises(ValueError):
+                families._camera_3594_exposure_manifest(installer, manifest, current)
+
+    def test_acquisition_failures_shared_dependency_and_completion_stages_stay_separate(self):
+        report = self.report
+        self.assertEqual(len(report["source_sets"]["ui"]["unresolved_acquisition"]), 20)
+        self.assertEqual(len(report["source_sets"]["mw"]["unresolved_acquisition"]), 101)
+        self.assertEqual(len(report["source_sets"]["ui"]["capture_failures"]), 1)
+        self.assertEqual(len(report["source_sets"]["mw"]["capture_failures"]), 1)
+        self.assertEqual(len(report["native"]["capture_failures"]), 1)
+        self.assertEqual(report["native"]["decompiler_failures"], [])
+        dependency, = report["upstream_sections"]
+        self.assertEqual(dependency, families._camera_3594_exposure_dependencies())
+        self.assertEqual(dependency["pointer"], "/image_host_chain/source_contract")
+        self.assertNotIn(dependency["receipt"], self.audit.artifacts)
+        self.assertTrue(report["source_slice_complete"])
+        for key in ("source_chain_complete", "whole_page_complete", "whole_product_complete", "target_execution", "real_device_operations"):
+            self.assertFalse(report[key])
+        self.assertEqual(report["official_dll_comparison"], "not_executed")
+        self.assertEqual(report["runtime_acceptance"], "unverified")
+
+    def test_query_dispatch_is_pid3594_static_only(self):
+        import argparse
+        parser = argparse.ArgumentParser()
+        families.add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["audit-family-function", "--family", "accessories", "--function", "main",
+            "--query", "camera-3594-exposure-chain", "--product", "3594"])
+        with patch.object(families, "audit_camera_3594_exposure_chain") as dispatch:
+            families.audit_family_function(args)
+        dispatch.assert_called_once_with(args)
+        for family, function, product, prepare in (("audio", "main", [3594], False), ("accessories", "mw", [3594], False),
+                ("accessories", "main", [3592], False), ("accessories", "main", [3594], True)):
+            with self.subTest(family=family, function=function, product=product, prepare=prepare), \
+                    patch.object(families, "collect_camera_3594_exposure_chain") as collector, \
+                    self.assertRaisesRegex(ValueError, "requires PID3594"):
+                families.audit_camera_3594_exposure_chain(argparse.Namespace(family=family, function=function, product=product, prepare=prepare))
+            collector.assert_not_called()
+
+
+class Camera3594InitialGetChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_camera_3594_initial_get_chain(cls.audit)
+        cls.owners = {role: cls.audit.owners[key] for role, key in cls.report["roles"].items()}
+        cls.native = cls.report["camera_control_native"]["native"]
+        cls.raw = cls.audit.read(cls.native["original"])
+
+    def test_current_exact_inputs_and_all_eleven_actual_getters_have_complete_owners(self):
+        report = self.report
+        self.assertEqual(report["source_sets"]["ui"]["name"], "accessories-3594-current-refresh-ec3db4b29c5a")
+        self.assertEqual(report["source_sets"]["mw"]["name"], "accessories-mw-3594-current-refresh-ec3db4b29c5a-2")
+        self.assertEqual(report["native_getter_exports"], ["GetAntiFlicker", "GetBrightness", "GetCameraExposure",
+            "GetCameraFocus", "GetCameraLowLightCompensation", "GetCameraPan", "GetCameraTilt", "GetCameraZoom",
+            "GetContrast", "GetSaturation", "GetWhiteBalance"])
+        self.assertEqual(report["new_native_captures"], 0)
+        self.assertEqual(report["temporary_artifacts_created"], [])
+        self.assertEqual(report["camera_control_native"]["native"]["original"]["sha256"],
+            "daee9fe0f5e9f9fa2a5fe83d9da56081464cc540eeb4452a81e81788c71bf3c2")
+        for owner in self.audit.owners.values():
+            with self.subTest(owner=owner["id"]):
+                raw = self.audit.read(owner["original"])
+                self.assertEqual(raw[owner["byte_start"]:owner["byte_end"]], owner["body"].encode())
+                self.assertEqual(hashlib.sha256(owner["body"].encode()).hexdigest(), owner["body_sha256"])
+                host.verify_profiles_owner(self.audit, owner)
+        self.assertEqual(self.audit.final_snapshot(), [])
+        self.assertEqual(families._camera_3594_profile_replay_upstream_changes(report["upstream_sections"]), [])
+
+    def test_six_camera_control_ids_com_slots_and_failed_get_are_not_success_claims(self):
+        contract = self.report["camera_control_native"]["native_contract"]
+        self.assertEqual(contract["get"]["property_ids"], {"GetCameraZoom": 3, "GetCameraPan": 0,
+            "GetCameraTilt": 1, "GetCameraFocus": 6, "GetCameraExposure": 4, "GetCameraLowLightCompensation": 19})
+        self.assertEqual({row["role"]: row["slot_byte_offset"] for row in contract["interface"]["actual_com_calls"]},
+            {"QueryInterface": 0, "Get": 40, "Release": 16})
+        self.assertEqual((len(self.native["complete_functions"]), contract["verified_instruction_count"]), (8, 1080))
+        functions = {row["capture"]["rva"]: row["capture"] for row in self.native["complete_functions"]}
+        body = "\n".join(row["text"] for row in functions["0x4b980"]["pseudocode"]["lines"])
+        self.assertIn("v31 = 0", body)
+        self.assertIn("v32[0] = 0", body)
+        self.assertIn("v32[0] == 1", body)
+        self.assertLess(body.index("if ( (int)v24 < 0 )"), body.index('"value"'))
+        self.assertLess(body.index("+ 16LL"), body.index('"value"'))
+        self.assertTrue(contract["get"]["get_failure_still_serializes"])
+        self.assertFalse(contract["get"]["success_status_in_json"])
+        self.assertFalse(self.report["semantics"]["adapter_result"]["native_failed_get_value_is_confirmed"])
+        self.assertEqual(contract["result_allocation_reference"]["required_free_export"],
+            {"name": "FreeMalloc", "ordinal": 8, "rva": "0x576b0"})
+
+    def test_query_order_synthetic_defaults_and_cache_failure_boundaries(self):
+        semantics = self.report["semantics"]
+        self.assertEqual(semantics["query_order"], [["getBrightness", "getContrast", "getSaturation", "getWhiteBalance"],
+            ["getCameraZoom", "getCameraPan", "getCameraTilt", "getCameraFocus", "getCameraExposure",
+                "getCameraLowLightCompensation", "getAntiFlicker"]])
+        body = self.owners["advanced_cache_read"]["body"]
+        self.assertLess(body.index("n.getWhiteBalance()"), body.index("n.getCameraZoom()"))
+        self.assertIn("metering:0,compensation:0,isoSensitivity:0,shutterSpeed:0", body)
+        self.assertIn("Boolean(e[5].value)", body)
+        self.assertIn("Number(i[0].value||0)", body)
+        self.assertNotIn("getSharpness", body)
+        self.assertNotIn("getGain", body)
+        self.assertFalse(semantics["cache"]["synthetic_or_missing_is_observed_device_state"])
+        self.assertFalse(semantics["cache"]["exception_clears_previous_cache"])
+        self.assertFalse(semantics["cache"]["cache_persisted_by_get"])
+        self.assertFalse(semantics["initialization"]["missing_local_document_proves_device_uninitialized"])
+
+    def test_actual_request_export_binding_and_ui_consumer_do_not_merge_get_with_reload(self):
+        bodies = {key: value["body"] for key, value in self.owners.items()}
+        self.assertEqual(self.report["roles"]["mw_cache_export"], self.report["roles"]["advanced_cache_read"])
+        self.assertEqual(bodies["mw_request_constant"], 'v="advanced_camera_ui_request"')
+        self.assertEqual(bodies["mw_result_constant"], 'vn="MW_SET_CURRENT_CAMERA_SETTINGS"')
+        self.assertEqual(bodies["ui_result_constant"], 'Aa="MW_SET_CURRENT_CAMERA_SETTINGS"')
+        self.assertIn('"reloadAdvancedCameraSettingsCache"===e.payload&&(0,Z.db)()', bodies["advanced_cache_dispatch"])
+        self.assertIn('case j.YQJ:return{...e,currentCameraSettings:E.payload}', bodies["ui_reducer"])
+        self.assertIn('Zo={currentCameraSettings:null', bodies["ui_initial_state"])
+        self.assertIn('e=>e.advancedWebcamReducer.currentCameraSettings', bodies["ui_cache_consumer"])
+        self.assertIn('(0,E_.jsx)(pm,{})', bodies["ui_root_render"])
+        self.assertEqual(bodies["ui_cache_consumer"].count('setTimeout(()=>{(0,qI.E0)()},500)'), 2)
+        self.assertIn('e.isIntersecting&&1===e.intersectionRatio', bodies["ui_root_componentDidMount"])
+        publication = self.report["semantics"]["publication"]
+        self.assertTrue(publication["get_awaits_read"])
+        self.assertFalse(publication["reload_awaits_read"])
+        self.assertFalse(publication["reload_publishes"])
+
+    def test_host_copy_error_and_unmount_do_not_imply_release_or_cancellation(self):
+        body = self.owners["host_invoke"]["body"]
+        self.assertIn('o=s.readCString(),r=!0', body)
+        self.assertIn('finally{r&&(s&&e.FreeMalloc?e.FreeMalloc(s)', body)
+        semantics = self.report["semantics"]
+        self.assertFalse(semantics["host"]["ffi_callback_error_checked"])
+        self.assertFalse(semantics["host"]["copy_failure_still_frees_pointer"])
+        self.assertFalse(semantics["host"]["free_ffi_unloads_library"])
+        self.assertEqual(self.owners["ui_root_componentWillUnmount"]["body"],
+            'componentWillUnmount(){this.observer.unobserve(this.bodyFrame)}')
+        self.assertFalse(semantics["cancellation"]["read_abort_signal"])
+        self.assertFalse(semantics["cancellation"]["connection_generation_checked"])
+        self.assertFalse(semantics["cancellation"]["whole_native_lifetime_closed"])
+
+    def test_changed_complete_sources_cannot_reuse_reviewed_contract(self):
+        for role, before, after in [("adapter_getCameraFocus", 'null===i||""===i?{}:JSON.parse(i)', 'JSON.parse(i)'),
+                ("advanced_cache_read", 'metering:0,compensation:0', 'metering:1,compensation:0'),
+                ("advanced_cache_dispatch", '"reloadAdvancedCameraSettingsCache"===e.payload&&(0,Z.db)()',
+                    '"reloadAdvancedCameraSettingsCache"===e.payload&&(yield(0,Z.db)())'),
+                ("host_invoke", 'o=s.readCString(),r=!0', 'r=!0,o=s.readCString()'),
+                ("ui_cache_consumer", 'e=>e.advancedWebcamReducer.currentCameraSettings', 'e=>e.advancedWebcamReducer.autoFocus')]:
+            changed = copy.deepcopy(self.owners)
+            self.assertIn(before, changed[role]["body"])
+            changed[role]["body"] = changed[role]["body"].replace(before, after, 1)
+            changed[role]["body_sha256"] = hashlib.sha256(changed[role]["body"].encode()).hexdigest()
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "renewed semantic review"):
+                families._camera_3594_initial_get_contract(changed)
+
+    def test_modified_native_bytes_guid_capture_or_direct_edge_is_rejected(self):
+        pe = host.inspect_pe(self.raw)
+
+        def offset(rva):
+            section = next(row for row in pe["sections"] if row["rva"] <= rva < row["rva"] + row["bytes"])
+            return section["file_offset"] + rva - section["rva"]
+
+        for branch in ("instruction", "guid", "owner", "edge", "missing"):
+            native, raw = copy.deepcopy(self.native), bytearray(self.raw)
+            if branch == "instruction":
+                raw[offset(0x4ba63)] ^= 1
+            elif branch == "guid":
+                raw[offset(0xa93e8)] ^= 1
+            elif branch == "owner":
+                native["complete_functions"][0]["capture"]["pseudocode"]["lines"][0]["text"] += " changed"
+            elif branch == "edge":
+                native["direct_edges"] = [row for row in native["direct_edges"]
+                    if row["function"] != "0x180041ba0"]
+            else:
+                native["complete_functions"].pop()
+            with self.subTest(branch=branch), self.assertRaisesRegex(ValueError,
+                    "actual PE bytes|GUID differs|renewed semantic review|edge is absent|selected boundary differs"):
+                families._camera_3594_initial_get_native_contract(native, bytes(raw))
+        incomplete = copy.deepcopy(self.native)
+        incomplete["all_selected_pseudocode_captured"] = False
+        with patch.object(self.audit, "native_slice", return_value=incomplete), \
+                self.assertRaisesRegex(ValueError, "captures are incomplete"):
+            families._camera_3594_initial_get_controls_native(self.audit, {"camera_3594_exposure_chain": {"native": self.native}})
+
+    def test_missing_getter_or_unverified_free_reference_prevents_closure(self):
+        source = {key: self.report[key] for key in ("roles", "source_sets", "reviewed_inputs", "adapter_methods", "reused_source_owners")}
+        for branch in ("getter", "free"):
+            image = copy.deepcopy(self.report["image_native"])
+            if branch == "getter":
+                image["native_contract"]["exports"] = [row for row in image["native_contract"]["exports"] if row["name"] != "GetWhiteBalance"]
+            else:
+                image["native_contract"]["result_allocation"]["free_export"]["name"] = "FreeBuffer"
+            with self.subTest(branch=branch), \
+                    patch.object(families, "_camera_3594_initial_get_dependencies", return_value=({}, [])), \
+                    patch.object(families, "_camera_3594_initial_get_sources", return_value=copy.deepcopy(source)), \
+                    patch.object(families, "collect_camera_3594_get_image_native_chain", return_value=image), \
+                    patch.object(families, "_camera_3594_initial_get_controls_native", return_value=self.report["camera_control_native"]), \
+                    self.assertRaisesRegex(ValueError, "coverage differs|allocation reference differs"):
+                families.collect_camera_3594_initial_get_chain(self.audit)
+
+    def test_query_dispatch_scope_and_final_snapshot_cannot_report_changed_inputs_as_complete(self):
+        import argparse
+        parser = argparse.ArgumentParser()
+        families.add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["audit-family-function", "--family", "accessories", "--function", "main",
+            "--query", "camera-3594-initial-get-chain", "--product", "3594"])
+        with patch.object(families, "audit_camera_3594_initial_get_chain") as dispatch:
+            families.audit_family_function(args)
+        dispatch.assert_called_once_with(args)
+        for family, function, product, prepare in [("audio", "main", [3594], False), ("accessories", "mw", [3594], False),
+                ("accessories", "main", [3592], False), ("accessories", "main", [3594], True)]:
+            with self.subTest(family=family, function=function, product=product, prepare=prepare), \
+                    patch.object(families, "collect_camera_3594_initial_get_chain") as collector, \
+                    self.assertRaisesRegex(ValueError, "requires PID3594"):
+                families.audit_camera_3594_initial_get_chain(argparse.Namespace(family=family, function=function, product=product, prepare=prepare))
+            collector.assert_not_called()
+        for source_changes, upstream_changes in [(["source.js"], []), ([], ["receipt#/upstream"])]:
+            audit = host.HostLocalAudit()
+            with self.subTest(source=source_changes, upstream=upstream_changes), \
+                    patch.object(host, "HostLocalAudit", return_value=audit), \
+                    patch.object(families, "collect_camera_3594_initial_get_chain", return_value={}), \
+                    patch.object(audit, "final_snapshot", return_value=source_changes.copy()), \
+                    patch.object(families, "_camera_3594_profile_replay_upstream_changes", return_value=upstream_changes), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"), \
+                    self.assertRaisesRegex(ValueError, "observation remains unresolved"):
+                families.audit_camera_3594_initial_get_chain(args)
+            self.assertFalse(publish.call_args.args[0]["bounded_observation_complete"])
+            self.assertFalse(publish.call_args.args[0]["snapshot_stable"])
+            self.assertEqual(publish.call_args.args[3], "camera_3594_initial_get_chain")
+        for key in ("source_chain_complete", "whole_page_complete", "whole_product_complete", "target_execution", "real_device_operations"):
+            self.assertFalse(self.report[key])
+        self.assertEqual(self.report["official_dll_comparison"], "not_executed")
+        self.assertEqual(self.report["runtime_acceptance"], "unverified")
+
+
+class Camera3595And3596ProcessingControlChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_camera_3595_3596_processing_control_chain(cls.audit)
+        cls.owners = {row["product_id"]: {role: cls.audit.owners[key] for role, key in row["roles"].items()}
+            for row in cls.report["products"]}
+        cls.native = copy.deepcopy(cls.report["native"])
+        for row in cls.native["complete_selected_functions"]:
+            row["capture"] = json.loads((families.a.ROOT / row["artifact"]["path"]).read_bytes())
+
+    def test_actual_current_mounts_share_two_fields_and_keep_preview_difference(self):
+        self.assertEqual(self.report["product_ids"], [3595, 3596])
+        self.assertEqual(self.report["control"], "dynamicNoiseReduction")
+        for product in self.report["products"]:
+            pid = product["product_id"]
+            self.assertIn("refresh-", product["source_sets"]["ui"]["name"])
+            self.assertIn("refresh-", product["source_sets"]["mw"]["name"])
+            self.assertEqual(product["semantics"]["selectors"], {"state2D": 2, "state3D": 1})
+            self.assertEqual(product["semantics"]["submitted_fields"], ["state2D", "state3D"])
+            self.assertEqual(product["preview_off_editing"], pid == 3595)
+            reference = product["reused_source_owners"]["preview_off_editing"]
+            raw = self.audit.read(reference["original"])[reference["byte_start"]:reference["byte_end"]]
+            self.assertTrue(raw.endswith(b"=!0" if pid == 3595 else b"=!1"))
+            self.assertEqual(self.owners[pid]["ui_profile_default_dnr"]["body"],
+                "dynamicNoiseReduction:{state2D:!0,state3D:!0}")
+
+    def test_native_base_direct_write_and_x_companion_are_distinct(self):
+        native = self.report["native_contract"]
+        base, camera_x = native["products"]
+        self.assertFalse(base["companion_read"])
+        self.assertEqual(base["request"][:2], [192, 14])
+        self.assertTrue(camera_x["companion_read"])
+        self.assertFalse(camera_x["write_after_failed_companion_read"])
+        self.assertEqual(camera_x["get_request"], [8, 0, 0, 0, 0, 0, 0, 0])
+        self.assertEqual(camera_x["set_request"], [40, 0, "2D", "3D", 0, 0, 0, 0])
+        self.assertIn("response[2]", camera_x["selector1_companion"])
+        self.assertIn("response[3]", camera_x["selector2_companion"])
+        self.assertEqual(len(self.report["native"]["verified_indirect_slots"]), 5)
+        self.assertEqual(len(self.report["native"]["complete_selected_functions"]), 7)
+        self.assertTrue(all("capture" not in row for row in self.report["native"]["complete_selected_functions"]))
+
+    def test_false_completed_persistence_and_cancellation_stay_separate(self):
+        for product in self.report["products"]:
+            semantics = product["semantics"]
+            self.assertEqual(semantics["write_order"], [2, 1])
+            self.assertFalse(semantics["native_false_is_task_failure"])
+            self.assertFalse(semantics["completed_is_device_confirmation"])
+            self.assertFalse(semantics["independent_device_readback"])
+            self.assertEqual(semantics["adapter"]["declared_ffi"], ["bool", ["string", "long", "bool"]])
+            owners = self.owners[product["product_id"]]
+            self.assertLess(owners["maker"]["body"].index("yield(0,y.Pf)(r)"),
+                owners["maker"]["body"].index("RzTaskManager.enqueueTask"))
+            self.assertEqual(owners["runner"]["body"].count("signal.aborted"), 1)
+            self.assertNotIn("apiResult", owners["result_consumer"]["body"])
+            self.assertNotIn("getDynamicNoiseReduction", owners["runner"]["body"])
+
+    def test_rejects_a_toggle_that_drops_the_other_submitted_field(self):
+        for pid in (3595, 3596):
+            changed = copy.deepcopy(self.owners[pid])
+            changed["processing_page"]["body"] = changed["processing_page"]["body"].replace(
+                "{...a,state2D:!a.state2D}", "{state2D:!a.state2D}")
+            with self.assertRaisesRegex(ValueError, "processing_page"):
+                families._camera_3595_3596_processing_control_contract(changed, pid)
+
+    def test_rejects_promoting_native_bools_to_the_actual_completed_consumer(self):
+        for pid in (3595, 3596):
+            changed = copy.deepcopy(self.owners[pid])
+            changed["result_consumer"]["body"] += ";if(r.value.apiResult.result2D&&r.value.apiResult.result3D)confirmDevice()"
+            with self.assertRaisesRegex(ValueError, "acknowledgment"):
+                families._camera_3595_3596_processing_control_contract(changed, pid)
+
+    def test_rejects_changing_the_false_or_thrown_first_call_boundary(self):
+        for pid in (3595, 3596):
+            changed = copy.deepcopy(self.owners[pid])
+            changed["runner"]["body"] = changed["runner"]["body"].replace(
+                ",n=yield e.setDynamicNoiseReduction(1", ",n=t&& (yield e.setDynamicNoiseReduction(1")
+            with self.assertRaisesRegex(ValueError, "runner"):
+                families._camera_3595_3596_processing_control_contract(changed, pid)
+
+    def test_rejects_x_writing_after_failed_companion_query_and_wrong_response_index(self):
+        for rva, old, replacement in (("0x53ed0", "if ( (*(unsigned", "if ( !(*(unsigned"),
+                ("0x540c0", "*a3 = BYTE3(v14);", "*a3 = BYTE2(v14);")):
+            changed = copy.deepcopy(self.native)
+            capture = next(row["capture"] for row in changed["complete_selected_functions"] if row["capture"]["rva"] == rva)
+            for line in capture["pseudocode"]["lines"]:
+                line["text"] = line["text"].replace(old, replacement)
+            with self.assertRaisesRegex(ValueError, "native semantics"):
+                families._camera_3595_3596_processing_control_native_contract(changed)
+
+    def test_formal_dependencies_and_static_only_limits_are_preserved(self):
+        report = self.report
+        self.assertEqual(host._keypad_temporary_keymap_dependency_changes(report["upstream_sections"]), [])
+        self.assertEqual(self.audit.final_snapshot(), [])
+        changed = copy.deepcopy(report["upstream_sections"])
+        changed[0]["canonical_sha256"] = "0" * 64
+        self.assertEqual(host._keypad_temporary_keymap_dependency_changes(changed),
+            [changed[0]["receipt"] + "#" + changed[0]["pointer"]])
+        for name in ("source_chain_complete", "whole_page_complete", "whole_product_complete", "target_execution",
+                "real_device_operations", "product_code_modified"):
+            self.assertFalse(report[name])
+        self.assertEqual(report["official_dll_comparison"], "not_executed")
+        self.assertEqual(report["runtime_acceptance"], "unverified")
+        self.assertEqual(report["temporary_artifacts_created"], [])
+        self.assertEqual(report["new_native_captures"], 0)
+
+
+class Camera3595And3596LowLightChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_camera_3595_3596_low_light_chain(cls.audit)
+        cls.owners = {}
+        for product in cls.report["products"]:
+            owners = {role: cls.audit.owners[key] for role, key in product["roles"].items()}
+            for role, row in product["reused_source_owners"].items():
+                owners[role] = {**row, "body": cls.audit.read(row["original"])[row["byte_start"]:row["byte_end"]].decode()}
+            cls.owners[product["product_id"]] = owners
+        cls.native = copy.deepcopy(cls.report["native"])
+        for row in cls.native["complete_selected_functions"]:
+            row["capture"] = json.loads((analysis.ROOT / row["artifact"]["path"]).read_bytes())
+        cls.raw = cls.audit.read(cls.report["native"]["input"])
+
+    def test_actual_mounted_panels_and_single_switch_keep_product_difference(self):
+        self.assertEqual(self.report["product_ids"], [3595, 3596])
+        self.assertEqual(self.report["control"], "lowLightCompensation")
+        for product in self.report["products"]:
+            pid = product["product_id"]
+            self.assertEqual(product["ui_panel_module"], 9271 if pid == 3595 else 4210)
+            self.assertEqual(product["preview_off_editing"], pid == 3595)
+            self.assertIn("Processing panel" + str(product["ui_panel_module"]), product["semantics"]["ui"]["mounted"])
+            owners = self.owners[pid]
+            namespace = "qI" if pid == 3595 else "vI"
+            self.assertIn(f'(0,{namespace}.Ys)(!0)(e),(0,{namespace}.bg)(!_)(e)', owners["processing_page"]["body"])
+            self.assertEqual(owners["ui_profile_default"]["body"], "lowLightCompensation:!1")
+            self.assertIn("(527)", owners["ui_panel_switch_import"]["body"])
+
+    def test_getter_cache_projection_failure_and_profile_provenance_stay_distinct(self):
+        for product in self.report["products"]:
+            get = product["semantics"]["get"]
+            self.assertEqual(get["order"][1][-2:], ["lowLightCompensation", "antiFlicker"])
+            self.assertIn("missing value becomes false", get["projection"])
+            self.assertFalse(get["get_failure_confirms_false"])
+            self.assertFalse(get["cache_is_device_observation"])
+            self.assertFalse(get["writes_profile_automatically"])
+            owners = self.owners[product["product_id"]]
+            self.assertIn('null===i||""===i?{}:JSON.parse(i)', owners["adapter_getCameraLowLightCompensation"]["body"])
+            self.assertIn('lowLightCompensation:Boolean(e[5].value)', owners["source_cache"]["body"])
+            self.assertNotIn("lowLightCompensation", owners["cache_response_reducer"]["body"])
+            self.assertIn("currentCameraSettings:E.payload", owners["cache_response_reducer"]["body"])
+            self.assertIn("c.lowLightCompensation", owners["profile_cache_projection"]["body"])
+
+    def test_difference_modal_adopt_and_keep_both_dispatch_low_light_actions(self):
+        for pid in (3595, 3596):
+            body = self.owners[pid]["ui_cache_consumer"]["body"]
+            namespace = "qI" if pid == 3595 else "vI"
+            profile_symbol = "r" if pid == 3595 else "T"
+            self.assertIn("void 0!==t.lowLightCompensation&&t.lowLightCompensation!==" + profile_symbol, body)
+            self.assertIn(f'(0,{namespace}.bg)(t.lowLightCompensation)(E)', body)
+            self.assertIn(f'(0,{namespace}.bg)({profile_symbol})(E)', body)
+            self.assertEqual(body.count(f'(0,{namespace}.E0)()'), 2)
+
+    def test_save_before_queue_manual_write_false_result_and_abort_boundary(self):
+        for product in self.report["products"]:
+            write = product["semantics"]["write"]
+            self.assertEqual(write["arguments"], ["Number(profile value)", False])
+            self.assertFalse(write["native_false_is_task_failure"])
+            self.assertFalse(write["completed_is_device_confirmation"])
+            self.assertFalse(write["post_write_get"])
+            owners = self.owners[product["product_id"]]
+            maker, runner = owners["maker"]["body"], owners["runner"]["body"]
+            self.assertLess(maker.index("yield(0,y.Pf)(r)"), maker.index("RzTaskManager.enqueueTask"))
+            self.assertIn("setCameraLowLightCompensation(Number(o),!1)", runner)
+            self.assertEqual(runner.count("signal.aborted"), 1)
+            self.assertLess(runner.index("signal.aborted"), runner.index("setCameraLowLightCompensation"))
+            self.assertNotIn("apiResult", owners["result_consumer"]["body"])
+
+    def test_startup_get_precedes_replay_and_skip_allowlist_excludes_low_light(self):
+        for pid in (3595, 3596):
+            owners = self.owners[pid]
+            setup = owners["setup"]["body"]
+            self.assertLess(setup.index("yield An()"), setup.index("yield Dn()"))
+            self.assertLess(setup.index("yield On()"), setup.index("yield(0,U.db)()"))
+            self.assertLess(setup.index("yield(0,U.db)()"), setup.index("yield Un()"))
+            allowlist = owners["replay_camera"]["body"].split("],t=", 1)[0]
+            self.assertNotIn("lowLightCompensation", allowlist)
+            self.assertIn('"ON_SET_LOW_LIGHT_COMPENSATION"', owners["replay_low_light"]["body"])
+
+    def test_native_property19_com_hresult_and_release_are_not_isp_ack(self):
+        native = self.report["native_contract"]
+        self.assertEqual(native["property_id"], 19)
+        self.assertEqual(native["interface"], "IAMCameraControl")
+        self.assertEqual(native["get_chain"], ["0x5bc80", "0x4c270", "0x4b8e0"])
+        self.assertEqual(native["set_chain"], ["0x5c770", "0x4c510", "0x4b750"])
+        self.assertEqual(len(native["com_proofs"]), 6)
+        self.assertEqual([row["bytes"] for row in native["com_proofs"]], ["ff10", "ff5020", "ff5010", "ff10", "ff5028", "ff5010"])
+        self.assertIn("negative values remain", native["setter"])
+        self.assertIn("manual false->flag2", native["setter"])
+        self.assertIn("Get HRESULT<0", native["getter"])
+        self.assertFalse(native["failure_value_is_observed"])
+        self.assertFalse(native["setter_followup_get"])
+        self.assertEqual(len(self.report["native"]["complete_selected_functions"]), 6)
+
+    def test_changed_toggle_value_get_projection_or_result_consumer_is_rejected(self):
+        for pid in (3595, 3596):
+            namespace = "qI" if pid == 3595 else "vI"
+            for role, old, replacement in (("processing_page", f'{namespace}.bg)(!_)', f'{namespace}.Xo)(!_)'),
+                    ("source_cache", "Boolean(e[5].value)", "Boolean(e[4].value)"),
+                    ("runner", "Number(o),!1", "Number(o),!0"),
+                    ("result_consumer", '"completed"===', 'r.value.apiResult&&"completed"===')):
+                changed = copy.deepcopy(self.owners[pid])
+                owner = changed[role]
+                self.assertIn(old, owner["body"])
+                owner["body"] = owner["body"].replace(old, replacement, 1)
+                owner["body_sha256"] = hashlib.sha256(owner["body"].encode()).hexdigest()
+                owner["byte_end"] = owner["byte_start"] + len(owner["body"].encode())
+                with self.subTest(pid=pid, role=role), self.assertRaisesRegex(ValueError, "source selection requires review"):
+                    families._camera_3595_3596_low_light_contract(changed, pid)
+
+    def test_changed_native_property_clamp_or_hresult_contract_is_rejected(self):
+        for rva, old, replacement in (("0x5c770", "if ( a2 > 1 )", "if ( a2 > 0 )"),
+                ("0x4b750", "v8 = v9 >= 0;", "v8 = v9 == 0;"),
+                ("0x4b8e0", '(__int64)"value"', '(__int64)"confirmed"')):
+            changed = copy.deepcopy(self.native)
+            capture = next(row["capture"] for row in changed["complete_selected_functions"] if row["capture"]["rva"] == rva)
+            line = next(row for row in capture["pseudocode"]["lines"] if old in row["text"])
+            line["text"] = line["text"].replace(old, replacement, 1)
+            with self.subTest(rva=rva), self.assertRaisesRegex(ValueError, "native selection requires review"):
+                families._camera_3595_3596_low_light_native_contract(changed, self.raw)
+
+    def test_exact_dependencies_snapshot_and_static_only_limits(self):
+        self.assertEqual(self.audit.final_snapshot(), [])
+        self.assertEqual(host._keypad_temporary_keymap_dependency_changes(self.report["upstream_sections"]), [])
+        changed = copy.deepcopy(self.report["upstream_sections"])
+        changed[0]["canonical_sha256"] = "0" * 64
+        self.assertEqual(len(host._keypad_temporary_keymap_dependency_changes(changed)), 1)
+        self.assertEqual(json.loads(json.dumps(self.report, allow_nan=False)), self.report)
+        for field in ("source_chain_complete", "whole_page_complete", "whole_product_complete", "target_execution", "real_device_operations", "product_code_modified"):
+            self.assertFalse(self.report[field])
+        self.assertEqual(self.report["official_dll_comparison"], "not_executed")
+        self.assertEqual(self.report["new_native_captures"], 0)
+        self.assertEqual(self.report["temporary_artifacts_created"], [])
+        self.assertEqual(self.report["analysis_sessions_created"], [])
+
+    def test_cli_scope_and_publication_reject_changed_snapshot_or_dependency(self):
+        import argparse
+        parser = argparse.ArgumentParser()
+        families.add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["audit-family-function", "--family", "accessories", "--function", "main",
+            "--product", "3595", "--product", "3596", "--query", "camera-3595-3596-low-light-chain"])
+        with patch.object(families, "audit_camera_3595_3596_low_light_chain") as selected:
+            families.audit_family_function(args)
+        selected.assert_called_once_with(args)
+        with patch.object(families, "collect_camera_3595_3596_low_light_chain") as collect, \
+                self.assertRaisesRegex(ValueError, "requires PID3595 and PID3596"):
+            families.audit_camera_3595_3596_low_light_chain(argparse.Namespace(family="accessories", function="main", product=[3595], prepare=False))
+        collect.assert_not_called()
+        for mode in ("success", "exception", "snapshot", "dependency"):
+            configured = {"side_effect": ValueError("missing low-light setter")} if mode == "exception" else {"return_value": copy.deepcopy(self.report)}
+            with self.subTest(mode=mode), patch.object(families, "collect_camera_3595_3596_low_light_chain", **configured), \
+                    patch.object(host.HostLocalAudit, "final_snapshot", return_value=["changed-source"] if mode == "snapshot" else []), \
+                    patch.object(host, "_keypad_temporary_keymap_dependency_changes", return_value=["changed-dependency"] if mode == "dependency" else []), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+                args = argparse.Namespace(family="accessories", function="main", product=[3595, 3596], prepare=False)
+                if mode == "success":
+                    families.audit_camera_3595_3596_low_light_chain(args)
+                else:
+                    with self.assertRaisesRegex(ValueError, "observation remains unresolved"):
+                        families.audit_camera_3595_3596_low_light_chain(args)
+            report = publish.call_args.args[0]
+            self.assertEqual(publish.call_args.args[3], "camera_3595_3596_low_light_chain")
+            self.assertEqual(report["selected_low_light_semantics_reviewed"], mode == "success")
+            self.assertFalse(report["source_chain_complete"])
+            self.assertFalse(report["target_execution"])
+
+
+class Camera3595HdrChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        source_contract = families._camera_3595_hdr_source_contract
+        native_contract = families._camera_3595_hdr_native_contract
+
+        def source(owners):
+            cls.owners = owners
+            return source_contract(owners)
+
+        def native(module):
+            cls.native = copy.deepcopy(module)
+            return native_contract(module)
+
+        with patch.object(families, "_camera_3595_hdr_source_contract", side_effect=source), \
+                patch.object(families, "_camera_3595_hdr_native_contract", side_effect=native):
+            cls.report = families.collect_camera_3595_hdr_chain(cls.audit)
+
+    def args(self, **changes):
+        import argparse
+        values = dict(family="accessories", function="main", product=[3595], prepare=False, query="camera-3595-hdr-chain")
+        values.update(changes)
+        return argparse.Namespace(**values)
+
+    def changed_source(self, role, before, after):
+        owners = copy.deepcopy(self.owners)
+        self.assertIn(before, owners[role]["body"])
+        owners[role]["body"] = owners[role]["body"].replace(before, after, 1)
+        return families._camera_3595_hdr_source_contract(owners)
+
+    def changed_native(self, rva, before, after, *, instruction=False):
+        native = copy.deepcopy(self.native)
+        row, = [row for row in native["complete_selected_functions"] if row["capture"]["rva"] == rva]
+        lines = row["capture"]["assembly"] if instruction else row["capture"]["pseudocode"]["lines"]
+        field = "bytes" if instruction else "text"
+        line = next(line for line in lines if before in line[field])
+        line[field] = line[field].replace(before, after, 1)
+        return families._camera_3595_hdr_native_contract(native)
+
+    def test_current_source_native_and_bounded_status_reuse_without_new_capture_or_product_change(self):
+        report = self.report
+        self.assertEqual((report["product_id"], report["query"]), (3595, "camera-3595-hdr-chain"))
+        self.assertEqual(report["native"]["input"]["sha256"],
+            "84a540e5d1747a8c1912e2f4710850b9397ccaf4ea812be03f20da8f27aa9ae7")
+        self.assertEqual((len(self.audit.owners), len(report["roles"]), len(report["reused_source_owners"])), (37, 27, 61))
+        self.assertEqual((len(report["native"]["complete_selected_functions"]),
+            len(report["native"]["verified_indirect_slots"]), len(report["native"]["verified_exports"])), (6, 3, 2))
+        self.assertEqual(report["resumes_upstream_pointer"], "/camera_3595_3596_low_light_chain/remaining_local_chains/0")
+        for field in ("source_chain_complete", "whole_page_complete", "whole_product_complete", "target_execution",
+                "real_device_operations", "product_code_modified"):
+            self.assertFalse(report[field])
+        self.assertEqual(report["official_dll_comparison"], "not_executed")
+        self.assertEqual(report["new_native_captures"], 0)
+        self.assertEqual(report["temporary_artifacts_created"], [])
+        self.assertEqual(report["analysis_sessions_created"], [])
+        self.assertEqual(len(report["native"]["failures"]), 1)
+        self.assertEqual(report["native"]["failures"][0]["stage"], "870c0:hexrays")
+        self.assertTrue(all(not row["failures"] for row in report["native"]["complete_selected_functions"]))
+
+    def test_actual_mount_keeps_hdr_when_misleading_disable_prop_hides_mjpeg_subchoices(self):
+        ui = self.report["semantics"]["ui"]
+        self.assertTrue(ui["hdr_controls_mounted"])
+        self.assertFalse(ui["disableHDRSwitch_hides_hdr"])
+        self.assertFalse(self.report["semantics"]["adjacent_3596_mounts_hdr"])
+        for role, before, after in (("processing_page", "disableHDRSwitch:!0", "supportMJPEG:!1"),
+                ("ui_hdr_panel", "E?null:i.autoQuality?", "E?hide_hdr():i.autoQuality?"),
+                ("ui_3596_processing_page", "return", "advancedWebcamReducer.hdr;return")):
+            with self.subTest(role=role), self.assertRaises(ValueError):
+                self.changed_source(role, before, after)
+
+    def test_both_fields_and_mode_input_semantics_are_bound_to_the_mounted_ui(self):
+        self.assertEqual(self.report["semantics"]["ui"]["mode_values"], {"dark": 0, "bright": 1})
+        for role, before, after in (("ui_hdr_panel", "isEnabled:!o.isEnabled", "isEnabled:o.isEnabled"),
+                ("ui_hdr_panel", "e=e===Ho.DARK_MODE?Ho.BRIGHT_MODE:Ho.DARK_MODE", "e=Ho.DARK_MODE"),
+                ("ui_mode_component", "_!==E&&this.toggleTab()", "this.toggleTab()"),
+                ("ui_mode_component", "onClick:a", "onClick:select_current"),
+                ("ui_modes", "BRIGHT_MODE:1", "BRIGHT_MODE:2")):
+            with self.subTest(role=role), self.assertRaises(ValueError):
+                self.changed_source(role, before, after)
+
+    def test_profile_defaults_initial_reducer_and_legacy_hdractive_are_not_device_observations(self):
+        ui = self.report["semantics"]["ui"]
+        self.assertEqual(ui["initial_reducer"], {"isEnabled": False, "mode": "DarkRoom"})
+        self.assertEqual(ui["profile_default"], {"isEnabled": True, "mode": 0})
+        self.assertFalse(ui["state_is_device_observation"])
+        for role, before, after in (("ui_profile_hdr_default", "isEnabled:!0", "isEnabled:!1"),
+                ("mw_default_profile", "isEnabled:!0,mode:0", "isEnabled:!0,mode:1"),
+                ("ui_initial_state", 'mode:"DarkRoom"', "mode:0"),
+                ("ui_profile_consumer", "s&&(P.isEnabled=s)", "P.isEnabled=s")):
+            with self.subTest(role=role), self.assertRaises(ValueError):
+                self.changed_source(role, before, after)
+
+    def test_local_save_precedes_queue_and_replay_preserves_its_actual_startup_allowlist(self):
+        for role, before, after in (("maker", "i&&(yield(0,y.Pf)(r))", "queue_then_save(r)"),
+                ("maker", "d.hdrActive&&(d.hdrActive=n.isEnabled)", "d.hdrActive=n.isEnabled"),
+                ("replay_hdr", 'type:"ON_SET_HDR",payload:{hdr:e}', 'type:"ON_SET_HDR",payload:{hdr:default_value}'),
+                ("replay_camera", '["mjpegQuality","hdr",', '["mjpegQuality",'),
+                ("non_camera_dispatch_gate", "isMonitor", "isCamera")):
+            with self.subTest(role=role), self.assertRaises(ValueError):
+                self.changed_source(role, before, after)
+        self.assertIn("HDR is in the startup allowlist", self.report["semantics"]["replay"])
+
+    def test_false_hdr_result_still_reaches_mode_and_nonthrowing_false_is_completed(self):
+        write = self.report["semantics"]["write"]
+        self.assertTrue(write["enabled_set_false_still_calls_mode"])
+        self.assertTrue(write["setter_throw_skips_remaining_write"])
+        self.assertTrue(write["nonthrowing_false_marks_task_completed"])
+        self.assertFalse(write["post_write_get"])
+        self.assertFalse(write["flash_save"])
+        for before, after in (("o.isEnabled&&(n=yield", "t&&o.isEnabled&&(n=yield"),
+                ('s.result=!0,s.value.status="completed"', 's.result=t,s.value.status="error"'),
+                ("s.value.apiResult=t&&n", "s.value.apiResult=true")):
+            with self.subTest(before=before), self.assertRaises(ValueError):
+                self.changed_source("runner", before, after)
+
+    def test_stop_wait_and_prelock_only_abort_are_distinct_from_restart_result_check(self):
+        write = self.report["semantics"]["write"]
+        self.assertTrue(write["callback_checks_apiResult_for_log"])
+        self.assertFalse(write["callback_restart_requires_apiResult"])
+        for role, before, after in (("runner", "yield Promise.all((yield h.A.initUITurnOffCameraLocker.requestLock()).promises)", "await_fake_stop()"),
+                ("runner", "let t=!0,n=!0", 'if(a.signal.aborted)throw Error("canceled");let t=!0,n=!0'),
+                ("result_consumer", '(0,m.Q)({type:o.UDq,payload:!0}),', ""),
+                ("media_preview", "3e3", "1e3"),
+                ("media_stop_locker", "ifAvailable:!0", "ifAvailable:!1"),
+                ("media_stop", "if(!e)return", "if(!e)send_completed()")):
+            with self.subTest(role=role), self.assertRaises(ValueError):
+                self.changed_source(role, before, after)
+
+    def test_exact_base_commands_and_low_byte_arguments_are_not_other_camera_protocols(self):
+        contract = self.report["native_contract"]
+        self.assertEqual(contract["SetHDR"]["request"], [255, 2, "enabled_u8", 0, 0, 0, 0, 0])
+        self.assertEqual(contract["SetHDRBrightness"]["request"], [255, 7, "mode_u8", 0, 0, 0, 0, 0])
+        self.assertEqual(contract["vtable_rva"], "0xb84b8")
+        self.assertEqual(self.report["semantics"]["ffi"]["SetHDR"], ["bool", ["string", "int"]])
+        for rva, before, after in (("0x4d530", "v3 = 767", "v3 = 416"),
+                ("0x4d660", "v3 = 2047", "v3 = 5536"),
+                ("0x57fd0", "+ 40LL", "+ 48LL"),
+                ("0x582f0", "v3 = a2", "v3 = a2 > 1 ? 1 : a2")):
+            with self.subTest(rva=rva), self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+                self.changed_native(rva, before, after)
+        native = copy.deepcopy(self.native)
+        native["verified_indirect_slots"][0]["target_rva"] = "0x52230"
+        with self.assertRaisesRegex(ValueError, "actual provider slots changed"):
+            families._camera_3595_hdr_native_contract(native)
+
+    def test_set_failure_get_ack_and_com_release_preserve_exact_original_failure_boundary(self):
+        self.assertFalse(self.report["native_contract"]["independent_hdr_readback"])
+        for before, after in (("Sleep(0xAu)", "retry_until_success()"),
+                ("if ( !v14 )", "if ( v14 >= 0 )"),
+                ("if ( !*a3 )", "if ( 1 )"),
+                ("(*(_QWORD *)v33 + 16LL)", "(*(_QWORD *)v33 + 24LL)")):
+            with self.subTest(before=before), self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+                self.changed_native("0x4e6b0", before, after)
+        native = copy.deepcopy(self.native)
+        native["complete_selected_functions"][0]["pseudocode_captured"] = False
+        with self.assertRaisesRegex(ValueError, "complete native selection changed"):
+            families._camera_3595_hdr_native_contract(native)
+        row = self.native["complete_selected_functions"][0]
+        instruction = row["capture"]["assembly"][0]
+        with self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+            self.changed_native(row["capture"]["rva"], instruction["bytes"], "90", instruction=True)
+
+    def test_complete_source_fingerprint_rejects_unreviewed_code_and_exact_upstream_is_scoped(self):
+        with self.assertRaisesRegex(ValueError, "complete source boundary changed"):
+            self.changed_source("ui_action", "G=e=>E=>", "G=e=>E=> ")
+        upstream = self.report["upstream_sections"]
+        path = families.a.ROOT / upstream[0]["receipt"]
+        document = json.loads(path.read_bytes())
+        document["camera_3595_3596_low_light_chain"]["control"] = "assume_hdr"
+        with patch.object(Path, "read_bytes", return_value=json.dumps(document).encode()):
+            self.assertEqual(host._keypad_temporary_keymap_dependency_changes(upstream),
+                [upstream[0]["receipt"] + "#" + upstream[0]["pointer"]])
+            with self.assertRaisesRegex(ValueError, "exact upstream observation changed"):
+                families._camera_3595_hdr_dependencies()
+        document = json.loads(path.read_bytes())
+        document["parallel_unrelated_query"] = {"bounded_observation_complete": True}
+        with patch.object(Path, "read_bytes", return_value=json.dumps(document).encode()):
+            self.assertEqual(host._keypad_temporary_keymap_dependency_changes(upstream), [])
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_cli_dispatch_scope_and_selected_publication(self):
+        import argparse
+        parser = argparse.ArgumentParser()
+        families.add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["audit-family-function", "--family", "accessories", "--function", "main",
+            "--product", "3595", "--query", "camera-3595-hdr-chain"])
+        with patch.object(families, "audit_camera_3595_hdr_chain", return_value="selected") as selected:
+            self.assertEqual(families.audit_family_function(args), "selected")
+        selected.assert_called_once_with(args)
+        for changes in (dict(family="audio"), dict(function="mw"), dict(product=[3596]),
+                dict(product=[3595, 3596]), dict(prepare=True)):
+            with self.subTest(changes=changes), patch.object(families, "collect_camera_3595_hdr_chain") as collect, \
+                    self.assertRaisesRegex(ValueError, "requires PID3595 accessories main"):
+                families.audit_camera_3595_hdr_chain(self.args(**changes))
+            collect.assert_not_called()
+        with patch.object(families, "collect_camera_3595_hdr_chain", return_value={}), \
+                patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+            report = families.audit_camera_3595_hdr_chain(self.args())
+        self.assertEqual(publish.call_args.args[3], "camera_3595_hdr_chain")
+        self.assertTrue(report["bounded_observation_complete"])
+        self.assertTrue(report["snapshot_stable"])
+        self.assertFalse(report["source_chain_complete"])
+
+    def test_failure_snapshot_or_dependency_change_publishes_facts_before_rejection(self):
+        for mode in ("exception", "snapshot", "dependency"):
+            configured = {"side_effect": ValueError("HDR command changed")} if mode == "exception" else {"return_value": {}}
+            with self.subTest(mode=mode), patch.object(families, "collect_camera_3595_hdr_chain", **configured), \
+                    patch.object(host.HostLocalAudit, "final_snapshot", return_value=["changed-source"] if mode == "snapshot" else []), \
+                    patch.object(host, "_keypad_temporary_keymap_dependency_changes", return_value=["changed-dependency"] if mode == "dependency" else []), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"), \
+                    self.assertRaisesRegex(ValueError, "observation remains unresolved"):
+                families.audit_camera_3595_hdr_chain(self.args())
+            report = publish.call_args.args[0]
+            self.assertFalse(report["bounded_observation_complete"])
+            self.assertFalse(report["selected_hdr_semantics_reviewed"])
+            self.assertTrue(report["failures"])
+
+
+class Camera3594ProfileReplayChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_camera_3594_profile_replay_chain(cls.audit)
+        cls.owners = {role: cls.audit.owners[key] for role, key in cls.report["roles"].items()}
+
+    def test_actual_kimberly_mount_all_default_fields_and_native_setter_coverage(self):
+        report, semantics = self.report, self.report["semantics"]
+        self.assertEqual(semantics["adapter"]["module"], 44797)
+        self.assertEqual(semantics["adapter"]["source_sha256"], "d5b2cf470139ab2cdd05b7b523f9f05b2c8630365046d16f0aa391f9dc3af6b9")
+        self.assertNotIn("adapter", report["reused_source_owners"])
+        self.assertNotIn("adapter_init", report["reused_source_owners"])
+        self.assertEqual(list(semantics["defaults"]["mw"]["camera"]), ["autoFocus", "cameraMode", "cameraValue", "autoExposure",
+            "autoFraming", "viewPresets", "resolution", "mjpegQuality", "ldc", "lowLightCompensation", "hdr",
+            "dynamicNoiseReduction", "antiFlicker", "watermark", "mirrorVideo"])
+        self.assertEqual(semantics["defaults"]["mw"]["camera"]["antiFlicker"], 2)
+        self.assertEqual(semantics["defaults"]["ui"]["camera"]["antiFlicker"], 1)
+        self.assertEqual(semantics["defaults"]["mw"]["camera"]["dynamicNoiseReduction"], {"state3D": True})
+        self.assertEqual(len(semantics["defaults"]["mw"]["image"]), 5)
+        for row in semantics["defaults"]["mw"]["image"]:
+            self.assertEqual({"brightness", "contrast", "saturation", "whiteBalance", "sharpness", "gain"}
+                - row["dataSet"].keys(), set())
+        expected = {"RestoreDefaults", "SetCameraFocus", "SetFDAFMode", "SetAutoFocusLowSensitivity", "SetCameraExposure",
+            "SetAutoExposureMetering", "SetEVCompensation", "SetISOSensitivity", "SetShutterSpeed", "SetCameraZoom",
+            "SetCameraPan", "SetCameraTilt", "SetAdaptiveMJPEGQuality", "SetFixedMJPEGQuality", "SetHDR", "SetHDRBrightness",
+            "SetLDC", "SetCameraLowLightCompensation", "SetDynamicNoiseReduction", "SetAntiFlicker", "SetWatermark",
+            "SetMirrorVideo", "SetAutoframing", "SetAutoframingSpeedAndSize", "SetShutterLimitControl", "SetBrightness",
+            "SetContrast", "SetSaturation", "SetWhiteBalance", "SetSharpness", "SetGain"}
+        self.assertEqual(set(report["native_setter_exports"]), expected)
+        self.assertEqual(report["controls_native"]["native_contract"]["instance_selection"]["product_id"], 3594)
+        self.assertEqual(self.audit.final_snapshot(), [])
+        self.assertEqual(families._camera_3594_profile_replay_upstream_changes(report["upstream_sections"]), [])
+
+    def test_reset_is_one_firmware_command_then_local_sync_not_set_replay(self):
+        contract, bodies = self.report["semantics"]["reset"], {key: value["body"] for key, value in self.owners.items()}
+        self.assertTrue(families.keyboard_static_literal(bodies["ui_device_info"].split("=", 1)[1])["resetAllSettingsAtOnce"])
+        self.assertEqual((contract["debounce_ms"], contract["debounce_leading"], contract["debounce_trailing"]), (300, False, True))
+        self.assertIn('postMessage({type:j.Zy3,timerTick:Date.now(),payload:{}})', bodies["ui_reset_sender"])
+        self.assertLess(bodies["ui_reset"].index('type:j.V0u'), bodies["ui_reset"].index('(0,qI.h2)'))
+        self.assertIn('setTimeout(()=>{(0,qI.E0)()},500)', bodies["ui_reset"])
+        restore = bodies["restore_default"]
+        self.assertLess(restore.index('e.restoreDefaults()'), restore.index('(0,l.d8)()'))
+        self.assertLess(restore.index('yield(0,l.Pf)'), restore.index('yield(0,s.qw)'))
+        for target in ('t.camera=n.camera', 't.image=n.image', 't.imageMode=n.imageMode'):
+            self.assertIn(target, restore)
+        for target in ('t.guid=', 't.name=', 'yield xn(', 'getBrightness(', 'setBrightness('):
+            self.assertNotIn(target, restore)
+        for flag in ('full_profile_replay_called', 'per_field_native_setters_called', 'independent_readback'):
+            self.assertFalse(contract[flag])
+        self.assertEqual(bytes(self.report["reset_native"]["native_contract"]["command"]).hex(), 'a00a020000000000')
+
+    def test_replay_preserves_field_order_startup_filter_and_duplicate_image_writes(self):
+        replay = self.report["semantics"]["replay"]
+        self.assertEqual(replay["startup_camera_allowlist"], ['mjpegQuality', 'hdr', 'dynamicNoiseReduction', 'mirrorVideo', 'watermark', 'autoFocus'])
+        camera = self.owners['replay_camera']['body']
+        self.assertLess(camera.index('ON_SET_CAMERA_INFO'), camera.index('for(const[r,a]of Object.entries'))
+        self.assertLess(camera.index('void 0!==s&&Sn'), camera.index('for(const[r,a]of Object.entries'))
+        self.assertIn('if(!t||e.includes(r))', camera)
+        self.assertEqual(self.owners['profile_replay_entry']['id'], self.owners['replay']['id'])
+        self.assertIn('ON_SET_IMAGE_SETTING', self.owners['replay_image_mode']['body'])
+        image = self.owners['replay_image']['body']
+        self.assertLess(image.index('ON_SET_IMAGE_SETTING'), image.index('ON_SET_IMAGE_PRESETS'))
+        self.assertIn('propertyNames:[]', image)
+        self.assertIn('["brightness","contrast","saturation","whiteBalance","sharpness","gain"]', self.owners['task_DtK']['body'])
+        resolution = next(row for row in replay['field_routes'] if row['field'] == 'camera.resolution')
+        self.assertEqual(resolution['methods'], [])
+        self.assertNotIn('enqueueTask', self.owners['maker_resolution']['body'])
+        self.assertEqual(len(replay['field_routes']), 17)
+
+    def test_false_cancel_and_cache_values_do_not_become_applied_state(self):
+        runner, custom = self.owners['generic_legacy_runner']['body'], self.owners['generic_shutter_guard']['body']
+        self.assertLess(runner.index('a.value=e'), runner.index('a.value.status="completed"'))
+        self.assertGreater(runner.index('signal.aborted'), runner.index('yield v('))
+        self.assertIn('apiResult:t,status:t?"completed":"error"', custom)
+        self.assertIn('new Error("SetShutterLimitControl returned false")', custom)
+        self.assertIn('TypeError', self.report['semantics']['replay']['generic'])
+        self.assertIn('return{}}))', self.owners['adapter_setSaturation']['body'])
+        self.assertIn('return{}}))', self.owners['adapter_setSharpness']['body'])
+        self.assertIn('return!1}))', self.owners['adapter_setBrightness']['body'])
+        self.assertIn('catch(e){console.error(e)}s.value.status="completed"', self.owners['task_ztU']['body'])
+        self.assertEqual(self.report['semantics']['advanced_cache']['query_order'][0], ['getBrightness', 'getContrast', 'getSaturation', 'getWhiteBalance'])
+        self.assertEqual(len(self.report['semantics']['advanced_cache']['query_order'][1]), 7)
+        self.assertIn('"reloadAdvancedCameraSettingsCache"===e.payload&&(0,Z.db)()', self.owners['advanced_cache_dispatch']['body'])
+        self.assertFalse(self.report['semantics']['advanced_cache']['native_getters_complete'])
+        self.assertIn('metering:0,compensation:0,isoSensitivity:0,shutterSpeed:0', self.owners['advanced_cache_read']['body'])
+
+    def test_changed_full_owner_requires_review_for_each_material_boundary(self):
+        for role, before, after in [('restore_default', 'return t?yield', 'return !t?yield'),
+                ('mw_default', 'antiFlicker:2', 'antiFlicker:1'),
+                ('replay_camera', '"mjpegQuality","hdr"', '"resolution","hdr"'),
+                ('generic_legacy_runner', 'a.value=e', 'a.value={apiResult:e}'),
+                ('generic_shutter_guard', 'status:t?"completed":"error"', 'status:"completed"'),
+                ('task_DtK', '"sharpness","gain"', '"gain","sharpness"'),
+                ('advanced_cache_dispatch', '"reloadAdvancedCameraSettingsCache"===e.payload&&(0,Z.db)()',
+                    '"reloadAdvancedCameraSettingsCache"===e.payload&&(yield(0,Z.db)())')]:
+            owners = copy.deepcopy(self.owners)
+            self.assertIn(before, owners[role]['body'])
+            owners[role]['body'] = owners[role]['body'].replace(before, after, 1)
+            owners[role]['body_sha256'] = hashlib.sha256(owners[role]['body'].encode()).hexdigest()
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, 'renewed semantic review'):
+                families._camera_3594_profile_replay_contract(owners)
+
+    def test_missing_native_setter_or_wrong_product_reference_prevents_closure(self):
+        source = {key: self.report[key] for key in ('roles', 'source_sets', 'reviewed_inputs', 'feature_routes', 'adapter_methods')}
+        document = json.loads((analysis.ROOT / '.analysis/results/frontend/accessories-camera-local-pages-audit.json').read_bytes())
+        for branch in ('setter', 'reference'):
+            view = copy.deepcopy(self.report['view_native'])
+            if branch == 'setter':
+                view['native_contract']['exports'] = [row for row in view['native_contract']['exports'] if row['name'] != 'SetShutterLimitControl']
+            else:
+                view['native_contract']['intra_report_reference']['required_fields']['product_id'] = 3595
+            with self.subTest(branch=branch), \
+                    patch.object(families, '_camera_3594_profile_replay_dependencies', return_value=(document, [], {})), \
+                    patch.object(families, '_camera_3594_profile_replay_sources', return_value=copy.deepcopy(source)), \
+                    patch.object(families, 'collect_camera_3594_profile_reset_native_chain', return_value=self.report['reset_native']), \
+                    patch.object(families, 'collect_camera_3594_profile_controls_native_chain', return_value=self.report['controls_native']), \
+                    patch.object(families, 'collect_camera_3594_profile_image_native_chain', return_value=self.report['image_native']), \
+                    patch.object(families, 'collect_camera_3594_profile_view_native_chain', return_value=view), \
+                    self.assertRaisesRegex(ValueError, 'coverage differs|instance reference differs'):
+                families.collect_camera_3594_profile_replay_chain(self.audit)
+
+    def test_query_scope_snapshot_and_independent_stages_remain_explicit(self):
+        import argparse
+        parser = argparse.ArgumentParser()
+        families.add_commands(parser.add_subparsers(dest='command', required=True))
+        args = parser.parse_args(['audit-family-function', '--family', 'accessories', '--function', 'main',
+            '--query', 'camera-3594-profile-replay-chain', '--product', '3594'])
+        with patch.object(families, 'audit_camera_3594_profile_replay_chain') as dispatch:
+            families.audit_family_function(args)
+        dispatch.assert_called_once_with(args)
+        for family, function, product, prepare in [('audio', 'main', [3594], False), ('accessories', 'mw', [3594], False),
+                ('accessories', 'main', [3592], False), ('accessories', 'main', [3594], True)]:
+            with self.subTest(family=family, function=function, product=product, prepare=prepare), \
+                    patch.object(families, 'collect_camera_3594_profile_replay_chain') as collector, \
+                    self.assertRaisesRegex(ValueError, 'requires PID3594'):
+                families.audit_camera_3594_profile_replay_chain(argparse.Namespace(family=family, function=function, product=product, prepare=prepare))
+            collector.assert_not_called()
+        audit = host.HostLocalAudit()
+        with patch.object(host, 'HostLocalAudit', return_value=audit), \
+                patch.object(families, 'collect_camera_3594_profile_replay_chain', return_value={}), \
+                patch.object(audit, 'final_snapshot', return_value=[]), \
+                patch.object(families, '_camera_3594_profile_replay_upstream_changes', return_value=['receipt#/dependency']), \
+                patch.object(host, 'publish_host_static_query') as publish, patch('builtins.print'), \
+                self.assertRaisesRegex(ValueError, 'observation remains unresolved'):
+            families.audit_camera_3594_profile_replay_chain(args)
+        self.assertFalse(publish.call_args.args[0]['bounded_observation_complete'])
+        self.assertEqual(publish.call_args.args[3], 'camera_3594_profile_replay_chain')
+        for key in ('source_chain_complete', 'whole_page_complete', 'whole_product_complete', 'target_execution', 'real_device_operations'):
+            self.assertFalse(self.report[key])
+        self.assertEqual(self.report['official_dll_comparison'], 'not_executed')
+        self.assertEqual(self.report['runtime_acceptance'], 'unverified')
+        self.assertEqual(self.report['new_native_captures'], 0)
+        self.assertEqual(self.report['temporary_artifacts_created'], [])
+
+
+class CameraUltraWatermarkChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_camera_ultra_watermark_chain(cls.audit)
+        cls.owners = {role: cls.audit.owners[key] for role, key in cls.report["roles"].items()}
+        cls.native_raw = cls.audit.read(cls.report["native"]["original"])
+
+    def test_current_product_and_native_manifest_are_selected_without_new_capture(self):
+        report = self.report
+        self.assertEqual(report["product_id"], 3592)
+        self.assertEqual(report["source_sets"]["ui"]["name"], "accessories-3592-current-refresh-ec3db4b29c5a")
+        self.assertEqual(report["source_sets"]["mw"]["name"], "accessories-mw-3592-current-refresh-ec3db4b29c5a-2")
+        self.assertEqual(report["native_manifest"]["resource"]["resourceVersion"], "1.0.16.0")
+        self.assertEqual(report["native"]["original"]["sha256"], "1ea145fe182505cd8ae19a6bc1ea5362c70d18681b51195d026ec57c86ad06d8")
+        self.assertEqual((len(report["native"]["complete_functions"]), report["new_native_captures"]), (16, 0))
+        self.assertEqual(report["temporary_artifacts_created"], [])
+
+    def test_complete_source_owners_have_exact_original_bytes_and_ast_boundaries(self):
+        for owner in self.audit.owners.values():
+            with self.subTest(owner=owner["id"]):
+                raw = self.audit.read(owner["original"])
+                self.assertEqual(raw[owner["byte_start"]:owner["byte_end"]], owner["body"].encode())
+                self.assertEqual(hashlib.sha256(owner["body"].encode()).hexdigest(), owner["body_sha256"])
+                node = self.audit.tree(owner["original"]).root_node.descendant_for_byte_range(owner["byte_start"], owner["byte_end"] - 1)
+                while node is not None and (node.start_byte != owner["byte_start"] or node.end_byte != owner["byte_end"] or node.type != owner["syntax"]):
+                    node = node.parent
+                self.assertIsNotNone(node)
+        self.assertTrue(all(row["input_chunks_verified"] for row in self.report["native"]["complete_functions"]))
+        self.assertTrue(self.report["native"]["all_selected_pseudocode_captured"])
+
+    def test_actual_mounted_image_positions_and_optimistic_state_do_not_claim_device_confirmation(self):
+        semantics = self.report["semantics"]
+        self.assertIn("(AU,{})", self.owners["ui_mount"]["body"])
+        self.assertIn("supportWatermark:_=!0", self.owners["ui_image"]["body"])
+        self.assertTrue(semantics["mounted_ui"]["optimistic_requested_value"])
+        self.assertEqual(semantics["mounted_ui"]["positions_in_ui_order"],
+            ["left-bottom", "center-bottom", "right-bottom", "left-top", "center-top", "right-top"])
+        self.assertEqual(semantics["encoding"]["positions"], {"right-bottom": 0, "left-top": 1,
+            "right-top": 2, "left-bottom": 3, "center-top": 4, "center-bottom": 5})
+        self.assertEqual(semantics["encoding"]["unknown_position"], 0)
+
+    def test_profile_publication_and_restore_write_are_separate_from_the_uncalled_getter(self):
+        semantics = self.report["semantics"]["initialization"]
+        self.assertTrue(semantics["profile_restore_enqueues_write"])
+        self.assertFalse(semantics["device_settings_reader_includes_watermark"])
+        self.assertFalse(semantics["readback_is_device_confirmation"])
+        self.assertIn("this.loadActiveProfileSettings()", self.owners["ui_root_componentDidMount"]["body"])
+        self.assertIn("const e=H[o].watermark", self.owners["restore_watermark"]["body"])
+        self.assertNotIn("getWatermark", self.owners["device_settings_reader"]["body"])
+        self.assertEqual(sorted(row["usage"] for row in self.report["getter_occurrences"]),
+            ["adapter_definition", "adapter_definition", "log_template", "log_template"])
+        self.assertIn("Computed/dynamic", semantics["getter_call_scope"])
+
+    def test_false_set_result_and_independent_save_consumer_are_not_conflated(self):
+        submission, save = self.report["semantics"]["submission"], self.report["semantics"]["flash_save"]
+        self.assertTrue(submission["local_before_device"])
+        self.assertFalse(submission["setter_bool_controls_completed"])
+        self.assertFalse(submission["post_write_get"])
+        self.assertFalse(submission["rollback"])
+        self.assertNotIn("apiResult", self.owners["result_consumer"]["body"])
+        self.assertFalse(save["setter_calls_flash_save"])
+        self.assertFalse(save["runner_completed_checks_bool"])
+        self.assertTrue(save["consumer_checks_api_result_for_log"])
+        self.assertIn("payload:{actionArgs:[this.containerId,!0]}", self.owners["adapter_saveUVCExtCmdToFlash"]["body"])
+        self.assertNotIn("saveUVCExtCmdToFlash", self.owners["runner"]["body"])
+
+    def test_abort_stop_lock_and_termination_do_not_establish_drain_or_rollback(self):
+        runner = self.owners["runner"]["body"]
+        self.assertEqual(runner.count("signal.aborted"), 1)
+        self.assertLess(runner.index("signal.aborted"), runner.index("requestLock"))
+        self.assertLess(runner.index("requestLock"), runner.index("setWatermark"))
+        self.assertNotIn("signal", self.owners["adapter_setWatermark"]["body"])
+        self.assertIn("{ifAvailable:!0}", self.owners["camera_locker"]["body"])
+        self.assertIn("timeout:5e3", self.owners["camera_locker"]["body"])
+        self.assertIn("this.terminate()", self.owners["adapter_destroy"]["body"])
+        self.assertNotIn("await", self.owners["adapter_destroy"]["body"])
+
+    def test_exact_native_bytes_slots_ks_headers_and_failed_getter_projection(self):
+        native = self.report["native_contract"]
+        self.assertEqual(native["commands"]["get"], [192, 8, 0, 0, 0, 0, 0, 0])
+        self.assertEqual(native["commands"]["set_template"], [192, 8, 1, "state_u8", "position_u8", 0, 0, 0])
+        self.assertEqual(native["commands"]["save"], [192, 3, 168, 0, 0, 0, 0, 0])
+        self.assertEqual({row["role"]: row["target_rva"] for row in native["virtual_slots"]},
+            {"save": "0x4b4e0", "set": "0x4b5a0", "get": "0x4b610", "isp_initial": "0x4df70", "isp_retry": "0x4df70"})
+        self.assertEqual(native["transport"]["set"], {"id": 1, "flags": 268435458, "payload_bytes": 8})
+        self.assertEqual(native["transport"]["get"], {"id": 2, "flags": 268435457, "payload_bytes": 8})
+        self.assertFalse(native["transport"]["set_hresult_checked"])
+        self.assertFalse(native["transport"]["returned_byte_count_checked"])
+        self.assertFalse(native["get"]["virtual_result_checked_before_json"])
+        self.assertTrue(native["get"]["failed_get_can_serialize_zero_status_position"])
+        self.assertTrue(native["set"]["export_discards_ack_fields"])
+        self.assertEqual(native["failure_cleanup"]["worker_wait_ms"], 4000)
+
+    def test_changed_mount_position_result_abort_persistence_and_source_consumers_fail_review(self):
+        for role, before, after in (
+                ("ui_image", "supportWatermark:_=!0", "supportWatermark:_=!1"),
+                ("ui_positions", "{name:Ge.AsF},{name:Ge.Ucr}", "{name:Ge.Ucr},{name:Ge.AsF}"),
+                ("position_encoder", "case i.AsF:t.position=3", "case i.AsF:t.position=1"),
+                ("position_encoder", "default:t.position=0", "default:t.position=5"),
+                ("runner", "a.signal.aborted", "a.signal.cancelled"),
+                ("runner", 's.value.status="completed"', 's.value.status="failed"'),
+                ("maker", "d.camera.watermark=n", "d.camera.watermark=null"),
+                ("restore_watermark", "const e=H[o].watermark", "const e=H[o].mirrorVideo"),
+                ("save_result_consumer", "void 0:l.apiResult", "void 0:!l.apiResult"),
+                ("camera_locker", "ifAvailable:!0", "ifAvailable:!1"),
+                ("storage_set", "if(!t.serialNumber)return", "if(!1)return")):
+            owners = copy.deepcopy(self.owners)
+            self.assertIn(before, owners[role]["body"])
+            owners[role]["body"] = owners[role]["body"].replace(before, after, 1)
+            with self.subTest(role=role), self.assertRaises(ValueError):
+                families._camera_ultra_watermark_contract(owners)
+        owners = copy.deepcopy(self.owners)
+        owners["result_consumer"]["body"] += ";check(apiResult)"
+        with self.assertRaises(ValueError):
+            families._camera_ultra_watermark_contract(owners)
+
+    def test_changed_native_command_reply_getter_failure_or_virtual_target_fails_review(self):
+        edits = (("0x4b5a0", "v8 = 1;", "v8 = 0;"),
+            ("0x4b610", "*a2 = BYTE2(v6);", "*a2 = BYTE3(v6);"),
+            ("0x4b4e0", "v2 = 11011008;", "v2 = 2240;"),
+            ("0x4bdb0", "v7 = *a3 == 0;", "v7 = *a3 == 1;"),
+            ("0x40ea0", "v33 = 0;", "v33 = 1;"),
+            ("0x47c30", "v21 = 4000;", "v21 = 0;"))
+        for rva, before, after in edits:
+            native = copy.deepcopy(self.report["native"])
+            function = next(row["capture"] for row in native["complete_functions"] if row["capture"]["rva"] == rva)
+            line = next(row for row in function["pseudocode"]["lines"] if before in row["text"])
+            line["text"] = line["text"].replace(before, after)
+            with self.subTest(rva=rva), self.assertRaises(ValueError):
+                families._camera_ultra_watermark_native_contract(native, self.native_raw)
+        raw = bytearray(self.native_raw)
+        pe = host.inspect_pe(raw)
+        part = next(row for row in pe["sections"] if row["rva"] <= 0x72998 < row["rva"] + row["bytes"])
+        raw[part["file_offset"] + 0x72998 - part["rva"]] ^= 1
+        with self.assertRaisesRegex(ValueError, "virtual target"):
+            families._camera_ultra_watermark_native_contract(self.report["native"], bytes(raw))
+
+    def test_exact_shared_dependency_and_query_scope_keep_completion_stages_separate(self):
+        import argparse
+        dependency, = self.report["upstream_sections"]
+        self.assertEqual(dependency["pointer"], "/image_host_chain/source_contract")
+        self.assertEqual(dependency["canonical_sha256"], "c01719dda6b506d5e4b7d1fb806205542a13ebc646e4ea041fcd4a878b7cce80")
+        self.assertNotIn(dependency["receipt"], self.audit.artifacts)
+        self.assertEqual(families._camera_ultra_watermark_host_dependency(), dependency)
+        for key in ("source_chain_complete", "whole_page_complete", "whole_product_complete", "target_execution", "real_device_operations"):
+            self.assertFalse(self.report[key])
+        self.assertEqual(self.report["official_dll_comparison"], "not_executed")
+        self.assertEqual(self.report["runtime_acceptance"], "unverified")
+        parser = argparse.ArgumentParser()
+        families.add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["audit-family-function", "--family", "accessories", "--function", "main",
+            "--query", "camera-ultra-watermark-chain", "--product", "3592"])
+        with patch.object(families, "audit_camera_ultra_watermark_chain") as dispatch:
+            families.audit_family_function(args)
+        dispatch.assert_called_once_with(args)
+        for family, function, product, prepare in (("audio", "main", [3592], False), ("accessories", "mw", [3592], False),
+                ("accessories", "main", [3595], False), ("accessories", "main", [3592], True)):
+            with self.subTest(family=family, function=function, product=product, prepare=prepare), \
+                    patch.object(families, "collect_camera_ultra_watermark_chain") as collector, \
+                    self.assertRaisesRegex(ValueError, "requires PID3592"):
+                families.audit_camera_ultra_watermark_chain(argparse.Namespace(family=family, function=function, product=product, prepare=prepare))
+            collector.assert_not_called()
 
 
 class CameraImageHostChainTests(unittest.TestCase):
@@ -3398,6 +5245,2834 @@ class NativeInitializerTests(unittest.TestCase):
             families.native_rip_u32_initializers([self.store(0x4000, 0x3001, 1)], 0x3000, 2)
 
 
+class GamepadObmMappingChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_gamepad_obm_mapping_chain(cls.audit)
+        cls.owners = {role: cls.audit.owners[key] for role, key in cls.report["roles"].items()}
+
+    def test_current_product_selects_controller_override_and_single_slot(self):
+        self.assertEqual(self.report["source_sets"]["mw"]["name"], "gamepad-mw-2636-current-refresh-ec3db4b29c5a-2")
+        self.assertEqual(self.report["source_sets"]["ui"]["name"], "gamepad-2636-current-refresh-ec3db4b29c5a")
+        self.assertIn("taskMakerSetKeyMapping:B.Hw", self.owners["product_mapping_overrides"]["body"])
+        self.assertIn("i(21445)", self.owners["product_maker_import"]["body"])
+        self.assertIn("i(59639)", self.owners["product_read_import"]["body"])
+        self.assertIn("new g", self.owners["maker"]["body"])
+        self.assertIn("(0,u.Fk)(I)", self.owners["taskMakerSetKeyMapping"]["body"])
+        self.assertIn("obmSlotId:i", self.owners["taskRunnerSetSingleMappingToObm"]["body"])
+        self.assertNotIn("obmSlotIds", self.owners["taskRunnerSetSingleMappingToObm"]["body"])
+        self.assertIn("controllerType:p", self.owners["engine_init"]["body"])
+
+    def test_complete_owners_reproduce_original_bytes_hashes_and_ast_ranges(self):
+        for row in self.audit.owners.values():
+            with self.subTest(owner=row["id"]):
+                raw = self.audit.read(row["original"])
+                self.assertEqual(raw[row["byte_start"]:row["byte_end"]], row["body"].encode())
+                self.assertEqual(hashlib.sha256(row["body"].encode()).hexdigest(), row["body_sha256"])
+                node = self.audit.tree(row["original"]).root_node.descendant_for_byte_range(row["byte_start"], row["byte_end"] - 1)
+                while node is not None and (node.start_byte != row["byte_start"] or node.end_byte != row["byte_end"] or node.type != row["syntax"]):
+                    node = node.parent
+                self.assertIsNotNone(node)
+
+    def test_button_headers_payload_normal_mode_and_decoder_gate(self):
+        self.assertEqual(self.report["semantics"]["headers"], {"set": [80, 2, 12], "get": [80, 2, 140]})
+        self.assertEqual(self.report["semantics"]["protocol"]["payload_bytes"], 80)
+        self.assertEqual(self.report["semantics"]["protocol"]["mode"], "NormalMode only")
+        self.assertIn("NormalMode:0,HypershiftMode:1", self.owners["protocol_enum_zN"]["body"])
+        self.assertIn("Controller:16,RazerKey:17", self.owners["protocol_enum_rA"]["body"])
+        self.assertIn("let u=[t,n,o,a,s,...l]", self.owners["protocol25_setSingleButtonAssignment"]["body"])
+        self.assertIn("packetSizeReturned>0", self.owners["protocol_decoder"]["body"])
+        self.assertIn("dataArray:e.data.slice(5,10)", self.owners["protocol_decoder"]["body"])
+        self.assertIn('BUTTON_M1:{fwID:16', self.owners["controller_input_table"]["body"])
+        self.assertIn('KEY_A', self.owners["codec_key_table"]["body"])
+
+    def test_local_completed_precedes_device_tasks_and_real_storage_override_is_retained(self):
+        body = self.owners["taskMakerSetKeyMapping"]["body"]
+        self.assertLess(body.index("yield(0,a.Pf)"), body.index('status:"completed"'))
+        self.assertLess(body.index('status:"completed"'), body.index("RzTaskManager.enqueueTask"))
+        self.assertLess(body.index("type:g,payload"), body.index("RzTaskManager.enqueueTask"))
+        self.assertIn("I.mappings=n", body)
+        self.assertIn("(0,d.ds)((0,u.h4)(i))", body)
+        self.assertIn("if(!t.serialNumber)return", self.owners["storage_override"]["body"])
+        self.assertIn("storageOverrides:{localStorageHandler:le}", self.owners["product_bootstrap"]["body"])
+        self.assertIn("serialNumberBasedProfileStorage?new r:new i", self.owners["profile_storage_selection"]["body"])
+        self.assertIn("e.profileData[o.A.runtimeData.serialNumber]", self.owners["serial_profile_storage"]["body"])
+        self.assertIn("e.guid===i.activeProfile", self.owners["serial_profile_storage"]["body"])
+
+    def test_setter_errors_and_cancellation_cannot_be_claimed_as_readback(self):
+        runner = self.owners["taskRunnerSetSingleMappingToObm"]["body"]
+        self.assertEqual(runner.count("signal.aborted"), 2)
+        self.assertEqual(runner.count("yield this.setControllerKeyMapping"), 1)
+        self.assertIn("catch(e){console.error(e)}", runner)
+        self.assertIn('u.value.status="completed"', runner)
+        self.assertNotIn("getSingleButton", runner)
+        submission = self.report["semantics"]["submission"]
+        self.assertFalse(submission["hardware_ack_checked_by_runner"])
+        self.assertFalse(submission["write_readback"])
+        self.assertFalse(submission["rollback"])
+        self.assertIn('"skipped"===l.error', self.owners["onTaskRunnerSetSingleMappingToObm"]["body"])
+
+    def test_ui_save_cancel_and_distinct_mapping_obm_consumers(self):
+        self.assertIn("this.props.setSaveRef(this.saveMapping)", self.owners["ui_editor_mount"]["body"])
+        self.assertIn("this.props.setMappingList(i)", self.owners["ui_editor_saveChanges"]["body"])
+        self.assertIn("if(t)return this.clear()", self.owners["ui_editor_closeMapping"]["body"])
+        self.assertIn("await this.saveMapRef(!1)", self.owners["ui_parent_discard"]["body"])
+        self.assertIn("case ce._9Q:return Oe(e,t)", self.owners["ui_reducer"]["body"])
+        self.assertIn("case ce.Pxp:return Se(e,t)", self.owners["ui_obm_reducer"]["body"])
+        self.assertNotIn("ce.Pxp", self.owners["ui_reducer"]["body"])
+        self.assertIn("if(-1===s)return e", self.owners["ui_result_Se"]["body"])
+        self.assertIn("window.removeEventListener", self.owners["ui_editor_unmount"]["body"])
+
+    def test_exact_upstream_sections_reused_and_sibling_publication_does_not_invalidate_them(self):
+        polling, native = self.report["upstream_sections"]
+        self.assertEqual(polling["pointer"], "/polling_native_chain")
+        self.assertEqual(polling["canonical_sha256"], families._GAMEPAD_OBM_MAPPING_POLLING_SHA)
+        self.assertEqual(native["pointer"], "/auto_pause_hid_chain/shared_feature_transport")
+        self.assertEqual(native["selected_native_functions"], 17)
+        self.assertFalse(families._gamepad_obm_mapping_upstream_changes(self.report["upstream_sections"]))
+        document = json.loads((analysis.ROOT / polling["receipt"]).read_bytes())
+        document["obm_mapping_chain"] = {"unrelated_sibling": "changed"}
+        self.assertEqual(families._gamepad_obm_mapping_dependency(document), polling)
+        document["polling_native_chain"]["semantics"]["protocol"]["report_id"] = 9
+        with self.assertRaisesRegex(ValueError, "requires renewed review"):
+            families._gamepad_obm_mapping_dependency(document)
+        self.assertFalse(self.report["source_chain_complete"])
+        self.assertFalse(self.report["whole_product_complete"])
+        self.assertFalse(self.report["target_execution"])
+        self.assertEqual(self.report["runtime_acceptance"], "unverified")
+
+    def test_changed_branch_payload_error_cancel_storage_or_consumer_requires_review(self):
+        edits = (("product_maker_import", "i(21445)", "i(85191)"),
+            ("taskMakerSetKeyMapping", "RzTaskCategory.NORMAL,", "RzTaskCategory.NORMAL_SKIPPABLE,"),
+            ("taskRunnerSetSingleMappingToObm", "signal.aborted", "signal.cancelled"),
+            ("taskRunnerSetSingleMappingToObm", "catch(e){console.error(e)}", "catch(e){throw e}"),
+            ("protocol_set_header", "[80,2,12]", "[80,2,13]"),
+            ("protocol_get_header", "[80,2,140]", "[80,2,12]"),
+            ("protocol25_setSingleButtonAssignment", "[t,n,o,a,s,...l]", "[n,t,o,a,s,...l]"),
+            ("protocol_decoder", "packetSizeReturned>0", "packetSizeReturned>=0"),
+            ("engine_buttonMappingToFnDataByte", "n=c.zN.NormalMode", "n=c.zN.HypershiftMode"),
+            ("storage_override", "if(!t.serialNumber)return", "if(t.serialNumber)return"),
+            ("ui_obm_reducer", "case ce.Pxp:return Se(e,t)", "case ce.Pxp:return e"),
+            ("codec_key_alias", "t.R=o.KEYS", "t.R=[]"))
+        for role, before, after in edits:
+            owners = copy.deepcopy(self.owners)
+            self.assertIn(before, owners[role]["body"])
+            owners[role]["body"] = owners[role]["body"].replace(before, after, 1)
+            with self.subTest(role=role), self.assertRaises(ValueError):
+                families._gamepad_obm_mapping_contract(owners, self.audit.parser)
+
+    def test_query_dispatch_and_wrong_scope_or_preparation_rejected(self):
+        import argparse
+        parser = argparse.ArgumentParser()
+        families.add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["audit-family-function", "--family", "gamepad", "--function", "mw", "--query", "gamepad-obm-mapping-chain"])
+        with patch.object(families, "audit_gamepad_obm_mapping_chain") as selected:
+            families.audit_family_function(args)
+        selected.assert_called_once_with(args)
+        for family, function, product, prepare in (("system", "mw", None, False), ("gamepad", "main", None, False),
+                ("gamepad", "mw", [2676], False), ("gamepad", "mw", None, True)):
+            with self.subTest(family=family, function=function, product=product, prepare=prepare), \
+                    patch.object(families, "collect_gamepad_obm_mapping_chain") as collector, \
+                    self.assertRaisesRegex(ValueError, "requires PID2636"):
+                families.audit_gamepad_obm_mapping_chain(argparse.Namespace(family=family, function=function, product=product, prepare=prepare))
+            collector.assert_not_called()
+
+    def test_failure_snapshot_or_upstream_change_is_published_before_raising(self):
+        import argparse
+        for mode in ("success", "exception", "snapshot", "upstream"):
+            configure = {"side_effect": ValueError("mapping input missing")} if mode == "exception" else {"return_value": {"failures": []}}
+            with self.subTest(mode=mode), patch.object(families, "collect_gamepad_obm_mapping_chain", **configure), \
+                    patch.object(host.HostLocalAudit, "final_snapshot", return_value=["mapping input"] if mode == "snapshot" else []), \
+                    patch.object(families, "_gamepad_obm_mapping_upstream_changes", return_value=["receipt#pointer"] if mode == "upstream" else []), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+                args = argparse.Namespace(family="gamepad", function="mw", product=None, prepare=False)
+                if mode == "success":
+                    families.audit_gamepad_obm_mapping_chain(args)
+                else:
+                    with self.assertRaisesRegex(ValueError, "source observation remains unresolved"):
+                        families.audit_gamepad_obm_mapping_chain(args)
+            report, destination, _, section = publish.call_args.args
+            self.assertEqual(destination, analysis.ROOT / ".analysis/results/frontend/gamepad-mw-audit.json")
+            self.assertEqual(section, "obm_mapping_chain")
+            self.assertEqual(report["bounded_observation_complete"], mode == "success")
+            self.assertFalse(report["source_chain_complete"])
+            self.assertFalse(report["whole_product_complete"])
+            self.assertEqual(report["official_dll_comparison"], "not_executed")
+            if mode != "success":
+                self.assertTrue(report["failures"])
+
+
+class Mouse182ProfileSlotChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_mouse_182_profile_slot_chain(cls.audit)
+        cls.owners = {role: cls.audit.owners[key] for role, key in cls.report["roles"].items()}
+
+    def reject(self, role, before, after, message="semantic boundary differs"):
+        owners = {name: dict(row) for name, row in self.owners.items()}
+        self.assertIn(before, owners[role]["body"])
+        owners[role]["body"] = owners[role]["body"].replace(before, after, 1)
+        owners[role]["body_sha256"] = hashlib.sha256(owners[role]["body"].encode()).hexdigest()
+        with self.assertRaisesRegex(ValueError, message):
+            families._mouse_182_profile_slot_verify(owners)
+
+    def test_actual_source_slice_and_delivery_stages_remain_separate(self):
+        self.assertEqual(self.report["semantics"]["actual_action"], "rename_selected_local_profile")
+        self.assertEqual(self.report["product_id"], 182)
+        self.assertTrue(self.report["selected_static_semantics_reviewed"])
+        for field in ("source_chain_complete", "whole_product_complete", "target_execution",
+                "real_device_operations", "product_code_modified"):
+            self.assertFalse(self.report[field])
+        self.assertEqual(self.report["official_dll_comparison"], "not_executed")
+        for row in self.owners.values():
+            raw = self.audit.read(row["original"])[row["byte_start"]:row["byte_end"]]
+            self.assertEqual(raw.decode(), row["body"])
+            self.assertEqual(hashlib.sha256(raw).hexdigest(), row["body_sha256"])
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_real_root_excludes_manual_obm_panel_even_when_public_reducers_exist(self):
+        guard = self.report["semantics"]["obm_guard"]
+        self.assertEqual(guard["declared_slots"], 1)
+        self.assertFalse(guard["manual_obm_panel_mounted"])
+        self.assertFalse(guard["rename_to_obm_dispatch_reachable"])
+        self.reject("ui_product", "hasOBM:!1,isNewOBMUI:!0", "hasOBM:!0,isNewOBMUI:!0")
+        self.reject("product_device_info", "isOBMDevice:!0,OBMSlots:1", "isOBMDevice:!0,OBMSlots:5")
+        self.reject("rename", "void 0!==u?u:0)>1", "void 0!==u?u:0)>0")
+
+    def test_menu_rename_is_selected_and_editor_cancel_uses_original_name(self):
+        self.reject("ui_menu", "{action:Qe.Pie}", "{action:Qe.gjU}")
+        self.reject("ui_profile", "case Qe.Pie:this.renameProfile();break", "case Qe.Pie:this.addProfileAction();break")
+        self.reject("ui_editor", "27===e.keyCode&&this.props.sendToParent(this.props.value)",
+            "27===e.keyCode&&this.props.sendToParent(this.state.value)")
+        self.reject("ui_profile", 'e=e.trim(),this.setState({renameActive:!1})',
+            'this.setState({renameActive:!1})')
+        self.reject("ui_unique_name", "e.findIndex(e=>e.name===E)", "e.findIndex(e=>e.name.toLowerCase()===E.toLowerCase())")
+        self.assertIn("including current unchanged name", self.report["semantics"]["input"])
+
+    def test_payload_preserves_guid_instead_of_slot_or_ui_index(self):
+        self.reject("ui_rename_case", "renameProfileGUID:a.selectedProfileGuid", "renameProfileGUID:a.selectedProfileIndex")
+        self.reject("rename", "i.find((e=>e.guid===r)),_&&(_.name=n)", "i.find((e=>e.slotId===r)),_&&(_.name=n)")
+        self.reject("target_identity", "t.deviceContainerId==e", "t.serialNumber==e")
+        self.assertIn("not independently revalidated", self.report["semantics"]["identity"])
+        self.assertIn("e.profiles[t]=n", self.owners["profile_handlers"]["body"])
+
+    def test_recorder_permissions_do_not_fabricate_device_access(self):
+        self.reject("profile_permissions", 'actions=[{type:"updateLocalStorage",payload:{mode:"shared"}},{type:"deviceAccess"}]',
+            'actions=[{type:"deviceAccess"}]')
+        self.reject("permission_guards", "macroRecorderNotRunning:()=>!window.macroRecorderExclusiveHeld",
+            "macroRecorderNotRunning:()=>true")
+        self.assertIn("local-storage origin is ignored", self.report["semantics"]["permissions"])
+        self.assertIn("s.currentRzEvent=null,s.nextEventScheduler()", self.owners["event_queue"]["body"])
+
+    def test_document_commit_runtime_and_linked_names_are_ordered_before_completed(self):
+        body = self.owners["rename"]["body"]
+        order = ["yield(0,y.L7)(t)", "me.A.updateProfile(e,a,_)", "yield(0,y.Pf)(e,t)",
+            "yield(0,E.qw)(e,t)", "yield o.RzLockableStorage.getItem(m.wI.LINKED_GAMES_LOCALSTORAGE_KEY)",
+            "T.A.set(m.wI.LINKED_GAMES_LOCALSTORAGE_KEY,l)", "type:p.Bj5", 'status:"completed"',
+            "(0,b.a)({type:h", "yield N.A.setMemoryStorageItem"]
+        self.assertEqual([body.index(token) for token in order], sorted(body.index(token) for token in order))
+        self.reject("rename", "e.profileID===r&&(e.profileName=n)",
+            "e.pid===d.DeviceInfo.productId&&e.profileID===r&&(e.profileName=n)")
+        self.assertIn("regardless of PID", self.report["semantics"]["linked_games"])
+
+    def test_storage_supplied_hooks_do_not_gain_default_cas_or_retry_after_failed_dedupe(self):
+        storage = self.owners["storage"]["body"]
+        hook = self.owners["storage_hook"]["body"]
+        self.assertNotIn("useLockableStorage", storage)
+        self.assertNotIn("yield this.hooks.PostSetLocalStorage", hook)
+        self.assertIn("else window.localStorage.setItem(e,n)", hook)
+        self.reject("storage", 'const _=new c.g({PreSetLocalStorage(e)',
+            'const _=new c.g({useLockableStorage:!0,PreSetLocalStorage(e)')
+        self.reject("storage", '(0,v.Zd)(n,["version"])', '(0,v.Zd)(n,["version","name"])')
+        self.reject("storage", "e[t]=o,_.setLocalStorageData(t,n)", "_.setLocalStorageData(t,n),e[t]=o")
+        self.reject("version", "e===Number.MAX_SAFE_INTEGER?0:e+1", "e+1")
+
+    def test_name_only_does_not_change_mapping_cache_but_cold_cache_can_publish(self):
+        body = self.owners["mapping_publish"]["body"]
+        self.assertNotIn(".name", body)
+        self.assertIn('profiles:[]', body)
+        self.assertLess(body.index("e.profiles=(t.profiles||[])"), body.index("yield D.A.localStorageSetItem"))
+        self.reject("mapping_publish", "t.profiles.length!==e.profiles.length", "false")
+        self.reject("mapping_publish", "guid:e.guid", "name:e.name")
+        self.reject("mapping_localStorageSetItem", 'action:"localStorageSetItem",payload:{key:e,value:t}',
+            'action:"setProfileName",payload:{key:e,value:t}')
+        self.assertIn("returned native boolean is not checked", self.report["semantics"]["mapping_storage_hook"])
+
+    def test_error_after_postprocess_is_not_rollback_or_new_correlated_success(self):
+        self.reject("ui_local_result", "if(-1===n)return e", "if(-1===n)throw Error()")
+        self.reject("ui_post_result", "if(-1===t)return e", "if(-1===t)return {...e,profiles:E.payload.oldProfiles}")
+        self.assertNotIn("oldProfiles", self.owners["ui_local_result"]["body"])
+        self.assertIn("late memory failure", self.report["semantics"]["results"])
+        self.reject("rename", 'actionType:"taskMakerRenameProfile",status:"error"',
+            'actionType:"taskMakerRenameProfile",status:"completed"')
+        self.assertIn("catch(e){}", self.owners["ui_publication"]["body"])
+
+    def test_page_cleanup_does_not_imply_dispatched_work_or_native_observers_are_drained(self):
+        self.assertNotIn("AbortSignal", self.owners["rename"]["body"])
+        self.assertNotIn("isCurrent", self.owners["rename"]["body"])
+        self.reject("ui_profile", 'Jt.off("windowstorageevent",this._onWindowStorageChange)',
+            'Jt.off("windowstorageevent",this.otherHandler)')
+        self.assertIn("cannot be inferred as drained", self.report["semantics"]["cancel_release"])
+        self.assertEqual(self.report["temporary_resources_created"], [])
+
+    def test_native_reuse_is_exact_storage_scope_and_does_not_complete_other_profile_actions(self):
+        shared = self.report["native_storage_dependency"]
+        self.assertEqual(shared["input"]["bytes"], 3948744)
+        self.assertEqual({row["rva"] for row in shared["functions"]},
+            {"0x20920", "0x2fa0", "0x3160", "0xd496c", "0xd4b80", "0x65cc0", "0xe3f10"})
+        self.assertEqual(self.report["upstream_sections"][1]["reused_native_functions"], 7)
+        self.assertIn("no mouse HID frame", self.report["upstream_sections"][1]["scope"])
+        self.assertIn("require their own actual mount and consumer evidence", self.report["remaining_chains"][1])
+        self.assertFalse(self.report["source_chain_complete"])
+
+
+class Mouse182ProfileActionChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_mouse_182_profile_action_chain(cls.audit)
+        cls.owners = {role: cls.audit.owners[key] for role, key in cls.report["roles"].items()}
+
+    def reject(self, role, before, after, message="semantic boundary differs"):
+        owners = {name: dict(row) for name, row in self.owners.items()}
+        self.assertIn(before, owners[role]["body"])
+        owners[role]["body"] = owners[role]["body"].replace(before, after, 1)
+        owners[role]["body_sha256"] = hashlib.sha256(owners[role]["body"].encode()).hexdigest()
+        with self.assertRaisesRegex(ValueError, message):
+            families._mouse_182_profile_action_verify(owners)
+
+    def test_current_sources_and_independent_delivery_stages(self):
+        self.assertEqual(self.report["semantics"]["actual_action"], "export_selected_local_profiles_to_synapse4")
+        self.assertEqual(self.report["product_id"], 182)
+        self.assertTrue(self.report["selected_static_semantics_reviewed"])
+        for field in ("source_chain_complete", "whole_product_complete", "target_execution",
+                "real_device_operations", "product_code_modified"):
+            self.assertFalse(self.report[field])
+        self.assertEqual(self.report["official_dll_comparison"], "not_executed")
+        for row in self.owners.values():
+            raw = self.audit.read(row["original"])[row["byte_start"]:row["byte_end"]]
+            self.assertEqual(raw.decode(), row["body"])
+            self.assertEqual(hashlib.sha256(raw).hexdigest(), row["body_sha256"])
+        self.assertEqual(len(self.report["complete_host_sources"]), 2)
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_export_is_actually_mounted_with_selected_guid(self):
+        self.reject("ui_menu", "{action:Qe.l1q}", "{action:Qe.Pie}")
+        self.reject("ui_profile", 'case Qe.l1q:this.setState({IEMode:"export"});break',
+            'case Qe.l1q:this.exportProfile();break')
+        self.reject("ui_profile", "IEMode:this.state.IEMode,close:this.closeImportExportModel,importProfiles:this.importProfiles",
+            "IEMode:this.state.IEMode,close:this.closeImportExportModel")
+        self.reject("ui_export_connector", "profiles:e.profileReducer.profiles", "profiles:[]")
+        self.assertIn("does not close import/reset", self.report["semantics"]["mount"])
+
+    def test_selection_exclusions_macro_toggle_and_css_only_guard(self):
+        self.reject("ui_export_modal", 'e=>"Factory Default"!==e.name', 'e=>"General"!==e.name')
+        self.reject("ui_export_modal", "isProfileSelected:this.props.selectedProfileGuid===e.guid",
+            "isProfileSelected:true")
+        self.reject("ui_export_modal", "a[e].isProfileSelected&&a[e].listItems.forEach(e=>e.isMacroSelected=!0)",
+            "a[e].isProfileSelected&&a[e].listItems.forEach(e=>e.isMacroSelected=!1)")
+        self.assertNotIn("disabled:", self.owners["ui_export_modal"]["body"])
+        self.assertIn("select-all changes profiles only", self.report["semantics"]["selection"])
+        self.assertIn("original nested mapping", self.report["semantics"]["selection"])
+
+    def test_export_reloads_local_guid_and_skips_only_absent_macro(self):
+        self.reject("export", "JSON.parse(JSON.stringify(f.find((t=>t.guid===e.id))))",
+            "JSON.parse(JSON.stringify(e.profile))")
+        self.reject("export", "const t=c.find((t=>t.guid===e.guid));if(!t)return",
+            "const t=c.find((t=>t.guid===e.guid));if(!t)throw Error()")
+        self.reject("storage_required", 'throw new Error("No device data found")', "return {}")
+        self.assertIn("JSON.parse(undefined)", self.report["semantics"]["identity_and_read"])
+        self.assertIn("synthesize a profile/serial association", self.report["semantics"]["identity_and_read"])
+
+    def test_payload_hash_and_macro_name_have_distinct_boundaries(self):
+        self.reject("export", "delete t.appEngine", "delete t.hash")
+        self.reject("export", "const e={guid:t.guid,macroEvents:t.macroEvents,macroPlaybackOption:t.macroPlaybackOption}",
+            "const e={guid:t.guid,name:t.name,macroEvents:t.macroEvents,macroPlaybackOption:t.macroPlaybackOption}")
+        self.reject("hash", 't=["hash","gamemode"]', 't=["hash","gamemode","name"]')
+        self.reject("buffer", "e.exports=Buffer", "e.exports=window.Buffer")
+        self.assertIn("MD5 hex", self.report["semantics"]["encoding"])
+        self.assertIn("differs from payload JSON", self.report["semantics"]["encoding"])
+
+    def test_original_cross_profile_macro_deduplication_is_ineffective(self):
+        body = self.owners["export"]["body"]
+        self.assertIn("h.findIndex((e=>e.guid===t.guid))", body)
+        self.assertIn("h.push({name:t.name,payload:o,hash:(0,s.Zd)(e)})", body)
+        self.assertNotIn("h.push({guid:", body)
+        self.reject("export", "h.findIndex((e=>e.guid===t.guid))", "h.findIndex((e=>e.name===t.name))")
+        self.assertIn("emitted repeatedly", self.report["semantics"]["macro_duplicate_boundary"])
+
+    def test_detached_save_does_not_confirm_dialog_or_disk_result(self):
+        body = self.owners["export"]["body"]
+        self.assertNotIn("yield N.A.showFileSaveDialog", body)
+        self.assertLess(body.index("N.A.showFileSaveDialog"), body.index('status:"completed"'))
+        self.assertIn('e.invoke("electronAction",t)', self.owners["preload_invoke"]["body"])
+        self.assertNotIn("await", self.owners["host_save"]["body"])
+        self.reject("host_save", "e.canceled||(In=d.dirname(e.filePath))", "In=d.dirname(e.filePath)")
+        self.reject("host_save", "m.writeFile(o,i.payload?.data,e=>{e&&console.error(e)})",
+            "m.writeFileSync(o,i.payload?.data)")
+        self.assertIn("detached async rejection is outside nn catch", self.report["semantics"]["completion"])
+
+    def test_close_and_late_errors_do_not_imply_cancellation_or_rollback(self):
+        self.reject("ui_export_modal", "this.exportProfiles(),this.props.close()",
+            "await this.exportProfiles(),this.props.close()")
+        body = self.owners["export"]["body"]
+        self.assertLess(body.index('status:"completed"'), body.index("yield N.A.setMemoryStorageItem"))
+        self.assertNotIn("AbortSignal", body)
+        self.reject("ui_post_result", "if(-1===t)return e", "if(-1===t)throw Error()")
+        self.assertIn("no per-export DB/channel release", self.report["semantics"]["cancel_release"])
+        self.assertEqual(self.report["temporary_resources_created"], [])
+
+    def test_actual_transition_omits_named_permission_and_upstream_is_frozen(self):
+        self.assertNotIn("exportProfileAction", self.owners["export_state"]["body"])
+        self.assertNotIn("actions:", self.owners["export_state"]["body"].split("payload:", 1)[1])
+        self.assertIn("without those locks", self.report["semantics"]["dispatch"])
+        self.assertEqual(host._otfm_macro_encoding_dependency_changes(self.report["upstream_sections"]), [])
+        changed = copy.deepcopy(self.report["upstream_sections"])
+        changed[0]["canonical_sha256"] = "0" * 64
+        self.assertEqual(host._otfm_macro_encoding_dependency_changes(changed),
+            [changed[0]["receipt"] + "#" + changed[0]["pointer"]])
+        self.assertIn("other products", self.report["remaining_chains"][1])
+
+    def test_cli_scope_failure_and_changed_snapshot_are_not_completed(self):
+        args = type("Args", (), {"family": "mouse", "function": "mw", "product": [182], "prepare": False})()
+        class Audit:
+            parser_versions = {}
+            sources = {}
+            owners = {}
+            artifacts = {}
+            def artifact(self, *args):
+                return b"{}"
+            def final_snapshot(self):
+                return []
+        for mode in ("success", "failure", "changed"):
+            result = copy.deepcopy(self.report)
+            outcome = {"side_effect": ValueError("source changed")} if mode == "failure" else {"return_value": result}
+            changes = ["changed dependency"] if mode == "changed" else []
+            with patch.object(host, "HostLocalAudit", return_value=Audit()), \
+                    patch.object(families, "collect_mouse_182_profile_action_chain", **outcome), \
+                    patch.object(host, "_otfm_macro_encoding_dependency_changes", return_value=changes), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+                if mode == "success":
+                    families.audit_mouse_182_profile_action_chain(args)
+                else:
+                    with self.assertRaisesRegex(ValueError, "unresolved"):
+                        families.audit_mouse_182_profile_action_chain(args)
+            report, destination, _, section = publish.call_args.args
+            self.assertEqual(section, "mouse_182_profile_action_chain")
+            self.assertEqual(report["bounded_observation_complete"], mode == "success")
+            self.assertFalse(report["target_execution"])
+        args.product = [199]
+        with self.assertRaisesRegex(ValueError, "PID182"):
+            families.audit_mouse_182_profile_action_chain(args)
+
+
+class Mouse182ProfileDuplicateChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_mouse_182_profile_duplicate_chain(cls.audit)
+        cls.owners = {role: cls.audit.owners[key] for role, key in cls.report["roles"].items()}
+
+    def reject(self, role, before, after, message="semantic boundary differs"):
+        owners = {name: dict(row) for name, row in self.owners.items()}
+        self.assertIn(before, owners[role]["body"])
+        owners[role]["body"] = owners[role]["body"].replace(before, after, 1)
+        owners[role]["body_sha256"] = hashlib.sha256(owners[role]["body"].encode()).hexdigest()
+        with self.assertRaisesRegex(ValueError, message):
+            families._mouse_182_profile_duplicate_verify(owners)
+
+    def test_current_sources_and_independent_delivery_stages(self):
+        self.assertEqual(self.report["semantics"]["actual_action"], "duplicate_selected_local_profile")
+        self.assertEqual(self.report["product_id"], 182)
+        self.assertTrue(self.report["selected_static_semantics_reviewed"])
+        for field in ("source_chain_complete", "whole_product_complete", "target_execution",
+                "real_device_operations", "product_code_modified"):
+            self.assertFalse(self.report[field])
+        for row in self.owners.values():
+            raw = self.audit.read(row["original"])[row["byte_start"]:row["byte_end"]]
+            self.assertEqual(raw.decode(), row["body"])
+            self.assertEqual(hashlib.sha256(raw).hexdigest(), row["body_sha256"])
+        self.assertEqual(self.audit.final_snapshot(), [])
+        self.assertEqual(self.report["temporary_resources_created"], [])
+
+    def test_actual_menu_and_selected_profile_input(self):
+        self.reject("ui_menu", "{action:Qe.mjN}", "{action:Qe.l1q}")
+        self.reject("ui_profile", "case Qe.mjN:this.duplicateProfileAction();break", "case Qe.mjN:this.renameProfile();break")
+        self.reject("ui_profile", "name:(0,we.d9)(this.props.profiles,this.props.selectedProfile.name)", 'name:"Default"')
+        self.assertIn("requires a selected GUID", self.report["semantics"]["mount_and_input"])
+
+    def test_name_suffix_and_guid_keep_official_algorithm(self):
+        self.reject("ui_unique_name", "_=E.slice(0,e).trim()", "_=E.slice(0,e)")
+        self.reject("ui_unique_name", "for(let o=1;o<=i.length;o++)", "for(let o=0;o<=i.length;o++)")
+        self.reject("ui_guid", "crypto.getRandomValues(new Uint8Array(1))[0]", "Math.random()")
+        self.assertIn("name/content", self.report["semantics"]["mount_and_input"])
+
+    def test_ui_appends_only_payload_and_clears_new_profile_hypershift(self):
+        self.reject("ui_optimistic_append", "const a=[...e.profiles,E]", "const a=[...e.profiles,{...e.selectedProfile,...E}]")
+        self.reject("ui_duplicate_case", "sourceProfileGuid:a", "sourceProfileGuid:t.selectedProfileGuid")
+        self.reject("ui_duplicate_action", "E({type:ue.Wg3,payload:!1})", "E({type:ue.Wg3,payload:!0})")
+        self.assertNotIn("JSON.parse", self.owners["ui_optimistic_append"]["body"])
+        self.assertIn("new-profile cache", self.report["semantics"]["optimistic_ui"])
+
+    def test_actual_transition_has_exclusive_storage_without_device(self):
+        self.assertNotIn("deviceAccess", self.owners["duplicate_state"]["body"])
+        self.assertNotIn("profileOverrides", self.owners["duplicate_dispatch"]["body"])
+        self.reject("duplicate_state", 'mode:"exclusive"', 'mode:"shared"')
+        self.reject("duplicate_dispatch", "yield(0,le.km0)(e.timerTick,e.from,t,n,S,A,o)", "yield(0,le.km0)(e.timerTick,e.from,t,n,A,S,o)")
+        self.assertIn("false flag still publishes", self.report["semantics"]["permissions"])
+
+    def test_source_guid_clone_preserves_complete_source_fields(self):
+        self.reject("duplicate", "s.find((e=>e.guid===r))", "s[0]")
+        self.reject("duplicate", "const l=Object.assign(Object.assign({},a),n)", "const l=n")
+        self.reject("duplicate", "f.push(l),me.A.setProfiles(e,f),me.A.setActiveProfileGuid(e,l.guid)", "f.push(l),me.A.setProfiles(e,f)")
+        self.assertIn("macro GUID references", self.report["semantics"]["identity_and_clone"])
+        self.assertIn("no macro object or linked-game entry", self.report["semantics"]["identity_and_clone"])
+
+    def test_default_read_runtime_and_captured_save_target_are_distinct(self):
+        self.reject("duplicate", "const e=yield(0,y.L7)(),i=(0,y.bl)(e)", "const e=yield(0,y.L7)(t),i=(0,y.bl)(e,t)")
+        self.reject("duplicate", "(0,y.kS)(e,t.serialNumber,l.guid)", "(0,y.kS)(e,t.serialNumber,r)")
+        self.assertIn("current runtime defaults", self.report["semantics"]["identity_and_clone"])
+        self.assertIn("M(e,t.serialNumber)", self.owners["storage_active"]["body"])
+
+    def test_persistence_runtime_and_diff_order_are_not_device_ack(self):
+        self.reject("duplicate", "yield(0,y.Pf)(e,t),yield(0,E.qw)(e,t)", "yield(0,E.qw)(e,t),yield(0,y.Pf)(e,t)")
+        self.reject("duplicate", "J().diff((0,y.bl)(e),i)", "J().diff(i,(0,y.bl)(e))")
+        self.assertIn("(0,E.EA)(l.guid)", self.owners["duplicate"]["body"])
+        self.assertNotIn("yield(0,E.EA)", self.owners["duplicate"]["body"])
+        self.assertIn("PostSet does not await native result", self.report["semantics"]["persistence"])
+
+    def test_unchanged_source_settings_do_not_queue_initialization(self):
+        self.reject("active_profile_restore", 'Object.keys(n).concat(["ports"]):Object.keys(n)', 'Object.keys(H).concat(["ports"]):Object.keys(H)')
+        self.assertNotIn("PROFILE_DATA_PATCH", self.owners["product_definition"]["body"])
+        self.assertNotIn("singleProfileDevice", self.owners["product_definition"]["body"])
+        for role in ("product_defaults", "product_features", "product_bootstrap"):
+            self.assertNotIn("genericFeature", self.owners[role]["body"])
+        self.assertNotRegex(self.owners["feature_handler_definitions"]["body"], r"(?:name|guid):")
+        self.assertIn("queues no setting/HID write", self.report["semantics"]["same_active_restore"])
+
+    def test_changed_settings_keep_actual_shared_handoff(self):
+        self.reject("active_profile_restore", 'new v.V("ON_STAGES_INIT"', 'new v.V("ON_STAGES_CHANGE"')
+        self.reject("active_profile_restore", 'new v.V("ON_SET_KEYMAPPING"', 'new v.V("ON_SET_OBM_PROFILE"')
+        self.reject("active_profile_restore", "yield Se.RzGenericFeatureManager.restoreDeviceData(e)", "return e")
+        self.assertIn("reloadPollingRateWireless", self.report["semantics"]["changed_active_restore"])
+        self.assertIn("not completion/readback", self.report["semantics"]["changed_active_restore"])
+
+    def test_late_failure_cancel_and_exact_dependencies(self):
+        body = self.owners["duplicate"]["body"]
+        self.assertLess(body.index('status:"completed"'), body.index("yield N.A.setMemoryStorageItem"))
+        self.assertNotIn("AbortSignal", body)
+        self.reject("ui_post_result", "if(-1===t)return e", "if(-1===t)throw Error()")
+        self.assertEqual(len(self.report["native_storage_dependency"]["functions"]), 7)
+        self.assertEqual(len(self.report["native_recorder_read_dependency"]["functions"]), 4)
+        self.assertIn('action:"getMacroRecordingMode"', self.owners["mapping_getMacroRecordingMode"]["body"])
+        self.assertEqual(host._otfm_macro_encoding_dependency_changes(self.report["upstream_sections"]), [])
+        changed = copy.deepcopy(self.report["upstream_sections"])
+        changed[0]["canonical_sha256"] = "0" * 64
+        self.assertEqual(host._otfm_macro_encoding_dependency_changes(changed), [changed[0]["receipt"] + "#" + changed[0]["pointer"]])
+        self.assertIn("no other product", self.report["remaining_chains"][1])
+
+    def test_cli_scope_failure_and_changed_snapshot_are_not_completed(self):
+        args = type("Args", (), {"family": "mouse", "function": "mw", "product": [182],
+            "prepare": False, "query": "mouse-182-profile-duplicate-chain"})()
+        class Audit:
+            parser_versions = {}
+            sources = {}
+            owners = {}
+            artifacts = {}
+            def artifact(self, *args):
+                return b"{}"
+            def final_snapshot(self):
+                return []
+        for mode in ("success", "failure", "changed"):
+            result = copy.deepcopy(self.report)
+            outcome = {"side_effect": ValueError("source changed")} if mode == "failure" else {"return_value": result}
+            changes = ["changed dependency"] if mode == "changed" else []
+            with patch.object(host, "HostLocalAudit", return_value=Audit()), \
+                    patch.object(families, "collect_mouse_182_profile_duplicate_chain", **outcome), \
+                    patch.object(host, "_otfm_macro_encoding_dependency_changes", return_value=changes), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+                if mode == "success":
+                    families.audit_mouse_182_profile_duplicate_chain(args)
+                else:
+                    with self.assertRaisesRegex(ValueError, "unresolved"):
+                        families.audit_mouse_182_profile_duplicate_chain(args)
+            report, destination, _, section = publish.call_args.args
+            self.assertEqual(section, "mouse_182_profile_duplicate_chain")
+            self.assertEqual(report["bounded_observation_complete"], mode == "success")
+            self.assertFalse(report["target_execution"])
+        args.product = [199]
+        with self.assertRaisesRegex(ValueError, "PID182"):
+            families.audit_mouse_182_profile_duplicate_chain(args)
+
+
+class Mouse182ProfileImportChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_mouse_182_profile_import_chain(cls.audit)
+        cls.owners = {role: cls.audit.owners[key] for role, key in cls.report["roles"].items()}
+
+    def reject(self, role, before, after):
+        owners = {name: dict(row) for name, row in self.owners.items()}
+        self.assertIn(before, owners[role]["body"])
+        owners[role]["body"] = owners[role]["body"].replace(before, after, 1)
+        raw = owners[role]["body"].encode()
+        owners[role]["body_sha256"] = hashlib.sha256(raw).hexdigest()
+        owners[role]["byte_end"] = owners[role]["byte_start"] + len(raw)
+        with self.assertRaisesRegex(ValueError, "reviewed source selection differs"):
+            families._mouse_182_profile_import_verify(owners)
+
+    def test_exact_current_sources_and_independent_delivery_stages(self):
+        upstream, = self.report["upstream_sections"]
+        self.assertEqual(upstream["canonical_sha256"], "80308577baad0314c30a1759f7c405e91691604bd8f19a804998edc8152d1d52")
+        self.assertEqual(upstream["resume_finding_canonical_sha256"], "84e01fb76a302a3463f8b085c3e5598daa39dbf8e6a103a5707e0852761df330")
+        self.assertEqual(host._otfm_macro_encoding_dependency_changes([upstream]), [])
+        self.assertTrue(self.report["source_slice_complete"])
+        for field in ("source_chain_complete", "whole_product_complete", "target_execution",
+                "real_device_operations", "product_code_modified"):
+            self.assertFalse(self.report[field])
+        for owner in self.owners.values():
+            raw = self.audit.read(owner["original"])[owner["byte_start"]:owner["byte_end"]]
+            self.assertEqual(raw.decode(), owner["body"])
+            self.assertEqual(hashlib.sha256(raw).hexdigest(), owner["body_sha256"])
+        self.assertEqual(self.audit.final_snapshot(), [])
+        self.assertEqual(self.report["temporary_resources_created"], [])
+        self.assertEqual(self.report["new_native_captures"], 0)
+        self.assertEqual(self.report["new_analysis_sessions"], 0)
+
+    def test_actual_mounted_import_does_not_use_empty_parent_callback(self):
+        self.reject("ui_menu", "{action:Qe.yE7}", "{action:Qe.l1q}")
+        self.reject("ui_profile", 'case Qe.yE7:this.setState({IEMode:"import"})',
+            'case Qe.yE7:this.setState({IEMode:"export"})')
+        self.assertIn("this.importProfiles=()=>{}", self.owners["ui_profile"]["body"])
+        self.assertTrue(self.owners["ui_import_connector"]["body"].endswith("(Bc)"))
+        self.reject("ui_import_modal", "this.props.importProfile(this.state.profileData,this.state.macroData",
+            "this.props.importProfiles(this.state.profileData,this.state.macroData")
+        self.assertIn("requires selected GUID", self.report["semantics"]["mount"])
+
+    def test_file_gate_hash_and_partial_decode_errors_are_source_owned(self):
+        self.reject("ui_import_picker", 'accept:".synapse4"', 'accept:".synapse3"')
+        self.reject("ui_import_parser", 'if(e.hash!==t)throw new Error("hash not match")',
+            'if(e.hash===t)throw new Error("hash not match")')
+        self.reject("ui_import_parser", "e.category===Te.DeviceInfo.category||e.productId===E",
+            "e.category===Te.DeviceInfo.category&&e.productId===E")
+        self.reject("ui_source_hash", "delete E.hash,delete E.gamemode", "delete E.hash")
+        self.assertIn("mc(e.payload)", self.owners["ui_import_parser"]["body"])
+        self.assertIn("console.error(E),a=!0", self.owners["ui_import_parser"]["body"])
+        self.assertIn("JSON.parse/read rejection", self.report["semantics"]["file"]["partial_failure"])
+        self.assertNotIn("files.length", self.owners["ui_import_picker"]["body"])
+
+    def test_selected_rows_macro_union_and_actual_product_preprocessing(self):
+        self.reject("ui_import_case", "selectedProfileData.filter(e=>e.isProfileSelected)", "selectedProfileData")
+        self.reject("ui_import_case", "a.isMacroSelected&&e.add(a.guid)", "e.add(a.guid)")
+        self.reject("ui_import_modal", "e.macros=this.decodeXmlEntities(e.macros)", "e.macros=e.macros")
+        self.reject("ui_import_picker", "E.is8kAnalogDevice||!e?e:", "!E.is8kAnalogDevice||!e?e:")
+        self.assertIn("disableHypershiftMapping", self.owners["ui_hypershift_filter"]["body"])
+        self.assertNotIn("disableHypershiftMapping", self.owners["ui_button_list"]["body"])
+        for token in ("sanitizeImportedProfileMappings", "analogSpecs"):
+            self.assertNotIn(token, self.owners["ui_product_definition"]["body"])
+        self.assertIn("postMessage({type:\"ON_IMPORT_PROFILE\",timerTick:void 0", self.owners["ui_import_case"]["body"])
+
+    def test_legacy_worker_envelope_and_per_message_timeout_are_not_full_conversion(self):
+        picker = self.owners["ui_import_picker"]["body"]
+        self.assertLess(picker.index("E.port.onmessage=e=>"), picker.index("const i=setTimeout"))
+        self.assertIn("},2e3)", picker)
+        self.reject("ui_import_picker", "${window.location.origin}/profile-migration/worker.js",
+            "${window.location.origin}/synapse/profile-migration/worker.js")
+        self.reject("legacy_worker_envelope", "o.default.loadSyn3File(r)", "o.default.loadSyn3File(l)")
+        self.assertIn("t.start(),t.postMessage({ready:!0})", self.owners["legacy_worker_envelope"]["body"])
+        self.assertNotIn("port.close", picker)
+        worker = self.report["legacy_worker_dependency"]
+        self.assertEqual(worker["original"]["sha256"], "068456d522c4979a68d8b33964dcd6d835f21c0d52ae07b7b16189be9b367475")
+        self.assertFalse(worker["current_deployment_verified"])
+        self.assertFalse(worker["internal_legacy_conversion_complete"])
+        self.assertIn("internal loadSyn3File/toSyn4", self.report["remaining_chains"][0])
+
+    def test_macro_collision_first_group_and_actual_hash_order(self):
+        self.reject("import_maker", "if(n){const n=(0,s.gZ)();t.set(e.guid,{guid:n,name:e.name}),e.guid=n}",
+            "{const n=(0,s.gZ)();t.set(e.guid,{guid:n,name:e.name}),e.guid=n}")
+        self.reject("import_maker", "i.hash=(0,s.Zd)(i),i.mouseMoveType=r", "i.mouseMoveType=r,i.hash=(0,s.Zd)(i)")
+        self.reject("import_maker", "if(r)return i.guid=r.guid,void(i.name=r.name)", "if(r)i.guid=r.guid,i.name=r.name")
+        self.assertIn("const a=_.find((e=>e.guid===i.guid))", self.owners["import_maker"]["body"])
+        self.assertIn("3===e.Type&&[1,2].includes(t)", self.owners["import_maker"]["body"])
+        self.assertIn("monitor-service response", self.report["remaining_chains"][0])
+
+    def test_current_ordinary_mapping_uses_fourth_turbo_keep_list(self):
+        self.reject("import_maker", "qe(o.mappings,o,!1,g.concat(h))", "qe(o.mappings,o,g.concat(h))")
+        self.reject("profile_engine", "n?a.A.generateAppEngineMultiMappings(e):a.A.generateAppEngineMappings(e)",
+            "n?a.A.generateAppEngineMappings(e):a.A.generateAppEngineMultiMappings(e)")
+        self.reject("profile_engine", "Je(a.A.getSynapseTurbos(),t,r,i)", "Je(a.A.getSynapseTurbos(),t,r,[])")
+        self.reject("profile_engine", "while(l&&c<3)", "while(l&&c<30)")
+        self.assertIn("n=!1,i=[]", self.owners["profile_engine"]["body"])
+        self.assertIn("third argument", self.report["semantics"]["profiles"]["current_source_differs_from_older_processor"])
+
+    def test_import_appends_preserves_active_guid_and_has_no_restore_handoff(self):
+        maker = self.owners["import_maker"]["body"]
+        self.assertIn("me.A.setProfiles(i,h),i.version=", maker)
+        for token in ("setActiveProfileGuid", "Kn(", "E.EA", "AbortSignal"):
+            self.assertNotIn(token, maker)
+        self.reject("import_maker", "Object.assign(Object.assign({},d.getDefaultProfile()),e)", "d.getDefaultProfile()")
+        self.reject("import_maker", "selectedProfileGuid:i.activeProfile", "selectedProfileGuid:h[h.length-1].guid")
+        for role in ("product_bootstrap", "product_features", "product_defaults"):
+            for token in ("supportDpiMatcher", "serialNumberBasedProfileStorage"):
+                self.assertNotIn(token, self.owners[role]["body"])
+        self.assertIn("false flag still emits completed", self.report["semantics"]["permissions"])
+
+    def test_macro_idb_publication_order_and_partial_commit_are_distinct(self):
+        maker = self.owners["import_maker"]["body"]
+        order = ["u.profiles.push({guid:e.guid", "yield r.A.set(_)",
+            'yield M.A.localStorageSetItem("synapseMacros"', "yield(0,y.Pf)(i,t)",
+            "yield(0,E.qw)(i,t)", "type:p.Bj5", "L.A.macro.macroList=_", 'status:"completed"',
+            "(0,b.a)({type:g", "yield N.A.setMemoryStorageItem"]
+        positions = [maker.index(token) for token in order]
+        self.assertEqual(positions, sorted(positions))
+        self.reject("macro_idb_storage", 'navigator.locks.request(c,{mode:"exclusive"}',
+            'navigator.locks.request(c,{mode:"shared"}')
+        self.reject("macro_idb_storage", "t.commit(),yield n,u.postMessage", "t.commit(),u.postMessage")
+        self.reject("import_maker", "yield(0,y.Pf)(i,t),yield(0,E.qw)(i,t)",
+            "yield(0,E.qw)(i,t),yield(0,y.Pf)(i,t)")
+        self.assertIn("const t=Object.assign({},e)", self.owners["profile_helper_Fe"]["body"])
+        self.assertIn("t.appEngine.events=je(e.appEngine.events)", self.owners["profile_helper_Fe"]["body"])
+        self.assertFalse(self.report["semantics"]["commit"]["device_confirmation"])
+        self.assertEqual(len(self.report["native_storage_dependency"]["functions"]), 7)
+        self.assertFalse(self.report["native_storage_dependency"]["recaptured"])
+
+    def test_immediate_close_cancel_late_error_and_timer_result_consumers(self):
+        modal = self.owners["ui_import_modal"]["body"]
+        self.assertIn("this.importProfiles()):this.exportProfiles(),this.props.close()", modal)
+        self.assertIn("onClick:this.props.close", modal)
+        for token in ("componentWillUnmount", "AbortSignal", "abort()", "generation"):
+            self.assertNotIn(token, modal)
+        self.reject("ui_import_modal", "onClick:this.ieProfiles", "onClick:()=>this.state.canExport&&this.ieProfiles()")
+        self.reject("ui_post_result", "if(-1===t)return e", "if(-1===t)throw Error()")
+        self.assertIn("e.actionsFromUI[n].localStorage=", self.owners["ui_local_result"]["body"])
+        self.assertIn("s.errorActions.push(e.actionsFromUI[n])", self.owners["ui_local_result"]["body"])
+        self.assertIn("late task-memory error", self.report["semantics"]["commit"]["partial_failure"])
+
+    def test_owner_fingerprint_upstream_and_current_deployment_fail_closed(self):
+        import frontend
+        owners = {role: dict(row) for role, row in self.owners.items()}
+        owners["ui_import_parser"]["body_sha256"] = "0" * 64
+        with self.assertRaisesRegex(ValueError, "complete source owner identity differs"):
+            families._mouse_182_profile_import_verify(owners)
+        owners = {role: dict(row) for role, row in self.owners.items()}
+        owners["ui_import_parser"]["original"] = {**owners["ui_import_parser"]["original"], "sha256": "0" * 64}
+        with self.assertRaisesRegex(ValueError, "reviewed source selection differs"):
+            families._mouse_182_profile_import_verify(owners)
+        document = json.loads((analysis.ROOT / ".analysis/results/frontend/mouse-mw-audit.json").read_bytes())
+        document["mouse_182_profile_duplicate_chain"]["remaining_chains"][1] = "different work"
+        with patch.object(families.json, "loads", return_value=document):
+            with self.assertRaisesRegex(ValueError, "exact upstream boundary requires review"):
+                families._mouse_182_profile_import_sources(host.HostLocalAudit())
+        with patch.object(frontend, "current_source_selection", return_value={"acquisition": {"path": "changed"}}):
+            with self.assertRaisesRegex(ValueError, "current deployment changed"):
+                families._mouse_182_profile_import_sources(host.HostLocalAudit())
+
+    def test_cli_dispatch_scope_and_published_failures_do_not_complete(self):
+        args = type("Args", (), {"family": "mouse", "function": "mw", "product": [182],
+            "prepare": False, "query": "mouse-182-profile-import-chain"})()
+        with patch.object(families, "audit_mouse_182_profile_import_chain", return_value="dispatched") as dispatched:
+            self.assertEqual(families.audit_family_function(args), "dispatched")
+            dispatched.assert_called_once_with(args)
+        class Audit:
+            parser_versions = {}
+            sources = {}
+            owners = {}
+            artifacts = {}
+            def artifact(self, *args):
+                return b"{}"
+            def final_snapshot(self):
+                return ["changed source"] if mode == "snapshot" else []
+        for mode in ("success", "failure", "snapshot", "dependency"):
+            outcome = {"side_effect": ValueError("source changed")} if mode == "failure" else {"return_value": copy.deepcopy(self.report)}
+            changes = ["changed dependency"] if mode == "dependency" else []
+            with patch.object(host, "HostLocalAudit", return_value=Audit()), \
+                    patch.object(families, "collect_mouse_182_profile_import_chain", **outcome), \
+                    patch.object(host, "_otfm_macro_encoding_dependency_changes", return_value=changes), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+                if mode == "success":
+                    families.audit_mouse_182_profile_import_chain(args)
+                else:
+                    with self.assertRaisesRegex(ValueError, "unresolved"):
+                        families.audit_mouse_182_profile_import_chain(args)
+            report, _, _, section = publish.call_args.args
+            self.assertEqual(section, "mouse_182_profile_import_chain")
+            self.assertEqual(report["bounded_observation_complete"], mode == "success")
+            self.assertFalse(report["target_execution"])
+            self.assertEqual(bool(report["failures"]), mode != "success")
+        for field, value in (("family", "audio"), ("function", "main"), ("product", [199]), ("prepare", True)):
+            invalid = copy.copy(args)
+            setattr(invalid, field, value)
+            with self.assertRaisesRegex(ValueError, "PID182"):
+                families.audit_mouse_182_profile_import_chain(invalid)
+
+
+class Mouse182LegacyWorkerChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_mouse_182_legacy_worker_chain(cls.audit)
+        cls.owners = {role: cls.audit.owners[key] for role, key in cls.report["roles"].items()}
+        cls.parent, cls.picker = families._mouse_182_legacy_worker_parent(cls.audit)
+        cls.proof = json.loads(cls.audit.artifact(analysis.ROOT / families._MOUSE_182_LEGACY_WORKER_DEPLOYMENT["path"],
+            families._MOUSE_182_LEGACY_WORKER_DEPLOYMENT))
+
+    def reject(self, role, before, after):
+        owners = {name: dict(row) for name, row in self.owners.items()}
+        self.assertIn(before, owners[role]["body"])
+        owners[role]["body"] = owners[role]["body"].replace(before, after, 1)
+        raw = owners[role]["body"].encode()
+        owners[role]["body_sha256"] = hashlib.sha256(raw).hexdigest()
+        owners[role]["byte_end"] = owners[role]["byte_start"] + len(raw)
+        with self.assertRaisesRegex(ValueError, "semantic boundary differs|selected owners need review|unsupported port"):
+            families._mouse_182_legacy_worker_verify(owners)
+
+    def test_current_worker_complete_owners_and_delivery_stages_remain_separate(self):
+        self.assertEqual(self.report["semantics"]["reviewed_source_sha256"],
+            "683b63cee8fee1d87f0f2e75a2376f9b829b8bf0227086606edb08c1d4609fb6")
+        self.assertEqual([row["canonical_sha256"] for row in self.report["upstream_sections"]], [
+            "2000906261d5388532039fe59e3a02fcc7a1ad4236c44e8d6ec23ac5fc49b88e",
+            "29d69dd1e453e66e667cfd4765d488600cedee2923da685c30f49d8c043e4ba5"])
+        self.assertEqual(host._otfm_macro_encoding_dependency_changes(self.report["upstream_sections"]), [])
+        for role, row in self.owners.items():
+            raw = self.audit.read(row["original"])[row["byte_start"]:row["byte_end"]]
+            self.assertEqual(raw.decode(), row["body"], role)
+            self.assertEqual(hashlib.sha256(raw).hexdigest(), row["body_sha256"], role)
+        self.assertEqual(self.audit.final_snapshot(), [])
+        self.assertTrue(self.report["worker_deployment"]["current_deployment_verified"])
+        self.assertTrue(self.report["worker_deployment"]["original_reused"])
+        self.assertTrue(self.report["selected_static_semantics_reviewed"])
+        for field in ("source_chain_complete", "whole_product_complete", "target_execution",
+                "real_device_operations", "product_code_modified"):
+            self.assertFalse(self.report[field])
+        self.assertEqual(self.report["temporary_resources_created"], [])
+        self.assertEqual(self.report["new_native_captures"], 0)
+        self.assertEqual(self.report["new_analysis_sessions"], 0)
+        self.assertEqual(len(self.report["remaining_chains"]), 4)
+        self.assertEqual(self.report["official_dll_comparison"], "not_executed")
+        self.assertEqual(self.report["runtime_acceptance"], "unverified")
+
+    def test_original_source_pid_routes_before_identity_normalization(self):
+        self.reject("profile_dispatch", "s.default[(0,o.tryParseInt)(n.Product_ID)]",
+            "s.default[(0,u.swapPID)(n.Product_ID)]")
+        self.reject("profile_dispatch", "hasWarning:i===n&&r!==t", "hasWarning:i===n&&r===t")
+        self.reject("identity_and_constants", "182:[182,183]", "182:[182]")
+        self.assertIn("UNKNOWN_CATEGORY", self.owners["profile_dispatch"]["body"])
+        rows = self.report["source_pid_converter_inventory"]
+        self.assertEqual(len(rows), 26)
+        self.assertEqual([row["registry_order"] for row in rows], list(range(26)))
+        self.assertEqual([row["module_id"] for row in rows[:5]], [4714, 4349, 8011, 3803, 6283])
+        by_mid = {row["module_id"]: row for row in rows}
+        self.assertEqual(by_mid[8011]["source_pids"], [780, 781, 782, 783, 790])
+        self.assertEqual(by_mid[6283]["source_pids"], ["all"])
+        self.assertEqual(by_mid[6892]["source_feature_selector"]["expression"], '"Mappings"')
+        self.assertEqual(sum(row["semantic_status"] == "reviewed_current_batch" for row in rows), 1)
+        for row in rows:
+            self.assertFalse(row["target_pid_filter_applied"])
+            self.assertIn(row["complete_owner"], self.audit.owners)
+            selector = row["source_feature_selector"]
+            self.assertEqual(hashlib.sha256(selector["expression"].encode()).hexdigest(), selector["sha256"])
+            self.assertIn("no invented version gate", row["version_gate"])
+
+    def test_zip_xml_errors_grouping_and_path_precedence_are_not_normalized(self):
+        self.reject("zip_loader", "!Array.isArray(t)||t.includes(e)", "Array.isArray(t)&&t.includes(e)")
+        self.reject("zip_loader", 't.includes("DeviceInfo.xml")', 't.includes("deviceinfo.xml")')
+        self.reject("zip_loader", 't.startsWith("Macros/")||', 't.startsWith("Macros/")&&')
+        self.reject("zip_loader", "catch(e){console.log(\"err\",e)}", "catch(e){throw e}")
+        self.reject("zip_loader", "t[r].push(s(a[r]))", "t[r]=s(a[r])")
+        self.reject("zip_loader", "if(e.content)return e.content", "if(void 0!==e.content)return e.content")
+        self.reject("xml_parser", "Unknown Lexem type:", "Ignored Lexem type:")
+        self.assertIn("yield Promise.all", self.owners["zip_loader"]["body"])
+        self.assertIn("Features/", self.owners["zip_loader"]["body"])
+        self.assertIn("Remaining entries merge", self.report["semantics"]["grouping_edges"])
+
+    def test_shared_errors_batch_partial_results_and_double_calls_are_distinct(self):
+        self.reject("profile_dispatch", "n(e)&&Object.assign(t,n(e))", "Object.assign(t,n(e))")
+        self.reject("profile_dispatch", "const a=r.shareConverterMap[o]", "const a=r.shareConverterMap.name")
+        self.reject("profile_dispatch", "if(s||l)", "if(s&&l)")
+        self.reject("profile_dispatch", "macros:t.map((e=>(0,l.convertMacro)(e)))", "macros:[]")
+        rows = self.report["shared_converter_inventory"]
+        self.assertEqual(len(rows), 52)
+        self.assertEqual([row["registry_order"] for row in rows], list(range(2, 54)))
+        self.assertEqual(rows[-1]["module_id"], 2946)
+        self.assertEqual({row["module_id"] for row in rows if row["semantic_status"] == "reviewed_current_batch"},
+            {7156, 2013, 4590, 8274, 4982, 1425, 8152, 2946, 5820})
+        pending_mapping, = [row for row in rows if row["module_id"] == 8061]
+        self.assertEqual(pending_mapping["semantic_status"], "pending_shared_feature_semantics")
+        self.assertIn("not gated by target", pending_mapping["source_pid"])
+        self.assertIn("whole worker", self.report["semantics"]["dispatch"])
+
+    def test_dpi_polling_brightness_and_idle_arithmetic_are_preserved(self):
+        for role, before, after in (
+                ("dpi", "t.Stages.DPIStage.map(r)", "[t.Stages.DPIStage].map(r)"),
+                ("dpi", "active:(0,a.fallBackParseInt)(t.Active)+1", "active:(0,a.fallBackParseInt)(t.Active)"),
+                ("polling", "pollingRate:n,pollingRateWireless:n", "pollingRate:n"),
+                ("wireless_polling", "(0,a.fallBackParseInt)(t.Value)||1e3", "(0,a.fallBackParseInt)(t.Value)||125"),
+                ("brightness", 'isEnabled:"1"===t.State', 'isEnabled:!!t.State'),
+                ("led_power", "(t.IdleStateValue)/60||1", "(t.IdleStateValue)||1")):
+            self.reject(role, before, after)
+
+    def test_lighting_directions_scroll_dimming_acceleration_and_all_power_are_preserved(self):
+        for role, before, after in (
+                ("lighting", "const l=[780]", "const l=[182]"),
+                ("lighting", 'case"batterylevel":r.selectedEffectId=14', 'case"batterylevel":r.selectedEffectId=3'),
+                ("scroll", '"FreeSpin"===t.Mode?"FreeSpin":"Tactile"', '"Tactile"'),
+                ("smart_dimming", "Half:50,Quarter:25,Off:0", "Half:50,Quarter:25,Off:100"),
+                ("dynamic_sensitivity", "Classic:0,Natural:1,Jump:2,Custom:3", "Classic:0,Natural:1,Jump:3,Custom:2"),
+                ("dynamic_sensitivity", "x:(0,a.fallBackParseInt)(e),y:(0,a.fallBackParseFloat)(t)",
+                    "x:(0,a.fallBackParseFloat)(e),y:(0,a.fallBackParseInt)(t)"),
+                ("all_power", "if(!t||!n)return{}", "if(!t&&!n)return{}")):
+            self.reject(role, before, after)
+
+    def test_macro_pairing_key_flags_delays_and_mouse_id_spelling_are_preserved(self):
+        for role, before, after in (
+                ("legacy_macro", "s.pop()||n", "s.shift()||n"),
+                ("legacy_macro", "const o=i.outputFlag||i.flag", "const o=i.flag"),
+                ("legacy_macro", '"Delay"in e&&e.Type!==o', '"Delay"in e'),
+                ("legacy_macro", "id:t,MouseEvent:", "Id:t,MouseEvent:"),
+                ("legacy_macro", "c&&!d&&(u.macroPlaybackOption=\"sequence\")", "c&&(u.macroPlaybackOption=\"sequence\")"),
+                ("conversion_tables", "45:6,46:7,9:8,10:9", "45:7,46:6,9:8,10:9")):
+            self.reject(role, before, after)
+        self.assertIn("if(!i)throw new Error", self.owners["legacy_macro"]["body"])
+        self.assertIn("if(!i.keyCode)throw new Error", self.owners["legacy_macro"]["body"])
+        self.assertIn("IsExtended", self.owners["legacy_macro"]["body"])
+        self.assertGreater(len(self.owners["macro_key_table"]["body"]), 1000)
+
+    def test_macro_movement_mode_buffer_units_and_last_action_bar_are_preserved(self):
+        for before, after in (
+                ("i={1:2,2:1,3:3}", "i={1:1,2:2,3:3}"),
+                ("x:(0,a.fallBackParseInt)(e.X)", "x:(0,a.fallBackParseInt)(e.X)/65535"),
+                ("n.Number=+n.Number.toFixed(3)", "n.Number=+n.Number.toFixed(0)"),
+                ("g=t.mouseMovementType", "g=g||t.mouseMovementType"),
+                ('recordProfile:{mmtSetting:g||0}', 'recordProfile:{mmtSetting:1}')):
+            self.reject("legacy_macro", before, after)
+        self.assertNotIn("65535", self.owners["legacy_macro"]["body"])
+        self.assertIn("without per-macro catch", self.report["semantics"]["macro_events"])
+
+    def test_mw_coordinates_monitor_selection_time_residual_and_hash_order_are_preserved(self):
+        for role, before, after in (
+                ("import_maker", "e.x=e.x/65535*n.x,e.y=e.y/65535*n.y", "e.x=e.x*n.x,e.y=e.y*n.y"),
+                ("import_maker", "i.hash=(0,s.Zd)(i),i.mouseMoveType=r", "i.mouseMoveType=r,i.hash=(0,s.Zd)(i)"),
+                ("macro_event_translation", "Math.round(t/c*65535)", "Math.round(t/c*65536)"),
+                ("macro_event_translation", "Math.round(t/(p?p.dpiScaleX:1))", "Math.round(t)"),
+                ("macro_event_translation", "a>1?(e++,a--):a<-1&&(e--,a++)", "a>=1?(e++,a--):a<=-1&&(e--,a++)"),
+                ("macro_global_bridge", "t.Cx=o.isGlobalVarAvailable", "t.Cx=o.setGlobalVar")):
+            self.reject(role, before, after)
+        self.assertIn("p=n.monitorInforBefore[1]", self.owners["macro_event_translation"]["body"])
+        self.assertIn("return!!(null==(e=s.global)", self.owners["macro_event_translation"]["body"])
+        self.assertIn("truthiness, including empty arrays", self.report["semantics"]["monitor_replies"])
+
+    def test_monitor_frontend_host_binding_and_conditional_pointer_free_are_preserved(self):
+        for role, before, after in (
+                ("service_getMonitorInfo", '"function"==typeof window.setBounds', '"function"==typeof window.getMonitorInfo'),
+                ("service_getMonitorInfo", "if(t)try{return JSON.parse(t)}", "try{return JSON.parse(t)}"),
+                ("service_getVirtualScreenRect", "try{return JSON.parse(t)}", "try{return t}"),
+                ("host_case_GetRegisteredApplaunchedList", "return po.callDLL(n,i)", "return io.callDLL(n,i)"),
+                ("host_sysutil_instance", "po=new lo(Ye)", "po=new lo()"),
+                ("host_sysutil_initDll", 'getMonitorInfo:["pointer",[]]', 'getMonitorInfo:["string",[]]'),
+                ("host_ffi_call", "finally{t&&(n&&l.FreeMalloc?l.FreeMalloc(n)", "finally{n&&l.FreeMalloc?l.FreeMalloc(n)")):
+            self.reject(role, before, after)
+        self.assertEqual(self.owners["host_case_getMonitorInfo"]["body"], 'case"getMonitorInfo":')
+        self.assertEqual(self.owners["host_case_getVirtualScreenRect"]["body"], 'case"getVirtualScreenRect":')
+        for row in self.report["current_host_sources"].values():
+            self.assertIn("e7a524aca177", row["original"]["path"])
+            self.assertEqual(row["release_version"], "4.0.896")
+            self.assertIn("/releases/4.0.896/", row["acquisition"]["path"])
+            self.assertTrue(row["container_bytes_verified"])
+        self.assertIn("enumeration", self.report["remaining_chains"][2])
+
+    def test_worker_messages_timeout_and_missing_release_are_not_upgraded(self):
+        self.reject("legacy_worker_envelope", "s.set(n,t)", "s.set(n,t),s.delete(n)")
+        self.reject("legacy_worker_envelope", "t.postMessage({synapse3File:r})", "t.postMessage({synapse3File:l})")
+        self.reject("legacy_worker_envelope", "i.default.toSyn4(e,l,u)", "i.default.toSyn4(e,u,l)")
+        picker = self.owners["ui_import_picker"]["body"]
+        self.assertLess(picker.index("E.port.onmessage=e=>"), picker.index("const i=setTimeout"))
+        self.assertIn("},2e3)", picker)
+        for token in ("port.close", "AbortSignal", "s.delete("):
+            self.assertNotIn(token, self.owners["legacy_worker_envelope"]["body"])
+
+    def test_owner_identity_upstream_and_current_caller_selection_fail_closed(self):
+        import frontend
+        owners = {role: dict(row) for role, row in self.owners.items()}
+        owners["legacy_macro"]["original"] = {**owners["legacy_macro"]["original"], "sha256": "0" * 64}
+        with self.assertRaisesRegex(ValueError, "selected owners need review"):
+            families._mouse_182_legacy_worker_verify(owners)
+        owners = {role: dict(row) for role, row in self.owners.items()}
+        owners["legacy_macro"]["body_sha256"] = "0" * 64
+        with self.assertRaisesRegex(ValueError, "complete owner bytes/hash differ"):
+            families._mouse_182_legacy_worker_verify(owners)
+        document = json.loads((analysis.ROOT / ".analysis/results/frontend/mouse-mw-audit.json").read_bytes())
+        document["mouse_182_profile_import_chain"]["remaining_chains"][0] = "different continuation"
+        with patch.object(families.json, "loads", return_value=document):
+            with self.assertRaisesRegex(ValueError, "exact Import continuation"):
+                families._mouse_182_legacy_worker_parent(host.HostLocalAudit())
+        with patch.object(frontend, "current_source_selection", return_value={"acquisition": {"path": "changed"}}):
+            with self.assertRaisesRegex(ValueError, "current Import caller selection changed"):
+                families._mouse_182_legacy_worker_sources(host.HostLocalAudit())
+        with patch.object(host, "verified_host_release_receipt", return_value={"version": "4.0.827"}):
+            with self.assertRaisesRegex(ValueError, "current Host release review"):
+                families._mouse_182_legacy_worker_sources(host.HostLocalAudit())
+
+    def test_cached_deployment_requires_two_matching_http_rounds_mime_url_and_caller(self):
+        class Audit:
+            def artifact(self, *args):
+                return json.dumps(proof).encode()
+            def read(self, source):
+                return b"verified bytes"
+        for mutation in ("round_hash", "round_url", "mime", "caller", "execution", "round_count", "current_url"):
+            proof = copy.deepcopy(self.proof)
+            if mutation == "round_hash":
+                proof["observations"][0]["rounds"][1]["sha256"] = "0" * 64
+            elif mutation == "round_url":
+                proof["observations"][0]["rounds"][1]["final_url"] += "?different"
+            elif mutation == "mime":
+                proof["observations"][0]["rounds"][0]["headers"]["Content-Type"] = "text/html"
+            elif mutation == "caller":
+                proof["caller"]["body_sha256"] = "0" * 64
+            elif mutation == "execution":
+                proof["target_execution"] = True
+            elif mutation == "round_count":
+                proof["observations"][0]["rounds"].pop()
+            else:
+                proof["current_original"]["url"] += "?different"
+            with self.subTest(mutation=mutation), self.assertRaisesRegex(ValueError, "deployment"):
+                families._mouse_182_legacy_worker_deployment(Audit(), {"path": "receipt"}, self.picker)
+        with self.assertRaisesRegex(ValueError, "explicit deployment preparation"):
+            families._mouse_182_legacy_worker_deployment(Audit(), None, self.picker)
+
+    def test_explicit_http_preparation_reuses_raw_and_always_cleans_on_failure_or_cancel(self):
+        import workspace
+        from contextlib import ExitStack
+        original = self.parent["legacy_worker_dependency"]["original"]
+        raw = self.audit.read(original)
+        for mode in ("success", "unstable", "failure", "cancel"):
+            row = {"status": "ok", "http_status": 200, "url": families._MOUSE_182_LEGACY_WORKER_URL,
+                "final_url": families._MOUSE_182_LEGACY_WORKER_URL, "headers": {"Content-Type": "application/javascript"},
+                "_raw": raw, "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()}
+            second = copy.deepcopy(row)
+            if mode == "unstable":
+                second["sha256"] = "0" * 64
+            error = OSError("HTTP unavailable") if mode == "failure" else KeyboardInterrupt()
+            replies = [row, second] if mode in ("success", "unstable") else [row, error]
+            with ExitStack() as stack:
+                stack.enter_context(patch.object(families, "_mouse_182_legacy_worker_parent", return_value=(self.parent, self.picker)))
+                stack.enter_context(patch.object(analysis, "index_lock"))
+                stack.enter_context(patch("builtins.print"))
+                factory = stack.enter_context(patch.object(host, "HostLocalAudit"))
+                factory.return_value.final_snapshot.return_value = []
+                fetch = stack.enter_context(patch.object(workspace, "_frontend_revalidation_fetch", side_effect=replies))
+                publish = stack.enter_context(patch.object(workspace, "_frontend_revalidation_publish",
+                    return_value={"path": "immutable-receipt", "bytes": 1, "sha256": "1" * 64}))
+                index = stack.enter_context(patch.object(workspace, "_frontend_revalidation_index", return_value={"changed": False}))
+                cleanup = stack.enter_context(patch.object(workspace, "_frontend_revalidation_cleanup_owned",
+                    return_value={"removed": [], "failures": []}))
+                if mode == "success":
+                    report = families.prepare_mouse_182_legacy_worker_deployment()
+                    self.assertTrue(report["passed"])
+                    self.assertEqual(report["current_original"], original)
+                    self.assertEqual(report["observations"][0]["classification"], "unchanged_reused")
+                    index.assert_called_once()
+                else:
+                    with self.assertRaises(KeyboardInterrupt if mode == "cancel" else OSError if mode == "failure" else ValueError):
+                        families.prepare_mouse_182_legacy_worker_deployment()
+                    index.assert_not_called()
+                self.assertEqual(fetch.call_count, 2)
+                cleanup.assert_called_once_with({})
+                publish.assert_called_once()
+                saved = json.loads(publish.call_args.args[0])
+                self.assertEqual(saved["passed"], mode == "success")
+                self.assertEqual(bool(saved["failures"]), mode != "success")
+                self.assertFalse(saved["target_execution"])
+
+    def test_cli_uses_network_only_for_prepare_and_preserves_failure_snapshots(self):
+        args = type("Args", (), {"family": "mouse", "function": "mw", "product": [182],
+            "prepare": False, "query": "mouse-182-legacy-worker-chain"})()
+        with patch.object(families, "audit_mouse_182_legacy_worker_chain", return_value="dispatched") as dispatch:
+            self.assertEqual(families.audit_family_function(args), "dispatched")
+            dispatch.assert_called_once_with(args)
+        class Audit:
+            parser_versions = {}
+            sources = {}
+            owners = {}
+            artifacts = {}
+            def artifact(self, *args):
+                return b"{}"
+            def final_snapshot(self):
+                return ["changed source"] if mode == "snapshot" else []
+        for mode in ("success", "failure", "snapshot", "dependency", "prepare"):
+            args.prepare = mode == "prepare"
+            outcome = {"side_effect": ValueError("source changed")} if mode == "failure" else {"return_value": copy.deepcopy(self.report)}
+            changes = ["changed dependency"] if mode == "dependency" else []
+            with patch.object(host, "HostLocalAudit", return_value=Audit()), \
+                    patch.object(families, "collect_mouse_182_legacy_worker_chain", **outcome) as collect, \
+                    patch.object(families, "prepare_mouse_182_legacy_worker_deployment", return_value={"receipt": {"path": "prepared"}}) as prepare, \
+                    patch.object(host, "_otfm_macro_encoding_dependency_changes", return_value=changes), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+                if mode in ("success", "prepare"):
+                    families.audit_mouse_182_legacy_worker_chain(args)
+                else:
+                    with self.assertRaisesRegex(ValueError, "unresolved"):
+                        families.audit_mouse_182_legacy_worker_chain(args)
+                self.assertEqual(prepare.call_count, int(mode == "prepare"))
+                if mode != "failure":
+                    self.assertEqual(collect.call_args.args[1], {"path": "prepared"} if mode == "prepare" else None)
+            published, _, _, section = publish.call_args.args
+            self.assertEqual(section, "mouse_182_legacy_worker_chain")
+            self.assertEqual(published["bounded_observation_complete"], mode in ("success", "prepare"))
+            self.assertFalse(published["target_execution"])
+            self.assertEqual(bool(published["failures"]), mode not in ("success", "prepare"))
+        for field, value in (("family", "audio"), ("function", "main"), ("product", [199])):
+            invalid = copy.copy(args)
+            setattr(invalid, field, value)
+            with self.assertRaisesRegex(ValueError, "PID182"):
+                families.audit_mouse_182_legacy_worker_chain(invalid)
+
+
+class Keyboard756CalibrationSessionChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_keyboard_756_calibration_session_chain(cls.audit)
+        cls.owners = {role: cls.audit.owners[key] for role, key in cls.report["roles"].items()}
+
+    def changed(self, role, before, after):
+        owners = {name: dict(row) for name, row in self.owners.items()}
+        self.assertIn(before, owners[role]["body"])
+        owners[role]["body"] = owners[role]["body"].replace(before, after, 1)
+        owners[role]["body_sha256"] = hashlib.sha256(owners[role]["body"].encode()).hexdigest()
+        return families._keyboard_756_calibration_verify(owners, self.audit.parser)
+
+    def reject(self, role, before, after):
+        with self.assertRaisesRegex(ValueError, "semantic boundary differs|unsupported confirmation|cancellation ordering"):
+            self.changed(role, before, after)
+
+    def test_complete_current_owners_keep_reverse_engineering_separate_from_delivery(self):
+        self.assertEqual(self.report["product_id"], 756)
+        self.assertTrue(self.report["selected_session_semantics_reviewed"])
+        for field in ("source_chain_complete", "whole_product_complete", "target_execution",
+                "real_device_operations", "product_code_modified"):
+            self.assertFalse(self.report[field])
+        self.assertEqual(self.report["official_dll_comparison"], "not_executed")
+        self.assertEqual(self.report["ui_backend_wiring"], "unverified")
+        for row in self.owners.values():
+            body = self.audit.read(row["original"])[row["byte_start"]:row["byte_end"]]
+            self.assertEqual(body.decode(), row["body"])
+            self.assertEqual(hashlib.sha256(body).hexdigest(), row["body_sha256"])
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_actual_756_selection_does_not_borrow_740_746_or_old_ui_review(self):
+        self.assertIn("keyboard-756-current-refresh-", self.report["source_sets"]["ui"]["acquisition"]["path"])
+        self.assertIn("keyboard-mw-756-current-refresh-", self.report["source_sets"]["mw"]["acquisition"]["path"])
+        self.reject("feature_factory", "i.d(t,{MA:()=>P})", "i.d(t,{P:()=>P})")
+        self.reject("product_registration", 'featureKey:"magnetic_analog_configuration_v2"',
+            'featureKey:"magnetic_analog_configuration"')
+
+    def test_non_ble_root_queries_list_then_switch_and_page_adds_only_switch_read(self):
+        self.reject("ui_root", "this.props.isBle||(this.props.getCalibratedKeyList(),this.props.getKeySwitchType())",
+            "this.props.isBle||(this.props.getKeySwitchType(),this.props.getCalibratedKeyList())")
+        self.reject("ui_root", "navs:this.props.isBle?s:t", "navs:t")
+        self.reject("ui_page", "useEffect)(()=>{a()},[a])", "useEffect)(()=>{n(),a()},[a,n])")
+        self.assertIn("Setup READY", self.report["semantics"]["mount"])
+
+    def test_start_does_not_pass_ui_selected_keys_or_wait_for_echo_confirmation(self):
+        self.reject("feature_b", "yield P.getInstance().startCalibration(),!0",
+            "yield P.getInstance().startCalibration(e.keys),!0")
+        self.reject("feature", "setAnalogUserCalibrationModeCtrl(a.Qf.Enter)",
+            "setAnalogUserCalibrationModeCtrl(a.Qf.Exit)")
+        self.reject("ui_reducer", "keyboardCalibrationStatus:An.Sz.calibrating,calibrationTimerSeconds:An.Ks",
+            "keyboardCalibrationStatus:An.Sz.idle,calibrationTimerSeconds:0")
+        self.reject("mode_protocol", "o.status===i.STATUS_SUCCESS&&o.data", "o.status===i.STATUS_SUCCESS&&o.data&&o.data[0]===n")
+
+    def test_make_wins_and_unknown_nonzero_results_follow_current_success_arm(self):
+        self.reject("feature_D", "e===s.IX.MAKE?h.Start:t===s.fS.RES?h.Failed:h.Success",
+            "e===s.IX.MAKE?h.Start:t===s.fS.SUCCESS?h.Success:h.Failed")
+        self.reject("hardware_key_states", "MAKE:2", "MAKE:1")
+        self.reject("hardware_results", "RES:0", "RES:2")
+        self.assertTrue(self.report["semantics"]["hardware_notification"]["unknown_nonzero_result_maps_to_success"])
+        self.reject("feature_T", 'if(59===e)return"KEY_FN"', 'if(58===e)return"KEY_FN"')
+        self.reject("feature_T", '"KEY_LEFT_GUI"===i.inputID?"KEY_WINDOWS":i.inputID', "i.inputID")
+
+    def test_stop_clears_before_await_and_finally_publishes_after_exit_failure(self):
+        body = self.owners["feature"]["body"]
+        stop = body.split("stopCalibration(e){", 1)[1].split("waitForResetCalibrationDone(){", 1)[0]
+        order = ["i=[...this.sessionCalibratedKeyIds]", "this.sessionCalibratedKeyIds.clear()",
+            "yield t.setAnalogUserCalibrationModeCtrl(n)", "finally{", "yield(0,d.getLocalStorageDeviceCache)()",
+            "yield(0,d.setLocalStorageDeviceCache)(t)", "this.updateCalibratedKeyListToUI(e)"]
+        self.assertEqual([stop.index(token) for token in order], sorted(stop.index(token) for token in order))
+        self.assertNotIn("catch(", stop)
+        self.reject("feature", "finally{const t=yield(0,d.getLocalStorageDeviceCache)()",
+            "if(exitSucceeded){const t=yield(0,d.getLocalStorageDeviceCache)()")
+        self.reject("feature", "const n=e?a.Qf.Exit:a.Qf.Abort", "const n=e?a.Qf.Abort:a.Qf.Exit")
+        self.reject("feature_k", "stopCalibration(!1!==(null==e?void 0:e.save))", "stopCalibration(!!e.save)")
+
+    def test_cache_serial_is_observed_when_used_and_missing_cache_is_not_persisted_success(self):
+        self.reject("feature", "getCurrentSerialNumber(){return p.A.runtimeData.serialNumber}",
+            "getCurrentSerialNumber(){return this.sessionSerialNumber}")
+        self.reject("feature", "const e=[...new Set([...n,...i])].sort((e,t)=>e-t)",
+            "const e=[...new Set([...i])].sort((e,t)=>e-t)")
+        self.assertIn("missing cache", self.report["semantics"]["stop"])
+        self.assertIn("replace exit error", self.report["semantics"]["stop"])
+
+    def test_hardware_128_offsets_and_external_mapping_boundary_are_distinct_from_feature_hid(self):
+        for role, before, after in (("hardware_events", "ANALOG_USER_CALIBRATION_EVENT:128", "ANALOG_USER_CALIBRATION_EVENT:129"),
+                ("hardware_parser", "keyStates:e[3]", "keyStates:e[4]"),
+                ("mapping_registerHardwareEvent", 'action:"registerHardwareEvent"', 'action:"getFeatureReport"')):
+            with self.subTest(role=role):
+                self.reject(role, before, after)
+        self.assertFalse(self.report["upstream_sections"][0]["notification_read_covered"])
+        self.assertEqual(self.report["upstream_sections"][0]["reused_native_functions"], 8)
+        self.assertIn("actual notification128", self.report["remaining_chains"][0])
+
+    def test_event_queue_and_feature_have_no_inferred_per_session_generation_or_shutdown(self):
+        feature = self.owners["feature"]["body"]
+        update = feature.split("updateCalibrationStatus(e){", 1)[1].split("getCachedSwitchTypes(e){", 1)[0]
+        self.assertNotIn("assertCurrent", update)
+        self.assertNotIn("shutdown(", feature)
+        self.reject("feature", "i===h.Success&&this.sessionCalibratedKeyIds.add(t)",
+            "this.sessionActive&&i===h.Success&&this.sessionCalibratedKeyIds.add(t)")
+        self.reject("hardware_lifecycle", 's.A.off("hardwareevent",J)', 's.A.off("hardwareevent",K)')
+
+    def test_list_and_stop_completion_are_independent_consumers_even_for_error_or_skip(self):
+        reducer = self.owners["ui_reducer"]["body"]
+        listing = reducer.split("case d.fmF:", 1)[1].split("case d.eGz:", 1)[0]
+        self.assertNotIn("isStopCalibrationPending", listing)
+        self.assertNotIn("stopCalibrationToken", listing)
+        self.reject("ui_reducer", "stopCalibrationToken:e.stopCalibrationToken+1", "stopCalibrationToken:e.stopCalibrationToken")
+        self.reject("generic_manager", '||"skipped"===A.error?', '?')
+        self.reject("ui_page", "if(0===D)return;const e=He.current;e&&(He.current=null,e())",
+            "if(0===D||stopStatus!==\"completed\")return;const e=He.current;e&&(He.current=null,e())")
+
+    def test_current_restore_handoff_keeps_two_second_fallback_and_two_attempt_bound(self):
+        self.reject("ui_page", "setTimeout(()=>{He.current===i&&(He.current=null,i())},2e3)",
+            "setTimeout(()=>{He.current===i&&(He.current=null,i())},5e3)")
+        self.reject("ui_page", "Ue.current=e<2?()=>s(e+1):null,x(t),n(),setTimeout",
+            "Ue.current=()=>s(e+1),x(t),n(),setTimeout")
+        self.assertIn("handoff only", self.report["semantics"]["switch_restore_handoff"])
+
+    def test_cancel_removes_handlers_and_checks_window_status_without_claiming_io_drain(self):
+        for before, after in (('C.A.off("screenlocked",i)', 'C.A.off("screenlocked",n)'),
+                ('document.removeEventListener("visibilitychange",a)', 'document.removeEventListener("visibilitychange",n)'),
+                ('const l=await o.doElectronAction({action:"getWindowStatus"});!t||', 'const l={};!t||')):
+            with self.subTest(before=before):
+                self.reject("ui_page", before, after)
+        self.assertIn("no proven native callback/I/O drain", self.report["semantics"]["cancel_release"])
+        self.assertEqual(self.report["cleanup"]["new_temporary_files"], [])
+
+    def test_timer_and_protocol_header_reject_inferred_per_key_timeout_or_other_command(self):
+        self.assertEqual(self.report["semantics"]["mode_header"], [1, 2, 64])
+        self.assertEqual(self.report["semantics"]["modes"], {"Exit": 0, "Enter": 1, "Abort": 2})
+        self.assertEqual(self.report["semantics"]["timer"]["idle_seconds"], 60)
+        self.reject("ui_session_constants", "T=60,u=15", "T=30,u=15")
+        self.reject("mode_values", "A={Exit:0,Enter:1,Abort:2}", "A={Exit:2,Enter:1,Abort:0}")
+        owners = {name: dict(row) for name, row in self.owners.items()}
+        owners["mode_header"]["body"] = owners["mode_header"]["body"].replace("[1,2,64]", "[1,2,65]")
+        owners["mode_header"]["body_sha256"] = hashlib.sha256(owners["mode_header"]["body"].encode()).hexdigest()
+        with self.assertRaisesRegex(ValueError, "mode header differs"):
+            families._keyboard_756_calibration_verify(owners, self.audit.parser)
+
+
+class Keyboard756CalibrationBatchChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_keyboard_756_calibration_batch_chain(cls.audit)
+        cls.owners = {role: cls.audit.owners[key] for role, key in cls.report["roles"].items()}
+
+    def reject(self, role, before, after, message="semantic boundary differs"):
+        owners = {name: dict(row) for name, row in self.owners.items()}
+        self.assertIn(before, owners[role]["body"])
+        owners[role]["body"] = owners[role]["body"].replace(before, after, 1)
+        owners[role]["body_sha256"] = hashlib.sha256(owners[role]["body"].encode()).hexdigest()
+        with self.assertRaisesRegex(ValueError, message):
+            families._keyboard_756_batch_verify(owners, self.audit.parser)
+
+    def test_current_slice_bytes_and_delivery_stages_are_independent(self):
+        self.assertEqual(self.report["product_id"], 756)
+        self.assertEqual(self.report["semantics"]["actual_actions"],
+            ["get_calibrated_full_list", "reset_all_user_calibration_data"])
+        for field in ("source_chain_complete", "whole_product_complete", "target_execution",
+                "real_device_operations", "product_code_modified"):
+            self.assertFalse(self.report[field])
+        self.assertTrue(self.report["source_slice_complete"])
+        self.assertEqual(self.report["official_dll_comparison"], "not_executed")
+        for row in self.owners.values():
+            raw = self.audit.read(row["original"])[row["byte_start"]:row["byte_end"]]
+            self.assertEqual(raw.decode(), row["body"])
+            self.assertEqual(hashlib.sha256(raw).hexdigest(), row["body_sha256"])
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_actual_full_inventory_includes_fn_and_positive_shared_ids(self):
+        inventory = self.report["semantics"]["inventory"]
+        self.assertEqual((inventory["source_rows"], inventory["keys"]), (150, 111))
+        self.assertEqual(inventory["batch_sizes"], [40, 40, 31])
+        self.assertEqual(inventory["request_data_sizes"], [80, 80, 62])
+        self.assertEqual(inventory["all_analog_key_ids"][:40], list(range(1, 41)))
+        self.assertIn(59, inventory["all_analog_key_ids"])
+        self.assertEqual(inventory["all_analog_key_ids"][-3:], [150, 151, 154])
+        self.reject("getAllAnalogKeyIds", "const e=new Set([59])", "const e=new Set()")
+        self.reject("getAllAnalogKeyIds", "i>0&&e.add(i)", "i>=0&&e.add(i)")
+        self.reject("header_g4c", "At=40", "At=26")
+
+    def test_status_protocol_preserves_record_padding_and_raw_returned_status(self):
+        self.reject("query_protocol", "e[2*n]=t", "e[n]=t")
+        self.reject("query_protocol", "t.sendCommand(N.i3T,N.ssL,e,o)", "t.sendCommand(N.i3T,N.ssL,e)")
+        self.reject("query_protocol", "n+1<a.data.length", "n<a.data.length")
+        self.reject("readCalibratedKeyIds", "1===(null==e?void 0:e.status)", "0!==(null==e?void 0:e.status)")
+        self.assertIn("returned IDs/duplicates are not checked", self.report["semantics"]["query"])
+        self.assertNotIn("new Set", self.owners["readCalibratedKeyIds"]["body"])
+
+    def test_failed_batch_does_not_publish_partial_list_or_default_success(self):
+        self.reject("readCalibratedKeyIds", 'if("SUCCESS"!==(null==s?void 0:s.status))throw new Error',
+            'if("SUCCESS"!==(null==s?void 0:s.status))return o')
+        body = self.owners["getCalibratedKeyList"]["body"]
+        ordered = ["yield this.readCalibratedKeyIds()", "yield this.saveCalibratedKeyIds(e)", "this.updateCalibratedKeyListToUI(e)"]
+        self.assertEqual([body.index(t) for t in ordered], sorted(body.index(t) for t in ordered))
+        self.assertIn("Unknown/missing jsonData becomes empty list", self.report["semantics"]["query"])
+
+    def test_save_uses_current_serial_and_missing_document_does_not_fake_persistence(self):
+        self.reject("getCachedCalibratedKeyIds", "e.serialNumber===t", "e.deviceContainerId===t")
+        self.reject("setCachedCalibratedKeyIds", "if(!i)return", "if(!i)i='unknown'")
+        self.reject("saveCalibratedKeyIds", "this.setCachedCalibratedKeyIds(t,e),yield(0,d.setLocalStorageDeviceCache)(t)",
+            "this.updateCalibratedKeyListToUI(e)")
+        self.assertIn("warning and successful return/publication without persistence", self.report["semantics"]["save"])
+        self.assertNotIn("useLockableStorage", self.owners["storage"]["body"])
+        self.assertNotIn("yield this.hooks.PostSetLocalStorage", self.owners["storage_hook"]["body"])
+
+    def test_actual_reset_confirmation_and_optimistic_empty_list_are_separate(self):
+        self.reject("ui_page", "onCancelResetAllCalibration:()=>{X(!1)}", "onCancelResetAllCalibration:()=>{X(!1),m()}")
+        self.reject("ui_actions", "resetCalibration:()=>({type:de.Z32})", "resetCalibration:()=>({type:de.zxg})")
+        self.reject("ui_reducer", "keyboardCalibrationStatus:An.Sz.saving,calibrationTimerSeconds:0,calibratedKeys:[],calibratingKeys:[]",
+            "keyboardCalibrationStatus:An.Sz.idle,calibrationTimerSeconds:0,calibratedKeys:[],calibratingKeys:[]")
+        self.assertIn("No caller-supplied selected subset", self.report["semantics"]["input"])
+
+    def test_precheck_empty_skips_reset_and_ack_byte_value_is_not_a_completion_test(self):
+        self.reject("resetCalibration", "if(n=i,0===i.length)", "if(n=i,0!==i.length)")
+        self.reject("reset_set_protocol", "const e=new Uint8Array(N.svF[0]);e[0]=0",
+            "const e=new Uint8Array(N.svF[0]);e[0]=255")
+        body = self.owners["reset_set_protocol"]["body"]
+        self.assertIn("void 0===n?void 0:n.length", body)
+        self.assertNotIn("o.data[0]===", body)
+        self.assertIn("its res value is not tested", self.report["semantics"]["reset_precheck"])
+
+    def test_poll_is_bounded_attempts_and_zero_requires_an_empty_full_list(self):
+        self.reject("waitForResetCalibrationDone", "n=Math.ceil(20)", "n=Math.ceil(2000)")
+        self.reject("waitForResetCalibrationDone", "o>0&&(yield(0,g.yy)(100))", "yield(0,g.yy)(100)")
+        self.reject("waitForResetCalibrationDone", "if(0===r&&0===(yield this.readCalibratedKeyIds()).length)return",
+            "if(0===r)return")
+        self.reject("waitForResetCalibrationDone", "if(1!==r)throw new Error", "if(0!==r)throw new Error")
+        self.assertIn("not a hard wall-clock deadline", self.report["semantics"]["poll"])
+        self.assertIn("result2 completes without final full-list read", self.report["semantics"]["poll"])
+
+    def test_three_second_recovery_keeps_error_precedence_and_releases_overlap_flag(self):
+        self.reject("resetCalibration", "const t=3e3-(Date.now()-e)", "const t=2e3-(Date.now()-e)")
+        self.reject("resetCalibration", "if(this.resetCalibrationInProgress=!1,t)throw",
+            "if(this.resetCalibrationInProgress=!0,t)throw")
+        self.reject("resetCalibration", "),t;if(i)throw i", "),i;if(t)throw t")
+        body = self.owners["resetCalibration"]["body"]
+        self.assertLess(body.index("this.sessionCalibratedKeyIds.clear(),n=[]"), body.index("yield this.saveCalibratedKeyIds([])"))
+        self.assertIn("persistent old data may remain", self.report["semantics"]["reset_commit_and_errors"])
+        self.assertIn("idle/list restoration is not reset success", self.report["semantics"]["consumers"])
+
+    def test_cancel_or_reconnect_does_not_inherit_switch_generation_guards(self):
+        for role in ("readCalibratedKeyIds", "resetCalibration", "waitForResetCalibrationDone", "saveCalibratedKeyIds"):
+            for token in ("assertCurrent", "isCurrent", "AbortSignal", "signal.aborted", "queueSwitchOperation"):
+                self.assertNotIn(token, self.owners[role]["body"])
+        self.assertIn("c=e=>new Promise(t=>setTimeout(t,e))", self.owners["delay"]["body"])
+        body = self.owners["generic_manager"]["body"]
+        self.assertLess(body.index("const n=yield l.execute(e)"), body.index("if(null==r?void 0:r.signal.aborted)"))
+        self.assertIn("reconnect can mix device/serial identities", self.report["semantics"]["cancel_release"])
+        self.assertIn("neither registers/unregisters", self.report["semantics"]["cancel_release"])
+
+    def test_exact_shared_transport_provider_and_remaining_scope_are_reused(self):
+        self.assertEqual(len(self.report["feature_report_transport"]["functions"]), 8)
+        self.assertEqual(len(self.report["upstream_sections"]), 3)
+        self.assertEqual(self.report["notification_provider_dependency"]["new_native_captures"], 0)
+        self.assertEqual(self.report["temporary_files_created"], [])
+        self.assertEqual(self.report["new_analysis_sessions"], [])
+        self.assertEqual(host._otfm_macro_encoding_dependency_changes(self.report["upstream_sections"]), [])
+        changed = copy.deepcopy(self.report["upstream_sections"])
+        changed[2]["canonical_sha256"] = "0" * 64
+        self.assertEqual(host._otfm_macro_encoding_dependency_changes(changed),
+            [changed[2]["receipt"] + "#" + changed[2]["pointer"]])
+        self.assertIn("switch-type", self.report["remaining_chains"][0])
+
+    def test_cli_scope_failure_and_changed_snapshot_keep_source_incomplete(self):
+        args = type("Args", (), {"family": "keyboard", "function": "mw", "product": [756], "prepare": False})()
+        class Audit:
+            parser_versions = {}
+            sources = {}
+            owners = {}
+            artifacts = {}
+            def artifact(self, *args):
+                return b"{}"
+            def final_snapshot(self):
+                return []
+        for mode in ("success", "failure", "changed"):
+            result = copy.deepcopy(self.report)
+            outcome = {"side_effect": ValueError("source missing")} if mode == "failure" else {"return_value": result}
+            with patch.object(host, "HostLocalAudit", return_value=Audit()), \
+                    patch.object(families, "collect_keyboard_756_calibration_batch_chain", **outcome), \
+                    patch.object(host, "_otfm_macro_encoding_dependency_changes", return_value=["changed"] if mode == "changed" else []), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+                if mode == "success":
+                    families.audit_keyboard_756_calibration_batch_chain(args)
+                else:
+                    with self.assertRaisesRegex(ValueError, "unresolved"):
+                        families.audit_keyboard_756_calibration_batch_chain(args)
+            report, destination, _, section = publish.call_args.args
+            self.assertEqual(section, "keyboard_756_calibration_batch_chain")
+            self.assertEqual(report["bounded_observation_complete"], mode == "success")
+            self.assertFalse(report["source_chain_complete"])
+        args.product = [752]
+        with self.assertRaisesRegex(ValueError, "PID756"):
+            families.audit_keyboard_756_calibration_batch_chain(args)
+
+
+class Keyboard756SwitchTypeChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_keyboard_756_switch_type_chain(cls.audit)
+        cls.owners = {role: cls.audit.owners[key] for role, key in cls.report["roles"].items()}
+
+    def reject(self, role, before, after, message="Keyboard756 switch"):
+        owners = copy.deepcopy(self.owners)
+        self.assertIn(before, owners[role]["body"])
+        owners[role]["body"] = owners[role]["body"].replace(before, after, 1)
+        owners[role]["body_sha256"] = hashlib.sha256(owners[role]["body"].encode()).hexdigest()
+        with self.assertRaisesRegex(ValueError, message):
+            families._keyboard_756_switch_verify(owners, self.audit.parser)
+
+    def test_current_bytes_and_delivery_stages_are_separate(self):
+        self.assertEqual(self.report["product_id"], 756)
+        self.assertTrue(self.report["source_slice_complete"])
+        for field in ("source_chain_complete", "whole_product_complete", "target_execution",
+                "real_device_operations", "product_code_modified"):
+            self.assertFalse(self.report[field])
+        self.assertEqual(self.report["official_dll_comparison"], "not_executed")
+        for row in self.owners.values():
+            raw = self.audit.read(row["original"])[row["byte_start"]:row["byte_end"]]
+            self.assertEqual(raw.decode(), row["body"])
+            self.assertEqual(hashlib.sha256(raw).hexdigest(), row["body_sha256"])
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_integer_product_values_and_actual_key_aliases(self):
+        self.reject("feature_S", "Number.isInteger(e)", "Number.isFinite(e)")
+        self.reject("feature_S", "t>=20&&t<=40", "t>=10&&t<=40")
+        self.reject("feature_S", "Razer?40===t", "Razer?t<=40")
+        self.reject("feature_O", '"KEY_FN"===e)return 59', '"KEY_FN"===e)return 0')
+        self.reject("feature_O", '"KEY_WINDOWS"===e?"KEY_LEFT_GUI":e', '"KEY_WINDOWS"===e?"KEY_RIGHT_GUI":e')
+
+    def test_wire_batch_and_ack_are_submitted_bytes_not_readback(self):
+        self.assertEqual(self.report["semantics"]["write_header"], [0, 2, 67])
+        self.assertEqual(self.report["semantics"]["switch_batch_size"], 26)
+        self.reject("header_ico", "ft=26", "ft=40")
+        self.reject("switch_protocol", "new Uint8Array(3*n.length)", "new Uint8Array(2*n.length)")
+        self.reject("switch_protocol", "e[3*n+2]=t.keyTravel", "e[3*n+2]=t.keyId")
+        self.reject("switch_protocol", "t.sendCommand(N.g7x,N.OW4,e,o)", "t.sendCommand(N.g7x,N.OW4,e)")
+        self.assertNotIn("Number.isInteger", self.owners["switch_protocol"]["body"])
+        self.assertIn("not a device switch-table readback", self.report["semantics"]["write"])
+
+    def test_queue_rejection_continues_and_stale_start_has_no_setter_status(self):
+        self.reject("queueSwitchOperation", "i===(0,y.fP)()", "i<=(0,y.fP)()")
+        self.reject("queueSwitchOperation", "this.switchTypeQueue=o.catch(()=>{}),o", "this.switchTypeQueue=o,o")
+        self.assertNotIn("updateSwitchTypeStatusToUI", self.owners["queueSwitchOperation"]["body"])
+        self.reject("setSwitchType", 'throw t()&&this.updateSwitchTypeStatusToUI("Fail"',
+            'throw this.updateSwitchTypeStatusToUI("Fail"')
+        self.assertNotIn("signal.aborted", self.owners["queueSwitchOperation"]["body"])
+        self.assertIn("outside setter catch", self.report["semantics"]["queue"])
+
+    def test_empty_and_all_unknown_input_can_still_publish_success(self):
+        self.reject("writeSwitchType", "if(!Array.isArray(e)||0===e.length)return", "if(!Array.isArray(e)||0===e.length)throw")
+        self.reject("writeSwitchType", "if(0===i.length)return", "if(0===i.length)throw new Error()")
+        self.reject("writeSwitchType", "void 0!==e&&i.push", "void 0===e&&i.push")
+        body = self.owners["setSwitchType"]["body"]
+        self.assertLess(body.index("yield this.writeSwitchType(e,t)"), body.index('this.updateSwitchTypeStatusToUI("Success",e)'))
+        self.assertIn("all-unknown inputs return normally", self.report["semantics"]["input"])
+
+    def test_partial_hardware_write_and_post_write_storage_error_are_not_rolled_back(self):
+        self.reject("sendSwitchTypes", '"SUCCESS"!==(null==r?void 0:r.status)', '"SUCCESS"===(null==r?void 0:r.status)')
+        body = self.owners["writeSwitchType"]["body"]
+        ordered = ["yield this.sendSwitchTypes(i,t)", "yield(0,d.getLocalStorageDeviceCache)()",
+            "yield this.saveSwitchTypes(a,t)", "yield this.applySavedSwitchTypes(a,!0,t,o)"]
+        self.assertEqual([body.index(x) for x in ordered], sorted(body.index(x) for x in ordered))
+        self.assertNotIn("catch", self.owners["sendSwitchTypes"]["body"])
+        self.assertIn("no rollback", self.report["semantics"]["write"])
+
+    def test_serial_persistence_removes_default_and_saves_only_changes(self):
+        self.reject("getCachedSwitchTypes", "e.serialNumber===t", "e.deviceContainerId===t")
+        self.reject("setCachedSwitchTypes", "if(!i)return", "if(!i)i='unknown'")
+        self.reject("feature_C", "e===_&&40===t", "e===_&&20===t")
+        self.reject("writeSwitchType", "C(e)?r.delete(e.keyId):r.set(e.keyId,e)", "C(e)?r.set(e.keyId,e):r.delete(e.keyId)")
+        self.reject("saveSwitchTypes", "JSON.stringify(n.sort(o))!==JSON.stringify([...e].sort(o))",
+            "JSON.stringify(n.sort(o))===JSON.stringify([...e].sort(o))")
+        self.assertIn("No guard after awaited save", self.report["semantics"]["persistence"])
+        self.assertNotIn("useLockableStorage", self.owners["storage"]["body"])
+
+    def test_get_saved_table_is_not_a_device_getter_or_restore_write(self):
+        body = self.owners["getSwitchType"]["body"]
+        for token in ("sendSwitchTypes", "setAnalogSwitchType", "getAnalogSwitchType"):
+            self.assertNotIn(token, body)
+        self.reject("getSwitchType", "yield this.applySavedSwitchTypes(n,e,t),n", "yield this.sendSwitchTypes(n,t),n")
+        self.assertIn("not a measured hardware getter", self.report["semantics"]["get"])
+
+    def test_reset_sentinel_has_no_dedicated_switch_status(self):
+        self.reject("feature_I", "keyId:255,switchIndex:255,keyTravel:255", "keyId:0,switchIndex:255,keyTravel:255")
+        self.reject("resetSwitchTypeOnDevice", "yield this.sendSwitchTypes([I],e)", "yield this.sendSwitchTypes([],e)")
+        self.assertNotIn("updateSwitchTypeStatusToUI", self.owners["resetSwitchTypeOnDevice"]["body"])
+        self.assertIn("No dedicated switch Success/Fail", self.report["semantics"]["reset"])
+        self.reject("ui_page", "onCancelResetSwitchType:()=>{J(!1)}", "onCancelResetSwitchType:()=>{J(!1),v()}")
+
+    def test_apply_refresh_warning_and_no_post_refresh_guard_are_preserved(self):
+        self.reject("applySavedSwitchTypes", "756===f.DeviceInfo.productId&&f.DeviceInfo.is8kAnalogDevice",
+            "f.DeviceInfo.is8kAnalogDevice")
+        self.reject("analog_registration", '.catch(e=>console.warn("Failed to refresh analog event skip count",e))',
+            ".catch(e=>{throw e})")
+        self.assertIn("this.assertCurrent(n),yield e()}if(this.updateSwitchTypesToUI(e)", self.owners["applySavedSwitchTypes"]["body"])
+        self.assertIn("stale reconcile may return normally", self.report["semantics"]["apply"])
+        self.reject("travel_owner", "u++,c=void 0,A=new Map", "c=void 0,A=new Map")
+
+    def test_travel_clamp_covers_dks_controller_and_actual_joystick_outputs(self):
+        self.reject("travel_helpers", "Number.isInteger(o)&&o>0&&o<40", "Number.isInteger(o)&&o>0&&o<=40")
+        self.reject("travel_helpers", "Math.max(n-i.actuationValue,i.actuationMinBreak)", "Math.max(n,i.actuationMinBreak)")
+        self.reject("travel_helpers", "travelRange:{minimum:l,maximum:s}", "travelRange:{minimum:s,maximum:l}")
+        self.reject("travel_helpers", "Math.abs(e.x-t)<=1e-12", "Math.abs(e.x-t)<=1")
+        self.reject("travel_helpers", "c.maximum-10*i.actuationValue", "c.maximum-i.actuationValue")
+        self.reject("travel_helpers", '"KEY_FN"===r)continue', '"KEY_FN"!==r)continue')
+        self.reject("travel_helpers", "if(1!==n.length||n[0]===t)return e", "if(1===n.length||n[0]===t)return e")
+
+    def test_reconcile_all_profiles_persists_before_ble_exit_and_actual_slots(self):
+        self.reject("reconcile", "(0,h.Y8)(A.profiles", "(0,h.Y8)([A.profiles[0]]")
+        self.reject("reconcile", "yield(0,c.setLocalStorageDeviceCache)(P),!j()", "yield(0,c.setLocalStorageDeviceCache)(P),!e()")
+        self.reject("reconcile", "if(g.A.runtimeData.useBle)return", "if(!g.A.runtimeData.useBle)return")
+        self.reject("travel_helpers", "t.guid===e&&!t.lock&&!t.locked&&t.slotId>0", "t.guid===e&&t.slotId>0")
+        self.reject("header_MzU", "he=15", "he=26")
+        self.reject("reconcile", 'if(!n||"SUCCESS"!==n.status)throw', 'if(!n||"SUCCESS"!==n.status)return')
+        body = self.owners["reconcile"]["body"]
+        self.assertLess(body.index("saveDeviceDataToWindowStorage)(P)"), body.index("if(g.A.runtimeData.useBle)return"))
+        self.assertIn("only fill unclosed", self.report["remaining_chains"][0])
+
+    def test_ui_mixed_values_optimistic_failure_and_unidentified_token(self):
+        self.reject("ui_page", "return 1===e.size?[...e][0]:null", "return [...e][0]")
+        self.reject("ui_page", "return 1===e.size?[...e][0]:void 0", "return [...e][0]")
+        self.reject("ui_reducer", "switchTypeUpdateToken:e.switchTypeUpdateToken+1", "switchTypeUpdateToken:e.switchTypeUpdateToken")
+        self.reject("ui_reducer", "switchByInputID:n===An.Ox.success?On(e.switchByInputID,ln(o)):e.switchByInputID",
+            "switchByInputID:n===An.Ox.success?On(e.switchByInputID,ln(o)):{}")
+        self.assertIn("Token has no request identity", self.report["semantics"]["consumers"])
+        self.assertIn("xe.current=!1,A===pi.Ox.success?", self.owners["ui_page"]["body"])
+
+    def test_restore_attempts_timeout_handoff_and_unmount_are_not_confirmation(self):
+        self.reject("ui_page", "Ue.current=e<2?()=>s(e+1):null", "Ue.current=e<3?()=>s(e+1):null")
+        self.reject("ui_page", "},3e3)", "},1e3)")
+        self.reject("ui_page", "He.current===i&&(He.current=null,i())},2e3)", "He.current===i&&(He.current=null,i())},1e3)")
+        self.reject("ui_page", "A!==pi.Ox.success&&Ue.current?Ue.current()", "A===pi.Ox.success&&Ue.current?Ue.current()")
+        self.assertIn('"unload"===e', self.owners["ui_page"]["body"])
+        self.assertIn("not complete cancellation or hardware readback", self.report["semantics"]["restore"])
+
+    def test_exact_shared_dependencies_hashes_and_remaining_native_boundary(self):
+        self.assertEqual(len(self.report["upstream_sections"]), 4)
+        self.assertEqual(len(self.report["feature_report_transport"]["functions"]), 8)
+        self.assertEqual(self.report["new_native_captures"], 0)
+        self.assertEqual(self.report["temporary_files_created"], [])
+        self.assertEqual(host._otfm_macro_encoding_dependency_changes(self.report["upstream_sections"]), [])
+        changed = copy.deepcopy(self.report["upstream_sections"])
+        changed[0]["canonical_sha256"] = "0" * 64
+        self.assertEqual(host._otfm_macro_encoding_dependency_changes(changed), [changed[0]["receipt"] + "#" + changed[0]["pointer"]])
+        owners = copy.deepcopy(self.owners)
+        owners["feature_S"]["body_sha256"] = "0" * 64
+        with self.assertRaisesRegex(ValueError, "bytes/hash"):
+            families._keyboard_756_switch_verify(owners, self.audit.parser)
+        self.assertIn("Analog skip-count refresh native registration is distinct", self.report["remaining_chains"][0])
+
+    def test_cli_failure_and_snapshot_change_cannot_upgrade_source_or_runtime(self):
+        args = type("Args", (), {"family": "keyboard", "function": "mw", "product": [756], "prepare": False})()
+        class Audit:
+            parser_versions = {}
+            sources = {}
+            owners = {}
+            artifacts = {}
+            def artifact(self, *args):
+                return b"{}"
+            def final_snapshot(self):
+                return []
+        for mode in ("success", "failure", "changed"):
+            outcome = {"side_effect": ValueError("source missing")} if mode == "failure" else {"return_value": copy.deepcopy(self.report)}
+            with patch.object(host, "HostLocalAudit", return_value=Audit()), \
+                    patch.object(families, "collect_keyboard_756_switch_type_chain", **outcome), \
+                    patch.object(host, "_otfm_macro_encoding_dependency_changes", return_value=["changed"] if mode == "changed" else []), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+                if mode == "success":
+                    families.audit_keyboard_756_switch_type_chain(args)
+                else:
+                    with self.assertRaisesRegex(ValueError, "unresolved"):
+                        families.audit_keyboard_756_switch_type_chain(args)
+            report, _, _, section = publish.call_args.args
+            self.assertEqual(section, "keyboard_756_switch_type_chain")
+            self.assertEqual(report["bounded_observation_complete"], mode == "success")
+            for field in ("source_chain_complete", "whole_product_complete", "target_execution", "real_device_operations"):
+                self.assertFalse(report[field])
+        args.product = [752]
+        with self.assertRaisesRegex(ValueError, "PID756"):
+            families.audit_keyboard_756_switch_type_chain(args)
+
+
+class Keyboard756AppEngineApplyChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_keyboard_756_appengine_apply_chain(cls.audit)
+        cls.owners = {role: cls.audit.owners[key] for role, key in cls.report["roles"].items()}
+
+    def reject(self, role, before, after):
+        owners = copy.deepcopy(self.owners)
+        self.assertIn(before, owners[role]["body"])
+        owners[role]["body"] = owners[role]["body"].replace(before, after, 1)
+        owners[role]["body_sha256"] = hashlib.sha256(owners[role]["body"].encode()).hexdigest()
+        with self.assertRaisesRegex(ValueError, "Keyboard756 AppEngine"):
+            families._keyboard_756_appengine_verify(owners, self.audit.parser)
+
+    def test_current_bytes_scope_and_existing_rust_are_independent(self):
+        self.assertTrue(self.report["source_slice_complete"])
+        for field in ("source_chain_complete", "whole_product_complete", "target_execution",
+                "real_device_operations", "product_code_modified"):
+            self.assertFalse(self.report[field])
+        self.assertEqual(self.report["rust_independent_implementation"], "existing_not_modified_or_revalidated")
+        self.assertEqual(self.report["official_dll_comparison"], "not_executed")
+        for row in self.owners.values():
+            raw = self.audit.read(row["original"])[row["byte_start"]:row["byte_end"]]
+            self.assertEqual(raw.decode(), row["body"])
+            self.assertEqual(hashlib.sha256(raw).hexdigest(), row["body_sha256"])
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_actual_selected_engine_and_capability_initialization(self):
+        self.reject("product_registration", 'engineType:"obmEngineKeyboardCalMaxMem"', 'engineType:"obmEngineKeyboard"')
+        self.reject("obm_selected", "o=n(96236)", "o=n(2050)")
+        self.reject("obm_cal", "o=n(2050)", "o=n(10820)")
+        self.reject("device_info", "analogKeyboardV3:!0", "analogKeyboardV3:!1")
+        self.reject("obm_init", "s=t.analogKeyboardV3", "s=t.analogKeyboard")
+        self.assertIn("no class-name capability inference", self.report["semantics"]["engine_selection"])
+
+    def test_generator_actual_input_transform_layout_and_modtap(self):
+        self.reject("generator_import_wp", "wp=i(6258)", "wp=i(15691)")
+        self.reject("generator", "e=(0,X.dl)(e,t.guid)", "e=(0,X.dl)(e)")
+        self.reject("generator", "e=(0,wp.zm)(e,t)", "e=(0,wp.zm)(e)")
+        self.reject("generator", '"modTapGroup"!==e.outputType', '"macroGroup"!==e.outputType')
+        self.reject("generator", "y.B8W.includes", "y.nLe.includes")
+        self.reject("input_transform", "Boolean(null==e?void 0:e.inputID)", "Boolean(e)")
+
+    def test_turbo_conflict_limit_and_nonawaited_native_publication(self):
+        self.reject("generator", "while(a&&s<3)", "while(a&&s<4)")
+        self.reject("generator", '"RzLockableStorageError"', '"Error"')
+        self.reject("generator", "H.A.setSynapseTurbos(A)", "H.A.setSynapseTurbos([])")
+        self.reject("generator", "m.A.localStorageSetItem(R.wI.SYNAPSE_TURBO_LOCALSTORAGE_KEY,M)",
+            "yield m.A.localStorageSetItem(R.wI.SYNAPSE_TURBO_LOCALSTORAGE_KEY,M)")
+        self.assertIn("third conflict still returns", self.report["semantics"]["turbo"])
+
+    def test_deep_clone_mapping_merge_self_filter_and_hash(self):
+        self.reject("generateAppEngineMappings", "JSON.parse(JSON.stringify(e))", "e")
+        self.reject("generateAnalogMappings", "Object.assign(n.rapidTriggers,o.rapidTriggerData.rapidTrigger)",
+            "Object.assign(n.rapidTriggers,o.rapidTriggerData)")
+        self.reject("generator", "H.A.generateAppEngineMappings(S)", "H.A.generateAppEngineMappings(e)")
+        self.reject("generator", "delete r.actuations", "r.actuations=[]")
+        self.reject("generator", ".scancode)===", ".scancode)!==")
+        self.reject("hash", 't=["hash","gamemode"]', 't=["hash"]')
+        self.assertIn("output executors", self.report["semantics"]["scope"])
+
+    def test_exact_actuation_wire_size_order_and_coercion(self):
+        self.assertEqual(self.report["semantics"]["actuation_header"], [80, 2, 25])
+        self.assertEqual(self.report["semantics"]["actuation_batch_size"], 15)
+        self.reject("header_MzU", "he=15", "he=26")
+        self.reject("actuation_protocol", "o.length>15", "o.length>16")
+        self.reject("actuation_protocol", "const n=5*t", "const n=4*t")
+        self.reject("actuation_protocol", "d[n+3]=a.E4(o[t].thresholdH)", "d[n+3]=a.l7(o[t].thresholdH)")
+        self.reject("actuation_protocol", "d[n+5]=a.E4(o[t].thresholdL)", "d[n+5]=a.E4(o[t].thresholdH)")
+        self.reject("actuation_protocol", "2+5*o.length", "80")
+        self.assertNotIn("Number.isInteger", self.owners["actuation_protocol"]["body"])
+        self.assertNotIn("0===o.length", self.owners["actuation_protocol"]["body"])
+
+    def test_actual_transport_nack_throws_and_mutex_is_released(self):
+        self.reject("protocol_send_command", "if(c.status===i.STATUS_FAIL)throw", "if(false)throw")
+        self.reject("protocol_send_command", "finally{this.supportHIDMutex&&(yield this.releaseHIDMutex())}",
+            "finally{}")
+        self.reject("protocol_ack", "case 5:e.status=i.STATUS_FAIL", "case 5:e.status=i.STATUS_SUCCESS")
+        self.assertNotIn("c.status", self.owners["obm_setActuationPoint"]["body"])
+        self.assertIn("actual transport NACK must not be described as successful", self.report["semantics"]["ack"])
+
+    def test_ack_parser_is_not_a_get_or_semantic_equality_confirmation(self):
+        self.reject("actuation_parser", "t.status===i.STATUS_SUCCESS&&t.packetSizeReturned>0",
+            "t.packetSizeReturned>=0")
+        self.reject("actuation_parser", "e=2;e<t.packetSizeReturned;e+=5", "e=2;e<t.packetSizeReturned;e+=4")
+        self.reject("actuation_parser", "thresholdH:a.Jz(t.data[e+1],t.data[e+2])",
+            "thresholdH:a.Jz(t.data[e+2],t.data[e+1])")
+        self.assertNotIn("getMultiAnalogKeyActuationPoint", self.owners["obm_setActuationPoint"]["body"])
+        self.assertIn("no semantic key/threshold equality check", self.report["semantics"]["ack"])
+
+    def test_cache_uses_submitted_rows_after_transport_and_can_partially_fail(self):
+        self.reject("obm_setActuationPoint", "c=yield this.rzDevice.setMultiAnalogKeyActuationPoint(0,e,r)",
+            "c=this.rzDevice.setMultiAnalogKeyActuationPoint(0,e,r)")
+        self.reject("obm_batchSetButtonAssignmentsProperty", "255===i.keyId", "0===i.keyId")
+        self.reject("obm_batchSetButtonAssignmentsProperty", "e[i.keyId][t]=JSON.parse(JSON.stringify(i))",
+            "e[i.keyId][t]=i")
+        self.assertIn("partial cache mutation", self.report["semantics"]["cache"])
+        self.assertNotIn("this.mutex.lock", self.owners["obm_setActuationPoint"]["body"])
+
+    def test_failure_continues_batches_and_later_success_retains_old_error(self):
+        self.reject("obm_setActuationPoint", 's.error="profile not found",!1', 's.error="profile not found",s')
+        self.reject("obm_setActuationPoint", "i+=a", "i+=o.length")
+        self.reject("obm_setActuationPoint", "s.status=l.STATUS_SUCCESS,this.batchSetButtonAssignmentsProperty",
+            's.status=l.STATUS_SUCCESS,s.error="",this.batchSetButtonAssignmentsProperty')
+        self.reject("obm_setActuationPoint", "s.status=l.STATUS_FAIL}}return", "s.status=l.STATUS_FAIL;break}}return")
+        self.assertIn("Generic later successful batch", self.report["semantics"]["failure"])
+        self.assertIn("normally passes at most15", self.report["semantics"]["failure"])
+
+    def test_local_save_does_not_await_posthook_cas_or_native_ack(self):
+        self.reject("storage_hook", "this.hooks.PostSetLocalStorage(t)", "yield this.hooks.PostSetLocalStorage(t)")
+        self.reject("storage_hook", "a.default.setItem(e,t,i)", "yield a.default.setItem(e,t,i)")
+        self.reject("post_storage_hook", "l.Cp)(e,s.A,A,p.DeviceInfo.isFWAnalogMapping)", "l.Cp)(e,s.A,A)")
+        self.reject("mapping_storage_deduplication", "e.activeProfile=t.activeProfile", "e.activeProfile=void 0")
+        self.reject("facade_storage_set", "n.result:n", "true")
+        self.assertIn("snapshot advances before facade await", self.report["semantics"]["storage"])
+        self.assertIn("returned bool is ignored", self.report["semantics"]["storage"])
+
+    def test_window_projection_and_fw_game_mode_remain_distinct(self):
+        self.reject("runtime_re", "re=!0", "re=!1")
+        self.reject("runtime_oe", ".map(({name:e,guid:t})=>({name:e,guid:t}))", ".map(e=>e)")
+        self.reject("runtime_publish", "const i=oe(e);se(t,i)", "const i=e;se(t,i)")
+        self.reject("game_mode_wrapper", "t.Cp=n.getKeyMappingForGameMode", "t.Cp=n.applyGamingModeSettings")
+        self.assertIn("conditional1101 GameMode helper branches", self.report["remaining_chains"][1])
+
+    def test_outer_generation_guards_are_not_setter_cancellation_or_rollback(self):
+        self.reject("reconcile", "if(!j()||z!==v.jf.obmEngine)return", "if(!j())return")
+        self.reject("reconcile", 'if(!n||"SUCCESS"!==n.status)throw', 'if(!n)throw')
+        self.reject("reconcile", "if(g.A.runtimeData.useBle)return", "if(false)return")
+        self.assertNotIn("signal.aborted", self.owners["obm_setActuationPoint"]["body"])
+        self.assertNotIn("fP)()", self.owners["generator"]["body"])
+        self.assertIn("Stale return does not cancel earlier effects", self.report["semantics"]["lifecycle"])
+
+    def test_exact_shared_sections_no_new_capture_or_scope_promotion(self):
+        sections = self.report["upstream_sections"]
+        self.assertEqual(host._otfm_macro_encoding_dependency_changes(sections), [])
+        self.assertIn("/keyboard_756_switch_type_chain/remaining_chains/0", [r["pointer"] for r in sections])
+        self.assertEqual(len(self.report["feature_report_transport"]["functions"]), 8)
+        self.assertEqual(len(self.report["mapping_engine_dependency"]["functions"]), 7)
+        self.assertEqual(self.report["new_native_captures"], 0)
+        self.assertEqual(self.report["temporary_files_created"], [])
+        self.assertIn("distinct from calibration128", self.report["remaining_chains"][0])
+        changed = copy.deepcopy(sections)
+        changed[0]["canonical_sha256"] = "0" * 64
+        self.assertEqual(host._otfm_macro_encoding_dependency_changes(changed),
+            [changed[0]["receipt"] + "#" + changed[0]["pointer"]])
+        owners = copy.deepcopy(self.owners)
+        owners["generator"]["body_sha256"] = "0" * 64
+        with self.assertRaisesRegex(ValueError, "bytes/hash"):
+            families._keyboard_756_appengine_verify(owners, self.audit.parser)
+
+    def test_cli_failure_and_source_change_remain_failed(self):
+        args = type("Args", (), {"family": "keyboard", "function": "mw", "product": [756], "prepare": False})()
+        class Audit:
+            parser_versions = {}
+            sources = {}
+            owners = {}
+            artifacts = {}
+            def artifact(self, *args):
+                return b"{}"
+            def final_snapshot(self):
+                return []
+        for mode in ("success", "failure", "changed"):
+            outcome = {"side_effect": ValueError("source missing")} if mode == "failure" else {"return_value": copy.deepcopy(self.report)}
+            with patch.object(host, "HostLocalAudit", return_value=Audit()), \
+                    patch.object(families, "collect_keyboard_756_appengine_apply_chain", **outcome), \
+                    patch.object(host, "_otfm_macro_encoding_dependency_changes", return_value=["changed"] if mode == "changed" else []), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+                if mode == "success":
+                    families.audit_keyboard_756_appengine_apply_chain(args)
+                else:
+                    with self.assertRaisesRegex(ValueError, "unresolved"):
+                        families.audit_keyboard_756_appengine_apply_chain(args)
+            report, _, _, section = publish.call_args.args
+            self.assertEqual(section, "keyboard_756_appengine_apply_chain")
+            self.assertEqual(report["bounded_observation_complete"], mode == "success")
+            self.assertFalse(report["source_chain_complete"])
+            self.assertFalse(report["target_execution"])
+        args.product = [752]
+        with self.assertRaisesRegex(ValueError, "PID756"):
+            families.audit_keyboard_756_appengine_apply_chain(args)
+
+
+class GamepadProfileResetChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_gamepad_profile_reset_chain(cls.audit)
+        cls.owners = {role: cls.audit.owners[key] for role, key in cls.report["roles"].items()}
+
+    def changed_contract(self, role, before, after):
+        owners = copy.deepcopy(self.owners)
+        self.assertIn(before, owners[role]["body"])
+        owners[role]["body"] = owners[role]["body"].replace(before, after, 1)
+        owners[role]["body_sha256"] = hashlib.sha256(owners[role]["body"].encode()).hexdigest()
+        return families._gamepad_profile_reset_contract(owners, self.audit.parser)
+
+    def test_three_mounted_entries_complete_owners_and_static_boundaries(self):
+        self.assertEqual(self.report["semantics"]["entry_points"],
+            ["profile_defaults", "keybinds_only", "help_device_reset"])
+        for row in self.owners.values():
+            raw = self.audit.read(row["original"])[row["byte_start"]:row["byte_end"]]
+            self.assertEqual(raw.decode(), row["body"])
+            self.assertEqual(hashlib.sha256(raw).hexdigest(), row["body_sha256"])
+        self.assertTrue(self.report["selected_static_semantics_reviewed"])
+        for field in ("source_chain_complete", "whole_product_complete", "target_execution", "real_device_operations"):
+            self.assertFalse(self.report[field])
+        self.assertEqual(self.report["official_dll_comparison"], "not_executed")
+        self.assertEqual(self.report["ui_backend_wiring"], "unverified")
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_profile_preserves_identity_and_slots_and_persists_before_old_mapping_writes(self):
+        body = self.owners["reset_profile_maker"]["body"]
+        ordered = ["g.A.updateProfile", "yield(0,l.Pf)(e,a)", "yield(0,s.qw)(e,a)",
+            "yield r.jf.obmEngine.setSingleButtonMapping", "yield(0,d.IF)(e,a)", 'status:"completed"']
+        self.assertEqual([body.index(token) for token in ordered], sorted(body.index(token) for token in ordered))
+        self.assertNotIn("setProfileReset", body)
+        self.assertNotIn("setActiveProfile", body)
+        for before, after in (("obmSlotId:v", "obmSlotId:[1]"), ("guid:c[u].guid", "guid:f.guid"),
+                ("const e=p[u].mappings", "const e=c[u].mappings"), ("(0,i.Fk)(t)", "1")):
+            with self.subTest(before=before), self.assertRaisesRegex(ValueError, "semantic boundary differs"):
+                self.changed_contract("reset_profile_maker", before, after)
+
+    def test_default_editions_and_serial_document_do_not_gain_inferred_defaults(self):
+        for role, before, after in (("profile_editions", "128:f", "128:g"),
+                ("profile_defaults_provider", "I[e]", "I[e]||I[0]"),
+                ("device_defaults_provider", "runtimeData.serialNumber", "runtimeData.deviceContainerId"),
+                ("device_defaults", "value:5", "value:10")):
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "semantic boundary differs"):
+                self.changed_contract(role, before, after)
+
+    def test_keybind_button_only_sends_empty_mapping_reset(self):
+        self.assertIn("isShowResetKeybinds:n=!0", self.owners["ui_profile_reset_popup"]["body"])
+        self.assertNotIn("ON_RESET_PROFILE", self.owners["ui_keybind_reset_case"]["body"])
+        for role, before, after in (("ui_profile_reset_popup", "onClick:()=>{i(),E()}", "onClick:()=>{a(),E()}"),
+                ("ui_keybind_reset_case", "isResetKeybinds:!0", "isResetKeybinds:!1"),
+                ("ui_keybind_reset_case", 'new Le("ON_SET_KEYMAPPING"', 'new Le("ON_RESET_PROFILE"')):
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "semantic boundary differs"):
+                self.changed_contract(role, before, after)
+
+    def test_actual_help_mount_does_not_use_legacy_obm_reset_or_completion_overlay(self):
+        body = self.owners["ui_product_constructor"]["body"]
+        self.assertIn("(SN,{})", body)
+        self.assertNotIn("ON_RESET_OBM", self.owners["ui_device_reset"]["body"])
+        for token in ("resetObm:", "waitForObmResetCompletion:", "showFactoryResetOverlay:"):
+            with self.subTest(token=token), self.assertRaisesRegex(ValueError, "actual Help mounted props changed"):
+                self.changed_contract("ui_help_connector", "return{", "return{" + token + "true,")
+        with self.assertRaisesRegex(ValueError, "semantic boundary differs"):
+            self.changed_contract("ui_device_reset", 'postMessage({type:"ON_RESET_DEVICE"})',
+                'postMessage({type:"ON_RESET_OBM"})')
+
+    def test_device_reset_saves_and_filters_product_relations_before_set_and_reinitialize(self):
+        body = self.owners["reset_device_maker"]["body"]
+        ordered = ["getDeviceDefaultLocalData", "yield(0,$.Pf)(e)", "e.pid!==p.DeviceInfo.productId",
+            "b.A.set(g.wI.LINKED_GAMES_LOCALSTORAGE_KEY,o)", "t.setDeviceReset(0)",
+            "loadProfileDataFromDevice&&(0,X.ho)()", "yield(0,u.DD)()", "onDeviceEvent(te.I.DeviceReset)"]
+        self.assertEqual([body.index(token) for token in ordered], sorted(body.index(token) for token in ordered))
+        for before, after in (("e.pid!==p.DeviceInfo.productId", "e.pid===p.DeviceInfo.productId"),
+                ("t.setDeviceReset(0)", "t.setDeviceReset(1)"),
+                ("yield(0,u.DD)()", "(0,u.DD)()")):
+            with self.subTest(before=before), self.assertRaisesRegex(ValueError, "semantic boundary differs"):
+                self.changed_contract("reset_device_maker", before, after)
+
+    def test_reimport_guard_is_separate_from_engine_initialization_guard(self):
+        self.assertEqual(self.owners["clear_import_guard"]["body"], "ne=()=>{te=!1}")
+        self.assertIn("if(S)", self.owners["engine_initialize_once"]["body"])
+        self.assertNotIn("S=!1", self.owners["reset_device_maker"]["body"])
+        for role, before, after in (("clear_import_guard", "te=!1", "S=!1"),
+                ("reimport_entry", "if(te)return;te=!0", "te=!0"),
+                ("engine_initialize_once", "if(S)", "if(false)"),
+                ("reinitialize", "yield(0,Wt.Rt)()", "(0,Wt.Rt)()")):
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "semantic boundary differs"):
+                self.changed_contract(role, before, after)
+
+    def test_effective_command_is_userdata_and_does_not_claim_reset_specific_ack(self):
+        self.assertEqual(self.report["semantics"]["reset_command"],
+            {"initializer": [1, 0, 11], "effective_header": [2, 0, 11], "payload": [1, 0]})
+        self.assertNotIn("STATUS_SUCCESS", self.owners["reset_device_maker"]["body"])
+        self.assertNotIn("getDeviceReset", self.owners["protocol_setDeviceReset"]["body"])
+        for role, before, after in (("reset_header", "[1,0,11]", "[1,0,12]"),
+                ("protocol_setDeviceReset", "n[0]=2", "n[0]=1"),
+                ("protocol_setDeviceReset", "i[0]=1,i[1]=t", "i[0]=t,i[1]=1")):
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "native header differs|semantic boundary differs"):
+                self.changed_contract(role, before, after)
+
+    def test_result_consumers_and_task_memory_are_separate_from_device_completion(self):
+        body = self.owners["reset_profile_maker"]["body"]
+        self.assertGreater(body.index("setMemoryStorageItem"), body.index('status:"completed"'))
+        self.assertIn("after completed/postprocess", self.report["semantics"]["profile_reset"]["result"])
+        for role, before, after in (("mw_event_Vir", "MW_UPDATE_PROFILE_UI_ACTION_LOCAL_STORAGE", "MW_RESET_PROFILE_UI_ACTION_LOCAL_STORAGE"),
+                ("reset_profile_maker", 'status:"error"', 'status:"completed"'),
+                ("ui_profile_reset_case", "profileGuid:t.payload.guid", "profileGuid:1")):
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "consumer event differs|semantic boundary differs"):
+                self.changed_contract(role, before, after)
+
+    def test_cancel_closes_confirmation_and_two_second_timer_is_not_device_acceptance(self):
+        for role in ("reset_profile_maker", "reset_device_maker"):
+            self.assertNotIn("AbortSignal", self.owners[role]["body"])
+            self.assertNotIn("signal.aborted", self.owners[role]["body"])
+        self.assertIn("2s reset timer is not cleared", self.report["semantics"]["ui_result_cleanup"])
+        for role, before, after in (("ui_device_confirmation_mouseClick", "this.props.confirmDel(!1)", "this.props.confirmDel(!0)"),
+                ("ui_device_confirmation_componentWillUnmount", "clearTimeout(this.timer2)", "void this.timer2"),
+                ("ui_device_reset", "}),2e3)", "}),0)"),
+                ("ui_profile_reset_popup", 'window.removeEventListener("click",_)', "void _")):
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "semantic boundary differs"):
+                self.changed_contract(role, before, after)
+
+    def test_exact_apply_and_transitive_native_dependencies_reject_changes(self):
+        upstream = self.report["upstream_sections"]
+        self.assertEqual(upstream[0]["pointer"], "/profile_apply_chain")
+        self.assertTrue({"/obm_mapping_chain", "/polling_native_chain"} <= {row["pointer"] for row in upstream})
+        self.assertEqual(families._gamepad_profile_apply_upstream_changes(upstream), [])
+        changed = copy.deepcopy(upstream)
+        changed[0]["canonical_sha256"] = "0" * 64
+        self.assertTrue(families._gamepad_profile_apply_upstream_changes(changed))
+        with patch.object(families, "_GAMEPAD_PROFILE_RESET_APPLY_SHA", "0" * 64):
+            with self.assertRaisesRegex(ValueError, "exact Apply dependency needs review"):
+                families._gamepad_profile_reset_dependencies(host.HostLocalAudit())
+
+    def test_shared_query_entry_rejects_wrong_product_function_and_preparation(self):
+        import argparse
+        parser = argparse.ArgumentParser()
+        families.add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["audit-family-function", "--family", "gamepad", "--function", "mw",
+            "--query", "gamepad-profile-reset-chain"])
+        with patch.object(families, "audit_gamepad_profile_reset_chain") as selected:
+            families.audit_family_function(args)
+        selected.assert_called_once_with(args)
+        for family, function, product, prepare in (("system", "mw", None, False), ("gamepad", "main", None, False),
+                ("gamepad", "mw", [2676], False), ("gamepad", "mw", None, True)):
+            with self.subTest(family=family, function=function, product=product, prepare=prepare), \
+                    patch.object(families, "collect_gamepad_profile_reset_chain") as collector, \
+                    self.assertRaisesRegex(ValueError, "requires PID2636"):
+                families.audit_gamepad_profile_reset_chain(argparse.Namespace(
+                    family=family, function=function, product=product, prepare=prepare))
+            collector.assert_not_called()
+
+    def test_failed_source_snapshot_or_upstream_is_published_without_completion_promotion(self):
+        import argparse
+        for mode in ("success", "exception", "snapshot", "upstream"):
+            configure = {"side_effect": ValueError("reset source missing")} if mode == "exception" else {"return_value": {"failures": []}}
+            with self.subTest(mode=mode), patch.object(families, "collect_gamepad_profile_reset_chain", **configure), \
+                    patch.object(host.HostLocalAudit, "final_snapshot", return_value=["source"] if mode == "snapshot" else []), \
+                    patch.object(families, "_gamepad_profile_apply_upstream_changes", return_value=["receipt#pointer"] if mode == "upstream" else []), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+                args = argparse.Namespace(family="gamepad", function="mw", product=None, prepare=False)
+                if mode == "success":
+                    families.audit_gamepad_profile_reset_chain(args)
+                else:
+                    with self.assertRaisesRegex(ValueError, "source observation remains unresolved"):
+                        families.audit_gamepad_profile_reset_chain(args)
+            report, destination, _, section = publish.call_args.args
+            self.assertEqual(destination, analysis.ROOT / ".analysis/results/frontend/gamepad-mw-audit.json")
+            self.assertEqual(section, "profile_reset_chain")
+            self.assertEqual(report["bounded_observation_complete"], mode == "success")
+            for field in ("source_chain_complete", "whole_product_complete", "target_execution"):
+                self.assertFalse(report[field])
+            self.assertEqual(report["official_dll_comparison"], "not_executed")
+            if mode != "success":
+                self.assertTrue(report["failures"])
+
+
+class GamepadProfileApplyChainTests(unittest.TestCase):
+    SETTINGS = ["switchOffLighting", "brightness", "controllerLightingEffects", "pollingRate",
+        "pollingRateWireless", "mappings", "controllerDigitalActuation", "controllerAnalogActuation",
+        "controllerAnalogCircularity", "controllerDeadzone", "controllerDPadIgnoreDiagonals",
+        "controllerSensitivity", "hapticIntensity"]
+
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_gamepad_profile_apply_chain(cls.audit)
+        cls.owners = {role: cls.audit.owners[key] for role, key in cls.report["roles"].items()}
+
+    def changed_contract(self, role, before, after):
+        owners = copy.deepcopy(self.owners)
+        self.assertIn(before, owners[role]["body"])
+        owners[role]["body"] = owners[role]["body"].replace(before, after, 1)
+        owners[role]["body_sha256"] = hashlib.sha256(owners[role]["body"].encode()).hexdigest()
+        return families._gamepad_profile_apply_contract(owners, self.audit.parser)
+
+    def test_actual_product_inventory_complete_source_bytes_and_static_boundaries(self):
+        semantics = self.report["semantics"]
+        self.assertEqual(semantics["profile_fields"], ["guid", "name", *self.SETTINGS])
+        self.assertEqual(set(semantics["field_routes"]), set(self.SETTINGS))
+        self.assertEqual((semantics["setting_field_count"], semantics["generic_feature_count"]), (13, 6))
+        self.assertEqual(set(semantics["generic_features"]) - {"shared_execution", "result_cancel"},
+            {"digital", "analog", "circularity", "deadzone", "diagonals", "sensitivity"})
+        self.assertEqual(semantics["headers"], {"getActiveProfileID": [1, 5, 132],
+            "setActiveProfileID": [1, 5, 4], "setTriggerMode": [3, 12, 21],
+            "setDigitalTriggerAdjustment": [4, 12, 22], "setAnalogTriggerRangeAdjustment": [4, 12, 19],
+            "setAnalogStickCircularityOption": [3, 12, 18], "setAnalogControlZones": [9, 12, 5],
+            "setIgnoreDPadDiagonalsOption": [2, 12, 23], "setAnalogControlSensitivity": [3, 12, 2]})
+        for row in self.owners.values():
+            raw = self.audit.read(row["original"])[row["byte_start"]:row["byte_end"]]
+            self.assertEqual(raw.decode(), row["body"])
+            self.assertEqual(hashlib.sha256(raw).hexdigest(), row["body_sha256"])
+        self.assertTrue(self.report["selected_static_semantics_reviewed"])
+        for field in ("source_chain_complete", "whole_product_complete", "target_execution", "real_device_operations"):
+            self.assertFalse(self.report[field])
+        self.assertEqual(self.report["official_dll_comparison"], "not_executed")
+        self.assertEqual(self.report["ui_backend_wiring"], "unverified")
+        upstream = self.report["upstream_sections"]
+        self.assertTrue({"/obm_mapping_chain", "/polling_native_chain"} <= {row["pointer"] for row in upstream})
+        self.assertEqual(families._gamepad_profile_apply_upstream_changes(upstream), [])
+        changed = copy.deepcopy(upstream)
+        changed[0]["canonical_sha256"] = "0" * 64
+        self.assertTrue(families._gamepad_profile_apply_upstream_changes(changed))
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_omitted_settings_and_invented_slot_feature_require_inventory_review(self):
+        for field in self.SETTINGS:
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, "actual product field inventory differs"):
+                self.changed_contract("profile_default", field + ":", field + "_missing:")
+        with self.assertRaisesRegex(ValueError, "actual product field inventory differs"):
+            self.changed_contract("profile_default", 'guid:""', 'obmSlotId:1,guid:""')
+        with self.assertRaisesRegex(ValueError, "actual product field inventory differs"):
+            self.changed_contract("product_profile_module", "DEFAULTPROFILE", "PROFILE_DATA_PATCH_DEFAULTPROFILE")
+
+    def test_cached_active_slot_and_serial_selection_cannot_be_replaced_with_device_get_or_fixed_slot(self):
+        self.assertIn("this.obmJson.activeProfileId", self.owners["engine_getActiveProfileID"]["body"])
+        self.assertNotIn("this.rzDevice.getActiveProfileID", self.owners["engine_getActiveProfileID"]["body"])
+        self.assertIn("getActiveProfileID cache", self.report["semantics"]["switch"]["active_slot"].replace("obmJson.activeProfileId", "getActiveProfileID"))
+        for role, before, after in (
+                ("engine_getActiveProfileID", "this.obmJson.activeProfileId", "this.rzDevice.getActiveProfileID()"),
+                ("engine_setActiveProfileID", "t.status===o.STATUS_SUCCESS", "t.status!==o.STATUS_SUCCESS"),
+                ("switch_maker", "(0,l.kS)(M,C.serialNumber,b)", "(0,l.kS)(M,C.deviceContainerId,b)"),
+                ("switch_maker", "(0,i.Fk)(t)", "1"),
+                ("generic_feature_analog", "(0,p.Fk)", "(()=>1)")):
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "semantic boundary differs|generic feature differs|complete owners need review"):
+                self.changed_contract(role, before, after)
+
+    def test_six_generic_writers_parameter_order_and_big_endian_words_cannot_change(self):
+        for role, before, after in (
+                ("setter_digital", "setDigitalTriggerAdjustment(e,o.controllerId,o.actuationPoint,o.isRapidTrigger)",
+                    "setDigitalTriggerAdjustment(e,o.controllerId,o.isRapidTrigger,o.actuationPoint)"),
+                ("setter_analog", "setTriggerMode(e,o.controllerId,0)", "setTriggerMode(e,o.controllerId,1)"),
+                ("setter_circularity", "setAnalogStickCircularityOption(e,2,i)", "setAnalogStickCircularityOption(e,1,i)"),
+                ("setter_deadzone", "setAnalogControlZones(e,o.controllerId,o.value,0,0,t)", "setAnalogControlZones(e,o.controllerId,o.value,0,0,0)"),
+                ("setter_diagonals", "i=t?1:0", "i=t?0:1"),
+                ("setter_sensitivity", "setAnalogControlSensitivity(e,o.controllerId,o.value)", "setAnalogControlSensitivity(e,o.value,o.controllerId)"),
+                ("protocol_setAnalogControlZones", "s[2]=X.E4(o),s[3]=X.l7(o)", "s[2]=X.l7(o),s[3]=X.E4(o)"),
+                ("word_high", "e>>8&255", "255&e"),
+                ("word_decode", "(255&e)<<8|255&t", "(255&t)<<8|255&e"),
+                ("generic_runner", "f(...Object.values(p))", "f(...Object.values(p).reverse())")):
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "generic feature differs|semantic boundary differs|complete owners need review"):
+                self.changed_contract(role, before, after)
+
+    def test_ack_gates_status_overwrite_post_write_cancel_and_ui_error_do_not_prove_readback(self):
+        runner = self.owners["generic_runner"]["body"]
+        self.assertGreater(runner.index("signal.aborted"), runner.index("yield f("))
+        self.assertIn('a.value.status="completed"', runner)
+        self.assertIn("not a device queue drain", self.report["semantics"]["apply"]["completion"])
+        self.assertIn("No profile-selection rollback", self.report["semantics"]["ui"]["profile_results"])
+        for role, before, after, message in (
+                ("decoder_setAnalogControlZones", "t.status===e.STATUS_SUCCESS&&", "", "ACK decoder gate differs"),
+                ("decoder_setAnalogControlSensitivity", "packetSizeReturned>0", "packetSizeReturned>=0", "ACK decoder gate differs"),
+                ("generic_runner", 'a.value.status="completed"', 'a.value.status="verified"', "semantic boundary differs"),
+                ("generic_runner", "signal.aborted", "signal.cancelled", "semantic boundary differs"),
+                ("ui_profile_Oe", "E.errorActions.push", "E.selectedProfileGuid=i.oldActiveProfile,E.errorActions.push", "complete owners need review")):
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, message):
+                self.changed_contract(role, before, after)
+
+    def test_complete_owner_sha_and_rehashed_unchecked_owner_edits_still_require_review(self):
+        owners = copy.deepcopy(self.owners)
+        owners["runtime_identity"]["body"] += ";"
+        with self.assertRaisesRegex(ValueError, "complete owner SHA differs"):
+            families._gamepad_profile_apply_contract(owners, self.audit.parser)
+        owners["runtime_identity"]["body_sha256"] = hashlib.sha256(owners["runtime_identity"]["body"].encode()).hexdigest()
+        with self.assertRaisesRegex(ValueError, "complete owners need review"):
+            families._gamepad_profile_apply_contract(owners, self.audit.parser)
+        owners = copy.deepcopy(self.owners)
+        del owners["runtime_identity"]
+        with self.assertRaisesRegex(ValueError, "complete owners need review"):
+            families._gamepad_profile_apply_contract(owners, self.audit.parser)
+
+    def test_shared_query_entry_and_wrong_product_function_or_preparation_are_rejected(self):
+        import argparse
+        parser = argparse.ArgumentParser()
+        families.add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["audit-family-function", "--family", "gamepad", "--function", "mw", "--query", "gamepad-profile-apply-chain"])
+        with patch.object(families, "audit_gamepad_profile_apply_chain") as selected:
+            families.audit_family_function(args)
+        selected.assert_called_once_with(args)
+        for family, function, product, prepare in (("system", "mw", None, False), ("gamepad", "main", None, False),
+                ("gamepad", "mw", [2676], False), ("gamepad", "mw", None, True)):
+            with self.subTest(family=family, function=function, product=product, prepare=prepare), \
+                    patch.object(families, "collect_gamepad_profile_apply_chain") as collector, \
+                    self.assertRaisesRegex(ValueError, "requires PID2636"):
+                families.audit_gamepad_profile_apply_chain(argparse.Namespace(family=family, function=function, product=product, prepare=prepare))
+            collector.assert_not_called()
+
+    def test_failure_snapshot_and_upstream_change_are_recorded_before_wrapper_raises(self):
+        import argparse
+        for mode in ("success", "exception", "snapshot", "upstream"):
+            configure = {"side_effect": ValueError("profile source missing")} if mode == "exception" else {"return_value": {"failures": []}}
+            with self.subTest(mode=mode), patch.object(families, "collect_gamepad_profile_apply_chain", **configure), \
+                    patch.object(host.HostLocalAudit, "final_snapshot", return_value=["source"] if mode == "snapshot" else []), \
+                    patch.object(families, "_gamepad_profile_apply_upstream_changes", return_value=["receipt#pointer"] if mode == "upstream" else []), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+                args = argparse.Namespace(family="gamepad", function="mw", product=None, prepare=False)
+                if mode == "success":
+                    families.audit_gamepad_profile_apply_chain(args)
+                else:
+                    with self.assertRaisesRegex(ValueError, "source observation remains unresolved"):
+                        families.audit_gamepad_profile_apply_chain(args)
+            report, destination, _, section = publish.call_args.args
+            self.assertEqual(destination, analysis.ROOT / ".analysis/results/frontend/gamepad-mw-audit.json")
+            self.assertEqual(section, "profile_apply_chain")
+            self.assertEqual(report["bounded_observation_complete"], mode == "success")
+            self.assertFalse(report["source_chain_complete"])
+            self.assertFalse(report["whole_product_complete"])
+            self.assertFalse(report["target_execution"])
+            self.assertEqual(report["official_dll_comparison"], "not_executed")
+            if mode != "success":
+                self.assertTrue(report["failures"])
+
+
+class GamepadProfileFeatureChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        import host
+        from families import collect_gamepad_profile_apply_feature_chains
+        cls.audit = host.HostLocalAudit()
+        cls.report = collect_gamepad_profile_apply_feature_chains(cls.audit)
+        cls.owners = {role: cls.audit.owners[key] for role, key in cls.report["roles"].items()}
+
+    def test_current_inheritance_complete_bytes_and_static_boundaries(self):
+        self.assertEqual(set(self.report["reused_source_owners"]),
+            {"sage_class", "controller_class", "protocol25_class"})
+        for owner in self.owners.values():
+            raw = self.audit.read(owner["original"])[owner["byte_start"]:owner["byte_end"]]
+            self.assertEqual(raw.decode(), owner["body"])
+            self.assertEqual(hashlib.sha256(raw).hexdigest(), owner["body_sha256"])
+        self.assertTrue(self.report["selected_static_semantics_reviewed"])
+        self.assertFalse(self.report["target_execution"])
+        self.assertFalse(self.report["real_device_operations"])
+        self.assertEqual(self.report["official_dll_comparison"], "unverified")
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_actual_headers_levels_and_mounted_product_methods(self):
+        self.assertEqual(self.report["semantics"]["headers"], {
+            "brightness_set": [3, 15, 4], "brightness_get": [3, 15, 132],
+            "region_get": [80, 15, 128], "chroma_set": [80, 15, 2],
+            "haptic": [3, 12, 6], "pc_mode_get": [1, 0, 214], "pc_mode_set": [1, 0, 86]})
+        self.assertEqual(self.report["semantics"]["haptic"]["levels"],
+            {"0": 0, "1": 17, "2": 33, "3": 50, "4": 67, "5": 83, "6": 100})
+        self.assertIn("d[2]=13", self.owners["protocol_setStaticExtendedChromaEffect"]["body"])
+        self.assertIn("profileId:1", self.owners["brightness_runner"]["body"])
+        self.assertIn("hapticOverrides", self.owners["haptic_dispatch"]["body"])
+
+    def test_wrong_quantization_motor_order_and_missing_event_release_require_review(self):
+        from families import _gamepad_profile_feature_contract
+        for role, old, new in (
+                ("brightness_writer", "Math.floor", "Math.ceil"),
+                ("brightness_decoder", "Math.ceil", "Math.floor"),
+                ("haptic_writer", "Scaling(e,5,r)", "Scaling(e,9,r)"),
+                ("brightness_event_Ky", 'off("displaypoweron",ve)', 'off("displaypoweron",fe)'),
+                ("protocol_setStaticExtendedChromaEffect", "d[2]=13", "d[2]=1")):
+            owners = copy.deepcopy(self.owners)
+            self.assertIn(old, owners[role]["body"])
+            owners[role]["body"] = owners[role]["body"].replace(old, new)
+            owners[role]["body_sha256"] = hashlib.sha256(owners[role]["body"].encode()).hexdigest()
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "semantic boundary differs"):
+                _gamepad_profile_feature_contract(owners, self.audit.parser)
+
+    def test_changed_complete_tables_and_failure_consumer_cannot_rehash_their_way_to_reviewed(self):
+        from families import _gamepad_profile_feature_contract
+        for role, old, new in (
+                ("haptic_levels", "1:17", "1:16"),
+                ("lighting_rates", "3:1", "3:2"),
+                ("onTaskRunnerSetControllerHapticIntensity", "i.value?", "i.result?")):
+            owners = copy.deepcopy(self.owners)
+            self.assertIn(old, owners[role]["body"])
+            owners[role]["body"] = owners[role]["body"].replace(old, new)
+            owners[role]["body_sha256"] = hashlib.sha256(owners[role]["body"].encode()).hexdigest()
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "complete owners need review"):
+                _gamepad_profile_feature_contract(owners, self.audit.parser)
+
+    def test_changed_protocol_header_rejected_before_semantic_digest(self):
+        from families import _gamepad_profile_feature_contract
+        owners = copy.deepcopy(self.owners)
+        owners["haptic_header"]["body"] = "m=new Uint8Array([3,12,7])"
+        with self.assertRaisesRegex(ValueError, "protocol header differs"):
+            _gamepad_profile_feature_contract(owners, self.audit.parser)
+
+
+class GamepadPollingNativeChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_gamepad_polling_native_chain(cls.audit)
+        cls.owners = {role: cls.audit.owners[key] for role, key in cls.report["roles"].items()}
+
+    def test_latest_selected_inputs_and_real_product_inheritance(self):
+        self.assertEqual(self.report["source_sets"]["mw"]["name"], "gamepad-mw-2636-current-refresh-ec3db4b29c5a-2")
+        self.assertEqual(self.report["source_sets"]["ui"]["name"], "gamepad-2636-current-refresh-ec3db4b29c5a")
+        self.assertIn("i=n(98773)", self.owners["sage_superclass_import"]["body"])
+        self.assertIn("st=i(87969)", self.owners["controller_superclass_import"]["body"])
+        self.assertIn("s.sU(this,e)", self.owners["protocol25_getProfilePollingRate"]["body"])
+        self.assertEqual(self.report["semantics"]["protocol"]["report_id"], 4)
+        self.assertEqual(self.report["semantics"]["protocol"]["expected_out_count"], 91)
+        self.assertNotIn('useFeature("highSpeedPollingRate"', self.owners["product_bootstrap"]["body"])
+
+    def test_complete_owners_match_original_bytes_hashes_and_ast_boundaries(self):
+        for row in self.audit.owners.values():
+            with self.subTest(owner=row["id"]):
+                raw = self.audit.read(row["original"])
+                self.assertEqual(raw[row["byte_start"]:row["byte_end"]], row["body"].encode())
+                self.assertEqual(hashlib.sha256(row["body"].encode()).hexdigest(), row["body_sha256"])
+                node = self.audit.tree(row["original"]).root_node.descendant_for_byte_range(row["byte_start"], row["byte_end"] - 1)
+                while node is not None and (node.start_byte != row["byte_start"] or node.end_byte != row["byte_end"] or node.type != row["syntax"]):
+                    node = node.parent
+                self.assertIsNotNone(node)
+
+    def test_headers_period_codes_and_source_unknown_fallback_are_distinct(self):
+        semantics = self.report["semantics"]
+        self.assertEqual(semantics["headers"], {"kI": [2, 0, 142], "qt": [2, 0, 14]})
+        self.assertEqual(semantics["protocol"]["rate_codes"], {"1000": 1, "500": 2, "333": 3, "250": 4, "200": 5, "125": 8, "100": 10})
+        self.assertEqual(semantics["ui"]["wired_rates"], [250, 1000])
+        self.assertEqual(semantics["ui"]["wireless_rates"], [250])
+        self.assertFalse(semantics["protocol"]["decoder_has_status_or_length_gate"])
+        self.assertEqual(semantics["protocol"]["decoder_unknown_or_missing_period"], 100)
+        self.assertIn("new Uint8Array([2,0,142])", self.owners["protocol_constant_kI"]["body"])
+        self.assertNotIn("packetSizeReturned", self.owners["protocol_decoder"]["body"])
+
+    def test_error_abort_and_requested_ui_values_do_not_claim_readback(self):
+        semantics = self.report["semantics"]
+        self.assertTrue(semantics["submission"]["getter_failure_may_trigger_set"])
+        self.assertFalse(semantics["submission"]["setter_result_checked"])
+        self.assertFalse(semantics["submission"]["write_readback"])
+        self.assertFalse(semantics["submission"]["rollback"])
+        self.assertEqual(semantics["submission"]["abort_check"], "before getter only")
+        self.assertIn("signal.aborted", self.owners["runner"]["body"])
+        self.assertEqual(self.owners["runner"]["body"].count("c.gN"), 1)
+        self.assertTrue(semantics["ui"]["optimistic"])
+        self.assertTrue(semantics["ui"]["single_item_looks_active"])
+        self.assertIn("!t.serialNumber", self.owners["storage_set"]["body"])
+
+    def test_import_wireless_restore_and_current_product_fields_are_not_conflated(self):
+        self.assertFalse(self.report["semantics"]["branch"]["sync_wired_and_wireless"])
+        self.assertIn("pollingRate:_.aQ,pollingRateWireless:_.aQ", self.owners["import_field_dispatch"]["body"])
+        self.assertIn("Object.keys(o)", self.owners["import_profile_fields"]["body"])
+        self.assertNotIn("dongleId:", self.owners["mw_device_info"]["body"])
+        self.assertIn("dongleId:2636", self.owners["ui_config_DeviceInfo"]["body"])
+        self.assertIn('if(!o||"number"!=typeof r)return', self.owners["wireless_restore"]["body"])
+        self.assertNotIn("gN", self.owners["wireless_restore"]["body"])
+        self.assertIn("let m=!1", self.owners["connection_observation"]["body"])
+        self.assertIn("catch(e){}", self.owners["connection_observation"]["body"])
+
+    def test_changed_protocol_ack_error_abort_or_source_consumer_fails_review(self):
+        edits = (("protocol_constant_kI", "[2,0,142]", "[2,0,140]"),
+            ("protocol_decoder", "RATE_100Hz:default:t=100", "RATE_100Hz:default:t=1000"),
+            ("protocol_set", "a[0]=t,a[1]=s", "a[0]=s,a[1]=t"),
+            ("protocol25__getUSBTransferInResult", "case 2:", "case 3:"),
+            ("getter", 'error",e),0', 'error",e),250'),
+            ("runner", "signal.aborted", "signal.cancelled"),
+            ("runner", "(yield(0,c.gN)(n))!==i", "(yield(0,c.gN)(n))===i"),
+            ("runner", "l.result=!0", "l.result=!1"),
+            ("maker", "(0,u._)()", "!1"),
+            ("import_save", "e.pollingRateWireless=t:e.pollingRate=t", "e.pollingRate=t:e.pollingRateWireless=t"),
+            ("ui_reducer", "case ce.ry0:", "case ce.Sn4:"),
+            ("wireless_restore", 'if(!o||"number"!=typeof r)return', 'if("number"!=typeof r)return'))
+        for role, before, after in edits:
+            owners = copy.deepcopy(self.owners)
+            self.assertIn(before, owners[role]["body"])
+            owners[role]["body"] = owners[role]["body"].replace(before, after, 1)
+            with self.subTest(role=role), self.assertRaises(ValueError):
+                families._gamepad_polling_contract(owners, self.audit.parser)
+
+    def test_exact_shared_native_dependency_is_reused_without_product_inference(self):
+        dependency, = self.report["upstream_sections"]
+        self.assertEqual(dependency["pointer"], "/auto_pause_hid_chain/shared_feature_transport")
+        self.assertEqual(dependency["canonical_sha256"], "67e27512eb528b218f1acfb1f567f8e7e086740f61cedb943eee640d691964b5")
+        self.assertEqual(dependency["selected_native_functions"], 17)
+        self.assertFalse(families._system_battery_native_upstream_changes([dependency]))
+        self.assertNotIn(dependency["receipt"], self.audit.artifacts)
+        self.assertFalse(self.report["source_chain_complete"])
+        self.assertFalse(self.report["whole_product_complete"])
+        self.assertFalse(self.report["target_execution"])
+        self.assertEqual(self.report["runtime_acceptance"], "unverified")
+
+    def test_current_source_changes_require_a_new_review_even_if_named_owners_still_exist(self):
+        owners = copy.deepcopy(self.owners)
+        owners["product_bootstrap"]["body"] += ';P.A.useFeature("highSpeedPollingRate","yes")'
+        with self.assertRaisesRegex(ValueError, "current product branch"):
+            families._gamepad_polling_contract(owners, self.audit.parser)
+        owners = copy.deepcopy(self.owners)
+        owners["protocol_rates"]["body"] = owners["protocol_rates"]["body"].replace("RATE_250Hz:4", "RATE_250Hz:5")
+        with self.assertRaises(ValueError):
+            families._gamepad_polling_contract(owners, self.audit.parser)
+
+    def test_query_dispatch_and_wrong_scope_or_preparation_rejected(self):
+        import argparse
+        parser = argparse.ArgumentParser()
+        families.add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["audit-family-function", "--family", "gamepad", "--function", "mw", "--query", "gamepad-polling-native-chain"])
+        with patch.object(families, "audit_gamepad_polling_native_chain") as selected:
+            families.audit_family_function(args)
+        selected.assert_called_once_with(args)
+        for family, function, product, prepare in (("system", "mw", None, False), ("gamepad", "main", None, False),
+                ("gamepad", "mw", [2676], False), ("gamepad", "mw", None, True)):
+            with self.subTest(family=family, function=function, product=product, prepare=prepare), \
+                    patch.object(families, "collect_gamepad_polling_native_chain") as collector, \
+                    self.assertRaisesRegex(ValueError, "requires PID2636"):
+                families.audit_gamepad_polling_native_chain(argparse.Namespace(family=family, function=function, product=product, prepare=prepare))
+            collector.assert_not_called()
+
+    def test_exception_snapshot_or_shared_changes_publish_failure_before_raising(self):
+        import argparse
+        for mode in ("success", "exception", "snapshot", "shared"):
+            configure = {"side_effect": ValueError("polling input missing")} if mode == "exception" else {"return_value": {"failures": []}}
+            with self.subTest(mode=mode), patch.object(families, "collect_gamepad_polling_native_chain", **configure), \
+                    patch.object(host.HostLocalAudit, "final_snapshot", return_value=["polling input"] if mode == "snapshot" else []), \
+                    patch.object(families, "_system_battery_native_upstream_changes", return_value=["shared#pointer"] if mode == "shared" else []), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+                args = argparse.Namespace(family="gamepad", function="mw", product=None, prepare=False)
+                if mode == "success":
+                    families.audit_gamepad_polling_native_chain(args)
+                else:
+                    with self.assertRaisesRegex(ValueError, "source observation remains unresolved"):
+                        families.audit_gamepad_polling_native_chain(args)
+            report, destination, _, section = publish.call_args.args
+            self.assertEqual(destination, analysis.ROOT / ".analysis/results/frontend/gamepad-mw-audit.json")
+            self.assertEqual(section, "polling_native_chain")
+            self.assertEqual(report["bounded_observation_complete"], mode == "success")
+            self.assertFalse(report["source_chain_complete"])
+            self.assertFalse(report["whole_product_complete"])
+            self.assertEqual(report["official_dll_comparison"], "not_executed")
+            if mode != "success":
+                self.assertTrue(report["failures"])
+
+
+class SystemBatteryNativeChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.sources = families._system_battery_native_sources(cls.audit)
+        cls.owners = {role: cls.audit.owners[key] for role, key in cls.sources["roles"].items()}
+        cls.semantics = families._system_battery_native_contract(cls.owners, cls.audit.parser)
+
+    @staticmethod
+    def dependency_fixture():
+        shared = {"host_release": {"version": "4.0.896", "node_rz_hid_version": "0.0.31", "addon_alias_bytes_equal": True},
+            "roles": {"send": "owner"}, "complete_source_owners": [{"id": "owner"}],
+            "native": {"input": {"path": ".analysis/inputs/addon.node", "bytes": 1,
+                "sha256": "5f185c3c865fb37a8cfb85d52a61704555543d70ea954bead84bbadda66fcfac"},
+                "capture_complete": True, "target_execution": False,
+                "failures": [{"rva": "0x30888", "reason": "unrelated preserved capture failure"}],
+                "verified_indirect_slots": [{"slot": "feature"}],
+                "functions": [{"rva": "0x7f40", "assembly_captured": True, "pseudocode_captured": True, "input_chunks_verified": True}]},
+            "source_contract": {name: name for name in ("send", "get", "missing_device_or_exception", "mutex", "close")},
+            "native_contract": {name: name for name in ("prototype", "queue", "send", "get", "deferred", "close", "reviewed_selection_sha256")}}
+        shared["source_contract"]["product_report_id_length_or_business_ack_inferred"] = False
+        shared["canonical_sha256"] = hashlib.sha256(json.dumps(shared, ensure_ascii=False,
+            sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+        return {"auto_pause_hid_chain": {"bounded_observation_complete": True, "snapshot_stable": True,
+            "target_execution": False, "failures": [], "shared_feature_transport": shared}}
+
+    @staticmethod
+    def resign_shared(document):
+        shared = document["auto_pause_hid_chain"]["shared_feature_transport"]
+        shared["canonical_sha256"] = hashlib.sha256(json.dumps({key: value for key, value in shared.items()
+            if key != "canonical_sha256"}, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+    def test_current_pid737_selection_and_actual_hid_inheritance(self):
+        self.assertEqual(self.sources["source_sets"]["mw"]["name"], "system-mw-737-current-refresh-ec3db4b29c5a-2")
+        self.assertEqual(self.sources["source_sets"]["ui"]["name"], "system-737-current-refresh-ec3db4b29c5a")
+        self.assertIn("g.Hj(this)", self.owners["blade_getBatteryChargeLimiterControl"]["body"])
+        self.assertIn("En.Il(this)", self.owners["protocol25_getPowerModeControl"]["body"])
+        self.assertEqual(self.semantics["transport"]["report_id"], 0)
+        self.assertEqual(self.semantics["transport"]["payload_bytes"], 90)
+        self.assertEqual(self.semantics["transport"]["expected_out_count"], 91)
+
+    def test_complete_ast_owner_bytes_and_hashes_match_current_inputs(self):
+        for row in self.audit.owners.values():
+            with self.subTest(owner=row["id"]):
+                raw = self.audit.read(row["original"])
+                self.assertEqual(raw[row["byte_start"]:row["byte_end"]], row["body"].encode())
+                self.assertEqual(hashlib.sha256(row["body"].encode()).hexdigest(), row["body_sha256"])
+                node = self.audit.tree(row["original"]).root_node.descendant_for_byte_range(row["byte_start"], row["byte_end"] - 1)
+                while node is not None and (node.start_byte != row["byte_start"] or node.end_byte != row["byte_end"] or node.type != row["syntax"]):
+                    node = node.parent
+                self.assertIsNotNone(node)
+                self.assertEqual(node.type, row["syntax"])
+
+    def test_command_header_uses_final_comma_operand_and_rejects_dynamic_or_wrong_bytes(self):
+        parse = lambda body: families._system_battery_native_header(body, self.audit.parser)
+        self.assertEqual(parse("G=(new Uint8Array([1,7,145]),new Uint8Array([1,7,17]),new Uint8Array([1,7,146]))"), [1, 7, 146])
+        self.assertEqual(self.semantics["headers"], {"nA": [1, 7, 146], "lJ": [1, 7, 18], "Uk": [1, 7, 143], "$g": [1, 7, 15]})
+        for body in ("G=new Uint8Array(bytes)", "G=new Uint8Array([1,7,256])", "G=new Uint8Array([1,7])", "G=f()", "G=new Uint8Array([1,x,146])"):
+            with self.subTest(body=body), self.assertRaises(ValueError):
+                parse(body)
+
+    def test_error_local_overlay_unknown_bits_and_write_confirmation_remain_distinct(self):
+        self.assertFalse(self.semantics["protocol"]["power_unknown_high_bits_preserved"])
+        self.assertTrue(self.semantics["protocol"]["power_helper_swallow_error"])
+        self.assertFalse(self.semantics["submission"]["runner_checks_setter_return"])
+        self.assertTrue(self.semantics["submission"]["helper_failure_can_complete"])
+        self.assertTrue(self.semantics["submission"]["post_write_abort"])
+        self.assertFalse(self.semantics["submission"]["write_readback"])
+        self.assertFalse(self.semantics["submission"]["rollback"])
+        self.assertIn("source-local", self.semantics["initialization"]["limiter"])
+        self.assertIn("local cached", self.semantics["initialization"]["override"])
+        self.assertIn("taskRunnerColorProfileMemoryStorageCache", self.owners["runner"]["body"])
+        self.assertIn('if(n&&"toggle"===i)', self.owners["taskMakerSetBatteryChargingOverrideByDevice"]["body"])
+
+    def test_changed_decoder_ack_fallback_ui_helper_or_abort_is_rejected(self):
+        edits = (("limiter_get_decoder", "127&t.data[0]", "255&t.data[0]"),
+            ("power_get_decoder", "oneTimeOverride:4&t.data[0]", "oneTimeOverride:8&t.data[0]"),
+            ("protocol25__getUSBTransferInResult", "case 2:e.status=i.STATUS_SUCCESS", "case 3:e.status=i.STATUS_SUCCESS"),
+            ("protocol25__getUSBTransferInResult", "c[1]!==n[1]", "c[1]===n[1]"),
+            ("query_get", "isEnabled:!1,value:0", "isEnabled:!0,value:50"),
+            ("power_mode_helper", "catch(e){console.log(e)}", "catch(e){throw e}"),
+            ("runner", "signal.aborted", "signal.cancelled"),
+            ("runner", "s.result=!0", "s.result=!1"),
+            ("ui_reducer", "case f.gWc:", "case f.RKi:"),
+            ("taskMakerSetBatteryChargingOverrideByDevice", 'if(n&&"toggle"===i)', 'if("toggle"===i)'),
+            ("command_nA", "[1,7,146]", "[1,7,145]"))
+        for role, before, after in edits:
+            owners = copy.deepcopy(self.owners)
+            self.assertIn(before, owners[role]["body"])
+            owners[role]["body"] = owners[role]["body"].replace(before, after, 1)
+            with self.subTest(role=role), self.assertRaises(ValueError):
+                families._system_battery_native_contract(owners, self.audit.parser)
+
+    def test_dependency_records_child_pointer_without_freezing_receipt_file(self):
+        document = json.loads((analysis.ROOT / families._SYSTEM_BATTERY_NATIVE_SHARED_RECEIPT).read_bytes())
+        dependency = families._system_battery_native_transport_dependency(document)
+        self.assertEqual(dependency["pointer"], "/auto_pause_hid_chain/shared_feature_transport")
+        self.assertTrue(dependency["semantic_dependency"])
+        self.assertEqual(dependency["native_input"]["sha256"], "5f185c3c865fb37a8cfb85d52a61704555543d70ea954bead84bbadda66fcfac")
+        raw = json.dumps(document).encode()
+        with patch.object(Path, "read_bytes", return_value=raw):
+            self.assertEqual(families._system_battery_native_upstream_changes([dependency]), [])
+        self.assertNotIn(families._SYSTEM_BATTERY_NATIVE_SHARED_RECEIPT, self.audit.artifacts)
+
+    def test_missing_stale_or_invalid_shared_transport_fails_closed(self):
+        for mode in ("self_signed", "missing", "not_complete", "stale", "bad_digest", "wrong_addon", "function_incomplete", "wrong_version", "missing_contract"):
+            document = self.dependency_fixture()
+            parent = document["auto_pause_hid_chain"]
+            shared = parent["shared_feature_transport"]
+            if mode == "missing":
+                parent.pop("shared_feature_transport")
+            elif mode == "not_complete":
+                parent["bounded_observation_complete"] = False
+            elif mode == "stale":
+                parent["snapshot_stable"] = False
+            elif mode == "bad_digest":
+                shared["canonical_sha256"] = "0" * 64
+            elif mode == "wrong_addon":
+                shared["native"]["input"]["sha256"] = "0" * 64
+            elif mode == "function_incomplete":
+                shared["native"]["functions"][0]["pseudocode_captured"] = False
+            elif mode == "wrong_version":
+                shared["host_release"]["version"] = "4.0.821"
+            elif mode == "missing_contract":
+                shared["native_contract"].pop("deferred")
+            if mode not in {"missing", "bad_digest"}:
+                self.resign_shared(document)
+            with self.subTest(mode=mode), self.assertRaises((KeyError, ValueError)):
+                families._system_battery_native_transport_dependency(document)
+
+    def test_changed_upstream_child_or_parent_gate_is_detected_before_publish(self):
+        document = json.loads((analysis.ROOT / families._SYSTEM_BATTERY_NATIVE_SHARED_RECEIPT).read_bytes())
+        dependency = families._system_battery_native_transport_dependency(document)
+        for mode in ("child", "native_function", "native_slot", "source_consumer", "gate", "missing"):
+            changed = copy.deepcopy(document)
+            shared = changed["auto_pause_hid_chain"]["shared_feature_transport"]
+            if mode == "child":
+                shared["source_contract"]["get"] = "different"
+                self.resign_shared(changed)
+            elif mode == "native_function":
+                shared["native"]["functions"].pop()
+                self.resign_shared(changed)
+            elif mode == "native_slot":
+                shared["native"]["verified_indirect_slots"].pop()
+                self.resign_shared(changed)
+            elif mode == "source_consumer":
+                shared["complete_source_owners"][0]["body"] = "different result consumer"
+                self.resign_shared(changed)
+            elif mode == "gate":
+                changed["auto_pause_hid_chain"]["snapshot_stable"] = False
+            with self.subTest(mode=mode), patch.object(Path, "read_bytes", **(
+                    {"side_effect": FileNotFoundError()} if mode == "missing" else {"return_value": json.dumps(changed).encode()})):
+                self.assertEqual(families._system_battery_native_upstream_changes([dependency]),
+                    [dependency["receipt"] + "#" + dependency["pointer"]])
+
+    def test_query_dispatch_and_wrong_scope_preparation_rejected(self):
+        import argparse
+        parser = argparse.ArgumentParser()
+        families.add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["audit-family-function", "--family", "system", "--function", "mw", "--query", "system-battery-native-chain"])
+        with patch.object(families, "audit_system_battery_native_chain") as selected:
+            families.audit_family_function(args)
+        selected.assert_called_once_with(args)
+        for family, function, product, prepare in (("audio", "mw", None, False), ("system", "main", None, False),
+                ("system", "mw", [711], False), ("system", "mw", None, True)):
+            with self.subTest(family=family, function=function, product=product, prepare=prepare), \
+                    patch.object(families, "collect_system_battery_native_chain") as collector, \
+                    self.assertRaisesRegex(ValueError, "requires PID737"):
+                families.audit_system_battery_native_chain(argparse.Namespace(family=family, function=function, product=product, prepare=prepare))
+            collector.assert_not_called()
+
+    def test_failure_and_snapshot_or_upstream_change_publish_before_raising(self):
+        import argparse
+        for mode in ("success", "exception", "changed", "upstream"):
+            configured = {"side_effect": ValueError("missing Battery owner")} if mode == "exception" else {"return_value": {"failures": []}}
+            with self.subTest(mode=mode), patch.object(families, "collect_system_battery_native_chain", **configured), \
+                    patch.object(host.HostLocalAudit, "final_snapshot", return_value=["Battery-source"] if mode == "changed" else []), \
+                    patch.object(families, "_system_battery_native_upstream_changes", return_value=["shared#pointer"] if mode == "upstream" else []), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+                args = argparse.Namespace(family="system", function="mw", product=None, prepare=False)
+                if mode == "success":
+                    families.audit_system_battery_native_chain(args)
+                else:
+                    with self.assertRaisesRegex(ValueError, "source observation remains unresolved"):
+                        families.audit_system_battery_native_chain(args)
+            report, destination, _, section = publish.call_args.args
+            self.assertEqual(destination, analysis.ROOT / ".analysis/results/frontend/system-mw-audit.json")
+            self.assertEqual(section, "battery_native_chain")
+            self.assertEqual(report["bounded_observation_complete"], mode == "success")
+            self.assertFalse(report["source_chain_complete"])
+            self.assertFalse(report["whole_product_complete"])
+            self.assertFalse(report["target_execution"])
+            self.assertEqual(report["official_dll_comparison"], "not_executed")
+            if mode != "success":
+                self.assertTrue(report["failures"])
+
+
+class SystemGpuRouteNativeChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_system_gpu_route_native_chain(cls.audit)
+        cls.owners = {role: cls.audit.owners[key] for role, key in cls.report["roles"].items()}
+        cls.semantics = cls.report["semantics"]
+
+    def test_current_pid737_mount_hid_inheritance_and_native_resource(self):
+        self.assertEqual(self.report["source_sets"]["mw"]["name"], "system-mw-737-current-refresh-ec3db4b29c5a-2")
+        self.assertEqual(self.report["source_sets"]["ui"]["name"], "system-737-current-refresh-ec3db4b29c5a")
+        self.assertIn("(0,N.jsx)(Va,{})", self.owners["ui_display"]["body"])
+        self.assertIn("qe.fI(this,t)", self.owners["protocol25_setVGAConfigureSetting"]["body"])
+        self.assertEqual(self.report["host_release"]["version"], "4.0.896")
+        self.assertTrue(all(row["member_offset_verified"] for row in self.report["host_release"]["members"]))
+        self.assertEqual(self.report["native"]["resource"]["resourceVersion"], "1.0.50.0")
+        self.assertEqual(self.report["native"]["slice"]["exports"][0]["rva"], "0x4aab0")
+
+    def test_complete_ast_owner_bytes_and_hashes_match_current_inputs(self):
+        for row in self.audit.owners.values():
+            with self.subTest(owner=row["id"]):
+                raw = self.audit.read(row["original"])
+                self.assertEqual(raw[row["byte_start"]:row["byte_end"]], row["body"].encode())
+                self.assertEqual(hashlib.sha256(row["body"].encode()).hexdigest(), row["body_sha256"])
+                node = self.audit.tree(row["original"]).root_node.descendant_for_byte_range(row["byte_start"], row["byte_end"] - 1)
+                while node is not None and (node.start_byte != row["byte_start"] or node.end_byte != row["byte_end"] or node.type != row["syntax"]):
+                    node = node.parent
+                self.assertIsNotNone(node)
+                self.assertEqual(node.type, row["syntax"])
+
+    def test_vga_get_set_and_classification_bytes_are_independent(self):
+        self.assertEqual(self.semantics["headers"], {"YT": [2, 13, 137], "Gs": [2, 13, 9], "Pn": [2, 13, 139], "vy": [2, 13, 138]})
+        self.assertIn("e[0]=0,e[1]=n", self.owners["vga_set"]["body"])
+        self.assertIn("NvidiaOptimus:{name:i.Nzx,value:0", self.owners["ui_constant_FuJ"]["body"])
+        self.assertIn("DedicatedGpu:{name:i.x9w,value:1", self.owners["ui_constant_FuJ"]["body"])
+        self.assertEqual(self.owners["ui_mode_fvD"]["body"], "It={SWITCH:0,NON_SWITCH:1}")
+        self.assertEqual(self.semantics["transport"]["report_id"], 0)
+        self.assertEqual(self.semantics["transport"]["expected_out_count"], 91)
+        self.assertFalse(self.semantics["vga"]["decoder_checks_two_bytes"])
+
+    def test_local_fallback_draft_ack_and_reboot_are_not_observation(self):
+        self.assertIn("source-local0/0", self.semantics["initialization"]["mode"])
+        self.assertIn("t={supportedFlag:1,total:2}", self.owners["switch_query"]["body"])
+        self.assertIn("runner ignores", self.semantics["vga"]["setter_ack"])
+        self.assertFalse(self.semantics["initialization"]["writes_defaults"])
+        self.assertFalse(self.semantics["vga"]["independent_readback"])
+        self.assertFalse(self.semantics["ui"]["rollback"])
+        self.assertFalse(self.semantics["restart"]["native_exitcode_reaches_ui"])
+        self.assertFalse(self.semantics["restart"]["os_privilege_or_reboot_verified"])
+
+    def test_timer_exists_before_abort_and_is_not_cancelled_or_joined(self):
+        runner = self.owners["restart_runner"]["body"]
+        self.assertLess(runner.index("setTimeout("), runner.index("signal.aborted"))
+        self.assertEqual(self.semantics["tasks"]["timer_delay_ms"], 5000)
+        self.assertTrue(self.semantics["tasks"]["timer_registered_before_abort"])
+        self.assertFalse(self.semantics["tasks"]["timer_handle_retained"])
+        self.assertFalse(self.semantics["tasks"]["timer_cancelled_with_task"])
+        self.assertFalse(self.semantics["tasks"]["timer_rejection_joined"])
+        self.assertIn("this.currentTask=this.pendingTask.pop()", self.owners["task_queue"]["body"])
+        self.assertIn('RestartSystem:["void",[]]', self.owners["blade2_init"]["body"])
+
+    def test_changed_source_scope_ack_fallback_cancel_timer_or_void_is_rejected(self):
+        edits = (("ui_card", "mode:this.state.previousMode", "mode:this.props.mode"),
+            ("ui_action", "t({type:Ie.W0e,payload:e})", "t({type:Ie.W0e,payload:0})"),
+            ("query_get", "total:0,mode:0", "total:2,mode:1"),
+            ("switch_query", "supportedFlag:1,total:2", "supportedFlag:0,total:2"),
+            ("vga_set", "e[0]=0,e[1]=n", "e[0]=n,e[1]=0"),
+            ("vga_decoder", "vgaConfigureValue:t.data[1]", "vgaConfigureValue:t.data[0]"),
+            ("protocol25__getUSBTransferInResult", "c[1]!==n[1]", "c[1]===n[1]"),
+            ("protocol25__getUSBTransferInResult", "case 2:e.status=i.STATUS_SUCCESS", "case 3:e.status=i.STATUS_SUCCESS"),
+            ("set_runner", "signal.aborted", "signal.cancelled"),
+            ("restart_runner", "),5e3)", "),1e3)"),
+            ("blade2_init", 'RestartSystem:["void",[]]', 'RestartSystem:["int",[]]'),
+            ("task_queue", "this.pendingTask.pop()", "this.pendingTask.shift()"),
+            ("command_Gs", "[2,13,9]", "[2,13,10]"))
+        for role, before, after in edits:
+            owners = copy.deepcopy(self.owners)
+            self.assertIn(before, owners[role]["body"])
+            owners[role]["body"] = owners[role]["body"].replace(before, after, 1)
+            with self.subTest(role=role), self.assertRaises(ValueError):
+                families._system_gpu_route_contract(owners, self.report["native"], self.audit.parser)
+
+    def test_native_complete_process_result_cleanup_and_changed_command_rejected(self):
+        native = self.report["native"]["slice"]
+        self.assertTrue(native["all_selected_pseudocode_captured"])
+        self.assertFalse(native["target_execution"])
+        self.assertEqual(len(native["complete_functions"]), 16)
+        self.assertTrue(native["capture_failures"])
+        for row in native["complete_functions"]:
+            self.assertTrue(row["capture"]["assembly"])
+            self.assertTrue(row["capture"]["chunks"])
+            self.assertTrue(row["capture"]["pseudocode"]["lines"])
+        for rva, before, after in (("0x4aab0", "shutdown /f /r /t 0", "shutdown /s /t 0"),
+                ("0x917b4", "WaitForSingleObject", "WaitForSingleObjectEx"),
+                ("0x917b4", "GetExitCodeProcess", "GetExitCodeThread"),
+                ("0x917b4", "CloseHandle(v11)", "CloseHandle(v12)"),
+                ("0x9bf08", "CreateProcessW(", "CreateProcessA(")):
+            changed = copy.deepcopy(self.report["native"])
+            row = next(x["capture"] for x in changed["slice"]["complete_functions"] if x["capture"]["rva"] == rva)
+            line = next(x for x in row["pseudocode"]["lines"] if before in x["text"])
+            line["text"] = line["text"].replace(before, after, 1)
+            with self.subTest(rva=rva, before=before), self.assertRaises(ValueError):
+                families._system_gpu_route_contract(self.owners, changed, self.audit.parser)
+
+    def test_shared_hid_pointer_is_revalidated_without_freezing_sibling_sections(self):
+        dependency = self.report["upstream_sections"][0]
+        self.assertEqual(dependency["pointer"], "/auto_pause_hid_chain/shared_feature_transport")
+        self.assertEqual(dependency["canonical_sha256"], "67e27512eb528b218f1acfb1f567f8e7e086740f61cedb943eee640d691964b5")
+        self.assertEqual(dependency["selected_native_functions"], 17)
+        self.assertNotIn(dependency["receipt"], self.audit.artifacts)
+        document = json.loads((analysis.ROOT / dependency["receipt"]).read_bytes())
+        document["unrelated_sibling"] = {"changed": True}
+        with patch.object(Path, "read_bytes", return_value=json.dumps(document).encode()):
+            self.assertEqual(families._system_gpu_route_upstream_changes([dependency]), [])
+        document["auto_pause_hid_chain"]["shared_feature_transport"]["source_contract"]["get"] = "changed"
+        with patch.object(Path, "read_bytes", return_value=json.dumps(document).encode()):
+            self.assertEqual(families._system_gpu_route_upstream_changes([dependency]), [dependency["receipt"] + "#" + dependency["pointer"]])
+
+    def test_query_dispatch_and_wrong_scope_preparation_rejected(self):
+        import argparse
+        parser = argparse.ArgumentParser()
+        families.add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["audit-family-function", "--family", "system", "--function", "mw", "--query", "system-gpu-route-native-chain"])
+        with patch.object(families, "audit_system_gpu_route_native_chain") as selected:
+            families.audit_family_function(args)
+        selected.assert_called_once_with(args)
+        for family, function, product, prepare in (("audio", "mw", None, False), ("system", "main", None, False),
+                ("system", "mw", [711], False), ("system", "mw", None, True)):
+            with self.subTest(family=family, function=function, product=product, prepare=prepare), \
+                    patch.object(families, "collect_system_gpu_route_native_chain") as collector, \
+                    self.assertRaisesRegex(ValueError, "requires PID737"):
+                families.audit_system_gpu_route_native_chain(argparse.Namespace(family=family, function=function, product=product, prepare=prepare))
+            collector.assert_not_called()
+
+    def test_failure_and_snapshot_or_upstream_change_publish_before_raising(self):
+        import argparse
+        for mode in ("success", "exception", "changed", "upstream"):
+            configured = {"side_effect": ValueError("missing GPU owner")} if mode == "exception" else {"return_value": {"failures": []}}
+            with self.subTest(mode=mode), patch.object(families, "collect_system_gpu_route_native_chain", **configured), \
+                    patch.object(host.HostLocalAudit, "final_snapshot", return_value=["GPU-source"] if mode == "changed" else []), \
+                    patch.object(families, "_system_gpu_route_upstream_changes", return_value=["shared#pointer"] if mode == "upstream" else []), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+                args = argparse.Namespace(family="system", function="mw", product=None, prepare=False)
+                if mode == "success":
+                    families.audit_system_gpu_route_native_chain(args)
+                else:
+                    with self.assertRaisesRegex(ValueError, "source observation remains unresolved"):
+                        families.audit_system_gpu_route_native_chain(args)
+            report, destination, _, section = publish.call_args.args
+            self.assertEqual(destination, analysis.ROOT / ".analysis/results/frontend/system-mw-audit.json")
+            self.assertEqual(section, "gpu_route_native_chain")
+            self.assertEqual(report["bounded_observation_complete"], mode == "success")
+            self.assertFalse(report["source_chain_complete"])
+            self.assertFalse(report["whole_product_complete"])
+            self.assertFalse(report["target_execution"])
+            self.assertEqual(report["official_dll_comparison"], "not_executed")
+            if mode != "success":
+                self.assertTrue(report["failures"])
+
+
+class SystemDisplayRefreshNativeChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_system_display_refresh_native_chain(cls.audit)
+        cls.owners = {role: cls.audit.owners[key] for role, key in cls.report["roles"].items()}
+
+    def test_current_routes_and_release_owned_host_members_are_verified(self):
+        self.assertEqual(self.report["source_sets"]["mw"]["name"],
+                         "system-mw-737-current-refresh-ec3db4b29c5a-2")
+        self.assertEqual(self.report["source_sets"]["ui"]["name"],
+                         "system-737-current-refresh-ec3db4b29c5a")
+        self.assertEqual(self.report["host_release"]["version"], "4.0.896")
+        self.assertEqual(len(self.report["host_release"]["members"]), 3)
+        self.assertTrue(all(row["member_offset_verified"] for row in self.report["host_release"]["members"]))
+        self.assertEqual(self.report["native"]["resource"]["resourceVersion"], "1.0.50.0")
+        self.assertEqual(self.report["native"]["slice"]["original"]["sha256"],
+                         families._SYSTEM_DISPLAY_REFRESH_NATIVE_SHA)
+
+    def test_full_ast_and_native_machine_chunks_are_retained(self):
+        for row in self.audit.owners.values():
+            with self.subTest(owner=row["id"]):
+                raw = self.audit.read(row["original"])
+                self.assertEqual(raw[row["byte_start"]:row["byte_end"]], row["body"].encode())
+                self.assertEqual(hashlib.sha256(row["body"].encode()).hexdigest(), row["body_sha256"])
+                node = self.audit.tree(row["original"]).root_node.descendant_for_byte_range(
+                    row["byte_start"], row["byte_end"] - 1)
+                while node is not None and (node.start_byte != row["byte_start"] or node.end_byte != row["byte_end"]):
+                    node = node.parent
+                self.assertIsNotNone(node)
+                self.assertEqual(node.type, row["syntax"])
+        native = self.report["native"]["slice"]
+        self.assertEqual(len(native["complete_functions"]), 15)
+        self.assertTrue(all(row["input_chunks_verified"] for row in native["complete_functions"]))
+        self.assertFalse(native["failures"])
+        self.assertFalse(native["decompiler_failures"])
+        self.assertTrue(native["capture_failures"])
+        self.assertTrue(native["unexpanded_direct_edges"])
+
+    def test_bool_zero_empty_exception_and_readback_boundaries_are_distinct(self):
+        semantics = self.report["semantics"]
+        self.assertEqual(semantics["native"]["get_failure_value"], 0)
+        self.assertFalse(semantics["runner"]["checks_setter_bool"])
+        self.assertTrue(semantics["runner"]["resolved_false_or_undefined_marks_result_true"])
+        self.assertFalse(semantics["runner"]["write_readback"])
+        self.assertFalse(semantics["native"]["write_readback"])
+        self.assertFalse(semantics["bridge"]["undefined_is_native_success"])
+        self.assertIn("value=null", semantics["runner"]["exception_completion_hazard"])
+        self.assertIn("r.value.params", self.owners["runner_completion"]["body"])
+        self.assertIn('s.value=null', self.owners["runner"]["body"])
+        self.assertIn('e.refreshRateList.some(e=>e.value===t.payload)', self.owners["ui_reducer"]["body"])
+
+    def test_async_route_uses_actual_blade_superclass_and_conditional_pointer_release(self):
+        self.assertIn("n=i(77127)", self.owners["wrapper_superclass_import"]["body"])
+        self.assertIn("(0,c.oE)(e,t)", self.owners["inherited_async_bridge"]["body"])
+        self.assertIn("doDLLMainActionAsync", self.owners["bridge_oE"]["body"])
+        self.assertIn("readCString", self.owners["host_async_call"]["body"])
+        self.assertIn("finally", self.owners["host_async_call"]["body"])
+        self.assertIn("FreeMalloc", self.owners["host_async_call"]["body"])
+        self.assertIn("conversion failure", self.report["semantics"]["bridge"]["pointer_release"])
+
+    def test_changed_result_abort_fallback_or_ui_consumer_is_rejected(self):
+        edits = (
+            ("runner", "s.result=!0", "s.result=!1"),
+            ("runner", "signal.aborted", "signal.cancelled"),
+            ("runner", "payload:n", "payload:0"),
+            ("query_get", "catch(e){console.log(e)}", "catch(e){throw e}"),
+            ("query_enum", "return n.sort", "return [].sort"),
+            ("ui_card", "0!==s", "0===s"),
+            ("ui_reducer", "case f.D5I:", "case f.DMb:"),
+            ("bridge_oE", "doDLLMainActionAsync", "doDLLMainAction"),
+            ("inherited_async_bridge", "c.oE", "c.yL"),
+            ("host_async_call", "FreeMalloc", "FreeOther"),
+        )
+        for role, before, after in edits:
+            owners = copy.deepcopy(self.owners)
+            self.assertIn(before, owners[role]["body"])
+            owners[role]["body"] = owners[role]["body"].replace(before, after, 1)
+            with self.subTest(role=role, before=before), self.assertRaises(ValueError):
+                families._system_display_refresh_contract(owners, self.report["native"])
+
+    def test_changed_native_zero_or_os_write_result_is_rejected(self):
+        for rva, before, after in (("0x4ca40", "v3 = 0;", "v3 = 60;"),
+                                  ("0x4caa0", "0, 1u, 0", "0, 0u, 0"),
+                                  ("0x485a0", "dmDisplayFrequency > 1", "dmDisplayFrequency > 0")):
+            native = copy.deepcopy(self.report["native"])
+            function = next(row["capture"] for row in native["slice"]["complete_functions"]
+                            if row["capture"]["rva"] == rva)
+            line = next(line for line in function["pseudocode"]["lines"] if before in line["text"])
+            line["text"] = line["text"].replace(before, after, 1)
+            with self.subTest(rva=rva), self.assertRaises(ValueError):
+                families._system_display_refresh_contract(self.owners, native)
+
+    def test_changed_manifest_cannot_reuse_prior_native_semantics(self):
+        audit = host.HostLocalAudit()
+        original = audit.read
+        def changed(item):
+            raw = original(item)
+            if item["path"] == self.report["native"]["manifest"]["path"]:
+                document = json.loads(raw)
+                row = next(row for row in document["resourceManifest"]["resources"]
+                           if row.get("resourceName") == "BladeDLL")
+                row["resourceVersion"] = "1.0.51.0"
+                return json.dumps(document).encode()
+            return raw
+        with patch.object(audit, "read", side_effect=changed), \
+                patch.object(audit, "native_slice") as native, \
+                self.assertRaisesRegex(ValueError, "needs renewed semantic review"):
+            families._system_display_refresh_native(audit, self.report["source_sets"]["mw"])
+        native.assert_not_called()
+
+    def test_no_unverified_dependency_or_whole_product_completion_is_claimed(self):
+        self.assertFalse(self.report["source_chain_complete"])
+        self.assertFalse(self.report["whole_product_complete"])
+        self.assertFalse(self.report["target_execution"])
+        self.assertEqual(self.report["runtime_acceptance"], "unverified")
+        self.assertTrue(self.report["remaining_chains"])
+        self.assertFalse(self.report["boundary_references"][0]["semantic_dependency"])
+
+    def test_query_dispatch_and_scope_rejection(self):
+        import argparse
+        parser = argparse.ArgumentParser()
+        families.add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["audit-family-function", "--family", "system", "--function", "mw",
+                                 "--query", "system-display-refresh-native-chain"])
+        with patch.object(families, "audit_system_display_refresh_native_chain") as selected, \
+                patch.object(families, "audit_shared_preferences") as preferences:
+            families.audit_family_function(args)
+        selected.assert_called_once_with(args)
+        preferences.assert_not_called()
+        for family, function, product, prepare in (("audio", "mw", None, False),
+                ("system", "main", None, False), ("system", "mw", [711], False), ("system", "mw", None, True)):
+            with self.subTest(family=family, function=function, product=product, prepare=prepare), \
+                    patch.object(families, "collect_system_display_refresh_native_chain") as collector, \
+                    self.assertRaisesRegex(ValueError, "requires PID737"):
+                families.audit_system_display_refresh_native_chain(argparse.Namespace(family=family,
+                    function=function, product=product, prepare=prepare))
+            collector.assert_not_called()
+
+    def test_failure_and_snapshot_changes_publish_before_raising(self):
+        import argparse
+        for mode in ("success", "exception", "changed"):
+            configured = {"side_effect": ValueError("missing refresh owner")} if mode == "exception" else {"return_value": {"failures": []}}
+            with self.subTest(mode=mode), \
+                    patch.object(families, "collect_system_display_refresh_native_chain", **configured), \
+                    patch.object(host.HostLocalAudit, "final_snapshot", return_value=["refresh-source"] if mode == "changed" else []), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+                args = argparse.Namespace(family="system", function="mw", product=None, prepare=False)
+                if mode == "success":
+                    families.audit_system_display_refresh_native_chain(args)
+                else:
+                    with self.assertRaisesRegex(ValueError, "source observation remains unresolved"):
+                        families.audit_system_display_refresh_native_chain(args)
+            report, destination, _, section = publish.call_args.args
+            self.assertEqual(destination, analysis.ROOT / ".analysis/results/frontend/system-mw-audit.json")
+            self.assertEqual(section, "display_refresh_native_chain")
+            self.assertEqual(report["bounded_observation_complete"], mode == "success")
+            self.assertEqual(report["snapshot_stable"], mode != "changed")
+            self.assertFalse(report["source_chain_complete"])
+            self.assertFalse(report["whole_product_complete"])
+            self.assertEqual(report["official_dll_comparison"], "not_executed")
+            if mode != "success":
+                self.assertTrue(report["failures"])
+
+
 class FeatureCallInventoryTests(unittest.TestCase):
     def inspect(self, source):
         raw = source.encode("utf-8")
@@ -3635,6 +8310,335 @@ class MouseIdleInitializationTests(unittest.TestCase):
         path.write_bytes(raw.replace(b"getTimeToSleep", b"getCachedTimeToSleep"))
         with self.assertRaisesRegex(ValueError, "differs"):
             families.mouse_idle_initialization_source(self.audit, [original])
+
+
+class MousePower196ConsumersTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.report = families.collect_mouse_power_196_consumers(host.HostLocalAudit())
+        cls.owners = {owner["id"]: owner for owner in cls.report["complete_source_owners"]}
+
+    def body(self, role):
+        return self.owners[self.report["roles"][role]]["body"]
+
+    def test_current_routes_select_refreshes_and_preserve_missing_capture(self):
+        selections = self.report["source_sets"]
+        self.assertEqual(selections["ui"]["name"], "mouse-196-current-refresh-ec3db4b29c5a")
+        self.assertEqual(selections["mw"]["name"], "mouse-mw-196-current-refresh-ec3db4b29c5a-2")
+        for layer, old in (("ui", "mouse-196-current"), ("mw", "mouse-mw-196-current")):
+            self.assertEqual(selections[layer]["canonical_entry_url"],
+                f"https://apps.razer.com/synapse/products/196/{layer}/")
+            decisions = {row["name"]: row["status"] for row in selections[layer]["candidate_decisions"]}
+            self.assertEqual(decisions[old], "superseded_stable_acquisition")
+            self.assertIsNone(selections[layer]["capture"])
+            self.assertEqual(selections[layer]["capture_failures"], ["complete_capture_unavailable"])
+        self.assertEqual(self.report["verification"]["complete_ast_owners"], 74)
+        self.assertFalse(self.report["target_execution"])
+        self.assertFalse(self.report["whole_page_complete"])
+
+    def test_actual_ready_navigation_and_empty_props_choose_minute_slider(self):
+        self.assertIn('(0,P_.jsx)(Pm,{})', self.body("ui_response_wrapper"))
+        self.assertIn('setupStatus===ye.Dh.READY?(0,P_.jsx)(Dm,{})', self.body("ui_setup"))
+        self.assertTrue(self.body("ui_navigation_connection").endswith(")(cm)"))
+        self.assertIn('id:3,name:Ye.Q2y,component:(0,P_.jsx)(jS,{})', self.body("ui_product_navigation"))
+        self.assertEqual(self.body("ui_power_alias"), "jS=XS")
+        self.assertIn('direction:"left",children:(0,P_.jsx)(wS,{})', self.body("ui_power_page"))
+        self.assertIn('min:1,max:15,step:1,value:this.props.powerSavingValue,active:!0', self.body("ui_card"))
+        self.assertNotIn("componentWillUnmount", self.body("ui_card"))
+        self.assertIn("setPowerSaving:()=>yS", self.body("ui_action_export"))
+
+    def test_product_identity_and_actual_feature_keep_read_and_local_domains_separate(self):
+        self.assertIn("productId:196", self.body("mw_product_runtime"))
+        definition = self.body("mw_product_definition")
+        self.assertIn("productId:196,dongleId:197", definition)
+        self.assertNotIn("singleProfileDevice", definition)
+        self.assertIn('useFeature("isBattery","yes",{shouldQueryBatteryStatus:!0,alwaysReadPowerSavingFromDevice:!0})',
+            self.body("mw_bootstrap"))
+        self.assertIn('case l.mD.READY:', self.body("mw_ready"))
+        self.assertIn('N&&C.powerStatus', self.body("mw_ready"))
+        self.assertIn('const t=yield(0,Q.yf)();e.push({type:i.J6e,payload:t})', self.body("mw_ready"))
+        self.assertIn('q=(e=5)', self.body("mw_getter"))
+        self.assertIn('case"powerSavingValue":', self.body("ui_product_navigation"))
+        self.assertFalse(self.report["boundaries"]["feature"]["source_getter_fallback_is_observation"])
+
+    def test_shared_tasks_are_reused_by_complete_body_and_exact_event_exports(self):
+        self.assertEqual(len(self.report["shared_owner_reuse"]), 17)
+        for row in self.report["shared_owner_reuse"]:
+            self.assertTrue(row["complete_body_identical"])
+            self.assertEqual(self.owners[row["current_owner"]]["body_sha256"], row["body_sha256"])
+            self.assertTrue(row["reference_pointer"].startswith("/mouse_power_190_consumers/roles/"))
+        self.assertEqual(len(self.report["event_routes"]), 7)
+        for route in self.report["event_routes"]:
+            self.assertEqual([side["value"] for side in route["sides"]], [route["event"], route["event"]])
+        self.assertIn('if(r&&!(null==g?void 0:g.alwaysReadPowerSavingFromDevice))', self.body("mw_maker"))
+        self.assertIn('o.RzTaskCategory.NORMAL_SKIPPABLE', self.body("mw_maker"))
+        self.assertIn('k.macroRecorderNotRunning()', self.body("mw_action_guard"))
+
+    def test_action_ledgers_keep_receive_tick_and_optimistic_value_boundaries(self):
+        self.assertIn('this.timerTick=a||Date.now()', self.body("ui_event_tick"))
+        self.assertIn('timerTick:void 0', self.body("ui_reducer"))
+        self.assertIn('const a=Date.now()', self.body("mw_command_receiver"))
+        self.assertIn('{timertick:a}', self.body("mw_command_receiver"))
+        for role in ("ui_local_receipt", "ui_device_receipt", "ui_completed_receipt"):
+            self.assertIn('e.timertick===a', self.body(role))
+            self.assertNotIn('powerSavingValue=', self.body(role))
+        self.assertIn('powerSavingValue:E.payload', self.body("ui_reducer"))
+        self.assertFalse(self.report["boundaries"]["correlation"]["tick_equality_verified"])
+
+    def test_current_initializer_and_post_readback_cache_failure_are_not_promoted(self):
+        self.assertNotIn("PowerSaving", self.body("mw_injected_initializer"))
+        self.assertIn('r=new Proxy(void 0===n?{}:n,i)', self.body("mw_proxy_factory"))
+        runner = self.body("mw_runner")
+        self.assertEqual(runner.count("a.signal.aborted"), 2)
+        self.assertLess(runner.index("setTimeToSleep(r)"), runner.index("getTimeToSleep()"))
+        self.assertIn('if(u!==r)throw s.value.status="error"', runner)
+        self.assertLess(runner.index('s.value.status="completed"'),
+            runner.index('l.razerWindow.taskRunnerPowerSavingValueMemoryStorageCache[e]'))
+        self.assertIn('"skipped"===a.error', self.body("mw_completed"))
+        self.assertNotIn('i.error=', self.body("mw_task_y"))
+        self.assertIn('"beforeunload",_T', self.body("ui_bridge_initialize"))
+        self.assertIn('_.postMessage({msgName:e,msgData:E}),_.close()', self.body("ui_bridge_send"))
+
+    def test_modified_body_resealed_semantics_missing_owner_and_scope_promotion_fail(self):
+        changed = copy.deepcopy(self.report)
+        changed["complete_source_owners"][0]["body"] += " "
+        with self.assertRaisesRegex(ValueError, "owner bytes"):
+            families._mouse_power_196_consumers_verify(changed)
+        changed = copy.deepcopy(self.report)
+        changed["semantics"]["mounted"] += " fallback"
+        changed["reviewed_selection_sha256"] = families._mouse_power_196_consumers_digest(
+            families._mouse_power_196_consumers_projection(changed))
+        with self.assertRaisesRegex(ValueError, "semantic review"):
+            families._mouse_power_196_consumers_verify(changed)
+        changed = copy.deepcopy(self.report)
+        changed["complete_source_owners"] = []
+        with self.assertRaisesRegex(ValueError, "lost its complete owner"):
+            families._mouse_power_196_consumers_verify(changed)
+        for key in ("target_execution", "source_chain_complete", "whole_page_complete"):
+            changed = copy.deepcopy(self.report)
+            changed[key] = True
+            with self.assertRaisesRegex(ValueError, "scope"):
+                families._mouse_power_196_consumers_verify(changed)
+
+    def test_upstream_recheck_allows_unrelated_section_but_rejects_missing_changed_and_invalid(self):
+        from unittest import mock
+        dependency = {"receipt": "test.json", "pointer": "/selected/0", "canonical_sha256":
+            families._mouse_power_196_consumers_digest({"value": 7})}
+        for document, expected in (({"selected": [{"value": 7}], "unrelated": 99}, []),
+                ({"selected": [{"value": 8}]}, None), ({"selected": []}, None)):
+            with mock.patch.object(Path, "read_bytes", return_value=json.dumps(document).encode()):
+                result = families._mouse_power_196_consumers_dependency_changes([dependency])
+            if expected is None:
+                self.assertEqual(len(result), 1)
+            else:
+                self.assertEqual(result, expected)
+        for data in (b"{", b'{"selected":1,"selected":2}'):
+            with mock.patch.object(Path, "read_bytes", return_value=data):
+                self.assertEqual(len(families._mouse_power_196_consumers_dependency_changes([dependency])), 1)
+        with mock.patch.object(Path, "read_bytes", side_effect=OSError("unavailable")):
+            self.assertEqual(len(families._mouse_power_196_consumers_dependency_changes([dependency])), 1)
+
+    def test_changed_acquisition_and_upstream_are_not_silently_reused(self):
+        from unittest import mock
+        changed = copy.deepcopy(self.report)
+        changed["source_sets"]["mw"]["name"] = "mouse-mw-196-current"
+        changed["reviewed_selection_sha256"] = families._mouse_power_196_consumers_digest(
+            families._mouse_power_196_consumers_projection(changed))
+        with self.assertRaisesRegex(ValueError, "semantic review"):
+            families._mouse_power_196_consumers_verify(changed)
+        with mock.patch.object(families, "_mouse_power_196_consumers_dependency_changes", return_value=["changed"]):
+            with self.assertRaisesRegex(ValueError, "upstream changed"):
+                families._mouse_power_196_consumers_verify(self.report)
+        with mock.patch.object(families, "_mouse_power_196_consumers_upstream", {"/mouse_power_190_consumers": "0" * 64}):
+            with self.assertRaisesRegex(ValueError, "upstream section requires review"):
+                families._mouse_power_196_consumers_dependencies()
+
+    def test_publisher_rechecks_consumed_sections_after_final_snapshot_and_refuses_prepare(self):
+        from types import SimpleNamespace
+        from unittest import mock
+        args = SimpleNamespace(family="mouse", function="mw", product=[196], prepare=False)
+        with mock.patch.object(families, "collect_mouse_power_196_consumers", return_value=copy.deepcopy(self.report)), \
+                mock.patch.object(families, "_mouse_power_196_consumers_dependency_changes", return_value=["changed"]), \
+                mock.patch.object(host, "publish_host_static_query") as publish:
+            with self.assertRaisesRegex(ValueError, "observation remains unresolved"):
+                families.audit_mouse_power_196_consumers(args)
+            published = publish.call_args.args[0]
+            self.assertFalse(published["bounded_observation_complete"])
+            self.assertFalse(published["snapshot_stable"])
+            self.assertTrue(any("changed" in finding for finding in published["failures"]))
+        args.prepare = True
+        with self.assertRaisesRegex(ValueError, "without preparation"):
+            families.audit_mouse_power_196_consumers(args)
+
+
+class MousePower190ConsumersTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_mouse_power_190_consumers(cls.audit)
+        cls.owners = {owner["id"]: owner for owner in cls.report["complete_source_owners"]}
+
+    def body(self, role):
+        return self.owners[self.report["roles"][role]]["body"]
+
+    def test_latest_route_acquisitions_replace_old_current_names_without_promoting_capture(self):
+        selections = self.report["source_sets"]
+        self.assertEqual(selections["ui"]["name"], "mouse-190-snapshot-7a9576b5")
+        self.assertEqual(selections["mw"]["name"], "mouse-mw-190-snapshot-44b54d19ebd53e129c9c")
+        for layer, old_name in (("ui", "mouse-190-current"), ("mw", "mouse-mw-190-current")):
+            self.assertEqual(selections[layer]["canonical_entry_url"],
+                f"https://apps.razer.com/synapse/products/190/{layer}/")
+            decisions = {row["name"]: row["status"] for row in selections[layer]["candidate_decisions"]}
+            self.assertEqual(decisions[old_name], "superseded_stable_acquisition")
+            self.assertEqual(decisions[selections[layer]["name"]], "selected_latest_stable_acquisition")
+            self.assertIsNone(selections[layer]["capture"])
+            self.assertEqual(selections[layer]["capture_failures"], ["complete_capture_unavailable"])
+
+    def test_actual_mount_selects_minute_slider_and_keeps_optimistic_editor_separate(self):
+        self.assertIn("(Cl,{})", self.body("ui_power_page"))
+        self.assertIn("(pl,{})", self.body("ui_product_navigation"))
+        card = self.body("ui_card")
+        self.assertIn("min:1,max:15,step:1,value:this.props.powerSavingValue,active:!0", card)
+        self.assertNotIn("componentWillUnmount", card)
+        self.assertIn("setPowerSaving:()=>Sl", self.body("ui_action_export"))
+        self.assertIn("powerSavingValue:5", self.body("ui_default"))
+        self.assertIn("powerSavingValue:E.payload", self.body("ui_reducer"))
+        self.assertIn("actionsFromUI.push", self.body("ui_append_action"))
+
+    def test_ready_uses_actual_feature_power_status_and_getter_result_with_honest_fallback(self):
+        self.assertIn('useFeature("isBattery","yes",{shouldQueryBatteryStatus:!0,alwaysReadPowerSavingFromDevice:!0})',
+            self.body("mw_bootstrap"))
+        ready = self.body("mw_ready")
+        self.assertIn("case l.mD.READY:", ready)
+        self.assertIn("N&&C.powerStatus", ready)
+        self.assertIn("const t=yield(0,Q.yf)();e.push({type:i.J6e,payload:t})", ready)
+        getter = self.body("mw_getter")
+        self.assertIn("q=(e=5)", getter)
+        self.assertIn("t.timeToSleep/60", getter)
+        self.assertIn('console.log("getPowerSavingFromDevice",t.message),e', getter)
+        self.assertFalse(self.report["boundaries"]["ready"]["catch_value_is_device_observation"])
+
+    def test_real_broadcast_and_receive_ticks_are_not_invented_as_equal(self):
+        self.assertIn("this.timerTick=a||Date.now()", self.body("ui_event_tick"))
+        self.assertIn("timerTick:void 0", self.body("ui_reducer"))
+        self.assertIn("_.postMessage({msgName:e,msgData:E}),_.close()", self.body("ui_bridge_Et"))
+        receiver = self.body("mw_command_receiver")
+        self.assertIn("const a=Date.now()", receiver)
+        self.assertIn("{timertick:a}", receiver)
+        for role in ("ui_local_receipt", "ui_device_receipt", "ui_completed_receipt"):
+            self.assertIn("e.timertick===a", self.body(role))
+        self.assertFalse(self.report["boundaries"]["correlation"]["tick_equality_proven"])
+
+    def test_current_initializer_proxy_and_legacy_runner_dereference_remain_distinct(self):
+        initialization = self.body("mw_injected_initializer")
+        self.assertIn("memoryStorageCache={compactDeviceData:", initialization)
+        self.assertNotIn("PowerSaving", initialization)
+        self.assertEqual(self.report["direct_power_cache_assignments"], [])
+        proxy = self.body("mw_proxy_factory")
+        self.assertIn('p=i(Symbol("taskMakerPowerSavingMemoryStorageCache"))', proxy)
+        self.assertIn('P=i(Symbol("taskRunnerPowerSavingValueMemoryStorageCache"))', proxy)
+        self.assertIn("r=new Proxy(void 0===n?{}:n,i)", proxy)
+        self.assertNotIn("razerWindow[t]=", proxy)
+        self.assertIn("i.Al.setPowerSavingValue.timerTick=e", self.body("mw_maker"))
+        runner = self.body("mw_runner")
+        self.assertLess(runner.index('s.value.status="completed"'), runner.index("P.OF.currValue="))
+        self.assertLess(runner.index("P.OF.currValue="),
+            runner.index("l.razerWindow.taskRunnerPowerSavingValueMemoryStorageCache[e]"))
+
+    def test_actual_abort_readback_and_cache_rejection_do_not_rewrite_original_success_consumer(self):
+        runner = self.body("mw_runner")
+        self.assertEqual(runner.count("a.signal.aborted"), 2)
+        self.assertLess(runner.index("a.signal.aborted"), runner.index("setTimeToSleep(r)"))
+        self.assertLess(runner.index("setTimeToSleep(r)"), runner.index("getTimeToSleep()"))
+        self.assertIn('if(u!==r)throw s.value.status="error"', runner)
+        self.assertIn('"skipped"===a.error', self.body("mw_completed"))
+        self.assertIn('"completed"===(null===(s=a.value)', self.body("mw_completed"))
+        task = self.body("mw_task_y")
+        self.assertIn(".catch((function(e){o(e)})).finally", task)
+        self.assertIn("n.resultClosure(n.id,e,i)", task)
+        self.assertNotIn("i.error=", task)
+        self.assertIn("k.macroRecorderNotRunning()", self.body("mw_action_guard"))
+        self.assertIn('reasonPhrase:"ONSTORAGE_FAIL_MACRO_RECORDER_RUNNING"', self.body("mw_action_guard"))
+        self.assertNotIn("powerSavingValue=", self.body("ui_device_receipt"))
+
+    def test_current_host_membership_exact_event_routes_and_dependency_pointer_are_bound(self):
+        current = self.report["host_current"]
+        self.assertEqual(current["version"], "4.0.896")
+        self.assertIn("/asar/e7a524aca177/", current["original"]["path"])
+        self.assertTrue(current["container_bytes_verified"])
+        self.assertIn("e.id!==o.sender.id", self.body("host_memory_storage"))
+        self.assertIn('action:"setMemoryStorageItem",payload:{key:e,value:t}', self.body("mw_storage_bridge"))
+        self.assertEqual([row["event"] for row in self.report["event_routes"]], [
+            "MW_SET_POWER_SAVING_VALUE_TO_UI", "MW_UPDATE_POWER_SAVING_VALUE_UI_ACTION_LOCAL_STORAGE",
+            "MW_UPDATE_POWER_SAVING_VALUE_UI_ACTION_DEVICE", "MW_POST_PROCESS_COMPLETED_POWER_SAVING_VALUE_UI_ACTION",
+            "MW_ADD_NEW_POWER_SAVING_VALUE_LOCAL_STORAGE_ACTION", "MW_UPDATE_POWER_SAVING_VALUE_LOCAL_STORAGE_ACTION_DEVICE",
+            "MW_POST_PROCESS_COMPLETED_POWER_SAVING_VALUE_LOCAL_STORAGE_ACTION"])
+        dependency = self.report["dependencies"][0]
+        value = json.loads((analysis.ROOT / dependency["receipt"]).read_bytes())
+        for token in dependency["pointer"].split("/")[1:]:
+            value = value[token.replace("~1", "/").replace("~0", "~")]
+        self.assertEqual(value["kind"], "current_mouse_power_task_memory_batch")
+        self.assertTrue(any(row["endpoint_product_id"] == 190 for row in value["products"]))
+
+    def test_unclosed_roots_shutdown_and_actual_comparison_reach_the_shared_ledger(self):
+        rows = [row for row in analysis.semantic_query_gaps(self.report,
+            ".analysis/results/frontend/mouse-mw-audit.json") if row["pointer"] == "/remaining_chains"]
+        self.assertEqual(len(rows), 3)
+        self.assertEqual([row["finding"] for row in rows], self.report["remaining_chains"])
+        self.assertEqual({row["kind"] for row in rows}, {"semantic_query_chain_unresolved"})
+
+    def test_rehashed_owner_event_capture_and_remaining_mutations_cannot_bypass_review(self):
+        for mutate in (lambda r: r["event_routes"][0].update(event="cached-success"),
+                lambda r: r["source_sets"]["ui"]["capture_failures"].clear(),
+                lambda r: r["remaining_chains"].clear()):
+            report = copy.deepcopy(self.report)
+            mutate(report)
+            report["reviewed_selection_sha256"] = hashlib.sha256(json.dumps(
+                families._mouse_power_190_projection(report), ensure_ascii=False,
+                sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+            with self.assertRaisesRegex(ValueError, "selected bytes require semantic review"):
+                families.verify_mouse_power_190_consumers(report)
+        report = copy.deepcopy(self.report)
+        report["complete_source_owners"][0]["body"] += " "
+        with self.assertRaisesRegex(ValueError, "complete owner identity differs"):
+            families.verify_mouse_power_190_consumers(report)
+
+    def test_static_receipt_keeps_no_temporary_dependencies_or_runtime_promotion(self):
+        report = json.loads(json.dumps(self.report, ensure_ascii=False, allow_nan=False))
+        self.assertEqual(families.verify_mouse_power_190_consumers(report), report["verification"])
+        self.assertEqual(self.audit.final_snapshot(), [])
+        self.assertEqual(report["maintenance_lifecycle"]["temporary_artifacts_created"], [])
+        self.assertEqual(report["maintenance_lifecycle"]["analysis_sessions_created"], [])
+        self.assertNotIn("componentWillUnmount", self.body("ui_response_wrapper"))
+        self.assertIn("OT.off(e,E)", self.body("ui_bridge_lT"))
+        for key, value in (("source_chain_complete", True), ("official_dll_comparison", "verified"),
+                ("source_snapshot_changed", ["changed"]), ("runtime_acceptance", "verified")):
+            bad = copy.deepcopy(report)
+            bad[key] = value
+            with self.subTest(key=key), self.assertRaisesRegex(ValueError, "static boundary was changed or promoted"):
+                families.verify_mouse_power_190_consumers(bad)
+
+    def test_entrypoint_publishes_collector_failure_and_changed_snapshot_before_raising(self):
+        from types import SimpleNamespace
+        args = SimpleNamespace(family="mouse", function="mw", product=[190], prepare=False)
+        for collector_error, changes in ((ValueError("selected input missing"), []), (None, ["changed.js"])):
+            fake = SimpleNamespace(parser_versions={}, sources={}, owners={}, artifacts={},
+                artifact=lambda *args: b"", final_snapshot=lambda: changes)
+            kwargs = {"side_effect": collector_error} if collector_error else {"return_value": {"failures": []}}
+            with patch.object(host, "HostLocalAudit", return_value=fake), \
+                    patch.object(families, "collect_mouse_power_190_consumers", **kwargs), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+                with self.assertRaisesRegex(ValueError, "source observation remains unresolved"):
+                    families.audit_mouse_power_190_consumers(args)
+            published = publish.call_args.args[0]
+            self.assertFalse(published["bounded_observation_complete"])
+            self.assertTrue(published["failures"])
+            self.assertEqual(publish.call_args.args[3], "mouse_power_190_consumers")
+            if changes:
+                self.assertIn("changed.js", published["failures"][0])
+                self.assertFalse(published["snapshot_stable"])
+            else:
+                self.assertIn("selected input missing", published["failures"][0])
 
 
 class MouseReceiverPowerBatchTests(unittest.TestCase):
@@ -5142,6 +10146,785 @@ class MouseInputMonitoringIdentityConsumerTests(unittest.TestCase):
                 families.mouse_input_identity_host_projection(self.parser, value)
 
 
+class HanboCpuMonitorChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        original = families._hanbo_cpu_monitor_native_contract
+
+        def native(modules):
+            cls.modules = modules
+            return original(modules)
+
+        with patch.object(families, "_hanbo_cpu_monitor_native_contract", side_effect=native):
+            cls.result = families.collect_hanbo_cpu_monitor_chain(cls.audit)
+
+    def changed_native(self, module, rva, before, after, *, instruction=False):
+        modules = copy.deepcopy(self.modules)
+        row, = [row for row in modules[module]["complete_selected_functions"] if row["capture"]["rva"] == rva]
+        lines = row["capture"]["assembly"] if instruction else row["capture"]["pseudocode"]["lines"]
+        field = "bytes" if instruction else "text"
+        line = next(line for line in lines if before in line[field])
+        line[field] = line[field].replace(before, after, 1)
+        return families._hanbo_cpu_monitor_native_contract(modules)
+
+    def args(self, **changes):
+        import argparse
+        values = dict(family="accessories", function="main", product=[3893], prepare=False,
+            query="hanbo-cpu-monitor-chain")
+        values.update(changes)
+        return argparse.Namespace(**values)
+
+    def test_current_inputs_and_selected_functions_do_not_promote_whole_cpu_or_runtime_completion(self):
+        result = self.result
+        self.assertEqual(result["kind"], "current_hanbo_cpu_package_intel_msr_chain")
+        self.assertEqual(result["host_release"]["version"], "4.0.896")
+        self.assertEqual(result["native"]["sdk"]["input"]["sha256"],
+            "c67f23ef5fd6e5a1db8f96d9a0509447f9657969e7a2c7fed7b293b72240cfb7")
+        self.assertEqual([len(result["native"][name]["functions"]) for name in ("sdk", "service")], [39, 8])
+        self.assertEqual(len(self.audit.owners), 17)
+        self.assertEqual((result["new_native_captures"], result["new_analysis_sessions"]), (0, 0))
+        self.assertEqual(result["temporary_resources_created"], [])
+        for field in ("source_chain_complete", "whole_cpu_monitor_complete", "whole_product_complete",
+                "target_execution", "real_device_operations", "product_code_modified"):
+            self.assertFalse(result[field])
+        self.assertEqual(result["actual_dll_comparison"], "unverified")
+        self.assertFalse(result["host_release"]["actual_installed_or_loaded_versions_observed"])
+
+    def test_six_actual_provider_families_have_pe_verified_temperature_and_initialization_slots(self):
+        providers = self.result["reviewed_intel_provider_groups"]
+        self.assertEqual({row["name"] for row in providers},
+            {"sandy_bridge", "haswell", "skylake", "silvermont", "goldmont", "family_12"})
+        slots = self.result["native"]["sdk"]["verified_indirect_slots"]
+        self.assertEqual(len(slots), 22)
+        self.assertTrue(all(row["actual_pe_bytes_verified"] for row in slots))
+        for row in providers:
+            for key, offset in (("initialize_rva", 40), ("temperature_rva", 64)):
+                slot, = [slot for slot in slots if slot["role"] == row["name"] + "_" + key]
+                self.assertEqual((slot["vtable_rva"], slot["slot_byte_offset"], slot["target_rva"]),
+                    (row["vtable_rva"], offset, row[key]))
+        self.assertTrue(any("AMD_CPU_Infos+48 ->0x1a6d50" in row["entry"] for row in self.result["remaining_chains"]))
+        self.assertTrue(any("Hygon_CPU_Infos+48 ->0x17a3e0" in row["entry"] for row in self.result["remaining_chains"]))
+
+    def test_actual_callback_snapshot_consumes_all_temperature_sensors_instead_of_first_getter(self):
+        contract = self.result["native_contract"]["service"]
+        self.assertEqual((contract["device_class"], contract["sensor_kind"], contract["iterator_rva"]),
+            (4, 0x2000, "0x15070"))
+        self.assertEqual(contract["json_path"], "CPUInfo[*].Temperatures.Package")
+        self.assertTrue(contract["iterates_all_valid_sensors_in_actual_callback_snapshot"])
+        selected = {row["rva"] for row in self.result["native"]["service"]["functions"]}
+        self.assertNotIn("0x17570", selected)
+        for rva, before, after in (("0x14210", "v15 = 0x2000", "v15 = 0x3000"),
+                ("0x16000", "sub_180015070(v13,", "sub_180017570(v13,"),
+                ("0x15070", "for ( i = 0; i < v8; ++i )", "for ( i = 0; i < 1; ++i )")):
+            with self.subTest(rva=rva), self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+                self.changed_native("service", rva, before, after)
+
+    def test_each_package_provider_binds_actual_msr_number_and_existing_sensor_branch(self):
+        contract = self.result["native_contract"]
+        self.assertEqual((contract["core_status_msr"], contract["package_status_msr"],
+            contract["temperature_target_msr"], contract["package_sensor_identifier"]),
+            (0x19c, 0x1b1, 0x1a2, 0x1802001))
+        self.assertTrue(contract["creation_requires_status_bit31"])
+        self.assertFalse(contract["existing_sensor_refresh_rechecks_status_bit31"])
+        for row in self.result["reviewed_intel_provider_groups"]:
+            with self.subTest(provider=row["name"]), self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+                self.changed_native("sdk", row["temperature_rva"],
+                    "sub_18013F930(a2, 433)", "sub_18013F930(a2, 412)")
+
+    def test_driver_modes_output_words_and_failure_cannot_be_replaced_with_synthetic_reads(self):
+        driver = self.result["native_contract"]["driver"]
+        self.assertEqual([(row["mode"], row["ioctl"], row["input_bytes"], row["output_capacity"])
+            for row in driver["modes"]], [(1, 1, 4, 40), (2, 0x9c402440, 4, 8)])
+        self.assertFalse(driver["checks_returned_byte_count"])
+        for before, after in (("0x9C402440", "0x9C402444"), ("return *a4 != -1 || v9 != -1", "return 1")):
+            with self.subTest(before=before), self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+                self.changed_native("sdk", "0x14e58", before, after)
+        with self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+            self.changed_native("sdk", "0x13f930", "sub_180014E58", "cached_MSR_value")
+
+    def test_source_target_fallback_and_retained_temperature_never_become_fresh_observations(self):
+        native = self.result["native_contract"]
+        self.assertEqual(native["temperature_target_source_default_celsius"], 100)
+        self.assertFalse(native["target_default_is_observed_hardware"])
+        self.assertFalse(native["failed_read_clears_existing_temperature"])
+        self.assertFalse(native["failed_read_is_fresh_observation"])
+        self.assertFalse(self.result["source_contract"]["projection"]["zero_projection_is_confirmed_hardware_observation"])
+        for before, after in (("if ( v16 )", "if ( 1 )"), ("& 0x7F", "& 0xFF")):
+            with self.subTest(before=before), self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+                self.changed_native("sdk", "0x156170", before, after)
+
+    def test_current_cpu_projection_and_pre_result_cache_are_bound_to_complete_source_owners(self):
+        owners = {role: copy.deepcopy(self.audit.owners[key]) for role, key in self.result["roles"].items()}
+        contract = self.result["source_contract"]
+        self.assertEqual(contract["projection"]["cpu_temperature_field"], "Temperatures.Package.cur")
+        self.assertFalse(contract["projection"]["hanbo_checks_projection_status_before_forwarding"])
+        self.assertTrue(contract["updates_last_temperature_before_elsa_result"])
+        for role, before, after in (("system_info_projection", "e.CPUInfo[0]", "e.CPUInfo[1]"),
+                ("system_info_projection", 'curKey:"Package"', 'curKey:"Core #0"'),
+                ("hanbo_subscription", "Xe.cpuTemp=t,Xe.gpuTemp=o;try{yield", "try{yield")):
+            changed = copy.deepcopy(owners)
+            self.assertIn(before, changed[role]["body"])
+            changed[role]["body"] = changed[role]["body"].replace(before, after, 1)
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "complete source boundary changed"):
+                families._hanbo_system_monitor_versions_source_contract(changed)
+
+    def test_worker_stop_join_and_result_release_remain_distinct_from_whole_callback_drain(self):
+        release = self.result["native_contract"]["release"]
+        self.assertEqual(release["retained_worker_wait_ms"], "INFINITE")
+        self.assertFalse(release["checks_worker_wait_result_before_close"])
+        self.assertFalse(release["whole_service_callback_quiescence_proven"])
+        self.assertFalse(release["per_read_cancellation_token"])
+        for module, rva, before, after in (("sdk", "0xbb2c0", "dword_18038E074 = 1", "dword_18038E074 = 0"),
+                ("sdk", "0xbb2c0", "WaitForSingleObject(*v3, 0xFFFFFFFF)", "WaitForSingleObject(*v3, 0)"),
+                ("service", "0x5420", "SysFreeString((BSTR)Source)", "retain(Source)"),
+                ("service", "0x45090", "free(a1)", "retain(a1)")):
+            with self.subTest(rva=rva), self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+                self.changed_native(module, rva, before, after)
+
+    def test_unreviewed_assembly_and_incomplete_capture_are_rejected(self):
+        row = self.modules["sdk"]["complete_selected_functions"][0]
+        instruction = row["capture"]["assembly"][0]
+        with self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+            self.changed_native("sdk", row["capture"]["rva"], instruction["bytes"], "90", instruction=True)
+        for name in self.modules:
+            modules = copy.deepcopy(self.modules)
+            modules[name]["complete_selected_functions"][0]["input_chunks_verified"] = False
+            with self.subTest(module=name), self.assertRaisesRegex(ValueError, "complete native owner is absent"):
+                families._hanbo_cpu_monitor_native_contract(modules)
+
+    def test_upstream_section_change_is_detected_without_freezing_parallel_sections(self):
+        upstream = self.result["upstream_sections"]
+        destination = families.a.ROOT / upstream[0]["receipt"]
+        changed = json.loads(destination.read_bytes())
+        changed["hanbo_system_monitor_versions"]["versions"]["RzSystemService"] = "1.0.29.0"
+        with patch.object(Path, "read_bytes", return_value=json.dumps(changed).encode()):
+            self.assertEqual(families._hanbo_hid_write_current_upstream_changes(upstream),
+                [upstream[1]["receipt"] + "#" + upstream[1]["pointer"]])
+        unrelated = json.loads(destination.read_bytes())
+        unrelated["parallel_unrelated_section"] = {"bounded_observation_complete": True}
+        with patch.object(Path, "read_bytes", return_value=json.dumps(unrelated).encode()):
+            self.assertEqual(families._hanbo_hid_write_current_upstream_changes(upstream), [])
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_dispatch_selects_current_cpu_query_without_reopening_legacy_runtime(self):
+        args = self.args()
+        with patch.object(families, "audit_hanbo_cpu_monitor_chain", return_value="selected") as selected, \
+                patch.object(families, "audit_hanbo_local_runtime") as legacy:
+            self.assertEqual(families.audit_family_function(args), "selected")
+        selected.assert_called_once_with(args)
+        legacy.assert_not_called()
+
+    def test_wrong_product_family_function_and_preparation_are_rejected_before_collection(self):
+        for changes in (dict(family="audio"), dict(function="mw"), dict(product=[3900]),
+                dict(product=[3893, 3900]), dict(prepare=True)):
+            with self.subTest(changes=changes), \
+                    patch.object(families, "collect_hanbo_cpu_monitor_chain") as collect, \
+                    self.assertRaisesRegex(ValueError, "accessories/main PID3893 without preparation"):
+                families.audit_hanbo_cpu_monitor_chain(self.args(**changes))
+            collect.assert_not_called()
+
+    def test_success_publishes_only_selected_section(self):
+        with patch.object(families, "collect_hanbo_cpu_monitor_chain", return_value={"failures": []}), \
+                patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+            report = families.audit_hanbo_cpu_monitor_chain(self.args())
+        self.assertEqual(publish.call_args.args[3], "hanbo_cpu_monitor_chain")
+        self.assertIs(publish.call_args.args[0], report)
+        self.assertTrue(report["bounded_observation_complete"])
+        self.assertTrue(report["snapshot_stable"])
+        self.assertFalse(report["source_chain_complete"])
+        self.assertFalse(report["target_execution"])
+
+    def test_failure_and_snapshot_change_publish_facts_before_rejecting(self):
+        for fails in (True, False):
+            collect = {"side_effect": ValueError("Package provider changed")} if fails else {"return_value": {"failures": []}}
+            with self.subTest(collection_failure=fails), \
+                    patch.object(families, "collect_hanbo_cpu_monitor_chain", **collect), \
+                    patch.object(host.HostLocalAudit, "final_snapshot", return_value=[] if fails else ["changed.dll"]), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"), \
+                    self.assertRaisesRegex(ValueError, "observation remains unresolved"):
+                families.audit_hanbo_cpu_monitor_chain(self.args())
+            report = publish.call_args.args[0]
+            self.assertFalse(report["bounded_observation_complete"])
+            self.assertTrue(report["failures"])
+
+
+class HanboHygonPackageChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        native_contract = families._hanbo_hygon_package_native_contract
+
+        def native(module, raw):
+            cls.native, cls.raw = module, raw
+            return native_contract(module, raw)
+
+        with patch.object(families, "_hanbo_hygon_package_native_contract", side_effect=native):
+            cls.result = families.collect_hanbo_hygon_package_chain(cls.audit)
+
+    def args(self, **changes):
+        import argparse
+        values = dict(family="accessories", function="main", product=[3893], prepare=False,
+            query="hanbo-hygon-package-chain")
+        values.update(changes)
+        return argparse.Namespace(**values)
+
+    def changed_native(self, rva, before, after, *, instruction=False):
+        native = copy.deepcopy(self.native)
+        row, = [row for row in native["complete_selected_functions"] if row["capture"]["rva"] == rva]
+        lines = row["capture"]["assembly"] if instruction else row["capture"]["pseudocode"]["lines"]
+        field = "bytes" if instruction else "text"
+        line = next(line for line in lines if before in line[field])
+        line[field] = line[field].replace(before, after, 1)
+        return families._hanbo_hygon_package_native_contract(native, self.raw)
+
+    def test_exact_current_default_provider_slice_reuses_complete_inputs_without_promoting_runtime(self):
+        result = self.result
+        self.assertEqual(result["native"]["input"]["sha256"],
+            "c67f23ef5fd6e5a1db8f96d9a0509447f9657969e7a2c7fed7b293b72240cfb7")
+        self.assertEqual((len(result["native"]["functions"]), len(result["reused_service_result"]["functions"])), (19, 8))
+        self.assertEqual((len(self.audit.owners), len(result["reused_source_owners"])), (17, 17))
+        self.assertEqual(result["resumes_upstream_pointer"], "/hanbo_cpu_monitor_chain/remaining_chains/1")
+        self.assertTrue(result["selected_hygon_default_temperature_semantics_reviewed"])
+        for field in ("source_chain_complete", "whole_cpu_monitor_complete", "whole_product_complete",
+                "target_execution", "real_device_operations", "product_code_modified"):
+            self.assertFalse(result[field])
+        self.assertEqual(result["actual_dll_comparison"], "unverified")
+        self.assertEqual((result["new_native_captures"], result["new_analysis_sessions"]), (0, 0))
+        self.assertEqual(result["temporary_resources_created"], [])
+
+    def test_vendor_and_family_are_bound_to_actual_cpuid_initialization_and_attach(self):
+        contract = self.result["native_contract"]
+        self.assertEqual((contract["vendor"], contract["family"], contract["family_source"]["cpuid_leaf"]),
+            ("HygonGenuine", 0x18, 0x80000001))
+        self.assertEqual((contract["vendor_owner_offset"], contract["family_owner_offset"]), (16, 24))
+        for rva, before, after in (("0x141480", '"HygonGenuine"', '"AuthenticAMD"'),
+                ("0x17a760", "*(_DWORD *)(a2 + 832) =", "*(_DWORD *)(a2 + 836) ="),
+                ("0x17a3e0", "*(_DWORD *)(a2 + 832) == 24", "*(_DWORD *)(a2 + 832) == 23"),
+                ("0x13dbd0", "*(_QWORD *)(a1 + 24) = a2", "*(_QWORD *)(a1 + 32) = a2")):
+            with self.subTest(rva=rva), self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+                self.changed_native(rva, before, after)
+
+    def test_pe_provider_slots_bind_default_temperature_and_separate_stop_and_delete(self):
+        slots = self.result["native"]["verified_indirect_slots"]
+        self.assertEqual(len(slots), 14)
+        self.assertTrue(all(row["actual_pe_bytes_verified"] for row in slots))
+        targets = {row["role"]: row for row in slots}
+        self.assertEqual((targets["hygon_c86_temperature"]["vtable_rva"],
+            targets["hygon_c86_temperature"]["slot_byte_offset"],
+            targets["hygon_c86_temperature"]["target_rva"]), ("0x3055a8", 64, "0x1785d0"))
+        self.assertEqual(targets["hygon_vendor_temperature"]["target_rva"], "0x38b0")
+        self.assertEqual(targets["hygon_c86_delete"]["slot_byte_offset"], 112)
+        self.assertEqual(targets["hygon_c86_stop"]["slot_byte_offset"], 120)
+        native = copy.deepcopy(self.native)
+        native["verified_indirect_slots"][-3]["target_rva"] = "0x1a6d50"
+        with self.assertRaisesRegex(ValueError, "actual provider slots changed"):
+            families._hanbo_hygon_package_native_contract(native, self.raw)
+
+    def test_both_default_temperature_calls_return_negative_without_a_sample_or_sensor_update(self):
+        contract = self.result["native_contract"]
+        self.assertEqual(contract["temperature_result"], -1.0)
+        self.assertFalse(contract["selected_default_provider_creates_package_temperature"])
+        self.assertFalse(contract["selected_temperature_call_reads_system_driver_or_smu"])
+        self.assertFalse(contract["selected_temperature_call_updates_existing_sensor"])
+        for rva in ("0x1785d0", "0x38b0"):
+            with self.subTest(rva=rva), self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+                self.changed_native(rva, "return -1.0", "return read_temperature()")
+
+    def test_negative_result_constant_is_read_from_actual_pe_and_linked_to_both_movss_instructions(self):
+        constant = self.result["native_contract"]["temperature_constant"]
+        self.assertEqual((constant["rva"], constant["raw_hex"]), ("0x30f930", "000080bf"))
+        self.assertEqual([row["rva"] for row in constant["instruction_proofs"]], ["0x178601", "0x38b0"])
+        changed = bytearray(self.raw)
+        changed[constant["file_offset"]:constant["file_offset"] + 4] = bytes.fromhex("0000803f")
+        with self.assertRaisesRegex(ValueError, "actual negative temperature constant changed"):
+            families._hanbo_hygon_package_native_contract(self.native, changed)
+        with self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+            self.changed_native("0x1785d0", "f30f100527731900", "f30f100527731800", instruction=True)
+
+    def test_actual_nonpositive_fallback_preserves_higher_priority_provider_as_separate_gap(self):
+        self.assertEqual(self.result["native_contract"]["provider_priority_offsets"], [32, 24, 16])
+        self.assertEqual(self.result["remaining_chains"][0]["pointer"], "/hanbo_cpu_monitor_chain/remaining_chains/2")
+        for before, after in (("a1 + 32", "a1 + 16"), ("<= 0.0", ">= 0.0")):
+            with self.subTest(before=before), self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+                self.changed_native("0x13bff0", before, after)
+
+    def test_missing_package_source_zero_and_pre_result_cache_are_not_hardware_observations(self):
+        source = self.result["source_contract"]
+        self.assertEqual(source["projection"]["cpu_temperature_field"], "Temperatures.Package.cur")
+        self.assertTrue(source["projection"]["missing_measurements_default_to_zero_in_source"])
+        self.assertFalse(source["projection"]["zero_projection_is_confirmed_hardware_observation"])
+        self.assertFalse(source["projection"]["hanbo_checks_projection_status_before_forwarding"])
+        self.assertTrue(source["updates_last_temperature_before_elsa_result"])
+        self.assertEqual(self.result["reused_service_result"]["contract"]["sensor_kind"], 0x2000)
+        owners = {role: copy.deepcopy(self.audit.owners[key]) for role, key in self.result["roles"].items()}
+        owners["system_info_projection"]["body"] = owners["system_info_projection"]["body"].replace(
+            'curKey:"Package"', 'curKey:"Core #0"', 1)
+        with self.assertRaisesRegex(ValueError, "complete source boundary changed"):
+            families._hanbo_system_monitor_versions_source_contract(owners)
+
+    def test_noop_stop_does_not_replace_cpu_thread_and_owned_control_destructors(self):
+        release = self.result["native_contract"]["release"]
+        self.assertTrue(release["selected_stops_are_noop"])
+        self.assertFalse(release["temperature_call_allocates_resource"])
+        self.assertFalse(release["whole_callback_quiescence_proven"])
+        for rva, before, after in (("0x13fcf0", "+ 112LL", "+ 120LL"),
+                ("0x4340", "sub_1801A8420(Block)", "retain(Block)"),
+                ("0x1a8420", "(*(_QWORD *)v2 + 40LL)", "(*(_QWORD *)v2 + 48LL)")):
+            with self.subTest(rva=rva), self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+                self.changed_native(rva, before, after)
+
+    def test_incomplete_owner_and_unreviewed_initialize_are_rejected(self):
+        native = copy.deepcopy(self.native)
+        native["complete_selected_functions"][0]["input_chunks_verified"] = False
+        with self.assertRaisesRegex(ValueError, "complete native owner is absent"):
+            families._hanbo_hygon_package_native_contract(native, self.raw)
+        with self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+            self.changed_native("0x1799a0", "sub_1801787F0(v4, (_DWORD *)v3)", "create_package_temperature(v4, v3)")
+
+    def test_exact_upstream_pointer_detects_changed_cpu_but_allows_unrelated_parallel_publication(self):
+        upstream = self.result["upstream_sections"]
+        path = families.a.ROOT / upstream[0]["receipt"]
+        document = json.loads(path.read_bytes())
+        document["hanbo_cpu_monitor_chain"]["remaining_chains"][1]["gate"] = "assume vendor from product name"
+        with patch.object(Path, "read_bytes", return_value=json.dumps(document).encode()):
+            self.assertEqual(host._keypad_temporary_keymap_dependency_changes(upstream),
+                [upstream[0]["receipt"] + "#" + upstream[0]["pointer"]])
+            with self.assertRaisesRegex(ValueError, "upstream CPU observation changed"):
+                families._hanbo_hygon_package_dependencies()
+        document = json.loads(path.read_bytes())
+        document["parallel_query"] = {"bounded_observation_complete": True}
+        with patch.object(Path, "read_bytes", return_value=json.dumps(document).encode()):
+            self.assertEqual(host._keypad_temporary_keymap_dependency_changes(upstream), [])
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_dispatch_scope_and_success_publish_only_selected_section(self):
+        args = self.args()
+        with patch.object(families, "audit_hanbo_hygon_package_chain", return_value="selected") as selected:
+            self.assertEqual(families.audit_family_function(args), "selected")
+        selected.assert_called_once_with(args)
+        for changes in (dict(family="audio"), dict(function="mw"), dict(product=[3900]),
+                dict(product=[3893, 3900]), dict(prepare=True)):
+            with self.subTest(changes=changes), patch.object(families, "collect_hanbo_hygon_package_chain") as collect, \
+                    self.assertRaisesRegex(ValueError, "accessories/main PID3893 without preparation"):
+                families.audit_hanbo_hygon_package_chain(self.args(**changes))
+            collect.assert_not_called()
+        with patch.object(families, "collect_hanbo_hygon_package_chain", return_value={}), \
+                patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+            report = families.audit_hanbo_hygon_package_chain(args)
+        self.assertEqual(publish.call_args.args[3], "hanbo_hygon_package_chain")
+        self.assertTrue(report["bounded_observation_complete"])
+        self.assertTrue(report["snapshot_stable"])
+        self.assertFalse(report["source_chain_complete"])
+
+    def test_collection_or_snapshot_failure_is_published_without_promoting_completion(self):
+        for fails in (True, False):
+            collect = {"side_effect": ValueError("Hygon slot changed")} if fails else {"return_value": {}}
+            with self.subTest(collection_failure=fails), \
+                    patch.object(families, "collect_hanbo_hygon_package_chain", **collect), \
+                    patch.object(host.HostLocalAudit, "final_snapshot", return_value=[] if fails else ["changed.dll"]), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"), \
+                    self.assertRaisesRegex(ValueError, "observation remains unresolved"):
+                families.audit_hanbo_hygon_package_chain(self.args())
+            self.assertFalse(publish.call_args.args[0]["bounded_observation_complete"])
+            self.assertTrue(publish.call_args.args[0]["failures"])
+
+
+class HanboAmdPackageChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        check = families._hanbo_amd_package_native_contract
+
+        def native(module, raw):
+            cls.native, cls.raw = module, raw
+            return check(module, raw)
+
+        with patch.object(families, "_hanbo_amd_package_native_contract", side_effect=native):
+            cls.result = families.collect_hanbo_amd_package_chain(cls.audit)
+
+    def args(self, **changes):
+        import argparse
+        values = dict(family="accessories", function="main", product=[3893], prepare=False,
+            query="hanbo-amd-package-chain")
+        values.update(changes)
+        return argparse.Namespace(**values)
+
+    def changed_native(self, rva, before, after, *, instruction=False):
+        native = copy.deepcopy(self.native)
+        row, = [row for row in native["complete_selected_functions"] if row["capture"]["rva"] == rva]
+        lines = row["capture"]["assembly"] if instruction else row["capture"]["pseudocode"]["lines"]
+        field = "bytes" if instruction else "text"
+        line = next(line for line in lines if before in line[field])
+        line[field] = line[field].replace(before, after, 1)
+        return families._hanbo_amd_package_native_contract(native, self.raw)
+
+    def test_exact_package_slice_reuses_inputs_and_keeps_execution_stages_separate(self):
+        result = self.result
+        self.assertEqual(result["native"]["input"]["sha256"],
+            "c67f23ef5fd6e5a1db8f96d9a0509447f9657969e7a2c7fed7b293b72240cfb7")
+        self.assertEqual((len(result["native"]["functions"]), len(self.audit.owners)), (67, 17))
+        self.assertEqual(result["resumes_upstream_pointer"], "/hanbo_cpu_monitor_chain/remaining_chains/0")
+        self.assertEqual(result["resumed_gap_finding_sha256"],
+            "008c572bb0ea183850ce7a38081b55acdca540b2b0e1aa33e352b72e42fcca1b")
+        self.assertTrue(result["selected_amd_k10_k12_package_semantics_reviewed"])
+        self.assertTrue(result["source_slice_complete"])
+        for field in ("source_chain_complete", "whole_cpu_monitor_complete", "whole_product_complete",
+                "target_execution", "real_device_operations", "product_code_modified",
+                "existing_k17_rust_implementation_revalidated_by_query"):
+            self.assertFalse(result[field])
+        self.assertEqual((result["actual_dll_comparison"], result["rust_independent_implementation"]),
+            ("unverified", "unverified"))
+        self.assertEqual((result["new_native_captures"], result["new_analysis_sessions"]), (0, 0))
+        self.assertEqual(result["temporary_resources_created"], [])
+
+    def test_vendor_cpuid_family_attach_and_periodic_priority_cannot_be_replaced_by_family_names(self):
+        contract = self.result["native_contract"]
+        self.assertEqual((contract["vendor"], contract["reviewed_family_values"]),
+            ("AuthenticAMD", [0x10, 0x11, 0x12]))
+        self.assertEqual(contract["provider_priority_owner_offsets"], [32, 24, 16])
+        for rva, before, after in (("0x141480", '"AuthenticAMD"', '"HygonGenuine"'),
+                ("0x1a7a10", "*(_DWORD *)(a2 + 832) =", "*(_DWORD *)(a2 + 836) ="),
+                ("0x1a6d50", "case 0x11:", "case 0x13:"),
+                ("0x13dbd0", "*(_QWORD *)(a1 + 24) = a2", "*(_QWORD *)(a1 + 32) = a2"),
+                ("0x13bff0", "<= 0.0", ">= 0.0")):
+            with self.subTest(rva=rva), self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+                self.changed_native(rva, before, after)
+
+    def test_actual_pci_endpoint_selection_and_double_read_failure_are_preserved(self):
+        pci = self.result["native_contract"]["pci"]
+        self.assertEqual((pci["vendor_id"], pci["k10_package_device_ids"], pci["k12_package_device_ids"]),
+            (0x1022, [0x1203, 0x1303], [0x1703]))
+        self.assertTrue(pci["first_read_must_return_success"])
+        self.assertFalse(pci["second_read_return_checked"])
+        self.assertEqual(((0xffffffff >> 21) * 0.125, pci["sentinel_can_become_source_temperature"]),
+            (255.875, 255.875))
+        self.assertTrue(pci["first_read_failure_retains_existing_sensor"])
+        for rva, before, after in (("0x1a26b0", "v8 == 4611 || v8 == 4867", "v8 == 4612 || v8 == 4868"),
+                ("0x1a1110", "!= 5891", "!= 5892"),
+                ("0x1a26b0", "v18 = -1", "v18 = 0"),
+                ("0x1a1110", "v14 = v8 >> 21", "v14 = v8 >> 20")):
+            with self.subTest(rva=rva), self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+                self.changed_native(rva, before, after)
+
+    def test_package_sensor_name_is_verified_in_actual_pe_with_identifier_and_shared_owner(self):
+        sensor = self.result["native_contract"]["sensor"]
+        self.assertEqual((sensor["name"], sensor["identifier"], sensor["owner_offset"]),
+            ("Package", 0x1802001, 1264))
+        self.assertEqual(len(sensor["actual_pe_name_proofs"]), 2)
+        changed = bytearray(self.raw)
+        changed[sensor["actual_pe_name_proofs"][0]["file_offset"]] = ord("p")
+        with self.assertRaisesRegex(ValueError, "actual sensor name changed"):
+            families._hanbo_amd_package_native_contract(self.native, changed)
+        with self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+            self.changed_native("0x1a1110", "0x1802000u", "0x4002000u")
+
+    def test_actual_pe_slots_bind_package_providers_and_independent_remaining_boundaries(self):
+        slots = self.result["native"]["verified_indirect_slots"]
+        self.assertEqual(len(slots), 33)
+        self.assertTrue(all(row["actual_pe_bytes_verified"] for row in slots))
+        targets = {row["role"]: row for row in slots}
+        self.assertEqual((targets["k10_temperature"]["target_rva"], targets["k12_temperature"]["target_rva"]),
+            ("0x1a26b0", "0x1a1110"))
+        self.assertEqual(targets["k17_temperature_boundary"]["target_rva"], "0x1841d0")
+        native = copy.deepcopy(self.native)
+        native["verified_indirect_slots"][9]["target_rva"] = "0x1841d0"
+        with self.assertRaisesRegex(ValueError, "actual provider slots changed"):
+            families._hanbo_amd_package_native_contract(native, self.raw)
+
+    def test_assembly_corrects_express_owner_field_without_overwriting_pseudocode_evidence(self):
+        correction = self.result["native_contract"]["capture_interpretation"]
+        self.assertEqual((correction["pseudocode_reports_offset"], correction["actual_assembly_reports_offset"]), (16, 24))
+        self.assertEqual((correction["instruction_rva"], correction["instruction_bytes"]), ("0xabc02", "4c897318"))
+        with self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+            self.changed_native("0xab660", "4c897318", "4c897310", instruction=True)
+
+    def test_driver_payload_checks_and_unchecked_nested_failures_are_not_promoted_to_confirmation(self):
+        transport = self.result["native_contract"]["transport"]
+        self.assertFalse(transport["checks_os_returned_byte_count"])
+        self.assertFalse(transport["mode1_buffer_loop_checks_nested_read_result"])
+        self.assertFalse(transport["type3_final_port_read_result_checked"])
+        self.assertTrue(transport["cf8_restore_only_reached_after_preceding_success"])
+        for rva, before, after in (("0x14048", "OutBuffer[0] == 4", "OutBuffer[0] == 8"),
+                ("0x13ed0", "return 1", "return 0"),
+                ("0x13d40", "sub_180014DAC(a1, 3320, v7)", "sub_180014DAC(a1, 3320, 0)")):
+            with self.subTest(rva=rva), self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+                self.changed_native(rva, before, after)
+
+    def test_ecs_original_bit_restore_precedes_release_and_is_not_success_confirmation(self):
+        release = self.result["native_contract"]["release"]
+        self.assertEqual((release["ecs_register"], release["ecs_bit"]), (0x8c, 14))
+        self.assertFalse(release["ecs_restore_checks_read_or_write_return"])
+        self.assertFalse(release["ecs_restore_performs_confirming_read"])
+        self.assertTrue(release["selected_stop_is_noop"])
+        self.assertTrue(release["sensor_deleted_by_shared_sdk_list"])
+        for rva, before, after in (("0x1bc170", "0xFFFFBFFF", "0xFFFFFFFF"),
+                ("0x1ba140", "+ 24LL", "+ 16LL"),
+                ("0x1b4500", "sub_1801BA140", "skip_command_restore"),
+                ("0x3b90", "j_j_free(v4)", "retain(v4)"),
+                ("0x13fcf0", "+ 112LL", "+ 120LL")):
+            with self.subTest(rva=rva), self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+                self.changed_native(rva, before, after)
+
+    def test_incomplete_capture_and_changed_exact_finding_are_rejected(self):
+        native = copy.deepcopy(self.native)
+        native["complete_selected_functions"][0]["input_chunks_verified"] = False
+        with self.assertRaisesRegex(ValueError, "complete native owner is absent"):
+            families._hanbo_amd_package_native_contract(native, self.raw)
+        upstream = self.result["upstream_sections"]
+        path = families.a.ROOT / upstream[0]["receipt"]
+        document = json.loads(path.read_bytes())
+        document["hanbo_cpu_monitor_chain"]["remaining_chains"][0]["gate"] = "assume AMD from product name"
+        with patch.object(Path, "read_bytes", return_value=json.dumps(document).encode()), \
+                self.assertRaisesRegex(ValueError, "upstream CPU observation or finding changed"):
+            families._hanbo_amd_package_dependencies()
+        document = json.loads(path.read_bytes())
+        document["unrelated_parallel_query"] = {"bounded_observation_complete": True}
+        with patch.object(Path, "read_bytes", return_value=json.dumps(document).encode()):
+            self.assertEqual(host._keypad_temporary_keymap_dependency_changes(upstream), [])
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_existing_consumer_zero_and_early_cache_do_not_become_observed_temperature(self):
+        source = self.result["source_contract"]
+        self.assertEqual(source["projection"]["cpu_temperature_field"], "Temperatures.Package.cur")
+        self.assertFalse(source["projection"]["zero_projection_is_confirmed_hardware_observation"])
+        self.assertTrue(source["updates_last_temperature_before_elsa_result"])
+        self.assertEqual(self.result["reused_shared_cpu_and_service"]["service_contract"]["sensor_kind"], 0x2000)
+        self.assertEqual(len(self.result["remaining_chains"]), 7)
+        self.assertTrue(any("existing K17 Rust" in row["required"] for row in self.result["remaining_chains"]))
+
+    def test_dispatch_scope_success_and_failure_publish_only_the_selected_section(self):
+        args = self.args()
+        with patch.object(families, "audit_hanbo_amd_package_chain", return_value="selected") as selected:
+            self.assertEqual(families.audit_family_function(args), "selected")
+        selected.assert_called_once_with(args)
+        for changes in (dict(family="audio"), dict(function="mw"), dict(product=[3900]),
+                dict(product=[3893, 3900]), dict(prepare=True)):
+            with self.subTest(changes=changes), patch.object(families, "collect_hanbo_amd_package_chain") as collect, \
+                    self.assertRaisesRegex(ValueError, "accessories/main PID3893 without preparation"):
+                families.audit_hanbo_amd_package_chain(self.args(**changes))
+            collect.assert_not_called()
+        with patch.object(families, "collect_hanbo_amd_package_chain", return_value={}), \
+                patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+            report = families.audit_hanbo_amd_package_chain(args)
+        self.assertEqual(publish.call_args.args[3], "hanbo_amd_package_chain")
+        self.assertTrue(report["bounded_observation_complete"])
+        self.assertFalse(report["source_chain_complete"])
+        for collection_failure in (True, False):
+            collect = {"side_effect": ValueError("AMD read changed")} if collection_failure else {"return_value": {}}
+            with self.subTest(collection_failure=collection_failure), \
+                    patch.object(families, "collect_hanbo_amd_package_chain", **collect), \
+                    patch.object(host.HostLocalAudit, "final_snapshot", return_value=[] if collection_failure else ["changed.dll"]), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"), \
+                    self.assertRaisesRegex(ValueError, "observation remains unresolved"):
+                families.audit_hanbo_amd_package_chain(args)
+            self.assertFalse(publish.call_args.args[0]["bounded_observation_complete"])
+            self.assertTrue(publish.call_args.args[0]["failures"])
+
+
+class HanboHidWriteCurrentChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        source_contract = families._hanbo_hid_write_current_source_contract
+        native_contract = families._hanbo_hid_write_current_native_contract
+
+        def source(owners):
+            cls.owners = owners
+            return source_contract(owners)
+
+        def native(module):
+            cls.native = module
+            return native_contract(module)
+
+        with patch.object(families, "_hanbo_hid_write_current_source_contract", side_effect=source), \
+                patch.object(families, "_hanbo_hid_write_current_native_contract", side_effect=native):
+            cls.result = families.collect_hanbo_hid_write_current_chain(cls.audit)
+
+    def changed_source(self, role, before, after):
+        owners = copy.deepcopy(self.owners)
+        self.assertIn(before, owners[role]["body"])
+        owners[role]["body"] = owners[role]["body"].replace(before, after, 1)
+        return families._hanbo_hid_write_current_source_contract(owners)
+
+    def changed_native(self, rva, before, after, *, instruction=False):
+        module = copy.deepcopy(self.native)
+        row, = [row for row in module["complete_selected_functions"] if row["capture"]["rva"] == rva]
+        lines = row["capture"]["assembly"] if instruction else row["capture"]["pseudocode"]["lines"]
+        field = "bytes" if instruction else "text"
+        line = next(line for line in lines if before in line[field])
+        line[field] = line[field].replace(before, after, 1)
+        return families._hanbo_hid_write_current_native_contract(module)
+
+    def args(self, **changes):
+        import argparse
+        values = dict(family="accessories", function="main", product=[3893], prepare=False,
+            query="hanbo-hid-write-current-chain")
+        values.update(changes)
+        return argparse.Namespace(**values)
+
+    def test_current_package_inputs_and_native_capture_do_not_promote_acceptance(self):
+        result = self.result
+        self.assertEqual(result["host_release"]["version"], "4.0.896")
+        self.assertEqual(result["host_release"]["node_rz_hid_version"], "0.0.31")
+        self.assertTrue(result["host_release"]["addon_alias_bytes_equal"])
+        self.assertFalse(result["host_release"]["actual_loaded_addon_observed"])
+        self.assertEqual(result["native"]["input"]["sha256"],
+            "5f185c3c865fb37a8cfb85d52a61704555543d70ea954bead84bbadda66fcfac")
+        self.assertEqual((result["native"]["functions_total"], result["native"]["functions_captured"]), (1641, 1641))
+        self.assertEqual(len(result["native"]["functions"]), 7)
+        self.assertTrue(all(row["input_chunks_verified"] for row in result["native"]["functions"]))
+        self.assertEqual(result["native"]["failures"][0]["stage"], "30888:hexrays")
+        for field in ("source_chain_complete", "whole_product_complete", "target_execution", "real_device_operations"):
+            self.assertFalse(result[field])
+        self.assertEqual(result["actual_dll_comparison"], "unverified")
+        self.assertEqual(result["native_contract"]["actual_66_byte_write_acceptance"], "unverified")
+
+    def test_actual_ipc_and_prototype_binding_cannot_be_replaced_by_same_named_routes(self):
+        for role, before, after in (("mw_bridge", "r.doRzDeviceAction(e)", "r.doDLLAction(e)"),
+                ("mw_api", "window.top", "window.other"),
+                ("preload_invoke", 'e.invoke("rzDeviceAction",t)', 'e.invoke("ffiPreload",t)'),
+                ("main_dispatch", "Rn.handleAction(e,o)", "Other.handleAction(e,o)"),
+                ("node_constructor", "binding.HID.prototype[i].bind(this._raw)", "binding.HID.prototype[i]")):
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "complete source boundary changed"):
+                self.changed_source(role, before, after)
+
+    def test_66_byte_payload_and_exact_65_count_are_separate_from_response_success(self):
+        source = self.result["source_contract"]
+        self.assertEqual((source["report_length"], source["prefixed_write_length"], source["accepted_write_count"]),
+            (65, 66, 65))
+        self.assertFalse(source["host_truncates_write"])
+        self.assertTrue(source["success_requires_64_byte_matching_response_header"])
+        for role, before, after in (("elsa_constructor", "this.reportLength=65", "this.reportLength=64"),
+                ("elsa__sendCommand", "t===this.reportLength", "t===f.dataSend.length"),
+                ("host_handleAction", "const t=[...a.payload.dataSend]", "const t=[...a.payload.dataSend].slice(0,65)")):
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "boundary changed"):
+                self.changed_source(role, before, after)
+
+    def test_response_uses_readtimeout_and_matching_header_without_payload_report_length(self):
+        source = self.result["source_contract"]
+        self.assertEqual((source["host_read_attempts"], source["host_read_timeout_ms"], source["response_length"]), (5, 10, 64))
+        self.assertFalse(source["host_uses_payload_report_length_for_read"])
+        self.assertTrue(source["get_input_report_is_separate_branch"])
+        for role, before, after in (("host_hidRead", "e.readTimeout(10)", "e.getInputReport(0,65)"),
+                ("elsa__getHIDInputReportResult", "return c&&64===c.length?", "return c&&65===c.length?"),
+                ("elsa__getHIDInputReportResult", "c[0]!==e||c[1]!==t", "c[0]!==e&&c[1]!==t")):
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "boundary changed"):
+                self.changed_source(role, before, after)
+
+    def test_retry_and_catch_consumers_preserve_failure_instead_of_synthetic_success(self):
+        source = self.result["source_contract"]
+        self.assertTrue(source["response_failure_can_retry_write"])
+        self.assertTrue(source["caught_send_exception_exits_out_retry_loop"])
+        self.assertEqual(source["host_write_exception_result"], "undefined")
+        self.assertEqual(source["host_read_exception_result"], "empty_array")
+        for before, after in (("e<this.maxRetryOut", "e<1"),
+                ("f.status===r.STATUS_SUCCESS)break", "f.status===r.STATUS_FAIL)break"),
+                ("catch(e){f.status=r.STATUS_FAIL", "catch(e){f.status=r.STATUS_SUCCESS")):
+            with self.subTest(before=before), self.assertRaisesRegex(ValueError, "boundary changed"):
+                self.changed_source("elsa__sendCommand", before, after)
+
+    def test_native_padding_and_actual_count_number_encoding_are_bound_to_original_code(self):
+        native = self.result["native_contract"]
+        self.assertTrue(native["pads_only_when_shorter_than_output_caps"])
+        self.assertFalse(native["truncates_oversized_buffer"])
+        self.assertTrue(native["native_count_encoded_as_js_number"])
+        self.assertEqual(native["overlapped_write_wait_ms"], 1000)
+        self.assertTrue(native["synchronous_write_success_retains_initial_negative_result"])
+        for rva, before, after in (("0x175e0", "if ( a3 < v4 )", "if ( a3 != v4 )"),
+                ("0x175e0", "v7 = NumberOfBytesTransferred", "v7 = v5"),
+                ("0xa110", "Cannot write to closed device", "write success")):
+            with self.subTest(rva=rva), self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+                self.changed_native(rva, before, after)
+        with self.assertRaisesRegex(ValueError, "return-count instructions changed"):
+            self.changed_native("0xa110", "660f6ec8", "660f6ec9", instruction=True)
+
+    def test_read_report_id_pending_io_and_close_do_not_establish_drain_or_cancellation(self):
+        native = self.result["native_contract"]
+        self.assertTrue(native["read_strips_report_id_only_if_zero"])
+        self.assertTrue(native["read_timeout_keeps_pending_read_for_next_call"])
+        self.assertFalse(native["write_wait_failure_cancels_pending_io"])
+        self.assertFalse(native["close_waits_for_complete_pending_io_or_callback_drain"])
+        self.assertFalse(self.result["source_contract"]["navigator_lock_has_selected_abort_signal"])
+        for rva, before, after in (("0x17800", "if ( !*(_BYTE *)*v10 )", "if ( *(_BYTE *)*v10 )"),
+                ("0x17800", "*(_DWORD *)(a1 + 36) = 1", "*(_DWORD *)(a1 + 36) = 0"),
+                ("0x6170", "CancelIo(*v1)", "CancelIo(0)"),
+                ("0x6170", "*(_QWORD *)(a1 + 40) = 0", "*(_QWORD *)(a1 + 40) = 1")):
+            with self.subTest(rva=rva), self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+                self.changed_native(rva, before, after)
+
+    def test_retained_conclusion_is_reused_for_the_four_unchanged_complete_owners(self):
+        comparisons = self.result["retained_owner_comparisons"]
+        self.assertEqual({row["role"] for row in comparisons},
+            {"elsa_constructor", "elsa__sendCommand", "elsa__getHIDInputReportResult", "host_hidRead"})
+        self.assertTrue(all(row["complete_body_equal"] for row in comparisons))
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_dispatch_calls_the_current_hanbo_entry_only(self):
+        args = self.args()
+        with patch.object(families, "audit_hanbo_hid_write_current_chain", return_value="selected") as selected, \
+                patch.object(families, "audit_hanbo_local_runtime") as legacy:
+            self.assertEqual(families.audit_family_function(args), "selected")
+        selected.assert_called_once_with(args)
+        legacy.assert_not_called()
+
+    def test_upstream_section_recheck_detects_changes_without_freezing_other_sections(self):
+        upstream = self.result["upstream_sections"]
+        destination = families.a.ROOT / upstream[0]["receipt"]
+        original = json.loads(destination.read_bytes())
+        changed = copy.deepcopy(original)
+        changed["queries"]["hanbo-local-runtime"]["inputs_unchanged"] = False
+        with patch.object(Path, "read_bytes", return_value=json.dumps(changed).encode()):
+            self.assertEqual(families._hanbo_hid_write_current_upstream_changes(upstream),
+                [upstream[0]["receipt"] + "#" + upstream[0]["pointer"]])
+        original["unrelated_current_batch_section"] = {"bounded_observation_complete": True}
+        with patch.object(Path, "read_bytes", return_value=json.dumps(original).encode()):
+            self.assertEqual(families._hanbo_hid_write_current_upstream_changes(upstream), [])
+
+    def test_wrong_family_function_product_and_prepare_are_rejected_before_collection(self):
+        for changes in (dict(family="audio"), dict(function="mw"), dict(product=[3900]),
+                dict(product=[3893, 3900]), dict(prepare=True)):
+            with self.subTest(changes=changes), \
+                    patch.object(families, "collect_hanbo_hid_write_current_chain") as collect, \
+                    self.assertRaisesRegex(ValueError, "accessories/main PID3893 without preparation"):
+                families.audit_hanbo_hid_write_current_chain(self.args(**changes))
+            collect.assert_not_called()
+
+    def test_success_publishes_only_the_selected_section_and_preserves_unverified_states(self):
+        with patch.object(families, "collect_hanbo_hid_write_current_chain", return_value={"failures": []}) as collect, \
+                patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+            report = families.audit_hanbo_hid_write_current_chain(self.args())
+        collect.assert_called_once()
+        self.assertIs(publish.call_args.args[0], report)
+        self.assertEqual(publish.call_args.args[1], families.a.ROOT / ".analysis/results/frontend/accessories-main-audit.json")
+        self.assertEqual(publish.call_args.args[3], "hanbo_hid_write_current_chain")
+        self.assertTrue(report["bounded_observation_complete"])
+        self.assertTrue(report["snapshot_stable"])
+        self.assertFalse(report["source_chain_complete"])
+        self.assertFalse(report["target_execution"])
+        self.assertEqual(report["runtime_acceptance"], "unverified")
+
+    def test_failed_collection_or_changed_snapshot_publishes_facts_before_raising(self):
+        for mode in ("exception", "returned_failure", "changed", "upstream_changed"):
+            configured = ({"side_effect": ValueError("unresolved HID owner")} if mode == "exception" else {
+                "return_value": {"failures": ["unresolved HID owner"] if mode == "returned_failure" else []}})
+            with self.subTest(mode=mode), \
+                    patch.object(families, "collect_hanbo_hid_write_current_chain", **configured), \
+                    patch.object(host.HostLocalAudit, "final_snapshot", return_value=["HID-owner"] if mode == "changed" else []), \
+                    patch.object(families, "_hanbo_hid_write_current_upstream_changes",
+                        return_value=["upstream-HID-owner"] if mode == "upstream_changed" else []), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"), \
+                    self.assertRaisesRegex(ValueError, "Hanbo current HID observation remains unresolved"):
+                families.audit_hanbo_hid_write_current_chain(self.args())
+            report = publish.call_args.args[0]
+            self.assertEqual(publish.call_args.args[3], "hanbo_hid_write_current_chain")
+            self.assertFalse(report["bounded_observation_complete"])
+            self.assertFalse(report["source_chain_complete"])
+            self.assertFalse(report["target_execution"])
+            self.assertEqual(report["snapshot_stable"], mode not in ("changed", "upstream_changed"))
+            self.assertIn("HID-owner" if mode in ("changed", "upstream_changed") else "unresolved HID owner", report["failures"][0])
+
+
 class HanboRuntimeFlagTests(unittest.TestCase):
     def setUp(self):
         self.parser = host.HostLocalAudit().parser
@@ -5618,6 +11401,121 @@ class DriverInstallSelectionTests(unittest.TestCase):
             families.audit_family_function(args)
 
 
+class CommonDriverLegacyNotificationTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_common_driver_legacy_notification(cls.audit)
+        cls.raw = cls.audit.read(cls.report["native"]["input"])
+        cls.native = families.verify_native_functions(cls.report["native"]["input"],
+            families.common_driver_legacy_notification_roles())
+
+    def proof(self, native=None, raw=None):
+        return families._common_driver_legacy_notification_proof(
+            self.raw if raw is None else raw, self.native if native is None else native)
+
+    def test_selected_legacy_chain_keeps_installation_and_runtime_stages_separate(self):
+        report = self.report
+        self.assertEqual(json.loads(json.dumps(report, ensure_ascii=False, allow_nan=False)), report)
+        self.assertEqual(report["kind"], "current_common_driver_legacy_notification")
+        self.assertTrue(report["selected_static_semantics_reviewed"])
+        self.assertEqual(report["verified_contract"]["complete_functions"], 33)
+        self.assertEqual(report["verified_contract"]["instructions"], 2454)
+        self.assertEqual(report["official_install_filename"], "RzCommon.sys")
+        self.assertEqual(report["retained_original_alias"], "RzCommon_1.sys")
+        for name in ("source_chain_complete", "whole_product_complete", "installed_branch_observed",
+                     "target_execution", "real_device_operations", "product_code_modified"):
+            self.assertFalse(report[name])
+        for name in ("ui_backend_wiring", "actual_dll_comparison", "runtime_acceptance"):
+            self.assertEqual(report[name], "unverified")
+        self.assertEqual((report["new_native_captures"], report["new_analysis_sessions"]), (0, 0))
+        self.assertEqual(report["temporary_files_created"], [])
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_native_capture_preserves_inline_storage_and_actual_cleanup_arguments(self):
+        contract = self.proof()
+        self.assertEqual(contract["wdf_binding_version"], [1, 9, 7600])
+        self.assertEqual(contract["wdf_function_count"], 396)
+        self.assertEqual(contract["file_context_bytes"], 0x4c040)
+        self.assertEqual(contract["ring_storage"], "inline_file_context")
+        self.assertEqual(contract["ring_buffer_offset"] + 1024 * contract["frame_bytes"],
+                         contract["ring_write_index_offset"])
+        self.assertEqual(contract["ring_read_index_offset"], 311344)
+        self.assertFalse(contract["forward_status_checked"])
+        self.assertTrue(contract["forward_failure_still_returns_pending"])
+        self.assertTrue(contract["copy_failure_consumes_ring_frame"])
+        self.assertFalse(contract["output_memory_failure_consumes_ring_frame"])
+        self.assertTrue(contract["file_cleanup_removes_exact_file_object"])
+        self.assertFalse(contract["full_pending_callback_drain_proven"])
+        self.assertEqual([(row["role"], row["table_index"]) for row in contract["actual_wdf_calls"]],
+                         [("forward_to_queue", 281), ("retrieve_next_request", 158),
+                          ("retrieve_output_memory", 268), ("copy_from_buffer", 197),
+                          ("complete_with_information", 265), ("remove_exact_collection_item", 16)])
+
+    def test_universal_or_wrong_legacy_identity_cannot_substitute_for_selected_sys(self):
+        for key, value in (("sha256", "64b72ef9ce409bb17d31096c119b68c4a6a02ab35b7535d763157a4e1a587e59"),
+                           ("bytes", 64880)):
+            native = copy.deepcopy(self.native)
+            native["input"][key] = value
+            with self.subTest(key=key), self.assertRaisesRegex(ValueError, "original or complete capture differs"):
+                self.proof(native)
+        raw = bytearray(self.raw)
+        raw[-1] ^= 1
+        with self.assertRaisesRegex(ValueError, "original or complete capture differs"):
+            self.proof(raw=bytes(raw))
+
+    def test_failed_or_missing_selected_capture_cannot_be_promoted(self):
+        for kind in ("capture_failure", "incomplete", "selected_failure", "selected_missing", "role"):
+            native = copy.deepcopy(self.native)
+            if kind == "capture_failure":
+                native["failures"] = [{"operation": "pseudocode", "error": "unresolved"}]
+            elif kind == "incomplete":
+                native["capture_complete"] = False
+            elif kind == "selected_failure":
+                native["complete_selected_functions"][0]["failures"] = 1
+            elif kind == "selected_missing":
+                native["complete_selected_functions"].pop()
+            else:
+                native["complete_selected_functions"][0]["role"] = "universal_sibling"
+            with self.subTest(kind=kind), self.assertRaisesRegex(ValueError, "capture differs|selected owners differ"):
+                self.proof(native)
+
+    def test_changed_notification_filter_completion_or_release_semantics_are_rejected(self):
+        for rva in (0x32a8, 0x3514, 0x6194, 0x4de8, 0x5090, 0x4d80, 0x219c):
+            native = copy.deepcopy(self.native)
+            row = next(row for row in native["complete_selected_functions"] if int(row["capture"]["rva"], 16) == rva)
+            row["capture"]["pseudocode"]["lines"][-1]["text"] += " changed"
+            with self.subTest(rva=rva), self.assertRaisesRegex(ValueError, "complete semantic owner differs"):
+                self.proof(native)
+
+    def test_changed_native_cleanup_argument_instruction_is_rejected_against_pe(self):
+        native = copy.deepcopy(self.native)
+        row = next(row for row in native["complete_selected_functions"] if row["capture"]["rva"] == "0x4d80")
+        instruction = next(row for row in row["capture"]["assembly"] if row["rva"] == "0x4d86")
+        instruction["bytes"] = "488b5110"
+        with self.assertRaisesRegex(ValueError, "instruction differs from PE"):
+            self.proof(native)
+
+    def test_missing_actual_provider_to_notification_or_release_edge_is_rejected(self):
+        for owner, target in ((0x4c1c, 0x32a8), (0x4c7c, 0x3514), (0x4d80, 0x53c0), (0x219c, 0x5414)):
+            native = copy.deepcopy(self.native)
+            row = next(row for row in native["complete_selected_functions"] if int(row["capture"]["rva"], 16) == owner)
+            for instruction in row["capture"]["assembly"]:
+                instruction["xrefs_from"] = [ref for ref in instruction.get("xrefs_from", [])
+                                             if int(ref["to"], 16) != 0x140000000 + target]
+            with self.subTest(owner=owner, target=target), self.assertRaisesRegex(ValueError, "actual call differs"):
+                self.proof(native)
+
+    def test_wrong_wdf_queue_or_collection_slot_is_rejected(self):
+        for rva in (0x4dfc, 0x5119, 0x51a7, 0x53ef):
+            native = copy.deepcopy(self.native)
+            instruction = next(row for function in native["complete_selected_functions"]
+                               for row in function["capture"]["assembly"] if int(row["rva"], 16) == rva)
+            instruction["xrefs_from"] = []
+            with self.subTest(rva=rva), self.assertRaisesRegex(ValueError, "actual WDF slot differs"):
+                self.proof(native)
+
+
 class CommonDriverInstallSelectionTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -5804,6 +11702,3730 @@ class CommonDriverInstallSelectionTests(unittest.TestCase):
                 row["xrefs_from"] = [xref for xref in row.get("xrefs_from", []) if xref["to"] != address]
             with self.subTest(label=label), self.assertRaisesRegex(ValueError, "actual owner edge differs"):
                 self.proof(bodies)
+
+
+class Audio1446MuteMappingChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        if not (analysis.ROOT / ".analysis/results/frontend/audio-mw-audit.json").is_file():
+            raise unittest.SkipTest("Retained current audio source boundary is unavailable")
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_audio_1446_mute_mapping_chain(cls.audit)
+        cls.owners = {role: cls.audit.owners[key] for role, key in cls.report["roles"].items()}
+
+    def test_current_inputs_and_full_ast_owners_reuse_exact_preceding_boundary(self):
+        selected = {row["side"]: row for row in self.report["source_selections"]}
+        self.assertEqual(selected["mw"]["name"], "audio-mw-1446-current-refresh-ec3db4b29c5a-2")
+        self.assertEqual(selected["ui"]["name"], "audio-1446-current-refresh-ec3db4b29c5a")
+        self.assertEqual(selected["mw"]["acquisition"]["sha256"], "5f2a503ad42acc5143ea8025a655cb3f305f9c6bd5be5929a0ba85d8e9973cd4")
+        self.assertEqual(selected["ui"]["acquisition"]["sha256"], "24d97712a2060b721e7310337c05046f503aa794b67a9fee3c8edd2d287f279f")
+        self.assertEqual(len(self.report["roles"]), 167)
+        self.assertEqual(self.report["upstream_sections"][0]["resume_pointer"], "/multi_function_1446_chain/unresolved_chains/2")
+        for owner in self.audit.owners.values():
+            host.verify_profiles_owner(self.audit, owner)
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_menu_preserves_other_mapping_rows_and_uses_actual_customize_consumer(self):
+        ui = self.report["source_contract"]["ui"]
+        self.assertEqual(ui["editable_inputs"], ["MUTE_BUTTON_DOUBLE_TAP", "MUTE_BUTTON_TRIPLE_TAP"])
+        self.assertEqual(ui["quick_effect_ids_in_order"], [12, 2, 8, 3, 7, 1, 4, 13])
+        self.assertFalse(ui["menu_multimedia_output"])
+        self.assertFalse(ui["single_and_long_tap_editable"])
+        self.assertIn("structuredClone(s)", self.owners["ui_switch"]["body"])
+        self.assertIn("delete r[r.outputType]", self.owners["ui_switch"]["body"])
+        self.assertIn("i[a]=r,this.props.setMuteButtonMapping(i)", self.owners["ui_switch"]["body"])
+        self.assertIn("mappingList:e.customizeReducer.mappingList", self.owners["ui_connected_switch"]["body"])
+        self.assertIn("case R.stD:return{...e,mappingList:t.payload}", self.owners["ui_customize_reducer"]["body"])
+        self.assertIn("if(0===d.length||-1===I||I>d.length-1)return null", self.owners["ui_dropdown_class"]["body"])
+        self.assertEqual(ui["unknown_assignment_index"], -1)
+        self.assertFalse(ui["generic_completion_updates_mapping_display"])
+
+    def test_edit_execute_validates_only_and_never_writes_tap_mapping(self):
+        task = self.report["source_contract"]["edit_task"]
+        self.assertEqual(task["event_attributes"], {"Storage_Profile": 2, "Storage_Mask": 3})
+        self.assertFalse(task["init_from_device"])
+        self.assertIn('featureKey:"muteButtonMappings",featureConfig:{initFromDevice:!1}', self.owners["bootstrap"]["body"])
+        self.assertIn("return void 0!==e&&void 0!==e.mappingList||", self.owners["feature_event"]["body"])
+        self.assertIn("return i.mappings=a,n", self.owners["feature_event"]["body"])
+        self.assertFalse(task["device_mapping_write"])
+        self.assertFalse(task["setter_or_getter"])
+        self.assertFalse(task["runtime_or_restore_reads_mapping_from_device"])
+        self.assertTrue(task["false_return_still_completed"])
+        self.assertIn('a.value.status="completed"', self.owners["generic_manager"]["body"])
+        self.assertIn('on:{actions:[{type:"dispatchAllowAction",payload:{feature:i,lockHeld:!1,actions:[{type:"updateLocalStorage"},{type:"deviceAccess"}]}}]}', self.owners["generic_registration"]["body"])
+        self.assertIn('},p.on),states:', self.owners["state_machine"]["body"])
+        self.assertFalse(task["generated_guard_action_is_transition_target"])
+        self.assertIn('mode:n.exclusive', self.owners["event_queue"]["body"])
+
+    def test_actual_tap_parser_registration_selector_and_menu_outputs(self):
+        tap = self.report["source_contract"]["tap"]
+        self.assertEqual((tap["record_id"], tap["event_id"]), (5, 67))
+        self.assertEqual(tap["modes"], {"0": "MUTE_BUTTON_TAP", "1": "MUTE_BUTTON_DOUBLE_TAP", "2": "MUTE_BUTTON_TRIPLE_TAP", "3": "MUTE_BUTTON_LONG_TAP"})
+        self.assertIn('case M.Ym.CHROMA_BUTTON_TAP:yield(0,s.qpD)(e.data.eventValue)', self.owners["tap_dispatch"]["body"])
+        self.assertEqual(self.report["roles"]["tap_consumer"], self.report["roles"]["tap_call_target"])
+        self.assertIn('tapMode:e[2]', self.owners["hardware_parser_parseNotificationEvents"]["body"])
+        self.assertIn('functionNumber:e[3]', self.owners["hardware_parser_parseNotificationEvents"]["body"])
+        self.assertIn('this.deviceMap.get(e.containerId)', self.owners["hardware_manager"]["body"])
+        self.assertIn('rzHardwareEventsProtocol25Parser', self.owners["hardware_manager"]["body"])
+        self.assertIn('default:return', self.owners["tap_consumer"]["body"])
+        self.assertIn('e[(t+1)%e.length]', self.owners["tap_consumer"]["body"])
+        self.assertIn('o=n||l.U2A[i]', self.owners["tap_consumer"]["body"])
+        self.assertIn('p.wI.MW_ACTION_FROM_DEVICE', self.owners["tap_consumer"]["body"])
+        self.assertFalse(tap["multi_function_gate_in_callback"])
+        self.assertEqual(self.owners["brightness_validator"]["body"], 'n=e=>!!e&&"isEnabled"in e')
+
+    def test_brightness_real_command_and_swallowed_failure_cannot_be_device_confirmation(self):
+        b = self.report["source_contract"]["brightness"]
+        self.assertEqual(b["command"], [3, 15, 4])
+        self.assertEqual(b["payload"], [1, 0, "floor(min(value,100)/100*255)"])
+        self.assertIn('this.newChroma_setChromaBrightness(1,0,t)', self.owners["device_set_brightness"]["body"])
+        self.assertIn('a[0]=t,a[1]=i,r>=100&&(r=100),a[2]=Math.floor(r/100*255)', self.owners["brightness_command"]["body"])
+        self.assertIn('new Uint8Array([3,15,4])', self.owners["brightness_header"]["body"])
+        self.assertIn('catch(e){console.log(e)}return s', self.owners["set_brightness"]["body"])
+        self.assertFalse(b["runner_checks_setter_status"])
+        self.assertFalse(b["completion_is_device_ack"])
+        self.assertFalse(b["getter_readback"])
+        self.assertFalse(self.report["source_contract"]["quick_effect"]["direct_selected_product_effect_command_in_maker"])
+        self.assertEqual(self.report["source_contract"]["quick_effect"]["effect_ids_without_U2A_defaults"], [3, 8])
+        self.assertFalse(self.report["source_chain_complete"])
+        self.assertEqual(self.report["official_dll_comparison"], "unverified")
+
+    def test_lifetime_and_reused_hid_preserve_actual_remaining_boundaries(self):
+        self.assertIn('ga.off("hardwareevent",Ts),Ts=null', self.owners["hardware_cleanup"]["body"])
+        self.assertIn('yield ga.unregisterDevice', self.owners["hardware_cleanup"]["body"])
+        self.assertIn('window.removeEventListener("blur",this.onWindowBlur)', self.owners["ui_dropdown_class"]["body"])
+        self.assertFalse(self.report["source_contract"]["lifetime"]["mapping_feature_timer_listener_shutdown"])
+        self.assertEqual(self.report["shared_transport_dependency"]["reused_native_functions"], 17)
+        self.assertEqual(self.report["product_transport_contract"]["report_id"], 7)
+        self.assertEqual(self.report["product_transport_contract"]["report_length"], 65)
+        self.assertFalse(self.report["shared_transport_dependency"]["product_framing_reused"])
+        self.assertEqual(self.report["new_native_captures"], 0)
+        self.assertEqual(self.report["temporary_artifacts_created"], [])
+        self.assertEqual(self.report["analysis_sessions_created"], [])
+        self.assertFalse(self.report["target_execution"])
+
+    def test_mutated_semantics_missing_or_changed_original_owner_requires_review(self):
+        for role, old, new in (("feature_event", "return i.mappings=a,n", "return i.mappings=n,a"),
+                ("tap_consumer", "e[(t+1)%e.length]", "e[(t+2)%e.length]"),
+                ("brightness_command", "a[0]=t,a[1]=i", "a[0]=i,a[1]=t"),
+                ("ui_connected_switch", "e.customizeReducer.mappingList", "e.broadcasterReducer.mappingList")):
+            owners = copy.deepcopy(self.owners)
+            owner = owners[role]
+            self.assertIn(old, owner["body"])
+            owner["body"] = owner["body"].replace(old, new, 1)
+            owner["body_sha256"] = hashlib.sha256(owner["body"].encode()).hexdigest()
+            owner["byte_end"] = owner["byte_start"] + len(owner["body"].encode())
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "source selection requires review"):
+                families._audio_1446_mute_mapping_source_contract(owners)
+        for mode in ("missing", "original", "body"):
+            owners = copy.deepcopy(self.owners)
+            if mode == "missing":
+                del owners["tap_dispatch"]
+            elif mode == "original":
+                owners["feature"]["original"]["sha256"] = "0" * 64
+            else:
+                owners["feature_event"]["body"] += " "
+            with self.subTest(mode=mode), self.assertRaisesRegex(ValueError, "requires review|owner identity differs"):
+                families._audio_1446_mute_mapping_source_contract(owners)
+
+    def test_exact_dependency_changes_block_collection_but_unrelated_sections_do_not(self):
+        path = analysis.ROOT / ".analysis/results/frontend/audio-mw-audit.json"
+        read = Path.read_bytes
+        for changed in (False, True):
+            document = json.loads(read(path))
+            document["unrelated_chain"] = {"new": True}
+            if changed:
+                document["multi_function_1446_chain"]["source_contract"]["profile_id"] = 2
+            raw = json.dumps(document).encode()
+            def substituted(source):
+                return raw if source == path else read(source)
+            with self.subTest(changed=changed), patch.object(Path, "read_bytes", substituted):
+                changes = host._keypad_temporary_keymap_dependency_changes(self.report["upstream_sections"])
+                self.assertEqual(bool(changes), changed)
+                if changed:
+                    with patch.object(families, "_audio_1446_mute_mapping_sources") as source, \
+                            self.assertRaisesRegex(ValueError, "upstream source boundary requires review"):
+                        families.collect_audio_1446_mute_mapping_chain(host.HostLocalAudit())
+                    source.assert_not_called()
+
+    def test_cli_scope_and_publication_preserve_snapshot_and_dependency_failures(self):
+        import argparse
+        parser = argparse.ArgumentParser()
+        families.add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["audit-family-function", "--family", "audio", "--function", "mw",
+            "--query", "audio-1446-mute-mapping-chain", "--product", "1446"])
+        with patch.object(families, "audit_audio_1446_mute_mapping_chain") as chosen:
+            families.audit_family_function(args)
+        chosen.assert_called_once_with(args)
+        for family, function, product, prepare in (("accessories", "mw", [1446], False),
+                ("audio", "ui", [1446], False), ("audio", "mw", [1422], False),
+                ("audio", "mw", [1446, 1422], False), ("audio", "mw", [1446], True)):
+            with self.subTest(family=family, function=function, product=product, prepare=prepare), \
+                    patch.object(families, "collect_audio_1446_mute_mapping_chain") as collect, \
+                    self.assertRaisesRegex(ValueError, "requires only PID1446"):
+                families.audit_audio_1446_mute_mapping_chain(argparse.Namespace(family=family, function=function,
+                    product=product, prepare=prepare))
+            collect.assert_not_called()
+        for mode in ("success", "exception", "snapshot", "dependency"):
+            result = {"failures": [], "upstream_sections": self.report["upstream_sections"]}
+            configured = {"side_effect": ValueError("missing actual tap consumer")} if mode == "exception" else {"return_value": result}
+            with self.subTest(mode=mode), patch.object(families, "collect_audio_1446_mute_mapping_chain", **configured), \
+                    patch.object(host.HostLocalAudit, "final_snapshot", return_value=["changed-source"] if mode == "snapshot" else []), \
+                    patch.object(host, "_keypad_temporary_keymap_dependency_changes", return_value=["changed-pointer"] if mode == "dependency" else []), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+                args = argparse.Namespace(family="audio", function="mw", product=[1446], prepare=False)
+                if mode == "success":
+                    families.audit_audio_1446_mute_mapping_chain(args)
+                else:
+                    with self.assertRaisesRegex(ValueError, "observation remains unresolved"):
+                        families.audit_audio_1446_mute_mapping_chain(args)
+            report, destination, _, section = publish.call_args.args
+            self.assertEqual(section, "mute_mapping_1446_chain")
+            self.assertEqual(destination, analysis.ROOT / ".analysis/results/frontend/audio-mw-audit.json")
+            self.assertEqual(report["bounded_observation_complete"], mode == "success")
+            self.assertEqual(report["snapshot_stable"], mode not in {"snapshot", "dependency"})
+            self.assertFalse(report["source_chain_complete"])
+            self.assertFalse(report["target_execution"])
+
+
+class QuickEffectBinding1446ChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_quick_effect_binding_1446_chain(cls.audit)
+        cls.effects = {row["ui_id"]: row for row in cls.report["source_contract"]["effects"]}
+        cls.owners = {role: cls.audit.owners[key] for role, key in cls.report["roles"].items()}
+        for row in cls.report["reused_source_owners"]:
+            cls.owners[row["role"]] = {**row, "body": cls.audit.read(row["original"])[row["byte_start"]:row["byte_end"]].decode()}
+        cls.native = copy.deepcopy(cls.report["native"])
+        for row in cls.native["complete_selected_functions"]:
+            row["capture"] = json.loads((analysis.ROOT / row["artifact"]["path"]).read_bytes())
+
+    def test_actual_menu_ids_bind_exact_factory_classes_and_shared_algorithms(self):
+        contract = self.report["source_contract"]
+        self.assertEqual(contract["menu_ids"], [12, 2, 8, 3, 7, 1, 4, 13])
+        self.assertEqual(contract["native_ids"], [12, 5, 8, 4, 7, 6, 2, 13])
+        bindings = self.report["native_contract"]["bindings"]
+        self.assertEqual([row["native_id"] for row in bindings], contract["native_ids"])
+        self.assertEqual([row["constructor"] for row in bindings],
+            ["0x5ef00", "0x650f0", "0x62420", "0x61dc0", "0x601a0", "0x68c00", "0x659b0", "0x66a80"])
+        self.assertEqual(len(self.report["native"]["complete_selected_functions"]), 29)
+        self.assertEqual(len(self.report["native"]["verified_indirect_slots"]), 17)
+        self.assertEqual(self.report["resolves_upstream_pointer"], "/quick_output_1446_chain/unresolved_chains/0")
+        self.assertTrue(all(not row["numeric_algorithm_rederived"] for row in bindings))
+
+    def test_broadcaster_wave_does_not_use_gamepad_mouse_speed_or_split(self):
+        wave = self.effects[4]
+        self.assertEqual(self.report["lighting_manifest"]["category"], "BROADCASTER")
+        self.assertEqual(wave["converter_fields"], ["direction"])
+        self.assertFalse(wave["gamepad_or_mouse_branch"])
+        self.assertEqual(wave["angle"], {"left": 270, "right": 90})
+        self.assertEqual(wave["facade"], {"Mode": 0, "Duration": 0, "Width": 100, "Speed": 25, "Pause": 0, "Cycles": -1})
+        self.assertIn('l={direction:1===t.direction?"left":"right"}', self.owners["convertUItoLighting"]["body"])
+        self.assertFalse(self.report["native_contract"]["wave_duration_field_read"])
+
+    def test_audio_uses_fixed_palette_and_keeps_packed_flow_float_boost(self):
+        audio = self.effects[12]
+        self.assertFalse(audio["color1_consumed"])
+        self.assertEqual(audio["converter_fields"], ["boost=colorBoost", "flow??0"])
+        self.assertEqual(audio["stops"], [[0, 65280], [50, 16776960], [100, 16711680]])
+        self.assertEqual(audio["facade"]["Decay"], 1000)
+        layout = self.report["native_contract"]["field_layouts"]["12"]
+        self.assertEqual(layout, {"Decay:i32": 84, "Style:zero": 88, "AutoBoost:i32": 92, "Flow:low_u16": 96, "BoostLevel:f32": 98})
+        self.assertEqual([row["bytes"] for row in self.report["native_contract"]["audio_packed_instruction_proofs"]],
+            ["f20f5ac0", "f30f114536", "66894534"])
+        self.assertFalse(self.report["native_contract"]["audio_supplied_mode_or_auto_read"])
+
+    def test_breathing_starlight_random_and_dual_branches_preserve_durations(self):
+        breathing, star = self.effects[2], self.effects[7]
+        self.assertEqual((breathing["single"]["duration"], breathing["dual"]["duration"]), (7000, 14000))
+        self.assertEqual(breathing["random"], {"stops": [], "mode": 1, "duration": 7000})
+        self.assertFalse(breathing["gamepad_duration_conversion"])
+        self.assertEqual(star["duration_by_setting"], {"1": 500, "2": 1700, "3": 2000, "default": 1700})
+        self.assertEqual(star["facade"], {"MaxStar": 20, "Regen": 10, "Cycles": 1, "Pause": 0})
+        self.assertIn('case"undefined"!==typeof i&&i!==a.FU:', self.owners["quick_parameters"]["body"])
+        self.assertIn('case i>0:', self.owners["quick_parameters"]["body"])
+        self.assertEqual(self.report["source_contract"]["settings_without_declared_defaults"], [3, 8])
+        self.assertEqual(self.effects[3]["facade"]["Duration"], 37740)
+        self.assertEqual(self.effects[8]["facade"], {"Mode": 0, "Rate": 160, "Seed": 100, "Cycles": -1})
+
+    def test_wheel_uses_numeric_direction_coercion_and_actual_engine_geometry(self):
+        wheel = self.effects[13]
+        self.assertIn('2===+t.direction', self.owners["convertUItoLighting"]["body"])
+        self.assertIn('f.centerPointX=null!==e&&void 0!==e?e:Math.floor(a/2)', self.owners["le_replace_effect"]["body"])
+        self.assertIn('return{error:"Lighting Device Columns / Rows are undefined"}', self.owners["le_replace_effect"]["body"])
+        self.assertEqual(wheel["matrix_center_for_5_by_12"], [6, 2])
+        self.assertEqual(wheel["facade"]["Speed"], 360)
+        self.assertEqual(wheel["facade"]["Mode"], "counterclockwise?2048:1024")
+        self.assertFalse(self.report["lighting_manifest"]["wheel_customization_present"])
+
+    def test_changed_converter_mapper_enum_or_defaults_requires_new_review(self):
+        for role, old, replacement in (("convertUItoLighting", 'l={direction:1===t.direction?"left":"right"}', 'l={direction:1===t.direction?"left":"right",speed:t.speed}'),
+                ("convertUItoLighting", 'l={boost:t.colorBoost,flow:', 'l={color:t.color1,boost:t.colorBoost,flow:'),
+                ("quick_parameters", 'speed:360,centerPointX:', 'speed:25,centerPointX:'),
+                ("native_effect_ids", 'Breathing:5', 'Breathing:2'),
+                ("effect_defaults", 'colorBoost:1', 'colorBoost:2')):
+            changed = copy.deepcopy(self.owners)
+            owner = changed[role]
+            self.assertIn(old, owner["body"])
+            owner["body"] = owner["body"].replace(old, replacement, 1)
+            owner["body_sha256"] = hashlib.sha256(owner["body"].encode()).hexdigest()
+            owner["byte_end"] = owner["byte_start"] + len(owner["body"].encode())
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "source selection requires review"):
+                families._quick_effect_binding_1446_source_contract(changed)
+
+    def test_changed_native_factory_parser_instruction_or_vtable_is_rejected(self):
+        for mode in ("factory", "packed_float", "slot"):
+            changed = copy.deepcopy(self.native)
+            if mode == "slot":
+                next(row for row in changed["verified_indirect_slots"] if row["vtable_rva"] == "0x1acb18")["target_rva"] = "0x666b0"
+            else:
+                rva = "0x51200" if mode == "factory" else "0x21ac0"
+                capture = next(row["capture"] for row in changed["complete_selected_functions"] if row["capture"]["rva"] == rva)
+                if mode == "factory":
+                    next(row for row in capture["pseudocode"]["lines"] if "sub_18005EF00(v13)" in row["text"])["text"] = "      sub_1800650F0(v13);"
+                else:
+                    next(row for row in capture["assembly"] if row["rva"] == "0x23813")["bytes"] = "9090909090"
+            with self.subTest(mode=mode), self.assertRaisesRegex(ValueError, "native selection requires review|native slot differs"):
+                families._quick_effect_binding_1446_native_contract(changed)
+
+    def test_exact_upstream_change_blocks_collection_but_unrelated_section_is_allowed(self):
+        path = analysis.ROOT / ".analysis/results/frontend/audio-mw-audit.json"
+        read = Path.read_bytes
+        for changed in (False, True):
+            document = json.loads(read(path))
+            document["unrelated_query"] = {"updated": True}
+            if changed:
+                document["quick_output_1446_chain"]["source_contract"]["software"]["native_fps"] = 60
+            raw = json.dumps(document).encode()
+            def substituted(source):
+                return raw if source == path else read(source)
+            with self.subTest(changed=changed), patch.object(Path, "read_bytes", substituted):
+                self.assertEqual(bool(host._keypad_temporary_keymap_dependency_changes(self.report["upstream_sections"])), changed)
+                if changed:
+                    with patch.object(families, "_quick_effect_binding_1446_sources") as sources, \
+                            self.assertRaisesRegex(ValueError, "upstream requires review"):
+                        families.collect_quick_effect_binding_1446_chain(host.HostLocalAudit())
+                    sources.assert_not_called()
+        self.assertNotIn(str(path), self.audit.artifacts)
+
+    def test_cli_scope_publication_and_snapshot_failures_do_not_promote_completion(self):
+        import argparse
+        parser = argparse.ArgumentParser()
+        families.add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["audit-family-function", "--family", "audio", "--function", "mw",
+            "--product", "1446", "--query", "quick-effect-binding-1446-chain"])
+        with patch.object(families, "audit_quick_effect_binding_1446_chain") as chosen:
+            families.audit_family_function(args)
+        chosen.assert_called_once_with(args)
+        with patch.object(families, "collect_quick_effect_binding_1446_chain") as collect, \
+                self.assertRaisesRegex(ValueError, "requires only PID1446"):
+            families.audit_quick_effect_binding_1446_chain(argparse.Namespace(family="audio", function="mw", product=[3942], prepare=False))
+        collect.assert_not_called()
+        for mode in ("success", "exception", "snapshot", "dependency"):
+            configured = {"side_effect": ValueError("missing converter")} if mode == "exception" else {"return_value": copy.deepcopy(self.report)}
+            with self.subTest(mode=mode), patch.object(families, "collect_quick_effect_binding_1446_chain", **configured), \
+                    patch.object(host.HostLocalAudit, "final_snapshot", return_value=["changed-original"] if mode == "snapshot" else []), \
+                    patch.object(host, "_keypad_temporary_keymap_dependency_changes", return_value=["changed-pointer"] if mode == "dependency" else []), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+                args = argparse.Namespace(family="audio", function="mw", product=[1446], prepare=False)
+                if mode == "success":
+                    families.audit_quick_effect_binding_1446_chain(args)
+                else:
+                    with self.assertRaisesRegex(ValueError, "observation remains unresolved"):
+                        families.audit_quick_effect_binding_1446_chain(args)
+            report = publish.call_args.args[0]
+            self.assertEqual(publish.call_args.args[3], "quick_effect_binding_1446_chain")
+            self.assertEqual(report["selected_effect_binding_complete"], mode == "success")
+            self.assertFalse(report["source_chain_complete"])
+            self.assertFalse(report["target_execution"])
+
+    def test_stable_originals_strict_json_and_static_only_boundaries(self):
+        self.assertEqual(self.audit.final_snapshot(), [])
+        self.assertEqual(host._keypad_temporary_keymap_dependency_changes(self.report["upstream_sections"]), [])
+        self.assertEqual(json.loads(json.dumps(self.report, allow_nan=False)), self.report)
+        for field in ("source_chain_complete", "whole_product_complete", "product_code_modified", "target_execution", "real_device_operations"):
+            self.assertFalse(self.report[field])
+        self.assertFalse(self.report["source_contract"]["handle_is_device_ack"])
+        self.assertEqual(self.report["official_dll_comparison"], "unverified")
+        self.assertEqual(self.report["runtime_acceptance"], "unverified")
+        self.assertEqual(self.report["new_native_captures"], 0)
+        self.assertEqual(self.report["temporary_artifacts_created"], [])
+        self.assertEqual(self.report["analysis_sessions_created"], [])
+        self.assertTrue(all("capture" not in row for row in self.report["native"]["complete_selected_functions"]))
+
+
+class Audio1446MultiFunctionChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        with patch.object(families, "verify_native_functions") as recapture:
+            cls.report = families.collect_audio_1446_multi_function_chain(cls.audit)
+        recapture.assert_not_called()
+        cls.owners = {role: cls.audit.owners[key] for role, key in cls.report["roles"].items()}
+
+    def test_current_source_selection_full_owners_and_actual_ui_mount_are_pinned(self):
+        self.assertEqual([(row["side"], row["name"]) for row in self.report["source_selections"]], [
+            ("mw", "audio-mw-1446-current-refresh-ec3db4b29c5a-2"),
+            ("ui", "audio-1446-current-refresh-ec3db4b29c5a")])
+        self.assertIn("Promise.resolve().then(s.bind(s,5303))", self.owners["ui_product_root"]["body"])
+        self.assertIn("isMultiFunctionEnabled:e.broadcasterReducer.isMultiFunctionEnabled", self.owners["ui_connected_switch"]["body"])
+        self.assertIn('createRoot(document.getElementById("root")).render', self.owners["ui_dom_mount"]["body"])
+        self.assertIn("broadcasterReducer:Yn", self.owners["ui_store"]["body"])
+        self.assertEqual(self.report["source_contract"]["ui"]["mounted_tab"], "MIC")
+        self.assertEqual(self.owners["ui_mounted_tab"]["body"], 'Ya="MIC"')
+        for owner in self.audit.owners.values():
+            raw = self.audit.read(owner["original"])[owner["byte_start"]:owner["byte_end"]]
+            self.assertEqual(raw.decode(), owner["body"])
+            self.assertEqual(hashlib.sha256(raw).hexdigest(), owner["body_sha256"])
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_defaults_restore_runtime_false_completion_and_cancellation_keep_distinct_meanings(self):
+        contract = self.report["source_contract"]
+        self.assertTrue(contract["storage"]["profile_default"])
+        self.assertFalse(contract["storage"]["device_connected_init_reads_device"])
+        self.assertFalse(contract["storage"]["runtime_reads_device"])
+        self.assertTrue(contract["storage"]["cache_and_persist_are_synchronous"])
+        self.assertFalse(contract["storage"]["restore_set_false_blocks_ui_update"])
+        self.assertFalse(contract["storage"]["restore_get_failure_proves_uninitialized_device"])
+        self.assertIn('r=yield s.getChromaTap(1,c.uR.SingleTap)', self.owners["feature_event"]["body"])
+        self.assertIn('n=!1}return n', self.owners["feature_class"]["body"])
+        self.assertIn('a.result=n,a.error=null', self.owners["generic_manager"]["body"])
+        self.assertIn('a.value.status="completed"', self.owners["generic_manager"]["body"])
+        self.assertIn('payload[paramKey] ?? payload', contract["task"]["payload_extraction"])
+        self.assertFalse(contract["ui"]["generic_completion_names_handled_by_switch_reducer"])
+        self.assertFalse(contract["lifetime"]["abort_signal_in_native_request"])
+        self.assertFalse(self.report["source_chain_complete"])
+        self.assertFalse(self.report["target_execution"])
+        self.assertEqual(self.report["official_dll_comparison"], "unverified")
+
+    def test_camy_inheritance_and_wire_parameters_cannot_borrow_earbud_format(self):
+        contract, transport = self.report["source_contract"], self.report["source_contract"]["transport"]
+        self.assertEqual(transport["class_modules"], [4076, 66744, 83266])
+        self.assertEqual((transport["report_id"], transport["report_length"], transport["body_length"]), (7, 65, 64))
+        self.assertEqual(transport["claim_interface"], 3)
+        self.assertEqual(transport["sleep_ms"], {"out": 5, "out_in": 25, "in": 5})
+        self.assertEqual(contract["commands"], {"get": [4, 15, 147], "set": [4, 15, 19]})
+        self.assertEqual(contract["payloads"], {"get": [1, 0, 0, 0], "set_enabled": [1, 1, 0, 1], "set_disabled": [1, 2, 0, 1]})
+        self.assertEqual(contract["successful_response"]["tap_enum_label_0"], "doubleTap")
+        self.assertEqual(contract["successful_response"]["feature_input_enum_0"], "SingleTap")
+        self.assertEqual(transport["packet"]["checksum_xor_range"], [0, 62])
+        self.assertIn('this.reportId=7', self.owners["transport_constructor"]["body"])
+        self.assertIn('this.reportLength=65', self.owners["transport_constructor"]["body"])
+        self.assertIn('i<this.reportLength-3', self.owners["transport__calculateChecksum"]["body"])
+        self.assertFalse(transport["response_length_or_checksum_verified"])
+        self.assertFalse(transport["command_calls_audio_business_dll"])
+        self.assertFalse(transport["write_count_equals_business_ack"])
+
+    def test_modified_feature_response_transport_ui_or_source_boundary_requires_review(self):
+        for role, old, new in (
+                ("feature_event", "getChromaTap(1,", "getChromaTap(2,"),
+                ("feature_class", "a=t?1:2", "a=t?2:1"),
+                ("transport_constructor", "this.reportLength=65", "this.reportLength=64"),
+                ("response_parser", "status:e.data[1]", "status:e.data[0]"),
+                ("generic_manager", 'a.value.status="completed"', 'a.value.status="failed"'),
+                ("ui_connected_switch", "e.broadcasterReducer.isMultiFunctionEnabled", "e.customizeReducer.isMultiFunctionEnabled")):
+            owners = copy.deepcopy(self.owners)
+            owner = owners[role]
+            self.assertIn(old, owner["body"])
+            owner["body"] = owner["body"].replace(old, new, 1)
+            raw = owner["body"].encode()
+            owner["body_sha256"] = hashlib.sha256(raw).hexdigest()
+            owner["byte_end"] = owner["byte_start"] + len(raw)
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "source selection requires review"):
+                families._audio_1446_multi_function_source_contract(owners)
+        for mode in ("missing", "original", "offset", "body"):
+            owners = copy.deepcopy(self.owners)
+            if mode == "missing":
+                del owners["mw_device_connected"]
+            elif mode == "original":
+                owners["feature_class"]["original"]["sha256"] = "0" * 64
+            elif mode == "offset":
+                owners["feature_class"]["byte_start"] += 1
+            else:
+                owners["feature_class"]["body"] += " "
+            with self.subTest(mode=mode), self.assertRaisesRegex(ValueError, "selection requires review|owner identity differs"):
+                families._audio_1446_multi_function_source_contract(owners)
+
+    def test_shared_host_native_are_reused_with_selected_function_and_pe_byte_checks(self):
+        dependency, shared = self.report["shared_transport_dependency"], self.report["shared_transport_contract"]
+        self.assertEqual(dependency["pointer"], "/auto_pause_hid_chain/shared_feature_transport")
+        self.assertEqual(dependency["reused_native_functions"], 17)
+        self.assertFalse(dependency["product_framing_reused"])
+        self.assertFalse(dependency["recaptured"])
+        self.assertEqual((shared["host_version"], shared["node_rz_hid_version"]), ("4.0.896", "0.0.31"))
+        self.assertEqual(shared["native_input"]["sha256"], "5f185c3c865fb37a8cfb85d52a61704555543d70ea954bead84bbadda66fcfac")
+        self.assertEqual(shared["native_contract"]["send"]["api"], "HidD_SetFeature")
+        self.assertFalse(shared["native_contract"]["close"]["explicit_close_joins_feature_worker_or_drains_deferred_callbacks"])
+        self.assertEqual(self.report["new_native_captures"], 0)
+        self.assertEqual(self.report["temporary_artifacts_created"], [])
+        self.assertEqual(self.report["analysis_sessions_created"], [])
+        self.assertNotIn(dependency["receipt"], self.audit.artifacts)
+
+    def test_changed_shared_section_blocks_new_analysis_and_pointer_check_allows_unrelated_updates(self):
+        path = analysis.ROOT / ".analysis/results/frontend/audio-mw-audit.json"
+        read = Path.read_bytes
+        for changed in (False, True):
+            document = json.loads(read(path))
+            document["unrelated_query"] = {"new": True}
+            if changed:
+                document["auto_pause_hid_chain"]["shared_feature_transport"]["native_contract"]["send"]["api"] = "OtherApi"
+            raw = json.dumps(document).encode()
+            def substituted(source):
+                return raw if source == path else read(source)
+            with self.subTest(changed=changed), patch.object(Path, "read_bytes", substituted):
+                changes = host._keypad_temporary_keymap_dependency_changes(self.report["upstream_sections"])
+                self.assertEqual(bool(changes), changed)
+                if changed:
+                    with patch.object(families, "_audio_1446_multi_function_sources") as source, \
+                            self.assertRaisesRegex(ValueError, "shared transport requires review"):
+                        families.collect_audio_1446_multi_function_chain(host.HostLocalAudit())
+                    source.assert_not_called()
+
+    def test_cli_routes_only_this_query_and_wrong_scope_rejects_before_collection(self):
+        import argparse
+        parser = argparse.ArgumentParser()
+        families.add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["audit-family-function", "--family", "audio", "--function", "mw",
+            "--query", "audio-1446-multi-function-chain", "--product", "1446"])
+        with patch.object(families, "audit_audio_1446_multi_function_chain") as selected, \
+                patch.object(families, "audit_audio_marie_1446_lifecycle_chain") as lifecycle:
+            families.audit_family_function(args)
+        selected.assert_called_once_with(args)
+        lifecycle.assert_not_called()
+        for family, function, product, prepare in (("accessories", "mw", [1446], False),
+                ("audio", "ui", [1446], False), ("audio", "mw", [1422], False),
+                ("audio", "mw", [1446, 1422], False), ("audio", "mw", [1446], True)):
+            with self.subTest(family=family, function=function, product=product, prepare=prepare), \
+                    patch.object(families, "collect_audio_1446_multi_function_chain") as collect, \
+                    self.assertRaisesRegex(ValueError, "requires only PID1446"):
+                families.audit_audio_1446_multi_function_chain(argparse.Namespace(family=family, function=function,
+                    product=product, prepare=prepare))
+            collect.assert_not_called()
+
+    def test_publication_preserves_failure_snapshot_and_exact_dependency_changes(self):
+        import argparse
+        for mode in ("success", "exception", "snapshot", "dependency"):
+            result = {"failures": [], "upstream_sections": self.report["upstream_sections"]}
+            configured = {"side_effect": ValueError("missing actual ACK owner")} if mode == "exception" else {"return_value": result}
+            with self.subTest(mode=mode), patch.object(families, "collect_audio_1446_multi_function_chain", **configured), \
+                    patch.object(host.HostLocalAudit, "final_snapshot", return_value=["changed-source"] if mode == "snapshot" else []), \
+                    patch.object(host, "_keypad_temporary_keymap_dependency_changes", return_value=["changed-pointer"] if mode == "dependency" else []), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+                args = argparse.Namespace(family="audio", function="mw", product=[1446], prepare=False)
+                if mode == "success":
+                    families.audit_audio_1446_multi_function_chain(args)
+                else:
+                    with self.assertRaisesRegex(ValueError, "observation remains unresolved"):
+                        families.audit_audio_1446_multi_function_chain(args)
+            report, destination, _, section = publish.call_args.args
+            self.assertEqual(destination, analysis.ROOT / ".analysis/results/frontend/audio-mw-audit.json")
+            self.assertEqual(section, "multi_function_1446_chain")
+            self.assertEqual(report["bounded_observation_complete"], mode == "success")
+            self.assertEqual(report["snapshot_stable"], mode not in {"snapshot", "dependency"})
+            self.assertFalse(report["source_chain_complete"])
+            self.assertFalse(report["whole_product_complete"])
+            self.assertFalse(report["target_execution"])
+            self.assertEqual(report["official_dll_comparison"], "unverified")
+
+
+class AudioAutoPauseChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        if not (analysis.ROOT / ".analysis/inputs/frontend/audio-mw-2657-current/acquisition.json").is_file():
+            raise unittest.SkipTest("Retained earbuds middleware inputs are unavailable")
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_audio_auto_pause_chain(cls.audit)
+        cls.owners = {role: cls.audit.owners[key] for role, key in cls.report["roles"].items()}
+
+    def test_latest_refresh_owners_use_actual_bytes_and_preserve_missing_capture(self):
+        self.assertEqual([row["product_id"] for row in self.report["products"]], [2657, 2660, 2664, 2668, 2689])
+        expected = {
+            2657: "e1dc5e231bb395e142938c0dd7f383d144427dd8d909fb5b51ac0040fb9bf45c",
+            2660: "cfa88ddf79c655d364086b0692e9fdfb60ae68273a5664dc3df42d1e52ac374d",
+            2664: "25b6e1a80f427e948bf3190c693090eeaef28f23cf811d2e4e542993dbc53eb1",
+            2668: "f70ae297eac1987584a92e74023cef33faa435cf0648009b56e755d8dab86fbb",
+            2689: "8e33836bf83ec3f68807b23c28d6821efaab95f5cde0a925b9f0e7775a725f18",
+        }
+        for product, selected in zip(self.report["products"], self.report["source_sets"]):
+            pid = product["product_id"]
+            with self.subTest(product=pid):
+                self.assertIn("current-refresh-ec3db4b29c5a", product["source_set"])
+                main = [row for row in self.audit.sources.values() if f"/products/{pid}/mw/main." in row["path"]]
+                self.assertEqual([row["sha256"] for row in main], [expected[pid]])
+                self.assertIsNone(selected["complete_capture"])
+                self.assertTrue(selected["capture_failures"])
+        self.assertEqual(len(self.owners), 100)
+        for owner in self.audit.owners.values():
+            raw = self.audit.read(owner["original"])[owner["byte_start"]:owner["byte_end"]]
+            self.assertEqual(raw.decode("utf-8"), owner["body"])
+            self.assertEqual(hashlib.sha256(raw).hexdigest(), owner["body_sha256"])
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_wire_values_profile_restore_and_failure_fold_keep_distinct_sources(self):
+        contract = self.report["source_contract"]
+        self.assertEqual(contract["commands"], {"get": [1, 24, 158], "set": [2, 24, 30]})
+        self.assertEqual(contract["payloads"], {"get": [1], "set_disabled": [1, 0], "set_enabled": [1, 1]})
+        self.assertEqual(contract["successful_response"], {"profileId": "data[0]", "state": "data[1]"})
+        storage = contract["storage"]
+        self.assertTrue(storage["profile_default"])
+        self.assertTrue(storage["restore_missing_field_default"])
+        self.assertTrue(storage["restore_reads_device_before_conditional_write"])
+        self.assertFalse(storage["restore_set_false_blocks_ui_update"])
+        self.assertFalse(storage["runtime_reads_device"])
+        self.assertEqual(storage["device_get_failure"], {"isEnabled": False})
+        self.assertFalse(storage["device_get_failure_is_observation"])
+        for pid in (2657, 2660, 2664, 2668, 2689):
+            self.assertIn("audioAutoPauseControlFeature", self.owners[f"{pid}_registration"]["body"])
+            self.assertIn("getAudioAutoPauseStatus(1)", self.owners[f"{pid}_device_get"]["body"])
+            self.assertIn("setAudioAutoPauseStatus(1,", self.owners[f"{pid}_device_set"]["body"])
+
+    def test_task_false_exception_abort_and_ui_do_not_claim_device_confirmation(self):
+        contract = self.report["source_contract"]
+        self.assertTrue(contract["task"]["persist_before_device_access"])
+        self.assertIn("value.status completed", contract["task"]["false_return"])
+        self.assertIn("value null and rejected", contract["task"]["exception"])
+        self.assertEqual(contract["task"]["category"], "NORMAL_SKIPPABLE")
+        self.assertEqual(contract["task"]["abort_check"], "after awaited execute, before postExecute and completed marker")
+        self.assertFalse(contract["task"]["passes_abort_signal_to_auto_pause_setter"])
+        self.assertFalse(contract["task"]["rollback_or_readback"])
+        self.assertEqual(contract["ui_product_ids"], [2657])
+        self.assertFalse(contract["ui"]["initial_enabled"])
+        self.assertTrue(contract["ui"]["toggle_updates_before_mw_reply"])
+        self.assertTrue(contract["ui"]["disabled_when_earbud_disconnected"])
+        self.assertFalse(contract["ui"]["reducer_handles_generic_completion_names"])
+        self.assertFalse(contract["lifetime"]["auto_pause_owns_timer_listener_or_shutdown"])
+        self.assertFalse(contract["lifetime"]["whole_transport_quiescence_proven"])
+        self.assertTrue(self.report["source_slice_complete"])
+        self.assertFalse(self.report["source_chain_complete"])
+        self.assertFalse(self.report["whole_product_complete"])
+        self.assertFalse(self.report["target_execution"])
+        self.assertFalse(self.report["real_device_operations"])
+        self.assertEqual(self.report["runtime_acceptance"], "unverified")
+
+    def test_changed_failure_setter_completion_command_or_parser_requires_review(self):
+        for role, old, new in (
+            ("2657_device_get", "isEnabled:!1", "isEnabled:!0"),
+            ("2657_device_set", "setAudioAutoPauseStatus(1,", "setAudioAutoPauseStatus(2,"),
+            ("generic_manager", 'status="completed"', 'status="failed"'),
+            ("2657_command_get", "[1,24,158]", "[1,24,159]"),
+            ("2657_parse_get", "state:e.data[1]", "state:e.data[0]"),
+        ):
+            owners = copy.deepcopy(self.owners)
+            owner = owners[role]
+            self.assertIn(old, owner["body"])
+            owner["body"] = owner["body"].replace(old, new, 1)
+            raw = owner["body"].encode("utf-8")
+            owner["body_sha256"] = hashlib.sha256(raw).hexdigest()
+            owner["byte_end"] = owner["byte_start"] + len(raw)
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "selection requires review"):
+                families.audio_auto_pause_source_contract(owners)
+
+    def test_missing_owner_changed_original_or_shifted_boundary_cannot_reuse_review(self):
+        for role in ("2657_registration", "2657_feature_export", "2689_parse_get", "generic_lazy_registry", "ui_profile_consumer"):
+            owners = copy.deepcopy(self.owners)
+            del owners[role]
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "selection requires review"):
+                families.audio_auto_pause_source_contract(owners)
+        for mode in ("original", "offset", "body"):
+            owners = copy.deepcopy(self.owners)
+            owner = owners["2657_device_get"]
+            if mode == "original":
+                owner["original"]["sha256"] = "0" * 64
+            elif mode == "offset":
+                owner["byte_start"] += 1
+                owner["byte_end"] += 1
+            else:
+                owner["body"] += " "
+            with self.subTest(mode=mode), self.assertRaisesRegex(ValueError, "source contract"):
+                families.audio_auto_pause_source_contract(owners)
+
+
+class AudioAutoPauseDispatchTests(unittest.TestCase):
+    def test_query_routes_directly_without_replaying_other_audio_audits(self):
+        import argparse
+        parser = argparse.ArgumentParser()
+        families.add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["audit-family-function", "--family", "audio", "--function", "mw",
+                                  "--query", "audio-auto-pause-chain"])
+        with patch.object(families, "audit_audio_auto_pause_chain") as selected, \
+                patch.object(families, "audit_audio_help_reset") as reset, \
+                patch.object(families, "audit_audio_driver_lifecycle") as driver:
+            families.audit_family_function(args)
+        selected.assert_called_once_with(args)
+        reset.assert_not_called()
+        driver.assert_not_called()
+
+    def test_wrong_scope_partial_product_and_preparation_reject_before_parsing(self):
+        import argparse
+        for family, function, products, prepare in (
+            ("audio", "ui", None, False), ("accessories", "mw", None, False),
+            ("audio", "mw", [2657], False), ("audio", "mw", [2657, 2660, 2664, 2668, 2689, 1422], False),
+            ("audio", "mw", None, True),
+        ):
+            with self.subTest(family=family, function=function, products=products, prepare=prepare), \
+                    patch.object(families, "collect_audio_auto_pause_chain") as collector, \
+                    self.assertRaisesRegex(ValueError, "requires the five reviewed earbuds"):
+                families.audit_audio_auto_pause_chain(argparse.Namespace(family=family, function=function,
+                    product=products, prepare=prepare))
+            collector.assert_not_called()
+
+    def test_publication_retains_failure_and_snapshot_limits_in_the_existing_section(self):
+        import argparse
+        for mode in ("success", "exception", "changed"):
+            configured = {"side_effect": ValueError("missing actual protocol owner")} if mode == "exception" else {"return_value": {"failures": []}}
+            with self.subTest(mode=mode), patch.object(families, "collect_audio_auto_pause_chain", **configured), \
+                    patch.object(host.HostLocalAudit, "final_snapshot", return_value=["protocol-source"] if mode == "changed" else []), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+                args = argparse.Namespace(family="audio", function="mw", product=None, prepare=False)
+                if mode == "success":
+                    families.audit_audio_auto_pause_chain(args)
+                else:
+                    with self.assertRaisesRegex(ValueError, "auto pause source observation remains unresolved"):
+                        families.audit_audio_auto_pause_chain(args)
+            report, destination, _, section = publish.call_args.args
+            self.assertEqual(destination, analysis.ROOT / ".analysis/results/frontend/audio-mw-audit.json")
+            self.assertEqual(section, "auto_pause_chain")
+            self.assertEqual(report["bounded_observation_complete"], mode == "success")
+            self.assertEqual(report["snapshot_stable"], mode != "changed")
+            self.assertFalse(report["source_chain_complete"])
+            self.assertFalse(report["whole_product_complete"])
+            self.assertFalse(report["target_execution"])
+            self.assertEqual(report["official_dll_comparison"], "not_executed")
+            if mode != "success":
+                self.assertIn("protocol-source" if mode == "changed" else "missing actual protocol owner", report["failures"][0])
+
+
+class AudioAutoPauseHidChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        verify = families.verify_native_functions
+        def retained(*args, **kwargs):
+            cls.native = verify(*args, **kwargs)
+            return cls.native
+        with patch.object(families, "verify_native_functions", side_effect=retained), \
+                patch.object(families, "_audio_auto_pause_sources") as mw, \
+                patch.object(families, "_audio_auto_pause_ui_sources") as ui, \
+                patch.object(families, "_hanbo_hid_write_current_owners") as shared:
+            cls.report = families.collect_audio_auto_pause_hid_chain(cls.audit)
+        mw.assert_not_called()
+        ui.assert_not_called()
+        shared.assert_not_called()
+        cls.owners = {role: cls.audit.owners[key] for role, key in cls.report["roles"].items()}
+
+    def test_selected_products_reuse_current_mw_and_ui_without_recapture(self):
+        self.assertEqual([row["product_id"] for row in self.report["products"]], [2657, 2660, 2664, 2668, 2689])
+        for product in self.report["products"]:
+            self.assertEqual(product["source_set"], f'audio-mw-{product["product_id"]}-current-refresh-ec3db4b29c5a-2')
+            self.assertIn("complete_capture_unavailable", product["capture_failures"])
+        self.assertEqual(len(self.report["upstream_sections"]), 3)
+        self.assertTrue(all(not row["recaptured"] for row in self.report["upstream_sections"]))
+        self.assertNotIn(".analysis/results/frontend/audio-mw-audit.json", self.audit.artifacts)
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_full_product_owners_keep_real_feature_report_ack_and_failure_semantics(self):
+        contract = self.report["source_contract"]
+        self.assertEqual(contract["electron"]["report_length"], 64)
+        self.assertEqual(contract["electron"]["report_id"], 2)
+        self.assertEqual(contract["electron"]["rz_device_library_version"], "0.0.340")
+        self.assertEqual(contract["electron"]["max_retry_in"], 10)
+        self.assertEqual(contract["electron"]["max_retry_out"], 20)
+        self.assertFalse(contract["electron"]["write_count_equals_report_length_is_business_ack"])
+        self.assertFalse(contract["response"]["explicit_response_length_or_checksum_validation"])
+        self.assertTrue(contract["response"]["setter_success_has_no_getter_readback_or_profile_echo_check"])
+        self.assertFalse(contract["lifetime"]["abort_signal_in_selected_send_or_get"])
+        self.assertFalse(contract["lifetime"]["complete_task_or_native_queue_drain"])
+        for pid in (2657, 2660, 2664, 2668, 2689):
+            self.assertIn('action:this.supportHIDMutex?"hid.sendFeatureReportMutex":"hid.sendFeatureReport"',
+                          self.owners[f"{pid}_sendCommand"]["body"])
+            self.assertIn('action:"hid.getFeatureReport"', self.owners[f"{pid}__getUSBTransferInResult"]["body"])
+            self.assertEqual(self.owners[f"{pid}_base_destroy"]["body"], "destroy(){}")
+            self.assertEqual(self.owners[f"{pid}_base_terminate"]["body"], "terminate(){}")
+            self.assertIn('="0.0.340"', self.owners[f"{pid}_version"]["body"])
+        for owner in self.audit.owners.values():
+            raw = self.audit.read(owner["original"])[owner["byte_start"]:owner["byte_end"]]
+            self.assertEqual(raw, owner["body"].encode())
+            self.assertEqual(hashlib.sha256(raw).hexdigest(), owner["body_sha256"])
+
+    def test_current_host_package_alias_and_shared_subset_do_not_infer_product_lengths(self):
+        shared = self.report["shared_feature_transport"]
+        release = shared["host_release"]
+        self.assertEqual(release["version"], "4.0.896")
+        self.assertEqual(release["node_rz_hid_version"], "0.0.31")
+        self.assertEqual(len(release["members"]), 6)
+        self.assertTrue(all(row["member_offset_verified"] for row in release["members"]))
+        self.assertTrue(release["addon_alias_bytes_equal"])
+        self.assertFalse(release["actual_loaded_addon_observed"])
+        self.assertFalse(shared["source_contract"]["product_report_id_length_or_business_ack_inferred"])
+        self.assertEqual(shared["canonical_sha256"], families._audio_auto_pause_hid_digest(
+            {key: value for key, value in shared.items() if key != "canonical_sha256"}))
+        owner = self.owners["shared_host_handleAction"]["body"]
+        self.assertIn("90===t.payload.dataSend.length", owner)
+        self.assertIn("s=d.payload.noSlice?u:u.slice(1)", owner)
+        self.assertIn("o.hidDevice?.close(),o.mutex?.cancel()", owner)
+        self.assertIn("clearTimeout(e.holdTimer)", self.owners["shared_mutex_class"]["body"])
+
+    def test_native_feature_queue_actual_api_results_virtual_consumers_and_cleanup_are_distinct(self):
+        shared = self.report["shared_feature_transport"]
+        native, contract = shared["native"], shared["native_contract"]
+        self.assertEqual(native["input"]["sha256"], "5f185c3c865fb37a8cfb85d52a61704555543d70ea954bead84bbadda66fcfac")
+        self.assertEqual(len(native["functions"]), 17)
+        self.assertEqual([row["target_rva"] for row in native["verified_indirect_slots"]], ["0x135b0", "0x13410"])
+        self.assertTrue(all(row["actual_pe_bytes_verified"] for row in native["verified_indirect_slots"]))
+        self.assertTrue(all(row["assembly_captured"] and row["pseudocode_captured"] and row["input_chunks_verified"]
+            for row in native["functions"]))
+        self.assertEqual(contract["send"]["api"], "HidD_SetFeature")
+        self.assertFalse(contract["send"]["successful_send_is_business_ack"])
+        self.assertEqual(contract["get"]["ioctl"], "0xb0192")
+        self.assertTrue(contract["get"]["overlapped_waits"])
+        self.assertFalse(contract["get"]["bounds_clamp_to_requested_length"])
+        self.assertTrue(contract["deferred"]["frees_copied_buffer_work_item_and_deferred"])
+        self.assertFalse(contract["close"]["explicit_close_joins_feature_worker_or_drains_deferred_callbacks"])
+        self.assertFalse(self.report["source_chain_complete"])
+        self.assertFalse(self.report["whole_product_complete"])
+        self.assertFalse(self.report["target_execution"])
+        self.assertEqual(self.report["actual_dll_comparison"], "unverified")
+
+    def test_modified_header_response_order_mutex_or_cancel_cannot_borrow_reviewed_sources(self):
+        for role, old, new in (("2657_sendCommand", "r===this.reportLength", "r>0"),
+                ("2660__getUSBTransferInResult", "case 2:", "case 6:"),
+                ("2664__createDataSend", "new Uint8Array(o)", "new Uint8Array(90)"),
+                ("2689_releaseHIDMutex", "hid.releaseMutex", "hid.acquireMutex"),
+                ("shared_host_handleAction", "u.slice(1)", "u.slice(0)")):
+            owners = copy.deepcopy(self.owners)
+            owner = owners[role]
+            self.assertIn(old, owner["body"])
+            owner["body"] = owner["body"].replace(old, new, 1)
+            raw = owner["body"].encode()
+            owner["body_sha256"] = hashlib.sha256(raw).hexdigest()
+            owner["byte_end"] = owner["byte_start"] + len(raw)
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "source selection requires review"):
+                families._audio_auto_pause_hid_source_contract(owners)
+        owners = dict(self.owners)
+        del owners["shared_mutex_class"]
+        with self.assertRaisesRegex(ValueError, "source selection requires review"):
+            families._audio_auto_pause_hid_source_contract(owners)
+
+    def test_changed_native_results_or_failed_capture_reject_before_completion(self):
+        for mode in ("result", "assembly", "failure", "slot"):
+            native = copy.deepcopy(self.native)
+            selected = next(row for row in native["complete_selected_functions"] if row["capture"]["rva"] == "0x17ac0")
+            if mode == "result":
+                selected["capture"]["pseudocode"]["lines"][-2]["text"] = "  return BytesReturned;"
+            elif mode == "assembly":
+                selected["capture"]["assembly"][0]["bytes"] = "00"
+            elif mode == "failure":
+                selected["pseudocode_captured"] = False
+            else:
+                native["verified_indirect_slots"][0]["target_rva"] = "0x13410"
+            with self.subTest(mode=mode), self.assertRaisesRegex(ValueError, "native selection requires review|native owner is unavailable"):
+                families._audio_auto_pause_hid_native_contract(native)
+
+    def test_changed_published_owner_or_current_source_prevents_starting_new_transport_analysis(self):
+        destination = analysis.ROOT / ".analysis/results/frontend/audio-mw-audit.json"
+        read = Path.read_bytes
+        data = json.loads(read(destination))
+        data["auto_pause_chain"]["source_contract"]["profile_id"] = 2
+        changed = json.dumps(data).encode()
+        def substituted(path):
+            return changed if path == destination else read(path)
+        with patch.object(Path, "read_bytes", substituted), \
+                patch.object(families, "_audio_auto_pause_hid_host_inputs") as inputs, \
+                self.assertRaisesRegex(ValueError, "upstream section requires review"):
+            families.collect_audio_auto_pause_hid_chain(host.HostLocalAudit())
+        inputs.assert_not_called()
+
+    def test_final_dependency_check_freezes_each_pointer_without_freezing_unrelated_queries(self):
+        read = Path.read_bytes
+        path = analysis.ROOT / ".analysis/results/frontend/audio-mw-audit.json"
+        for changed_section in (False, True):
+            data = json.loads(read(path))
+            data["unrelated"] = {"new": True}
+            if changed_section:
+                data["auto_pause_ui_consumers"]["snapshot_stable"] = False
+            def substituted(selected):
+                return json.dumps(data).encode() if selected == path else read(selected)
+            with patch.object(Path, "read_bytes", substituted):
+                changed = families._audio_auto_pause_hid_upstream_changes(self.report["upstream_sections"])
+            self.assertEqual(bool(changed), changed_section)
+            if changed_section:
+                self.assertEqual(changed, [".analysis/results/frontend/audio-mw-audit.json#/auto_pause_ui_consumers"])
+
+    def test_query_dispatch_and_wrong_scope_or_preparation_reject_before_analysis(self):
+        import argparse
+        parser = argparse.ArgumentParser()
+        families.add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["audit-family-function", "--family", "audio", "--function", "mw",
+                                 "--query", "audio-auto-pause-hid-chain"])
+        with patch.object(families, "audit_audio_auto_pause_hid_chain") as chosen, \
+                patch.object(families, "audit_audio_auto_pause_chain") as old:
+            families.audit_family_function(args)
+        chosen.assert_called_once_with(args)
+        old.assert_not_called()
+        for family, function, product, prepare in (("system", "mw", None, False), ("audio", "ui", None, False),
+                ("audio", "mw", [2657], False), ("audio", "mw", None, True)):
+            with self.subTest(family=family, function=function, product=product, prepare=prepare), \
+                    patch.object(families, "collect_audio_auto_pause_hid_chain") as collector, \
+                    self.assertRaisesRegex(ValueError, "requires all five reviewed"):
+                families.audit_audio_auto_pause_hid_chain(argparse.Namespace(family=family, function=function,
+                    product=product, prepare=prepare))
+            collector.assert_not_called()
+
+    def test_collector_failures_and_final_snapshot_or_upstream_changes_publish_before_raising(self):
+        import argparse
+        for mode in ("success", "exception", "failed", "snapshot", "upstream"):
+            configured = {"side_effect": ValueError("missing feature report response")} if mode == "exception" else {
+                "return_value": {"failures": ["failed native response"] if mode == "failed" else []}}
+            with self.subTest(mode=mode), patch.object(families, "collect_audio_auto_pause_hid_chain", **configured), \
+                    patch.object(host.HostLocalAudit, "final_snapshot", return_value=["native-input"] if mode == "snapshot" else []), \
+                    patch.object(families, "_audio_auto_pause_hid_upstream_changes", return_value=["receipt#/pointer"] if mode == "upstream" else []), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+                args = argparse.Namespace(family="audio", function="mw", product=None, prepare=False,
+                    query="audio-auto-pause-hid-chain")
+                if mode == "success":
+                    families.audit_audio_auto_pause_hid_chain(args)
+                else:
+                    with self.assertRaisesRegex(ValueError, "HID observation remains unresolved"):
+                        families.audit_audio_auto_pause_hid_chain(args)
+            report, destination, _, section = publish.call_args.args
+            self.assertEqual(section, "auto_pause_hid_chain")
+            self.assertEqual(destination, analysis.ROOT / ".analysis/results/frontend/audio-mw-audit.json")
+            self.assertEqual(report["bounded_observation_complete"], mode == "success")
+            self.assertEqual(report["snapshot_stable"], mode not in ("snapshot", "upstream"))
+            self.assertFalse(report["source_chain_complete"])
+            self.assertFalse(report["whole_product_complete"])
+            self.assertFalse(report["target_execution"])
+            if mode != "success":
+                self.assertTrue(report["failures"])
+
+
+class AudioAutoPauseUiConsumerTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        if not (analysis.ROOT / ".analysis/results/frontend/audio-mw-audit.json").is_file():
+            raise unittest.SkipTest("Published auto pause middleware evidence is unavailable")
+        cls.audit = host.HostLocalAudit()
+        with patch.object(families, "_audio_auto_pause_sources") as old_collector:
+            cls.report = families.collect_audio_auto_pause_ui_consumers(cls.audit)
+        old_collector.assert_not_called()
+        cls.owners = {role: cls.audit.owners[key] for role, key in cls.report["roles"].items()}
+
+    def test_each_latest_product_has_its_own_actual_mounts_and_complete_original_owners(self):
+        expected_main = {
+            2660: "83a7e5504cb8cccbc60f388f37bf4f5f9a87dbb0cb01f3cbf8a1235d27fd6fb8",
+            2664: "ea12954dafef968087dd47146949516d4c44eef16ce1b17be6b45b251ea05cb7",
+            2668: "e16550f4c055eea35b8c4c4a7e12cdfa33cd3ed4b21d343feb342d4c00dc8433",
+            2689: "697d17399ab8a90c85e685879f52acc8dd394e1a7d106c98f89462022c409506",
+        }
+        self.assertEqual([row["product_id"] for row in self.report["products"]], list(expected_main))
+        for product in self.report["products"]:
+            pid = product["product_id"]
+            with self.subTest(product=pid):
+                self.assertEqual(product["source_set"], f"audio-{pid}-current-refresh-ec3db4b29c5a")
+                self.assertEqual(product["page_names"], ["TAB_ENHANCEMENT"])
+                self.assertIsNone(product["capture"])
+                self.assertEqual(product["capture_failures"], ["complete_capture_unavailable"])
+                main = [row for row in self.audit.sources.values() if f"/products/{pid}/ui/static/js/main." in row["path"]]
+                self.assertEqual([row["sha256"] for row in main], [expected_main[pid]])
+                lazy = [row["lazy_import"] for row in product["mounts"] if "lazy_import" in row]
+                self.assertEqual(len(lazy), 0 if pid == 2664 else 1)
+                if lazy:
+                    self.assertEqual(lazy[0]["module_id"], 1210 if pid == 2668 else 1546)
+                    self.assertEqual(lazy[0]["registered_chunk_ids"], [348] if pid == 2668 else [612])
+                    self.assertFalse(lazy[0]["cleanup_cancels_import"])
+                self.assertIn('.createRoot(document.getElementById("root")).render',
+                    self.owners[f"{pid}_dom_root"]["body"])
+                self.assertIn("autoPauseReducer:", self.owners[f"{pid}_store_reducers"]["body"])
+                self.assertIn("store_alias_1", product["roles"])
+        for owner in self.audit.owners.values():
+            raw = self.audit.read(owner["original"])[owner["byte_start"]:owner["byte_end"]]
+            self.assertEqual(raw.decode("utf-8"), owner["body"])
+            self.assertEqual(hashlib.sha256(raw).hexdigest(), owner["body_sha256"])
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_profile_task_failure_and_exit_contracts_preserve_unobserved_device_state(self):
+        contract = self.report["source_contract"]
+        self.assertFalse(contract["initial_enabled"])
+        self.assertTrue(contract["optimistic_toggle"])
+        self.assertFalse(contract["device_confirmation_inferred_from_profile"])
+        self.assertFalse(contract["generic_completion_reducer_cases"])
+        self.assertFalse(contract["toggle_loading_error_rollback_or_cancellation"])
+        self.assertFalse(contract["disabled"]["initial"])
+        self.assertTrue(contract["disabled"]["2668_source_via_connected_props"])
+        self.assertFalse(contract["channel"]["per_page_hook_cleanup"])
+        self.assertIn("channel remains open", contract["channel"]["beforeunload"])
+        self.assertFalse(contract["channel"]["quiescence_or_native_abort_proven"])
+        connected = self.owners["2668_mount_1_binding_0"]["body"]
+        self.assertIn("e.batteryReducer", connected)
+        self.assertIn("hasDisconnectedEarbud", connected)
+        self.assertTrue(self.report["source_slice_complete"])
+        self.assertFalse(self.report["source_chain_complete"])
+        self.assertFalse(self.report["whole_product_complete"])
+        self.assertFalse(self.report["target_execution"])
+        self.assertEqual(self.report["runtime_acceptance"], "unverified")
+        self.assertTrue(self.report["unresolved_chains"])
+
+    def test_published_middleware_is_reused_without_recapturing_or_misreading_css(self):
+        upstream, = self.report["upstream_sections"]
+        self.assertEqual(upstream["section"], "auto_pause_chain")
+        self.assertEqual(upstream["canonical_sha256"], families._AUDIO_AUTO_PAUSE_UI_UPSTREAM)
+        self.assertFalse(upstream["mw_recaptured"])
+        self.assertEqual(len(upstream["verified_owner_references"]), 20)
+        self.assertTrue(all("/ui/" in row["original"]["path"] for row in self.owners.values()))
+        for product in self.report["products"]:
+            css = product["css_evidence"]
+            self.assertEqual([row["body"] for row in css], [".widget-tooltip.disabled{opacity:.5}",
+                ".widget-tooltip.disabled .widget{pointer-events:auto}",
+                ".widget-tooltip.disabled .widget div{pointer-events:none}"])
+            for owner in css:
+                raw = self.audit.read(owner["original"])[owner["byte_start"]:owner["byte_end"]]
+                self.assertEqual(raw.decode(), owner["body"])
+                self.assertEqual(hashlib.sha256(raw).hexdigest(), owner["body_sha256"])
+
+    def test_changed_toggle_props_completion_profile_or_exit_owners_require_review(self):
+        for role, old, new in (
+            ("2660_toggle", "!t.isEnabled", "t.isEnabled"),
+            ("2668_mount_1_binding_0", "e.batteryReducer", "e.deviceReducer"),
+            ("2664_reducer", "case oe.OAk:", "case oe.PW6:"),
+            ("2689_profile_consumer", 'case"audioAutoPauseControl"', 'case"audioVoicePromptControl"'),
+            ("2660_widget", "componentWillUnmount(){this._cancelRaf()}", "componentWillUnmount(){}"),
+            ("2668_channel_unload", "Ro.off(e,t)", "Ro.on(e,t)"),
+        ):
+            owners = copy.deepcopy(self.owners)
+            owner = owners[role]
+            self.assertIn(old, owner["body"])
+            owner["body"] = owner["body"].replace(old, new, 1)
+            raw = owner["body"].encode()
+            owner["body_sha256"] = hashlib.sha256(raw).hexdigest()
+            owner["byte_end"] = owner["byte_start"] + len(raw)
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "selection requires review"):
+                families.audio_auto_pause_ui_source_contract(owners)
+
+    def test_missing_mounts_changed_source_identity_and_shifted_ranges_cannot_borrow_evidence(self):
+        for role in ("2660_mount_3", "2664_page_name", "2668_channel_hook", "2689_action_PW6", "2660_store_alias_1"):
+            owners = copy.deepcopy(self.owners)
+            del owners[role]
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "selection requires review"):
+                families.audio_auto_pause_ui_source_contract(owners)
+        for mode in ("source", "offset", "body"):
+            owners = copy.deepcopy(self.owners)
+            owner = owners["2660_toggle"]
+            if mode == "source":
+                owner["original"]["sha256"] = "0" * 64
+            elif mode == "offset":
+                owner["byte_start"] += 1
+                owner["byte_end"] += 1
+            else:
+                owner["body"] += " "
+            with self.subTest(mode=mode), self.assertRaisesRegex(ValueError, "source owner identity|selection requires review"):
+                families.audio_auto_pause_ui_source_contract(owners)
+
+    def test_changed_published_middleware_section_cannot_start_ui_analysis(self):
+        path = analysis.ROOT / ".analysis/results/frontend/audio-mw-audit.json"
+        read = Path.read_bytes
+        document = json.loads(read(path))
+        document["auto_pause_chain"]["source_contract"]["profile_id"] = 2
+        changed = json.dumps(document).encode()
+        def altered(selected):
+            return changed if selected == path else read(selected)
+        with patch.object(Path, "read_bytes", altered), \
+                patch.object(families, "_audio_auto_pause_ui_sources") as sources, \
+                self.assertRaisesRegex(ValueError, "upstream section requires review"):
+            families.collect_audio_auto_pause_ui_consumers(host.HostLocalAudit())
+        sources.assert_not_called()
+
+
+class AudioAutoPauseUiDispatchTests(unittest.TestCase):
+    def test_query_routes_to_ui_consumers_without_repeating_middleware_capture(self):
+        import argparse
+        parser = argparse.ArgumentParser()
+        families.add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["audit-family-function", "--family", "audio", "--function", "mw",
+            "--query", "audio-auto-pause-ui-consumers"])
+        with patch.object(families, "audit_audio_auto_pause_ui_consumers") as selected, \
+                patch.object(families, "audit_audio_auto_pause_chain") as old:
+            families.audit_family_function(args)
+        selected.assert_called_once_with(args)
+        old.assert_not_called()
+
+    def test_partial_scope_or_preparation_is_rejected_before_source_reads(self):
+        import argparse
+        for family, function, products, prepare in (("audio", "ui", None, False),
+                ("accessories", "mw", None, False), ("audio", "mw", [2660], False),
+                ("audio", "mw", [2657, 2660, 2664, 2668, 2689], False), ("audio", "mw", None, True)):
+            with self.subTest(family=family, function=function, products=products, prepare=prepare), \
+                    patch.object(families, "collect_audio_auto_pause_ui_consumers") as collector, \
+                    self.assertRaisesRegex(ValueError, "requires the four remaining earbuds"):
+                families.audit_audio_auto_pause_ui_consumers(argparse.Namespace(family=family,
+                    function=function, product=products, prepare=prepare))
+            collector.assert_not_called()
+
+    def test_failure_or_changed_snapshot_cannot_publish_completion(self):
+        import argparse
+        for mode in ("success", "failure", "changed"):
+            configured = {"side_effect": ValueError("missing mounted consumer")} if mode == "failure" else {"return_value": {"failures": []}}
+            with self.subTest(mode=mode), patch.object(families, "collect_audio_auto_pause_ui_consumers", **configured), \
+                    patch.object(host.HostLocalAudit, "final_snapshot", return_value=["ui-main"] if mode == "changed" else []), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+                args = argparse.Namespace(family="audio", function="mw", product=None, prepare=False)
+                if mode == "success":
+                    families.audit_audio_auto_pause_ui_consumers(args)
+                else:
+                    with self.assertRaisesRegex(ValueError, "auto pause UI observation remains unresolved"):
+                        families.audit_audio_auto_pause_ui_consumers(args)
+            report, destination, _, section = publish.call_args.args
+            self.assertEqual(destination, analysis.ROOT / ".analysis/results/frontend/audio-mw-audit.json")
+            self.assertEqual(section, "auto_pause_ui_consumers")
+            self.assertEqual(report["bounded_observation_complete"], mode == "success")
+            self.assertFalse(report["source_chain_complete"])
+            self.assertFalse(report["whole_product_complete"])
+            self.assertFalse(report["target_execution"])
+            self.assertEqual(report["official_dll_comparison"], "not_executed")
+
+
+class Camera3594ProfileViewNativeTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_camera_3594_profile_view_native_chain(cls.audit)
+        cls.raw = cls.audit.read(cls.report["native"]["original"])
+
+    def changed_native(self, rva, before, after):
+        native = copy.deepcopy(self.report["native"])
+        function = next(row["capture"] for row in native["complete_functions"] if row["capture"]["rva"] == rva)
+        line = next(row for row in function["pseudocode"]["lines"] if before in row["text"])
+        line["text"] = line["text"].replace(before, after, 1)
+        return native
+
+    def test_actual_eight_exports_five_pro_slots_and_complete_current_function_bytes(self):
+        contract = self.report["native_contract"]
+        self.assertEqual(self.report["native"]["original"]["sha256"],
+            "daee9fe0f5e9f9fa2a5fe83d9da56081464cc540eeb4452a81e81788c71bf3c2")
+        self.assertEqual((len(self.report["native"]["complete_functions"]), len(contract["exports"]),
+            len(contract["virtual_slots"]), len(contract["required_direct_edges"]), contract["verified_instruction_count"]),
+            (15, 8, 5, 20, 914))
+        self.assertEqual({row["name"]: row["ordinal"] for row in contract["exports"]},
+            {"SetCameraPan": 75, "SetCameraTilt": 77, "SetCameraZoom": 78, "SetShutterLimitControl": 98,
+                "SetAdaptiveMJPEGQuality": 59, "SetFixedMJPEGQuality": 84,
+                "SetAutoframing": 66, "SetAutoframingSpeedAndSize": 67})
+        self.assertEqual({row["role"]: (row["slot_byte_offset"], row["target_rva"]) for row in contract["virtual_slots"]},
+            {"SetShutterLimitControl": (216, "0x52710"), "SetAdaptiveMJPEGQuality": (272, "0x4e240"),
+                "SetFixedMJPEGQuality": (288, "0x52920"), "SetAutoframing": (304, "0x529a0"),
+                "SetAutoframingSpeedAndSize": (336, "0x52de0")})
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_native_packet_witnesses_preserve_low_bytes_and_command_order(self):
+        packets = families._camera_3594_profile_view_native_packets
+        for name, value, secondary, expected in (
+                ("SetShutterLimitControl", 1, 0, ["a01c010100000000"]),
+                ("SetShutterLimitControl", -1, 0, ["a01c01ff00000000"]),
+                ("SetAdaptiveMJPEGQuality", 1, 2, ["c00e090100000200"]),
+                ("SetAdaptiveMJPEGQuality", 0, 0, ["c00e090000000000"]),
+                ("SetFixedMJPEGQuality", 257, 0, ["a00b010100000000"]),
+                ("SetAutoframing", 1, 0, ["a00c010000000000"]),
+                ("SetAutoframing", 0, 0, ["a00c000000000000"]),
+                ("SetAutoframingSpeedAndSize", 2, 1, ["a017020000000000", "a016010000000000"]),
+                ("SetAutoframingSpeedAndSize", -1, 256, ["a017ff0000000000", "a016000000000000"])):
+            with self.subTest(name=name, value=value, secondary=secondary):
+                self.assertEqual([row.hex() for row in packets(name, value, secondary)], expected)
+        for name, value, secondary in (("SetCameraZoom", 100, 0), ("SetCameraPan", 1, 0),
+                ("SetAutoframing", True, 0), ("SetAutoframingSpeedAndSize", 1, 0.5)):
+            with self.subTest(name=name), self.assertRaises(ValueError):
+                packets(name, value, secondary)
+
+    def test_camera_control_uses_actual_property_ids_full_long_and_hresult_semantics(self):
+        uvc = self.report["native_contract"]["uvc"]
+        self.assertEqual(uvc["property_ids"], {"SetCameraPan": 0, "SetCameraTilt": 1, "SetCameraZoom": 3})
+        self.assertEqual(uvc["guid_hex"], "7033e1c6ac30d011a18c00a0c9118956")
+        self.assertIn("full32-bit Windows long", uvc["value"])
+        self.assertIn("false ->2 manual; true ->1 auto", uvc["auto_flags"])
+        self.assertIn("Set HRESULT>=0", uvc["success"])
+        self.assertIn("released at+16", uvc["success"])
+        self.assertFalse(uvc["post_write_get"])
+        for rva, before, after in (("0x5c030", "sub_18004C5B0(v6, 0, a2, v3)", "sub_18004C5B0(v6, 1u, a2, v3)"),
+                ("0x5c380", "sub_18004C5B0(v6, 3u, a2, v3)", "sub_18004C5B0(v6, 3u, a2/100, v3)"),
+                ("0x4b7f0", "v8 = v9 >= 0", "v8 = v9 == 0"),
+                ("0x4b7f0", "(v4 ^ 1u) + 1", "v4 ? 1 : 2")):
+            with self.subTest(rva=rva), self.assertRaisesRegex(ValueError, "semantic boundary differs|semantic review"):
+                families._camera_3594_profile_view_native_contract(self.changed_native(rva, before, after), self.raw)
+
+    def test_two_isp_writes_are_sequential_without_atomic_rollback_or_applied_setting_get(self):
+        isp = self.report["native_contract"]["isp"]
+        body = next(row["capture"] for row in self.report["native"]["complete_functions"] if row["capture"]["rva"] == "0x52de0")
+        text = "\n".join(row["text"] for row in body["pseudocode"]["lines"])
+        self.assertLess(text.index("v6 = 6048"), text.index("v10 = 5792"))
+        self.assertLess(text.index("return 0"), text.index("v10 = 5792"))
+        self.assertIn("locks each ISP command independently", isp["sequence"])
+        self.assertIn("exported bool setters discard", isp["response_consumers"])
+        self.assertIn("GET HRESULT==0 and response[0]==0", isp["transport"])
+        self.assertFalse(isp["post_write_get"])
+        self.assertFalse(isp["rollback"])
+        self.assertFalse(isp["implicit_flash_save"])
+
+    def test_native_isp_commands_parameter_placement_and_failure_branch_changes_are_rejected(self):
+        for rva, before, after in (("0x4e240", "v10 = a3", "v10 = a2"),
+                ("0x52710", "v5 = 7328", "v5 = 2976"),
+                ("0x52920", "v7 = a2", "v7 = 1"),
+                ("0x529a0", "v4 = a2", "v4 = a2 != 0"),
+                ("0x52de0", "v11 = a3", "v11 = a2"),
+                ("0x52de0", "return 0;", "return 1;")):
+            with self.subTest(rva=rva), self.assertRaisesRegex(ValueError, "semantic boundary differs|semantic review"):
+                families._camera_3594_profile_view_native_contract(self.changed_native(rva, before, after), self.raw)
+
+    def test_actual_instruction_export_virtual_slot_guid_and_direct_edge_changes_are_rejected(self):
+        native = copy.deepcopy(self.report["native"])
+        native["complete_functions"][0]["capture"]["assembly"][0]["bytes"] = "90"
+        with self.assertRaisesRegex(ValueError, "instruction"):
+            families._camera_3594_profile_view_native_contract(native, self.raw)
+        native = copy.deepcopy(self.report["native"])
+        native["direct_edges"] = []
+        with self.assertRaisesRegex(ValueError, "direct lookup/property/ISP edge"):
+            families._camera_3594_profile_view_native_contract(native, self.raw)
+        pe = host.inspect_pe(self.raw)
+        for rva, reason in ((0xb9768, "virtual target"), (0xa93e8, "GUID")):
+            raw = bytearray(self.raw)
+            section = next(row for row in pe["sections"] if row["rva"] <= rva < row["rva"] + row["bytes"])
+            raw[section["file_offset"] + rva - section["rva"]] ^= 1
+            with self.subTest(rva=hex(rva)), self.assertRaisesRegex(ValueError, reason):
+                families._camera_3594_profile_view_native_contract(self.report["native"], bytes(raw))
+        changed = copy.deepcopy(pe)
+        export = next(row for row in changed["exports"] if "SetCameraZoom" in row["names"])
+        export["ordinal"] = 79
+        with patch.object(host, "inspect_pe", return_value=changed), self.assertRaisesRegex(ValueError, "actual native export"):
+            families._camera_3594_profile_view_native_contract(self.report["native"], self.raw)
+
+    def test_exact_transport_intra_report_instance_dependency_and_unverified_stages_are_preserved(self):
+        self.assertEqual(self.report["upstream_sections"], [families._camera_3594_profile_reset_native_dependencies()])
+        reference = self.report["native_contract"]["intra_report_reference"]
+        self.assertEqual(reference["pointer"], "/controls_native/native_contract/instance_selection")
+        self.assertEqual(reference["required_fields"], {"initializer_rva": "0x3bcc0", "product_id": 3594, "vtable_rva": "0xb9690"})
+        self.assertEqual(self.report["native"]["failures"], [])
+        self.assertEqual(self.report["native"]["decompiler_failures"], [])
+        self.assertEqual(len(self.report["native"]["capture_failures"]), 1)
+        for key in ("source_chain_complete", "target_execution", "real_device_operations"):
+            self.assertFalse(self.report[key])
+        self.assertEqual(self.report["official_dll_comparison"], "not_executed")
+        self.assertEqual(self.report["new_native_captures"], 0)
+        self.assertEqual(self.report["temporary_artifacts_created"], [])
+        receipt = analysis.ROOT / ".analysis/results/frontend/accessories-camera-local-pages-audit.json"
+        document = json.loads(receipt.read_bytes())
+        document["camera_3594_exposure_chain"]["native_contract"]["transport"]["success"] = "always true"
+        with self.assertRaisesRegex(ValueError, "exact current transport dependency"):
+            families.collect_camera_3594_profile_view_native_chain(host.HostLocalAudit(), document)
+
+
+class MouseDpiActiveSlotChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_mouse_dpi_active_slot_chain(cls.audit)
+        cls.owners = {role: cls.audit.owners[key] for role, key in cls.report["roles"].items()}
+
+    def changed_contract(self, role, before, after):
+        owners = copy.deepcopy(self.owners)
+        self.assertIn(before, owners[role]["body"])
+        owners[role]["body"] = owners[role]["body"].replace(before, after, 1)
+        owners[role]["body_sha256"] = hashlib.sha256(owners[role]["body"].encode()).hexdigest()
+        return families._mouse_dpi_active_slot_contract(owners, self.audit.parser)
+
+    def test_current_deployments_complete_bytes_graph_and_unverified_stages(self):
+        self.assertEqual(self.report["product_id"], 182)
+        self.assertEqual((len(self.report["roles"]), len(self.audit.owners), len(self.report["call_edges"])), (73, 89, 30))
+        self.assertEqual(self.report["source_sets"]["mw"]["name"], "mouse-mw-182-current-refresh-ec3db4b29c5a-2")
+        self.assertEqual(self.report["source_sets"]["ui"]["name"], "mouse-182-current-refresh-ec3db4b29c5a")
+        for row in self.owners.values():
+            raw = self.audit.read(row["original"])[row["byte_start"]:row["byte_end"]]
+            self.assertEqual(raw.decode(), row["body"])
+            self.assertEqual(hashlib.sha256(raw).hexdigest(), row["body_sha256"])
+        for edge in self.report["call_edges"]:
+            self.assertIn(edge["caller"], self.audit.owners)
+            self.assertIn(edge["callee"], self.audit.owners)
+        self.assertTrue(self.report["selected_static_semantics_reviewed"])
+        for name in ("source_chain_complete", "whole_product_complete", "target_execution", "real_device_operations", "product_code_modified"):
+            self.assertFalse(self.report[name])
+        self.assertEqual(self.report["official_dll_comparison"], "not_executed")
+        self.assertEqual(self.report["temporary_resources_created"], [])
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_slot_inventory_uses_observed_ids_not_slot_count_or_fixed_id(self):
+        for role, before, after in (
+                ("inventory_load", "this.obmJson.profileIdList=[...e.jsonData.idList]", "this.obmJson.profileIdList=[1,2]"),
+                ("inventory_load", "this.getProfileNameStructure(this.obmJson.profileIdList[o])", "this.getProfileNameStructure(o+1)"),
+                ("obm_normalization", "if(1!==e.id)", "if(0!==e.id)"),
+                ("guid_slots", "n.guid===e&&t.push(n.slotId)", "t.push(1)"),
+                ("dpi_maker", "Qe(S.activeProfile,m.jf.obmData)", "[1]")):
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "semantic boundary differs"):
+                self.changed_contract(role, before, after)
+        self.assertIn("no matching row", self.report["semantics"]["identity"]["active_guid"])
+
+    def test_empty_identity_fallback_is_local_association_not_device_observation(self):
+        identity = self.report["semantics"]["identity"]
+        self.assertIn("not hardware-observed GUID", identity["local_association"])
+        self.assertIn("empty/partial identity", identity["device_origin"])
+        for role, before, after in (
+                ("obm_ui_identity", "n.includes(e.slotId)", "n.includes(1)"),
+                ("obm_ui_identity", "void 0===s&&(s=null==r?void 0:r.profiles[0])", "void 0===s&&(s={guid:e.guid})"),
+                ("profile_identity_reader", "d.status===o.STATUS_SUCCESS", "d.status!==o.STATUS_SUCCESS"),
+                ("profile_identity_reader", "this.getGuidFromDevice(v.slice(0,16))", "this.getGuidFromDevice(v.slice(16,32))")):
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "semantic boundary differs"):
+                self.changed_contract(role, before, after)
+
+    def test_serial_cache_macro_guards_and_startup_order_are_not_generic_initialization(self):
+        setup = self.owners["setup"]["body"]
+        self.assertLess(setup.index("yield Un()"), setup.index("p.jf.obmEngine=new i(p.jf.rzDevice)"))
+        for role, before, after in (
+                ("storage_active_guid", "e.deviceMetadatas[t].activeProfileGuid", "e.profiles[0].guid"),
+                ("macro_guard", "!window.macroRecorderExclusiveHeld", "true"),
+                ("dpi_state", 'cond:"macroRecorderNotRunning"', 'cond:"always"'),
+                ("cache_restore", "if(!t)return", "if(false)return"),
+                ("dpi_state", 'ON_STAGES_INIT:[{actions:[{type:"dispatchAllowAction",payload:{feature:"dpi",lockHeld:!1,actions:[{type:"deviceAccess"}]}}]',
+                    'ON_STAGES_INIT:[{actions:[{type:"dispatchAllowAction",payload:{feature:"dpi",lockHeld:!1,actions:[{type:"updateLocalStorage"},{type:"deviceAccess"}]}}]')):
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "semantic boundary differs"):
+                self.changed_contract(role, before, after)
+
+    def test_current_profile_readback_does_not_confirm_later_slot_writes(self):
+        runner, slots = self.owners["dpi_runner"]["body"], self.owners["obm_dpi_writer"]["body"]
+        self.assertLess(runner.index("yield a.getDPIStages(1)"), runner.index("yield Nt(s,c,d,v)"))
+        self.assertLess(runner.index("L.xt.currValue.x="), runner.index("yield Nt(s,c,d,v)"))
+        self.assertNotIn("getDPIStages", slots.split("setDPIStages", 1)[1])
+        self.assertNotIn("signal.aborted", slots)
+        self.assertIn("cannot confirm those later slot writes", self.report["semantics"]["write"]["obm"])
+        for role, before, after in (
+                ("dpi_runner", "a.setDPIStages(1,c,d,v)", "a.setDPIStages(2,c,d,v)"),
+                ("obm_dpi_writer", "e&&t===c&&n===d", "e"),
+                ("obm_dpi_writer", "r.push({result:\"ERROR\",message:e})", "r.push({result:\"SUCCESS\"})")):
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "semantic boundary differs"):
+                self.changed_contract(role, before, after)
+
+    def test_protocol_records_are_seven_bytes_and_big_endian_with_independent_headers(self):
+        self.assertEqual(self.report["semantics"]["headers"], {"getDPIStages": [80, 4, 134], "setDPIStages": [80, 4, 6]})
+        for role, before, after in (
+                ("dpi_set_header", "[80,4,6]", "[80,4,7]"),
+                ("protocol_dpi_set", "const l=7*o+3", "const l=6*o+3"),
+                ("protocol_dpi_set", "i[7*e+4]=a.E4(o[t+1]),i[7*e+5]=a.l7(o[t+1])",
+                    "i[7*e+4]=a.l7(o[t+1]),i[7*e+5]=a.E4(o[t+1])"),
+                ("dpi_decoder", "n=3;n<e.packetSizeReturned;n+=7", "n=3;n<e.packetSizeReturned;n+=6")):
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "header differs|semantic boundary differs"):
+                self.changed_contract(role, before, after)
+
+    def test_result_callbacks_and_cancellation_do_not_invent_device_state_or_rollback(self):
+        self.assertNotIn("cancelAllTasks", self.owners["cleanup"]["body"])
+        self.assertIn('case ue.eCI:return{...e,...E.payload}', self.owners["ui_reducer"]["body"])
+        for role, before, after in (
+                ("dpi_completion", '"skipped"===a.error', '"confirmed"===a.error'),
+                ("task_queue", "this.currentTask.cancel()", "this.currentTask.disposeClosure()"),
+                ("ui_device_result", "e.actionsFromUI.findIndex(e=>e.timertick===a)", "e.actionsFromUI.findIndex(e=>true)"),
+                ("ui_reducer", 'case ue.eCI:return{...e,...E.payload}', 'case ue.eCI:return{...e,observed:E.payload}')):
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "semantic boundary differs|complete owners need review"):
+                self.changed_contract(role, before, after)
+
+    def test_owner_identity_and_exact_upstream_sections_reject_unreviewed_changes(self):
+        owners = copy.deepcopy(self.owners)
+        owners["inventory_row"]["body"] += ";"
+        with self.assertRaisesRegex(ValueError, "complete owner SHA differs"):
+            families._mouse_dpi_active_slot_contract(owners, self.audit.parser)
+        owners["inventory_row"]["body_sha256"] = hashlib.sha256(owners["inventory_row"]["body"].encode()).hexdigest()
+        with self.assertRaisesRegex(ValueError, "complete owners need review"):
+            families._mouse_dpi_active_slot_contract(owners, self.audit.parser)
+        upstream = self.report["upstream_sections"]
+        self.assertEqual(len(upstream), 3)
+        self.assertEqual(families._mouse_dpi_active_slot_upstream_changes(upstream), [])
+        changed = copy.deepcopy(upstream)
+        changed[0]["canonical_sha256"] = "0" * 64
+        self.assertTrue(families._mouse_dpi_active_slot_upstream_changes(changed))
+        self.assertNotIn(".analysis/results/frontend/mouse-mw-audit.json", self.audit.artifacts)
+
+    def test_wrong_product_function_family_and_preparation_fail_before_collection(self):
+        import argparse
+        for family, function, product, prepare in (("audio", "mw", None, False), ("mouse", "main", None, False),
+                ("mouse", "mw", [190], False), ("mouse", "mw", None, True)):
+            with self.subTest(family=family, function=function, product=product, prepare=prepare), \
+                    patch.object(families, "collect_mouse_dpi_active_slot_chain") as collector, \
+                    self.assertRaisesRegex(ValueError, "requires PID182"):
+                families.audit_mouse_dpi_active_slot_chain(argparse.Namespace(
+                    family=family, function=function, product=product, prepare=prepare))
+            collector.assert_not_called()
+
+    def test_wrapper_records_failures_and_source_or_upstream_drift_before_raising(self):
+        import argparse
+        for mode in ("success", "exception", "snapshot", "upstream"):
+            configure = {"side_effect": ValueError("current source missing")} if mode == "exception" else {"return_value": {"failures": []}}
+            with self.subTest(mode=mode), patch.object(families, "collect_mouse_dpi_active_slot_chain", **configure), \
+                    patch.object(host.HostLocalAudit, "final_snapshot", return_value=["source"] if mode == "snapshot" else []), \
+                    patch.object(families, "_mouse_dpi_active_slot_upstream_changes", return_value=["receipt#pointer"] if mode == "upstream" else []), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+                args = argparse.Namespace(family="mouse", function="mw", product=None, prepare=False)
+                if mode == "success":
+                    families.audit_mouse_dpi_active_slot_chain(args)
+                else:
+                    with self.assertRaisesRegex(ValueError, "source observation remains unresolved"):
+                        families.audit_mouse_dpi_active_slot_chain(args)
+            report, destination, _, section = publish.call_args.args
+            self.assertEqual(destination, analysis.ROOT / ".analysis/results/frontend/mouse-mw-audit.json")
+            self.assertEqual(section, "mouse_dpi_active_slot_chain")
+            self.assertEqual(report["bounded_observation_complete"], mode == "success")
+            self.assertFalse(report["source_chain_complete"])
+            self.assertFalse(report["whole_product_complete"])
+            self.assertFalse(report["target_execution"])
+
+
+class System737PerformanceNativeChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_system_737_performance_native_chain(cls.audit)
+        cls.owners = {role: cls.audit.owners[key] for role, key in cls.report["roles"].items()}
+        cls.semantics = cls.report["semantics"]
+
+    def test_current_mounted_pid737_and_exact_resource_versions(self):
+        self.assertEqual(self.report["source_sets"]["mw"]["name"], "system-mw-737-current-refresh-ec3db4b29c5a-2")
+        self.assertEqual(self.report["source_sets"]["ui"]["name"], "system-737-current-refresh-ec3db4b29c5a")
+        self.assertEqual(self.report["host_release"]["version"], "4.0.896")
+        self.assertIn('useFeature("splitOCCoreVoltageOffset","yes")', self.owners["product_split_voltage"]["body"])
+        self.assertIn("a&&(0,N.jsx)(As,{includeCoreVoltageLock:!0})", self.owners["ui_performance"]["body"])
+        for name, count in (("RzIntelOverClock", 5), ("RzIntelOverClockDLL", 7)):
+            self.assertEqual(self.report["native"][name]["resource"]["resourceVersion"], "1.2.23.0")
+            self.assertEqual(len(self.report["native"][name]["slice"]["complete_functions"]), count)
+
+    def test_complete_ast_owners_and_original_byte_slices(self):
+        self.assertEqual(len(self.report["roles"]), 55)
+        for row in self.audit.owners.values():
+            raw = self.audit.read(row["original"])
+            self.assertEqual(raw[row["byte_start"]:row["byte_end"]], row["body"].encode())
+            self.assertEqual(hashlib.sha256(row["body"].encode()).hexdigest(), row["body_sha256"])
+            node = self.audit.tree(row["original"]).root_node.descendant_for_byte_range(row["byte_start"], row["byte_end"] - 1)
+            while node is not None and (node.start_byte, node.end_byte, node.type) != (row["byte_start"], row["byte_end"], row["syntax"]):
+                node = node.parent
+            self.assertIsNotNone(node)
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_cancel_reapplies_selected_saved_profile_and_save_is_separate(self):
+        self.assertIn("m.resetActiveOverclockingProfile()", self.owners["ui_cpu"]["body"])
+        self.assertIn("t=o.overclockingSetting,Ip(e)", self.owners["taskMakerResetActiveOverclockingProfile"]["body"])
+        self.assertIn('type:"ON_APPLY_OVERCLOCKING_PROFILE"', self.owners["cancel_restore_apply"]["body"])
+        self.assertIn("yc.c.enqueueEvent(n)", self.owners["cancel_restore_apply"]["body"])
+        self.assertNotIn("enqueueTask", self.owners["taskMakerSaveOverclockingProfiles"]["body"])
+        self.assertEqual(self.semantics["ui"]["draft_commit_delay_ms"], 50)
+        self.assertTrue(self.semantics["ui"]["apply_disables_button_before_result"])
+
+    def test_control_projection_and_actual_clr_thunk_targets(self):
+        self.assertEqual(self.semantics["control_ids"], {"core_voltage_offset": 34, "sustained_power": 48,
+            "short_power": 47, "short_power_enabled": 49, "power_time_window": 66})
+        slots = self.report["managed"]["vtable_fixups"]["selected_slots"]
+        self.assertEqual([(row["slot_rva"], row["method_token"], row["target_rva"]) for row in slots],
+            [("0xa7320", "0x600004b", "0x40874"), ("0xa7330", "0x6000050", "0x41480"), ("0xa7340", "0x6000051", "0x42a24")])
+        self.assertTrue(all(row["type"] == "0xa" and row["count"] == 1 for row in slots))
+
+    def test_full_managed_original_code_eh_and_diagnostics_are_preserved(self):
+        managed = self.report["managed"]
+        self.assertEqual(len(managed["complete_methods"]), 11)
+        self.assertEqual(managed["selected_csharp_diagnostic_count"], 103)
+        self.assertFalse(managed["capture_input"]["all_csharp_resolved"])
+        self.assertFalse(managed["sdk_dependency_implementation_complete"])
+        for row in managed["complete_methods"]:
+            self.assertEqual(len(bytes.fromhex(row["raw_code_hex"])), row["code_size"])
+            self.assertEqual(hashlib.sha256(bytes.fromhex(row["raw_code_hex"])).hexdigest(), row["raw_code_sha256"])
+            self.assertEqual(row["method_identity"]["implementation_kind"], "il")
+        for row in managed["complete_csharp_methods"]:
+            raw = (analysis.ROOT / row["artifact"]["path"]).read_bytes()
+            self.assertEqual(raw[row["byte_start"]:row["byte_end"]], row["complete_csharp"].encode())
+        self.assertTrue(any(row["exception_sections"] for row in managed["complete_methods"]))
+
+    def test_request_bool_and_task_completion_never_prove_hardware_confirmation(self):
+        self.assertFalse(self.semantics["bridge"]["request_bool_is_hardware_confirmation"])
+        self.assertFalse(self.semantics["tasks"]["waits_for_native_result_event"])
+        self.assertTrue(self.semantics["ui"]["apply_optimistic_actual_projection"])
+        self.assertIn('e=>""===e.error', self.owners["callback"]["body"])
+        self.assertIn("does not gate on top-level error", self.semantics["native"]["bulk_sdk"])
+        self.assertFalse(self.report["source_chain_complete"])
+        self.assertEqual(self.report["official_dll_comparison"], "unverified")
+
+    def test_split_stale_value_retry_limit_and_cancel_order_remain_distinct(self):
+        self.assertTrue(self.semantics["bridge"]["split_enabled"])
+        self.assertIn("if(M!==e.controlValue)return", self.owners["split"]["body"])
+        self.assertIn("B>5", self.owners["split"]["body"])
+        self.assertIn("yield(0,y.yy)(2e3*B)", self.owners["split"]["body"])
+        runner = self.owners["runner"]["body"]
+        self.assertGreater(runner.index("signal.aborted"), runner.index("yield(0,R.Yl)"))
+        self.assertNotIn("clearTimeout", self.owners["stop"]["body"])
+        self.assertEqual(self.semantics["tasks"]["bulk_then_split_delay_ms"], 1000)
+
+    def test_changed_source_or_comment_decoy_requires_review(self):
+        edits = (("cancel_restore_apply", "yc.c.enqueueEvent(n)", "void n"),
+            ("projection", "controlId:49", "controlId:50"),
+            ("ui_cpu", "m.applyOverclockingProfile()", 'console.log("m.applyOverclockingProfile()")'),
+            ("callback", 'e=>""===e.error', 'e=>true'),
+            ("split", "B>5", "B>50"),
+            ("bulk", "yield E.getAllTuningControlDataAsync()", "void E"),
+            ("stop", "yield E.unregisterFFIEvent", "yield E.registerFFIEvent"))
+        for role, before, after in edits:
+            owners = copy.deepcopy(self.owners)
+            self.assertIn(before, owners[role]["body"])
+            owners[role]["body"] = owners[role]["body"].replace(before, after, 1)
+            with self.subTest(role=role), self.assertRaises(ValueError):
+                families._system_737_performance_contract(owners, self.report["native"], self.report["managed"])
+
+    def test_changed_native_pipe_or_managed_control_cannot_keep_old_review(self):
+        for mode in ("pipe", "slot", "diagnostics", "il"):
+            native, managed = copy.deepcopy(self.report["native"]), copy.deepcopy(self.report["managed"])
+            if mode == "pipe":
+                row = next(x["capture"] for x in native["RzIntelOverClock"]["slice"]["complete_functions"] if x["capture"]["rva"] == "0x44f90")
+                line = next(x for x in row["pseudocode"]["lines"] if "WriteFile(hFile" in x["text"])
+                line["text"] = line["text"].replace("WriteFile(hFile", "WriteFile(other")
+            elif mode == "slot":
+                managed["vtable_fixups"]["selected_slots"][1]["method_token"] = "0x6000051"
+            elif mode == "diagnostics":
+                managed["complete_csharp_methods"][-1]["diagnostics"] = []
+            else:
+                managed["complete_methods"][-1]["raw_code_hex"] = "00"
+            with self.subTest(mode=mode), self.assertRaisesRegex(ValueError, "complete semantic review"):
+                families._system_737_performance_contract(self.owners, native, managed)
+
+    def test_shared_pointer_checks_only_actual_host_task_dependencies(self):
+        dependency, = self.report["upstream_sections"]
+        self.assertEqual(dependency["pointer"], "/gpu_route_native_chain")
+        self.assertEqual(len(dependency["reused_roles"]), 13)
+        self.assertNotIn(dependency["receipt"], self.audit.artifacts)
+        document = json.loads((analysis.ROOT / dependency["receipt"]).read_bytes())
+        document["unrelated_sibling"] = {"changed": True}
+        with patch.object(Path, "read_bytes", return_value=json.dumps(document).encode()):
+            self.assertEqual(families._system_737_performance_upstream_changes([dependency]), [])
+        owner_id = document["gpu_route_native_chain"]["roles"]["host_call"]
+        owner = next(row for row in document["gpu_route_native_chain"]["complete_source_owners"] if row["id"] == owner_id)
+        owner["body"] += ";"
+        with patch.object(Path, "read_bytes", return_value=json.dumps(document).encode()):
+            self.assertEqual(families._system_737_performance_upstream_changes([dependency]), [dependency["receipt"] + "#" + dependency["pointer"]])
+
+    def test_query_dispatch_and_wrong_scope_preparation_rejected(self):
+        import argparse
+        parser = argparse.ArgumentParser()
+        families.add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["audit-family-function", "--family", "system", "--function", "mw", "--query", "system-737-performance-native-chain"])
+        with patch.object(families, "audit_system_737_performance_native_chain") as selected:
+            families.audit_family_function(args)
+        selected.assert_called_once_with(args)
+        for family, function, product, prepare in (("audio", "mw", None, False), ("system", "main", None, False),
+                ("system", "mw", [711], False), ("system", "mw", None, True)):
+            with self.subTest(family=family, function=function, product=product, prepare=prepare), \
+                    patch.object(families, "collect_system_737_performance_native_chain") as collector, \
+                    self.assertRaisesRegex(ValueError, "requires PID737"):
+                families.audit_system_737_performance_native_chain(argparse.Namespace(family=family, function=function, product=product, prepare=prepare))
+            collector.assert_not_called()
+
+    def test_failed_or_changed_query_publishes_failure_without_scope_promotion(self):
+        import argparse
+        for mode in ("success", "exception", "changed", "upstream"):
+            configured = {"side_effect": ValueError("missing CPU owner")} if mode == "exception" else {"return_value": {"failures": []}}
+            with self.subTest(mode=mode), patch.object(families, "collect_system_737_performance_native_chain", **configured), \
+                    patch.object(host.HostLocalAudit, "final_snapshot", return_value=["CPU-source"] if mode == "changed" else []), \
+                    patch.object(families, "_system_737_performance_upstream_changes", return_value=["shared#pointer"] if mode == "upstream" else []), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+                args = argparse.Namespace(family="system", function="mw", product=None, prepare=False)
+                if mode == "success":
+                    families.audit_system_737_performance_native_chain(args)
+                else:
+                    with self.assertRaisesRegex(ValueError, "source observation remains unresolved"):
+                        families.audit_system_737_performance_native_chain(args)
+            report, destination, _, section = publish.call_args.args
+            self.assertEqual(destination, analysis.ROOT / ".analysis/results/frontend/system-mw-audit.json")
+            self.assertEqual(section, "performance_native_chain")
+            self.assertEqual(report["bounded_observation_complete"], mode == "success")
+            self.assertFalse(report["source_chain_complete"])
+            self.assertFalse(report["whole_product_complete"])
+            self.assertFalse(report["target_execution"])
+            self.assertEqual(report["official_dll_comparison"], "not_executed")
+
+
+class System737OverclockServiceChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_system_737_overclock_service_chain(cls.audit)
+        cls.owners = {role: cls.audit.owners[key] for role, key in cls.report["roles"].items()}
+        cls.reused = {row["selection"]: families._system_737_overclock_service_dependency(
+            json.loads((analysis.ROOT / row["receipt"]).read_bytes()), row["selection"])
+            for row in cls.report["upstream_sections"]}
+        cls.native = families._system_737_overclock_service_native(cls.audit, cls.reused)
+        cls.semantics = cls.report["semantics"]
+
+    def body(self, name, rva, native=None):
+        selected = (native or self.native)[name]["complete_selected_functions"]
+        row, = [row for row in selected if row["capture"]["rva"] == rva]
+        return "\n".join(line["text"] for line in row["capture"]["pseudocode"]["lines"])
+
+    def contract(self, *, owners=None, native=None, managed=None):
+        return families._system_737_overclock_service_contract(owners or self.owners, native or self.native,
+            managed or self.report["managed"], self.reused)
+
+    def test_current_service_is_1030_and_exact_apply_dependencies_are_reused(self):
+        self.assertEqual(self.report["host_release"]["version"], "4.0.896")
+        self.assertEqual(self.report["host_release"]["service_declaration"]["actual_pe_versions"], [["1.0.30.0", "1.0.30.0"]])
+        self.assertEqual(self.report["source_sets"]["mw"]["name"], "system-mw-737-current-refresh-ec3db4b29c5a-2")
+        self.assertEqual(len(self.report["reused_source_roles"]), 55)
+        self.assertEqual(len(self.report["reused_managed_methods"]), 11)
+        self.assertEqual({name: (len(value["functions"]), len(value["reused_rvas"]))
+            for name, value in self.report["native"].items()},
+            {"RzIntelOverClock": (18, 5), "RzIntelOverClockDLL": (12, 7), "RzDLLService": (15, 6)})
+        self.assertFalse(self.report["source_chain_complete"])
+        self.assertFalse(self.report["whole_product_complete"])
+        self.assertFalse(self.report["target_execution"])
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_host_callback_is_one_complete_original_ast_owner(self):
+        self.assertEqual(len(self.audit.owners), 1)
+        row = self.owners["host_callback"]
+        self.assertEqual(row["syntax"], "method_definition")
+        self.assertEqual(self.audit.read(row["original"])[row["byte_start"]:row["byte_end"]], row["body"].encode())
+        self.assertEqual(hashlib.sha256(row["body"].encode()).hexdigest(), row["body_sha256"])
+        changed = copy.deepcopy(self.owners)
+        changed["host_callback"]["body"] += ";"
+        with self.assertRaisesRegex(ValueError, "complete semantic review"):
+            self.contract(owners=changed)
+
+    def test_real_task_virtual_slot_and_worker_edge_are_checked(self):
+        slot, = self.report["native"]["RzDLLService"]["verified_indirect_slots"]
+        self.assertEqual((slot["vtable_rva"], slot["slot_byte_offset"], slot["target_rva"]), ("0x87368", 8, "0x47fa0"))
+        self.assertTrue(slot["actual_pe_bytes_verified"])
+        self.assertIn("(*v10)[1]", self.body("RzDLLService", "0x49250"))
+        self.assertIn("CRzTask::`vftable'", self.body("RzDLLService", "0x49cd0"))
+        with self.assertRaisesRegex(ValueError, "virtual slot target differs"):
+            families.verify_native_functions(self.native["RzDLLService"]["input"], {},
+                [{"role": "bad_task", "vtable_rva": 0x87368, "slot_byte_offset": 8, "target_rva": 0x49250}])
+        self.assertIn("internal algorithms remain unexpanded", self.semantics["dispatch"]["module"])
+
+    def test_dispatch_copies_returned_payload_before_optional_free(self):
+        body = self.body("RzDLLService", "0x2fb50")
+        self.assertLess(body.index("ProcAddress)(a2)"), body.index("while ( v152[v22] )"))
+        self.assertLess(body.index("while ( v152[v22] )"), body.index("sub_140016320((void **)v178, v152, v22)"))
+        self.assertLess(body.index("sub_140016320((void **)v178, v152, v22)"), body.index("FreeMalloc)(v153)"))
+        self.assertIn("if ( FreeMalloc )", body)
+        task = self.body("RzDLLService", "0x47fa0")
+        self.assertLess(task.index("sub_14002FB50"), task.index("sub_14003B640"))
+        self.assertFalse(self.semantics["request"]["request_bool_is_hardware_confirmation"])
+        self.assertFalse(self.semantics["request"]["request_id"])
+
+    def test_pending_retry_failure_discards_failed_and_unattempted_requests(self):
+        body = self.body("RzIntelOverClock", "0x2e750")
+        send = body.index("sub_180044F90")
+        stop = body.index("break;", send)
+        clear = body.index("*(_QWORD *)&xmmword_1800675C8 = qword_1800675C0;")
+        self.assertLess(send, stop)
+        self.assertLess(stop, clear)
+        self.assertLess(clear, body.index("Mtx_unlock"))
+        self.assertIn("failed and unattempted", self.semantics["request"]["pending"])
+
+    def test_eof_retry_and_blocking_read_are_not_hardware_ack_or_timeout(self):
+        response = self.semantics["response"]
+        self.assertEqual(response["write_attempt_limit"], 50)
+        self.assertEqual(response["read_attempt_limit"], 500)
+        self.assertIsNone(response["read_timeout_ms"])
+        self.assertFalse(response["whole_payload_eof_write_mutex_observed"])
+        self.assertEqual(self.body("RzDLLService", "0x47fa0").count("sub_14003B640("), 2)
+        self.assertEqual(self.body("RzDLLService", "0x3bc60").count("sub_14003B640("), 2)
+        self.assertIn('strstr(&v7[v12], "<EOF>")', self.body("RzIntelOverClock", "0x45360"))
+        for name, rva, old, new in (("RzDLLService", "0x3b640", "v6 = 50;", "v6 = 10;"),
+                ("RzDLLService", "0x47fa0", '"<EOF>"', '"DONE"')):
+            changed = copy.deepcopy(self.native)
+            row, = [row for row in changed[name]["complete_selected_functions"] if row["capture"]["rva"] == rva]
+            for line in row["capture"]["pseudocode"]["lines"]:
+                line["text"] = line["text"].replace(old, new)
+            with self.subTest(rva=rva), self.assertRaisesRegex(ValueError, "semantic boundary differs"):
+                self.contract(native=changed)
+
+    def test_current_callback_consumers_and_native_false_registration_are_retained(self):
+        body = self.owners["host_callback"]["body"]
+        self.assertIn("ffiLibMap.get(o)", body)
+        self.assertIn("!e.isDestroyed()&&!e.isCrashed()&&!p(e)&&a.urlList.includes(e.getURL())", body)
+        self.assertIn("r=a.SetNodeFFIEvent(h),this.ffiCallbackMap.set(o,h)", body)
+        self.assertIn("qword_1800675E8 && qword_180067570", self.body("RzIntelOverClock", "0x33de0"))
+        self.assertIn("sub_14003A220", self.body("RzDLLService", "0x3bc60"))
+        self.assertIn("No per-request or connection generation", self.semantics["response"]["routing"])
+
+    def test_managed_registration_preserves_actual_il_csharp_diagnostics_and_slots(self):
+        managed = self.report["managed"]
+        self.assertEqual(managed["selected_csharp_diagnostic_count"], 8)
+        self.assertEqual([(row["slot_rva"], row["method_token"], row["thunk_rva"])
+            for row in managed["vtable_slots"]], [("0xa7300", "0x6000040", "0x4a080"), ("0xa7210", "0x6000041", "0x4a000")])
+        methods = {row["token"]: row for row in managed["complete_methods"]}
+        self.assertEqual(methods["0x6000041"]["code_size"], 7)
+        register = methods["0x6000040"]
+        calls = [row["operand"] for row in register["calls"]]
+        self.assertTrue(any("CheckAndReInitIntelSDKOC" in value for value in calls))
+        self.assertTrue(any("add_OnProposeChanges" in value for value in calls))
+        self.assertTrue(any("add_OnApplyChanges" in value for value in calls))
+        self.assertTrue(register["exception_sections"])
+        for row in managed["complete_methods"]:
+            self.assertEqual(hashlib.sha256(bytes.fromhex(row["raw_code_hex"])).hexdigest(), row["raw_code_sha256"])
+            self.assertEqual(row["method_identity"]["implementation_kind"], "il")
+        for row in managed["complete_csharp_methods"]:
+            self.assertEqual((analysis.ROOT / row["artifact"]["path"]).read_bytes()[row["byte_start"]:row["byte_end"]], row["complete_csharp"].encode())
+
+    def test_changed_il_diagnostics_or_registration_slot_requires_review(self):
+        for mode in ("il", "diagnostics", "slot"):
+            changed = copy.deepcopy(self.report["managed"])
+            if mode == "il":
+                changed["complete_methods"][0]["raw_code_hex"] = "00"
+            elif mode == "diagnostics":
+                changed["complete_csharp_methods"][0]["diagnostics"] = []
+            else:
+                changed["vtable_slots"][0]["method_token"] = "0x6000041"
+            with self.subTest(mode=mode), self.assertRaisesRegex(ValueError, "complete semantic review"):
+                self.contract(managed=changed)
+
+    def test_unregistration_and_actual_shutdown_do_not_prove_callback_drain(self):
+        stop_id = self.reused["performance"]["roles"]["stop"]
+        stop, = [row for row in self.reused["performance"]["complete_source_owners"] if row["id"] == stop_id]
+        self.assertIn("unregisterFFIEvent", stop["body"])
+        self.assertNotIn("terminate", stop["body"].lower())
+        unregister = self.body("RzIntelOverClock", "0x2f270")
+        self.assertIn("sub_180016430((void **)&unk_180067560, byte_180050C32, 0)", unregister)
+        shutdown = self.body("RzDLLService", "0x39580")
+        self.assertLess(shutdown.index("sub_140032280()"), shutdown.index("byte_14009EB74 = 1;"))
+        self.assertLess(shutdown.index("byte_14009EB74 = 1;"), shutdown.index("sub_140049410()"))
+        self.assertIn("TerminateThread", self.body("RzDLLService", "0x49410"))
+        for rva in ("0x2ec80", "0x2ebc0"):
+            self.assertNotIn("WaitForSingleObject", self.body("RzIntelOverClock", rva))
+        self.assertFalse(self.semantics["release"]["sdk_and_all_callbacks_quiescent"])
+
+    def test_unrelated_siblings_do_not_invalidate_exact_dependencies(self):
+        for dependency in self.report["upstream_sections"]:
+            doc = json.loads((analysis.ROOT / dependency["receipt"]).read_bytes())
+            doc["unrelated_sibling"] = {"changed": True}
+            with patch.object(Path, "read_bytes", return_value=json.dumps(doc).encode()):
+                self.assertEqual(families._system_737_overclock_service_upstream_changes([dependency]), [])
+            if dependency["selection"] == "performance":
+                doc["performance_native_chain"]["managed"]["complete_methods"][0]["raw_code_hex"] = "00"
+            else:
+                doc["hanbo_system_monitor_versions"]["versions"]["RzDLLService"] = "1.0.29.0"
+            with patch.object(Path, "read_bytes", return_value=json.dumps(doc).encode()):
+                self.assertEqual(families._system_737_overclock_service_upstream_changes([dependency]),
+                    [dependency["receipt"] + "#" + dependency["pointer"]])
+
+    def test_new_frontend_selection_cannot_reuse_old_apply_evidence(self):
+        import frontend
+        selected = {**self.report["source_sets"]["mw"], "name": "new-unreviewed-deployment"}
+        with patch.object(frontend, "current_source_selection", return_value=selected), \
+                self.assertRaisesRegex(ValueError, "current frontend selection differs"):
+            families._system_737_overclock_service_dependencies(host.HostLocalAudit())
+
+    def test_query_dispatch_and_wrong_scope_preparation_rejected(self):
+        import argparse
+        parser = argparse.ArgumentParser()
+        families.add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["audit-family-function", "--family", "system", "--function", "mw", "--query", "system-737-overclock-service-chain"])
+        with patch.object(families, "audit_system_737_overclock_service_chain") as selected:
+            families.audit_family_function(args)
+        selected.assert_called_once_with(args)
+        for family, function, product, prepare in (("audio", "mw", None, False), ("system", "main", None, False),
+                ("system", "mw", [711], False), ("system", "mw", None, True)):
+            with self.subTest(family=family, function=function, product=product, prepare=prepare), \
+                    patch.object(families, "collect_system_737_overclock_service_chain") as collector, \
+                    self.assertRaisesRegex(ValueError, "requires PID737"):
+                families.audit_system_737_overclock_service_chain(argparse.Namespace(family=family, function=function, product=product, prepare=prepare))
+            collector.assert_not_called()
+
+    def test_failure_and_changed_dependencies_publish_without_scope_promotion(self):
+        import argparse
+        for mode in ("success", "exception", "changed", "upstream"):
+            configured = {"side_effect": ValueError("missing service owner")} if mode == "exception" else {"return_value": {"failures": []}}
+            with self.subTest(mode=mode), patch.object(families, "collect_system_737_overclock_service_chain", **configured), \
+                    patch.object(host.HostLocalAudit, "final_snapshot", return_value=["source"] if mode == "changed" else []), \
+                    patch.object(families, "_system_737_overclock_service_upstream_changes", return_value=["receipt#pointer"] if mode == "upstream" else []), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+                args = argparse.Namespace(family="system", function="mw", product=None, prepare=False)
+                if mode == "success":
+                    families.audit_system_737_overclock_service_chain(args)
+                else:
+                    with self.assertRaisesRegex(ValueError, "source observation remains unresolved"):
+                        families.audit_system_737_overclock_service_chain(args)
+            report, destination, _, section = publish.call_args.args
+            self.assertEqual(destination, analysis.ROOT / ".analysis/results/frontend/system-mw-audit.json")
+            self.assertEqual(section, "overclock_service_chain")
+            self.assertEqual(report["bounded_observation_complete"], mode == "success")
+            self.assertFalse(report["source_chain_complete"])
+            self.assertFalse(report["whole_product_complete"])
+            self.assertFalse(report["target_execution"])
+            self.assertEqual(report["official_dll_comparison"], "not_executed")
+
+
+class Gamepad2636DetectionNativeChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_gamepad_2636_detection_native_chain(cls.audit)
+        cls.native = families.verify_native_functions(cls.report["native"]["input"],
+            families._gamepad_2636_detection_native_roles())
+        cls.bodies = {row["role"]: row["capture"] for row in cls.native["complete_selected_functions"]}
+        cls.raw = cls.audit.read(cls.report["detector_original"])
+
+    def text(self, role):
+        return "\n".join(row["text"] for row in self.bodies[role]["pseudocode"]["lines"])
+
+    def reject_native_change(self, role, before, after, field="pseudocode"):
+        native = copy.deepcopy(self.native)
+        row, = [row for row in native["complete_selected_functions"] if row["role"] == role]
+        lines = row["capture"][field]["lines"] if field == "pseudocode" else row["capture"][field]
+        changed = False
+        for line in lines:
+            if before in line["text"]:
+                line["text"] = line["text"].replace(before, after, 1)
+                changed = True
+                break
+        self.assertTrue(changed, (role, before))
+        with self.assertRaisesRegex(ValueError, "reviewed native bodies differ"):
+            families._gamepad_2636_detection_native_verify(native)
+
+    def test_exact_continuation_and_actual_native_bytes_preserve_stage_boundaries(self):
+        upstream, = self.report["upstream_sections"]
+        self.assertEqual(upstream["canonical_sha256"], "051fc6b3895c1175a70da85d55fe314c111eacb1957f8fd6e7a500d0c3be1532")
+        self.assertEqual(upstream["resume_finding_canonical_sha256"], "0d11a3026971cbfa5fd31fca1156d34cc70a042c55521b5b80a694611c22fdbb")
+        self.assertEqual(families._gamepad_profile_apply_upstream_changes([upstream]), [])
+        self.assertEqual(len(self.report["native"]["functions"]), 44)
+        self.assertEqual(self.report["reused_js_owners"], 65)
+        self.assertEqual(self.report["reused_js_source_sha256"], "94cc0b1b842d62e273e143fe1d4ee2b39db85bbcd67ca4bda35d45cace32fcc3")
+        self.assertEqual(self.report["native"]["reviewed_native_selection_sha256"], "a42692e69b6ba895d6719945072b08143425e9c4e659cf80f5b9752dc8bee411")
+        self.assertEqual(self.report["detector_original"]["post_packaging_signing"]["unsigned_sha256"],
+            "51ffa1ab2e10d366568e976675d8195a18f52f1a59b1fdbf71992e3757809b51")
+        self.assertTrue(self.report["source_slice_complete"])
+        for name in ("source_chain_complete", "whole_product_complete", "target_execution",
+                "real_device_operations", "product_code_modified", "private_analysis_database_required"):
+            self.assertFalse(self.report[name])
+        self.assertEqual(self.report["actual_dll_comparison"], "unverified")
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_module_initializer_guid_and_property_bytes_are_verified_in_pe(self):
+        bindings = self.report["native"]["pe_data_bindings"]
+        self.assertEqual(bindings["initializer_rva"], "0x4900")
+        self.assertEqual(bindings["callback_trampoline_rva"], "0x12f0")
+        self.assertEqual(bindings["usb_interface_guid"], "a5dcbf10-6530-11d2-901f-00c04fb951ed")
+        self.assertEqual(bindings["container_id_property"]["pid"], 2)
+        for span in bindings["spans"]:
+            changed = bytearray(self.raw)
+            changed[span["file_offset"]] ^= 1
+            with self.subTest(role=span["role"]), self.assertRaisesRegex(ValueError, "PE data binding differs"):
+                families._gamepad_2636_detection_data_contract(bytes(changed))
+        self.reject_native_change("install_node_methods", '"registerRemoved", sub_1800028D0',
+            '"registerRemoved", sub_180001B80')
+        self.reject_native_change("v8_callback_trampoline", "return v7(v13)", "return 0")
+
+    def test_registered_callback_arity_and_persistent_have_actual_owners(self):
+        registered = self.text("register_removed_callback")
+        self.assertIn("if ( v4 == 1 )", registered)
+        self.assertIn("qword_180047A80 = (__int64)v6", registered)
+        refs = self.report["native"]["resource_references"]["direct_references"]
+        self.assertEqual([row["owner_rva"] for row in refs["qword_180047A80"]], ["0x28d0", "0x29f0"])
+        self.reject_native_change("register_removed_callback", "if ( v4 == 1 )", "if ( v4 > 0 )")
+
+    def test_wndproc_filter_and_exact_instance_matching_cannot_be_substituted(self):
+        self.reject_native_change("device_window_callback", "a3 != 0x8000", "a3 == 0x8000")
+        self.reject_native_change("match_notification_and_queue", "v41 == v28", "v41 >= v28")
+        self.reject_native_change("broadcast_instance_identity", "v2 = a2 + 32", "v2 = a2 + 28")
+        self.assertIn("while ( *(_BYTE *)--a2 != a3 )", self.text("find_last_identity_separator"))
+        self.assertIn("buffer+returned_length-1", self.report["semantics"]["cache_key"])
+
+    def test_payload_fields_use_full_identity_and_assembly_number_arguments(self):
+        fields = self.report["semantics"]["fields"]
+        self.assertEqual({row["name"]: row["record_offset"] for row in fields},
+            {"locationId": 0, "vendorId": 4, "productId": 8, "productName": 120,
+                "deviceContainerId": 88, "devicePath": 152, "usbInstanceId": 184,
+                "manufacturer": 16, "serialNumber": 48, "deviceAddress": 80})
+        self.reject_native_change("deliver_removed_payload", '"deviceContainerId"', '"containerId"')
+        self.reject_native_change("deliver_removed_payload", "movd    xmm6, dword ptr [r14+4]",
+            "movd    xmm6, dword ptr [r14+8]", "assembly")
+        self.assertIn("incrementing process-local counter", fields[-1]["source"])
+        self.assertIn("never assigns a device serial", fields[-2]["source"])
+
+    def test_cache_hit_clone_and_miss_requery_keep_distinct_failure_behavior(self):
+        removed = self.text("remove_cached_device")
+        self.assertLess(removed.index("sub_180004F30"), removed.index("sub_1800054B0"))
+        self.assertLess(removed.index("sub_1800054B0"), removed.index("sub_180001970(v16)"))
+        self.assertIn("sub_180006EE0(a1, a2, a3", removed)
+        self.assertIn("VID/PID uninitialized", self.report["semantics"]["field_failures"])
+        self.reject_native_change("fallback_interface_by_devinst", "DWORD1(v25) == *(_DWORD *)(a1 + 20)",
+            "DWORD1(v25) != *(_DWORD *)(a1 + 20)")
+        self.reject_native_change("remove_cached_device", "byte_180047A72 = 0", "byte_180047A72 = 1")
+
+    def test_libuv_delivery_acknowledges_after_callback_and_keeps_stopped_path(self):
+        after = self.text("deliver_and_ack_after_work")
+        self.assertLess(after.index("sub_1800029F0()"), after.index("sub_180001970(lpMem)"))
+        self.assertLess(after.index("sub_180001970(lpMem)"), after.index("SetEvent(hHandle)"))
+        self.assertLess(after.index("SetEvent(hHandle)"), after.index("uv_queue_work"))
+        self.assertIn("if ( byte_180047A73 )", after)
+        self.reject_native_change("deliver_and_ack_after_work", "SetEvent(hHandle)", "SetEvent(hEvent)")
+        self.reject_native_change("deliver_removed_payload", "if ( v0 && byte_180047A71 )", "if ( v0 )")
+        self.assertIn("Callback result/exception and libuv status are not consumed", self.report["semantics"]["delivery"])
+
+    def test_stop_and_crt_cleanup_do_not_claim_callback_drain(self):
+        stop = self.text("stop_listener_and_setupapi")
+        self.assertLess(stop.index("byte_180047A73 = 0"), stop.index("SetEvent(hEvent)"))
+        self.assertLess(stop.index("WaitForSingleObject(hObject"), stop.index("FreeLibrary(hModule)"))
+        for token in ("hHandle", "uv_close", "lpMem", "qword_180047A80"):
+            self.assertNotIn(token, stop)
+        destructor = self.text("destroy_cache_nodes")
+        self.assertNotIn("sub_180001970", destructor)
+        self.assertFalse(self.report["semantics"]["whole_connection_generation_drain_proven"])
+        self.assertIn("static ordering limits", self.report["semantics"]["drain_limits"])
+        self.reject_native_change("stop_listener_and_setupapi", "SetEvent(hEvent)", "SetEvent(hHandle)")
+
+    def test_selected_incompleteness_rejected_and_unselected_failure_is_preserved(self):
+        self.assertEqual(self.native["failures"][0]["stage"], "20668:hexrays")
+        self.assertTrue(self.report["native"]["unselected_capture_failures_preserved"])
+        references = self.report["native"]["resource_references"]
+        self.assertTrue((analysis.ROOT / references["unselected_failure_artifact"]["path"]).is_file())
+        self.assertFalse(references["source_database_required_by_this_query"])
+        for mode in ("missing", "pseudocode", "failure_hidden", "failure_added"):
+            native = copy.deepcopy(self.native)
+            if mode == "missing":
+                native["complete_selected_functions"].pop()
+            elif mode == "pseudocode":
+                native["complete_selected_functions"][0]["pseudocode_captured"] = False
+            elif mode == "failure_hidden":
+                native["failures"] = []
+            else:
+                native["failures"].append({"stage": "29f0:hexrays", "error": "new failure"})
+            with self.subTest(mode=mode), self.assertRaises(ValueError):
+                families._gamepad_2636_detection_native_verify(native)
+
+    def test_upstream_or_current_host_change_requires_new_review(self):
+        with patch.object(families, "_gamepad_profile_apply_digest", return_value="changed"), \
+                self.assertRaisesRegex(ValueError, "exact upstream requires review"):
+            families.collect_gamepad_2636_detection_native_chain(host.HostLocalAudit())
+        provenance = self.report["provenance"]
+        source = dict(provenance["host_source"], sha256="changed")
+        with patch.object(host, "_mapping_external_input_source", return_value=(provenance["original"], source, provenance)), \
+                self.assertRaisesRegex(ValueError, "current Host provenance changed"):
+            families.collect_gamepad_2636_detection_native_chain(host.HostLocalAudit())
+
+    def test_query_publishes_fail_closed_and_rejects_wrong_scope(self):
+        from types import SimpleNamespace
+        args = SimpleNamespace(family="gamepad", function="mw", product=[2636], prepare=False)
+        for mode in ("success", "collector", "drift"):
+            outcome = {"side_effect": ValueError("missing owner")} if mode == "collector" else {"return_value": copy.deepcopy(self.report)}
+            with self.subTest(mode=mode), \
+                    patch.object(families, "collect_gamepad_2636_detection_native_chain", **outcome), \
+                    patch.object(host.HostLocalAudit, "final_snapshot", return_value=["changed"] if mode == "drift" else []), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+                if mode == "success":
+                    result = families.audit_gamepad_2636_detection_native_chain(args)
+                    self.assertTrue(result["bounded_observation_complete"])
+                else:
+                    with self.assertRaisesRegex(ValueError, "remains unresolved"):
+                        families.audit_gamepad_2636_detection_native_chain(args)
+                report, destination, _, section = publish.call_args.args
+                self.assertEqual(section, "gamepad_2636_detection_native_chain")
+                self.assertFalse(report["source_chain_complete"])
+                self.assertEqual(destination, analysis.ROOT / ".analysis/results/frontend/gamepad-mw-audit.json")
+                self.assertEqual(report["bounded_observation_complete"], mode == "success")
+        for changes in ({"family": "audio"}, {"function": "main"}, {"product": [2636, 1]}, {"prepare": True}):
+            invalid = SimpleNamespace(**(vars(args) | changes))
+            with self.subTest(changes=changes), self.assertRaisesRegex(ValueError, "requires gamepad/mw"):
+                families.audit_gamepad_2636_detection_native_chain(invalid)
+
+
+class Gamepad2636RemovalNotificationChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_gamepad_2636_removal_notification_chain(cls.audit)
+        cls.owners = {role: cls.audit.owners[key] for role, key in cls.report["roles"].items()}
+
+    def reject(self, role, before, after):
+        owners = {name: dict(row) for name, row in self.owners.items()}
+        self.assertIn(before, owners[role]["body"])
+        owners[role]["body"] = owners[role]["body"].replace(before, after, 1)
+        raw = owners[role]["body"].encode()
+        owners[role]["body_sha256"] = hashlib.sha256(raw).hexdigest()
+        owners[role]["byte_end"] = owners[role]["byte_start"] + len(raw)
+        with self.assertRaisesRegex(ValueError, "reviewed source selection differs"):
+            families._gamepad_2636_removal_notification_verify(owners)
+
+    def test_exact_upstream_originals_and_separate_delivery_stages(self):
+        upstream = self.report["upstream_sections"][-1]
+        self.assertEqual(upstream["canonical_sha256"], "945ad2aaf094f4de21c22891dc58bb2c2cad34baead4ffc5a5447eb9c8629adb")
+        self.assertEqual(upstream["resume_finding_canonical_sha256"], "77e0ba8640a098aaf0ec53f1076d31531c6a04087102e8f41becc2e43ce4f4b5")
+        self.assertEqual(families._gamepad_profile_apply_upstream_changes(self.report["upstream_sections"]), [])
+        self.assertTrue(self.report["source_slice_complete"])
+        for field in ("source_chain_complete", "whole_product_complete", "product_code_modified",
+                "target_execution", "real_device_operations"):
+            self.assertFalse(self.report[field])
+        for row in self.owners.values():
+            raw = self.audit.read(row["original"])[row["byte_start"]:row["byte_end"]]
+            self.assertEqual(raw.decode(), row["body"])
+            self.assertEqual(hashlib.sha256(raw).hexdigest(), row["body_sha256"])
+        self.assertEqual(self.audit.final_snapshot(), [])
+        self.assertEqual(self.report["temporary_resources_created"], [])
+        self.assertEqual(self.report["new_native_captures"], 0)
+        self.assertEqual(self.report["new_analysis_sessions"], 0)
+
+    def test_actual_subscriptions_and_loader_are_distinct_from_ble_qualification(self):
+        self.reject("product_load", 'i.on("usb device disconnected",w)', 'i.on("usb device connected",w)')
+        self.reject("product_load", "m.on(m.EVENT_DEVICE_REMOVE,w)", "m.on(m.EVENT_DEVICE_NEW,w)")
+        self.reject("usb_factory", "n.e(9611).then(n.bind(n,5883))", "n.e(8022).then(n.bind(n,39236))")
+        self.assertIn('9611:"rzUSB"', self.owners["chunk_resolver"]["body"])
+        self.assertIn('8022:"rzBLE"', self.owners["chunk_resolver"]["body"])
+        self.assertIn("productId:2636,vendorId:5426", self.owners["device_info"]["body"])
+        for token in ("bleId", "dongleId"):
+            self.assertNotIn(token, self.owners["device_info"]["body"])
+        self.assertIn("not product BLE transport qualification", self.report["semantics"]["qualification"])
+
+    def test_native_detector_boundary_identifies_methods_without_inventing_ffi(self):
+        boundary = self.report["detector_boundary"]
+        self.assertEqual(boundary["input"]["sha256"], "4ad56ab79f039f5146f6193e5020ee0aea080469212b8d3f8e3d2f67b2e5ca5c")
+        self.assertEqual(boundary["image_base"], "0x180000000")
+        self.assertEqual(boundary["architecture"], "x64")
+        self.assertEqual(boundary["pe_exports"], [])
+        self.assertEqual(boundary["node_registration_import"], "node.exe!node_module_register")
+        self.assertFalse(boundary["retained_complete_native_capture"])
+        self.assertFalse(boundary["native_os_production_complete"])
+        self.assertEqual({row["method"]: row["rva"] for row in boundary["method_name_anchors"]},
+            {"find": "0x3d974", "registerAdded": "0x3d980", "registerRemoved": "0x3d990",
+                "startMonitoring": "0x3d9a0", "stopMonitoring": "0x3d9b0"})
+        for row in boundary["capture_indexes_checked"]:
+            raw = self.audit.artifact(analysis.ROOT / row["path"], row)
+            self.assertNotIn(boundary["input"]["sha256"].encode(), raw)
+            self.assertNotIn(boundary["input"]["post_packaging_signing"]["unsigned_sha256"].encode(), raw)
+        self.assertIn("actual RegisterDeviceNotificationA/message callback", self.report["remaining_chains"][0])
+
+    def test_usb_wrapper_callback_and_monitor_failure_ownership(self):
+        body = self.owners["host_usb_wrapper"]["body"]
+        self.reject("host_usb_wrapper", "detection.registerRemoved(function(device)", "detection.registerAdded(function(device)")
+        self.reject("host_usb_wrapper", "detector.emit('remove', device)", "detector.emit('remove', {})")
+        start = body.index("detector.startMonitoring = function()")
+        self.assertLess(body.index("started = true", start), body.index("detection.startMonitoring()", start))
+        stop = body.index("detector.stopMonitoring = function()")
+        self.assertLess(body.index("started = false", stop), body.index("detection.stopMonitoring()", stop))
+        self.assertIn("throwing native start leaves started true", self.report["semantics"]["monitor_lifecycle"])
+
+    def test_host_broadcast_identity_order_and_send_failure_scope(self):
+        usb = self.owners["host_usb_init"]["body"]
+        self.assertLess(usb.index("t.startMonitoring()"), usb.index('t.on("remove",'))
+        self.assertIn('t.send("nodeUSBEvent-remove",a)', usb)
+        self.assertIn('o.events.emit("nodeUSBEvent-remove",a)', usb)
+        self.reject("host_usb_init", '!t.isDestroyed()&&!t.isCrashed()&&!m(t)', '!t.isDestroyed()')
+        self.reject("host_usb_init", 'o.events.emit("nodeUSBEvent-remove",a)', 'o.events.emit("nodeUSBEvent-remove",{})')
+        self.assertIn("Rn.initUSB(),an()", self.owners["host_startup"]["body"])
+        self.assertIn("one try", self.report["semantics"]["delivery_failure"])
+        self.assertIn('e.send("rz-ble-system-notify",o)}),E.events.emit', self.owners["host_ble_notify"]["body"])
+
+    def test_usb_instance_identity_lock_and_cleanup_before_delivery(self):
+        usb = self.owners["usb_provider"]["body"]
+        self.reject("usb_provider", "5426===e.vendorId", "1678===e.vendorId")
+        self.reject("usb_provider", 'const i=e.productId+"-"+e.deviceContainerId,n=yield this.lockDevice(i)',
+            'const i=e.deviceContainerId,n=yield this.lockDevice(i)')
+        start = usb.index("this._onDisconnect=")
+        order = ["yield this._removeDevice(e)", "yield s.A.removeHidDevice", "yield i.remove(e.deviceContainerId)",
+            'this.emit("usb device disconnected",e)']
+        positions = [usb.index(token, start) for token in order]
+        self.assertEqual(positions, sorted(positions))
+        self.assertIn("delete this.notReadyDevices[i],yield this._onDisconnect", usb)
+        self.assertIn("finally{n()}", usb)
+        self.assertNotIn("usbInstanceId", usb)
+
+    def test_usb_add_readiness_and_ipc_failure_are_not_confirmed_state(self):
+        self.reject("usb_provider", "yield r.yy(500),yield s.A.getHidDevicesWithTry(e)",
+            "yield s.A.getHidDevicesWithTry(e)")
+        self.assertIn("n=10", self.owners["hid_getHidDevicesWithTry"]["body"])
+        self.assertIn("return!1", self.owners["hid_getHidDevicesWithTry"]["body"])
+        self.assertIn("catch(e){console.warn", self.owners["hid_removeHidDevice"]["body"])
+        self.assertIn("catch(e){console.warn", self.owners["serial_request"]["body"])
+        self.assertIn("retry boolean is not checked", self.report["semantics"]["usb_add"])
+        self.assertIn("not cleanup confirmation", self.report["semantics"]["usb_consumer"])
+
+    def test_ble_actual_producers_identity_and_renderer_cache_consumers(self):
+        self.reject("host_ble_state", '"poweredOn"===e', '"poweredOff"===e')
+        self.assertIn("deviceContainerId:e.containerId,deviceId:e.deviceId", self.owners["host_ble_endpoint_remove"]["body"])
+        self.assertIn('d.once("disconnect",', self.owners["host_ble_connect"]["body"])
+        self.assertIn("deviceContainerId:d.containerId,deviceId:d.deviceId", self.owners["host_ble_connect"]["body"])
+        self.reject("ble_provider", 'this.EVENT_DEVICE_DISCONNECT="disconnect-ble-device"',
+            'this.EVENT_DEVICE_DISCONNECT="remove-ble-device"')
+        self.reject("ble_provider", 'this.devices.forEach((e=>this.emit(this.EVENT_DEVICE_REMOVE,e)))',
+            'this.devices.forEach((e=>this.emit(this.EVENT_DEVICE_REMOVE,{})))')
+        self.assertIn("t.mac===e.mac", self.owners["ble_provider"]["body"])
+        self.assertIn("RAZER_BLE_VENDOR_IDS:[5426,1678]", self.owners["host_ble_constants"]["body"])
+
+    def test_product_disconnect_and_reconnect_preserve_actual_generation_limits(self):
+        self.reject("product_remove", "e.deviceContainerId===g.wI.CONTAINER_ID&&e.productId===g.jf.rzDevice.productId",
+            "e.deviceContainerId===g.wI.CONTAINER_ID")
+        self.assertIn("isUSBRemoveEventIgnored", self.owners["product_remove"]["body"])
+        self.assertIn("(0,_.Zl)(),(0,u.nn)()", self.owners["product_remove"]["body"])
+        for token in ("usbInstanceId", "AbortSignal", "generation", "await", "yield"):
+            self.assertNotIn(token, self.owners["product_remove"]["body"])
+        self.assertIn("e.deviceContainerId===p.wI.CONTAINER_ID", self.owners["connect_current"]["body"])
+        connected = self.owners["connect_device"]["body"]
+        self.assertLess(connected.index("o.jf.rzDevice=s"), connected.index("yield s.connectDevice()"))
+        self.assertNotIn('i.on("usb device connected"', self.owners["product_load"]["body"])
+        self.assertFalse(self.report["semantics"]["whole_connection_generation_drain_proven"])
+
+    def test_subscription_release_and_shared_mapping_removal_are_separate(self):
+        self.reject("preload_response", "return e.on(t,n),()=>{e.removeListener(t,n)}", "return e.on(t,n)")
+        self.assertNotIn("nodeUSBEvent-remove", self.owners["preload_pagehide"]["body"])
+        self.assertNotIn("rz-ble-system-notify", self.owners["preload_pagehide"]["body"])
+        self.assertIn('navigator.usb.removeEventListener("disconnect",this._onDisconnect)', self.owners["usb_provider"]["body"])
+        self.assertIn("this.removeAllListeners()", self.owners["ble_provider"]["body"])
+        self.assertIn('o.events.on("nodeUSBEvent-remove",async', self.owners["host_mapping_constructor"]["body"])
+        self.assertNotIn("addUsbDeviceList", self.owners["host_handleNodeUSBEventRemove"]["body"])
+        self.assertEqual(self.report["native_removal_dependency"]["functions_reused"], 19)
+        self.assertFalse(self.report["native_removal_dependency"]["recaptured"])
+        self.assertIn("hardware report events", self.report["semantics"]["rust_boundary"])
+
+    def test_rehashed_sources_exact_resume_and_changed_deployment_fail_closed(self):
+        import frontend
+        owners = {role: dict(row) for role, row in self.owners.items()}
+        owners["usb_provider"]["body_sha256"] = "0" * 64
+        with self.assertRaisesRegex(ValueError, "source identity differs"):
+            families._gamepad_2636_removal_notification_verify(owners)
+        owners = {role: dict(row) for role, row in self.owners.items()}
+        owners["usb_provider"]["original"] = {**owners["usb_provider"]["original"], "sha256": "0" * 64}
+        with self.assertRaisesRegex(ValueError, "reviewed source selection differs"):
+            families._gamepad_2636_removal_notification_verify(owners)
+        document = json.loads((analysis.ROOT / ".analysis/results/frontend/gamepad-mw-audit.json").read_bytes())
+        document["device_removal_2636_chain"]["remaining_chains"][0] = "different task"
+        with patch.object(families.json, "loads", return_value=document):
+            with self.assertRaisesRegex(ValueError, "exact upstream requires review"):
+                families._gamepad_2636_removal_notification_dependencies(host.HostLocalAudit())
+        sections = {"profile_lifecycle_2636_chain": {"source_sets": {"mw": {"name": "current"}}},
+            "device_removal_2636_chain": {}}
+        with patch.object(frontend, "current_source_selection", return_value={"name": "changed"}):
+            with self.assertRaisesRegex(ValueError, "current deployment differs"):
+                families._gamepad_2636_removal_notification_sources(host.HostLocalAudit(), sections)
+
+    def test_cli_dispatch_scope_failed_collection_and_changed_inputs_do_not_complete(self):
+        args = type("Args", (), {"family": "gamepad", "function": "mw", "product": [2636],
+            "prepare": False, "query": "gamepad-2636-removal-notification-chain"})()
+        with patch.object(families, "audit_gamepad_2636_removal_notification_chain", return_value="dispatched") as dispatched:
+            self.assertEqual(families.audit_family_function(args), "dispatched")
+            dispatched.assert_called_once_with(args)
+        class Audit:
+            parser_versions = {}
+            sources = {}
+            owners = {}
+            artifacts = {}
+            def artifact(self, *args):
+                return b"{}"
+            def final_snapshot(self):
+                return ["changed source"] if mode == "snapshot" else []
+        for mode in ("success", "failure", "snapshot", "dependency"):
+            outcome = {"side_effect": ValueError("source changed")} if mode == "failure" else {"return_value": copy.deepcopy(self.report)}
+            changes = ["changed dependency"] if mode == "dependency" else []
+            with patch.object(host, "HostLocalAudit", return_value=Audit()), \
+                    patch.object(families, "collect_gamepad_2636_removal_notification_chain", **outcome), \
+                    patch.object(families, "_gamepad_profile_apply_upstream_changes", return_value=changes), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+                if mode == "success":
+                    families.audit_gamepad_2636_removal_notification_chain(args)
+                else:
+                    with self.assertRaisesRegex(ValueError, "unresolved"):
+                        families.audit_gamepad_2636_removal_notification_chain(args)
+            report, _, _, section = publish.call_args.args
+            self.assertEqual(section, "gamepad_2636_removal_notification_chain")
+            self.assertEqual(report["bounded_observation_complete"], mode == "success")
+            self.assertEqual(bool(report["failures"]), mode != "success")
+            self.assertFalse(report["target_execution"])
+        for field, value in (("family", "audio"), ("function", "main"), ("product", [2637]), ("prepare", True)):
+            invalid = copy.copy(args)
+            setattr(invalid, field, value)
+            with self.assertRaisesRegex(ValueError, "PID2636"):
+                families.audit_gamepad_2636_removal_notification_chain(invalid)
+
+
+class Gamepad2636DeviceRemovalChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        original = families.verify_native_functions
+        def native(*args, **kwargs):
+            value = original(*args, **kwargs)
+            cls.native_capture = copy.deepcopy(value)
+            return value
+        with patch.object(families, "verify_native_functions", side_effect=native):
+            cls.report = families.collect_gamepad_2636_device_removal_chain(cls.audit)
+        cls.sections, _ = families._gamepad_2636_device_removal_dependencies(host.HostLocalAudit())
+        cls.owners = {role: cls.audit.owners[key] for role, key in cls.report["roles"].items()}
+
+    def args(self, **changes):
+        import argparse
+        values = dict(family="gamepad", function="mw", product=[2636], prepare=False,
+            query="gamepad-2636-device-removal-chain")
+        values.update(changes)
+        return argparse.Namespace(**values)
+
+    def contract(self, *, owners=None, native=None, sections=None):
+        return families._gamepad_2636_device_removal_contract(owners or self.owners,
+            native or self.report["native"], sections or self.sections)
+
+    def test_current_selection_reuses_only_the_bounded_product_and_usb_release(self):
+        report = self.report
+        self.assertEqual((report["kind"], report["product_id"]), ("current_gamepad_2636_device_removal_chain", 2636))
+        self.assertEqual(report["provenance"]["release_version"], "4.0.896")
+        self.assertEqual(report["native"]["input"]["sha256"],
+            "c64e539437b50da2b1f2e4155d8cbb0fb1c3e1ebaad894caf509bad97e9857f9")
+        self.assertEqual((len(self.audit.owners), len(report["roles"])), (39, 34))
+        self.assertEqual((len(report["native"]["functions"]), len(report["native"]["verified_indirect_slots"])), (19, 6))
+        self.assertEqual((report["new_native_captures"], report["new_analysis_sessions"]), (0, 0))
+        self.assertEqual(report["temporary_resources_created"], [])
+        for name in ("source_chain_complete", "whole_product_complete", "product_code_modified", "target_execution", "real_device_operations"):
+            self.assertFalse(report[name])
+        self.assertEqual(report["actual_dll_comparison"], "unverified")
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_actual_descriptor_selection_and_exit_mode_are_distinct_from_remove_confirmation(self):
+        contract = self.report["source_contract"]
+        self.assertEqual(contract["declared_identity"], {"product_id": 2636, "vendor_id": 5426,
+            "claim_interface": 1, "declared_ble_or_dongle_product_ids": [],
+            "runtime_container_and_optional_instance_are_preserved": True})
+        self.assertTrue(contract["caller"]["cleanup_uses_source_mapping_device_selector"])
+        self.assertTrue(contract["caller"]["disconnect_uses_captured_device_descriptor"])
+        self.assertFalse(contract["caller"]["checks_remove_boolean"])
+        self.assertFalse(contract["caller"]["exit_mode_result_is_remove_confirmation"])
+        body = self.owners["cleanup"]["body"]
+        self.assertLess(body.index("yield(0,U.L4)(n,c,i)"), body.index("yield s.A.removeUsbDevice(f.device)"))
+        self.assertIn("if(!e||!e.isDualLink)return e", self.owners["mapping_device_selector"]["body"])
+        self.assertIn("yield s.A.removeUsbDevice(e.device)", self.owners["disconnect"]["body"])
+
+    def test_product_facade_preload_main_and_windows_host_are_real_complete_consumers(self):
+        self.assertEqual(self.owners["mapping_remove"]["byte_start"], 606027)
+        self.assertEqual(self.owners["mapping_remove"]["byte_end"], 606660)
+        for role, token in (("mapping_bridge", "window.top"), ("mapping_callMappingEngineAction", "a.doMappingEngineAction(e)"),
+                ("host_preload", 'e.invoke("mappingEngineAction",t)'), ("host_ipc", "io.callDLL(e,o)"),
+                ("host_platform", 'require("./win")'), ("host_callDLL", "return this[n.action](t,n)")):
+            with self.subTest(role=role):
+                self.assertIn(token, self.owners[role]["body"])
+        self.assertIn('removeUsbDevice:["void",["string","pointer"]]', self.owners["host_initDll"]["body"])
+
+    def test_url_references_only_reach_native_on_last_owner(self):
+        contract = self.report["source_contract"]["host"]
+        self.assertEqual(contract["reference_identity"], "sender URL")
+        self.assertTrue(contract["native_remove_only_when_url_list_empty"])
+        self.assertFalse(contract["other_url_remaining_result_is_native_cleanup"])
+        body = self.owners["host_removeUsbDevice"]["body"]
+        tokens = ["await this.mutexUsbDevice.acquire()", "h.addUsbDeviceList=h.addUsbDeviceList.filter(e=>e!==o)",
+            "0===h.addUsbDeviceList.length", "this.cbMap.set(o,r)", "this.libFFI[n.action](JSON.stringify(t),r)",
+            "this.cbMap.delete(o)", "this.usbDeviceMap.delete(u),r=c"]
+        self.assertEqual(sorted(body.index(token) for token in tokens), [body.index(token) for token in tokens])
+        self.assertIn("t.addUsbDeviceList.includes(o)||t.addUsbDeviceList.push(o)", self.owners["host_addUsbDevice"]["body"])
+
+    def test_false_and_ffi_exception_still_remove_host_state_without_success_or_rollback(self):
+        contract = self.report["source_contract"]["host"]
+        self.assertTrue(contract["map_deleted_after_false_or_call_exception"])
+        self.assertFalse(contract["url_restored_on_native_failure"])
+        self.assertFalse(contract["completion_has_timeout_or_abort"])
+        self.assertEqual(contract["ffi_completion_abi"], "void(bool,string,string)")
+        body = self.owners["host_removeUsbDevice"]["body"]
+        self.assertIn('s({result:!1,reason:e.message})', body)
+        self.assertIn('e.Callback("void",["bool","string","string"]', body)
+        self.assertNotIn("if(c.result)", body)
+        self.assertNotIn("Promise.race", body)
+        self.assertNotIn("AbortSignal", body)
+
+    def test_identity_fallback_does_not_rewrite_requested_key_or_establish_generation_guard(self):
+        contract = self.report["source_contract"]
+        self.assertTrue(contract["host"]["lookup_accepts_source_identity_fallback"])
+        self.assertTrue(contract["host"]["fallback_delete_uses_requested_key"])
+        self.assertFalse(contract["host"]["checks_same_entry_guid_before_delete"])
+        self.assertEqual(self.owners["host_createDeviceKey"]["body"], 'createDeviceKey=(e,t,s="")=>`${e}-${t}-${s}`')
+        self.assertIn('guid:s?.guid', self.owners["host_createAPIData"]["body"])
+        self.assertIn('""===o.trim()', self.owners["host_getUSBDeviceInfoFromDeviceMap"]["body"])
+        self.assertFalse(contract["stale_results"]["selected_mw_remove_or_reconnect_generation_check"])
+        self.assertFalse(contract["stale_results"]["host_delete_or_delivery_generation_check"])
+
+    def test_usb_constructor_cleanup_and_destructor_are_not_inferred_from_wireless_or_ble(self):
+        contract = self.report["source_contract"]["native"]
+        self.assertEqual((contract["constructor_type"], contract["primary_vtable_rva"]), ("usb", "0x2e8d38"))
+        slots = {(row["vtable_rva"], row["slot_byte_offset"]): row for row in self.report["native"]["verified_indirect_slots"]}
+        self.assertEqual(slots[("0x2e8d38", 64)]["target_rva"], "0x53090")
+        self.assertEqual(slots[("0x2e8d38", 0)]["target_rva"], "0xa8fe0")
+        self.assertTrue(all(row["actual_pe_bytes_verified"] for row in slots.values()))
+        rvas = {row["rva"] for row in self.report["native"]["functions"]}
+        self.assertTrue({"0x277d0", "0x57380", "0xa8730", "0xa8fe0", "0xa896c", "0x656ca"}.issubset(rvas))
+        self.assertNotIn("0x54000", rvas)
+
+    def test_local_join_and_success_callback_do_not_claim_shared_queue_drain(self):
+        contract = self.report["source_contract"]
+        self.assertTrue(contract["native"]["manager_erases_and_destroys_before_success_callback"])
+        self.assertTrue(contract["native"]["device_runner_join_precedes_owned_state_release"])
+        self.assertFalse(contract["native"]["all_callbacks_or_delayed_queues_drained"])
+        self.assertTrue(contract["stale_results"]["shared_already_posted_callback_race_remains"])
+        for field, value in (("manager_erases_and_destroys_before_success_callback", False),
+                ("device_thread_join_precedes_owned_state_release", False),
+                ("already_posted_main_runner_ffi_js_callbacks_drained", True),
+                ("host_remove_checks_result_before_map_delete", True), ("host_event_checks_connection_generation", True)):
+            sections = copy.deepcopy(self.sections)
+            sections["mapping_input_shutdown_chain"]["verified_contract"][field] = value
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, "reused release boundary differs"):
+                self.contract(sections=sections)
+
+    def test_changed_complete_source_owners_are_rejected(self):
+        for role, before, after in (("mapping_remove", 'action:"removeUsbDevice"', 'action:"removeDevice"'),
+                ("cleanup", "f.device", "c.device"), ("disconnect", "e.device", "p.jf.rzDevice.device"),
+                ("host_removeUsbDevice", "0===h.addUsbDeviceList.length", "1===h.addUsbDeviceList.length"),
+                ("host_removeUsbDevice", "this.usbDeviceMap.delete(u),r=c", "r=c"),
+                ("host_createAPIData", "guid:s?.guid", "guid:nativeFallback"),
+                ("host_preload", '"mappingEngineAction"', '"rzDeviceAction"')):
+            owners = copy.deepcopy(self.owners)
+            self.assertIn(before, owners[role]["body"])
+            owners[role]["body"] = owners[role]["body"].replace(before, after, 1)
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "complete source boundary differs"):
+                self.contract(owners=owners)
+
+    def test_changed_native_artifacts_bodies_or_failed_capture_are_rejected(self):
+        for mode in ("artifact", "body", "failed_capture", "chunks"):
+            native = copy.deepcopy(self.native_capture)
+            row = native["complete_selected_functions"][0]
+            if mode == "artifact":
+                row["artifact"]["sha256"] = "0" * 64
+            elif mode == "body":
+                row["capture"]["pseudocode"]["lines"][0]["text"] += " changed"
+            elif mode == "failed_capture":
+                native["capture_complete"] = False
+            else:
+                row["input_chunks_verified"] = False
+            with self.subTest(mode=mode), patch.object(families, "verify_native_functions", return_value=native), \
+                    self.assertRaisesRegex(ValueError, "native (capture is incomplete|boundary differs)"):
+                families._gamepad_2636_device_removal_native(host.HostLocalAudit(), self.sections,
+                    self.report["native"]["input"])
+
+    def test_dependency_digest_changes_reject_before_product_collection(self):
+        with patch.object(families, "_gamepad_profile_apply_digest", return_value="0" * 64), \
+                self.assertRaisesRegex(ValueError, "current dependency differs"):
+            families._gamepad_2636_device_removal_dependencies(host.HostLocalAudit())
+        self.assertEqual(families._gamepad_profile_apply_upstream_changes(self.report["upstream_sections"]), [])
+
+    def test_dispatch_and_invalid_scope_do_not_invoke_other_products(self):
+        args = self.args()
+        with patch.object(families, "audit_gamepad_2636_device_removal_chain", return_value="selected") as selected:
+            self.assertEqual(families.audit_family_function(args), "selected")
+        selected.assert_called_once_with(args)
+        for changes in (dict(family="accessories"), dict(function="main"), dict(product=[2676]),
+                dict(product=[2636, 2676]), dict(prepare=True)):
+            with self.subTest(changes=changes), patch.object(families, "collect_gamepad_2636_device_removal_chain") as collect, \
+                    self.assertRaisesRegex(ValueError, "gamepad/mw PID2636 without preparation"):
+                families.audit_gamepad_2636_device_removal_chain(self.args(**changes))
+            collect.assert_not_called()
+
+    def test_success_only_publishes_the_selected_section(self):
+        with patch.object(families, "collect_gamepad_2636_device_removal_chain", return_value={"failures": []}), \
+                patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+            report = families.audit_gamepad_2636_device_removal_chain(self.args())
+        self.assertEqual(publish.call_args.args[3], "device_removal_2636_chain")
+        self.assertIs(publish.call_args.args[0], report)
+        self.assertTrue(report["bounded_observation_complete"])
+        self.assertTrue(report["snapshot_stable"])
+        self.assertFalse(report["source_chain_complete"])
+        self.assertFalse(report["target_execution"])
+
+    def test_failure_and_changed_snapshot_publish_incomplete_facts_before_rejecting(self):
+        for failed in (True, False):
+            collect = {"side_effect": ValueError("USB owner changed")} if failed else {"return_value": {"failures": []}}
+            with self.subTest(collection_failure=failed), \
+                    patch.object(families, "collect_gamepad_2636_device_removal_chain", **collect), \
+                    patch.object(host.HostLocalAudit, "final_snapshot", return_value=[] if failed else ["changed.js"]), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"), \
+                    self.assertRaisesRegex(ValueError, "source observation remains unresolved"):
+                families.audit_gamepad_2636_device_removal_chain(self.args())
+            self.assertFalse(publish.call_args.args[0]["bounded_observation_complete"])
+            self.assertTrue(publish.call_args.args[0]["failures"])
+
+
+class Gamepad2636ProfileLifecycleChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_gamepad_2636_profile_lifecycle_chain(cls.audit)
+        cls.owners = {role: cls.audit.owners[key] for role, key in cls.report["roles"].items()}
+        cls.reused = {}
+        documents = {}
+        for role, reference in cls.report["reused_source_owners"].items():
+            receipt = reference["receipt"]
+            if receipt not in documents:
+                documents[receipt] = json.loads((analysis.ROOT / receipt).read_bytes())
+            section, _, source_role = role.partition("/")
+            value = documents[receipt][section]
+            cls.reused[role] = next(row for row in value["complete_source_owners"] if row["id"] == value["roles"][source_role])
+        cls.semantics = cls.report["semantics"]
+
+    def contract(self, *, owners=None, shared=None, calls=None):
+        return families._gamepad_2636_profile_lifecycle_contract(owners or self.owners, self.reused,
+            shared or self.report["shared_feature_transport"], self.report["actual_cancel_calls"] if calls is None else calls)
+
+    def test_current_sources_and_exact_formal_hid_dependencies_are_reused(self):
+        self.assertEqual(self.report["source_sets"]["mw"]["name"], "gamepad-mw-2636-current-refresh-ec3db4b29c5a-2")
+        self.assertEqual(self.report["source_sets"]["ui"]["name"], "gamepad-2636-current-refresh-ec3db4b29c5a")
+        self.assertEqual(len(self.report["upstream_sections"]), 6)
+        self.assertEqual(len(self.report["reused_source_owners"]), 39)
+        shared = self.report["shared_feature_transport"]
+        self.assertEqual(shared["host_version"], "4.0.896")
+        self.assertEqual(shared["node_rz_hid_version"], "0.0.31")
+        self.assertEqual(shared["selected_native_functions_verified"], 17)
+        self.assertFalse(self.report["source_chain_complete"])
+        self.assertFalse(self.report["whole_product_complete"])
+        self.assertFalse(self.report["target_execution"])
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_selected_complete_ast_owners_match_actual_source_bytes(self):
+        self.assertEqual(len(self.report["roles"]), 28)
+        for row in self.owners.values():
+            self.assertEqual(self.audit.read(row["original"])[row["byte_start"]:row["byte_end"]], row["body"].encode())
+            self.assertEqual(hashlib.sha256(row["body"].encode()).hexdigest(), row["body_sha256"])
+            node = self.audit.tree(row["original"]).root_node.descendant_for_byte_range(row["byte_start"], row["byte_end"] - 1)
+            while node is not None and (node.start_byte, node.end_byte, node.type) != (row["byte_start"], row["byte_end"], row["syntax"]):
+                node = node.parent
+            self.assertIsNotNone(node)
+        changed = copy.deepcopy(self.owners)
+        changed["task_queue"]["body"] += ";"
+        with self.assertRaisesRegex(ValueError, "complete semantic review"):
+            self.contract(owners=changed)
+
+    def test_running_cancel_moves_to_settlement_without_joining_transport(self):
+        queue = self.owners["task_queue"]["body"]
+        self.assertIn("this.cancellingTask.push(this.currentTask),this.currentTask.cancel(),void(this.currentTask=null)", queue)
+        self.assertIn("this.cancellingTask.splice(l,1)", queue)
+        self.assertIn("n.resultClosure(n.id,e,i)", self.owners["task"]["body"])
+        self.assertIn('n instanceof DOMException&&"AbortError"===n.name', queue)
+        self.assertIn('error:"aborted"', queue)
+        self.assertFalse(self.semantics["task"]["cancel_api_returns_joinable_completion"])
+        self.assertFalse(self.semantics["hid"]["abort_signal_reaches_native"])
+
+    def test_pending_cancel_and_skipped_tasks_preserve_distinct_results(self):
+        queue = self.owners["task_queue"]["body"]
+        self.assertIn('error:"canceled",result:!1', queue)
+        self.assertIn("this.pendingTask.pop()", queue)
+        self.assertIn("this.pendingTask.shift()", queue)
+        self.assertIn("0===t?this.pendingTask[t].skip(!1):this.pendingTask[t].skip(!0)", queue)
+        self.assertIn('error:"skipped",result:!1', self.owners["task"]["body"])
+        manager = self.owners["task_manager"]["body"]
+        self.assertIn("this.instance||(this.instance=new e(t))", manager)
+        self.assertIn("taskIds.delete(t)", manager)
+        self.assertFalse(self.semantics["task"]["result_generation_gate"])
+
+    def test_full_mw_ast_cancel_calls_are_internal_or_unselected_reset(self):
+        self.assertEqual([row["call"] for row in self.report["actual_cancel_calls"]],
+            ["o.cancelTask(t)", "e.cancelAllTasks()", "o.RzTaskManager.cancelAllTasks()"])
+        for row in self.report["actual_cancel_calls"]:
+            self.assertEqual(self.audit.read(row["original"])[row["byte_start"]:row["byte_end"]].decode(), row["call"])
+        self.assertIn('deviceResetOverrides:{taskMakerResetOBM:ne}', self.reused["obm_mapping_chain/product_bootstrap"]["body"])
+        self.assertNotIn("cancelAllTasks", self.reused["profile_reset_chain/reset_device_maker"]["body"])
+        with self.assertRaisesRegex(ValueError, "actual AST cancellation callers differ"):
+            self.contract(calls=[])
+
+    def test_old_connection_and_import_have_no_selected_generation_gate(self):
+        connect = self.owners["connect_device"]["body"]
+        self.assertLess(connect.index("o.jf.rzDevice=s"), connect.index("yield s.connectDevice()"))
+        self.assertIn("const e=p.jf.rzDevice", self.owners["connect_current"]["body"])
+        self.assertNotIn("signal", self.reused["profile_reset_chain/reimport_entry"]["body"])
+        self.assertIn("yield(0,Wt.Rt)()", self.reused["polling_native_chain/connect_import_gate"]["body"])
+        self.assertIn("if(S)", self.reused["profile_reset_chain/engine_initialize_once"]["body"])
+        changed = copy.deepcopy(self.owners)
+        changed["connect_device"]["body"] += ";generation++"
+        with self.assertRaisesRegex(ValueError, "cancel/generation boundary differs"):
+            self.contract(owners=changed)
+
+    def test_product_removal_filters_current_identity_and_exit_keeps_actual_guard(self):
+        remove = self.owners["product_remove"]["body"]
+        self.assertIn("e.deviceContainerId===g.wI.CONTAINER_ID&&e.productId===g.jf.rzDevice.productId", remove)
+        self.assertNotIn("usbInstanceId", remove)
+        self.assertIn("r.A.isUSBRemoveEventIgnored", remove)
+        self.assertIn("(0,_.Zl)(),(0,u.nn)()", remove)
+        load = self.owners["product_load"]["body"]
+        self.assertIn('i.on("usb device disconnected",w)', load)
+        self.assertIn("m.on(m.EVENT_DEVICE_DISCONNECT,w)", load)
+        self.assertIn('new Set(["synapse","chroma-app"])', load)
+        self.assertIn('n&&(a||null===o||o.some((({name:e})=>i.has(e))))', load)
+        self.assertFalse(self.semantics["close"]["cancel_all_tasks_called"])
+
+    def test_close_orders_source_mode_broadcast_mapping_then_optional_termination(self):
+        cleanup = self.owners["cleanup"]["body"]
+        markers = ["yield(0,U.L4)(n,c,i)", "yield(0,k.IT)()", "yield s.A.removeUsbDevice(f.device)",
+            "p.jf.rzDevice.terminate()", "yield Ee.RzGenericFeatureManager.getInstance().shutdown()", "l.A.closeWindow(window.name)"]
+        self.assertEqual([cleanup.index(marker) for marker in markers], sorted(cleanup.index(marker) for marker in markers))
+        self.assertIn('sessionStorage.getItem("rz_soft_reload")', cleanup)
+        self.assertNotIn("yield p.jf.rzDevice.terminate", cleanup)
+        self.assertEqual(self.owners["exit_mode"]["body"], "O=[0,0]")
+        self.assertFalse(self.semantics["close"]["shared_mapping_remove_is_hid_close"])
+        changed = copy.deepcopy(self.owners)
+        changed["cleanup"]["body"] += ";RzTaskManager.cancelAllTasks()"
+        with self.assertRaisesRegex(ValueError, "cancel/generation boundary differs"):
+            self.contract(owners=changed)
+
+    def test_broadcast_and_generic_shutdown_do_not_cancel_already_started_work(self):
+        self.assertIn("d.close(),p()", self.owners["broadcast"]["body"])
+        self.assertNotIn("close()", self.owners["broadcast_clear"]["body"])
+        self.assertIn("c.off(e,t)", self.owners["broadcast_clear"]["body"])
+        generic = self.reused["profile_apply_chain/generic_manager"]["body"]
+        self.assertIn("n.shutdown&&(yield n.shutdown())", generic)
+        self.assertIn("t.eventQueue.push(e)", self.owners["event_queue"]["body"])
+        self.assertIn("s.currentRzEvent=null,s.nextEventScheduler()", self.owners["event_queue"]["body"])
+        self.assertNotIn("AbortController", self.owners["event_queue"]["body"])
+        self.assertFalse(self.semantics["hid"]["callback_or_io_quiescence_proven"])
+
+    def test_hid_close_does_not_promote_worker_or_deferred_callback_drain(self):
+        shared = self.report["shared_feature_transport"]
+        self.assertIn("cancels mutex", shared["host_source_contract"]["close"])
+        close = shared["native_contract"]["close"]
+        self.assertTrue(close["cancels_io_closes_handles_frees_native_and_clears_pointer"])
+        self.assertFalse(close["explicit_close_joins_feature_worker_or_drains_deferred_callbacks"])
+        changed = copy.deepcopy(shared)
+        changed["native_contract"]["close"]["explicit_close_joins_feature_worker_or_drains_deferred_callbacks"] = True
+        with self.assertRaisesRegex(ValueError, "I/O drain boundary differs"):
+            self.contract(shared=changed)
+
+    def test_changed_dependency_and_new_deployment_are_not_silently_reused(self):
+        import frontend
+        dependency = self.report["upstream_sections"][0]
+        document = json.loads((analysis.ROOT / dependency["receipt"]).read_bytes())
+        document["unrelated_sibling"] = {"changed": True}
+        with patch.object(Path, "read_bytes", return_value=json.dumps(document).encode()):
+            self.assertEqual(families._gamepad_profile_apply_upstream_changes([dependency]), [])
+        document["profile_import_chain"]["semantics"]["lifecycle"]["stale_generation_check"] = True
+        with patch.object(Path, "read_bytes", return_value=json.dumps(document).encode()):
+            self.assertEqual(families._gamepad_profile_apply_upstream_changes([dependency]),
+                [dependency["receipt"] + "#" + dependency["pointer"]])
+        with patch.object(frontend, "current_source_selection", return_value={**self.report["source_sets"]["mw"], "name": "new-unreviewed"}), \
+                self.assertRaisesRegex(ValueError, "current frontend selection differs"):
+            families._gamepad_2636_profile_lifecycle_sources(host.HostLocalAudit(), document)
+
+    def test_query_dispatch_and_wrong_scope_preparation_rejected(self):
+        import argparse
+        parser = argparse.ArgumentParser()
+        families.add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["audit-family-function", "--family", "gamepad", "--function", "mw", "--query", "gamepad-2636-profile-lifecycle-chain"])
+        with patch.object(families, "audit_gamepad_2636_profile_lifecycle_chain") as selected:
+            families.audit_family_function(args)
+        selected.assert_called_once_with(args)
+        for family, function, product, prepare in (("audio", "mw", None, False), ("gamepad", "main", None, False),
+                ("gamepad", "mw", [2676], False), ("gamepad", "mw", None, True)):
+            with self.subTest(family=family, function=function, product=product, prepare=prepare), \
+                    patch.object(families, "collect_gamepad_2636_profile_lifecycle_chain") as collector, \
+                    self.assertRaisesRegex(ValueError, "requires PID2636"):
+                families.audit_gamepad_2636_profile_lifecycle_chain(argparse.Namespace(family=family, function=function, product=product, prepare=prepare))
+            collector.assert_not_called()
+
+    def test_failure_and_input_changes_publish_without_scope_promotion(self):
+        import argparse
+        for mode in ("success", "exception", "changed", "upstream"):
+            configured = {"side_effect": ValueError("missing cancellation owner")} if mode == "exception" else {"return_value": {"failures": []}}
+            with self.subTest(mode=mode), patch.object(families, "collect_gamepad_2636_profile_lifecycle_chain", **configured), \
+                    patch.object(host.HostLocalAudit, "final_snapshot", return_value=["source"] if mode == "changed" else []), \
+                    patch.object(families, "_gamepad_profile_apply_upstream_changes", return_value=["receipt#pointer"] if mode == "upstream" else []), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+                args = argparse.Namespace(family="gamepad", function="mw", product=None, prepare=False)
+                if mode == "success":
+                    families.audit_gamepad_2636_profile_lifecycle_chain(args)
+                else:
+                    with self.assertRaisesRegex(ValueError, "source observation remains unresolved"):
+                        families.audit_gamepad_2636_profile_lifecycle_chain(args)
+            report, destination, _, section = publish.call_args.args
+            self.assertEqual(destination, analysis.ROOT / ".analysis/results/frontend/gamepad-mw-audit.json")
+            self.assertEqual(section, "profile_lifecycle_2636_chain")
+            self.assertEqual(report["bounded_observation_complete"], mode == "success")
+            self.assertFalse(report["source_chain_complete"])
+            self.assertFalse(report["whole_product_complete"])
+            self.assertFalse(report["target_execution"])
+            self.assertEqual(report["official_dll_comparison"], "not_executed")
+
+
+class GamepadProfileImportChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_gamepad_profile_import_chain(cls.audit)
+        _, _, _, cls.owners = families._gamepad_profile_import_dependencies(cls.audit)
+        cls.owners.update({role: cls.audit.owners[key] for role, key in cls.report["roles"].items()})
+        cls.semantics = cls.report["semantics"]
+
+    def test_current_pid2636_dependency_identity_and_getter_reuse(self):
+        self.assertEqual(self.report["product_id"], 2636)
+        self.assertEqual(len(self.report["reused_source_owners"]), 46)
+        self.assertIn("refresh-ec3db4b29c5a", self.report["source_sets"]["mw"]["name"])
+        dependency = {row["pointer"]: row for row in self.report["upstream_sections"]}
+        self.assertEqual(dependency["/profile_reset_chain"]["canonical_sha256"], families._GAMEPAD_PROFILE_IMPORT_DEPENDENCIES["profile_reset_chain"])
+        self.assertEqual(dependency["/profile_apply_chain"]["canonical_sha256"], "1d085d2553a92bf8d390c5c075ea24f4445326a3ffa388d7caf87de2dcdec52c")
+        self.assertNotIn("native", self.report)
+        self.assertNotIn(".analysis/results/frontend/gamepad-mw-audit.json", self.audit.artifacts)
+
+    def test_complete_delta_ast_and_reused_original_slices_are_verified(self):
+        for row in [*self.audit.owners.values(), *self.owners.values()]:
+            raw = self.audit.read(row["original"])
+            self.assertEqual(raw[row["byte_start"]:row["byte_end"]], row["body"].encode())
+            self.assertEqual(hashlib.sha256(row["body"].encode()).hexdigest(), row["body_sha256"])
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_root_order_exclusion_and_profile_field_order_are_different(self):
+        self.assertEqual(self.semantics["root_document_field_order"],
+            ["version", "vendorId", "productId", "category", "reportIDs", "audioHapticIntensity", "powerSaving"])
+        self.assertEqual(families._gamepad_profile_import_fields(self.owners["root_dispatch"], self.audit.parser), ["powerSaving"])
+        self.assertEqual(self.semantics["profile_skip_fields"], ["name", "guid", "obmSlotId", "switchOffLighting"])
+        self.assertEqual(self.semantics["actual_default_getter_order"], ["brightness", "controllerLightingEffects", "pollingRate",
+            "pollingRateWireless", "mappings", "controllerDigitalActuation", "controllerAnalogActuation",
+            "controllerAnalogCircularity", "controllerDeadzone", "controllerDPadIgnoreDiagonals", "controllerSensitivity", "hapticIntensity"])
+        self.assertIn("warns rather than reading", self.semantics["root"]["new_document_warning"])
+        self.assertEqual(set(self.semantics["actual_default_getter_order"]), set(self.semantics["getter_owner_roles"]))
+
+    def test_both_guards_keep_failure_and_connection_semantics(self):
+        body = self.owners["reimport_entry"]["body"]
+        self.assertLess(body.index("te=!0"), body.index("yield(0,o.d8)()"))
+        self.assertTrue(self.semantics["guards"]["guards_are_separate"])
+        self.assertFalse(self.semantics["guards"]["import_guard_cleared_on_failure"])
+        self.assertNotIn("S=!1", self.owners["clear_import_guard"]["body"])
+        self.assertEqual(self.owners["import_guard"]["body"], "te=!1")
+        self.assertEqual(self.owners["engine_guard"]["body"], "S=!1")
+        self.assertIn("t&&(e||(e=yield(0,Wt.Rt)()))", self.owners["initial_import_gate"]["body"])
+        self.assertIn("e&&(yield(0,Wt.Rt)())", self.owners["connect_import_gate"]["body"])
+
+    def test_directory_uses_real_id_order_and_cached_metadata_after_init(self):
+        entry = self.owners["import_metadata_entry"]["body"]
+        self.assertLess(entry.index("yield(0,l.DY)()"), entry.index("profileIDList:"))
+        for name, cache in (("getProfileIDList", "profileIdList"), ("getActiveProfileID", "activeProfileId"),
+                ("getProfileNameList", "profileNameList"), ("getNumberOfProfiles", "numOfProfiles")):
+            self.assertIn("return this.obmJson." + cache, self.owners["cached_" + name]["body"])
+        self.assertIn("for(const t of e.profileIDList)", self.owners["directory_reconcile"]["body"])
+        self.assertIn("a&&(r.guid=a.guid)", self.owners["directory_reconcile"]["body"])
+        self.assertIn("n.activeProfile=t[0].guid", self.owners["serial_profile_storage"]["body"])
+        self.assertIn("empty list can throw", self.semantics["directory"]["empty_or_duplicate"])
+        self.assertIn("not actual-active observation", self.semantics["directory"]["active"])
+
+    def test_each_field_failure_continues_and_publication_is_not_getter_success(self):
+        body = self.owners["import_profile_fields"]["body"]
+        self.assertIn("void 0===n||(null==n?void 0:n.error)", body)
+        self.assertIn("catch(e){console.error", body)
+        self.assertNotIn("updateUI", body)
+        self.assertIn("partial data and source defaults can remain", self.semantics["fields"]["failure"])
+        self.assertIn("success does not certify every getter", self.semantics["publish"]["ui"])
+        self.assertFalse(self.report["source_chain_complete"])
+        self.assertFalse(self.report["whole_product_complete"])
+        self.assertFalse(self.report["target_execution"])
+
+    def test_local_extension_preservation_and_publish_order(self):
+        body = self.owners["reimport_entry"]["body"]
+        ordered = ["yield(0,o.Pf)(t)", "(0,o.kS)(t,a.serialNumber,n)", "yield(0,C.EA)(n)",
+            "yield(0,o.Pf)(t,a)", "yield(0,C.qw)(t,a)", "i.jf.obmData=s", "initCompleted:!0", "yield(0,q.pH)()"]
+        positions = [body.index(token) for token in ordered]
+        self.assertEqual(positions, sorted(positions))
+        self.assertIn("const n=o.obmSlotId[0]", self.owners["preserve_local"]["body"])
+        self.assertIn("o.keyboardGroup.keyGroup=e.keyboardGroup.keyGroup", self.owners["preserve_rules"]["body"])
+        self.assertNotIn("modifiers=", self.owners["preserve_rules"]["body"])
+        self.assertIn("postBCMsg(r.qg.REDUX_STORE_UPDATE,e)", self.owners["ui_publish"]["body"])
+        self.assertFalse(self.semantics["lifecycle"]["abort_signal"])
+        self.assertFalse(self.semantics["lifecycle"]["stale_generation_check"])
+        self.assertFalse(self.semantics["lifecycle"]["explicit_cleanup_or_drain"])
+
+    def test_modified_guard_order_directory_failure_or_publish_requires_review(self):
+        edits = (("reimport_entry", "if(te)return;te=!0", "if(te)return;te=!1"),
+            ("reimport_entry", "catch(e){console.error", "catch(e){throw e;console.error"),
+            ("directory_reconcile", "for(const t of e.profileIDList)", "for(const t of [0,1,2])"),
+            ("preserve_rules", "o.keyboardGroup.keyGroup=e.keyboardGroup.keyGroup", "o.keyboardGroup=e.keyboardGroup"),
+            ("import_profile_fields", "yield j[t].getDataFromDevice(e,o.guid)", 'console.log("yield j[t].getDataFromDevice(e,o.guid)")'),
+            ("cached_getActiveProfileID", "this.obmJson.activeProfileId", "0"),
+            ("ui_publish", "postBCMsg(r.qg.REDUX_STORE_UPDATE,e)", "postBCMsg(r.qg.REDUX_STORE_UPDATE,[])"))
+        for role, before, after in edits:
+            owners = copy.deepcopy(self.owners)
+            self.assertIn(before, owners[role]["body"])
+            owners[role]["body"] = owners[role]["body"].replace(before, after, 1)
+            with self.subTest(role=role), self.assertRaises(ValueError):
+                families._gamepad_profile_import_contract(owners, self.report["reused_source_owners"], self.audit.parser)
+
+    def test_static_field_parser_rejects_dynamic_keys_and_duplicate_fields(self):
+        for body in ('x={[key]:1}', 'x={brightness:1,brightness:2}', 'x={...other}'):
+            with self.subTest(body=body), self.assertRaises(ValueError):
+                families._gamepad_profile_import_fields({"body": body}, self.audit.parser)
+        self.assertEqual(families._gamepad_profile_import_fields({"body": 'x={brightness:1,"mappings":[]}'}, self.audit.parser),
+                         ["brightness", "mappings"])
+
+    def test_newer_or_modified_dependency_never_falls_back(self):
+        receipt = analysis.ROOT / ".analysis/results/frontend/gamepad-mw-audit.json"
+        document = json.loads(receipt.read_bytes())
+        original_read = Path.read_bytes
+        for section, field in (("profile_reset_chain", "snapshot_stable"), ("profile_apply_chain", "bounded_observation_complete")):
+            changed = copy.deepcopy(document)
+            changed[section][field] = False
+            payload = json.dumps(changed).encode()
+            with self.subTest(section=section), patch.object(Path, "read_bytes", autospec=True,
+                    side_effect=lambda path: payload if path == receipt else original_read(path)), \
+                    self.assertRaisesRegex(ValueError, "current dependency needs review"):
+                families._gamepad_profile_import_dependencies(host.HostLocalAudit())
+        with patch("frontend.current_source_selection", return_value={"acquisition": "newer-current-deployment"}), \
+                self.assertRaisesRegex(ValueError, "deployment differs from reviewed current reset"):
+            families._gamepad_profile_import_sources(host.HostLocalAudit(), document, self.owners)
+
+    def test_query_dispatch_and_wrong_scope_preparation_rejected(self):
+        import argparse
+        parser = argparse.ArgumentParser()
+        families.add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["audit-family-function", "--family", "gamepad", "--function", "mw", "--query", "gamepad-profile-import-chain"])
+        with patch.object(families, "audit_gamepad_profile_import_chain") as selected:
+            families.audit_family_function(args)
+        selected.assert_called_once_with(args)
+        for family, function, product, prepare in (("audio", "mw", None, False), ("gamepad", "main", None, False),
+                ("gamepad", "mw", [2676], False), ("gamepad", "mw", None, True)):
+            with self.subTest(family=family, function=function, product=product, prepare=prepare), \
+                    patch.object(families, "collect_gamepad_profile_import_chain") as collector, \
+                    self.assertRaisesRegex(ValueError, "requires PID2636"):
+                families.audit_gamepad_profile_import_chain(argparse.Namespace(family=family, function=function, product=product, prepare=prepare))
+            collector.assert_not_called()
+
+    def test_failure_and_snapshot_changes_publish_without_promotion(self):
+        import argparse
+        for mode in ("success", "exception", "changed", "upstream"):
+            configured = {"side_effect": ValueError("missing Import owner")} if mode == "exception" else {"return_value": {"failures": []}}
+            with self.subTest(mode=mode), patch.object(families, "collect_gamepad_profile_import_chain", **configured), \
+                    patch.object(host.HostLocalAudit, "final_snapshot", return_value=["import-source"] if mode == "changed" else []), \
+                    patch.object(families, "_gamepad_profile_apply_upstream_changes", return_value=["shared#pointer"] if mode == "upstream" else []), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+                args = argparse.Namespace(family="gamepad", function="mw", product=None, prepare=False)
+                if mode == "success":
+                    families.audit_gamepad_profile_import_chain(args)
+                else:
+                    with self.assertRaisesRegex(ValueError, "source observation remains unresolved"):
+                        families.audit_gamepad_profile_import_chain(args)
+            report, destination, _, section = publish.call_args.args
+            self.assertEqual(destination, analysis.ROOT / ".analysis/results/frontend/gamepad-mw-audit.json")
+            self.assertEqual(section, "profile_import_chain")
+            self.assertEqual(report["bounded_observation_complete"], mode == "success")
+            self.assertFalse(report["source_chain_complete"])
+            self.assertFalse(report["whole_product_complete"])
+            self.assertFalse(report["target_execution"])
+
+
+class Audio1446TapNotificationChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_audio_1446_tap_notification_chain(cls.audit)
+        cls.owners = {role: cls.audit.owners[key] for role, key in cls.report["roles"].items()}
+        cls.contract = cls.report["source_contract"]
+        cls.native = {key: copy.deepcopy(cls.report["native"][key]) for key in
+            ("input", "capture_receipt", "image_base", "verified_exports", "verified_indirect_slots")}
+        cls.native.update(failures=[], capture_complete=True, target_execution=False)
+        cls.native["complete_selected_functions"] = [{**row,
+            "capture": json.loads((analysis.ROOT / row["artifact"]["path"]).read_bytes())}
+            for row in cls.report["native"]["functions"]]
+
+    def test_exact_continuation_and_current_product_source(self):
+        self.assertEqual(self.report["product_id"], 1446)
+        self.assertEqual(self.report["upstream_sections"][0]["resume_pointer"],
+            "/mute_mapping_1446_chain/unresolved_chains/0")
+        self.assertEqual(self.report["upstream_sections"][0]["resume_finding_canonical_sha256"],
+            "8831a1e88c690ebac0476069ca838e929be0ac23b71ef20b822e7bc581b0286a")
+        self.assertEqual(len(self.report["upstream_sections"]), 5)
+        self.assertIn("refresh-ec3db4b29c5a-2", self.report["source_selections"][0]["name"])
+        self.assertEqual(self.owners["bootstrap"]["original"]["sha256"],
+            "d31e6e0bf3f29ea55abe84731bb0514394fbbca571d35cf8621351e30d6b2a8d")
+
+    def test_complete_ast_owners_and_actual_bytes_are_retained(self):
+        self.assertEqual(len(self.report["roles"]), 51)
+        for owner in self.owners.values():
+            self.assertEqual(self.audit.read(owner["original"])[owner["byte_start"]:owner["byte_end"]],
+                owner["body"].encode())
+            self.assertEqual(hashlib.sha256(owner["body"].encode()).hexdigest(), owner["body_sha256"])
+        self.assertEqual(self.audit.final_snapshot(), [])
+        self.assertEqual(self.owners["hardware_api_origin"]["body"], "{apiElectron:_a}=window.top")
+        self.assertEqual(self.owners["mapping_api_origin"]["body"], "{apiElectron:a}=window.top")
+
+    def test_actual_usb_without_filter_still_has_hid_provider(self):
+        self.assertTrue(self.contract["registration"]["skip_filter_driver"])
+        self.assertIn('useFeature("skipFilterDriver","yes")', self.owners["bootstrap"]["body"])
+        self.assertIn('"addUsbDeviceWithoutFilterDriver"', self.owners["mapping_addUsbDevice"]["body"])
+        self.assertFalse(self.report["native"]["connect_filter_driver"])
+        self.assertTrue(self.report["native"]["connect_hid"])
+        self.assertIn("capacity100", self.report["native"]["raw_provider"])
+        self.assertEqual(self.report["native"]["verified_exports"][0]["rva"], "0x26e60")
+        self.assertNotIn("dongleId", self.owners["product_info"]["body"])
+
+    def test_false_native_completion_object_is_not_a_tap_confirmation(self):
+        body = self.owners["host_addUsbDeviceWithoutFilterDriver"]["body"]
+        self.assertIn("t({result:e,reason:s,deviceInfo:n})", body)
+        self.assertIn("g?(r.result=!0,h=f):(r.result=!1,h=I)", body)
+        self.assertIn("finally{u()}", body)
+        self.assertFalse(self.contract["registration"]["registration_is_device_tap_observation"])
+        self.assertIn("callback-set boolean ignored", self.contract["registration"]["host_shared"])
+
+    def test_declared_report_ids_do_not_claim_native_descriptor_publication(self):
+        self.assertEqual(self.owners["product_report_ids"]["body"],
+            'S={4:"razerKeyReportID",5:"hardwareEventReportID"}')
+        self.assertIn("window.localStorage.setItem(i,r)", self.owners["storage_window_writer"]["body"])
+        self.assertFalse(self.contract["descriptor"]["bootstrap_native_storage_setting"])
+        self.assertFalse(self.contract["descriptor"]["declaration_proves_native_publication"])
+        self.assertFalse(self.contract["descriptor"]["native_published_descriptor_observed"])
+        self.assertEqual(self.contract["descriptor"]["category"], 8)
+        self.assertEqual(self.contract["descriptor"]["unmapped_category"], 8)
+        self.assertFalse(self.contract["descriptor"]["category8_strips_prefix"])
+
+    def test_raw_tap_parser_and_current_profile_consumer_are_exact(self):
+        raw = self.contract["delivery"]["raw"]
+        self.assertEqual([raw["record_id"], raw["event_id"], raw["tap_mode_index"], raw["function_number_index"]], [5, 67, 2, 3])
+        self.assertFalse(raw["parser_length_validation"])
+        self.assertIn('fa("rzHardwareEventsProtocol25Parser")', self.owners["hardware_onhardwareevent"]["body"])
+        self.assertIn("s.qpD)(e.data.eventValue)", self.owners["tap_dispatch"]["body"])
+        self.assertIn("current profile", self.contract["delivery"]["consumer"])
+        self.assertFalse(self.contract["actual_tap_observed"])
+
+    def test_async_parser_and_callback_stop_keep_late_event_boundary(self):
+        event = self.owners["hardware_onhardwareevent"]["body"]
+        self.assertLess(event.index("this.deviceMap.get(e.containerId)"), event.index('yield fa("rzHardwareEventsProtocol25Parser")'))
+        self.assertEqual(event.count("this.deviceMap.get(e.containerId)"), 1)
+        cleanup = self.owners["hardware_cleanup"]["body"]
+        self.assertLess(cleanup.index('ga.off("hardwareevent",Ts)'), cleanup.index("ga.unregisterDevice"))
+        self.assertIn("callback/vector/tick copied", self.contract["stop"]["queued"])
+        self.assertFalse(self.contract["stop"]["whole_connection_generation_drain_proven"])
+        self.assertIn("no ReadFile cancel", self.contract["stop"]["native"])
+
+    def test_rehashed_source_semantic_changes_require_review(self):
+        edits = (("bootstrap", '"skipFilterDriver","yes"', '"skipFilterDriver","no"'),
+            ("hardware_cleanup", "Ts=null", "Ts=undefined"),
+            ("host_addUsbDeviceWithoutFilterDriver", "g?(r.result=!0,h=f)", "g.result?(r.result=!0,h=f)"),
+            ("hardware_unregisterDevice", "this.deviceMap.delete(e.deviceContainerId)", "this.deviceMap.clear()"),
+            ("product_report_ids", '5:"hardwareEventReportID"', '9:"hardwareEventReportID"'),
+            ("storage_window_writer", "window.localStorage.setItem", "mapping.localStorageSetItem"))
+        for role, before, after in edits:
+            owners = copy.deepcopy(self.owners)
+            self.assertIn(before, owners[role]["body"])
+            owners[role]["body"] = owners[role]["body"].replace(before, after, 1)
+            owners[role]["byte_end"] = owners[role]["byte_start"] + len(owners[role]["body"].encode())
+            owners[role]["body_sha256"] = hashlib.sha256(owners[role]["body"].encode()).hexdigest()
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "reviewed source selection differs"):
+                families._audio_1446_tap_source_contract(owners)
+
+    def test_native_fingerprints_missing_repeated_or_changed_are_rejected(self):
+        self.assertEqual(len(self.report["reused_native_functions"]), 75)
+        self.assertTrue(all(not row["recaptured"] for row in self.report["reused_native_functions"]))
+        for mode in ("missing", "duplicate", "changed"):
+            native = copy.deepcopy(self.native)
+            rows = native["complete_selected_functions"]
+            if mode == "missing":
+                rows.pop()
+            elif mode == "duplicate":
+                rows.append(copy.deepcopy(rows[0]))
+            else:
+                rows[0]["capture"]["pseudocode"]["lines"][0]["text"] += " changed"
+            with self.subTest(mode=mode), self.assertRaisesRegex(ValueError, "native owner"):
+                families._audio_1446_tap_native_contract(native)
+
+    def test_failed_or_incomplete_delta_capture_cannot_publish_success(self):
+        shared = json.loads((analysis.ROOT / ".analysis/results/host-current/local-audit.json").read_bytes())
+        for mode in ("failures", "capture_complete", "target_execution", "empty"):
+            native = copy.deepcopy(self.native)
+            if mode == "empty":
+                native["complete_selected_functions"] = []
+            else:
+                native[mode] = {"failures": ["export verification failed"], "capture_complete": False, "target_execution": True}[mode]
+            with self.subTest(mode=mode), patch.object(families, "verify_native_functions", return_value=native), \
+                    patch.object(host, "verify_retained_native_pe"), \
+                    self.assertRaisesRegex(ValueError, "capture is incomplete or differs"):
+                families._audio_1446_tap_native(self.audit, shared)
+
+    def test_changed_upstream_or_current_deployment_never_falls_back(self):
+        receipt = analysis.ROOT / ".analysis/results/frontend/audio-mw-audit.json"
+        document = json.loads(receipt.read_bytes())
+        document["mute_mapping_1446_chain"]["product_id"] = 3942
+        original_read = Path.read_bytes
+        with patch.object(Path, "read_bytes", autospec=True,
+                side_effect=lambda path: json.dumps(document).encode() if path == receipt else original_read(path)), \
+                self.assertRaisesRegex(ValueError, "upstream requires review"):
+            families._audio_1446_tap_dependencies(host.HostLocalAudit())
+        previous = json.loads(receipt.read_bytes())["mute_mapping_1446_chain"]
+        with patch("frontend.current_source_selection", return_value={"name": "new", "acquisition": "new"}), \
+                self.assertRaisesRegex(ValueError, "current MW deployment differs"):
+            families._audio_1446_tap_sources(host.HostLocalAudit(), previous, {}, {})
+
+    def test_query_scope_dispatch_and_failure_publication_are_truthful(self):
+        import argparse
+        with patch.object(families, "audit_audio_1446_tap_notification_chain") as selected:
+            families.audit_family_function(argparse.Namespace(family="audio", function="mw", product=[1446],
+                query="audio-1446-tap-notification-chain"))
+            selected.assert_called_once()
+        for product in ([1422], [1446, 1422]):
+            with self.subTest(product=product), self.assertRaisesRegex(ValueError, "requires PID1446"):
+                families.audit_audio_1446_tap_notification_chain(argparse.Namespace(
+                    family="audio", function="mw", product=product, prepare=False))
+        for mode in ("success", "exception", "changed", "upstream"):
+            configured = {"side_effect": ValueError("missing owner")} if mode == "exception" else {
+                "return_value": {"failures": [], "source_slice_complete": True}}
+            with self.subTest(mode=mode), patch.object(families, "collect_audio_1446_tap_notification_chain", **configured), \
+                    patch.object(host.HostLocalAudit, "final_snapshot", return_value=["source"] if mode == "changed" else []), \
+                    patch.object(host, "_otfm_macro_encoding_dependency_changes", return_value=["section"] if mode == "upstream" else []), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+                args = argparse.Namespace(family="audio", function="mw", product=None, prepare=False)
+                if mode == "success":
+                    families.audit_audio_1446_tap_notification_chain(args)
+                else:
+                    with self.assertRaisesRegex(ValueError, "remains unresolved"):
+                        families.audit_audio_1446_tap_notification_chain(args)
+            report, destination, _, section = publish.call_args.args
+            self.assertEqual(section, "tap_notification_1446_chain")
+            self.assertEqual(destination, analysis.ROOT / ".analysis/results/frontend/audio-mw-audit.json")
+            self.assertEqual(report["bounded_observation_complete"], mode == "success")
+            self.assertFalse(report["source_chain_complete"])
+            self.assertFalse(report["target_execution"])
+        for key in ("source_chain_complete", "whole_product_complete", "target_execution", "real_device_operations"):
+            self.assertFalse(self.report[key])
+        self.assertEqual(self.report["temporary_resources_created"], [])
+
+
+class Audio1446QuickOutputChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        if not (analysis.ROOT / ".analysis/results/frontend/audio-mw-audit.json").is_file():
+            raise unittest.SkipTest("Retained current audio source boundary is unavailable")
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_audio_1446_quick_output_chain(cls.audit)
+        cls.owners = {role: cls.audit.owners[key] for role, key in cls.report["roles"].items()}
+
+    def test_current_manifest_adapter_and_complete_owners(self):
+        selected = {row["side"]: row for row in self.report["source_selections"]}
+        self.assertEqual(selected["mw"]["name"], "audio-mw-1446-current-refresh-ec3db4b29c5a-2")
+        self.assertEqual(selected["le"]["name"], "synapse-lighting-engine-snapshot-1d1be731")
+        manifest = self.report["lighting_manifest"]
+        self.assertEqual(manifest["original"]["sha256"], "bc296dfd70bdb5c2d691c7f8fe581ebcc9f899f69b9ed6badfe55e3a3a8e0e6b")
+        self.assertEqual(manifest["adapter"]["rzDeviceName"], "rzDevice25AudioCamyT3V2")
+        self.assertFalse(manifest["is_hardware_effects_only"])
+        self.assertEqual(len(self.report["roles"]), 82)
+        self.assertEqual(len(self.audit.owners), 72)
+        for owner in self.audit.owners.values():
+            host.verify_profiles_owner(self.audit, owner)
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_persisted_profile_is_actual_trigger_and_software_parameters_are_product_specific(self):
+        c = self.report["source_contract"]
+        self.assertIn("Pf", self.owners["mw_quick_effect_maker"]["body"])
+        self.assertIn("quickEffects", self.owners["engine_device_storage_consumer"]["body"])
+        self.assertIn("applyRegionQuickEffect", self.owners["engine_device_storage_consumer"]["body"])
+        self.assertIn("!e.isHardwareEffectsOnly", self.owners["engine_region_quick_effect"]["body"])
+        self.assertFalse(c["trigger"]["runtime_metadata_is_device_write"])
+        self.assertEqual(c["software"]["matrix"], [5, 12])
+        self.assertEqual(c["software"]["device"], [1, 10])
+        self.assertEqual(c["software"]["native_effect_ids"], [12, 5, 8, 4, 7, 6, 2, 13])
+        self.assertEqual(c["software"]["sync_hardware_flags"], [False, False])
+        self.assertFalse(c["software"]["handle_or_status_is_device_ack"])
+
+    def test_driver_exact_lookup_cannot_use_camy_or_marci_translator_by_similar_name(self):
+        c = self.report["source_contract"]["driver"]
+        self.assertEqual(c["registration_protocol"], "rzDevice25AudioCamyT3V2")
+        self.assertEqual(c["registered_camy_protocol"], "rzDevice25AudioCamy")
+        self.assertNotIn(c["registration_protocol"], c["base_override_protocols"])
+        self.assertTrue(c["native_exact_lookup"])
+        self.assertFalse(c["selected_protocol_registered"])
+        self.assertFalse(c["native_camy_translator_is_current_writer"])
+        self.assertFalse(c["host_normalizes_protocol"])
+        self.assertIn('this.name="rzDevice25AudioCamyT3V2"', self.owners["le_adapter_constructor"]["body"])
+        self.assertIn('this.baseClassName="rzDevice25"', self.owners["le_base_constructor"]["body"])
+        self.assertIn('this.configure({type:"device.register",...i?.payload})', self.owners["host_driver"]["body"])
+        native = next(row for row in self.report["shared_native_owners"] if row["pointer"] == "/dynamic_lighting/native/2")
+        artifacts = {row["rva"]: json.loads((analysis.ROOT / row["artifact"]["path"]).read_bytes()) for row in native["functions"]}
+        lines = lambda function: "\n".join(row["text"] if isinstance(row, dict) else row for row in function["pseudocode"]["lines"])
+        self.assertIn('"rzDevice25AudioCamy"', lines(artifacts["0x2e500"]))
+        self.assertNotIn('"rzDevice25AudioCamyT3V2"', lines(artifacts["0x2e500"]))
+        self.assertIn("memcmp", lines(artifacts["0xfed0"]))
+
+    def test_actual_fallback_builds_65_byte_feature_report_without_response_readback(self):
+        w = self.report["source_contract"]["writer"]
+        self.assertEqual(w["command"], [80, 15, 3])
+        self.assertEqual((w["report_id"], w["report_length"], w["actual_rgb_bytes"]), (7, 65, 30))
+        self.assertIn("new Uint8Array([80,15,3])", self.owners["le_frame_header"]["body"])
+        self.assertIn("u[0]=t,u[1]=n,u[2]=o,u[3]=r,u[4]=c", self.owners["le_frame_command"]["body"])
+        self.assertIn("a[this.reportLength-3]=r", self.owners["le_adapter__createDataSend"]["body"])
+        self.assertIn("i<this.reportLength-3", self.owners["le_adapter__calculateChecksum"]["body"])
+        self.assertIn("if(!o)", self.owners["le_adapter_sendCommand"]["body"])
+        self.assertIn("setChromaFrameLightingEngine", self.owners["le_engine_processEvent"]["body"])
+        self.assertFalse(w["completion_is_device_ack_or_readback"])
+
+    def test_batch_failure_and_shutdown_do_not_claim_cross_layer_confirmation(self):
+        c = self.report["source_contract"]
+        self.assertEqual(c["writer"]["batch_prefix"], [55, 19, 254, 202])
+        self.assertIn("await", self.owners["le_base_setChromaFrameLightingEngine"]["body"])
+        self.assertIn("STATUS_SUCCESS", self.owners["le_base_setChromaFrameLightingEngine"]["body"])
+        self.assertIn('action:"hid.sendFeatureReportInBatch"', self.owners["le_batch"]["body"])
+        self.assertIn("this.isExiting", self.owners["le_engine_processEvent"]["body"])
+        self.assertIn("this.isExiting=!0", self.owners["le_engine_terminate"]["body"])
+        self.assertEqual(self.report["lighting_manifest"]["quick_effect_on_exit"], {"effectId": 3, "params": {}})
+        self.assertFalse(c["stop"]["cross_layer_drain_proved"])
+        self.assertFalse(c["stop"]["restoration_is_verified"])
+
+    def test_shared_captures_are_verified_once_without_product_format_inference_or_execution(self):
+        self.assertEqual([len(row["functions"]) for row in self.report["shared_native_owners"]], [10, 9, 10, 5, 13])
+        self.assertTrue(all(row["complete_machine_code_and_pseudocode_verified"] for row in self.report["shared_native_owners"]))
+        self.assertTrue(all(not row["recaptured"] for row in self.report["shared_native_owners"]))
+        self.assertEqual(self.report["upstream_sections"][0]["resume_pointer"], "/mute_mapping_1446_chain/unresolved_chains/1")
+        self.assertEqual(self.report["new_native_captures"], 0)
+        self.assertEqual(self.report["temporary_artifacts_created"], [])
+        self.assertEqual(self.report["analysis_sessions_created"], [])
+        self.assertFalse(self.report["target_execution"])
+        self.assertFalse(self.report["real_device_operations"])
+        self.assertFalse(self.report["source_chain_complete"])
+        self.assertFalse(self.report["source_contract"]["numeric_effect_algorithms_complete"])
+        self.assertEqual(self.report["rust_independent_implementation"], "not_implemented_by_this_query")
+        self.assertEqual(self.report["official_dll_comparison"], "unverified")
+
+    def test_changed_source_or_upstream_selection_requires_review(self):
+        for role, old, new in (("le_frame_header", "80,15,3", "79,15,3"),
+                ("le_adapter_constructor", "AudioCamyT3V2", "AudioCamyT4V2")):
+            owners = copy.deepcopy(self.owners)
+            owner = owners[role]
+            self.assertIn(old, owner["body"])
+            owner["body"] = owner["body"].replace(old, new, 1)
+            raw = owner["body"].encode()
+            owner["body_sha256"] = hashlib.sha256(raw).hexdigest()
+            owner["byte_end"] = owner["byte_start"] + len(raw)
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "source selection requires review"):
+                families._audio_1446_quick_output_source_contract(owners)
+        read_bytes = Path.read_bytes
+        def changed(path):
+            raw = read_bytes(path)
+            if path.as_posix().endswith(".analysis/results/frontend/audio-mw-audit.json"):
+                value = json.loads(raw)
+                value["mute_mapping_1446_chain"]["product_id"] = 3942
+                return json.dumps(value).encode()
+            return raw
+        with patch.object(Path, "read_bytes", changed), self.assertRaisesRegex(ValueError, "upstream requires review"):
+            families._audio_1446_quick_output_dependencies(host.HostLocalAudit())
+
+    def test_cli_rejects_wrong_scope_and_snapshot_or_collection_failure(self):
+        import argparse
+        for family, function, product, prepare in (("mouse", "mw", [1446], False), ("audio", "ui", [1446], False),
+                ("audio", "mw", [3942], False), ("audio", "mw", [1446], True)):
+            with self.subTest(family=family, function=function, product=product, prepare=prepare), \
+                    self.assertRaisesRegex(ValueError, "requires only PID1446 middleware"):
+                families.audit_audio_1446_quick_output_chain(argparse.Namespace(family=family, function=function,
+                    product=product, prepare=prepare))
+        args = argparse.Namespace(family="audio", function="mw", product=[1446], prepare=False)
+        for mode in ("changed", "failure"):
+            collected = copy.deepcopy(self.report)
+            with self.subTest(mode=mode), patch.object(families, "collect_audio_1446_quick_output_chain",
+                    **({"return_value": collected} if mode == "changed" else {"side_effect": ValueError("source absent")})), \
+                    patch.object(host.HostLocalAudit, "artifact"), \
+                    patch.object(host.HostLocalAudit, "final_snapshot", return_value=["changed"] if mode == "changed" else []), \
+                    patch.object(host, "_keypad_temporary_keymap_dependency_changes", return_value=[]), \
+                    patch.object(host, "publish_host_static_query") as publish, \
+                    self.assertRaisesRegex(ValueError, "remains unresolved"):
+                families.audit_audio_1446_quick_output_chain(args)
+            report = publish.call_args.args[0]
+            self.assertFalse(report["bounded_observation_complete"])
+            self.assertTrue(report["failures"])
+
+
+class System737OverclockSdkLifecycleChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_system_737_overclock_sdk_lifecycle_chain(cls.audit)
+        cls.managed = cls.report["managed"]
+        cls.native = families.verify_native_functions(cls.report["native"]["input"],
+            {int(row["rva"], 16): row["role"] for row in cls.report["native"]["functions"]}, (),
+            exports={"Initialize": 0x2e2d0, "Terminate": 0x2f670})
+
+    def method(self, library, owner, name):
+        row, = [row for row in self.managed[library]["complete_methods"]
+                if row["declaring_type"].split(".")[-1] == owner and row["name"] == name]
+        return row
+
+    def calls(self, library, owner, name):
+        return [row["operand"] for row in self.method(library, owner, name)["calls"]]
+
+    def test_current_manifest_package_and_actual_sdk_bytes_are_bound(self):
+        package = self.report["package"]
+        self.assertEqual(package["declaration"]["resourceVersion"], "1.0.4.0")
+        self.assertEqual(package["original"]["sha256"], "5040beb43ce5e2767a6d37bb92cde4146ee0c4592e393296ef50be8b11b9be69")
+        self.assertEqual(package["actual_library_version"], "10.0.1.35")
+        self.assertEqual(self.report["originals"]["IntelOverclockingSDK"]["sha256"],
+            "abec03908bd855164409045ccd40cd9f96b16b5581af3a2314f00ac7c583b9d9")
+        self.assertEqual(self.report["originals"]["XtuCommon"]["sha256"],
+            "e190ce6a18cda83dc8be7db5d01f5841e60ce0b280f41ea748dcd4deb5f7f154")
+        self.assertFalse(package["installed_selection_observed"])
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_complete_methods_keep_original_code_metadata_and_exception_sections(self):
+        self.assertEqual(len(self.managed["wrapper"]["complete_methods"]), 12)
+        self.assertEqual(len(self.managed["sdk"]["complete_methods"]), 44)
+        for library in self.managed.values():
+            self.assertTrue(library["capture_input"]["capture_complete"])
+            self.assertFalse(library["capture_input"]["all_csharp_resolved"])
+            metadata = host._profile_gog_clr(self.audit.read(library["original"]))
+            for row in library["complete_methods"]:
+                original = metadata["methods"][int(row["token"], 16)]
+                self.assertEqual(row["raw_code_hex"], original["code"].hex())
+                self.assertEqual(row["exception_sections"], original["exception_sections"])
+                self.assertEqual(row["il_sha256"], hashlib.sha256(row["complete_il"].encode()).hexdigest())
+                self.assertEqual(row["method_identity"]["metadata_row_hex"], original["metadata_row_hex"])
+        self.assertTrue(self.method("wrapper", "<Module>", "RzIntelOverClockLib.InitOverClockSDK")["exception_sections"])
+
+    def test_native_thunks_bind_to_actual_lifecycle_methoddefs(self):
+        slots = self.managed["wrapper"]["vtable_slots"]
+        self.assertEqual([(row["slot_rva"], row["method_token"], row["thunk_rva"], row["target_rva"])
+            for row in slots], [("0xa72c0", "0x6000043", "0x4a040", "0x37ad8"),
+                               ("0xa7310", "0x6000044", "0x4a090", "0x40668")])
+        for row in slots:
+            self.assertEqual(int.from_bytes(bytes.fromhex(row["raw_hex"]), "little"), int(row["method_token"], 16))
+        self.assertEqual(len(self.report["native"]["functions"]), 4)
+
+    def test_initialize_and_initializecheck_follow_actual_short_circuit_order(self):
+        calls = self.calls("sdk", "IntelOverclockingLibrary", "Initialize")
+        initialize = [call.split("::", 1)[0].rsplit(".", 1)[-1]
+                      for call in calls if "::Initialize()" in call]
+        self.assertEqual(initialize, ["IServiceInfoLibrary", "IMonitoringLibrary", "ITuningLibrary", "IProfileLibrary", "IAppProfileLibrary"])
+        check = self.calls("sdk", "IntelOverclockingLibrary", "InitializeCheck")
+        self.assertEqual(len(check), 1)
+        self.assertIn("IntelOverclockingLibrary::Initialize()", check[0])
+        wrapper = self.method("wrapper", "<Module>", "RzIntelOverClockLib.InitOverClockSDK")
+        instructions = {row["offset"]: row for row in wrapper["instructions"]}
+        self.assertIn("::Initialize()", instructions[0xae]["operand"])
+        self.assertEqual(instructions[0xb3]["opcode"], "pop")
+        self.assertIn("::InitializeCheck()", instructions[0xbf]["operand"])
+        self.assertTrue(any(row["opcode"].startswith("brfalse") for row in self.method(
+            "sdk", "IntelOverclockingLibrary", "Initialize")["instructions"]))
+
+    def test_release_preserves_source_true_flag_and_exact_delegate_order(self):
+        release = self.method("wrapper", "<Module>", "RzIntelOverClockLib.ReleaseOVerClockSDK")
+        instructions = {row["offset"]: row for row in release["instructions"]}
+        self.assertEqual(instructions[0x92]["opcode"], "ldc.i4.1")
+        self.assertEqual(instructions[0x93]["opcode"], "stsfld")
+        self.assertIn("gIntelOverClockInit", instructions[0x93]["operand"])
+        body = release["complete_il"]
+        order = ["::remove_OnProposeChanges", "ProposeChangesDelegateHelper::Release", "::remove_OnApplyChanges",
+                 "ApplyChangeDelegateHelper::Release", "::RzIntelOverClockLib.gRegisterCallBackEventFunc",
+                 ">.__delDtor", "IL_008d: stsfld", "IL_0093: stsfld"]
+        positions = [body.index(value) for value in order]
+        self.assertEqual(positions, sorted(positions))
+        self.assertTrue(self.report["semantics"]["release"]["ginteloverclockinit_after_nonnull_release"])
+
+    def test_gcroot_frees_handle_without_sdk_reset_or_singleton_shutdown(self):
+        calls = self.calls("wrapper", "<Module>", "gcroot<Intel::Overclocking::SDK::IntelOverclockingLibrary ^>.{dtor}")
+        self.assertTrue(any("GCHandle::Free()" in row for row in calls))
+        release = self.calls("wrapper", "<Module>", "RzIntelOverClockLib.ReleaseOVerClockSDK")
+        self.assertFalse(any(any(value in row for value in ("::Reset(", "::Dispose(", "::Join(")) for row in release))
+        self.assertFalse(self.report["semantics"]["release"]["sdk_reset_called_by_wrapper"])
+        self.assertFalse(self.report["semantics"]["release"]["inflight_callback_wait_observed"])
+
+    def test_delegate_helpers_cache_static_native_targets_and_only_clear_on_release(self):
+        for owner, getter, callback in (("ProposeChangesDelegateHelper", "GetProposeChangesDelegate", "OnProposeChangesComplete"),
+                                        ("ApplyChangeDelegateHelper", "GetApplyChangeDelegate", "OnApplyChangeDelegate")):
+            row = self.method("wrapper", owner, getter)
+            self.assertTrue(any(call["opcode"] == "ldftn" and callback in call["operand"] for call in row["calls"]))
+            self.assertIn("ldsfld", row["complete_il"])
+            released = self.method("wrapper", owner, "Release")
+            self.assertEqual([item["opcode"] for item in released["instructions"]], ["ldnull", "stsfld", "ret"])
+            self.assertEqual(released["calls"], [])
+
+    def test_event_add_remove_are_atomic_delegate_mutations_without_wait(self):
+        for event in ("OnProposeChanges", "OnApplyChanges"):
+            for action, operation in (("add", "Combine"), ("remove", "Remove")):
+                calls = self.calls("sdk", "TuningLibrary", action + "_" + event)
+                self.assertTrue(any("Delegate::" + operation in row for row in calls))
+                self.assertTrue(any("Interlocked::CompareExchange" in row for row in calls))
+                self.assertFalse(any("::Join(" in row or "::Wait(" in row for row in calls))
+        reset = self.method("sdk", "EventBroadcastLibrary", "Intel.Overclocking.SDK.Event.IEventBroadcastLibrary.Reset")
+        self.assertEqual(reset["calls"], [])
+        self.assertIn("::resetInitiated", reset["complete_il"])
+        self.assertFalse(self.report["semantics"]["callbacks"]["drain_wait_observed"])
+
+    def test_singleton_reset_is_available_but_not_wrapper_release(self):
+        reset = self.calls("sdk", "IntelOverclockingLibrary", "Reset")
+        self.assertEqual(sum("::Reset()" in call for call in reset), 5)
+        tuning = self.calls("sdk", "TuningLibrary", "Intel.Overclocking.SDK.Tuning.ITuningLibrary.Reset")
+        self.assertTrue(any("::remove_TuningControlReset" in call for call in tuning))
+        self.assertFalse(any("::remove_OnTuningProposalChanged" in call for call in tuning))
+        initialize = self.calls("sdk", "TuningLibrary", "DoInitialize")
+        self.assertTrue(any("::DiscardChanges(" in call for call in initialize))
+        self.assertTrue(any("IEventBroadcastLibrary::Initialize()" in call for call in initialize))
+
+    def test_connection_timeout_is_per_attempt_and_failed_channels_are_not_closed(self):
+        row = self.method("sdk", "ConnectionHelper", "ConnectToServiceEndpoint")
+        constants = {item["operand"] for item in row["instructions"] if item["opcode"].startswith("ldc.i4")}
+        self.assertIn("55000", constants)
+        self.assertTrue("100" in constants or "0x64" in constants)
+        self.assertTrue(any("::set_OperationTimeout" in call["operand"] for call in row["calls"]))
+        self.assertTrue(any("Thread::Sleep" in call["operand"] for call in row["calls"]))
+        self.assertFalse(any(any(value in call["operand"] for value in ("::Close(", "::Abort(", "::Dispose(")) for call in row["calls"]))
+        connection = self.report["semantics"]["connection"]
+        self.assertEqual((connection["attempt_limit"], connection["failure_sleep_ms"], connection["per_attempt_operation_timeout_seconds"]), (550, 100, 55))
+        self.assertIsNone(connection["total_timeout_seconds"])
+
+    def test_service_status_helper_really_starts_service_and_closes_handles(self):
+        calls = self.calls("wrapper", "<Module>", "RzIntelOverClockLib.CheckAndGetIntelOverClockServicStatus")
+        for method in ("OpenSCManagerW", "OpenServiceW", "QueryServiceStatusEx", "StartServiceW", "CloseServiceHandle"):
+            self.assertTrue(any("::" + method + "(" in call for call in calls))
+        self.assertGreaterEqual(sum("::CloseServiceHandle(" in call for call in calls), 5)
+
+    def test_changed_code_capture_and_semantic_conclusion_require_new_review(self):
+        for mode in ("release_flag", "timeout", "native_thunk", "capture_identity"):
+            managed, native = copy.deepcopy(self.managed), copy.deepcopy(self.native)
+            if mode == "release_flag":
+                row = next(row for row in managed["wrapper"]["complete_methods"] if row["name"] == "RzIntelOverClockLib.ReleaseOVerClockSDK")
+                next(item for item in row["instructions"] if item["offset"] == 0x92)["opcode"] = "ldc.i4.0"
+            elif mode == "timeout":
+                row = next(row for row in managed["sdk"]["complete_methods"] if row["name"] == "ConnectToServiceEndpoint")
+                row["raw_code_hex"] = "00"
+            elif mode == "native_thunk":
+                native["complete_selected_functions"][0]["capture"]["pseudocode"]["lines"][0]["text"] += " "
+            else:
+                managed["sdk"]["capture_input"]["input_bytes_unchanged"] = False
+            with self.subTest(mode=mode), self.assertRaisesRegex(ValueError, "complete semantic review differs"):
+                families._system_737_overclock_sdk_contract(managed, native)
+
+    def test_incomplete_managed_capture_cannot_be_treated_as_semantic_completion(self):
+        captures = json.loads((analysis.ROOT / ".analysis/results/host-current/managed/capture.json").read_bytes())
+        target = next(row for row in captures["assemblies"] if row.get("input_sha256") == self.managed["sdk"]["original"]["sha256"])
+        target["capture_complete"] = False
+        with patch.object(Path, "read_bytes", return_value=json.dumps(captures).encode()), \
+                self.assertRaisesRegex(ValueError, "managed capture is incomplete"):
+            families._system_737_overclock_sdk_managed(host.HostLocalAudit(), self.managed["sdk"]["original"], {}, ())
+
+    def test_exact_selection_keeps_distinct_mixed_aliases_at_same_owner_and_rva(self):
+        original = self.managed["wrapper"]["original"]
+        metadata = host._profile_gog_clr(self.audit.read(original))
+        selected = metadata["methods"][0x0600008a]
+        unselected = metadata["methods"][0x06000247]
+        self.assertEqual((selected["rva"], selected["code_size"], selected["declaring_type_ancestry"]),
+                         (unselected["rva"], unselected["code_size"], unselected["declaring_type_ancestry"]))
+        self.assertEqual((selected["rva"], selected["code_size"]), ("0x30c4c", 24))
+        self.assertNotEqual(selected["name"], unselected["name"])
+        result = families._system_737_overclock_sdk_managed(host.HostLocalAudit(), original,
+            {"<Module>": (selected["name"],)}, ())
+        method, = result["complete_methods"]
+        self.assertEqual(method, self.method("wrapper", "<Module>", selected["name"]))
+        text = self.audit.artifact(analysis.ROOT / result["il_artifact"]["path"]).decode("utf-8-sig")
+        parse_map = {token: {**row, "name": row["name"].rsplit("::", 1)[-1]}
+                     for token, row in metadata["methods"].items()}
+        with self.assertRaisesRegex(ValueError, "unique ownership differs"):
+            host._profile_gog_il_methods(original, text.replace(method["complete_il"], ""),
+                {**metadata, "methods": parse_map, "selected_method_tokens": {0x0600008a}}, {})
+
+    def test_new_deployment_and_changed_upstream_are_rejected_without_sibling_invalidation(self):
+        import frontend
+        selected = {**self.report["source_sets"]["mw"], "name": "new-unreviewed-deployment"}
+        with patch.object(frontend, "current_source_selection", return_value=selected), \
+                self.assertRaisesRegex(ValueError, "current frontend selection differs"):
+            families._system_737_overclock_sdk_dependencies(host.HostLocalAudit())
+        dependency, = self.report["upstream_sections"]
+        doc = json.loads((analysis.ROOT / dependency["receipt"]).read_bytes())
+        doc["unrelated_sibling"] = {"changed": True}
+        with patch.object(Path, "read_bytes", return_value=json.dumps(doc).encode()):
+            self.assertEqual(families._system_737_overclock_sdk_upstream_changes([dependency]), [])
+        doc["overclock_service_chain"]["managed"]["complete_methods"][0]["raw_code_hex"] = "00"
+        with patch.object(Path, "read_bytes", return_value=json.dumps(doc).encode()):
+            self.assertEqual(families._system_737_overclock_sdk_upstream_changes([dependency]),
+                [dependency["receipt"] + "#" + dependency["pointer"]])
+
+    def test_query_dispatch_scope_and_incomplete_publish_never_promote_whole_chain(self):
+        import argparse
+        parser = argparse.ArgumentParser()
+        families.add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["audit-family-function", "--family", "system", "--function", "mw", "--query", "system-737-overclock-sdk-lifecycle-chain"])
+        with patch.object(families, "audit_system_737_overclock_sdk_lifecycle_chain") as dispatch:
+            families.audit_family_function(args)
+        dispatch.assert_called_once_with(args)
+        for family, function, product, prepare in (("audio", "mw", None, False), ("system", "main", None, False),
+                ("system", "mw", [711], False), ("system", "mw", None, True)):
+            with self.subTest(family=family, function=function, product=product, prepare=prepare), \
+                    self.assertRaisesRegex(ValueError, "requires PID737"):
+                families.audit_system_737_overclock_sdk_lifecycle_chain(argparse.Namespace(family=family, function=function,
+                    product=product, prepare=prepare))
+        for mode in ("success", "failure", "changed", "upstream"):
+            kwargs = {"side_effect": ValueError("missing SDK owner")} if mode == "failure" else {"return_value": {"failures": []}}
+            with self.subTest(mode=mode), patch.object(families, "collect_system_737_overclock_sdk_lifecycle_chain", **kwargs), \
+                    patch.object(host.HostLocalAudit, "artifact"), \
+                    patch.object(host.HostLocalAudit, "final_snapshot", return_value=["source"] if mode == "changed" else []), \
+                    patch.object(families, "_system_737_overclock_sdk_upstream_changes", return_value=["receipt#pointer"] if mode == "upstream" else []), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+                args = argparse.Namespace(family="system", function="mw", product=None, prepare=False)
+                if mode == "success":
+                    families.audit_system_737_overclock_sdk_lifecycle_chain(args)
+                else:
+                    with self.assertRaisesRegex(ValueError, "remains unresolved"):
+                        families.audit_system_737_overclock_sdk_lifecycle_chain(args)
+            report, destination, _, section = publish.call_args.args
+            self.assertEqual(destination, analysis.ROOT / ".analysis/results/frontend/system-mw-audit.json")
+            self.assertEqual(section, "overclock_sdk_lifecycle_chain")
+            self.assertEqual(report["bounded_observation_complete"], mode == "success")
+            self.assertFalse(report["source_chain_complete"])
+            self.assertFalse(report["whole_product_complete"])
+            self.assertFalse(report["target_execution"])
+            self.assertEqual(report["official_dll_comparison"], "not_executed")
+
+
+class System737XtuServiceInfoChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_system_737_xtu_service_info_chain(cls.audit)
+        cls.managed = cls.report["managed"]
+        cls.metadata = {name: host._profile_gog_clr(cls.audit.read(row["original"]))
+                        for name, row in cls.managed.items()}
+
+    def method(self, library, owner, name):
+        row, = [row for row in self.managed[library]["complete_methods"]
+                if row["declaring_type"].split(".")[-1] == owner and row["name"] == name]
+        return row
+
+    def calls(self, library, owner, name):
+        return [row["operand"] for row in self.method(library, owner, name)["calls"]]
+
+    def source(self, library, suffix):
+        row, = [row for row in self.managed[library]["source_artifacts"] if row["path"].endswith(suffix)]
+        return self.audit.artifact(analysis.ROOT / row["path"], row).decode("utf-8-sig")
+
+    def test_current_package_ancestry_versions_and_same_byte_client_aliases(self):
+        package = self.report["service_package"]
+        self.assertEqual(package["declaration"]["resourceVersion"], "1.0.8.0")
+        self.assertEqual(package["original"]["sha256"], "61f3c84e765e044feb13d6cd053e113e9a246f138a8e957d8edc84e9d229ba8f")
+        self.assertEqual({row["sha256"] for row in package["msi_candidates"]}, {
+            "8b01fdb62f7796ade8fd32f35ed584628f85282b0db4d4feabe2d844783644ab",
+            "2807f1f4d86db5eae463fc7a76fda9cbd0ebab19c4fa5ba7892b9085db838ae4"})
+        self.assertFalse(package["installed_selection_observed"])
+        for role in ("sdk", "common"):
+            self.assertEqual(self.audit.read(self.report["originals"][role]),
+                             self.audit.read(self.report["originals"][role + "_alias"]))
+        for row in package["lineage"]:
+            self.assertEqual(row["original"]["sha256"], hashlib.sha256(self.audit.read(row["original"])).hexdigest())
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_complete_methods_preserve_methoddef_il_code_and_exception_areas(self):
+        self.assertEqual({name: len(row["complete_methods"]) for name, row in self.managed.items()},
+                         {"service": 10, "server": 13, "application": 8, "access": 14, "sdk": 11, "common": 7, "interface": 0})
+        self.assertTrue(self.managed["interface"]["source_artifacts"])
+        for library, selection in self.managed.items():
+            self.assertTrue(selection["capture_input"]["capture_complete"])
+            self.assertTrue(selection["capture_input"]["input_bytes_unchanged"])
+            self.assertEqual(len(selection["complete_methods"]), len({row["token"] for row in selection["complete_methods"]}))
+            for row in selection["complete_methods"]:
+                original = self.metadata[library]["methods"][int(row["token"], 16)]
+                self.assertEqual(row["raw_code_hex"], original["code"].hex())
+                self.assertEqual(row["exception_sections"], original["exception_sections"])
+                self.assertEqual(row["method_identity"]["metadata_row_hex"], original["metadata_row_hex"])
+                self.assertEqual(row["il_sha256"], hashlib.sha256(row["complete_il"].encode()).hexdigest())
+        self.assertFalse(self.managed["server"]["capture_input"]["all_csharp_resolved"])
+        self.assertGreater(self.managed["access"]["diagnostic_count"], 0)
+
+    def test_connect_is_constant_true_without_hardware_or_compatibility_check(self):
+        method = self.method("server", "XtuServiceInfoImpl", "Connect")
+        self.assertEqual(method["calls"], [])
+        self.assertEqual(method["exception_sections"], [])
+        self.assertEqual([row["opcode"] for row in method["instructions"]],
+                         ["nop", "ldc.i4.1", "stloc.0", "br.s", "ldloc.0", "ret"])
+        self.assertFalse(self.report["semantics"]["connection"]["connect_confirms_platform_compatibility"])
+
+    def test_lookup_keeps_dynamic_first_reference_dictionaries_and_unknown_empty(self):
+        row = self.method("server", "XtuServiceInfoImpl", "LookupItem")
+        fields = [item["operand"].rsplit("::", 1)[-1] for item in row["instructions"] if item["opcode"] == "ldfld"]
+        self.assertEqual(fields, ["dynamicItems", "dynamicItems", "items", "items"])
+        self.assertTrue(any("Func`1<string>::Invoke" in call["operand"] for call in row["calls"]))
+        self.assertEqual(row["exception_sections"], [])
+        self.assertIn("System.String::Empty", row["complete_il"])
+        constructor = self.calls("server", "XtuServiceInfoImpl", ".ctor")
+        self.assertTrue(any("::GetServiceInformation()" in call for call in constructor))
+        self.assertTrue(any("::GetDynamicServiceInformation()" in call for call in constructor))
+        self.assertFalse(any("Dictionary`2" in call and "::.ctor(" in call for call in constructor))
+
+    def test_static_compatibility_is_inserted_before_critical_early_return(self):
+        row = self.method("application", "ServiceInformation", "ObtainCPUInfo")
+        keys = [item["operand"] for item in row["instructions"] if item["opcode"] == "ldstr"]
+        self.assertEqual(keys[0], '"SystemCompatibilityFlags"')
+        self.assertTrue(any("::get_SystemCompatibilityFlags()" in call["operand"] for call in row["calls"]))
+        source = self.source("application", "/ServiceInformation.cs")
+        self.assertLess(source.index('dictionary["SystemCompatibilityFlags"]'), source.index(".HasFlag", source.index("public Dictionary<string, string> ObtainCPUInfo")))
+        self.assertIn('info["ServiceInterfaceLevel"] = "3"', source)
+        for name, field in (("GetServiceInformation", "serviceInformation"), ("GetDynamicServiceInformation", "dynamicServiceInformation")):
+            getter = self.method("application", "ServiceInformation", name)
+            self.assertEqual(getter["calls"], [])
+            self.assertIn("::" + field, getter["complete_il"])
+
+    def test_platform_status_mapping_retains_driver_unchecked_and_conditional_vbs(self):
+        row = self.method("access", "PlatformInformation", "GetSystemCompatibilityFlags")
+        values = {int(item["operand"]) for item in row["instructions"] if item["opcode"] == "ldc.i4"}
+        self.assertTrue({512, 1024, 2048, 8192, 16384, 128, 256}.issubset(values))
+        mapping = self.report["semantics"]["compatibility_producer"]["status_mapping"]
+        self.assertEqual((mapping["cant_connect_driver"], mapping["ipf_not_running"], mapping["non_intel"]), (1, 2048, 256))
+        source = self.source("access", "/PlatformInformation.cs")
+        branch = source[source.index("private SystemCompatibility GetSystemCompatibilityFlags()"):source.index("private bool IsWindowsPatchable()")]
+        self.assertIn("GetWindowsFeatures()", branch)
+        self.assertLess(branch.index("PLATFORM_CANT_CONNECT_TO_DRIVER"), branch.index("GetWindowsFeatures()"))
+        self.assertTrue(any("::IsVbsEnabledAndRunning()" in call for call in self.calls("access", "PlatformInformation", "GetWindowsFeatures")))
+        reads = self.calls("access", "PlatformInformation", "PopulatePlatformStatus")
+        self.assertTrue(any("::get_IpfStatus()" in call for call in reads))
+        self.assertTrue(any("::ReadMailbox(" in call for call in reads))
+
+    def test_initialize_sets_channel_available_before_exact_zero_check(self):
+        row = self.method("sdk", "ServiceInfoLibrary", "DoInitialize")
+        by_offset = {item["offset"]: item for item in row["instructions"]}
+        self.assertEqual(by_offset[0x7b]["opcode"], "ldc.i4.1")
+        self.assertIn("::connectionAvailable", by_offset[0x7c]["operand"])
+        self.assertIn("::GetSystemCompatibilityFlags()", by_offset[0x81]["operand"])
+        self.assertEqual(by_offset[0x88]["opcode"], "ldc.i4.0")
+        self.assertEqual(by_offset[0x8a]["opcode"], "cgt.un")
+        self.assertTrue(any("::GenerateFeatureIssueList()" in call["operand"] for call in row["calls"]))
+        self.assertTrue(self.method("sdk", "ServiceInfoLibrary", "Initialize")["exception_sections"])
+        self.assertFalse(any("::Close(" in call["operand"] or "::Abort(" in call["operand"] for call in row["calls"]))
+
+    def test_lookup_failure_is_false_and_conversion_remains_outside_catch(self):
+        lookup = self.method("sdk", "ServiceInfoLibrary", "TryLookupItem")
+        self.assertTrue(lookup["exception_sections"])
+        self.assertTrue(any("::LookupItem(string)" in call["operand"] for call in lookup["calls"]))
+        self.assertTrue(any("::IsNullOrEmpty(string)" in call["operand"] for call in lookup["calls"]))
+        self.assertFalse(any("Convert::ToUInt64" in call["operand"] for call in lookup["calls"]))
+        consumer = self.method("sdk", "ServiceInfoLibrary", "GetSystemCompatibilityFlags")
+        self.assertEqual(consumer["exception_sections"], [])
+        self.assertTrue(any("Convert::ToUInt64(string)" in call["operand"] for call in consumer["calls"]))
+        by_offset = {item["offset"]: item for item in consumer["instructions"]}
+        self.assertEqual(by_offset[0x26]["opcode"], "ldc.i4.1")
+        self.assertEqual((by_offset[0x37]["operand"], by_offset[0x41]["operand"]), ("2048", "4096"))
+
+    def test_disconnected_status_controllers_and_reset_are_not_closed(self):
+        row = self.method("sdk", "ServiceInfoLibrary", "IsXtuServiceRunning")
+        self.assertEqual(row["exception_sections"], [])
+        self.assertTrue(any("ServiceController::GetServices()" in call["operand"] for call in row["calls"]))
+        reset = self.method("sdk", "ServiceInfoLibrary", "Intel.Overclocking.SDK.ServiceInfo.IServiceInfoLibrary.Reset")
+        self.assertEqual(reset["calls"], [])
+        changed_fields = [item["operand"].rsplit("::", 1)[-1] for item in reset["instructions"] if item["opcode"] == "stsfld"]
+        self.assertIn("connectionAvailable", changed_fields)
+        self.assertNotIn("serviceInfoConnection", changed_fields)
+        self.assertFalse(any("::Dispose(" in call["operand"] for call in row["calls"]))
+
+    def test_service_info_opens_first_and_only_zero_or_one_opens_other_endpoints(self):
+        row = self.method("server", "CoreServer", "Start")
+        uris = [item["operand"].strip('"').rsplit("/", 1)[-1] for item in row["instructions"]
+                if item["opcode"] == "ldstr" and "net.pipe://" in item["operand"]]
+        self.assertEqual(uris, ["ServiceInfo", "Tuning", "Monitoring", "Event"])
+        by_offset = {item["offset"]: item for item in row["instructions"]}
+        self.assertEqual((by_offset[0xa0]["opcode"], by_offset[0xa8]["opcode"], by_offset[0xaa]["opcode"]),
+                         ("brfalse.s", "ldc.i4.1", "ceq"))
+        self.assertTrue(any("Binding::set_ReceiveTimeout" in call["operand"] for call in row["calls"]))
+        binding = self.source("common", "/CustomNamedPipeTransportBindingElement.cs")
+        self.assertIn('"AllowedUsers"', binding)
+
+    def test_stop_order_and_mutex_finally_do_not_guarantee_disposal_after_failure(self):
+        row = self.method("server", "CoreServer", "Stop")
+        aborts = [item for item in row["calls"] if "::Abort()" in item["operand"]]
+        self.assertEqual(len(aborts), 4)
+        hosts = []
+        for call in aborts:
+            before = [item for item in row["instructions"] if item["offset"] < call["offset"] and item["opcode"] == "ldfld"][-1]
+            hosts.append(before["operand"].rsplit("::", 1)[-1])
+        self.assertEqual(hosts, ["tuningServiceHost", "monitoringServiceHost", "serviceInfoServiceHost", "xtuEventServiceHost"])
+        self.assertFalse(any(item["opcode"] == "stfld" for item in row["instructions"]))
+        handlers = [clause for area in row["exception_sections"] for clause in area["clauses"]]
+        for clause in handlers:
+            calls = [call for call in row["calls"] if clause["handler_offset"] <= call["offset"] < clause["handler_offset"] + clause["handler_length"]]
+            self.assertEqual(len(calls), 1)
+            self.assertIn("Monitor::Exit", calls[0]["operand"])
+        self.assertFalse(self.report["semantics"]["shutdown"]["universal_inflight_drain_proven"])
+
+    def test_bootstrap_foreground_thread_is_unretained_and_unsubscribe_is_session_only(self):
+        start = self.method("service", "XtuService1", "OnStart")
+        self.assertTrue(any("Thread::set_IsBackground(bool)" in call["operand"] for call in start["calls"]))
+        self.assertFalse(any(item["opcode"] == "stfld" for item in start["instructions"]))
+        self.assertFalse(any("::Join(" in call["operand"] for call in start["calls"]))
+        stop_calls = self.calls("service", "XtuService1", "OnStop")
+        self.assertEqual([call.rsplit("::", 1)[-1] for call in stop_calls], ["Stop()", "Dispose()", "Dispose()"])
+        self.assertFalse(any("remove_SessionEnded" in call for call in stop_calls))
+        self.assertTrue(any("remove_SessionEnded" in call for call in self.calls("service", "XtuService1", "SessionEnded")))
+
+    def test_exact_tokens_distinguish_shared_rva_nested_ctors_and_reject_duplicate_owner(self):
+        metadata = self.metadata["sdk"]
+        original = self.managed["sdk"]["original"]
+        text = self.audit.artifact(analysis.ROOT / self.managed["sdk"]["il_artifact"]["path"]).decode("utf-8-sig")
+        shared = [token for token, row in metadata["methods"].items() if row["name"] == ".ctor" and row["rva"] == "0x98b0"
+                  and row["declaring_type"] == "<>c" and len(row["declaring_type_ancestry"]) == 2][:2]
+        self.assertEqual(len(shared), 2)
+        self.assertNotEqual(metadata["methods"][shared[0]]["declaring_type_ancestry"], metadata["methods"][shared[1]]["declaring_type_ancestry"])
+        selected = {**metadata, "selected_method_tokens": set(shared)}
+        methods = host._profile_gog_il_methods(original, text, selected, {})
+        self.assertEqual({int(row["token"], 16) for row in methods}, set(shared))
+        self.assertEqual(len(methods), 2)
+        method = methods[0]
+        outer, nested = method["class_ancestry"]
+        duplicate = f"\n.class public {outer}\n{{\n\t.class nested private '{nested}'\n\t{{\n{method['complete_il']}\n\t}} // end of class {nested}\n}} // end of class {outer}\n"
+        with self.assertRaisesRegex(ValueError, "unique ownership differs"):
+            host._profile_gog_il_methods(original, text + duplicate, selected, {})
+        wrong_owner = duplicate.replace(outer, "Wrong.Owner")
+        with self.assertRaisesRegex(ValueError, "unique ownership differs"):
+            host._profile_gog_il_methods(original, wrong_owner, {**metadata, "selected_method_tokens": {int(method["token"], 16)}}, {})
+
+    def test_exact_selection_rejects_changed_method_name_and_wrong_token(self):
+        row = self.method("server", "XtuServiceInfoImpl", "Connect")
+        metadata = self.metadata["server"]
+        text = self.audit.artifact(analysis.ROOT / self.managed["server"]["il_artifact"]["path"]).decode("utf-8-sig")
+        token = int(row["token"], 16)
+        changed = text.replace("} // end of method XtuServiceInfoImpl::Connect", "} // end of method XtuServiceInfoImpl::ChangedConnect")
+        with self.assertRaisesRegex(ValueError, "identity/code size differs"):
+            host._profile_gog_il_methods(row["original"], changed, {**metadata, "selected_method_tokens": {token}}, {})
+        with self.assertRaisesRegex(ValueError, "unique ownership differs"):
+            host._profile_gog_il_methods(row["original"], text, {**metadata, "selected_method_tokens": {0x06ffffff}}, {})
+
+    def test_changed_semantics_and_incomplete_capture_are_rejected(self):
+        for mode in ("connect", "compatibility", "capture"):
+            changed = copy.deepcopy(self.managed)
+            if mode == "connect":
+                next(row for row in changed["server"]["complete_methods"] if row["name"] == "Connect")["raw_code_hex"] = "00"
+            elif mode == "compatibility":
+                next(row for row in changed["sdk"]["complete_methods"] if row["name"] == "GetSystemCompatibilityFlags")["complete_il"] += " "
+            else:
+                changed["sdk"]["capture_input"]["input_bytes_unchanged"] = False
+            with self.subTest(mode=mode), self.assertRaisesRegex(ValueError, "complete semantic review differs"):
+                families._system_737_xtu_service_info_contract(changed)
+        captures = json.loads((analysis.ROOT / ".analysis/results/host-current/managed/capture.json").read_bytes())
+        next(row for row in captures["assemblies"] if row["input_sha256"] == self.managed["server"]["original"]["sha256"])["capture_complete"] = False
+        with patch.object(Path, "read_bytes", return_value=json.dumps(captures).encode()), self.assertRaisesRegex(ValueError, "managed capture is incomplete"):
+            families._system_737_overclock_sdk_managed(host.HostLocalAudit(), self.managed["server"]["original"], {}, ())
+
+    def test_upstream_section_and_finding_are_bound_without_sibling_invalidation(self):
+        dependencies = self.report["upstream_sections"]
+        document = json.loads((analysis.ROOT / dependencies[0]["receipt"]).read_bytes())
+        document["unrelated_sibling"] = {"changed": True}
+        with patch.object(Path, "read_bytes", return_value=json.dumps(document).encode()):
+            self.assertEqual(families._system_737_xtu_service_info_upstream_changes(dependencies), [])
+        document["overclock_sdk_lifecycle_chain"]["remaining_chains"][0] += " changed"
+        with patch.object(Path, "read_bytes", return_value=json.dumps(document).encode()):
+            self.assertEqual(families._system_737_xtu_service_info_upstream_changes(dependencies),
+                [row["receipt"] + "#" + row["pointer"] for row in dependencies])
+
+    def test_new_deployment_and_changed_exact_upstream_require_review(self):
+        import frontend
+        changed_selection = {**self.report["source_sets"]["mw"], "name": "new-unreviewed-deployment"}
+        with patch.object(frontend, "current_source_selection", return_value=changed_selection), \
+                self.assertRaisesRegex(ValueError, "current frontend selection differs"):
+            families._system_737_xtu_service_info_dependencies(host.HostLocalAudit())
+        dependency = self.report["upstream_sections"][0]
+        document = json.loads((analysis.ROOT / dependency["receipt"]).read_bytes())
+        document["overclock_sdk_lifecycle_chain"]["remaining_chains"][0] += " changed"
+        with patch.object(Path, "read_bytes", return_value=json.dumps(document).encode()), \
+                self.assertRaisesRegex(ValueError, "exact client section/finding requires review"):
+            families._system_737_xtu_service_info_dependencies(host.HostLocalAudit())
+
+    def test_cli_dispatch_scope_and_failed_or_changed_publish_never_upgrade_completion(self):
+        import argparse
+        parser = argparse.ArgumentParser()
+        families.add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["audit-family-function", "--family", "system", "--function", "mw", "--query", "system-737-xtu-service-info-chain"])
+        with patch.object(families, "audit_system_737_xtu_service_info_chain") as dispatch:
+            families.audit_family_function(args)
+        dispatch.assert_called_once_with(args)
+        for family, function, product, prepare in (("audio", "mw", None, False), ("system", "main", None, False),
+                ("system", "mw", [711], False), ("system", "mw", None, True)):
+            with self.subTest(family=family, function=function, product=product, prepare=prepare), self.assertRaisesRegex(ValueError, "requires PID737"):
+                families.audit_system_737_xtu_service_info_chain(argparse.Namespace(family=family, function=function, product=product, prepare=prepare))
+        for mode in ("success", "failure", "changed", "upstream"):
+            kwargs = {"side_effect": ValueError("missing service producer")} if mode == "failure" else {"return_value": {"failures": []}}
+            with self.subTest(mode=mode), patch.object(families, "collect_system_737_xtu_service_info_chain", **kwargs), \
+                    patch.object(host.HostLocalAudit, "artifact"), \
+                    patch.object(host.HostLocalAudit, "final_snapshot", return_value=["source"] if mode == "changed" else []), \
+                    patch.object(families, "_system_737_xtu_service_info_upstream_changes", return_value=["receipt#pointer"] if mode == "upstream" else []), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+                args = argparse.Namespace(family="system", function="mw", product=None, prepare=False)
+                if mode == "success":
+                    families.audit_system_737_xtu_service_info_chain(args)
+                else:
+                    with self.assertRaisesRegex(ValueError, "remains unresolved"):
+                        families.audit_system_737_xtu_service_info_chain(args)
+            report, destination, _, section = publish.call_args.args
+            self.assertEqual((destination, section), (analysis.ROOT / ".analysis/results/frontend/system-mw-audit.json", "overclock_service_info_chain"))
+            self.assertEqual(report["bounded_observation_complete"], mode == "success")
+            for field in ("source_chain_complete", "whole_product_complete", "target_execution", "real_device_operations"):
+                self.assertFalse(report[field])
+            self.assertEqual(report["official_dll_comparison"], "not_executed")
+
+
+class Camera3595MjpegChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_camera_3595_mjpeg_chain(cls.audit)
+        cls.owners = {role: cls.audit.owners[identity] for role, identity in cls.report["roles"].items()}
+        for role, row in cls.report["reused_source_owners"].items():
+            cls.owners[role] = {**row, "body": cls.audit.read(row["original"])[row["byte_start"]:row["byte_end"]].decode()}
+        cls.native = families.verify_native_functions(cls.report["native"]["input"],
+            {int(row["rva"], 0): row["role"] for row in cls.report["native"]["complete_selected_functions"]},
+            [{"role": row["role"], "vtable_rva": int(row["vtable_rva"], 0),
+              "slot_byte_offset": row["slot_byte_offset"], "target_rva": int(row["target_rva"], 0)}
+             for row in cls.report["native"]["verified_indirect_slots"]],
+            exports={"SetAdaptiveMJPEGQuality": 0x5df30, "SetFixedMJPEGQuality": 0x5e160})
+
+    def body(self, role):
+        return self.owners[role]["body"]
+
+    def test_actual_mount_only_exposes_auto_switch_and_retains_current_triple(self):
+        ui = self.report["semantics"]["ui"]
+        self.assertTrue(ui["auto_quality_switch_mounted"])
+        self.assertFalse(ui["mode_and_manual_controls_mounted"])
+        self.assertFalse(ui["state_is_device_observation"])
+        self.assertEqual(ui["profile_default"], {"autoQuality": True, "mode": 5, "manualQuality": 80})
+        self.assertEqual(ui["initial_reducer"]["mode"], -1)
+        panel = self.body("ui_hdr_panel")
+        self.assertIn("E?null:i.autoQuality?", panel)
+        self.assertIn("{...i,autoQuality:!i.autoQuality}", panel)
+        self.assertIn("(om,{disableHDRSwitch:!0})", self.body("processing_page"))
+        self.assertLess(panel.index("qI.ur"), panel.index("qI.Ys"))
+        self.assertLess(panel.index("qI.Ys"), panel.index("qI.LX"))
+
+    def test_optimistic_full_triple_broadcast_and_profile_consumer_are_actual(self):
+        self.assertIn('type:t.JhX,payload:e', self.body("ui_action"))
+        reducer = self.body("ui_reducer")
+        self.assertIn('type:"ON_SET_MJPEG_QUALITY"', reducer)
+        self.assertIn('payload:{mjpegQuality:{...E.payload}}', reducer)
+        self.assertIn('{...e,mjpegQuality:{...E.payload}}', reducer)
+        self.assertIn('const T=E[e].mjpegQuality', self.body("ui_profile_consumer"))
+        self.assertIn('type:j.gI2,payload:T', self.body("ui_profile_consumer"))
+
+    def test_maker_preserves_inactive_branch_and_queues_original_input_after_optional_save(self):
+        maker = self.body("maker")
+        self.assertIn('void 0!==n.autoQuality&&(d.mjpegQuality.autoQuality=n.autoQuality)', maker)
+        self.assertIn('d.mjpegQuality.autoQuality?d.mjpegQuality.mode=n.mode', maker)
+        self.assertIn('!1===d.mjpegQuality.autoQuality&&(d.mjpegQuality.manualQuality=n.manualQuality)', maker)
+        self.assertLess(maker.index('RzVersion53bits.nextVersion'), maker.index('d.mjpegQuality'))
+        self.assertLess(maker.index('yield(0,y.Pf)(r)'), maker.index('RzTaskManager.enqueueTask'))
+        self.assertIn('u.CKA.bind(null,u.LPV.mjpegQuality,u.Sc5.version,l,n)', maker)
+        self.assertIn('if(r){', maker)
+        self.assertIn('fromLocalStorageGuard(e,t)', self.body("state_permission"))
+
+    def test_runner_truthy_and_exact_false_paths_discard_bools_and_keep_noop_falsy_boundary(self):
+        runner = self.body("runner")
+        self.assertIn('const t=Boolean(o.autoQuality)', runner)
+        self.assertIn('o.autoQuality?yield e.setAdaptiveMJPEGQuality(t,o.mode)', runner)
+        self.assertIn(':!1===o.autoQuality&&(yield e.setAdaptiveMJPEGQuality(t,0),yield e.setFixedMJPEGQuality(o.manualQuality))', runner)
+        self.assertIn('s.result=!0,s.value.status="completed"', runner)
+        self.assertNotIn('apiResult', runner)
+        self.assertFalse(self.report["semantics"]["write"]["returned_bools_consumed"])
+        self.assertTrue(self.report["semantics"]["write"]["nonthrowing_false_marks_task_completed"])
+
+    def test_cancel_precedes_lock_and_throw_skips_remaining_setter_without_rollback(self):
+        runner = self.body("runner")
+        self.assertEqual(runner.count('signal.aborted'), 1)
+        self.assertLess(runner.index('signal.aborted'), runner.index('requestLock()'))
+        self.assertLess(runner.index('requestLock()'), runner.index('setAdaptiveMJPEGQuality'))
+        self.assertIn('catch(e){s.result=!1,s.error=e}', runner)
+        self.assertTrue(self.report["semantics"]["write"]["throw_skips_remaining_write"])
+        for token in ('getAdaptiveMJPEGQuality(', 'getFixedMJPEGQuality(', 'rollback', 'saveUVCExtCmdToFlash('):
+            self.assertNotIn(token, runner + self.body("result_consumer"))
+
+    def test_result_requests_restart_before_status_only_log_and_reuses_preview_timing(self):
+        callback = self.body("result_consumer")
+        self.assertLess(callback.index('type:o.UDq,payload:!0'), callback.index('"completed"==='))
+        self.assertNotIn('apiResult', callback)
+        for role, token in (("media_stop", '(1e3).then('), ("media_preview", '3e3'),
+                ("media_stop_locker", 'uiTurnOffMessage:{timeout:5e3}'), ("media_stop_locker", '{ifAvailable:!0}'),
+                ("media_stop_message_consumer", 'uiTurnOffMessage.resolve(!0)')):
+            self.assertIn(token, self.body(role))
+        self.assertIn('getTracks().forEach(function(e){e.stop()})', self.body("media_stop"))
+
+    def test_startup_and_diff_replay_allowlist_is_profile_not_mjpeg_device_read(self):
+        replay = self.body("replay_camera")
+        self.assertIn('["mjpegQuality","hdr","dynamicNoiseReduction","mirrorVideo","watermark","autoFocus"]', replay)
+        self.assertIn('shouldSkipUVCOnMWStartup', replay)
+        self.assertIn('if(!t||e.includes(r))', replay)
+        self.assertIn('H[o].mjpegQuality', self.body("replay_mjpeg"))
+        self.assertIn('MW_ACTION_FROM_LOCALSTORAGE', self.body("replay_mjpeg"))
+        for name in ('getAdaptiveMJPEGQuality(', 'getFixedMJPEGQuality('):
+            self.assertNotIn(name, self.body("source_cache"))
+
+    def test_current_native_slots_and_packets_are_not_other_product_layout(self):
+        self.assertEqual(self.report["native"]["input"]["sha256"],
+                         '84a540e5d1747a8c1912e2f4710850b9397ccaf4ea812be03f20da8f27aa9ae7')
+        contract = self.report["native_contract"]
+        self.assertEqual((contract["SetAdaptiveMJPEGQuality"]["slot_byte_offset"], contract["SetFixedMJPEGQuality"]["slot_byte_offset"]), (256, 272))
+        self.assertEqual(contract["native_pid"], '0x0e0b')
+        for name, value, mode, expected in (("SetAdaptiveMJPEGQuality", 1, 5, 'c00e090100000500'),
+                ("SetAdaptiveMJPEGQuality", 0, 0, 'c00e090000000000'),
+                ("SetAdaptiveMJPEGQuality", 1, -1, 'c00e09010000ff00'),
+                ("SetFixedMJPEGQuality", 80, 0, 'c00e0b5000000000'),
+                ("SetFixedMJPEGQuality", 257, 0, 'c00e0b0100000000')):
+            with self.subTest(name=name, value=value, mode=mode):
+                self.assertEqual(families._camera_3595_mjpeg_packets(name, value, mode).hex(), expected)
+
+    def test_actual_abi_is_long_native_truncates_and_ack_never_becomes_applied_readback(self):
+        ffi = self.report["semantics"]["ffi"]
+        self.assertEqual(ffi["SetAdaptiveMJPEGQuality"], ['bool', ['string', 'bool', 'long']])
+        self.assertEqual(ffi["SetFixedMJPEGQuality"], ['bool', ['string', 'long']])
+        self.assertFalse(ffi["uninitialized_result"])
+        self.assertEqual(len(self.native["complete_selected_functions"]), 6)
+        self.assertTrue(all(row["input_chunks_verified"] and row["assembly_captured"] and row["pseudocode_captured"]
+                            for row in self.native["complete_selected_functions"]))
+        self.assertTrue(self.native["failures"])
+        contract = self.report["native_contract"]
+        self.assertIn('GET HRESULT exactly0 and response[0]==0', contract["transport"])
+        self.assertIn('SET failure still proceeds to GET', contract["transport"])
+        self.assertFalse(contract["post_write_get"])
+        self.assertFalse(contract["ack_is_consumed_by_mjpeg_runner"])
+
+    def test_full_source_and_native_tampering_require_review(self):
+        for role in ("ui_hdr_panel", "maker", "runner", "result_consumer", "replay_mjpeg", "adapter_setFixedMJPEGQuality"):
+            changed = copy.deepcopy(self.owners)
+            changed[role]["body"] += " "
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "complete source boundary changed"):
+                families._camera_3595_mjpeg_source_contract(changed)
+        for mode in ('code', 'slot', 'partial'):
+            native = copy.deepcopy(self.native)
+            if mode == 'code':
+                native['complete_selected_functions'][0]['capture']['pseudocode']['lines'][0]['text'] += ' '
+            elif mode == 'slot':
+                native['verified_indirect_slots'][0]['slot_byte_offset'] = 272
+            else:
+                native['complete_selected_functions'][0]['pseudocode_captured'] = False
+            with self.subTest(mode=mode), self.assertRaisesRegex(ValueError, 'native boundary changed|provider slots changed|native selection changed'):
+                families._camera_3595_mjpeg_native_contract(native)
+
+    def test_changed_exact_upstream_rejects_but_unrelated_sibling_is_allowed(self):
+        deps = self.report["upstream_sections"][:2]
+        document = json.loads((analysis.ROOT / deps[0]["receipt"]).read_bytes())
+        document["unrelated_sibling"] = {"changed": True}
+        with patch.object(Path, 'read_bytes', return_value=json.dumps(document).encode()):
+            self.assertEqual(host._otfm_macro_encoding_dependency_changes(deps), [])
+        document['camera_3595_hdr_chain']['remaining_local_chains'][0]['required'] += ' changed'
+        with patch.object(Path, 'read_bytes', return_value=json.dumps(document).encode()):
+            self.assertEqual(host._otfm_macro_encoding_dependency_changes(deps),
+                             [row['receipt'] + '#' + row['pointer'] for row in deps])
+            with self.assertRaisesRegex(ValueError, 'exact HDR section/finding requires review'):
+                families._camera_3595_mjpeg_dependencies()
+
+    def test_new_deployment_and_invalid_source_owner_are_rejected(self):
+        import frontend
+        document, _ = families._camera_3595_mjpeg_dependencies()
+        changed = {**self.report['source_sets']['ui'], 'acquisition': {'path': 'new-deployment'}}
+        with patch.object(frontend, 'current_source_selection', return_value=changed), self.assertRaisesRegex(ValueError, 'current source selection differs'):
+            families._camera_3595_mjpeg_sources(host.HostLocalAudit(), document)
+        owner = copy.deepcopy(self.audit.owners[self.report['roles']['runner']])
+        owner['body'] += ' '
+        with self.assertRaisesRegex(ValueError, 'content differs from the actual original'):
+            host.verify_profiles_owner(host.HostLocalAudit(), owner)
+
+    def test_bounded_static_result_reuses_capture_and_creates_no_temporary_resource(self):
+        self.assertEqual(self.audit.final_snapshot(), [])
+        self.assertEqual(host._otfm_macro_encoding_dependency_changes(self.report['upstream_sections']), [])
+        self.assertEqual(self.report['temporary_artifacts_created'], [])
+        self.assertEqual(self.report['analysis_sessions_created'], [])
+        self.assertEqual(self.report['new_native_captures'], 0)
+        for field in ('source_chain_complete', 'whole_page_complete', 'whole_product_complete', 'target_execution', 'real_device_operations', 'product_code_modified'):
+            self.assertFalse(self.report[field])
+        self.assertEqual(self.report['official_dll_comparison'], 'not_executed')
+        self.assertEqual(self.report['resumes_upstream_pointer'], '/camera_3595_hdr_chain/remaining_local_chains/0')
+
+    def test_cli_scope_and_incomplete_or_changed_publication_cannot_promote_completion(self):
+        import argparse
+        parser = argparse.ArgumentParser()
+        families.add_commands(parser.add_subparsers(dest='command', required=True))
+        args = parser.parse_args(['audit-family-function', '--family', 'accessories', '--function', 'main',
+                                  '--product', '3595', '--query', 'camera-3595-mjpeg-chain'])
+        with patch.object(families, 'audit_camera_3595_mjpeg_chain') as dispatch:
+            families.audit_family_function(args)
+        dispatch.assert_called_once_with(args)
+        for family, function, product, prepare in (('camera', 'main', [3595], False), ('accessories', 'mw', [3595], False),
+                ('accessories', 'main', [3596], False), ('accessories', 'main', [3595], True)):
+            with self.subTest(family=family, function=function, product=product, prepare=prepare), self.assertRaisesRegex(ValueError, 'requires PID3595'):
+                families.audit_camera_3595_mjpeg_chain(argparse.Namespace(family=family, function=function, product=product, prepare=prepare))
+        for mode in ('success', 'failure', 'snapshot', 'upstream'):
+            configured = {'side_effect': ValueError('missing MJPEG evidence')} if mode == 'failure' else {'return_value': copy.deepcopy(self.report)}
+            with self.subTest(mode=mode), patch.object(families, 'collect_camera_3595_mjpeg_chain', **configured), \
+                    patch.object(host.HostLocalAudit, 'artifact'), \
+                    patch.object(host.HostLocalAudit, 'final_snapshot', return_value=['source'] if mode == 'snapshot' else []), \
+                    patch.object(host, '_otfm_macro_encoding_dependency_changes', return_value=['receipt#pointer'] if mode == 'upstream' else []), \
+                    patch.object(host, 'publish_host_static_query') as publish, patch('builtins.print'):
+                if mode == 'success':
+                    families.audit_camera_3595_mjpeg_chain(args)
+                else:
+                    with self.assertRaisesRegex(ValueError, 'remains unresolved'):
+                        families.audit_camera_3595_mjpeg_chain(args)
+            report = publish.call_args.args[0]
+            self.assertEqual(publish.call_args.args[3], 'camera_3595_mjpeg_chain')
+            self.assertEqual(report['bounded_observation_complete'], mode == 'success')
+            self.assertFalse(report['source_chain_complete'])
+            self.assertFalse(report['target_execution'])
+            self.assertEqual(report['official_dll_comparison'], 'not_executed')
 
 
 if __name__ == "__main__":
