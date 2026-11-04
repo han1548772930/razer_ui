@@ -224,6 +224,20 @@ Mapping 的 `removeUsbDevice` 请求与 `hid.removeDevice` 是不同调用链。
 
 所选移除与 map 删除没有核对当前连接代次／同一 guid，已有延迟或已发布回调也不会因 URL／map 删除自动失效。局部析构、线程 join 和成功 completion 的已核顺序，只证明相应所有者释放，不证明未来 delayed task 或已入 main-runner／FFI／Electron／JS 队列全部排空。14 项定向静态测试覆盖当前身份、完整桥接、URL 门槛、false／异常、fallback key、实际 USB 虚槽、共享释放边界及输入变化／失败发布；未执行厂商代码，新增捕获、分析会话和临时资源均为零。通知 producer、各 feature shutdown、既有共享队列边界、独立 Rust／UI 接线和实际 DLL／设备对照仍在各自现有任务中保留。
 
+### 2636 实际 shutdown、连接重试与唤醒
+
+`audit-family-function --family gamepad --function mw --query gamepad-2636-shutdown-reconnect-chain --product 2636` 将当前原件的49个角色、68个完整 AST owner 接到[手柄收据](../../../.analysis/results/frontend/gamepad-mw-audit.json)的 `gamepad_2636_shutdown_reconnect_chain`。USB通知、Host HID／Mapping移除、延迟任务和输出恢复复用已发布链，本片没有重新捕获原生模块。
+
+当前实际 defaults 与 bootstrap **没有注入 genericFeature**：模块35924只导出 runtimeData 的 `A`，没有 `injectorDefaults`；93305的默认映射只补当前适用的 battery／Mapping等标志；47973按这些输入构造 injector，产品 bootstrap 的十次 useFeature也没有 genericFeature。因此 manager本次从空 features列表初始化并置 `initDone=true`，shutdown遍历为空，既不重置该标志也不清列表。这个结论有完整赋值、构造及调用方依据，只覆盖已选择的产品初始化链；未审阅的外部注入不能凭空当作存在或已排除，也不能按通用lazy loader列出的其他产品功能新增shutdown任务。
+
+Sage → Controller → Protocol25 → 模块41863基类的完整继承链中，`terminate`实际落到基类的空方法，没有 `handleBeforeUnload`。Sage另覆盖 `setDeviceMode(e,t)`，**只返回 SUCCESS和请求的mode／param，没有传输**。setup、resume和cleanup仍经通用L4先调用真实 `getDeviceMode`比较，但进入该setter后不代表设备写入或恢复；真正句柄释放继续来自已核Host HID／Mapping链。
+
+当前 DeviceInfo为 PID2636、VID5426、interface1，没有 bleId／dongleId。专用W构造Sage后，仅在controller声明wireless时用 `getDockExtendedFirmwareVersion().status===SUCCESS`判断isDongle，异常保持false；这不会选择BLE。Sage connect内部最多3次，外层默认5轮，轮间等待1／2／4／8秒。外层在重试前就公布新的 `rzDevice`，失败返回null但不清该对象；setup忽略ConnectCurrent的返回值，只检查当前对象是否存在。已注册的产品onLoad没有USB connected监听，不能将通用USB add通知直接描述为本产品重建完成。
+
+setup先移除再注册screenunlocked／systemresume监听。两者经保留Promise串行执行电源复查；无当前设备、hasBattery明确false或电源值未变化时跳过。实际电源getter使用Protocol25构造器中的 `getEdition` SUCCESS判断；变化后进入wireless power事件。连接事件的Le门在未await的mode Promise的finally中释放，然后按真实状态读取电池、刷新固件并排队已有brightness重放；缺serial时调用setup-ready。断连事件停止当前设备的turbos/macros并发布原版电源状态，不等于物理移除。apiElectron.resume还独立调用mode wrapper，仍适用上述Sage无传输覆盖。
+
+取消监听不会取消已排队的Promise、底层I/O或旧回调。cleanup没有重置setup的Tn门，没有全任务取消；setup-ready(true)执行页面reload，soft-reload标志只影响cleanup末尾是否关闭窗口。这些已核源码行为不能当作代次隔离或回调排空。11项定向AST／变异测试通过；独立Rust生命周期、完整接线及实际DLL／设备移除、重连、错误、恢复和释放比较仍分别保持未验证。
+
 ### Triggers 与 Thumbsticks：已有独立传输链
 
 [triggers](../../../crates/razer-pages/src/features/gamepad/gamepad_triggers.rs) 实际挂左右产品图、Analog/Digital radio、range 双柄、1%–100% actuation、Rapid Trigger、reset及帮助；range预览不进入已提交 profile。2647 [navigation](../../../crates/razer-pages/src/features/gamepad/gamepad_navigation.rs) 使用官方四段固件比较语义，一次组件生命周期内只移除不重新插回，缺读数不构成设备支持证据。

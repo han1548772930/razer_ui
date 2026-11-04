@@ -441,7 +441,9 @@ Lighting Engine 与 4115 MW 的当前来源分别由[稳定 LE snapshot](../../.
 
 `python -X utf8 tools/workspace.py clean --stale` 只处理当前批次开始前的 `.work` 根层 `.log/.txt/.out` 与根层 `__pycache__/*.pyc`。引用核对使用已安装的 `rg` 固定字符串多模式搜索与 16 个扫描线程，覆盖维护源码、文档、输入索引及正式 JSON 收据；已索引的函数／AST／原始反编译正文不重复扫描。不明类型、仍有引用、活进程路径、链接／junction、新文件及占用文件保持原样，删除前以 Windows 独占句柄重新核对文件身份。该模式不进入原生 IDB、分析工具与当前运行目录，也不删除 `.analysis` 原件或正式结果。
 
-每轮逆向必须按 [AGENTS.md 第 7.1 节](../../AGENTS.md#71-每轮逆向的清理与体积控制必做) 收尾。默认 `python -X utf8 tools/workspace.py clean` 或显式 `--dry-run` 仅生成 `.analysis/results/scratch-cleanup-<UTC时间>-plan.json`，不再清空 `.work`。计划使用保留名称并独占创建，已有计划和 apply 收据不得覆盖。完成证据充分、无后续依赖的 supplement 私有副本和旧资源克隆由计划逐项列出；原始 batch 数据库、活跃／预留任务、当前 verification checkout 及正式引用保留。执行使用 `clean --apply <计划相对路径> --plan-sha256 <实际计划SHA>`，先获取队列与资源写入锁，再重新核对完整引用、预留、完成收据、实际文件身份、路径和占用；首次删除前持久化完整计划范围和身份。实际删除与失败记入统一收据；清理计划不代表已释放空间。
+每轮逆向必须按 [AGENTS.md 第 7.1 节](../../AGENTS.md#71-每轮逆向的清理与体积控制必做) 收尾。默认 `python -X utf8 tools/workspace.py clean` 或显式 `--dry-run` 仅生成 `.analysis/results/scratch-cleanup-<UTC时间>-plan.json`，不再清空 `.work`。计划使用保留名称并独占创建，已有计划和 apply 收据不得覆盖。完成证据充分、无后续依赖的 supplement 私有副本和旧资源克隆由计划逐项列出；batch 数据库默认保护，活跃／预留任务、当前 verification checkout 及正式引用保留。执行使用 `clean --apply <计划相对路径> --plan-sha256 <实际计划SHA>`，先获取队列与资源写入锁，再重新核对完整引用、预留、完成收据、实际文件身份、路径和占用；首次删除前持久化完整计划范围和身份。实际删除与失败记入统一收据；清理计划不代表已释放空间。
+
+已完成选定语义且明确不再依赖私有数据库的 batch，可用 `clean --dry-run --native-batch-owner ".analysis/results/frontend/name-audit.json#/section"` 显式申请纳入计划。工具绑定正式段、当前原件、完整捕获清单、全部输出字节、选定函数成功范围、结束会话与时间顺序；未选函数的反编译失败及完整汇编保持原样。仅将该 owner 的临时资源清单和已结束会话的输入／argv 作为历史记录处理，其他引用、`source_database`、预留和活动进程仍阻止删除。apply 重核同一依据及独占占用；缺少证据、未选失败未保留、选定函数不完整或未知文件均拒绝，不能把模块全部成功作为虚假前提。
 
 候选为空的计划仍核对 SHA、工作区归属、guard 结果及独占锁，并写入空范围的正式执行收据；执行时不再枚举无关目录或进程，也不会把计划后出现的新候选加入删除范围。有候选时完整保留上述依赖与占用核验。
 
@@ -451,7 +453,7 @@ Lighting Engine 与 4115 MW 的当前来源分别由[稳定 LE snapshot](../../.
 
 验证命令由 `verification_environment` 在启动前登记 `target/verification-temp` 子目录的实际身份、创建者 PID 与 OS 创建时间，并持有独立账本锁；`TEMP`／`TMP`／`TMPDIR` 仅指向该命令拥有的目录。正常、失败和取消路径均由创建者释放自己的目录及其中测试文件。进程意外退出后，统一 `clean` 只回收身份仍匹配、创建进程已确认退出的已登记空目录；apply 再核账本、引用、活动及子进程清单和 Windows 独占句柄。未登记、非空、被替换或进程状态未知的目录继续保留，不递归猜测删除。
 
-队列时间边界仅在顶层完成时间有效、协调进程实例已确认退出时释放；未完成、仍存活、身份未知或仅有嵌套旧完成字段时继续保护。capture-batch 的预留同样逐进程核实终态。已结束任务的历史 scratch／argv／command／log 字段可以与真实依赖区分，但 `source_database` 始终参与引用保护。历史 stdout 只有精确 launch／passed 格式与当前完整会话、capture 和实际退出相符时才解除旧日志路径的保护。伪代码明确未完整的现场仍保留；进程退出码为零不足以准许删除未决数据库。
+队列时间边界仅在顶层完成时间有效、协调进程实例已确认退出时释放；未完成、仍存活、身份未知或仅有嵌套旧完成字段时继续保护。capture-batch 的预留同样逐进程核实终态。已结束任务的历史 scratch／argv／command／log 字段可以与真实依赖区分，但 `source_database` 始终参与引用保护。历史 stdout 只有精确 launch／passed 格式与当前完整会话、capture 和实际退出相符时才解除旧日志路径的保护。未完成语义、未保留失败证据或仍需补查的现场继续保留；进程退出码为零不足以准许删除未决数据库。
 
 `python -X utf8 tools/workspace.py compact-analysis --workers 8` 仅为原生根层大型数据集生成 `.analysis/results/storage-compaction.json`，逐项核对当前内容 SHA、文件身份与 capture 身份。`compact-analysis --workers 8 --apply --plan-sha256 <实际计划SHA>` 使用 Windows 文件系统压缩，保持文件路径、逻辑字节与完成状态；压缩前后在同一独占写入句柄核对 SHA、文件身份和写入时间，并以 `FileCompressionInfo` 记录实际占用。已有计划和 apply 收据不得覆盖；完整 apply 日志在压缩首项前持久化，结果位于计划同目录的 `*-apply.json`。旧 schema 或未完成 capture 的状态照原样保留，压缩不补造完成证明。该工具只更改文件存储属性，不执行分析输入、厂商 DLL 或应用。
 

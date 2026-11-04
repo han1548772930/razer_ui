@@ -1555,6 +1555,18 @@ def audit_family_function(args):
         return audit_mouse_182_profile_duplicate_chain(args)
     if getattr(args, "query", None) == "mouse-182-profile-import-chain":
         return audit_mouse_182_profile_import_chain(args)
+    if getattr(args, "query", None) == "legacy-mapping-conversion-chain":
+        return audit_legacy_mapping_conversion_chain(args)
+    if getattr(args, "query", None) == "legacy-product-mapping-chain":
+        return audit_legacy_product_mapping_chain(args)
+    if getattr(args, "query", None) == "legacy-shared-scalar-chain":
+        return audit_legacy_shared_scalar_chain(args)
+    if getattr(args, "query", None) == "legacy-shared-structured-chain":
+        return audit_legacy_shared_structured_chain(args)
+    if getattr(args, "query", None) == "legacy-source-product-chain":
+        return audit_legacy_source_product_chain(args)
+    if getattr(args, "query", None) == "host-monitor-enumeration-chain":
+        return audit_host_monitor_enumeration_chain(args)
     if getattr(args, "query", None) == "mouse-182-legacy-worker-chain":
         return audit_mouse_182_legacy_worker_chain(args)
     if getattr(args, "query", None) == "mouse-tracking":
@@ -1579,6 +1591,10 @@ def audit_family_function(args):
         return audit_system_737_overclock_sdk_lifecycle_chain(args)
     if getattr(args, "query", None) == "system-737-xtu-service-info-chain":
         return audit_system_737_xtu_service_info_chain(args)
+    if getattr(args, "query", None) == "system-737-xtu-ipf-lifecycle-chain":
+        return audit_system_737_xtu_ipf_lifecycle_chain(args)
+    if getattr(args, "query", None) == "system-737-xtu-client-api-chain":
+        return audit_system_737_xtu_client_api_chain(args)
     if getattr(args, "query", None) == "gamepad-polling-native-chain":
         return audit_gamepad_polling_native_chain(args)
     if getattr(args, "query", None) == "gamepad-obm-mapping-chain":
@@ -1597,6 +1613,8 @@ def audit_family_function(args):
         return audit_gamepad_2636_removal_notification_chain(args)
     if getattr(args, "query", None) == "gamepad-2636-detection-native-chain":
         return audit_gamepad_2636_detection_native_chain(args)
+    if getattr(args, "query", None) == "gamepad-2636-shutdown-reconnect-chain":
+        return audit_gamepad_2636_shutdown_reconnect_chain(args)
     if getattr(args, "query", None) == "hanbo-hid-write-current-chain":
         return audit_hanbo_hid_write_current_chain(args)
     if getattr(args, "query", None) == "profile-import-processors":
@@ -1625,6 +1643,8 @@ def audit_family_function(args):
         return audit_keyboard_756_switch_type_chain(args)
     if getattr(args, "query", None) == "keyboard-756-appengine-apply-chain":
         return audit_keyboard_756_appengine_apply_chain(args)
+    if getattr(args, "query", None) == "keyboard-756-analog-registration-chain":
+        return audit_keyboard_756_analog_registration_chain(args)
     if getattr(args, "query", None) == "driver-install-selection":
         return audit_driver_install_selection(args)
     if getattr(args, "query", None) == "keyboard-local-controls":
@@ -1803,6 +1823,12 @@ def audit_family_function(args):
         return audit_hanbo_cpu_monitor_chain(args)
     if getattr(args, "query", None) == "hanbo-hygon-package-chain":
         return audit_hanbo_hygon_package_chain(args)
+    if getattr(args, "query", None) == "hanbo-amd-legacy-package-chain":
+        return audit_hanbo_amd_legacy_package_chain(args)
+    if getattr(args, "query", None) == "hanbo-amd-k17-package-chain":
+        return audit_hanbo_amd_k17_package_chain(args)
+    if getattr(args, "query", None) == "hanbo-amd-k17-smu-owner-chain":
+        return audit_hanbo_amd_k17_smu_owner_chain(args)
     if getattr(args, "query", None) == "hanbo-amd-package-chain":
         return audit_hanbo_amd_package_chain(args)
     if getattr(args, "query", None) == "hanbo-system-monitor-versions":
@@ -39287,6 +39313,875 @@ def audit_mouse_182_legacy_worker_chain(args):
     return report
 
 
+_HOST_MONITOR_PARENT_SHA = "06ac9c08c2a5fa90298d2d87d187d352933c1a4b20b15502549417e2d706c860"
+_HOST_MONITOR_FINDING_SHA = "e7cabb5ffc37c3e0e9c7a2628afa2af6c61e282e03311ffbda2a15f1b279def3"
+_HOST_MONITOR_REVIEWED_SHA = "2f22c7333a3f5737a5e1cd4e55fe54f855528c70abee97e8f6464a53f9d96ce5"
+
+
+def _host_monitor_enumeration_sources(audit):
+    import frontend
+    import host
+    receipt = ".analysis/results/frontend/mouse-mw-audit.json"
+    parent = json.loads((a.ROOT / receipt).read_bytes())["mouse_182_legacy_worker_chain"]
+    if (_mouse_182_profile_duplicate_digest(parent) != _HOST_MONITOR_PARENT_SHA
+            or _mouse_182_profile_duplicate_digest(parent["remaining_chains"][2]) != _HOST_MONITOR_FINDING_SHA
+            or parent.get("failures") or not parent.get("snapshot_stable") or not parent.get("bounded_observation_complete")):
+        raise ValueError("Host monitor exact worker section/finding requires review")
+    selections = {}
+    for layer, stem in (("ui", "mouse-182-current"), ("mw", "mouse-mw-182-current")):
+        selected = frontend.current_source_selection(f"https://apps.razer.com/synapse/products/182/{layer}/", audit,
+            candidates=sorted((a.ROOT / ".analysis/inputs/frontend").glob(stem + "*/acquisition.json")), verify_capture=False)
+        if any(selected[key] != parent["source_sets"][layer][key] for key in ("name", "acquisition")):
+            raise ValueError("Host monitor current consumer deployment differs: " + layer)
+        selections[layer] = {key: selected[key] for key in ("name", "acquisition")}
+    indexed = json.loads(audit.artifact(a.ROOT / ".analysis/inputs.json"))
+    release = host.verified_host_release_receipt(index=indexed)
+    if release["version"] != "4.0.896":
+        raise ValueError("Host monitor current release requires review")
+    for item in (release["receipt"], *release["verified_dependencies"]):
+        audit.artifact(a.ROOT / item["path"], item)
+    members = {row["path"]: row for row in host.current_host_asar_members(audit, indexed, release)}
+    for source in parent["current_host_sources"].values():
+        original = source["original"]
+        if (members.get(original["path"]) != original or source["release_version"] != release["version"]
+                or source["acquisition"] != release["receipt"]):
+            raise ValueError("Host monitor current ASAR member differs")
+        audit.read(original)
+    candidates = [row for row in host.current_host_extracted_inputs(indexed, release)
+                  if row["path"].endswith("/CommonDLL/SysUtilsNative.dll")]
+    if len(candidates) != 1 or (candidates[0]["bytes"], candidates[0]["sha256"]) != (
+            1554120, "bc0387a0913c882a9cd82aa1a8e147d6408fc7bb7f77519f4f8860f16c5b17c8"):
+        raise ValueError("Host monitor current native original differs")
+    native_original = candidates[0]
+    package, = [row for row in release["files"] if row.get("path") == native_original["container"]
+                and row.get("sha256") == native_original["container_sha256"] and row.get("manifest_identity_verified")]
+    extraction = native_original["extraction_receipt"]
+    inspection = json.loads(audit.artifact(a.ROOT / extraction["path"], extraction))
+    extracted, = [row for row in inspection["containers"] if row.get("input") == package["path"]
+                  and row.get("sha256") == package["sha256"]]
+    if (inspection.get("acquisition") != release["receipt"] or not extracted.get("extracted") or not extracted.get("input_bytes_unchanged")
+            or extracted.get("extraction_exit_code") != 0
+            or not any(all(row.get(key) == native_original[key] for key in ("path", "bytes", "sha256")) for row in extracted["files"])):
+        raise ValueError("Host monitor native package extraction differs")
+    audit.artifact(a.ROOT / package["path"], package)
+    raw = audit.read(native_original)
+    versions = {(row["tree"].get("file_version"), row["tree"].get("product_version")) for row in host.inspect_pe(raw)["version_resources"]}
+    if versions != {("1.2.3.0", "1.2.3.0")}:
+        raise ValueError("Host monitor native file version differs")
+    previous = {row["id"]: row for row in parent["complete_source_owners"]}
+    roles = {}
+    for role in ("profile_helper_Ve", "import_maker", "macro_generate_events", "macro_event_translation",
+                 "service_getMonitorInfo", "service_getVirtualScreenRect", "service_callElectronAction", "service_bridge",
+                 "host_case_getMonitorInfo", "host_case_getVirtualScreenRect", "host_preload", "host_sysutil_instance",
+                 "host_sysutil_import", "host_ffi_import", "host_sysutil_platform", "host_sysutil_constructor", "host_sysutil_initDll",
+                 "host_sysutil_callDLL", "host_ffi_call"):
+        row = previous[parent["roles"][role]]
+        body = audit.read(row["original"])[row["byte_start"]:row["byte_end"]]
+        if body.decode() != row["body"] or hashlib.sha256(body).hexdigest() != row["body_sha256"]:
+            raise ValueError("Host monitor reused complete owner differs: " + role)
+        roles[role] = audit.retain_range("host_monitor_" + role, row["original"], row["byte_start"], row["byte_end"], row["syntax"])
+    main = parent["current_host_sources"]["electron/main.js"]["original"]
+    root, body = audit.tree(main).root_node, audit.read(main)
+    for role, needle, syntax in (
+            ("host_library_directory", b'const o="win32"===process.platform?', "lexical_declaration"),
+            ("host_library_names", b'let n="SysUtilsNative.dll"', "lexical_declaration"),
+            ("host_library_selection", b'if("darwin"===process.platform&&(n="libSysUtilsNative.dylib"', "if_statement")):
+        if body.count(needle) != 1:
+            raise ValueError("Host monitor native load owner absent or ambiguous: " + role)
+        offset = body.index(needle)
+        node = root.descendant_for_byte_range(offset, offset + len(needle))
+        while node is not None and node.type != syntax:
+            node = node.parent
+        if node is None:
+            raise ValueError("Host monitor native load owner has wrong syntax: " + role)
+        roles[role] = audit.retain_range("host_monitor_" + role, main, node.start_byte, node.end_byte, node.type)
+    return {"roles": roles, "source_sets": selections,
+        "host_release": {"version": release["version"], "acquisition": release["receipt"], "package": package, "native_extraction": extraction},
+        "native_original": native_original,
+        "upstream_sections": [
+            {"receipt": receipt, "pointer": "/mouse_182_legacy_worker_chain", "canonical_sha256": _HOST_MONITOR_PARENT_SHA},
+            {"receipt": receipt, "pointer": "/mouse_182_legacy_worker_chain/remaining_chains/2", "canonical_sha256": _HOST_MONITOR_FINDING_SHA}]}
+
+
+def _host_monitor_enumeration_native(audit, original):
+    import host
+    native = verify_native_functions(original, {
+        0x6fc00: "monitor_list", 0x6fee0: "virtual_bounds", 0x6f090: "shared_monitor_callback",
+        0x705b0: "shared_return_gate_owner", 0x69d10: "free_export", 0x1200: "json_global_initializer", 0xc8380: "json_global_destructor",
+        0x3beb0: "device_name_encoding", 0x3bea0: "name_temporary_free", 0x39dc0: "name_encoding_failure",
+        0x9dae0: "checked_string_copy", 0x9b120: "returned_buffer_allocate", 0xaa8a0: "heap_allocate",
+        0x98c30: "buffer_free", 0xaa840: "heap_free", 0x3850: "json_dump", 0x3c90: "json_serialize",
+        0x8860: "json_storage_initialize", 0x8ff0: "json_storage_destroy", 0x8ee0: "string_release", 0x9480: "json_value_release"},
+        exports={"getMonitorInfo": 0x6fc00, "getVirtualScreenRect": 0x6fee0, "FreeMalloc": 0x69d10, "getCurrentMonitor": 0x705b0})
+    if any(row["failures"] or not row["assembly_captured"] or not row["pseudocode_captured"] for row in native["complete_selected_functions"]):
+        raise ValueError("Host monitor selected native capture is incomplete")
+    native["failure_scope"] = "Full capture failures remain unchanged; selected monitor functions are complete. Unselected CRT failures are not promoted to success."
+    audit.artifact(a.ROOT / native["capture_receipt"]["path"], native["capture_receipt"])
+    for row in native["complete_selected_functions"]:
+        audit.artifact(a.ROOT / row["artifact"]["path"], row["artifact"])
+    raw = audit.read(original)
+    base, read, _ = audio_native_evidence_pe(raw)
+    regions = []
+    for role, rva, expected in (("return_gate_initial", 0x100ebc, "01000000"),
+            ("minimum_bounds_sentinel", 0xe4060, "c0270900" * 4), ("maximum_bounds_sentinel", 0xe40a0, "40d8f6ff" * 4)):
+        data = read(rva, len(bytes.fromhex(expected)))
+        if base != 0x180000000 or data.hex() != expected:
+            raise ValueError("Host monitor original scalar/SIMD constants differ: " + role)
+        regions.append({"role": role, "rva": hex(rva), "raw_hex": data.hex()})
+    section, = [row for row in host.inspect_pe(raw)["sections"] if row["name"] == ".data"]
+    for rva in (0x1067b8, 0x1067c0, 0x106839, 0x106920, 0x106e20, 0x106e30, 0x106ed0):
+        if not section["rva"] + section["bytes"] <= rva < section["rva"] + section["virtual_bytes"]:
+            raise ValueError("Host monitor globals are no longer in zero-filled section tail")
+    native["data_regions"] = regions
+    native["zero_filled_global_section"] = section
+    return native
+
+
+def _host_monitor_enumeration_contract(owners, native):
+    selected = {"owners": {role: {key: owner[key] for key in ("byte_start", "byte_end", "body_sha256")} for role, owner in owners.items()},
+        "native": [{"rva": row["capture"]["rva"], "pseudocode": row["capture"]["pseudocode"], "input_chunks_verified": row["input_chunks_verified"]} for row in native["complete_selected_functions"]],
+        "data_regions": native["data_regions"], "zero_filled_global_section": native["zero_filled_global_section"]}
+    if any(hashlib.sha256(owner["body"].encode()).hexdigest() != owner["body_sha256"] for owner in owners.values()):
+        raise ValueError("Host monitor complete source owner body/hash differs")
+    digest = _mouse_182_profile_duplicate_digest(selected)
+    if digest != _HOST_MONITOR_REVIEWED_SHA:
+        raise ValueError("Host monitor complete semantic review differs: " + digest)
+    return {"reviewed_selection_sha256": digest,
+        "host_entry": {"release": "4.0.896", "native_version": "1.2.3.0", "arguments": [], "return_abi": "pointer",
+            "selection": "Win32 packaged common directory uses programFiles/Razer/RazerAppEngine/app-<app version>/CommonDLL; unpackaged uses relative CommonDLL. DebugCommonDLL copies missing DLLs into Apps/Common and can keep an existing override. This query proves packaged current bytes, not installed/debug override selection. Darwin names and backend are separate.",
+            "consumer": "Reuse current worker/profile/macro consumers: await monitor list then virtual screen; Electron preload invokes electronAction, main/sysutil route both actions to synchronous callDLLMain. ConfigureFFI declares both as pointer/no args and FreeMalloc(void,pointer). No native Initialize check, background task or monitor-specific cancellation is present on these calls."},
+        "monitor_list": {"device_names": "EnumDisplayDevicesW(NULL,index) stores adapter DeviceName by ordinal, converted with codepage3 (thread ACP), into global slots stride128 with copy limit100. Child device0 is then queried; empty child DeviceName stops the loop after storing the adapter. Child struct is zeroed once before the loop; its query return is ignored. No StateFlags filter or HMONITOR/name identity join is performed.",
+            "order": "GetSystemMetrics(80) is called and ignored; reset callback count0, mode0,clear global JSON retaining its type,then EnumDisplayMonitors(NULL,NULL,callback,&unused local). Enum return is ignored. Callback arrival order is output order.",
+            "fields": ["deviceName", "dpiScaleX", "dpiScaleY", "isPrimaryMonitor", "MonitorRect", "WorkRect"],
+            "rect_fields": ["left", "top", "right", "bottom"],
+            "callback": "cbSize40 is initialized but GetMonitorInfoW result is ignored; remaining MONITORINFO stack fields are not zeroed. DPI outputs start0,GetDpiForMonitor(type0) result is ignored; scales are double(dpi)/96. Primary is flags==1,not a bitmask test. Coordinates are signed unscaled rcMonitor/rcWork. Adapter name is indexed by callback count,not queried for that HMONITOR.",
+            "empty": "Initial JSON type0 with no callback serializes null; after a prior list,type2 clear plus no callbacks serializes[]. Neither is an explicit successful OS enumeration result.",
+            "return_gate": "PE initial global0x100ebc=1. getCurrentMonitor temporarily sets0, calls getMonitorInfo to refresh globals, frees any unexpected allocation, then restores1. No lock/finally protects this shared gate; zero gate returns null after enumeration."},
+        "virtual_bounds": {"metric": 80, "minimum_seed": 600000, "maximum_seed": -600000,
+            "order": "Reset callback count0 and mode1,read SM_CMONITORS,then call same EnumDisplayMonitors. Callback stores rcMonitor into global rectangle slots and still reads DPI; handle slots/count update in both modes. Rectangles are not cleared and no count bound is checked.",
+            "reduction": "Union uses saved GetSystemMetrics count,not actual callback count. left/top=min with600000; right/bottom=max with-600000. Scalar tail and SSE4.1 min/max blocks of8 share the exact seeds. Output is MonitorRect{left,top,width=right-left,height=bottom-top},without work area or scaling.",
+            "zero_count_result": {"MonitorRect": {"left": 600000, "top": 600000, "width": -1200000, "height": -1200000}},
+            "partial_failure": "Metric/enumeration mismatch can consume zero-filled or stale rectangle slots. Enum/GetMonitorInfo/DPI failures are not rejected. Negative or zero metric leaves sentinel bounds; callback/metric count mismatch is not converted to success or an empty validated snapshot by this audit."},
+        "memory_lifecycle": {"serialization": "Both exports dump compact JSON to an owned temporary string, compute allocation size2*low32(length)+1,zero allocated bytes,then checked NUL string copy. Allocation failure returns null; copy return is ignored. Native C++ conversion/JSON errors have no business catch at the exports.",
+            "release": "Normal return releases dump strings and per-call JSON. Shared list persists across calls and is destroyed by registered atexit function0xc8380; this is separate from returned malloc storage. FreeMalloc checks nonnull then reaches HeapFree; heap failure records errno without a success response.",
+            "ffi": "Host readCString sets the release flag only after decode returns. finally calls FreeMalloc only with that flag and function present; decode throw can leave pointer unfreed. FFI catch returns undefined. Frontend truthy malformed monitor JSON returns undefined; falsy/unavailable returns[],while malformed virtual JSON also returns undefined. No shape validation or geometry fallback is established.",
+            "concurrency": "List,mode,counter,name/rectangle/handle slots and return gate are process-global. The two queries are separate synchronous enumerations with no shared atomic snapshot,lock,generation,explicit cancellation or per-call clear of all globals. No callback-drain or concurrent safety claim is made."},
+        "source_slice_complete": True, "whole_product_complete": False, "target_execution": False}
+
+
+def collect_host_monitor_enumeration_chain(audit):
+    result = _host_monitor_enumeration_sources(audit)
+    native = _host_monitor_enumeration_native(audit, result["native_original"])
+    result["semantics"] = _host_monitor_enumeration_contract({role: audit.owners[key] for role, key in result["roles"].items()}, native)
+    result["native"] = _system_737_overclock_service_compact_native({"monitor": native})["monitor"]
+    rust = "crates/razer-platform/src/input/macro_geometry.rs"
+    rust_input = identity(a.ROOT / rust)
+    result.update(kind="current_host_monitor_enumeration_chain", product_id=182, failures=[], source_slice_complete=True,
+        source_chain_complete=False, whole_product_complete=False, target_execution=False, real_device_operations=False,
+        product_code_modified=False, new_native_captures=0, new_analysis_sessions=0, temporary_resources_created=[],
+        rust_implementation={"source": rust_input, "current_equivalence": "unverified", "observed": "Existing Windows adapter owns per-call state,validates OS results and combines list/bounds in one enumeration;its header identifies older input. Preserved unchanged,not promoted to current native equivalence."},
+        official_dll_comparison="not_executed", runtime_acceptance="unverified",
+        cleanup={"created": [], "retained": "Existing current official inputs and complete captures remain evidence; no temporary resource created"},
+        remaining_chains=[
+            "Complete independent Rust migration and current macro/import/UI/backend wiring remain separately required; this native observation does not validate existing older-input geometry behavior.",
+            "Actual current DLL/OS comparison for success,empty/failed enumeration,DPI failure,topology changes,allocation/decode failure and cancellation/concurrency remains unverified;no vendor code or OS enumeration was executed.",
+            "Other Host sysutil exports,including the remainder of getCurrentMonitor beyond its shared-state dependency,and Darwin backend remain independent scope;full generic CRT/JSON exception unwinding and whole-module teardown are not claimed complete."])
+    return result
+
+
+def audit_host_monitor_enumeration_chain(args):
+    import host
+    if (args.family != "mouse" or args.function != "mw" or (args.product or [182]) != [182] or getattr(args, "prepare", False)):
+        raise ValueError("host-monitor-enumeration-chain requires mouse/mw PID182 without preparation")
+    audit = host.HostLocalAudit()
+    report = {"schema_version": 1, "query": "host-monitor-enumeration-chain", "failures": [],
+        "bounded_observation_complete": False, "source_chain_complete": False, "whole_product_complete": False,
+        "target_execution": False, "real_device_operations": False, "official_dll_comparison": "not_executed"}
+    try:
+        for name in ("tools/families.py", "tools/host.py", "tools/frontend.py", "tools/evidence.py"):
+            audit.artifact(a.ROOT / name)
+        report.update(collect_host_monitor_enumeration_chain(audit))
+    except (OSError, ValueError, KeyError, IndexError, TypeError, StopIteration) as error:
+        report["failures"].append(type(error).__name__ + ": " + str(error))
+    changed = audit.final_snapshot() + host._otfm_macro_encoding_dependency_changes(report.get("upstream_sections", []))
+    rust_source = report.get("rust_implementation", {}).get("source")
+    if rust_source is not None and identity(a.ROOT / "crates/razer-platform/src/input/macro_geometry.rs") != rust_source:
+        changed.append("crates/razer-platform/src/input/macro_geometry.rs")
+    report["failures"].extend("Host monitor changed input: " + name for name in changed)
+    report.update(recorded_at_utc=a.stamp(), changed_during_query=changed, snapshot_stable=not changed,
+        bounded_observation_complete=not report["failures"], complete_originals=list(audit.sources.values()),
+        complete_source_owners=list(audit.owners.values()), verified_artifacts=list(audit.artifacts.values()))
+    destination = a.ROOT / ".analysis/results/frontend/mouse-mw-audit.json"
+    host.publish_host_static_query(report, destination, a, "host_monitor_enumeration_chain")
+    if report["failures"]:
+        raise ValueError("Host monitor enumeration remains unresolved: " + "; ".join(report["failures"]))
+    print("Host monitor enumeration: " + a.rel(destination))
+    return report
+
+
+_LEGACY_MAPPING_MODULES = (8061, 62, 3405, 8599, 915, 3067, 6994, 5736, 1028, 9346,
+    272, 8786, 7474, 2130, 6919, 9140, 567, 7349, 1463, 849, 3197, 1133, 7949,
+    4483, 4544, 4329, 7419, 4104, 5167)
+_LEGACY_MAPPING_PARENT = "06ac9c08c2a5fa90298d2d87d187d352933c1a4b20b15502549417e2d706c860"
+_LEGACY_MAPPING_REVIEWED = "64c1680fbe690e0ab569325d349c73a0bfdd66b5e72b9d48693c2f42bc3abe69"
+
+
+def _legacy_mapping_contract(owners):
+    if set(owners) != {str(mid) for mid in _LEGACY_MAPPING_MODULES}:
+        raise ValueError("Legacy mapping complete module coverage differs")
+    if any(hashlib.sha256(row["body"].encode()).hexdigest() != row["body_sha256"]
+           for row in owners.values()):
+        raise ValueError("Legacy mapping owner body/hash differs")
+    identity = {mid: {key: row[key] for key in ("byte_start", "byte_end", "body_sha256")}
+                for mid, row in owners.items()}
+    reviewed = _mouse_182_profile_duplicate_digest(identity)
+    if reviewed != _LEGACY_MAPPING_REVIEWED:
+        raise ValueError("Legacy mapping complete reviewed owners differ: " + reviewed)
+    output_groups = ["KEYBOARD", "MOUSE", "SENSITIVITY", "DISABLE", "TEXT_BLOCK", "WINDOWS",
+        "MULTIMEDIA", "LAUNCH", "HYPERSHIFT", "PROFILE_NAVIGATION", "MACRO", "INTER_DEVICE",
+        "JOYSTICK", "SCROLLING", "KEYMAP", "BACKLIGHT", "SPECIFIC_PROFILE", "LIGHT_PAC",
+        "AUDIO", "CONTROLLER", "XBOX"]
+    cases = re.findall(r'case _.MAPPING_GROUP_SYN3.([A-Z_]+)_GROUP:', owners["3405"]["body"])
+    if cases != output_groups:
+        raise ValueError("Legacy mapping actual output dispatch differs")
+    return {"reviewed_source_sha256": reviewed, "output_groups_in_source_order": output_groups,
+        "selection": "Shared Mappings is selected by actual source feature unless all/source-exclusive registry suppresses it. Keyboard is exact deviceInfo.Type string2; gen1 source PID614/580/642;677 alone forces selected hypershift keys to IsDefault=true after filtering. Target PID182 does not select these branches.",
+        "analog_filter": "Function u returns a comma expression: optional second actuation parse precedes (first differs from default and first>=unit) OR level1 nondefault OR (second truthy and second>first and level2 nondefault). Missing/throwing analog data logs and returns undefined. Shared filter uses this actual predicate; source appearance must not be mistaken for missing return.",
+        "filter_and_input": "Broadcaster bypasses default filtering; ordinary entries need exact IsDefault=false string. Keyboard scroll up/down volume mappings are excluded. Boolean(IsHyperShift) makes nonempty false string true. Scan code takes precedence over HID with first matching table entry; unresolved key IDs drop, while unknown input type/dial can retain empty inputID and merge valid output.",
+        "analog_direct": "Direct converter normalizes singleton actuation outputs; gen1 unit12/default0,gen2 unit1638/default19656. Points store original and max(value-unit,0). First output required; absent second receives defaultGroup. RapidTrigger rounds down/up stroke divided by unit,continuous=true,exact SeparatedStroke=true string. Controller curve x=round2(210*x/25500)+1.5 for gen1 or round2(390*x/25500)+0.1 otherwise;y integer,without clamp.",
+        "output_dispatch": "21 actual switch cases with all19 helpers and complete key/table/parse dependencies. Unknown groups return undefined; declared Chroma_Effect/AdvanceGainSettings have no case. Keyboard default and identical unmodified non-turbo input/output produce empty keyboardGroup. Table lookup retains in-operator and truthiness,not strict own-key validation.",
+        "hypershift": "Count only hyperShiftGroup outputs per inputID as1 then2; exactly one appends a clone of FIRST matching mapping with isHyperShift=true regardless of first output group. No dedup,original-layer check or opposite-layer guard.",
+        "macro": "Shared convertMapping passes only3 arguments to dispatcher; fourth macro list is undefined. Valid macro Id/playback returns source guid,name undefined - S3 (nonempty template defeats Macro1 fallback),parsed repeatCount. Macro execution/publication remain separate.",
+        "other_outputs": "Mouse/turbo,sensitivity clutch,text,multimedia/windows/XBOX,profile navigation/specific,joystick,keymap,lighting/global brightness,Lightpac,audio endpoints retain exact table/field spelling. Launch accepts path OR URL and prepends https:// unless substring present,including https://undefined for path-only. Interdevice resolves first PID group then supported type;Profile_Lightpac requires LightpackGuid. Audio payload requires PrimaryEndpointID presence,not nonempty value.",
+        "failure_lifecycle": "Per-record convertMapping catches and omits thrown conversion. Filtering and preconversion input map are outside catch and can reject whole shared worker. Shared dispatcher has no per-feature catch;exclusive batch calls are caught and may run twice. Synchronous conversion introduces no device write,cancellation,rollback,port release or hardware confirmation;inherited worker/UI/store lifecycle is unchanged."}
+
+
+def collect_legacy_mapping_conversion_chain(audit):
+    import host
+    path = a.ROOT / ".analysis/results/frontend/mouse-mw-audit.json"
+    parent = json.loads(path.read_bytes())["mouse_182_legacy_worker_chain"]
+    upstream = [{"receipt": a.rel(path), "pointer": "/mouse_182_legacy_worker_chain",
+        "canonical_sha256": _LEGACY_MAPPING_PARENT, "recaptured": False}]
+    if host._otfm_macro_encoding_dependency_changes(upstream) or not parent.get("bounded_observation_complete"):
+        raise ValueError("Legacy mapping current worker parent requires review")
+    _, picker = _mouse_182_legacy_worker_parent(audit)
+    proof, worker = _mouse_182_legacy_worker_deployment(audit, _MOUSE_182_LEGACY_WORKER_DEPLOYMENT, picker)
+    roles, owners = {}, {}
+    for mid in _LEGACY_MAPPING_MODULES:
+        found = audit.webpack_factories([worker], mid)
+        if len(found) != 1:
+            raise ValueError("Legacy mapping actual module absent or ambiguous: " + str(mid))
+        source, node, _ = found[0]
+        role = str(mid)
+        roles[role] = audit.retain_range("legacy_mapping_" + role, source, node.start_byte, node.end_byte, node.type)
+        owners[role] = audit.owners[roles[role]]
+    semantics = _legacy_mapping_contract(owners)
+    inventory = next(row for row in parent["shared_converter_inventory"] if row["module_id"] == 8061)
+    if inventory["complete_owner"] != roles["8061"] or inventory["semantic_status"] != "pending_shared_feature_semantics":
+        raise ValueError("Legacy mapping exact pending registry continuation differs")
+    return {"schema_version": 1, "kind": "current_legacy_mapping_conversion_chain", "product_id": 182,
+        "scope": "Shared legacy Mappings8061 input/output conversion and actual source-PID branches;all21 output cases with complete dependencies,excluding source-exclusive caller implementations",
+        "roles": roles, "upstream_sections": upstream, "worker_deployment": proof, "semantics": semantics,
+        "source_slice_complete": True, "selected_static_semantics_reviewed": True, "source_chain_complete": False,
+        "whole_product_complete": False, "target_execution": False, "real_device_operations": False,
+        "product_code_modified": False, "temporary_resources_created": [], "new_native_captures": 0,
+        "new_analysis_sessions": 0, "official_dll_comparison": "not_executed", "runtime_acceptance": "unverified",
+        "rust_implementation": "Existing PreparedMouseImport and mouse_legacy_mapping separately recorded;not changed or revalidated by static worker review",
+        "remaining_chains": [
+            "Other pending_shared_feature_semantics entries in parent shared_converter_inventory remain required;only8061 is closed here.",
+            "Source-exclusive converters including6892 side-panel routing and any other direct8061 callers need actual per-product semantics;shared helper closure does not close callers or their additional selection semantics.",
+            "Native monitor enumeration,independent Rust legacy file conversion,UI/backend/store publication and official DLL/device comparisons retain existing boundaries."]}
+
+
+def audit_legacy_mapping_conversion_chain(args):
+    import host
+    if (args.family != "mouse" or args.function != "mw" or (args.product or [182]) != [182]
+            or getattr(args, "prepare", False)):
+        raise ValueError("legacy-mapping-conversion-chain requires mouse/mw PID182 without preparation")
+    audit = host.HostLocalAudit()
+    report = {"schema_version": 1, "query": "legacy-mapping-conversion-chain", "failures": [],
+        "bounded_observation_complete": False, "source_chain_complete": False, "target_execution": False}
+    try:
+        for name in ("tools/families.py", "tools/host.py", "tools/frontend.py", "tools/evidence.py"):
+            audit.artifact(a.ROOT / name)
+        report.update(collect_legacy_mapping_conversion_chain(audit))
+    except (OSError, ValueError, KeyError, IndexError, TypeError, StopIteration) as error:
+        report["failures"].append(type(error).__name__ + ": " + str(error))
+    changed = audit.final_snapshot() + host._otfm_macro_encoding_dependency_changes(report.get("upstream_sections", []))
+    report["failures"].extend("Legacy mapping changed input: " + name for name in changed)
+    report.update(recorded_at_utc=a.stamp(), changed_during_query=changed, snapshot_stable=not changed,
+        bounded_observation_complete=not report["failures"], complete_originals=list(audit.sources.values()),
+        complete_source_owners=list(audit.owners.values()), verified_artifacts=list(audit.artifacts.values()))
+    destination = a.ROOT / ".analysis/results/frontend/mouse-mw-audit.json"
+    host.publish_host_static_query(report, destination, a, "legacy_mapping_conversion_chain")
+    print(json.dumps({"query": report["query"], "receipt": a.rel(destination), "failures": report["failures"],
+        "bounded_observation_complete": report["bounded_observation_complete"], "target_execution": False}), flush=True)
+    if report["failures"]:
+        raise ValueError("Legacy mapping conversion observation remains unresolved")
+    return report
+
+
+_LEGACY_PRODUCT_MAPPING_MODULES = (6892, 8667, 8311, 4329, 4544, 4483, 7419, 5167, 3757, 8061, 4104)
+_LEGACY_PRODUCT_MAPPING_REVIEWED = "1d202a09d7d8448948cf1c243f1234430207df1e0a9f3208bb1d3b5ea68c0e27"
+
+
+def _legacy_product_mapping_contract(owners):
+    if set(owners) != {str(mid) for mid in _LEGACY_PRODUCT_MAPPING_MODULES}:
+        raise ValueError("Legacy product mapping complete module coverage differs")
+    if any(hashlib.sha256(row["body"].encode()).hexdigest() != row["body_sha256"] for row in owners.values()):
+        raise ValueError("Legacy product mapping original owner body/hash differs")
+    identity = {mid: {key: row[key] for key in ("byte_start", "byte_end", "body_sha256")}
+                for mid, row in owners.items()}
+    reviewed = _mouse_182_profile_duplicate_digest(identity)
+    if reviewed != _LEGACY_PRODUCT_MAPPING_REVIEWED:
+        raise ValueError("Legacy product mapping reviewed owners differ: " + reviewed)
+    return {"reviewed_source_sha256": reviewed,
+        "source_pid_groups": {"6892": [167,143,103,150,83,80,141,147,180],
+            "8667": [1391,1386], "8311": [1387,1388,1383,1393]},
+        "selection": "Exclusive registry uses raw parsed source Product_ID before swapPID. Aliases144/146/168/169/181 and1384 are not automatically included;source-specific Mappings suppresses shared converter. Target182 does not decide selected source branch.",
+        "profile_context": "Exclusive converters receive only profile e,one argument. deviceInfo is injected by Object.assign(e,{deviceInfo:n}) only when an actual shared feature converter runs. Exclusively handled profile can lack deviceInfo;6892 then has no panel definition and8061 uses nonkeyboard/gen2 context. No guaranteed context injection or independent version gate.",
+        "side_panels": {"panel_sets": {"80":[7],"83":[12],"103":[2,7,12],"141":[12],"143":[2,6,12],
+                "147":[2,7,12],"150":[12],"167":[2,6,12],"180":[12]},
+            "button2": ["Button5","Button4"], "button6": ["KEY_1","KEY_2","KEY_3","KEY_4","KEY_5","KEY_6"],
+            "button7": ["KEY_1","KEY_2","KEY_3","KEY_4","KEY_5","KEY_6","KEY_7"],
+            "button12": ["KEY_1","KEY_2","KEY_3","KEY_4","KEY_5","KEY_6","KEY_7","KEY_8","KEY_9","KEY_0","KEY_HYPEN","KEY_EQUAL"],
+            "priority": ["SidePanel2","SidePanel12_except_DKMInput","SidePanel6","SidePanel7","main_mappings"],
+            "semantics": "6892 calls convertMappings(e) once per invocation,then resolves panel definitions by swapPID of profile.deviceInfo.Product_ID. Creates only declared panel arrays. First matching branch wins;12-button accepts all except DKMInput,6/7 mutate inputType to KeyInput,2/12 preserve it. No connected-panel selection,duplication across panels or device operation. Missing definitions retain all converted mappings in main list."},
+        "broadcaster": {"singleton_normalized": False,"dial_default":0,"dial_headphone":1,
+            "input_map": {"FrontDialAdjustRight":"FRONT_DIAL_RIGHT","FrontDialAdjustLeft":"FRONT_DIAL_LEFT",
+                "TopButtonClick":"MUTE_BUTTON_TAP","TopButtonDoubleClick":"MUTE_BUTTON_DOUBLE_TAP",
+                "TopButtonTripleClick":"MUTE_BUTTON_TRIPLE_TAP"},
+            "effect_ids": {"starlight":7,"audiometer":12,"breathing":2,"fire":8,"spectrum":3,"static":1,"wave":4,"colorwheel":13},
+            "semantics": "8667 optional-chains to Mapping.forEach without singleton normalization;absent list returns dialControl0/mappings[],object singleton throws. FrontDialClick sets dialControl1 only for MultimediaAssignment Headphone,else0,regardless of mapping group;later clicks overwrite. FrontDialClick is absent from input map and creates no mapping. Every known broadcaster input is considered without IsDefault filter. Only Chroma_Effect,AdvanceGainSettings,Multimedia cases produce mappings with inputType Broadcaster,isHyperShift false. Specific effect with unknown effect name retains config.selectedEffectId undefined;cycle carries direction Down. Gain accepts only ToggleAdvanceGainSettingsOnOff. Multimedia accepts MicVolumeUp/Down mapped to VOLUME_UP/DOWN. No per-item catch."},
+        "audio": {"singleton_normalized":True,
+            "semantics": "8311 concatenates singleton/array;falsy entries skipped. Ignores source input ID and default/hypershift flags;every supported Audio entry produces KEY_SWITCH_AUDIO_EQ/AudioInput/isHyperShift false. SwitchAudioEQ becomes SwitchAudioEq;ToggleMicMonitoring preserved. Multiple accepted entries remain duplicates;unknown groups/assignments omitted. Missing AudioGroup on an Audio item throws with no per-item catch."},
+        "failure_and_consumer": "Shared dispatcher suppresses Mappings by exclusive feature selector,then invokes each exclusive converter in its own try:n(e)&&Object.assign(t,n(e)). Successful object results execute twice;truthy empty objects/arrays still overwrite same output fields. Converter throw loses locally accumulated partial mappings but earlier profile fields/other converters survive. Returned aggregate uses existing worker response and Import publication. Synchronous file transformation is not hardware readback,cancellation,rollback or port drain;parent lifecycle unchanged."}
+
+
+def collect_legacy_product_mapping_chain(audit):
+    import host
+    path = a.ROOT / ".analysis/results/frontend/mouse-mw-audit.json"
+    document = json.loads(path.read_bytes())
+    upstream = [{"receipt":a.rel(path),"pointer":"/" + section,"canonical_sha256":digest,"recaptured":False}
+        for section,digest in (("mouse_182_legacy_worker_chain",_LEGACY_MAPPING_PARENT),
+            ("legacy_mapping_conversion_chain","eef697ce5285ae360f360e7964f2e919eb963533d5e1d60e62ede9bf5dcd995d"))]
+    if host._otfm_macro_encoding_dependency_changes(upstream):
+        raise ValueError("Legacy product mapping parent evidence changed")
+    parent = document["mouse_182_legacy_worker_chain"]
+    _,picker = _mouse_182_legacy_worker_parent(audit)
+    proof,worker = _mouse_182_legacy_worker_deployment(audit,_MOUSE_182_LEGACY_WORKER_DEPLOYMENT,picker)
+    roles,owners = {},{}
+    for mid in _LEGACY_PRODUCT_MAPPING_MODULES:
+        found = audit.webpack_factories([worker],mid)
+        if len(found) != 1:
+            raise ValueError("Legacy product mapping original module absent or ambiguous")
+        source,node,_ = found[0]
+        role = str(mid)
+        roles[role] = audit.retain_range("legacy_product_mapping_" + role,source,node.start_byte,node.end_byte,node.type)
+        owners[role] = audit.owners[roles[role]]
+    semantics = _legacy_product_mapping_contract(owners)
+    pending, direct_imports = [audit.tree(worker).root_node], []
+    while pending:
+        node = pending.pop()
+        pending.extend(node.named_children)
+        if node.type != "call_expression" or node.child_by_field_name("function").text != b"n":
+            continue
+        arguments = node.child_by_field_name("arguments").named_children
+        if len(arguments) != 1 or arguments[0].text != b"8061":
+            continue
+        ancestor = node.parent
+        while ancestor is not None:
+            if ancestor.type == "pair" and ancestor.child_by_field_name("key").type == "number":
+                direct_imports.append(javascript_integer_literal(ancestor.child_by_field_name("key").text.decode()))
+                break
+            ancestor = ancestor.parent
+        if ancestor is None:
+            raise ValueError("Legacy product mapping direct shared caller has no module owner")
+    if sorted(direct_imports) != [4104, 6892]:
+        raise ValueError("Legacy product mapping direct shared callers require review")
+    selected = [row for row in parent["source_pid_converter_inventory"] if row["module_id"] in (6892,8667,8311)]
+    if (len(selected) != 3 or any(row["complete_owner"] != roles[str(row["module_id"])]
+            or row["source_pids"] != semantics["source_pid_groups"][str(row["module_id"])]
+            or row["semantic_status"] != "pending_product_converter_semantics" for row in selected)):
+        raise ValueError("Legacy product mapping exact pending source registry differs")
+    return {"schema_version":1,"kind":"current_legacy_product_mapping_chain","product_id":182,
+        "roles":roles,"upstream_sections":upstream,"worker_deployment":proof,"source_registry":selected,
+        "semantics":semantics,"resolves_source_converter_modules":[6892,8667,8311],
+        "direct_shared_mapping_importers":sorted(direct_imports),
+        "scope":"Three actual source-exclusive Mappings converters:side panels,broadcaster controls,audio input;all direct8061 imports reviewed and shared semantics reused",
+        "source_slice_complete":True,"selected_static_semantics_reviewed":True,"source_chain_complete":False,
+        "whole_product_complete":False,"target_execution":False,"real_device_operations":False,
+        "product_code_modified":False,"temporary_resources_created":[],"new_native_captures":0,"new_analysis_sessions":0,
+        "rust_implementation":"Existing profile_transfer mouse sidePanelMappings macro rewrite and profiles transfer readers retained;not changed or revalidated",
+        "ui_backend_wiring":"unverified","official_dll_comparison":"not_executed","runtime_acceptance":"unverified",
+        "remaining_chains":[
+            "Other source_pid_converter_inventory entries remain pending;only6892/8667/8311 Mappings converters are closed here.Do not infer source aliases from normalized output PID.",
+            "Other shared converter inventory entries,native monitor enumeration,independent Rust import and source-product UI/backend/store publication remain at existing boundaries.",
+            "Actual official DLL/device error,cancel,restore,release and runtime acceptance remain unverified;static source conversion does not demonstrate hardware success."]}
+
+
+def audit_legacy_product_mapping_chain(args):
+    import host
+    if (args.family != "mouse" or args.function != "mw" or (args.product or [182]) != [182]
+            or getattr(args,"prepare",False)):
+        raise ValueError("legacy-product-mapping-chain requires mouse/mw PID182 without preparation")
+    audit = host.HostLocalAudit()
+    report = {"schema_version":1,"query":"legacy-product-mapping-chain","failures":[],
+        "bounded_observation_complete":False,"source_chain_complete":False,"target_execution":False}
+    try:
+        for name in ("tools/families.py","tools/host.py","tools/frontend.py","tools/evidence.py"):
+            audit.artifact(a.ROOT / name)
+        report.update(collect_legacy_product_mapping_chain(audit))
+    except (OSError,ValueError,KeyError,IndexError,TypeError,StopIteration) as error:
+        report["failures"].append(type(error).__name__ + ": " + str(error))
+    changed = audit.final_snapshot() + host._otfm_macro_encoding_dependency_changes(report.get("upstream_sections",[]))
+    report["failures"].extend("Legacy product mapping changed input: " + name for name in changed)
+    report.update(recorded_at_utc=a.stamp(),changed_during_query=changed,snapshot_stable=not changed,
+        bounded_observation_complete=not report["failures"],complete_originals=list(audit.sources.values()),
+        complete_source_owners=list(audit.owners.values()),verified_artifacts=list(audit.artifacts.values()))
+    destination = a.ROOT / ".analysis/results/frontend/mouse-mw-audit.json"
+    host.publish_host_static_query(report,destination,a,"legacy_product_mapping_chain")
+    print(json.dumps({"query":report["query"],"receipt":a.rel(destination),"failures":report["failures"],
+        "bounded_observation_complete":report["bounded_observation_complete"],"target_execution":False}),flush=True)
+    if report["failures"]:
+        raise ValueError("Legacy product mapping observation remains unresolved")
+    return report
+
+
+_LEGACY_SHARED_SCALAR_MODULES = (8432, 2353, 7666, 2541, 515, 1423, 839, 2977, 7913,
+    3457, 8147, 6113, 8005, 5056, 1322, 2492, 4502, 7175, 6661, 3581, 5815, 4247,
+    5091, 948, 2272)
+_LEGACY_SHARED_SCALAR_DEPENDENCIES = (7419, 2240, 4483, 4329, 4104, 5167)
+_LEGACY_SHARED_SCALAR_REVIEWED = "37f472a840e4c5fc321c5b1c0ea03eb5d197b20675f1f739c6abe33b03e64978"
+
+
+def _legacy_shared_scalar_contract(owners):
+    if set(owners) != {str(mid) for mid in (*_LEGACY_SHARED_SCALAR_MODULES, *_LEGACY_SHARED_SCALAR_DEPENDENCIES)}:
+        raise ValueError("Legacy shared scalar complete module coverage differs")
+    if any(hashlib.sha256(row["body"].encode()).hexdigest() != row["body_sha256"] for row in owners.values()):
+        raise ValueError("Legacy shared scalar original owner body/hash differs")
+    identity = {mid: {key: row[key] for key in ("byte_start", "byte_end", "body_sha256")}
+                for mid, row in owners.items()}
+    reviewed = _mouse_182_profile_duplicate_digest(identity)
+    if reviewed != _LEGACY_SHARED_SCALAR_REVIEWED:
+        raise ValueError("Legacy shared scalar reviewed owners differ: " + reviewed)
+    rows = (
+        (8432, "GamingMode", "gamingMode", {"isWindowsKeyDisabled": "DisableWindowsKeyState exact string1",
+            "isAltTabDisabled": "DisableAltTabState exact string1", "isAltF4Disabled": "DisableAltF4State exact string1",
+            "isGameOn": False, "state": "State table Off0/On1/GameLaunched2; truthy table lookup or0"}),
+        (2353, "PreventChromaSDKControl", "preventChromaConnectLighting", "State exact string1"),
+        (7666, "SmartHome", "preventChromaConnectLighting", "Value exact string1; declared syn4FeatureKey SmartHome is not the returned field"),
+        (2541, "EnableChromaEffects", "isChromaEffectEnabled", "Enabled exact string1"),
+        (515, "MicrophoneVolumeNormalization", "micVolumeNormalization", {"isEnabled": "State exact string1", "value": "fallBackParseInt(Value)"}),
+        (1423, "SpeakerBassBoost", "bassBoost", {"isEnabled": "State exact string1", "value": "fallBackParseInt(Value)"}),
+        (839, "MicrophoneAmbientNoiseReduction", "micAmbientNoiseReduction", {"isEnabled": "State exact string1", "value": "fallBackParseInt(Value)"}),
+        (2977, "MicrophoneSidetone", "micSideTone", {"isEnabled": "State exact string1", "value": "fallBackParseInt(Value)"}),
+        (7913, "MicrophoneVoiceGate", "micSensitivity", {"isEnabled": "State exact string1", "value": "Math.round(fallBackParseInt(Value,50)/20)||1"}),
+        (3457, "SpeakerSoundNormalization", "soundNormalization", {"isEnabled": "State exact string1", "value": "fallBackParseInt(Value)"}),
+        (8147, "SpeakerVoiceClarity", "voiceClarity", {"isEnabled": "State exact string1", "value": "fallBackParseInt(Volume)"}),
+        (6113, "MicrophoneVocalClarity", "micVoiceClarity", {"isEnabled": "State exact string1", "value": "fallBackParseInt(Value)"}),
+        (8005, "VirtualSurround", "thxSpatialAudio", {"isEnabled": "State exact string1"}),
+        (5056, "BossKey", "bossKey", "Only truthy feature; bossKey34 lookup must be not undefined, retaining valid0"),
+        (1322, "FunctionSwitch", "functionKeyPrimary", "FNKeyState truthy ->multi,otherwise func; no string1 comparison"),
+        (2492, "HapticIntensity", "hapticIntensity", {"isEnabled": "State exact string1", "value": "fallBackParseInt(Value)"}),
+        (4502, "InGamePollingRate", "inGamePollingRate", {"state": "State exact stringtrue ->1,otherwise0",
+            "wired": "fallBackParseInt(WiredValue)", "wireless": "fallBackParseInt(DongleValue)"}),
+        (7175, "ModTap", "modTap", "State exact string1"),
+        (6661, "PowerSavingsRefreshRate", "isBatteryModeScreenRefreshRate", "State exact stringtrue"),
+        (3581, "MouseRotation", "rotation", {"isEnabled": "State exact stringtrue", "value": "fallBackParseInt(Value)"}),
+        (5815, "ChargingLedBrightness", "chargingBrightness", {"isEnabled": "State exact string1", "value": "fallBackParseInt(Brightness)"}),
+        (4247, "ChargingForceChromaControl", "forceChromaCtrl", "Enabled exact string1"),
+        (5091, "MonitorTHXMode", "thxCinema", {"isEnabled": "Mode exact string BrightRoom"}),
+        (948, "GameChatBalance", "gameChatBalance", {"balanceMode": "Math.floor((100-fallBackParseInt(Value))/5)"}),
+        (2272, "LedState", "logoBrightness", {"isEnabled": "State exact string1", "value": 0}),
+    )
+    return {"reviewed_source_sha256": reviewed,
+        "converters": [{"module_id": mid, "source_feature": feature, "output_field": output,
+            "conversion": conversion, "failure": ("catch returns empty object" if mid == 515
+                else "catch returns undefined" if mid in (5815, 4247)
+                else "no converter catch; exception propagates to shared worker")}
+            for mid, feature, output, conversion in rows],
+        "selection": "Current shared4104 registry maps actual source-feature names to converters;5167 traverses Object.keys(profile),skips any all/source-exclusive matching feature,and passes Object.assign(profile,{deviceInfo}). Target182 and normalized output PID do not gate these25 shared conversions.",
+        "parsing": "7419 fallBackParseInt is value?parseInt(value):default,default0;truthy malformed input yields NaN,not default. No range clamp or device-state validation. VoiceGate alone supplies default50 then Math.round(n/20)||1;GameChatBalance floors (100-n)/5. Exact string1,stringtrue,BrightRoom and raw FNKeyState truthiness are distinct.",
+        "collision_and_order": "2353 and7666 both return preventChromaConnectLighting despite7666 syn4FeatureKey SmartHome. Object.keys(profile) order governs Object.assign overwrites,not registry order;later actual conversion wins. Registry syn4FeatureKey is not consulted. Exclusive all/product passes can subsequently replace fields under their already reviewed contracts.",
+        "failure_and_optional": "515 catches malformed feature and returns {};5815/4247 catch and return undefined. Object.assign(result,undefined) and empty object add no fields. BossKey missing feature or unknown lookup returns undefined,while valid0 is retained. Other selected converters have no catch;malformed required fields can reject shared profile conversion before exclusive passes. No generalized fallback to cached configuration is introduced.",
+        "lifecycle": "Synchronous local-file transformation consumes original XML-derived values;computed defaults are import conversion semantics only,not device initialization. Results reuse the current worker response,Import selection and store/native publication chain. These converters perform no device I/O,confirmation,per-feature cancellation,rollback or resource release;whole worker cancellation and publication boundaries remain in parent receipts."}
+
+
+def collect_legacy_shared_scalar_chain(audit):
+    import host
+    path = a.ROOT / ".analysis/results/frontend/mouse-mw-audit.json"
+    parent = json.loads(path.read_bytes())["mouse_182_legacy_worker_chain"]
+    upstream = [{"receipt": a.rel(path), "pointer": "/mouse_182_legacy_worker_chain",
+        "canonical_sha256": _LEGACY_MAPPING_PARENT, "recaptured": False}]
+    if host._otfm_macro_encoding_dependency_changes(upstream) or not parent.get("bounded_observation_complete"):
+        raise ValueError("Legacy shared scalar parent evidence changed or incomplete")
+    _, picker = _mouse_182_legacy_worker_parent(audit)
+    proof, worker = _mouse_182_legacy_worker_deployment(audit, _MOUSE_182_LEGACY_WORKER_DEPLOYMENT, picker)
+    roles, owners = {}, {}
+    for mid in (*_LEGACY_SHARED_SCALAR_MODULES, *_LEGACY_SHARED_SCALAR_DEPENDENCIES):
+        found = audit.webpack_factories([worker], mid)
+        if len(found) != 1:
+            raise ValueError("Legacy shared scalar original module absent or ambiguous: " + str(mid))
+        source, node, _ = found[0]
+        role = str(mid)
+        roles[role] = audit.retain_range("legacy_shared_scalar_" + role, source, node.start_byte, node.end_byte, node.type)
+        owners[role] = audit.owners[roles[role]]
+    semantics = _legacy_shared_scalar_contract(owners)
+    selected = [row for row in parent["shared_converter_inventory"] if row["module_id"] in _LEGACY_SHARED_SCALAR_MODULES]
+    if (len(selected) != len(_LEGACY_SHARED_SCALAR_MODULES)
+            or [row["module_id"] for row in selected] != list(_LEGACY_SHARED_SCALAR_MODULES)
+            or any(row["complete_owner"] != roles[str(row["module_id"])]
+                or row["semantic_status"] != "pending_shared_feature_semantics" for row in selected)):
+        raise ValueError("Legacy shared scalar exact pending source registry differs")
+    return {"schema_version": 1, "kind": "current_legacy_shared_scalar_chain", "product_id": 182,
+        "scope": "25 actual shared scalar and switch local-file converters across input,audio,system and charging features;31 complete modules with consumed registry/parse dependencies",
+        "roles": roles, "upstream_sections": upstream, "worker_deployment": proof, "source_registry": selected,
+        "semantics": semantics, "resolves_shared_converter_modules": list(_LEGACY_SHARED_SCALAR_MODULES),
+        "source_slice_complete": True, "selected_static_semantics_reviewed": True, "source_chain_complete": False,
+        "whole_product_complete": False, "target_execution": False, "real_device_operations": False,
+        "product_code_modified": False, "temporary_resources_created": [], "new_native_captures": 0, "new_analysis_sessions": 0,
+        "rust_implementation": "Existing local import and profile types retain their independent implementation/validation status;not changed or revalidated by source query",
+        "ui_backend_wiring": "unverified", "official_dll_comparison": "not_executed", "runtime_acceptance": "unverified",
+        "remaining_chains": [
+            "Other shared converters1654,3696,1639,8867,9928,8416,5216,1627,8341,2516,126,6415,6844,7033,522,2384,9481 retain separate semantics;shared8061 and sourceMappings6892/8667/8311 are covered by their own receipts.",
+            "Other source-exclusive product converters,actual native monitor enumeration and remaining current Import publication dependencies retain their existing boundaries.",
+            "Independent Rust,UI/backend/store wiring and actual official DLL/device input/output/error/cancel/restore/release comparisons remain incomplete or unverified;local-file transformation is not device confirmation."]}
+
+
+def audit_legacy_shared_scalar_chain(args):
+    import host
+    if (args.family != "mouse" or args.function != "mw" or (args.product or [182]) != [182]
+            or getattr(args, "prepare", False)):
+        raise ValueError("legacy-shared-scalar-chain requires mouse/mw PID182 without preparation")
+    audit = host.HostLocalAudit()
+    report = {"schema_version": 1, "query": "legacy-shared-scalar-chain", "failures": [],
+        "bounded_observation_complete": False, "source_chain_complete": False, "target_execution": False}
+    try:
+        for name in ("tools/families.py", "tools/host.py", "tools/frontend.py", "tools/evidence.py"):
+            audit.artifact(a.ROOT / name)
+        report.update(collect_legacy_shared_scalar_chain(audit))
+    except (OSError, ValueError, KeyError, IndexError, TypeError, StopIteration) as error:
+        report["failures"].append(type(error).__name__ + ": " + str(error))
+    changed = audit.final_snapshot() + host._otfm_macro_encoding_dependency_changes(report.get("upstream_sections", []))
+    report["failures"].extend("Legacy shared scalar changed input: " + name for name in changed)
+    report.update(recorded_at_utc=a.stamp(), changed_during_query=changed, snapshot_stable=not changed,
+        bounded_observation_complete=not report["failures"], complete_originals=list(audit.sources.values()),
+        complete_source_owners=list(audit.owners.values()), verified_artifacts=list(audit.artifacts.values()))
+    destination = a.ROOT / ".analysis/results/frontend/mouse-mw-audit.json"
+    host.publish_host_static_query(report, destination, a, "legacy_shared_scalar_chain")
+    print(json.dumps({"query": report["query"], "receipt": a.rel(destination), "failures": report["failures"],
+        "bounded_observation_complete": report["bounded_observation_complete"], "target_execution": False}), flush=True)
+    if report["failures"]:
+        raise ValueError("Legacy shared scalar observation remains unresolved")
+    return report
+
+
+_LEGACY_SHARED_STRUCTURED_MODULES = (1654, 3696, 1639, 8867, 9928, 8416, 5216, 1627,
+    8341, 2516, 126, 6415, 6844, 7033, 522, 2384, 9481)
+_LEGACY_SHARED_STRUCTURED_DEPENDENCIES = (7419, 2240, 4483, 4329, 4104, 5167, 4982, 62, 3405, 8599, 4544)
+_LEGACY_SHARED_STRUCTURED_REVIEWED = "370dadd12cf586832fa6abca9235c2bbe2e9d38e3abb6fa862220b2be0586dd7"
+_LEGACY_SHARED_STRUCTURED_PARENTS = (
+    ("mouse_182_legacy_worker_chain", _LEGACY_MAPPING_PARENT),
+    ("legacy_shared_scalar_chain", "c19161e77cd5616047525a5ece7bde52077765c2a4d3477cf214c0fe02e598ec"),
+    ("legacy_mapping_conversion_chain", "eef697ce5285ae360f360e7964f2e919eb963533d5e1d60e62ede9bf5dcd995d"))
+
+
+def _legacy_shared_structured_contract(owners):
+    if set(owners) != {str(mid) for mid in (*_LEGACY_SHARED_STRUCTURED_MODULES, *_LEGACY_SHARED_STRUCTURED_DEPENDENCIES)}:
+        raise ValueError("Legacy shared structured complete module coverage differs")
+    if any(hashlib.sha256(row["body"].encode()).hexdigest() != row["body_sha256"] for row in owners.values()):
+        raise ValueError("Legacy shared structured original owner body/hash differs")
+    identity = {mid: {key: row[key] for key in ("byte_start", "byte_end", "body_sha256")}
+                for mid, row in owners.items()}
+    reviewed = _mouse_182_profile_duplicate_digest(identity)
+    if reviewed != _LEGACY_SHARED_STRUCTURED_REVIEWED:
+        raise ValueError("Legacy shared structured reviewed owners differ: " + reviewed)
+    return {"reviewed_source_sha256": reviewed,
+        "basic_lighting_1654": "BasicLightingEffects.Effects.BasicLightingEffect selects breathing2 or static1,else spectrum3. Breathing requires two Colors.RzColor entries,uses raw IsBlank truthiness and JSON.parse(RandomColor||false-string);static passes RzColor directly to getColor without4982 array normalization. Channels are truthy parsed integers converted to hex with single-character padding,no clamp. Missing nested data throws before the effect fallback.",
+        "monitor_color_3696": "MonitorColorPreset.Mode uses monitorColorPresetMode34 truthy lookup;unmatched mode returns undefined. Accepted preset starts customData RGB50 and selectedPreset5,then selectedPreset becomes lookup. Truthy VideoGain replaces all RGB values with fallBackParseInt defaults0,no range clamp. Preserve actual table and in-lookup semantics.",
+        "speaker_calibration_1639": "CalibrationV3.Speakers.Speaker requires array.map;no singleton normalization. SpeakerID table retains RL,L,FL,F,FR,R,RR and Angle uses fallBackParseInt. filter(e=>e) operates on newly created objects,so unknown IDs remain objects with undefined id instead of being removed.",
+        "equalizer_v3_8867": "EqualizerV3 requires EsportsEQs.EsportsEQ and StandardEQs.StandardEQ arrays;truthy SystemEQs replaces standard list but headphones still always uses StandardEQs. Each preset keeps name through Game/Movie/Music/Custom/Apex Legends/Call Of Duty/CSGO/Fortnite/Valorant aliases or camelize,default/current Band Decibel arrays parsed as integers. ActiveMode exact Esports selects esports,else standard;selected names use same aliases. currentFrequencyData is current of first matching selected preset,undefined when no match;no fallback to another preset.",
+        "microphone_equalizer_9928": "MicrophoneEqualizer emits currentBands=[],customBands from required CustomBands.MicrophoneBand array with parsed Frequency/Decibel,and mode lookup default/micboost/broadcast/conference/custom. Unmatched mode stays undefined;no dedup,sorting or device read.",
+        "spatial_applications_8416": "SpatialApplicationsV3 absent/falsy nested list returns {};truthy SpatialApplicationV3 is concat-normalized. CurrentAudio is skipped;Movie/Game/Music/Custom map to Cinema Mode/Game Mode/Music Mode/Custom preset IDs,unmatched output suffix _imm/_cmm selects THX Immersive Mode/thx_env or THX Competitive Mode/thx_comp. Accepted entry preserves ExeList.string and Input without list normalization or path checking;unmatched outputs omitted,malformed nonstring output or missing ExeList can throw. Order and duplicates remain.",
+        "system_led_power_5216": "SystemLedPowerSettings emits switchOffLighting battery/plugged/twoMode from OnBattery/PluggedIn/LinkState LedPowerSettings. IdleStateValue is integer/60 without rounding;DisplayState/IdleState exact1;corresponding TurnOff...Level.State exacttrue and Percentage fallback50. IsLinked uses fallBackParseBool(value):truthy JSON.parse,else false,not Boolean coercion. All nested branches are read regardless of IsLinked/state and malformed data throws.",
+        "system_lighting_1627": "SystemLighting emits brightness currentMode plugged,isTwoMode exacttrue,and plugged/battery/twoMode values with fallback100. isEnabled is IsOn!==false-string,so missing IsOn is enabled when its required containing object exists. LogoEffect table breathing2/static1/off0 is followed by ||1,so off becomes1. twoMode logo uses OnBatteryBrightness.LogoEffect. No selected-power-only read or confirmation.",
+        "camera_8341": {
+            "common": "Camera requires Presets.Preset array before product branch. Each entry emits parsed brightness/contrast/saturation/whiteBalance and raw Mode name. Base camera starts auto/128,FOV table||0,HDRState exact1,cameraEnabled=false,previewActive=false;each custom preset overwrites focus value/mode,so last custom wins. Image mode is imageModeKiyo34.get(Camera.Mode)||0.",
+            "product_gate": "Only fallBackParseInt(profile.deviceInfo.Product_ID)===3592 uses extended camera. Gate uses raw source PID,not swapPID/target182. Extended result replaces base camera;it does not merge cameraEnabled,previewActive,fieldOfViewActive or hdrActive. It retains shared image array/imageMode and derives cameraMode/cameraValue from its autoFocus.",
+            "extended": "AntiFlicker exact1 ->1,else2;LDC exacttrue;LowLightCompensation exact1;MirrorVideo and Watermark.State use JSON boolean helper,Watermark.Mode uses six-position table. MJPEGQuality.AutoQuality exact5,ManualQuality integer default0,mode5. Optional Resolution defaults height2160,width3840,fps30. HDRState exact1,HDRMode DarkRoom0 else1;required DynamicNoiseReduction State2D/3D exacttrue. AutoFocus lighting NormalLight0 else1,tracking parseBool(AFLowSensitivity)?1:0,FDAF Legacy0 else1,AutoFocus exact1,FocalLength integer. Exposure AutoExposure exact1,EVCompensation float default0,ISO/Shutter integers,metering Average0/CenterWeight1/FaceWeight5. ViewPresets.ViewPreset requires array:Mode/Pan/Tilt integers,Zoom fallback100/100,ShortcutKey through7419 parseShortcut;ViewMode integer. Required nested object failures propagate."},
+        "keymaps_2516": {
+            "shape_and_selection": "Keymappings concat-normalizes KeymapList.Keymapping,keeps Id/Name/Slot and ActiveKeymapId verbatim,and emits directionMode1,mappings[],keymaps. Each MappingList.Mapping must already be an array for filter. NonAnalogInputV2 requires IsDefault exactfalse. AnalogInputV2 filter compares parsed first value against source generation default/unit,or level1 nondefault,or second>first and level2 nondefault;singleton point uses second=first. No per-record catch.",
+            "generation_and_output": "Raw source deviceInfo.Product_ID in614/580/642 selects gen1,else gen2. Input62 and output3405 reuse reviewed semantics. Output helper receives four arguments(source actuation,source mapping,generation context,profile.macro?.items);5167 supplies deviceInfo but does not attach global document macros. Analog point stores raw parsed value and max(value-unit,0);first output required,missing second creates defaultGroup at source generation default. RapidTrigger make/break use Math.round(DownStrokeValue/UpstrokeValue divided by unit),continuous=true,SeparatedStroke exacttrue. Successful input/output objects merge and append;undefined input/output omitted,throw propagates. Top-level mappings[] can overwrite prior Mappings output according to profile key order."},
+        "command_dial_126": "KnobAdjustmentMode.KnobAdjustments.KnobAdjustment requires array. Eight built-in features map to IDs0..7 and exact two-direction ScrollRight/ScrollLeft mapping tables. Custom Mode calls output3405 with only(source,source),no input62 conversion,generation or macro-list argument;undefined helper results remain in map array. Built-in mode gets uuidv4 each conversion;Custom uses raw CustomId. Color uses4982 getColor,isEnabled exact1,CustomName uses nullish fallback preserving empty string. ActiveKnobAdjustment matches feature,sets currentModeUID;mode assigned at parseInt(Slot)-1 with no clamp/dedup,so holes and overwrites remain and an overwritten active UID can remain selected. Unmatched feature still emits mode with undefined built-in mappings/name;missing custom Mapping may yield undefined mappings while missing MappingList throws.",
+        "charging_effects_6415": "ChargingLightingEffects Object.entries maps regions NormalCharging32/FastCharging33/FullCharging34. Breathing/static/spectrum/wave/fastwave use actual4982 helpers;fastwave replaces ID with FAST_WAVE string. Wave helper is called with one argument,so no source-PID inversion/custom direction branch. Unmatched effect plus accepted region emits only regionId via Object.assign with undefined. Unmatched region throws;one outer catch discards the entire result and returns undefined,also covering any malformed recognized effect. No partial hardwareEffects publication.",
+        "pwm_6844": "PWM.FanSettings.FanSetting requires array and skips index0. Other entries get sequential IDs26+,raw FanName,Off ->disabled/QUIET,otherwise enabled and Silent/Normal/Performance/Manual/Advanced mode table. FanCurve.Item always maps Value.int to fanSpeedValue and Key.int to temperature;RPMPercentage integer. Off still reads curve;unknown mode remains undefined. No clamp,sorting,dedup or catch.",
+        "haptics_7033": "HapticsSettings.HapticActuators.HapticActuator requires array. Zone table RightLeg126/LeftLeg226/LowerBack325/UpperBack340 must be truthy or throws. Each region retains exacttrue State and parsed Value;overall HapticIntensity.State exacttrue,Value fallback4,ApplyToAllOtherZones exacttrue. Order and duplicate regions remain;no per-region catch or device I/O.",
+        "snap_tap_522": "KillSwitch absent/falsy returns undefined. PairedKeys.PairedKey concat-normalizes;both HID page/id lookups8599 must resolve before append,IDs increment only for accepted pairs. No dedup or maximum. If structurally valid entries yield no accepted pair,add KEY_A/KEY_D,id1. Missing pair data can throw before fallback. isEnabled exact1;fallback keys are file conversion semantics,not hardware initialization.",
+        "equalizer_2384": "Equalizer.Mode uses equalizerModeIndex34 truthy lookup(default/custom/amplified/vocal->vocals/enhancedbass->bassboost/enhancedclarity). Unmatched mode returns undefined;accepted mode requires CustomBands.Band array with integer Frequency/Decibel,no clamp/order changes or singleton normalization.",
+        "performance_9481": "PerformanceMode absent/falsy returns {};truthy unmapped Mode throws powerPerformance error. Accepted Balanced/Productivity/Gaming/Custom maps balanced/creator/gaming/custom. Battery always balanced/auto/4500. Plugged always reads BalancedSetting,ProductivitySetting,GamingSetting,regardless of selected mode;Auto exact0 ->manual,else auto,FanRPM fallbacks4500/4600/4600. Custom mode retains mode=custom but does not create a custom payload. No catch or device initialization.",
+        "failure_order_and_consumer": "Only6415 has a converter-level catch;other selected exceptions abort the shared profile conversion. Missing-feature guards,truthiness,NaN,undefined fields and local fallback objects remain distinct. Object.keys(profile) and Object.assign govern overwrites:BasicLightingEffects/LightingEffects share quickEffects,Keymappings emits mappings[],SystemLighting emits brightness/logoLighting,and later actual feature results replace those fields. Shared5167 skips all/source-exclusive selectors and injects deviceInfo before conversion. Reuse parent worker/Import/store/native publication,cancel and release boundaries;no selected converter adds hardware confirmation,rollback,per-feature cancellation or cleanup."}
+
+
+def collect_legacy_shared_structured_chain(audit):
+    import evidence
+    import host
+    path = a.ROOT / ".analysis/results/frontend/mouse-mw-audit.json"
+    document = json.loads(path.read_bytes())
+    upstream = [{"receipt": a.rel(path), "pointer": "/" + section, "canonical_sha256": digest, "recaptured": False}
+        for section, digest in _LEGACY_SHARED_STRUCTURED_PARENTS]
+    if (host._otfm_macro_encoding_dependency_changes(upstream)
+            or any(not document[section].get("bounded_observation_complete") for section, _ in _LEGACY_SHARED_STRUCTURED_PARENTS)):
+        raise ValueError("Legacy shared structured parent evidence changed or incomplete")
+    parent = document["mouse_182_legacy_worker_chain"]
+    _, picker = _mouse_182_legacy_worker_parent(audit)
+    proof, worker = _mouse_182_legacy_worker_deployment(audit, _MOUSE_182_LEGACY_WORKER_DEPLOYMENT, picker)
+    roles, owners, direct_imports = {}, {}, {}
+    bindings = evidence.JavascriptBindings(audit.read(worker), audit.tree(worker))
+    for mid in (*_LEGACY_SHARED_STRUCTURED_MODULES, *_LEGACY_SHARED_STRUCTURED_DEPENDENCIES):
+        found = audit.webpack_factories([worker], mid)
+        if len(found) != 1:
+            raise ValueError("Legacy shared structured original module absent or ambiguous: " + str(mid))
+        source, node, _ = found[0]
+        role = str(mid)
+        roles[role] = audit.retain_range("legacy_shared_structured_" + role, source, node.start_byte, node.end_byte, node.type)
+        owners[role] = audit.owners[roles[role]]
+        if mid in _LEGACY_SHARED_STRUCTURED_MODULES:
+            direct_imports[role] = javascript_factory_static_imports(node, bindings)
+            if set(direct_imports[role]) - set(_LEGACY_SHARED_STRUCTURED_DEPENDENCIES):
+                raise ValueError("Legacy shared structured direct dependency requires review: " + role)
+    semantics = _legacy_shared_structured_contract(owners)
+    selected = [row for row in parent["shared_converter_inventory"] if row["module_id"] in _LEGACY_SHARED_STRUCTURED_MODULES]
+    if ([row["module_id"] for row in selected] != list(_LEGACY_SHARED_STRUCTURED_MODULES)
+            or any(row["complete_owner"] != roles[str(row["module_id"])]
+                or row["semantic_status"] != "pending_shared_feature_semantics" for row in selected)):
+        raise ValueError("Legacy shared structured exact pending source registry differs")
+    prior = [row["module_id"] for row in parent["shared_converter_inventory"] if row["semantic_status"] == "reviewed_current_batch"]
+    scalar = document["legacy_shared_scalar_chain"]["resolves_shared_converter_modules"]
+    shared_inventory = [row["module_id"] for row in parent["shared_converter_inventory"]]
+    covered = prior + [8061] + scalar + list(_LEGACY_SHARED_STRUCTURED_MODULES)
+    if len(covered) != len(set(covered)) or set(covered) != set(shared_inventory):
+        raise ValueError("Legacy shared structured imported shared inventory coverage differs")
+    return {"schema_version": 1, "kind": "current_legacy_shared_structured_chain", "product_id": 182,
+        "scope": "17 remaining imported shared structured local-file converters;28 complete modules with actual direct dependencies and reused output/input helper semantics",
+        "roles": roles, "upstream_sections": upstream, "worker_deployment": proof, "source_registry": selected,
+        "direct_import_dependencies": direct_imports, "semantics": semantics,
+        "resolves_shared_converter_modules": list(_LEGACY_SHARED_STRUCTURED_MODULES),
+        "imported_shared_inventory_coverage": {"total_modules": len(shared_inventory), "prior_parent_modules": prior,
+            "shared_mapping_modules": [8061], "scalar_modules": scalar, "structured_modules": list(_LEGACY_SHARED_STRUCTURED_MODULES),
+            "selected_static_semantics_covered": True, "inline_registry_entries": "name/guid remain in reviewed4104/5167 parent chain",
+            "whole_worker_or_product_complete": False},
+        "source_slice_complete": True, "selected_static_semantics_reviewed": True, "source_chain_complete": False,
+        "whole_product_complete": False, "target_execution": False, "real_device_operations": False,
+        "product_code_modified": False, "temporary_resources_created": [], "new_native_captures": 0, "new_analysis_sessions": 0,
+        "rust_implementation": "Existing import/profile types and independently recorded tests retained;not modified or revalidated",
+        "ui_backend_wiring": "unverified", "official_dll_comparison": "not_executed", "runtime_acceptance": "unverified",
+        "remaining_chains": [
+            "Other source-exclusive product converters remain required;Mappings6892/8667/8311 are separately reviewed and imported-shared coverage does not close their peers.",
+            "Native monitor enumeration,remaining actual Import publication dependencies and complete worker cancellation/release retain parent boundaries.",
+            "Independent Rust,UI/backend/store integration and actual DLL/device comparisons for input/output/error/cancel/restore/release remain incomplete or unverified;these are source-file transforms,not device confirmation."]}
+
+
+def audit_legacy_shared_structured_chain(args):
+    import host
+    if (args.family != "mouse" or args.function != "mw" or (args.product or [182]) != [182]
+            or getattr(args, "prepare", False)):
+        raise ValueError("legacy-shared-structured-chain requires mouse/mw PID182 without preparation")
+    audit = host.HostLocalAudit()
+    report = {"schema_version": 1, "query": "legacy-shared-structured-chain", "failures": [],
+        "bounded_observation_complete": False, "source_chain_complete": False, "target_execution": False}
+    try:
+        for name in ("tools/families.py", "tools/host.py", "tools/frontend.py", "tools/evidence.py"):
+            audit.artifact(a.ROOT / name)
+        report.update(collect_legacy_shared_structured_chain(audit))
+    except (OSError, ValueError, KeyError, IndexError, TypeError, StopIteration) as error:
+        report["failures"].append(type(error).__name__ + ": " + str(error))
+    changed = audit.final_snapshot() + host._otfm_macro_encoding_dependency_changes(report.get("upstream_sections", []))
+    report["failures"].extend("Legacy shared structured changed input: " + name for name in changed)
+    report.update(recorded_at_utc=a.stamp(), changed_during_query=changed, snapshot_stable=not changed,
+        bounded_observation_complete=not report["failures"], complete_originals=list(audit.sources.values()),
+        complete_source_owners=list(audit.owners.values()), verified_artifacts=list(audit.artifacts.values()))
+    destination = a.ROOT / ".analysis/results/frontend/mouse-mw-audit.json"
+    host.publish_host_static_query(report, destination, a, "legacy_shared_structured_chain")
+    print(json.dumps({"query": report["query"], "receipt": a.rel(destination), "failures": report["failures"],
+        "bounded_observation_complete": report["bounded_observation_complete"], "target_execution": False}), flush=True)
+    if report["failures"]:
+        raise ValueError("Legacy shared structured observation remains unresolved")
+    return report
+
+
+_LEGACY_SOURCE_PRODUCT_MODULES = (4714, 4349, 8011, 3803, 1978, 7337, 6016, 2984, 219,
+    7385, 7526, 5784, 1182, 5929, 338, 5077, 5093, 7717, 1723, 8777, 9871, 6628)
+_LEGACY_SOURCE_PRODUCT_DEPENDENCIES = (4982, 7419, 4483, 4329, 1423, 1627, 3757, 5167)
+_LEGACY_SOURCE_PRODUCT_REVIEWED = "eb7b9e3ffdd5a19113e3635db2deef1f836d4fd216c835c8de16ed3306370432"
+_LEGACY_SOURCE_PRODUCT_PARENTS = (
+    ("mouse_182_legacy_worker_chain", _LEGACY_MAPPING_PARENT),
+    ("legacy_product_mapping_chain", "6d6b5f28e8c94a6d038ea097d90a222b67c1baab753197a24101c6903dde7530"),
+    ("legacy_shared_scalar_chain", "c19161e77cd5616047525a5ece7bde52077765c2a4d3477cf214c0fe02e598ec"))
+
+
+def _legacy_source_product_contract(owners):
+    if set(owners) != {str(mid) for mid in (*_LEGACY_SOURCE_PRODUCT_MODULES, *_LEGACY_SOURCE_PRODUCT_DEPENDENCIES)}:
+        raise ValueError("Legacy source product complete module coverage differs")
+    if any(hashlib.sha256(row["body"].encode()).hexdigest() != row["body_sha256"] for row in owners.values()):
+        raise ValueError("Legacy source product original owner body/hash differs")
+    identity = {mid: {key: row[key] for key in ("byte_start", "byte_end", "body_sha256")}
+                for mid, row in owners.items()}
+    reviewed = _mouse_182_profile_duplicate_digest(identity)
+    if reviewed != _LEGACY_SOURCE_PRODUCT_REVIEWED:
+        raise ValueError("Legacy source product reviewed owners differ: " + reviewed)
+    return {"reviewed_source_sha256": reviewed,
+        "selection_and_context": "3757 registers all26 actual groupPID entries in source order.5167 selects original parseInt(deviceInfo.Product_ID) before returned swapPID;no alias expansion or target182 filter. Each profile runs shared features,all6283,then all matching source converters. Exclusive functions receive only profile;deviceInfo exists only if already present or a shared converter injected it. Successful truthy result causes converter(profile) to run twice inside its own catch;Object.assign replaces whole output fields,not nested merge. Failure preserves fields published by earlier conversions.",
+        "mixer_4714": {
+            "steps": ["MicSetup", "RazerWordMark", "MicMuteLighting", "BleepButtonLighting", "ChannelNumber",
+                "FaderBase", "ChannelMuteLighting", "FaderForeground", "Compressor", "LineOutRoute", "VoiceChatRoute",
+                "PlaybackMixRoute", "StreamMixRoute", "MixerChannels", "FaderChannels", "NoiseGate", "MicMonitor", "MixerMicEqualizer"],
+            "initial_state": "Complete initial object is retained by exact original range/hash in mixer_initial_state. It includes17 output fields and full min/max/step metadata,zero advanced10/basic3 EQ bands,and binding defaults. Declared LedPowerSettings/LedBrightness are suppressed but not read. Returned quickEffects exists despite omission from syn4FeatureKey. Any required field failure aborts this converter before its result is assigned.",
+            "microphone_and_routes": "MIC_IN sets micSetup.useMode1,else0. XLR/Mic gain is parsed percent times maximum68/40 then rounded via toFixed1,without adding minimum. Route channels Mic/Chat/Music/Game/LineIn/System/Console map mic/chat/music/game/lineIn/system/optical. RouteStateValue percentage scales existing volume min/max without rounding:lineOut/playbackMix -62.25..0,voiceChat/streamMix -12..0. Checked/IsMuted use truthy&&JSON.parse,not strict booleans. Unknown route channels are ignored by final existing-field check;unknown MixerChannels type throws. MixerChannels selects xlr for Mic when useMode0 and scales raw parseFloat percentage from each channel min/max,toFixed2.",
+            "lighting_and_fader": "Ports append in order WordMark4,MicMute32,Bleep33,ChannelNumber10,FaderBase5,ChannelMute16,then channel IDs1..4->regions6..9. Source State exact1. WordMark/MicMute/ChannelMute brightness100;Bleep parses Brightness;ChannelNumber/FaderBase use truthy Brightness else100,spectrum3 with four #ff18ff colors,static array colors,else4982 wrapped LightingEffects. Fader Mode indexOf(VolumeLevel,InputMeter,Dynamic)||0 retains unknown -1;only0 chooses quickEffects,others choose meterEffects. Dynamic speeds and all three arrays remain;zero-argument ports.push adds nothing. Wrapped4982 calls omit deviceInfo,so no source-PID wave customization.",
+            "dynamics_and_bindings": "Compressor and NoiseGate IsBasic exactfalse ->advanced1,else0;both basic and all advanced fields are always parsed,no range enforcement. Compressor threshold/basic -38..0,softKnee0..76,ratio1..10,gain0..22,attack1..50,release1..200 metadata remains;NoiseGate gain/threshold -60..0,attack/release1..128. Fader channel IDs1..4 and source/mute tables are not validated;unmatched values can create undefined entries. TogglePreset leaves initial longPress voiceChanger/bleep assignments,other types use actual map. MicMonitor keeps exact1 and parsed value.",
+            "equalizer": "MixerMicEqualizer IsBasic exactfalse ->micEqualizerMode0,else1. Modes use default/radiovoice/balanced/midfocused/custom. Advanced frequencies are30,60,120,250,500,1000,2000,4000,8000,16000;basic30,500,8000. Source Frequency is ignored;Decibel integer and positional frequency retained. CustomBands of type string leaves zero default bands;other shapes require MicrophoneBand array. Extra entries can have undefined frequency,fewer entries replace list with shorter list. No per-step catch."},
+        "monitor_4349": "PIDs3858/3880 unconditionally read Overdrive,Gamma,DisplayMode,Brightness,Contrast in that order;ColorGamut is optional. Emits gaming.customData and selectedPreset;brightness/contrast parse default0. Gamma1.4/1.8/2.2/2.4 maps0/1/2/3,gamut Native/DCI_P3/Rec_709 maps0/1/2,display Default/FPS/Racing/MMO/Streaming/Custom maps0/1/2/3/4/5,overdrive Native/Weak/Strong maps0/1/2. Unknown lookup stays undefined,missing required object throws.",
+        "panel_8011": "Source780/781/782/783/790 emits panelBrightness. Missing PanelLightBrightness keeps isEnabled=false,value10;present state exact1 and parsed Brightness replace them. ColorTemperature is always read and its ColorTemp parsed,overwriting initial warmth3000 even with default0. Missing ColorTemperature throws rather than returning the initial warmth.",
+        "scroll_3803": "Source167/168/169/180/181 requires ScrollWheel and emits browsing flags/executable list plus six default stages. Optional ScrollWheelStages replaces entire stage array by raw Order-1 indexing;unknown explicit mode can remain undefined,empty mode becomes SW_STANDARD. ActiveMode table or SW_STANDARD fallback. Custom directions require three CenterPoint entries;coordinates use x=round2(percent*520/100),y=330-round2(percent*330/100),first/tail fixed and control points fill. Tension/steps default11/15,isLinkedCurves is IsLink!==false-string. No clamp,sorting or dedup;slot holes/overwrites remain.",
+        "subwoofer_1978": "Source1370/1371/1372/1373/1352/1368 with absent SpeakerBassBoost returns subWoofer enabledtrue,level4. Present field calls shared1423 once per invocation with original profile and renames isEnabled/value into subWoofer isEnabled/level. This is file fallback,not a hardware initialization.",
+        "indicators_7337": "Source1391/1368 reads PeakingIndicator,MuteEffects,MicGainAdjustmentIndicator,VolumeAdjustmentIndicator unconditionally,in that order. First two use State exact1 and4982 getColor;last two update microphone/headphone adjustment exact1. Initial disabled/#000 defaults do not survive a thrown required-field read because the converter has no internal catch.",
+        "mainboard_6016": "Source778 reads profile.deviceInfo.Edition_ID inside outer catch. Exact string129 yields ARGB ports2147483651/3652/3656,RGB2147483649 and Mainboard2147483653;other editions replace third ARGB with RGB2147483650. ARGB defaults strip mode,20 LEDs and shared literal metadata;ports use shallow copies. Brightness helper has inner catch:global state/value can be updated before invalid per-port data,port IDs match numerically and unmatched ignored. Full-profile4982 preserves any injected deviceInfo. LedPowerSettings must be empty string or readable;missing object can trigger outer catch returning{}. Returned switchOffLighting is absent from declared syn4FeatureKey.",
+        "stream_2984": "Source1391/1346 builds streamMixerSettings with fixed false isStreamMixMonitor/isStreamMixerEnabled. InputChannelItem must be array;eight known category names create actual DeviceId/name rows,unknown omitted,duplicates retained. IsLink exacttrue;StreamingState/PlaybackState!==false-string and integer volumes. PlaybackMonitoringMix sets device/volume,StreamingChannelMix sets stream volume. Declared ListenMonitoringMix is not read.",
+        "cooler_219": "Source3893 outer catch returns{} on any conversion failure. Fixed six ports include thermal Pump2/Fans1 plus lighting4/2147483649/3650/3651. Brightness PortID exactstring4 updates pump,all others update fan. Pump/Radiator modes Silent/empty/Performance/Custom map QUIET/NORMAL/PERFORMANCE/ADVANCED,unknown remains undefined. Optional custom y lists overwrite only existing5/7 entries,ignore excess and keep remaining defaults. LightingEffectsMultiRegion uses numeric RegionId but only ports already owning quickEffects;global wrapped4982 requires GlobalEffect. All lighting calls wrap only LightingEffects and omit deviceInfo;declared standalone LightingEffects is suppressed but not consumed.",
+        "panel_lighting_7385": "Source784/782/781 calls shared4982 with full profile and merges quickEffects into isGlobalQuickEffect=true,regionId0,defaultID3. Outer catch returns{}. Existing injected deviceInfo is preserved for shared wave branching;no new source metadata is attached.",
+        "ports_7526": "Source3871/3885/3884 creates six ports26..31. Brightness inner catch preserves partial global/port updates and assigns by array index,not PortID. Multi-region effects also assign by index via7419 convertPortGlitterLighting;excess effects or malformed data reach outer catch returning{}. GlobalEffect helper executes before its later truthiness guard,so missing GlobalEffect can throw. Static helper consumes Colors.RzColor[0];wave gives direction0 for up/clock/out/left,else1;other effects wrap4982 without deviceInfo.",
+        "system_lighting_5784": "Source563/582/570/576 calls shared1627 once with only{SystemLighting}. Own switchOffLighting uses isTwoMode=true,plugged display/idlefalse,30min;battery display/idlefalse,15min,low-battery enabled20. twoMode uses LedPowerSettings empty-string guard,IdleStateValue/60||1,and SystemLighting.TurnOffOnBatteryLevel exacttrue plus percent fallback50. Null/missing LedPowerSettings is not the empty-string special case and can throw. Returns own switchOffLighting plus1627 brightness/logoLighting,despite declared only switchOffLighting.",
+        "stream_preset_1182": "Source1346/1347/1386/3334/3337 emits separate streamMixerSettingsAsPreset. Initializes eight fixed and three Aux configurable channels,invisible/linked with volumes50;updates known mapped names,marks visible,retains truthy RoutedDevice and duplicates as last overwrite. isDefault requires exactly ordered Microphone then Headphones with source volume strings50/50,parsed playback output50,and parsed stream output50 with State!==false-string. It does not require matching playback state,link,route or listen state. ListenMonitoringMix isStreamMixMonitor=!(State===true-string). Source1346 runs2984 before1182,so both distinct output fields coexist.",
+        "voice_gate_5929": "Source1383/1384/1387/1388 replaces shared sensitivity with Math.floor(fallBackParseInt(Value,50)/50)+1 and State exact1. No clamp;this differs from shared7913 Math.round(n/20)||1.",
+        "equalizer_338": "Source1303 emits only preset from equalizerMode1303Index34(game/default/music/movie)||default,not shared2384 band data. Missing Equalizer still throws before lookup;unknown truthy table behavior follows existing in-helper.",
+        "performance": {
+            "common": "All seven source converters guard absent/falsy top-level feature with{}. No internal catch. Source results overwrite entire earlier all6283 performance field,including dropping all-only fields;a throwing source converter leaves prior all result. Auto exactstring0 means manual,otherwise auto. No defaults are device reads or writes.",
+            "5077": "PID601/594 requires PluggedInPerformanceMode or throws;fixed battery balanced/auto4000,plugged balanced/batterySaver/gaming each fan fallback4000;mode uses Balanced/Ultrabook/Gaming map without truthy validation.",
+            "5093": "PID587 uses PerformanceMode plus required Wattage. Battery balanced/auto4500;plugged balanced fallback4500,custom auto with CPU/GPU lookups;mode Balanced/Custom lookup. It does not validate CPU/GPU numeric types or mode truthiness.",
+            "7717": "PID616/652 requires plugged mode;fixed battery4900,balanced/creator/gaming plugged fallback4300 and performanceMode34 lookup. Missing plugged throws;unmatched mode can be undefined.",
+            "1723_8777": "PID621 and670/630/650/671 have byte-identical converter functions. Require truthy battery/plugged system mode lookups and typeof CPU/GPU number,retaining valid0. Battery/plugged balanced/silent fan defaults4100;silent fan fixed4100 despite Auto field. Custom auto carries CPU/GPU. Invalid validation throws.",
+            "9871": "PID669/694 uses same strict mode/number gate and3800 defaults,adds turbo with GamingSetting Auto and parsed FanRPM fallback3800;silent fixed3800.",
+            "6628": "PID672 uses same strict gate,balanced and fixed silent3000 defaults,without turbo. All source-required settings are read independent of selected mode."},
+        "failure_and_lifecycle": "Internal whole-converter catches only6016/219/7385/7526 return{};6016/7526 additionally catch brightness helper failures and may preserve partial work when later phases succeed. Every source converter still has5167 individual outer catch and truthy double call;there is no per-profile rollback,device confirmation or extra cancellation/release. Complete aggregate continues through parent worker response and actual Import/store/native consumers. Known local-file defaults,empty objects,undefined fields,errors and prior aggregate values are not promoted to hardware observations."}
+
+
+def collect_legacy_source_product_chain(audit):
+    import evidence
+    import host
+    path = a.ROOT / ".analysis/results/frontend/mouse-mw-audit.json"
+    document = json.loads(path.read_bytes())
+    upstream = [{"receipt": a.rel(path), "pointer": "/" + section, "canonical_sha256": digest, "recaptured": False}
+        for section, digest in _LEGACY_SOURCE_PRODUCT_PARENTS]
+    if (host._otfm_macro_encoding_dependency_changes(upstream)
+            or any(not document[section].get("bounded_observation_complete") for section, _ in _LEGACY_SOURCE_PRODUCT_PARENTS)):
+        raise ValueError("Legacy source product parent evidence changed or incomplete")
+    parent = document["mouse_182_legacy_worker_chain"]
+    _, picker = _mouse_182_legacy_worker_parent(audit)
+    proof, worker = _mouse_182_legacy_worker_deployment(audit, _MOUSE_182_LEGACY_WORKER_DEPLOYMENT, picker)
+    roles, owners, factories, direct_imports = {}, {}, {}, {}
+    bindings = evidence.JavascriptBindings(audit.read(worker), audit.tree(worker))
+    for mid in (*_LEGACY_SOURCE_PRODUCT_MODULES, *_LEGACY_SOURCE_PRODUCT_DEPENDENCIES):
+        found = audit.webpack_factories([worker], mid)
+        if len(found) != 1:
+            raise ValueError("Legacy source product original module absent or ambiguous: " + str(mid))
+        source, node, _ = found[0]
+        role = str(mid)
+        factories[mid] = node
+        roles[role] = audit.retain_range("legacy_source_product_" + role, source, node.start_byte, node.end_byte, node.type)
+        owners[role] = audit.owners[roles[role]]
+        if mid in _LEGACY_SOURCE_PRODUCT_MODULES:
+            direct_imports[role] = javascript_factory_static_imports(node, bindings)
+            if set(direct_imports[role]) - set(_LEGACY_SOURCE_PRODUCT_DEPENDENCIES):
+                raise ValueError("Legacy source product direct dependency requires review: " + role)
+    semantics = _legacy_source_product_contract(owners)
+    selected = [row for row in parent["source_pid_converter_inventory"] if row["module_id"] in _LEGACY_SOURCE_PRODUCT_MODULES]
+    if ([row["module_id"] for row in selected] != list(_LEGACY_SOURCE_PRODUCT_MODULES)
+            or any(row["complete_owner"] != roles[str(row["module_id"])]
+                or row["semantic_status"] != "pending_product_converter_semantics" for row in selected)):
+        raise ValueError("Legacy source product exact pending registry differs")
+    prior = [row["module_id"] for row in parent["source_pid_converter_inventory"] if row["semantic_status"] == "reviewed_current_batch"]
+    mapped = document["legacy_product_mapping_chain"]["resolves_source_converter_modules"]
+    inventory = [row["module_id"] for row in parent["source_pid_converter_inventory"]]
+    covered = prior + mapped + list(_LEGACY_SOURCE_PRODUCT_MODULES)
+    if len(covered) != len(set(covered)) or set(covered) != set(inventory):
+        raise ValueError("Legacy source product inventory coverage differs")
+    converters = {}
+    for mid in (4714, 1723, 8777):
+        pending, matches = [factories[mid]], []
+        while pending:
+            node = pending.pop()
+            pending.extend(node.named_children)
+            if node.type == "pair" and node.child_by_field_name("key").text == b"converter":
+                matches.append(node.child_by_field_name("value"))
+        if len(matches) != 1 or matches[0].type not in {"function_expression", "arrow_function"}:
+            raise ValueError("Legacy source product direct converter owner differs: " + str(mid))
+        converters[mid] = matches[0]
+    if converters[1723].text != converters[8777].text:
+        raise ValueError("Legacy source product shared performance implementation differs")
+    initial = []
+    for statement in converters[4714].child_by_field_name("body").named_children:
+        if statement.type != "lexical_declaration":
+            continue
+        for declaration in statement.named_children:
+            if (declaration.type == "variable_declarator" and declaration.child_by_field_name("name").text == b"t"
+                    and declaration.child_by_field_name("value").type == "object"):
+                initial.append(declaration.child_by_field_name("value"))
+    if len(initial) != 1:
+        raise ValueError("Legacy source product mixer initial object owner differs")
+    initial = initial[0]
+    return {"schema_version": 1, "kind": "current_legacy_source_product_chain", "product_id": 182,
+        "scope": "22 remaining actual source-PID converters;30 complete modules and reused shared behavior dependencies,without adding product aliases or runtime scope",
+        "roles": roles, "upstream_sections": upstream, "worker_deployment": proof, "source_registry": selected,
+        "direct_import_dependencies": direct_imports, "semantics": semantics,
+        "mixer_initial_state": {"complete_module_owner": roles["4714"], "byte_start": initial.start_byte,
+            "byte_end": initial.end_byte, "body_sha256": hashlib.sha256(initial.text).hexdigest(),
+            "top_level_fields": [node.child_by_field_name("key").text.decode() for node in initial.named_children if node.type == "pair"]},
+        "equivalent_converter_groups": [{"modules": [1723, 8777], "body_sha256": hashlib.sha256(converters[1723].text).hexdigest(),
+            "source_pid_groups_remain_distinct": True}],
+        "resolves_source_converter_modules": list(_LEGACY_SOURCE_PRODUCT_MODULES),
+        "source_product_inventory_coverage": {"total_modules": len(inventory), "prior_parent_modules": prior,
+            "mapping_modules": mapped, "current_modules": list(_LEGACY_SOURCE_PRODUCT_MODULES),
+            "selected_static_semantics_covered": True, "whole_worker_or_product_complete": False},
+        "source_slice_complete": True, "selected_static_semantics_reviewed": True, "source_chain_complete": False,
+        "whole_product_complete": False, "target_execution": False, "real_device_operations": False,
+        "product_code_modified": False, "temporary_resources_created": [], "new_native_captures": 0, "new_analysis_sessions": 0,
+        "rust_implementation": "Existing import/profile implementation and tests retain separate status;not modified or revalidated",
+        "ui_backend_wiring": "unverified", "official_dll_comparison": "not_executed", "runtime_acceptance": "unverified",
+        "remaining_chains": [
+            "Shared52 imported converters retain their independently published coverage;source26 coverage does not promote whole-worker source semantics or actual publication to complete.",
+            "Native monitor enumeration,current Import publication dependency gaps and complete worker cancellation/release retain parent boundaries.",
+            "Independent Rust,UI/backend/store integration and actual DLL/device comparisons for input/output/error/cancel/restore/release remain incomplete or unverified;local-file output is not device confirmation."]}
+
+
+def audit_legacy_source_product_chain(args):
+    import host
+    if (args.family != "mouse" or args.function != "mw" or (args.product or [182]) != [182]
+            or getattr(args, "prepare", False)):
+        raise ValueError("legacy-source-product-chain requires mouse/mw PID182 without preparation")
+    audit = host.HostLocalAudit()
+    report = {"schema_version": 1, "query": "legacy-source-product-chain", "failures": [],
+        "bounded_observation_complete": False, "source_chain_complete": False, "target_execution": False}
+    try:
+        for name in ("tools/families.py", "tools/host.py", "tools/frontend.py", "tools/evidence.py"):
+            audit.artifact(a.ROOT / name)
+        report.update(collect_legacy_source_product_chain(audit))
+    except (OSError, ValueError, KeyError, IndexError, TypeError, StopIteration) as error:
+        report["failures"].append(type(error).__name__ + ": " + str(error))
+    changed = audit.final_snapshot() + host._otfm_macro_encoding_dependency_changes(report.get("upstream_sections", []))
+    report["failures"].extend("Legacy source product changed input: " + name for name in changed)
+    report.update(recorded_at_utc=a.stamp(), changed_during_query=changed, snapshot_stable=not changed,
+        bounded_observation_complete=not report["failures"], complete_originals=list(audit.sources.values()),
+        complete_source_owners=list(audit.owners.values()), verified_artifacts=list(audit.artifacts.values()))
+    destination = a.ROOT / ".analysis/results/frontend/mouse-mw-audit.json"
+    host.publish_host_static_query(report, destination, a, "legacy_source_product_chain")
+    print(json.dumps({"query": report["query"], "receipt": a.rel(destination), "failures": report["failures"],
+        "bounded_observation_complete": report["bounded_observation_complete"], "target_execution": False}), flush=True)
+    if report["failures"]:
+        raise ValueError("Legacy source product observation remains unresolved")
+    return report
+
+
 _KEYBOARD_756_CALIBRATION_UPSTREAM = "638c24b4e124c923495b1d0f0a78072c3283e98bda04d604c74d6e85bd3a6a17"
 _KEYBOARD_756_CALIBRATION_REVIEWED = "09108066c7415a05c4f337fa3563a6334b7100f4669ad8bc0565601dc321b948"
 
@@ -40519,6 +41414,234 @@ def audit_keyboard_756_appengine_apply_chain(args):
     return report
 
 
+_KEYBOARD_756_ANALOG_PARENTS = (
+    (".analysis/results/frontend/keyboard-main-audit.json", "keyboard_756_appengine_apply_chain", "cebaf8437ce1b95142024de40b8f98433b1c332af7d6a7afa10f1efec0da466d"),
+    (".analysis/results/frontend/keyboard-main-audit.json", "keyboard_756_switch_type_chain", "034f69618a55a8e53bd97124e762557b5795bc5f9eb16621887b557fc6d94379"),
+    (".analysis/results/host-current/local-audit.json", "mapping_input_shutdown_chain", "accdf50528e85216263429144ed409d3e80f1a1bb8d0bebf07af016c13cb01e4"),
+    (".analysis/results/host-current/local-audit.json", "mapping_engine_shutdown_chain", "5cd8f7b9e3ec8cd053c8b67c7152af71810cd8ac6bd084f2c2426bc594e47a09"),
+    (".analysis/results/host-current/local-audit.json", "mapping_analog_key_routing", "82f8d884f7137f88b9bcf0df6573eb9d9cf9054bd94547fad1426fcb48168f29"),
+    (".analysis/results/host-current/local-audit.json", "mapping_input_producer_eligibility", "01bf909a44ca54235284a39713acb6e60076787d0a8acedfc0e68f1d08ed0a1a"))
+_KEYBOARD_756_ANALOG_APIS = (
+    ("isAllAnalogKeysEventRegistered", 0x3a6a0, 0xcac0, 0xcc90, 0x5ac30, 0x72050, 0x72230),
+    ("registerAllAnalogKeysEvent", 0x3aeb0, 0xcd80, 0xcf70, 0x5ad60, 0x72390, 0x72580),
+    ("registerIntervaledAnalogKeysEvent", 0x3b700, 0xd060, 0xd250, 0x5ae90, 0x72770, 0x72960),
+    ("unregisterAllAnalogKeysEvent", 0x3bf60, 0xd340, 0xd510, 0x5afc0, 0x72b50, 0x72d30),
+    ("isAnalogKeyEventRegistered", 0x3c7c0, 0xd600, 0xd7d0, 0x5b0f0, 0x72e30, 0x73000),
+    ("registerAnalogKeyEvent", 0x3d150, 0xd8c0, 0xdac0, 0x5b220, 0x73340, 0x73530),
+    ("unregisterAnalogKeyEvent", 0x3db30, 0xdbc0, 0xdd90, 0x5b360, 0x739d0, 0x73ba0),
+    ("setAnalogKeyEventCallback", 0x3e680, 0xde80, 0xe0b0, 0x5b490, 0x73ed0, 0x740e0))
+_KEYBOARD_756_ANALOG_SOURCE_REVIEWED = "a01f4bbcc8b916ef36147cd9295f4c031a523e5ab6c2288029e5e16c71398584"
+_KEYBOARD_756_ANALOG_NATIVE_REVIEWED = "96257533d4514133b335b4e304251fe4e063425b8695b1bff9bd34afd06d0032"
+
+
+def _keyboard_756_analog_registration_sources(audit):
+    import frontend
+    import host
+    documents = {name: json.loads((a.ROOT / name).read_bytes()) for name in {row[0] for row in _KEYBOARD_756_ANALOG_PARENTS}}
+    upstream = [{"receipt": name, "pointer": "/" + section, "canonical_sha256": digest, "recaptured": False}
+                for name, section, digest in _KEYBOARD_756_ANALOG_PARENTS]
+    if host._otfm_macro_encoding_dependency_changes(upstream):
+        raise ValueError("Keyboard756 analog registration parent evidence changed")
+    keyboard = documents[_KEYBOARD_756_ANALOG_PARENTS[0][0]]
+    host_doc = documents[_KEYBOARD_756_ANALOG_PARENTS[2][0]]
+    parent, switch = keyboard["keyboard_756_appengine_apply_chain"], keyboard["keyboard_756_switch_type_chain"]
+    shutdown = host_doc["mapping_input_shutdown_chain"]
+    if not parent.get("bounded_observation_complete") or not switch.get("bounded_observation_complete") or shutdown.get("failures"):
+        raise ValueError("Keyboard756 analog registration parent is incomplete")
+    selected = frontend.current_source_selection("https://apps.razer.com/synapse/products/756/mw/", audit,
+        candidates=sorted((a.ROOT / ".analysis/inputs/frontend").glob("keyboard-mw-756-current*/acquisition.json")), verify_capture=False)
+    if selected["acquisition"] != parent["source_sets"]["mw"]["acquisition"]:
+        raise ValueError("Keyboard756 analog registration current middleware differs")
+    files = selected["originals"]
+    roles = {}
+
+    def keep(role, report, original_role):
+        row = next(row for row in report["complete_source_owners"] if row["id"] == report["roles"][original_role])
+        raw = audit.read(row["original"])[row["byte_start"]:row["byte_end"]]
+        if hashlib.sha256(raw).hexdigest() != row["body_sha256"] or raw.decode() != row["body"]:
+            raise ValueError("Keyboard756 analog registration reused owner changed: " + role)
+        roles[role] = audit.retain_range("keyboard_756_analog_" + role, row["original"], row["byte_start"], row["byte_end"], row["syntax"])
+        return row["original"]
+
+    def factory(role, candidates, mid):
+        found = audit.webpack_factories(candidates, mid)
+        if len(found) != 1:
+            raise ValueError("Keyboard756 analog registration source realm absent/ambiguous: " + role)
+        source, node, _ = found[0]
+        roles[role] = audit.retain_range("keyboard_756_analog_" + role, source, node.start_byte, node.end_byte, node.type)
+        return source, node
+
+    def member(role, source, root, name):
+        _, roles[role] = audit.callable_member("keyboard_756_analog_" + role, source, root, name)
+
+    for name in ("product_registration", "device_info", "setup_environment", "cleanup_device", "travel_owner", "travel_helpers"):
+        keep(name, parent, name)
+    source = keep("registration", switch, "analog_registration")
+    for mid, name in ((65200, "facade"), (30048, "bridge"), (3327, "mapping_units"),
+                      (68432, "feature_parameters"), (65529, "input_events"), (96634, "key_table_binding"),
+                      (78901, "throttle"), (85762, "debounce"), (43914, "object_predicate"),
+                      (49241, "clock"), (40709, "numeric_coercion")):
+        factory(name, files if mid in (3327, 68432) else [source], mid)
+    for mid, name in ((22574, "key_table"), (51625, "key_table_initialization")):
+        factory(name, files, mid)
+    for name in ("HjQ", "NB4", "fMo", "pEN", "eTv"):
+        value = audit.webpack_export("keyboard_756_analog_event_" + name, files, 93490, name)
+        roles["event_" + name] = value["binding"]["owner_id"]
+    for module, name, role in ((72233, "qD", "display_maximum"), (30048, "QY", "ui_publication"), (30048, "IT", "bridge_close")):
+        value = audit.webpack_export("keyboard_756_analog_" + role, files, module, name)
+        roles[role] = value["binding"]["owner_id"]
+    raw = audit.read(source)
+    token = b"refreshAnalogKeyEventRegistration:t"
+    if raw.count(token) != 1:
+        raise ValueError("Keyboard756 analog polling refresh caller differs")
+    at = raw.index(token)
+    node = audit.tree(source).root_node.descendant_for_byte_range(at, at + len(token))
+    while node is not None and node.type != "function_declaration":
+        node = node.parent
+    if node is None:
+        raise ValueError("Keyboard756 analog polling refresh function absent")
+    roles["polling_refresh"] = audit.retain_range("keyboard_756_analog_polling_refresh", source, node.start_byte, node.end_byte, node.type)
+    refresh = [row for row in switch["complete_source_owners"] if b"refreshAnalogKeyEventRegistration:e" in row["body"].encode()]
+    if not refresh:
+        raise ValueError("Keyboard756 switch refresh caller absent")
+    row = min(refresh, key=lambda row: row["byte_end"] - row["byte_start"])
+    roles["switch_refresh"] = audit.retain_range("keyboard_756_analog_switch_refresh", row["original"], row["byte_start"], row["byte_end"], row["syntax"])
+    host_owners = {row["id"]: row for row in shutdown["complete_source_owners"]}
+    host_source = host_owners[shutdown["selected"]["registerAllAnalogKeysEvent"]]["original"]
+    for name in [row[0] for row in _KEYBOARD_756_ANALOG_APIS] + ["createCbAnalogKeyEvent", "createUsbDeviceMapEntry", "callDLL"]:
+        member("host_" + name, host_source, audit.tree(host_source).root_node, name)
+    return roles, selected, upstream, host_doc
+
+
+def _keyboard_756_analog_registration_source_contract(owners):
+    if any(hashlib.sha256(row["body"].encode()).hexdigest() != row["body_sha256"] for row in owners.values()):
+        raise ValueError("Keyboard756 analog registration original body/hash differs")
+    fingerprint = _mouse_182_profile_duplicate_digest({role: {key: row[key] for key in ("id", "byte_start", "byte_end", "body_sha256")}
+                                                       for role, row in owners.items()})
+    if fingerprint != _KEYBOARD_756_ANALOG_SOURCE_REVIEWED:
+        raise ValueError("Keyboard756 analog registration reviewed source differs: " + fingerprint)
+    return {"reviewed_source_sha256": fingerprint,
+        "actual_branch": "Current productId756/is8kAnalogDevice=true activates serialized registration refresh. Product analogV3 yes config does not set useIntervaledAnalogKeyEvent;feature reader returns injector features unchanged. Current all-key path uses skip-count registration,while the retained conditional interval path passes its value as interval_in_milliseconds. Do not infer an enabled interval branch from method existence.",
+        "request_ownership": "78127 retains desired h and its device E,registered device _,single M,last all skip I,last single skip S,and shared promise D. Only PID756/8k O/C requests serialize through D.then;D catches for subsequent requests but original returned promise still rejects. refresh requires h and E===current device before calling te/ie;it has no generation/abort check after awaited cache/native operations. Switch-travel refresh follows travel-cache publication and caller assertCurrent;polling refresh follows actual high-speed polling write with explicit new rate.",
+        "skip_count": "Z returns supplied25(all)/50(single) without reading cache for non8k.8k uses override??activeProfile.pollingRate||8000 and actual PollingRateSkipMap:125/250/500/1000->50,2000/4000/8000->16,otherwise supplied default. PID756 uses current-device travel map and shared actuationMax getter(the product declares max65520);single ratio is selected key maximum or max,all ratio min(max,...mapped maximum)/max. Interval all bypasses travel reduction. Finite rate125..8000 and ratio strictly0..1 gives min(base,max(1,floor(rate/8000*17*ratio))-1);otherwise base. Zero skip is valid,not missing.",
+        "register_all": "Capture current device then await skip/status diagnostics. Existing native all registration is reused unless PID756 noninterval device/skip changed. Reconfiguration requires successful unregisterAll;failure returns with existing JS ownership. Remove old single registration when present;PID756 stops on failed single unregister. Register returns false may still succeed via subsequent native isAll status. Success updates w/I/_ and swaps k listener to B plus inputevent W;does not persist device success or read hardware values.",
+        "register_single": "Resolve inputID in initialized key table,prefer numeric outputFlag over flag,and send only{scancode,flag}. Native all registration is removed first;PID756 returns on failure. Different single registration is removed when status says registered. Same-key registration reused unless PID756 device/skip changed;when changing,unregister failure stops. register false falls through to a native status check;accepted status installs single k listener and updates M/S/_. Native all-status semantics therefore matter independently of requested single state.",
+        "unregister": "ne clears desired/tracker/skip metadata before awaited calls,queries/removes all and tracked single,then clears M and off k/B/W even when native unregister resolved false. It emits level0 only when something was registered and no unregister failed. Rejection can exit before remaining cleanup. It does not await/reset D,clear sampled H/Y/j,or cancel throttle X. Connection cleanup clears travel state,closes incoming bridge and removes native device;it does not call ne or cancel X before closing window.",
+        "callback_consumers": "Facade forwards Host analogKeyEvent into EventEmitter without generation check. Single k parses jsonEvent.input.level and publishes MW_UPDATE_ANALOG_SENSITIVITY_BY_LEVEL without product filtering. All B parses object or array;J samples every w records but always keeps level0,max-level and final record;w0 modulo yields NaN,so only those forced records survive. q rejects keyId59/nonanalog/missing input,tracks one key using H and live input Y,derives source color state and publishes level/inputID through16ms throttle X. Missing key-table lookup can throw. Native timeTick is not used for a stale-result check. Level0 clears H/color but unregister does not;before first clear H may append the first event twice as source dictates.",
+        "throttle_and_bridge": "78901 defaults leading/trailing true and maxWait16 through85762. debounce retains args/context and timeout until fire/cancel;cancel/flush exist but78127 never calls X.cancel/flush. Removing listeners leaves a trailing publication pending. QY catches publication errors and posts REDUX_STORE_UPDATE;bridge close only closes its incoming handle/removes registered bridge listeners. Native/Host late delivery and UI publication are separate from callback drain.",
+        "host": "Current Host validates device identity and registers its shared event callback before marking bSetAnalogKeyEventCallback true without checking setup result. Its URL list and singular analogKeyEventInterval arbitrate normal/interval mode;interval input checks number and>=0 but not finite. First registration passes uint32 ABI argument;normal/single wrappers return result,interval wrapper also accepts primitive Host return. Status uses native callback results. unregisterAll removes URL before native call for last subscriber and does not restore on failure;single unregister leaves URL. Shared type6 callback checks current identity/URL,not original connection generation. Promises/cbMap have no per-request timeout or cancellation.",
+        "scope": "Actual PID756 registration/status/reconfiguration and consumed sample events only. Reuse independently reviewed producer qualification,device removal and engine/FFI queue destruction;no Xbox visualization,output compiler,other product or runtime acceptance is added."}
+
+
+def _keyboard_756_analog_registration_native(audit, host_doc):
+    import struct
+    import host
+    source = host_doc["mapping_input_shutdown_chain"]["native"]["input"]
+    roles, slots, exports = {}, [], {}
+    for index, row in enumerate(_KEYBOARD_756_ANALOG_APIS):
+        name, export, engine, dispatch, manager, queue, state = row
+        for label, rva in zip(("export", "engine", "dispatch", "manager", "queue", "state"), row[1:]):
+            roles[rva] = name + "_" + label
+        exports[name] = export
+        for label, table, offset, target in (("engine", 0x2e0010, 504 + index * 8, engine),
+                ("manager", 0x2e5a88, 296 + index * 8, manager), ("usb", 0x2e8e18, 296 + index * 8, queue)):
+            slots.append({"role": name + "_" + label, "vtable_rva": hex(table), "slot_byte_offset": offset, "target_rva": hex(target)})
+    roles.update({0xa8730: "actual_usb_constructor", 0xe5db0: "published_report_class", 0xee821: "typed_input_parser",
+        0xeb5ae: "required_input_type", 0x10c622: "legacy_key_thunk", 0x10c628: "legacy_key_table_lookup",
+        0x10c6b6: "modern_key_thunk", 0x10c6bc: "modern_key_table_lookup", 0x10c7d1: "key_scan_flag_json",
+        0xdbaf3: "key_word_field"})
+    native = verify_native_functions(source, roles, slots, exports=exports)
+    bodies = {}
+    for row in native["complete_selected_functions"]:
+        if not row["pseudocode_captured"] or row["failures"]:
+            raise ValueError("Keyboard756 analog registration native function incomplete: " + row["role"])
+        body = row["capture"]
+        bodies[int(body["rva"], 16)] = body
+    fingerprint = _mouse_182_profile_duplicate_digest({hex(rva): hashlib.sha256("\n".join(x["text"] for x in row["pseudocode"]["lines"]).encode()).hexdigest()
+                                                       for rva, row in bodies.items()})
+    if fingerprint != _KEYBOARD_756_ANALOG_NATIVE_REVIEWED:
+        raise ValueError("Keyboard756 analog registration reviewed native differs: " + fingerprint)
+    for _, _, engine, dispatch, _, queue, state in _KEYBOARD_756_ANALOG_APIS:
+        for caller, target in ((engine, dispatch), (queue, state)):
+            if not any(int(ref["to"], 16) - int(native["image_base"], 16) == target
+                       for line in bodies[caller]["assembly"] for ref in line.get("xrefs_from", [])):
+                raise ValueError("Keyboard756 analog registration queued target differs")
+    raw = audit.read(source)
+    pe = host.inspect_pe(raw)
+    tables = []
+    for rva in (0x2f0c30, 0x2f1030):
+        section = next(s for s in pe["sections"] if s["rva"] <= rva and rva + 1024 <= s["rva"] + s["bytes"])
+        offset = section["file_offset"] + rva - section["rva"]
+        chunk = raw[offset:offset + 1024]
+        tables.append({"rva": hex(rva), "bytes": 1024, "sha256": hashlib.sha256(chunk).hexdigest(),
+            "entries": [list(struct.unpack_from("<HH", chunk, i)) for i in range(0, 1024, 4)]})
+    native["key_tables"] = tables
+    native["reviewed_source_sha256"] = fingerprint
+    native["semantics"] = {
+        "abi_and_dispatch": "Eight actual exports are callback-completing void APIs;skip/interval ABI is uint32,completion bool+reason+original identity. Current engine vtable+504..560 queues device-manager dispatch;manager+296..352 resolves identity and InputDeviceInterface. Actual USB constructor installs interface table2e8e18 at object+136;device wrappers adjust to base and queue state calls. Guarded invalid thread/manager/device/data paths report false through completion;single-unregister queries DeviceData without its own prior null guard. Queue posting is not hardware acknowledgement.",
+        "status_and_registration": "All status72230 requires DeviceData then copies byte400. Single status73000 validates/falls back key ID and returns byte400 OR per-ID map352 membership;after valid key conversion,all-registered implies single status true. All72580 and interval72960 preserve already-registered state;normal mode word1 stores skip348,interval word257 stores uint32(interval*1000) at404. Single73530 inserts per-ID skip/counter/last state and returns true with Already registered warning on existing entry;changing skip requires unregister first.",
+        "key_identity": "Actual JS payload has scancode/flag only,so73530 typed-input descriptor attempt lacks required type and follows table path. Shared73000/73ba0 use published report class:0/1 scan+flag pair lookup across256 entries at2f0c30;2 accepts(0,0)->id0,otherwise requires flag0 and searches scan entries1..255 at2f1030. Assembly proves separate16-bit scan/flag checks despite merged decompiler variable. Fields require successful native lookups and retain low16 bits;missing/malformed input fails. Class3 reports no analog key report id;no real published device class is inferred from static registration.",
+        "unregister_and_callback": "Unregister single erases only its selected ID and fails when absent;it does not clear all-registered. Unregister all clears byte400 and map352 while retaining interval/timer/queue/callbacks. Callback state740e0 replaces owned callbacks. Existing input-shutdown receipt proves delayed flush81300 does not retest registration,and queued events retain callback/payload;engine-shutdown receipt owns actual queue/thread/FFI disposal. This query adds no universal callback drain or reconnect guarantee."}
+    for row in native["complete_selected_functions"]:
+        body = row.pop("capture")
+        row["rva"] = body["rva"]
+        row["pseudocode_text_sha256"] = hashlib.sha256("\n".join(x["text"] for x in body["pseudocode"]["lines"]).encode()).hexdigest()
+        audit.artifact(a.ROOT / row["artifact"]["path"], row["artifact"])
+    audit.artifact(a.ROOT / native["capture_receipt"]["path"], native["capture_receipt"])
+    return native
+
+
+def collect_keyboard_756_analog_registration_chain(audit):
+    roles, selection, upstream, host_doc = _keyboard_756_analog_registration_sources(audit)
+    semantics = _keyboard_756_analog_registration_source_contract({role: audit.owners[key] for role, key in roles.items()})
+    native = _keyboard_756_analog_registration_native(audit, host_doc)
+    return {"schema_version": 1, "kind": "current_keyboard_756_analog_registration_chain", "product_id": 756,
+        "scope": "Current PID756/8k analog single/all registration,skip refresh,status/native producer binding and consumed sample/timer lifecycle",
+        "roles": roles, "source_selection": {key: selection[key] for key in ("name", "acquisition", "candidate_decisions", "capture_failures", "failed_acquisition", "unresolved_acquisition")},
+        "upstream_sections": upstream, "semantics": semantics, "native": native,
+        "reused_native_lifecycle": {"input_shutdown": host_doc["mapping_input_shutdown_chain"]["verified_contract"],
+            "engine_shutdown_receipt": ".analysis/results/host-current/local-audit.json#/mapping_engine_shutdown_chain"},
+        "source_slice_complete": True, "selected_static_semantics_reviewed": True, "source_chain_complete": True,
+        "static_semantics_status": "complete_for_current_pid756_registration_scope",
+        "whole_product_complete": False, "target_execution": False, "real_device_operations": False,
+        "product_code_modified": False, "new_native_captures": 0, "new_analysis_sessions": 0, "temporary_resources_created": [],
+        "rust_independent_implementation": "not_modified_or_revalidated", "ui_backend_wiring": "unverified",
+        "official_dll_comparison": "not_executed", "runtime_acceptance": "unverified",
+        "remaining_chains": [
+            "Actual PID756 device/firmware published report state,event delivery,cancel/reconnect and DLL/device comparisons remain unverified;static source registration is not hardware success.",
+            "Selected output compiler/SnapTap restoration and other actual products/transports retain their own shared-chain boundaries;no Xbox presentation or output executor expansion was added.",
+            "Independent Rust/UI/backend implementation and full current runtime lifecycle acceptance remain incomplete or unverified;observed late callback/throttle behavior is retained,not described as quiescent."]}
+
+
+def audit_keyboard_756_analog_registration_chain(args):
+    import host
+    if (args.family != "keyboard" or args.function != "mw" or sorted(set(args.product or [756])) != [756]
+            or getattr(args, "prepare", False)):
+        raise ValueError("keyboard-756-analog-registration-chain requires keyboard/mw PID756 without preparation")
+    audit = host.HostLocalAudit()
+    report = {"schema_version": 1, "query": "keyboard-756-analog-registration-chain", "failures": [],
+        "bounded_observation_complete": False, "source_chain_complete": False, "target_execution": False}
+    try:
+        for name in ("tools/families.py", "tools/host.py", "tools/frontend.py", "tools/evidence.py"):
+            audit.artifact(a.ROOT / name)
+        report.update(collect_keyboard_756_analog_registration_chain(audit))
+    except (OSError, ValueError, KeyError, IndexError, TypeError, StopIteration) as error:
+        report["failures"].append(type(error).__name__ + ": " + str(error))
+    changed = audit.final_snapshot() + host._otfm_macro_encoding_dependency_changes(report.get("upstream_sections", []))
+    report["failures"].extend("Keyboard756 analog registration changed input: " + name for name in changed)
+    report["source_chain_complete"] = not report["failures"]
+    report.update(recorded_at_utc=a.stamp(), changed_during_query=changed, snapshot_stable=not changed,
+        bounded_observation_complete=not report["failures"], complete_originals=list(audit.sources.values()),
+        complete_source_owners=list(audit.owners.values()), verified_artifacts=list(audit.artifacts.values()))
+    destination = a.ROOT / ".analysis/results/frontend/keyboard-main-audit.json"
+    host.publish_host_static_query(report, destination, a, "keyboard_756_analog_registration_chain")
+    print(json.dumps({"query": report["query"], "receipt": a.rel(destination), "failures": report["failures"],
+        "bounded_observation_complete": report["bounded_observation_complete"], "target_execution": False}), flush=True)
+    if report["failures"]:
+        raise ValueError("Keyboard756 analog registration observation remains unresolved")
+    return report
+
+
 _GAMEPAD_PROFILE_RESET_APPLY_SHA = "1d085d2553a92bf8d390c5c075ea24f4445326a3ffa388d7caf87de2dcdec52c"
 _GAMEPAD_PROFILE_RESET_REVIEWED = "316787e5f1fadd3f9be624a51d9ffb9ff92cace4d304e87c57400f3c1481c8fb"
 
@@ -41615,6 +42738,262 @@ def audit_gamepad_2636_removal_notification_chain(args):
         "target_execution": False}), flush=True)
     if not report["bounded_observation_complete"]:
         raise ValueError("Gamepad2636 removal notification source observation remains unresolved")
+    return report
+
+
+def _gamepad_2636_shutdown_reconnect_sources(audit):
+    import host
+    receipt = ".analysis/results/frontend/gamepad-mw-audit.json"
+    document = json.loads((a.ROOT / receipt).read_bytes())
+    upstream = [{"receipt": receipt, "pointer": "/" + section, "canonical_sha256": digest}
+        for section, digest in (
+            ("gamepad_2636_detection_native_chain", "53cc523b012633e99eb5df7bfb8283e74bb54583e790f75b2544b18fbf46b5c2"),
+            ("profile_lifecycle_2636_chain", "b9c7211925e9155fd3d19e4bdb527c2c2224814f0ad900f8b8616714246cc235"),
+            ("polling_native_chain", "55d17ef995491555e4af6750b5c0c612e009feedfa725a36a22cadc3a8863eeb"))]
+    if host._keypad_temporary_keymap_dependency_changes(upstream):
+        raise ValueError("Gamepad2636 shutdown/reconnect upstream changed")
+    roles, references = {}, {}
+    for row in upstream:
+        section = row["pointer"][1:]
+        result = document[section]
+        if result["failures"] or not result["bounded_observation_complete"] or result["target_execution"]:
+            raise ValueError("Gamepad2636 shutdown/reconnect upstream is not bounded: " + section)
+    def reuse(role, section, key):
+        parent = document[section]
+        owner, = [entry for entry in parent["complete_source_owners"] if entry["id"] == parent["roles"][key]]
+        if role == "product_bootstrap":
+            raw = audit.read(owner["original"])
+            node = audit.tree(owner["original"]).root_node.descendant_for_byte_range(owner["byte_start"], owner["byte_end"] - 1)
+            while node is not None and node.start_byte == owner["byte_start"] and node.end_byte == owner["byte_end"]:
+                if node.type == owner["syntax"]:
+                    break
+                node = node.parent
+            if (node is None or (node.start_byte, node.end_byte, node.type)
+                    != (owner["byte_start"], owner["byte_end"], owner["syntax"])
+                    or raw[node.start_byte:node.end_byte].decode() != owner["body"]
+                    or hashlib.sha256(raw[node.start_byte:node.end_byte]).hexdigest() != owner["body_sha256"]):
+                raise ValueError("Gamepad2636 shutdown/reconnect bootstrap AST boundary changed")
+        else:
+            host.verify_profiles_owner(audit, owner)
+        roles[role] = audit.retain_range("gamepad_2636_shutdown_" + role, owner["original"],
+            owner["byte_start"], owner["byte_end"], owner["syntax"])
+        references[role] = {"receipt": receipt, "pointer": "/" + section + "/roles/" + key,
+            **{field: owner[field] for field in ("id", "original", "syntax", "byte_start", "byte_end", "body_sha256")}}
+    for key in ("cleanup", "disconnect", "connect_current", "connect_device", "set_exit_mode", "exit_mode",
+            "setup", "setup_ready", "setup_guard", "product_remove", "product_load"):
+        reuse(key, "profile_lifecycle_2636_chain", key)
+    for key in ("product_bootstrap", "mw_device_info", "connection_observation", "sage_class", "controller_class",
+            "protocol25_class", "protocol25_constructor", "sage_heritage", "sage_superclass_import",
+            "controller_heritage", "controller_superclass_import", "protocol25_heritage", "protocol25_superclass_import"):
+        reuse(key, "polling_native_chain", key)
+    original = audit.owners[roles["cleanup"]]["original"]
+    def keep(role, node):
+        roles[role] = audit.retain_range("gamepad_2636_shutdown_" + role, original,
+            node.start_byte, node.end_byte, node.type)
+        return node
+    def exported(role, module, name):
+        value = audit.webpack_export("gamepad_2636_shutdown_" + role, [original], module, name)
+        node = keep(role, host._help_binding_node(audit, original, value["binding"]))
+        return node, value
+    def bound(role, name, at):
+        return keep(role, host._help_binding_node(audit, original,
+            audit.binding("gamepad_2636_shutdown_" + role, original, name, at)))
+    exported("generic_manager", 1457, "RzGenericFeatureManager")
+    node, _ = exported("injector_instance", 47973, "A")
+    bound("injector_defaults", "a", node.start_byte)
+    exported("injector_class", 80759, "NQ")
+    _, runtime = exported("product_runtime", 35924, "A")
+    roles["product_runtime_factory"] = runtime["complete_factory_owner"]
+    exported("derive_default_features", 93305, "X6")
+    exported("features_getter", 93305, "i")
+    exported("base_class", 41863, "A")
+    for role, name in (("remove_storage_listeners", "z_"), ("remove_unlock_listener", "eB"),
+            ("remove_resume_listener", "pW"), ("add_unlock_listener", "zK"), ("add_resume_listener", "_D")):
+        exported(role, 13607, name)
+    for role, name, at in (("resume_queue", "Ce", 2164444), ("resume_serialized", "Me", 2165262),
+            ("resume_power_check", "Ne", 2164444), ("system_resume", "we", 2165453)):
+        bound(role, name, at)
+    exported("read_power_status", 87887, "JW")
+    exported("cached_power_status", 84910, "ZA")
+    event, _ = exported("wireless_power_event", 84910, "TD")
+    for role, name in (("cached_power_seed", "ke"), ("connection_event_guard", "Le"),
+            ("restore_brightness", "Qe")):
+        bound(role, name, event.start_byte)
+    exported("power_event_codes", 49065, "Gc")
+    detection = document["gamepad_2636_detection_native_chain"]
+    for artifact in detection["verified_artifacts"]:
+        if not artifact["path"].startswith("tools/"):
+            audit.artifact(a.ROOT / artifact["path"], artifact)
+    return {"roles": roles, "upstream_sections": upstream, "reused_source_owners": references,
+        "source_sets": document["profile_lifecycle_2636_chain"]["source_sets"],
+        "reused_native": {"receipt": receipt, "pointer": "/gamepad_2636_detection_native_chain/native",
+            "target_execution": False, "recaptured": False},
+        "reused_removal_and_task_contracts": {"receipt": receipt,
+            "pointers": ["/device_removal_2636_chain", "/profile_lifecycle_2636_chain/semantics",
+                "/gamepad_2636_detection_native_chain/semantics"]}}
+
+
+def _gamepad_2636_shutdown_reconnect_contract(parser, owners):
+    import host
+    bodies = {key: value["body"] for key, value in owners.items()}
+    def parse_owner(role, body):
+        syntax = owners[role]["syntax"]
+        if syntax == "class_heritage":
+            body = "class Reviewed " + body + " {}"
+        elif syntax == "method_definition":
+            body = "class Reviewed {" + body + "}"
+        elif syntax == "pair":
+            body = "({" + body + "})"
+        return parser.parse(body.encode()).root_node
+    trees = {key: parse_owner(key, body) for key, body in bodies.items()}
+    if any(root.has_error for root in trees.values()):
+        raise ValueError("Gamepad2636 shutdown/reconnect complete owner has invalid syntax")
+    def methods(role):
+        classes = [node for node in host._help_nodes(trees[role]) if node.type in {"class", "class_declaration"}]
+        node = min(classes, key=lambda item: item.start_byte)
+        return {member.child_by_field_name("name").text.decode(): member
+            for member in node.child_by_field_name("body").named_children
+            if member.type == "method_definition" and member.child_by_field_name("name") is not None}
+    member_sets = {key: methods(key) for key in ("sage_class", "controller_class", "protocol25_class", "base_class")}
+    for key in ("sage_class", "controller_class", "protocol25_class"):
+        if any(name in member_sets[key] for name in ("terminate", "handleBeforeUnload")):
+            raise ValueError("Gamepad2636 shutdown/reconnect selected destructor override changed")
+    base = member_sets["base_class"]
+    if ("handleBeforeUnload" in base or "terminate" not in base
+            or base["terminate"].child_by_field_name("body").named_child_count):
+        raise ValueError("Gamepad2636 shutdown/reconnect inherited terminate is not the empty source method")
+    mode = member_sets["sage_class"]["setDeviceMode"]
+    calls = [node for node in host._help_nodes(mode) if node.type == "call_expression"]
+    if any(b"sendCommand" in node.text or b"setDeviceMode" in node.child_by_field_name("function").text for node in calls):
+        raise ValueError("Gamepad2636 shutdown/reconnect Sage mode now has a transport call")
+    if 'return{status:l.STATUS_SUCCESS,error:"",jsonData:{mode:e,param:t}}' not in mode.text.decode():
+        raise ValueError("Gamepad2636 shutdown/reconnect Sage mode result changed")
+    feature_calls = []
+    for node in host._help_nodes(trees["product_bootstrap"]):
+        if node.type != "call_expression":
+            continue
+        callee = node.child_by_field_name("function")
+        if callee is None or callee.type != "member_expression":
+            continue
+        prop = callee.child_by_field_name("property")
+        if prop is not None and prop.text == b"useFeature":
+            args = node.child_by_field_name("arguments").named_children
+            if len(args) < 2 or args[0].type != "string" or args[1].type != "string":
+                raise ValueError("Gamepad2636 shutdown/reconnect feature selection is dynamic")
+            feature_calls.append((args[0].text.decode()[1:-1], args[1].text.decode()[1:-1]))
+    expected = [("useMWManifest", "yes"), ("rzDeviceType", "rzDevice25Sage"), ("hardwareEvent", "config"),
+        ("isBattery", "yes"), ("isObm", "yes"), ("controllerDevice", "config"),
+        ("loadProfileDataFromDevice", "yes"), ("useFwMappingsOnly", "yes"),
+        ("serialNumberBasedProfileStorage", "yes"), ("useGetDockEditionAPI", "yes")]
+    if feature_calls != expected:
+        raise ValueError("Gamepad2636 shutdown/reconnect mounted feature sequence changed")
+    if (bodies["product_runtime_factory"] != '35924:(e,t,n)=>{"use strict";n.d(t,{A:()=>o});const '
+            + bodies["product_runtime"] + '}' or 'genericFeature' in bodies["derive_default_features"]
+            or 'genericFeature' in bodies["injector_defaults"]):
+        raise ValueError("Gamepad2636 shutdown/reconnect actual default feature source changed")
+    required = {
+        "generic_manager": ('this.features=[]', 'if(this.initDone)return', 'this.initDone=!0',
+            'for(const{key:t,instance:n}of e)n.shutdown&&(yield n.shutdown())'),
+        "injector_instance": ('new r.NQ(a,{debug:!1})',),
+        "injector_defaults": ('(0,i.X6)(o.A)', 'o.injectorDefaults'),
+        "features_getter": ('o.A.injector.featuresList',),
+        "connection_observation": ('new e(t,d.DeviceInfo.claimInterface,s,c,u,l,p,y,g)',
+            'm=(yield E.getDockExtendedFirmwareVersion()).status===i.STATUS_SUCCESS', 'catch(e){}'),
+        "connect_device": ('z=(e,t=4)', 'o.jf.rzDevice=s', 'for(let n=0;n<=t;n++)', 'e*=2', 'return console.error(e),null'),
+        "setup": ('yield In(),!p.jf.rzDevice', 'yield Ee.RzGenericFeatureManager.getInstance().init()',
+            '(0,pt.eB)(),(0,pt.zK)(),(0,pt.pW)(),(0,pt._D)()', 'response("resume"', 'yield(0,U.L4)(i,o,r)'),
+        "resume_serialized": ('Ce.then((()=>Ne()))', 'Ce=e.catch((()=>{}))'),
+        "resume_power_check": ('if(!c.jf.rzDevice)', '!1===C.A.runtimeData.hasBattery', 'n===t', 'yield(0,T.TD)(i,void 0,!!o)'),
+        "read_power_status": ('yield e.getPowerOnStatusCommon()',),
+        "wireless_power_event": ('if(Le)return', 'Le=!0', '(0,v.L4)(g.xZ).finally',
+            'ke=!0', 'yield(0,_.U9)()', 'stopRunningTurbosAndMacros(g.jf.rzDevice.device)'),
+        "restore_brightness": ('m.c.enqueueEvent(e(t))', 'type:"ON_INIT_BRIGHTNESS"'),
+        "setup_ready": ('e)window.location.reload()', 'if(yield', 'Tn)return', 'yield Dn(t)'),
+        "set_exit_mode": ('let a=yield t.getDeviceMode()', 'a=yield t.setDeviceMode(e[0],e[1])'),
+    }
+    for role, tokens in required.items():
+        if any(token not in bodies[role] for token in tokens):
+            raise ValueError("Gamepad2636 shutdown/reconnect selected lifecycle changed: " + role)
+    digest = _gamepad_profile_apply_digest({role: bodies[role] for role in sorted(bodies)})
+    if digest != "726209106d4e16c3ac226291a16e175bc8edac5ed893697018df550d97f03ce0":
+        raise ValueError("Gamepad2636 shutdown/reconnect complete source fingerprint changed")
+    return {"complete_owner_fingerprint": digest, "selected_bootstrap_features": [list(row) for row in feature_calls],
+        "generic_shutdown": {"default_generic_features": [], "runtime_module_exports": ["A"],
+            "runtime_module_has_injector_defaults": False, "default_mapper_injects_generic_features": False,
+            "bootstrap_adds_generic_features": False, "init_sets_done_for_empty_features": True,
+            "shutdown_resets_init_done": False, "shutdown_clears_features": False,
+            "external_unreviewed_injection_proven_absent": False,
+            "scope": "Current selected defaults, actual product bootstrap and manager lifecycle; unrelated lazy feature loaders are not mounted PID2636 features."},
+        "protocol": {"class_chain": ["Sage", "Controller", "Protocol25", "rzDevice"],
+            "terminate_owner_module": 41863, "terminate_is_empty": True, "handle_before_unload_present": False,
+            "sage_set_device_mode_transmits": False, "sage_set_device_mode_result": "SUCCESS with requested mode/param",
+            "mode_wrapper_getter_is_real_protocol": True, "setter_result_is_device_confirmation": False},
+        "connection": {"product_id": 2636, "vendor_id": 5426, "claim_interface": 1,
+            "qualified_ble_transport": False, "declared_dongle_id": None,
+            "dongle_observation": "getDockExtendedFirmwareVersion status SUCCESS; exceptions retain false",
+            "report_id": 4, "inner_connect_attempts": 3, "outer_default_attempts": 5,
+            "outer_retry_delays_ms": [1000, 2000, 4000, 8000],
+            "current_device_replaced_before_retry_settles": True, "failed_connect_clears_published_device": False,
+            "setup_tests_current_object_not_connect_return": True, "generation_gate": False,
+            "physical_usb_add_subscribed_by_product_load": False},
+        "resume": {"events": ["screenunlocked", "systemresume", "apiElectron.resume"],
+            "power_checks_serialized_by_retained_promise": True, "queued_checks_cancelled_on_unsubscribe": False,
+            "no_device_or_has_battery_false_skips": True, "unchanged_power_skips_wireless_event": True,
+            "power_getter": "Protocol25 constructor getPowerOnStatusCommon -> getEdition status SUCCESS",
+            "connect_event_guard_released_by_mode_promise_finally": True, "mode_promise_awaited_by_event": False,
+            "connected_actions": ["mode wrapper", "battery observation", "firmware refresh", "brightness event replay"],
+            "missing_serial_calls_setup_ready": True, "setup_ready_guard_reset_by_cleanup": False,
+            "disconnect_action": "stopRunningTurbosAndMacros and source power-state notification",
+            "api_resume_separately_calls_mode_wrapper": True,
+            "reload": "setupOnDeviceReady(true) calls window.location.reload; soft-reload flag skips cleanup close only"},
+        "release": {"generic_empty_iteration_is_not_io_drain": True,
+            "inherited_terminate_closes_hid": False, "feature_or_task_global_cancellation": False,
+            "old_promise_or_callback_generation_rejection": False, "shared_native_release_reused": True,
+            "whole_callback_drain_proven": False}, "target_execution": False}
+
+
+def collect_gamepad_2636_shutdown_reconnect_chain(audit):
+    result = _gamepad_2636_shutdown_reconnect_sources(audit)
+    result["semantics"] = _gamepad_2636_shutdown_reconnect_contract(audit.parser,
+        {role: audit.owners[key] for role, key in result["roles"].items()})
+    result.update(kind="current_gamepad_2636_shutdown_reconnect_chain", product_id=2636,
+        resumes_upstream_pointer="/gamepad_2636_detection_native_chain/remaining_chains/0",
+        source_slice_complete=True, selected_static_semantics_reviewed=True, source_chain_complete=False,
+        whole_product_complete=False, target_execution=False, real_device_operations=False,
+        product_code_modified=False, new_native_captures=0, new_analysis_sessions=0, temporary_resources_created=[],
+        rust_independent_implementation="unverified", ui_backend_wiring="unverified", actual_dll_comparison="unverified",
+        runtime_acceptance="unverified", remaining_chains=[
+            "Current selected PID2636 generic feature list is empty and inherited terminate is a no-op; do not invent feature shutdown from unrelated bundled loaders. Any newly evidenced external injection must be reviewed at its actual producer.",
+            "Existing profile/firmware/battery/brightness/mapping action semantics and shared native removal remain separate referenced chains; their complete product/transport coverage is not widened by this lifecycle review.",
+            "Independent Rust lifecycle, actual UI/backend wiring and controlled DLL/device error/remove/reconnect/cancel/restore/release comparison remain unverified. Source absence of stale-generation checks is not a proven safe callback drain."])
+    return result
+
+
+def audit_gamepad_2636_shutdown_reconnect_chain(args):
+    import host
+    if (args.family != "gamepad" or args.function != "mw"
+            or (args.product or [2636]) != [2636] or getattr(args, "prepare", False)):
+        raise ValueError("gamepad-2636-shutdown-reconnect-chain requires PID2636 middleware without preparation")
+    audit = host.HostLocalAudit()
+    report = {"schema_version": 1, "query": "gamepad-2636-shutdown-reconnect-chain", "failures": [],
+        "bounded_observation_complete": False, "source_chain_complete": False, "target_execution": False}
+    try:
+        for path in ("tools/families.py", "tools/host.py", "tools/frontend.py", "tools/evidence.py"):
+            audit.artifact(a.ROOT / path)
+        report.update(collect_gamepad_2636_shutdown_reconnect_chain(audit))
+    except (OSError, ValueError, KeyError, TypeError, IndexError, StopIteration) as error:
+        report["failures"].append(type(error).__name__ + ": " + str(error))
+    changed = audit.final_snapshot() + host._keypad_temporary_keymap_dependency_changes(report.get("upstream_sections", []))
+    report["failures"].extend("Gamepad2636 shutdown/reconnect input changed: " + path for path in changed)
+    report.update(recorded_at_utc=a.stamp(), changed_during_query=changed, snapshot_stable=not changed,
+        bounded_observation_complete=not report["failures"], complete_originals=list(audit.sources.values()),
+        complete_source_owners=list(audit.owners.values()), verified_artifacts=list(audit.artifacts.values()))
+    destination = a.ROOT / ".analysis/results/frontend/gamepad-mw-audit.json"
+    host.publish_host_static_query(report, destination, a, "gamepad_2636_shutdown_reconnect_chain")
+    print(json.dumps({"receipt": a.rel(destination), "query": report["query"], "failures": report["failures"],
+        "bounded_observation_complete": report["bounded_observation_complete"], "target_execution": False}), flush=True)
+    if report["failures"]:
+        raise ValueError("Gamepad2636 shutdown/reconnect observation remains unresolved")
     return report
 
 
@@ -45228,6 +46607,411 @@ def collect_system_737_xtu_service_info_chain(audit):
             "IXtuMonitoring.Connect and metadata reads, IXtuTuning.Connect/DiscardChanges/control reads, IXtuEvents.Connect/GetNextEvent, SDK metadata/profile storage/hooks and other product branches remain their independent existing owners.",
             "After full semantic reverse work, implement independent Rust and real UI/backend consumers; actual DLL/service/device comparison and runtime acceptance remain unverified."])
     return result
+
+
+_SYSTEM_737_XTU_IPF_UPSTREAM_SHA = "3c924fd25292f7c4b93f800ef6a870ff02d0788417ecd140da7188654b1e3e60"
+_SYSTEM_737_XTU_IPF_FINDING_SHA = "5c6f0a7643e735d722c48bcb38899fd0b69482c28c2cce517c96302e955ecde5"
+_SYSTEM_737_XTU_IPF_REVIEWED_SHA = "3534f13e13a5bf841bcaf692a0e18bd6fb092f1913385ec3ef30407cbcad5a5f"
+
+
+def _system_737_xtu_ipf_dependencies(audit):
+    import host
+    receipt = ".analysis/results/frontend/system-mw-audit.json"
+    previous = json.loads((a.ROOT / receipt).read_bytes())["overclock_service_info_chain"]
+    if (previous.get("failures") or not previous.get("bounded_observation_complete")
+            or not previous.get("snapshot_stable") or previous.get("product_id") != 737
+            or _system_737_performance_digest(previous) != _SYSTEM_737_XTU_IPF_UPSTREAM_SHA
+            or _system_737_performance_digest(previous["remaining_chains"][1]) != _SYSTEM_737_XTU_IPF_FINDING_SHA):
+        raise ValueError("System737 IPF exact service section/finding requires review")
+    result = _system_737_xtu_service_info_dependencies(audit)
+    if (result["source_sets"] != previous["source_sets"] or result["originals"] != previous["originals"]
+            or result["service_package"] != previous["service_package"]):
+        raise ValueError("System737 IPF current service inputs differ")
+    index = json.loads(audit.artifact(a.ROOT / ".analysis/inputs.json"))
+    cab = "ed808026fbd735bbf9838a1f94c5887db415171ff3501662cb1fafdc0bea92c4"
+    for role, name, size, sha in (
+            ("ipf_client", "Intel.Ipf.ExtensibleFramework.dll", 32624, "40867ef25eb342d88004fe9c2e596425990382973ecd9a88300aa7d4910e3ec4"),
+            ("native_utilities", "NativeServiceUtilities.dll", 35696, "1e846cd2439b3fca5c3f85bad48b3ed06b0fd1eee0f86a6cb668f230d8a99df6")):
+        path = f".analysis/inputs/official-native-current/extracted/{cab}/{name}.2CFDD368_C58E_46D4_AA4B_7860250A7CA9"
+        original, = [row for row in index["inputs"] if row["path"] == path]
+        if ((original["bytes"], original["sha256"]) != (size, sha)
+                or original.get("container_sha256") != cab or not original.get("container_extraction_complete")
+                or not original.get("verified_against_manifest")):
+            raise ValueError("System737 IPF package member differs: " + role)
+        extraction = original["extraction_receipt"]
+        extracted = json.loads(audit.artifact(a.ROOT / extraction["path"], extraction))
+        if (not extracted.get("extracted") or not extracted.get("input_bytes_unchanged")
+                or extracted.get("extraction_exit_code") != 0
+                or not any(all(row.get(key) == original[key] for key in ("path", "bytes", "sha256")) for row in extracted["files"])):
+            raise ValueError("System737 IPF package extraction differs: " + role)
+        identity = {key: original[key] for key in ("path", "bytes", "sha256")}
+        pe = host.inspect_pe(audit.read(identity))
+        result["originals"][role] = identity
+        result.setdefault("member_versions", {})[role] = sorted({row["tree"].get("file_version") for row in pe["version_resources"]})
+    client_alias, = [row for row in index["inputs"] if row["path"] ==
+        ".analysis/inputs/official-native-current/extracted/5040beb43ce5e2767a6d37bb92cde4146ee0c4592e393296ef50be8b11b9be69/Intel.Ipf.ExtensibleFramework.dll"]
+    if (client_alias.get("container_sha256") != "5040beb43ce5e2767a6d37bb92cde4146ee0c4592e393296ef50be8b11b9be69"
+            or not client_alias.get("container_extraction_complete") or not client_alias.get("verified_against_manifest")
+            or audit.read(client_alias) != audit.read(result["originals"]["ipf_client"])):
+        raise ValueError("System737 IPF captured SDK alias differs from service bytes")
+    extracted = json.loads(audit.artifact(a.ROOT / client_alias["extraction_receipt"]["path"], client_alias["extraction_receipt"]))
+    if (not extracted.get("extracted") or not extracted.get("input_bytes_unchanged") or extracted.get("extraction_exit_code") != 0
+            or not any(all(row.get(key) == client_alias[key] for key in ("path", "bytes", "sha256")) for row in extracted["files"])):
+        raise ValueError("System737 IPF captured SDK alias extraction differs")
+    result["originals"]["ipf_client_service_alias"] = result["originals"]["ipf_client"]
+    result["originals"]["ipf_client"] = {key: client_alias[key] for key in ("path", "bytes", "sha256")}
+    result["upstream_sections"] = [
+        {"receipt": receipt, "pointer": "/overclock_service_info_chain", "canonical_sha256": _SYSTEM_737_XTU_IPF_UPSTREAM_SHA},
+        {"receipt": receipt, "pointer": "/overclock_service_info_chain/remaining_chains/1", "canonical_sha256": _SYSTEM_737_XTU_IPF_FINDING_SHA}]
+    return result
+
+
+def _system_737_xtu_ipf_managed(audit, originals):
+    specs = {
+        "server": ({"IpfRegistryInjection": (".ctor", "get_Status", "set_Status", "OnServicePreShutDown", "ActivateXTURoleInIPF", "CheckIfIpfIsInstalled"),
+                    "CoreServer": ("Init", "Stop")},
+                   ("IronCity/Core/Server/IpfRegistryInjection.cs", "IronCity/Core/Server/CoreServer.cs")),
+        "hardware_services": ({"IpfService": (".ctor", ".cctor", "get_MinSupportedIpfVersion", "set_MinSupportedIpfVersion", "get_InstalledIpfVersion", "set_InstalledIpfVersion", "get_ProviderVersion", "set_ProviderVersion", "get_CoreCount", "set_CoreCount", "get_IpfStatus", "set_IpfStatus", "LogLastIpfErrors", "IsIpfVersionValid", "GetStringValue", "GetUintValue", "GetIpfValue", "GetIpfValueWithOverride"),
+                               "ServicesUnityInitializer": ("Initialize",),
+                               "TimeoutController": (".cctor", "get_DoRetries", "EnableRetries", "DisableRetries")},
+                              ("IronCity/HardwareServices/IpfService.cs", "IronCity/HardwareServices/ServicesUnityInitializer.cs", "IronCity/HardwareServices/TimeoutController.cs")),
+        "common": ({"RegistryAbstraction": ("get_ShortIpfTimeout", "get_IpfNullOverride", "ReadRegistryKey"),
+                    "ServiceStateNotification": ("add_OnServicePreShutDown", "remove_OnServicePreShutDown", "NotifyServiceShutDown", "Dispose")},
+                   ("IronCity/Common/RegistryAbstraction.cs", "IronCity/Common/ServiceStateNotification.cs")),
+        "ipf_client": ({"ClientApiJson": (".ctor", ".cctor", "CheckError", "ThrowIfDisposed", "StringToJToken", "StringToJObject", "GetProperties", "GetValue", "ExecuteCommand", "Dispose", "Finalize"),
+                        "IpfEfHandle": (".ctor", "get_IsInvalid", "ReleaseHandle"),
+                        "ExtensibleFrameworkProxy": (".ctor", "IpfCreate", "IpfGetProperties", "IpfGetValue", "IpfExecuteCommand", "IpfGetLastErrorMessage", "IpfGetLastExceptionType"),
+                        "Utf8StringMarshaler": (".ctor", "GetInstance", "MarshalNativeToManaged", "MarshalManagedToNative", "CleanUpNativeData", "CleanUpManagedData", "GetNativeDataSize"),
+                        "UnmanagedStringUtilities": (".cctor", "PtrToStringUtf8", "GetUnmanagedStrLength"),
+                        "ExceptionMap": (".cctor",),
+                        "<>c": (".cctor", ".ctor", "<.cctor>b__29_0", *tuple("<.cctor>b__10_" + str(i) for i in range(9))),
+                        "<>c__DisplayClass15_0": (".ctor", "<GetProperties>b__0"),
+                        "<>c__DisplayClass16_0": (".ctor", "<GetValue>b__0"),
+                        "<>c__DisplayClass18_0": (".ctor", "<ExecuteCommand>b__0")},
+                       tuple("Ipf/" + name + ".cs" for name in ("ClientApiJson", "IpfEfHandle", "ExtensibleFrameworkProxy", "ExtensibleFrameworkWrapper", "Utf8StringMarshaler", "UnmanagedStringUtilities", "ExceptionMap", "IpfError", "ResultHandler")))}
+    return {role: _system_737_overclock_sdk_managed(audit, originals[role], methods, sources)
+            for role, (methods, sources) in specs.items()}
+
+
+def _system_737_xtu_ipf_native(audit, original):
+    native = verify_native_functions(original, {0x2690: "set_app_directory", 0x2460: "restart_interface_enumeration", 0x23a0: "restart_device"},
+                                     exports={"IpfCore_SetAppDir": 0x2690})
+    if native["failures"] or any(row["failures"] or not row["assembly_captured"] or not row["pseudocode_captured"] for row in native["complete_selected_functions"]):
+        raise ValueError("System737 IPF native activation capture is incomplete")
+    audit.artifact(a.ROOT / native["capture_receipt"]["path"], native["capture_receipt"])
+    for row in native["complete_selected_functions"]:
+        audit.artifact(a.ROOT / row["artifact"]["path"], row["artifact"])
+    base, read, _ = audio_native_evidence_pe(audit.read(original))
+    guid = read(0x4508, 16)
+    if base != 0x180000000 or guid.hex() != "8e0927ee221b2a4789d85ccce16b1356":
+        raise ValueError("System737 IPF native interface identity differs")
+    native["interface_guid"] = {"rva": "0x4508", "raw_hex": guid.hex(), "value": "ee27098e-1b22-472a-89d8-5ccce16b1356"}
+    return native
+
+
+def _system_737_xtu_ipf_contract(managed, native):
+    selected = {"managed": managed, "native": [{"rva": row["capture"]["rva"], "pseudocode": row["capture"]["pseudocode"],
+        "input_chunks_verified": row["input_chunks_verified"]} for row in native["complete_selected_functions"]], "interface_guid": native["interface_guid"]}
+    actual = _system_737_performance_digest(selected)
+    if actual != _SYSTEM_737_XTU_IPF_REVIEWED_SHA:
+        raise ValueError("System737 IPF complete semantic review differs: " + actual)
+    return {"reviewed_selection_sha256": actual,
+        "activation": {"entry": "CoreServer.Init -> IIpfRegistryInjection.ActivateXTURoleInIPF(30,1000) -> UnityInitialization -> ServicesUnityInitializer -> IpfService",
+            "export": "NativeServiceUtilities.IpfCore_SetAppDir", "key": "XtuDir", "maximum_attempts": 31, "retry_interval_ms": 1000,
+            "fast_check_before_attempt": 4, "installed_probe": "SELECT * FROM Win32_SystemDriver WHERE Name = 'ipf_cpu'",
+            "registry_setting": "HKCU SOFTWARE\\Intel\\XTU ShortIpfTimeout defaults to1; uint parse failure also enables fast timeout. Missing WMI driver after three failed calls terminates activation; WMI exception returns true, preserving retries.",
+            "cancellation": "PreShutDown sets a plain retained bool checked only at the next loop condition; sleep/native invocation is not interrupted, and no unsubscription/reset is present in IpfRegistryInjection. Exceptions in native call retain prior status and consume an attempt.",
+            "status": {"native0": 1, "native34": 2, "other_or_stopped": 3}},
+        "native_write": {"abi": "Current x64 two ANSI string parameters; selected managed P/Invoke omits CharSet and targets non-Ex export. No Ex_Cancel call occurs in this chain.",
+            "selection": "Enumerates present PCI device IDs with flags0x101 and the exact IPF interface GUID, chooses first matching interface size>1, locates device, opens its registry key with0x2001b, and accesses IPF/XtuDir.",
+            "no_match_edge": "After a nonempty list, enumeration retains the last CONFIGRET. A successful interface-size call with size<=1 at end can continue to CM_Open_DevNode_Key with initial devnode0; it is not normalized to a clean not-found error.",
+            "write": "RegGetValueA uses REG_SZ and260-byte buffer. Same case-insensitive string returns0 without restart; missing/different value writes REG_SZ with strnlen(path,260)+1 bytes. A null value deletes an existing key without restart, or returns0 when lookup failed. Null key returns3.",
+            "restart": "After successful write, state starts {19,0}; helper return is ignored. Enumerates interface/device pairs, requests DIF_PROPERTYCHANGE18 with DICS_PROPCHANGE3, config-specific scope2, profile0, and stops at first successful restart. Callback marks attempted and sets0/32/34; missing attempt or any error is collapsed to34.",
+            "failure_cleanup": "Registry write is not rolled back on restart failure. Registry key and ID-list heap allocation close/free on normal error paths; restart detail allocations and HDEVINFO close independently. SetupDiGetClassDevs failure returns55, detail failure37, allocation failure2; outer export consumes the state pair rather than helper return."},
+        "client_initialization": {"provider_config": {"schema_type": "provider_config", "schema_revision": 1, "body": {"local_providers": ["XtuProvider.dll"]}},
+            "minimum_version": "2.2.10200.11", "property_path": "body.product_version",
+            "read_order": ["ClientApiJson(config)", "GetProperties(empty)", "Platform.SOC.Overclocking.Version", "Platform.SOC.Info.CoreCount", "PerCoreProviderFactory"],
+            "status": {"created": 0, "ipf_exception_or_activation_failure": 1, "other_exception": 2, "invalid_version": 3, "restart_required": 4},
+            "version": "System.Version comparison requires installed>=minimum; missing body/product_version, malformed version or GetProperties failure returns false. Created client is retained even when version or later query fails. Success status is assigned before qualification; status0 alone is not a fresh hardware confirmation.",
+            "value_read": "GetIpfValue makes first call then up to99 retries after500ms, gated by per-call flag and TimeoutController.DoRetries. Exceptions become null and retry. Final null sets status2 then throws DriverAccessException; GetStringValue/GetUintValue do not reach their default return after that failure. uint.Parse errors propagate. IpfNullOverride is read but GetIpfValueWithOverride directly calls GetValue without applying it.",
+            "maximum_value_attempts": 100, "value_retry_interval_ms": 500,
+            "error_details": "Caught initialization errors request Framework.GetLastError with GetLastError=10 when client exists; diagnostic retrieval failures are caught separately."},
+        "client_boundary": {"calls": ["ClientApi.IpfCreate", "IpfGetPropertiesWithCallback", "IpfGetValueWithCallback", "IpfExecuteCommandWithCallback", "IpfDestroy"],
+            "encoding": "Native ClientApi imports and result delegate use Cdecl with custom UTF8 marshaler; allocated input strings free through CleanUpNativeData. Invalid native UTF8 or null becomes null from marshaler. Selected managed wrappers check error before parsing callback output; empty/whitespace/exact null yields null, malformed JSON throws.",
+            "errors": "Nonzero return reads bounded UTF8 error text2048/type256 and maps nine exception names; extraction failure throws unknown IpfException. Unknown type retains original result. Callback output is a local captured string; native invocation timing/lifetime remains a native ClientApi dependency.",
+            "release": "ClientApiJson.Dispose(true) disposes its SafeHandle before marking disposed; finalizer Dispose(false) only marks disposed. SafeHandle owns IpfDestroy then clears pointer and returns true. IpfService has no IDisposable/explicit client close in this selected owner; no deterministic stop/callback drain can be inferred from GC. CoreServer shutdown notification occurs after host aborts; earlier failure can prevent the notification.",
+            "native_provider_completed": False},
+        "source_slice_complete": True, "whole_product_complete": False, "target_execution": False}
+
+
+def collect_system_737_xtu_ipf_lifecycle_chain(audit):
+    result = _system_737_xtu_ipf_dependencies(audit)
+    managed = _system_737_xtu_ipf_managed(audit, result["originals"])
+    native = _system_737_xtu_ipf_native(audit, result["originals"]["native_utilities"])
+    result["semantics"] = _system_737_xtu_ipf_contract(managed, native)
+    result["managed"] = managed
+    result["native"] = _system_737_overclock_service_compact_native({"activation": native})["activation"]
+    result.update(kind="current_system_737_xtu_ipf_lifecycle_chain", product_id=737, failures=[],
+        source_slice_complete=True, source_chain_complete=False, whole_product_complete=False,
+        target_execution=False, real_device_operations=False, product_code_modified=False,
+        rust_independent_implementation="not_reviewed", ui_backend_wiring="not_reviewed", official_dll_comparison="not_executed", runtime_acceptance="unverified",
+        new_native_captures=0, new_managed_captures=0, new_analysis_sessions=0, temporary_files_created=0,
+        cleanup={"new_temporary_files": [], "retained": "Existing official inputs, package lineage and full native/managed captures remain formal dependencies; no temporary clone/database/extraction/log was created"},
+        remaining_chains=[
+            "Current candidate10.0.1.35 and actual IPF activation/read/error/managed release semantics are reviewed; exact installer/OS version selection and installed binding remain unobserved, not inferred from this package.",
+            "Native ClientApi IpfCreate/GetProperties/GetValue/ExecuteCommand callbacks, XtuProvider, mailbox/driver protocol and true hardware response remain independent source dependencies; selected managed wrappers do not establish their implementation or synchronous callback guarantee.",
+            "Other IPF writes/per-core/SPD/monitoring/tuning/event branches, whole-service cancellation/callback drain and other products retain existing independent owners.",
+            "After complete semantic reverse, independent Rust/UI/backend migration, pure/mock behavior and actual DLL/service/device comparison remain unverified."])
+    return result
+
+
+_SYSTEM_737_XTU_API_PARENT_SHA = "1ceb7192b299878c8868099ac17cf49ea8c785de0cdf1791ff073c7dcc37044b"
+_SYSTEM_737_XTU_API_FINDING_SHA = "5decec5c08667c4e5b16ff1d6f82dcab94c69ba948111f22128f73df708cbd33"
+_SYSTEM_737_XTU_API_REVIEWED_SHA = "56dc157d198dbf17136d999b92e829bf5c79f4aa1df0e3b5ab3f0d5ea8616aee"
+
+
+def _system_737_xtu_client_api_sources(audit):
+    import host
+    receipt = ".analysis/results/frontend/system-mw-audit.json"
+    document = json.loads((a.ROOT / receipt).read_bytes())
+    parent = document["overclock_ipf_lifecycle_chain"]
+    if (_system_737_performance_digest(parent) != _SYSTEM_737_XTU_API_PARENT_SHA
+            or _system_737_performance_digest(parent["remaining_chains"][1]) != _SYSTEM_737_XTU_API_FINDING_SHA
+            or parent.get("failures") or not parent.get("bounded_observation_complete") or not parent.get("snapshot_stable")):
+        raise ValueError("System737 ClientApi exact IPF section/finding requires review")
+    result = _system_737_xtu_ipf_dependencies(audit)
+    index = json.loads(audit.artifact(a.ROOT / ".analysis/inputs.json"))
+    sdk = "5040beb43ce5e2767a6d37bb92cde4146ee0c4592e393296ef50be8b11b9be69"
+    cab = "ed808026fbd735bbf9838a1f94c5887db415171ff3501662cb1fafdc0bea92c4"
+    suffix = ".2CFDD368_C58E_46D4_AA4B_7860250A7CA9"
+    originals = result["originals"]
+    for role, name, size, sha, container, ending in (
+            ("client_api", "ClientApi.dll", 276336, "974cdf786bc04bff4e4aa91d2ecab01692a41831a2355c9c02f438962c6af58c", sdk, ""),
+            ("client_api_service_alias", "ClientApi.dll", 276336, "974cdf786bc04bff4e4aa91d2ecab01692a41831a2355c9c02f438962c6af58c", cab, suffix),
+            ("hardware_interfaces", "HardwareServiceInterfaces.dll", 80240, "e12c2208275c16a41abd50a23b21f8cbac8984566b2642330190581f0f2dac9b", cab, suffix),
+            ("provider_candidate", "XtuProvider.dll", 855408, "af6c9017969482eb7909a96ceebb313d9b40f6c11fc2c07677ff56b2b6909d73", cab, suffix)):
+        path = f".analysis/inputs/official-native-current/extracted/{container}/{name}{ending}"
+        row, = [row for row in index["inputs"] if row["path"] == path]
+        if ((row["bytes"], row["sha256"]) != (size, sha) or row.get("container_sha256") != container
+                or not row.get("container_extraction_complete") or not row.get("verified_against_manifest")):
+            raise ValueError("System737 ClientApi current package member differs: " + role)
+        extraction = row["extraction_receipt"]
+        extracted = json.loads(audit.artifact(a.ROOT / extraction["path"], extraction))
+        if (not extracted.get("extracted") or not extracted.get("input_bytes_unchanged") or extracted.get("extraction_exit_code") != 0
+                or not any(all(item.get(key) == row[key] for key in ("path", "bytes", "sha256")) for item in extracted["files"])):
+            raise ValueError("System737 ClientApi package extraction differs: " + role)
+        originals[role] = {key: row[key] for key in ("path", "bytes", "sha256")}
+        pe = host.inspect_pe(audit.read(originals[role]))
+        versions = {(v["tree"].get("file_version"), v["tree"].get("product_version")) for v in pe["version_resources"]}
+        expected = ("2.2.10200.11", "0.0.0.0") if role.startswith("client_api") else ("10.0.1.35", "10.0.1.35")
+        if pe["architecture"] != "x64" or versions != {expected}:
+            raise ValueError("System737 ClientApi actual member version/architecture differs: " + role)
+        result.setdefault("native_member_versions", {})[role] = {"file_version": expected[0], "product_version": expected[1], "architecture": pe["architecture"]}
+    if audit.read(originals["client_api"]) != audit.read(originals["client_api_service_alias"]):
+        raise ValueError("System737 ClientApi SDK/service alias bytes differ")
+    info = document["overclock_service_info_chain"]
+    if _system_737_performance_digest(info) != _SYSTEM_737_XTU_IPF_UPSTREAM_SHA:
+        raise ValueError("System737 ClientApi compatibility consumer changed")
+    result["upstream_sections"] = [
+        {"receipt": receipt, "pointer": "/overclock_ipf_lifecycle_chain", "canonical_sha256": _SYSTEM_737_XTU_API_PARENT_SHA},
+        {"receipt": receipt, "pointer": "/overclock_ipf_lifecycle_chain/remaining_chains/1", "canonical_sha256": _SYSTEM_737_XTU_API_FINDING_SHA},
+        {"receipt": receipt, "pointer": "/overclock_service_info_chain", "canonical_sha256": _SYSTEM_737_XTU_IPF_UPSTREAM_SHA}]
+    result["reused_managed_boundaries"] = {"initialization": "/overclock_ipf_lifecycle_chain/semantics/client_initialization",
+        "managed_callback_and_release": "/overclock_ipf_lifecycle_chain/semantics/client_boundary",
+        "compatibility_consumer": "/overclock_service_info_chain/semantics/compatibility_producer"}
+    proxy_candidates = [{key: row[key] for key in ("path", "bytes", "sha256")} for row in index["inputs"]
+                        if "/clientapiproxy" in row["path"].lower()]
+    result["unacquired_proxy"] = {"expected_name": "ClientApiProxy.dll", "indexed_candidates": proxy_candidates,
+        "selection_status": "not_bound", "source_absence_claimed": False,
+        "required_source": "Actual SWD interface9dd57132-5929-476a-8ccb-9d42b1e4abed InstallDir/ClientApiProxy.dll and its matching IPF driver package. The original DLL does not contain an HTTP acquisition URL. Candidate acceptance requires original source/version/architecture and actual ClientApiR4 revision/build contract; an arbitrary same-named library is not a binding."}
+    manifest = json.loads(audit.read(result["service_package"]["manifest"]))
+    supporting = []
+    for name in ("Blade10ToolsSetup", "NormalDriver_PID02e1Drv"):
+        declaration, = [row for row in manifest["resourceManifest"]["resources"] if row["resourceName"] == name]
+        sha = declaration["sha256"].lower()
+        package, = [row for row in index["inputs"] if row["sha256"] == sha and "/blobs/" in row["path"]]
+        audit.read(package)
+        inspection_path = a.ROOT / ".analysis/results/native-packages" / sha / "inspection.json"
+        inspected = json.loads(audit.artifact(inspection_path))
+        if (not inspected.get("extracted") or not inspected.get("input_bytes_unchanged") or inspected.get("extraction_exit_code") != 0
+                or inspected["container"] != {key: package[key] for key in ("path", "bytes", "sha256")}):
+            raise ValueError("System737 ClientApi supporting package search is unverified")
+        matches = [row for row in inspected["files"] if "clientapiproxy" in row["path"].lower()]
+        supporting.append({"name": name, "declaration": declaration, "original": {key: package[key] for key in ("path", "bytes", "sha256")},
+            "inspection": identity(inspection_path), "direct_members": len(inspected["files"]), "proxy_name_matches": matches,
+            "scope": "Current declared package's complete direct extraction only;not proof that every external driver package is absent"})
+    result["unacquired_proxy"]["current_declared_package_search"] = supporting
+    return result
+
+
+def _system_737_xtu_client_api_managed(audit, originals):
+    specs = {
+        "hardware_services": ({"IpfService": ("GetMailboxValue", "LogOcmbReadResponse", "GetIntValue"),
+                               "OcMailboxService": (".ctor", "ReadMailbox", "ReadMailboxForCompletionCode", "SubmitNonAffinitizedReadMailboxCommand", "SubmitAffinitizedReadMailboxCommand", "Dispose")},
+                              ("IronCity/HardwareServices/IpfService.cs", "IronCity/HardwareServices/OcMailboxService.cs")),
+        "common": ({"WindowsMutex": (".cctor", "TakeMutex", "ReleaseMutex", "CloseMutex")}, ("IronCity/Common/WindowsMutex.cs",)),
+        "hardware_interfaces": ({}, ("IronCity/HardwareServices/DataCompletionCode.cs", "IronCity/HardwareServices/IpfOcMailboxResponse.cs")),
+        "access": ({"PlatformInformation": ("PopulatePlatformStatus",)}, ("IronCity/HardwareAccess/PlatformInformation.cs",))}
+    return {role: _system_737_overclock_sdk_managed(audit, originals[role], methods, sources)
+            for role, (methods, sources) in specs.items()}
+
+
+def _system_737_xtu_client_api_native(audit, original):
+    roles = {0x1b120: "create_export", 0x1b2a0: "destroy_export", 0x1c800: "properties_callback", 0x1d660: "value_callback",
+        0x1b8d0: "command_callback", 0x1bc60: "tls_error_message", 0x1bc80: "tls_exception_type", 0x24e60: "tls_format",
+        0x2fd0: "configured_constructor", 0x3040: "default_constructor", 0x31d0: "proxy_instance_constructor",
+        0x47e0: "client_deleting_destructor", 0x4250: "client_destructor", 0x4900: "loader_deleting_destructor",
+        0x4870: "base_loader_deleting_destructor", 0x3f00: "loader_destructor", 0x4e50: "loader_unload",
+        0x5bb0: "framework_path_and_revision", 0x4f80: "framework_interface_install_dir", 0x5580: "signed_proxy_load",
+        0x52f0: "properties_method", 0x5310: "properties_proxy_slot", 0x54c0: "value_method", 0x54e0: "value_proxy_slot",
+        0x4ea0: "command_method", 0x4ec0: "command_proxy_slot", 0x6030: "exception_translation"}
+    slots = tuple({"role": role, "vtable_rva": table, "slot_byte_offset": offset, "target_rva": target}
+        for role, table, offset, target in (("client_delete", 0x31218, 0, 0x47e0),
+            ("base_delete", 0x31268, 0, 0x4870), ("base_load", 0x31268, 8, 0x5580), ("base_unload", 0x31268, 16, 0x4e50),
+            ("loader_delete", 0x31288, 0, 0x4900), ("loader_load", 0x31288, 8, 0x5bb0), ("loader_unload", 0x31288, 16, 0x4e50)))
+    native = verify_native_functions(original, roles, slots, exports={"IpfCreate": 0x1b120, "IpfDestroy": 0x1b2a0,
+        "IpfGetPropertiesWithCallback": 0x1c800, "IpfGetValueWithCallback": 0x1d660, "IpfExecuteCommandWithCallback": 0x1b8d0,
+        "IpfGetLastErrorMessage": 0x1bc60, "IpfGetLastExceptionType": 0x1bc80})
+    if any(row["failures"] or not row["assembly_captured"] or not row["pseudocode_captured"] for row in native["complete_selected_functions"]):
+        raise ValueError("System737 ClientApi selected native capture is incomplete")
+    audit.artifact(a.ROOT / native["capture_receipt"]["path"], native["capture_receipt"])
+    for row in native["complete_selected_functions"]:
+        audit.artifact(a.ROOT / row["artifact"]["path"], row["artifact"])
+    _, read, _ = audio_native_evidence_pe(audit.read(original))
+    guid = read(0x3f000, 16)
+    if guid.hex() != "3271d59d29596a478ccb9d42b1e4abed":
+        raise ValueError("System737 ClientApi framework interface GUID differs")
+    native["framework_interface_guid"] = {"rva": "0x3f000", "raw_hex": guid.hex(), "value": "9dd57132-5929-476a-8ccb-9d42b1e4abed"}
+    native["argument_sites"] = _system_737_xtu_client_api_argument_sites(native)
+    return native
+
+
+def _system_737_xtu_client_api_argument_sites(native):
+    instructions = {int(row["rva"], 16): row for function in native["complete_selected_functions"] for row in function["capture"]["assembly"]}
+    expected = ((0x1c915, "lea     r8, [rsp+0D8h+var_98]"), (0x1d775, "lea     r8, [rsp+0D8h+var_98]"),
+        (0x1baa7, "lea     r9, [rsp+118h+var_E0]"), (0x1baac, "lea     r8, [rsp+118h+var_C0]"),
+        (0x535f, "mov     r8, rsi"), (0x5367, "call    qword ptr [rax+8]"),
+        (0x5519, "call    qword ptr [rax+10h]"), (0x4f14, "mov     r9, r14"), (0x4f17, "mov     r8, rsi"),
+        (0x4f1f, "call    qword ptr [rax+28h]"),
+        (0x1ca50, "lea     rcx, [rsp+0D8h+var_48]"), (0x1ca61, "cmovnb  rcx, [rsp+0D8h+var_48]"), (0x1ca6a, "call    rsi"),
+        (0x1d8b0, "lea     rcx, [rsp+0D8h+var_48]"), (0x1d8c1, "cmovnb  rcx, [rsp+0D8h+var_48]"), (0x1d8ca, "call    rsi"),
+        (0x1bbc7, "lea     rcx, [rsp+118h+var_68]"), (0x1bbd8, "cmovnb  rcx, [rsp+118h+var_68]"), (0x1bbe1, "call    r15"),
+        (0x1ca6e, "xor     ecx, ecx"), (0x1d8ce, "xor     ecx, ecx"), (0x1bbe6, "xor     ecx, ecx"))
+    result = []
+    for rva, text in expected:
+        if rva not in instructions or instructions[rva]["text"] != text:
+            raise ValueError("System737 ClientApi original argument/callback site differs: " + hex(rva))
+        result.append({key: instructions[rva][key] for key in ("rva", "bytes", "text")})
+    return result
+
+
+def _system_737_xtu_client_api_contract(managed, native):
+    arguments = _system_737_xtu_client_api_argument_sites(native)
+    selected = {"managed": managed, "native": [{"rva": row["capture"]["rva"], "pseudocode": row["capture"]["pseudocode"],
+        "input_chunks_verified": row["input_chunks_verified"]} for row in native["complete_selected_functions"]],
+        "argument_sites": arguments, "slots": native["verified_indirect_slots"], "framework_interface_guid": native["framework_interface_guid"]}
+    digest = _system_737_performance_digest(selected)
+    if digest != _SYSTEM_737_XTU_API_REVIEWED_SHA:
+        raise ValueError("System737 ClientApi complete semantic review differs: " + digest)
+    return {"reviewed_selection_sha256": digest,
+        "create_and_selection": {"default_config": "{}", "object_bytes": 16, "loader_bytes": 80, "proxy_name": "ClientApiProxy.dll",
+            "directory": "Loader enumerates SWD device IDs with0x101, interface GUID9dd57132-5929-476a-8ccb-9d42b1e4abed with flag1, opens first qualifying interface registry key and reads InstallDir into260 bytes. Query type is not checked. Missing/empty path throws; buffers/keys are freed/closed.",
+            "acceptance": "Append actual proxy filename to interface InstallDir; WinVerifyTrust verify and close precede LoadLibraryExA(...,0x1000). Resolve ClientApiR4Create/Destroy/Revision and GetDllBuildType; build bit0x200 must be clear, revision must be3..4. Trust verification does not hardcode a publisher identity.",
+            "create": "IpfCreate rejects null out-pointer with4; otherwise clears*out first. Null/empty config uses default{}, nonempty is passed unchanged through owned std::string to R4Create. Null created proxy triggers FrameworkException. Retained allocation-null branches can return0 with null*out; allocation exceptions follow catch mapping,so return0 alone is not a nonnull instance proof.",
+            "failure_cleanup": "Load symbol/build failures unload and clear module/create/destroy/revision fields. Revision rejection is returned to instance constructor,which deletes loader. Normal client delete invokes proxy Destroy before loader destruction/FreeLibrary and frees owned instance wrapper; no join/cancel or callback registration is introduced."},
+        "native_reads": {"proxy_slots": {"GetProperties": 8, "GetValue": 16, "ExecuteCommand": 40},
+            "arguments": "x64 methods forward this,out-std::string,path via RCX/RDX/R8; command also forwards R9. Several decompiled signatures omit forwarded parameters; exact assembly sites,not displayed argument counts,are authoritative.",
+            "callback": "Three C exports synchronously invoke result callback exactly once after normal backend return,passing pointer to their owned string (SSO or heap),then destroy storage. Caught backend failure invokes callback(nullptr) once. Validation failure returns4 without callback. No pointer retained after return or asynchronous queue occurs in these selected wrappers;unavailable proxy internals remain separate.",
+            "callback_exception": "Success and failure callback calls lie outside the backend try/catch. No general guarantee converts callback exceptions into error returns;caller must respect verified ABI and lifetime.",
+            "validation": "Properties/value accept null config/path as empty. Command scans command string before its protected backend block;empty string returns4 but null command is not safely checked before dereference. Valid managed caller serializes a nonnull JObject. Missing handle/callback returns4.",
+            "error_codes": {"invalid_argument": 4, "create_ipf_exception": 5, "properties_ipf_exception": 6, "value_ipf_exception": 13, "command_ipf_exception": 9, "std_exception": 1, "unknown_exception": 2},
+            "translation": "Backend exceptions are rethrown through6030 preserving nine IPF types;JSON library exception becomes Ipf::JsonException(code600),std types remain std,and unknown becomes runtime_error. Temporary default{} return strings are overwritten by real result;catch translator is noreturn,not a successful fallback."},
+        "tls_errors": {"message_offset": 272, "message_capacity": 2048, "type_offset": 16, "type_capacity": 256,
+            "behavior": "Caught failures format what()/RTTI type into current thread TLS. Invalid-argument paths update only message,not type;successful calls do not clear prior errors. Getter pointers borrow the current thread storage and are not freed. The variadic formatter uses full pointer arguments;decompiler char annotations on%s are not truncation semantics."},
+        "mailbox_read": {"actual_consumer": "PlatformInformation.PopulatePlatformStatus: first ReadMailboxForCompletionCode(1,0,0);completion5 selects OC locked;then conditional scalar GetIntValue paths IAOverclockingStatus/UndervoltProtectionEnabled and ReadMailbox(1,0,0)/ReadMailbox(5,0,0). Reuse existing compatibility flag consumers.",
+            "request": {"path": "Platform.SOC.Overclocking", "MailboxAction": {"version": 1, "cmd": "actual1_or5", "param1": 0, "param2": 0, "ocmb_affinity_data": [{"group": 0, "affinity_mask": 0, "data": 0}]}},
+            "locking": "SubmitAffinitizedRead calls WindowsMutex.TakeMutex(Global\\Access_Intel_OC_Mailbox) but discards its bool. Take caches a raw named handle in an unsynchronized dictionary and waits100ms,only WAIT_OBJECT_0 passes. Failed/abandoned waits do not stop the mailbox call. finally releases;Dispose only releases,not CloseMutex;no successful ownership/drain guarantee follows.",
+            "retry": "GetMailboxValue allocates Response[CoreCount] and fills request before try. Null/missing/false success can retry up to100 calls with500ms sleeps and global DoRetries;native throw or malformed bool exits through outer catch without repeated attempts. return_code is read as string but ignored.",
+            "response": "Sets IsSuccessful before parsing response array;parses uint data/completion_code into value-type DataCompletionCode,up to min(responseCount,CoreCount). Catch logs and returns retained struct without resetting success or prior data. Missing/invalid/short response can leave true plus zero-initialized/unfilled entries. Nonaffinity consumer checks success then indexes[0],logs nonzero completion but returns it/data;CoreCount0 can throw. No device confirmation is inferred from these initialized zeroes.",
+            "release": "This is a read chain with no device restore write. Managed wrappers continue parent CheckError/JSON parsing and retry semantics. Shared request mutation and native calls have no per-request cancellation;full native proxy/provider operations remain unacquired."},
+        "source_slice_complete": True, "whole_product_complete": False, "native_proxy_semantics_complete": False, "target_execution": False}
+
+
+def collect_system_737_xtu_client_api_chain(audit):
+    result = _system_737_xtu_client_api_sources(audit)
+    managed = _system_737_xtu_client_api_managed(audit, result["originals"])
+    native = _system_737_xtu_client_api_native(audit, result["originals"]["client_api"])
+    result["managed"] = managed
+    result["semantics"] = _system_737_xtu_client_api_contract(managed, native)
+    result["native"] = _system_737_overclock_service_compact_native({"api": native})["api"]
+    result.update(kind="current_system_737_xtu_client_api_chain", product_id=737, failures=[], source_slice_complete=True,
+        source_chain_complete=False, whole_product_complete=False, target_execution=False, real_device_operations=False,
+        product_code_modified=False, new_native_captures=0, new_managed_captures=0, new_analysis_sessions=0, temporary_resources_created=[],
+        rust_independent_implementation="not_reviewed", ui_backend_wiring="not_reviewed", official_dll_comparison="not_executed", runtime_acceptance="unverified",
+        cleanup={"created": [], "retained": "Current official source/captures and missing proxy dependency remain formal inputs;no temporary session or extraction created"},
+        remaining_chains=[
+            {"entry": "IPF SWD interface InstallDir/ClientApiProxy.dll -> ClientApiR4Create -> object slots8/16/40",
+             "required": "Acquire exact official IPF proxy and its package/dependencies;verify revision3..4,release build and actual source/installed selection,then resolve provider dispatch and true properties/value/mailbox results. Current input index has no bound proxy;this is missing evidence,not proof the functionality is absent."},
+            "Actual XtuProvider mailbox/driver completion and all applicable version/hardware branches remain required after binding the proxy;candidate provider bytes do not prove selected live dispatch.",
+            "Other IPF operations,whole-service cancellation/reentrancy/unload behavior and actual installed selection remain separate;after full reverse,independent Rust/UI/backend and actual DLL/service/device comparisons are still required."])
+    return result
+
+
+def audit_system_737_xtu_client_api_chain(args):
+    import host
+    if (args.family != "system" or args.function != "mw" or (args.product or [737]) != [737] or getattr(args, "prepare", False)):
+        raise ValueError("system-737-xtu-client-api-chain requires system/mw PID737 without preparation")
+    audit = host.HostLocalAudit()
+    report = {"schema_version": 1, "query": "system-737-xtu-client-api-chain", "failures": [], "bounded_observation_complete": False,
+        "source_chain_complete": False, "whole_product_complete": False, "target_execution": False, "real_device_operations": False,
+        "official_dll_comparison": "not_executed", "runtime_acceptance": "unverified"}
+    try:
+        for name in ("tools/families.py", "tools/host.py", "tools/frontend.py", "tools/evidence.py"):
+            audit.artifact(a.ROOT / name)
+        report.update(collect_system_737_xtu_client_api_chain(audit))
+    except (OSError, ValueError, KeyError, IndexError, TypeError, StopIteration) as error:
+        report["failures"].append(type(error).__name__ + ": " + str(error))
+    changed = audit.final_snapshot() + host._otfm_macro_encoding_dependency_changes(report.get("upstream_sections", []))
+    report["failures"].extend("System737 ClientApi changed input: " + name for name in changed)
+    report.update(recorded_at_utc=a.stamp(), changed_during_query=changed, snapshot_stable=not changed,
+        bounded_observation_complete=not report["failures"], complete_originals=list(audit.sources.values()),
+        complete_source_owners=list(audit.owners.values()), verified_artifacts=list(audit.artifacts.values()))
+    destination = a.ROOT / ".analysis/results/frontend/system-mw-audit.json"
+    host.publish_host_static_query(report, destination, a, "overclock_client_api_chain")
+    if report["failures"]:
+        raise ValueError("System737 ClientApi chain remains unresolved: " + "; ".join(report["failures"]))
+    print("System737 ClientApi chain: " + a.rel(destination))
+    return report
+
+
+def audit_system_737_xtu_ipf_lifecycle_chain(args):
+    import host
+    if (args.family != "system" or args.function != "mw" or getattr(args, "prepare", False)
+            or sorted(set(args.product or [737])) != [737]):
+        raise ValueError("system-737-xtu-ipf-lifecycle-chain requires PID737 system middleware without preparation")
+    audit = host.HostLocalAudit()
+    report = {"schema_version": 1, "recorded_at_utc": a.stamp(), "parser": audit.parser_versions,
+        "kind": "current_system_737_xtu_ipf_lifecycle_chain", "product_id": 737, "failures": [],
+        "bounded_observation_complete": False, "source_chain_complete": False, "whole_product_complete": False,
+        "target_execution": False, "real_device_operations": False, "official_dll_comparison": "not_executed", "runtime_acceptance": "unverified"}
+    try:
+        for name in ("tools/families.py", "tools/host.py", "tools/frontend.py"):
+            audit.artifact(a.ROOT / name)
+        report.update(collect_system_737_xtu_ipf_lifecycle_chain(audit))
+        report["bounded_observation_complete"] = not report["failures"]
+    except (OSError, ValueError, KeyError, IndexError, TypeError, StopIteration) as error:
+        report["failures"].append(type(error).__name__ + ": " + str(error))
+    changed = audit.final_snapshot() + _system_737_xtu_service_info_upstream_changes(report.get("upstream_sections", []))
+    if changed:
+        report["failures"].extend("System737 IPF source changed during query: " + name for name in changed)
+        report["bounded_observation_complete"] = False
+    report.update(changed_during_query=changed, snapshot_stable=not changed, complete_originals=list(audit.sources.values()),
+                  complete_source_owners=list(audit.owners.values()), verified_artifacts=list(audit.artifacts.values()))
+    destination = a.ROOT / ".analysis/results/frontend/system-mw-audit.json"
+    host.publish_host_static_query(report, destination, a, "overclock_ipf_lifecycle_chain")
+    if report["failures"]:
+        raise ValueError("System737 IPF lifecycle chain remains unresolved: " + "; ".join(report["failures"]))
+    print("System737 IPF lifecycle chain: " + a.rel(destination))
 
 
 def audit_system_737_xtu_service_info_chain(args):
@@ -50045,6 +51829,616 @@ def audit_hanbo_amd_package_chain(args):
     return report
 
 
+def _hanbo_amd_legacy_package_dependencies():
+    import host
+    receipt = ".analysis/results/frontend/accessories-main-audit.json"
+    upstream = [{"receipt": receipt, "pointer": "/hanbo_amd_package_chain",
+        "canonical_sha256": "2f277aa87149b96152742a5cb86fcd386c0a06796a92f5f8b014da7d66d11885"}]
+    if host._keypad_temporary_keymap_dependency_changes(upstream):
+        raise ValueError("Hanbo AMD legacy Package upstream changed")
+    parent = json.loads((a.ROOT / receipt).read_bytes())["hanbo_amd_package_chain"]
+    if (parent["failures"] or not parent["bounded_observation_complete"] or not parent["snapshot_stable"]
+            or parent["target_execution"] or parent["product_id"] != 3893):
+        raise ValueError("Hanbo AMD legacy Package upstream is not a stable observation")
+    return parent, upstream
+
+
+def _hanbo_amd_legacy_package_roles():
+    return {0x17dc20: "k8_constructor", 0x181be0: "k8_initialize_package",
+        0x181650: "k8_socket_pci_selection", 0x17d6d0: "k8_revision_selection",
+        0x17d850: "k8_temperature", 0x41e0: "k8_delete",
+        0x197fe0: "k15_constructor", 0x19dec0: "k15_initialize_ecs",
+        0x19b900: "k15_socket_pci_selection", 0x19d2c0: "k15_temperature",
+        0x197ab0: "k15_stop", 0x3f60: "k15_delete", 0x197f70: "k15_owned_release",
+        0x1957d0: "k16_constructor", 0x196ff0: "k16_initialize_ecs",
+        0x195880: "k16_socket_pci_selection", 0x195330: "k16_temperature", 0x3f90: "k16_delete",
+        0x19f8e0: "k14_constructor", 0x19ed50: "k14_negative_temperature", 0x3f10: "k14_delete",
+        0x79500: "ecs_register_constructor", 0x79270: "ecs_register_read",
+        0x79160: "ecs_register_write", 0x15e68: "k15_special_read", 0x15db8: "k15_special_ioctl"}
+
+
+def _hanbo_amd_legacy_package_slots():
+    rows = []
+    for name, table, initialize, temperature, delete, stop in (
+            ("k8", 0x3052e8, 0x181be0, 0x17d850, 0x41e0, 0x1a83e0),
+            ("k15", 0x304eb8, 0x19dec0, 0x19d2c0, 0x3f60, 0x197ab0),
+            ("k16", 0x304f68, 0x196ff0, 0x195330, 0x3f90, 0x1a83e0)):
+        rows.extend((name + "_" + role, table, offset, target) for role, offset, target in
+            (("initialize", 40, initialize), ("temperature", 64, temperature),
+             ("delete", 112, delete), ("stop", 120, stop)))
+    rows.extend((name + "_temperature", table, 64, target) for name, table, target in
+        (("k14", 0x304e08, 0x19ed50), ("am486", 0x304be8, 0x38b0),
+         ("k5", 0x3050d8, 0x38b0), ("k6", 0x305188, 0x38b0), ("k7", 0x305238, 0x38b0)))
+    return [dict(role=role, vtable_rva=table, slot_byte_offset=offset, target_rva=target)
+        for role, table, offset, target in rows]
+
+
+def _hanbo_amd_legacy_package_native_contract(native, raw):
+    import host
+    selected = native["complete_selected_functions"]
+    if (native["failures"] or not native["capture_complete"] or native["target_execution"]
+            or len(selected) != len(_hanbo_amd_legacy_package_roles())
+            or {int(row["capture"]["rva"], 0): row["role"] for row in selected}
+                != _hanbo_amd_legacy_package_roles()):
+        raise ValueError("Hanbo AMD legacy Package native owner set changed")
+    rows, bodies = [], {}
+    for row in selected:
+        body = row["capture"]
+        if (row["failures"] or not row["input_chunks_verified"] or not row["assembly_captured"]
+                or not row["pseudocode_captured"] or not body["chunks"]):
+            raise ValueError("Hanbo AMD legacy Package complete owner is absent")
+        bodies[int(body["rva"], 0)] = body
+        rows.append([body["rva"], row["role"], "\n".join(line["text"] for line in body["pseudocode"]["lines"]),
+            [(line["rva"], line["text"], line["bytes"]) for line in body["assembly"]]])
+    fingerprint = hashlib.sha256(json.dumps(sorted(rows, key=lambda row: int(row[0], 0)),
+        ensure_ascii=False, separators=(",", ":")).encode()).hexdigest()
+    if fingerprint != "b5c24ff7f668a1aff8473bd2e6d860e04e7861a87c35384dd2c4f9a5b1249871":
+        raise ValueError("Hanbo AMD legacy Package complete native boundary changed")
+    slots = [{key: int(row[key], 0) if isinstance(row[key], str) else row[key]
+        for key in ("vtable_rva", "slot_byte_offset", "target_rva")} | {"role": row["role"]}
+        for row in native["verified_indirect_slots"]]
+    if slots != _hanbo_amd_legacy_package_slots() or not all(row["actual_pe_bytes_verified"]
+            for row in native["verified_indirect_slots"]):
+        raise ValueError("Hanbo AMD legacy Package actual provider slots changed")
+    pe = host.inspect_pe(raw)
+    names = []
+    for rva in (0x181be0, 0x19d2c0, 0x195330):
+        for line in bodies[rva]["assembly"]:
+            expected = next((name for name in ("Package", "Cores") if '"' + name + '"' in line["text"]), None)
+            if expected is None:
+                continue
+            target, = [int(ref["to"], 0) - 0x180000000 for ref in line["xrefs_from"] if not ref["code"]]
+            section, = [entry for entry in pe["sections"] if entry["rva"] <= target
+                and target + len(expected) + 1 <= entry["rva"] + entry["bytes"]]
+            offset = section["file_offset"] + target - section["rva"]
+            if raw[offset:offset + len(expected) + 1] != expected.encode() + b"\0":
+                raise ValueError("Hanbo AMD legacy Package actual sensor name changed")
+            names.append(dict(function_rva=hex(rva), instruction_rva=line["rva"], name=expected,
+                string_rva=hex(target), file_offset=offset))
+    return {"complete_native_fingerprint": fingerprint, "sensor_name_proofs": names,
+        "reviewed_family_values": [4, 5, 6, 7, 0x0f, 0x14, 0x15, 0x16, 0x21],
+        "k8": {"root_pci_id": 0x1100, "sample_pci_id": 0x1103, "register": 0xe4,
+            "initialization_min_revision": 8, "fractional_min_revision": 96,
+            "initial_offset": -49.0, "sensor_created_only_when_initial_raw_nonzero": True,
+            "initialization_mask": 0x7fffffbb, "sample_mask": 0x7fffffbf,
+            "sample_core_selector": "(old & ~4) XOR ((cpu.member72 & 1) * 4), then AND 0x7fffffbf",
+            "sample_sequence": ["read_e4", "write_e4_selector", "read_e4"],
+            "checks_read_or_write_result": False, "restores_e4": False,
+            "integer_formula": "(((raw >> 16) & 255) + offset) * multiplier",
+            "fractional_formula": "(((raw >> 16) & 255) + ((raw >> 14) & 3) * 0.25 + offset + socket_correction) * multiplier",
+            "socket_correction_identity": 65546, "socket_correction_celsius": 21.0,
+            "failed_read_sentinel": 0xffffffff, "sentinel_celsius_integer": 206.0,
+            "sentinel_celsius_fractional": 206.75, "creates_sensor_during_periodic_read": False},
+        "k15": {"model_mask": 0xf0, "pci_model_groups": [0, 0x10, 0x30],
+            "special_model_groups": [0x60, 0x70], "other_model_result": -1.0,
+            "sample_pci_ids": [0x1603, 0x1403, 0x141d],
+            "cores_owner_offset": 1272, "package_owner_offset": 1264,
+            "cores_selector_register": 0x1e8, "cores_data_register": 0x1ec,
+            "cores_function": 3, "cores_selector_values": [0x31, 0x30],
+            "cores_sequence": ["read_original_1e8_checked", "read_1e8", "clear_low11_write_1e8",
+                "read_1e8", "write_selector31", "read_1ec_fraction", "read_1e8",
+                "write_selector30", "read_1ec_integer", "restore_original_1e8"],
+            "cores_formula": "((integer & 255) + ((fraction >> 5) & 255) * 0.125) * multiplier",
+            "cores_later_io_or_restore_checked": False, "restore_readback": False,
+            "cores_result_survives_package_gate_failure": True,
+            "package_second_read_checked": False, "package_register": 0xa4,
+            "package_failed_second_read_celsius": 255.875,
+            "special_ioctl": 0x9c402584, "special_input": [0x80000000, 0, 0xd8200ca4],
+            "special_input_bytes": 12, "special_output_bytes": 4, "special_driver_mode": 2,
+            "special_rejected_values": [0xaaaaaaaa, 0xbbbbbbbb, 0xcccccccc],
+            "special_checks_bytes_returned": False, "special_read_count": 1,
+            "special_formula": "((raw >> 21) * 0.125 + offset) * multiplier"},
+        "k16": {"root_pci_ids": [0x1530, 0x1580], "sample_pci_ids": [0x1533, 0x1583],
+            "register": 0xa4, "first_read_checked": True, "second_read_checked": False,
+            "visits_all_matching_endpoints": True, "returns_last_successful_sample": True,
+            "later_failed_gate_preserves_previous_iteration_result": True,
+            "failed_second_read_celsius": 255.875},
+        "negative_providers": {"k14": -1.0, "am486": -1.0, "k5": -1.0, "k6": -1.0, "k7": -1.0,
+            "family21_attaches_provider": False, "family21_sets_cpu948": 1,
+            "default_fallback_base_families": [4, 5], "other_default_attaches_provider": False,
+            "higher_priority_owner32_excluded_from_negative_claim": True},
+        "release": {"selected_stops_are_noop": True, "k15_extra_owned_offsets": [104, 112],
+            "shared_ecs_original_enable_restore_reused": True, "shared_sensor_list_owns_samples": True,
+            "per_sample_cancellation": False, "whole_callback_drain_proven": False}}
+
+
+def collect_hanbo_amd_legacy_package_chain(audit):
+    import host
+    parent, upstream = _hanbo_amd_legacy_package_dependencies()
+    for original in parent["complete_originals"]:
+        audit.read(original)
+    for artifact in parent["verified_artifacts"]:
+        if not artifact["path"].startswith("tools/"):
+            audit.artifact(a.ROOT / artifact["path"], artifact)
+    original = parent["native"]["input"]
+    native = audit.families.verify_native_functions(original, _hanbo_amd_legacy_package_roles(),
+        _hanbo_amd_legacy_package_slots())
+    contract = _hanbo_amd_legacy_package_native_contract(native, audit.read(original))
+    return {"schema_version": 1, "kind": "current_hanbo_amd_legacy_package_chain", "product_id": 3893,
+        "query": "hanbo-amd-legacy-package-chain", "upstream_sections": upstream,
+        "resumes_upstream_pointers": ["/hanbo_amd_package_chain/remaining_chains/" + str(i) for i in (0, 1, 2, 4)],
+        "host_release": parent["host_release"], "source_selection": parent["source_selection"],
+        "native": _hanbo_cpu_monitor_native_reference(audit, native), "native_contract": contract,
+        "reused_shared_chain": {**upstream[0], "roles": parent["roles"],
+            "source_contract": parent["source_contract"], "transport": parent["native_contract"]["transport"],
+            "release": parent["native_contract"]["release"],
+            "cpu_and_service": parent["reused_shared_cpu_and_service"]},
+        "semantics": {
+            "selection": "Actual family dispatch and PE slots bind K8/K14/K15/K16; enabled socket-matched PCI devices are retained. K14 and Am486/K5/K6/K7 temperature slots return -1 without sampling; family21 only sets cpu948, and unmatched default only attaches base-family4/5. This never excludes independent priority owner32.",
+            "k8": "Initialization revision>=8 rewrites E4 with mask7fffffbb and creates Package only for a nonzero sampled field, offset -49. Periodic sampling requires that sensor, uses first1103, changes bit2 for cpu72 parity, clears bits31/6, and reads again. No read/write result or original-E4 restore exists. Revision>=96 uses integer+2bit quarter fractions and socket65546 adds21; assembly explicitly masks fractional bits with3. Sentinel failures can therefore create/update numeric source values.",
+            "k15": "Models masked byf0 select PCI0/10/30, special60/70 or -1. PCI takes first1603/1403/141d. Optional Cores reads original function3:1e8, selects31 then30 via1ec and restores original; only initial read is checked. Package uses the shared A4 double-read; failed Package gate preserves newly computed Cores return, while the service still projects actual Package sensor by name. Special path uses one mode2 IOCTL9c402584 with three u32 inputs80000000,0,d8200ca4 and rejects aaaaaaaa/bbbbbbbb/cccccccc, but not short BytesReturned.",
+            "k16": "All matching1533/1583 endpoints are visited. Each checked A4 gate is followed by an unchecked sample; last successful iteration wins and later failed gates retain that local result. No endpoint or all failures returns-1 without clearing an old sensor.",
+            "restore_release": "K15/K16 reuse ECS command registration, original-bit capture/enable and SDK restore before shared release; those return values and restore readback remain unchecked. Selected stop slots are noops. K15 deletion frees owned104/112 then inherited controls; shared SDK lists own sensors and borrowed PCI devices remain under their actual owner. No per-read cancel token or full service callback drain is established."},
+        "source_slice_complete": True, "selected_static_semantics_reviewed": True,
+        "source_chain_complete": False, "whole_cpu_monitor_complete": False, "whole_product_complete": False,
+        "remaining_chains": [
+            {"receipt": upstream[0]["receipt"], "pointer": "/hanbo_amd_package_chain/remaining_chains/3",
+             "required": "K17/K19/family1a actual model/SMU producer remains separate; existing Rust facts remain preserved."},
+            {"receipt": upstream[0]["receipt"], "pointer": "/hanbo_cpu_monitor_chain/remaining_chains/2",
+             "required": "Independent owner32 and other Intel temperature providers remain outside these negative-slot conclusions."},
+            "Non-temperature FIDVID/clock/control and optional memory-space setup inside the retained K8/K15/K16 initializers, K15 owned104/112 target-specific destructor bodies, and full service callback drain remain separate; complete function retention does not claim their full semantic closure.",
+            "All remaining GPU/clock/usage/product branches, independent Rust, UI/backend wiring and actual official DLL/device/error/restore/cancel/release comparisons remain unverified."],
+        "new_native_captures": 0, "new_analysis_sessions": 0, "temporary_resources_created": [],
+        "target_execution": False, "real_device_operations": False, "product_code_modified": False,
+        "rust_independent_implementation": "unverified", "ui_backend_wiring": "unverified",
+        "actual_dll_comparison": "unverified", "runtime_acceptance": "unverified"}
+
+
+def audit_hanbo_amd_legacy_package_chain(args):
+    import host
+    if (args.family != "accessories" or args.function != "main"
+            or (args.product or [3893]) != [3893] or getattr(args, "prepare", False)):
+        raise ValueError("Hanbo AMD legacy Package requires accessories/main PID3893 without preparation")
+    audit = host.HostLocalAudit()
+    report = {"schema_version": 1, "query": "hanbo-amd-legacy-package-chain", "failures": [],
+        "bounded_observation_complete": False, "source_chain_complete": False, "target_execution": False}
+    try:
+        for name in ("tools/families.py", "tools/host.py", "tools/frontend.py", "tools/evidence.py"):
+            audit.artifact(a.ROOT / name)
+        report.update(collect_hanbo_amd_legacy_package_chain(audit))
+    except (OSError, ValueError, KeyError, IndexError, TypeError, StopIteration) as error:
+        report["failures"].append(type(error).__name__ + ": " + str(error))
+    changed = audit.final_snapshot() + host._keypad_temporary_keymap_dependency_changes(report.get("upstream_sections", []))
+    report["failures"].extend("Hanbo AMD legacy Package input changed: " + name for name in changed)
+    report.update(recorded_at_utc=a.stamp(), changed_during_query=changed, snapshot_stable=not changed,
+        bounded_observation_complete=not report["failures"], complete_originals=list(audit.sources.values()),
+        complete_source_owners=list(audit.owners.values()), verified_artifacts=list(audit.artifacts.values()))
+    destination = a.ROOT / ".analysis/results/frontend/accessories-main-audit.json"
+    host.publish_host_static_query(report, destination, a, "hanbo_amd_legacy_package_chain")
+    print(json.dumps({"receipt": a.rel(destination), "query": report["query"], "failures": report["failures"],
+        "bounded_observation_complete": report["bounded_observation_complete"], "target_execution": False}), flush=True)
+    if report["failures"]:
+        raise ValueError("Hanbo AMD legacy Package observation remains unresolved")
+    return report
+
+
+def _hanbo_amd_k17_package_dependencies():
+    import host
+    receipt = ".analysis/results/frontend/accessories-main-audit.json"
+    upstream = [{"receipt": receipt, "pointer": pointer, "canonical_sha256": digest}
+        for pointer, digest in (
+            ("/hanbo_amd_legacy_package_chain", "58afcb85bd7c390994c4b67ea85a912f8db83428eddb066a1b465797d98b3b0c"),
+            ("/hanbo_amd_legacy_package_chain/remaining_chains/0", "f43cfa6d559cc26fbc3bca4f43c0c53171c8aa1442ccf2039d5cc70016ae1dbb"))]
+    if host._keypad_temporary_keymap_dependency_changes(upstream):
+        raise ValueError("Hanbo AMD K17 Package upstream changed")
+    parent = json.loads((a.ROOT / receipt).read_bytes())["hanbo_amd_legacy_package_chain"]
+    if (parent["failures"] or not parent["bounded_observation_complete"] or not parent["snapshot_stable"]
+            or parent["target_execution"] or parent["product_id"] != 3893):
+        raise ValueError("Hanbo AMD K17 Package upstream is not a stable observation")
+    return parent, upstream
+
+
+def _hanbo_amd_k17_package_roles():
+    return {0x1a6d50: "amd_family_dispatch", 0x13dbd0: "family_attach_order",
+        0x190780: "k17_constructor", 0x191c60: "k17_initialize_topology_and_bus",
+        0x187310: "k17_brand_calibration", 0x1841d0: "k17_temperature",
+        0x1906c0: "k17_owned_release", 0x3fe0: "k17_deleting_destructor", 0x187300: "k17_stop",
+        0x15e68: "smn_read_boolean", 0x15db8: "smn_read_ioctl", 0xaa020: "enabled_pci_match",
+        0xf400: "cpuid_leaf", 0x65a30: "temperature_sensor_constructor",
+        0x627d0: "temperature_sensor_validity", 0x13ddd0: "core_count_identity"}
+
+
+def _hanbo_amd_k17_package_slots():
+    return [dict(role="k17_" + role, vtable_rva=0x305018, slot_byte_offset=offset, target_rva=target)
+        for role, offset, target in (("initialize", 40, 0x191c60), ("identify", 32, 0x1a8410),
+            ("brand_calibration", 48, 0x187310), ("temperature", 64, 0x1841d0),
+            ("delete", 112, 0x3fe0), ("stop", 120, 0x187300))]
+
+
+def _hanbo_amd_k17_package_native_contract(native, raw):
+    import host
+    selected = native["complete_selected_functions"]
+    if (native["failures"] or not native["capture_complete"] or native["target_execution"]
+            or len(selected) != len(_hanbo_amd_k17_package_roles())
+            or {int(row["capture"]["rva"], 0): row["role"] for row in selected}
+                != _hanbo_amd_k17_package_roles()):
+        raise ValueError("Hanbo AMD K17 Package native owner set changed")
+    rows, bodies = [], {}
+    for row in selected:
+        body = row["capture"]
+        if (row["failures"] or not row["input_chunks_verified"] or not row["assembly_captured"]
+                or not row["pseudocode_captured"] or not body["chunks"]):
+            raise ValueError("Hanbo AMD K17 Package complete owner is absent")
+        bodies[int(body["rva"], 0)] = body
+        rows.append([body["rva"], row["role"], "\n".join(line["text"] for line in body["pseudocode"]["lines"]),
+            [(line["rva"], line["text"], line["bytes"]) for line in body["assembly"]]])
+    fingerprint = hashlib.sha256(json.dumps(sorted(rows, key=lambda row: int(row[0], 0)),
+        ensure_ascii=False, separators=(",", ":")).encode()).hexdigest()
+    if fingerprint != "e29ebcbe76ed84b5c2ae8dab8ee5d88a8ee85d0205147a32676ad96ff509c25e":
+        raise ValueError("Hanbo AMD K17 Package complete native boundary changed")
+    slots = [{key: int(row[key], 0) if isinstance(row[key], str) else row[key]
+        for key in ("vtable_rva", "slot_byte_offset", "target_rva")} | {"role": row["role"]}
+        for row in native["verified_indirect_slots"]]
+    if slots != _hanbo_amd_k17_package_slots() or not all(row["actual_pe_bytes_verified"]
+            for row in native["verified_indirect_slots"]):
+        raise ValueError("Hanbo AMD K17 Package actual provider slots changed")
+    pe = host.inspect_pe(raw)
+    names = []
+    for expected in ("Package", "Package (Node %d)", "CCD #%d"):
+        line, = [line for line in bodies[0x1841d0]["assembly"] if '"' + expected + '"' in line["text"]]
+        target, = [int(ref["to"], 0) - 0x180000000 for ref in line["xrefs_from"] if not ref["code"]]
+        section, = [entry for entry in pe["sections"] if entry["rva"] <= target
+            and target + len(expected) + 1 <= entry["rva"] + entry["bytes"]]
+        offset = section["file_offset"] + target - section["rva"]
+        if raw[offset:offset + len(expected) + 1] != expected.encode() + b"\0":
+            raise ValueError("Hanbo AMD K17 Package actual sensor name changed")
+        names.append(dict(instruction_rva=line["rva"], name=expected, string_rva=hex(target), file_offset=offset))
+    return {"complete_native_fingerprint": fingerprint, "sensor_name_proofs": names,
+        "families": [0x17, 0x19, 0x1a], "provider_vtable_rva": "0x305018",
+        "initialization": {"order": ["initialize+40", "identify+32", "brand_calibration+48"],
+            "nodes_field": "CPUID8000001e.ECX[10:8]+1", "nodes_owner_offset": 100,
+            "nodes_without_leaf": -1, "single_node_condition": "owner100 == 1",
+            "initial_brand_offset": 0.0, "smu_owner_offset": 216, "initial_smu_owner": None,
+            "smn_method": "smu_owner.member32 when non-null; otherwise 2",
+            "smu_nonnull_producer_proven": False},
+        "pci": {"vendor_id": 0x1022,
+            "single_node_device_precedence": [0x1450, 0x1480, 0x15d0, 0x1630, 0x14d8, 0x14a4,
+                0x14e8, 0x1507, 0x14b5, 0x153a, 0x1122, 0x115b],
+            "multiple_node_device_precedence": [0x1450, 0x1480, 0x15d0, 0x1630, 0x14d8],
+            "matches_enabled_devices": True, "each_match_call_replaces_temporary_list": True,
+            "single_node_sample_gate_cpu_offsets": [72, 76],
+            "multiple_node_topology_gate": "cpu96 u32[0..2]==0 and u32[3] in {0,-1}; u32[4] selects matching-list node",
+            "single_node_bus_override": "cpu124 unless -1; otherwise selected endpoint bus",
+            "multiple_node_bus_override": False,
+            "bus_register_branches": [{"family": 0x17, "model_groups": [0x30], "register": 0x84},
+                {"family": 0x19, "model_groups": [0, 0x20], "register": 0x84},
+                {"family": 0x19, "model_groups": [0x10, 0x60, 0x70, 0xa0], "register": 0xc04},
+                {"family": 0x1a, "model_groups": [0x40], "register": 0xc04}],
+            "bus_register_target": "bus0, device(cpu68+24), function0; store low8 only on successful read"},
+        "sample": {"register": 0x59800, "read_count_per_package": 1,
+            "ioctl": 0x9c402584, "input_u32_order": ["packed_pci", "smn_method", "register"],
+            "input_bytes": 12, "output_bytes": 4, "driver_mode": 2,
+            "rejected_words": [0xaaaaaaaa, 0xbbbbbbbb, 0xcccccccc], "checks_bytes_returned": False,
+            "failed_read_updates_sensor": False, "zero_word_updates_sensor": False,
+            "zero_shifted_sample_updates_cur": False, "zero_shifted_sample_return": -1.0,
+            "sensor_created_for_nonzero_word_before_shift_check": True,
+            "calibration_updates_after_creation": False,
+            "single_node_range_condition": "raw bit19 OR raw[17:16]==3",
+            "multiple_node_range_condition": "raw bit19", "extended_range_subtract": 49.0,
+            "formula": "((raw_u32 >> 21) * 0.125 + sensor.offset) * sensor.multiplier",
+            "offset_formula": "-brand_offset - (extended_range ? 49 : 0)",
+            "sensor_owner_offset": 1264, "single_node_name": "Package", "multiple_node_name": "Package (Node %d)",
+            "multiple_node_name_index": "cpu96.u32[4] (no increment)",
+            "validity_only_gates_extrema": True, "overheat_threshold_offset": 1008,
+            "overheat_flag_offset": 1788, "overheat_status_bits": 0xc0000000,
+            "ccd_or_voltage_tail_changes_package_return": False},
+        "brand_offsets": {"family": 0x17, "model0_or1": {
+            "EPYC": 0.0, "Threadripper1950X_1920X_1900X": 27.0,
+            "Threadripper1950_1920_1900": 10.0, "other1800X_1700X_1600X": 20.0},
+            "model8": {"Threadripper2990WX_2990X": 27.0, "nonThreadripper2700X": 10.0},
+            "other_family_or_model": 0.0, "replaces_positive_existing_offset": False},
+        "consumer": {"service_keys_are_actual_sdk_names": True,
+            "hanbo_lookup": "CPUInfo[0].Temperatures.Package.cur",
+            "node_name_is_not_plain_package": True, "missing_projection_zero_is_measurement": False},
+        "release": {"wait_ms": 100, "accepted_wait_results": [0, 128],
+            "wait_failure_skips_temperature_phase": True, "release_mutex_return_checked": False,
+            "temporary_borrowed_list_nodes_released": True, "sensor_owned_by_shared_sdk_list": True,
+            "stop_is_noop": True, "owned_destructor_offsets": [200, 208, 216, 224],
+            "deleting_destructor_actual_target": "0x1906c0",
+            "decompiler_destructor_name_is_not_type_evidence": True,
+            "per_sample_cancellation": False, "whole_callback_drain_proven": False}}
+
+
+def collect_hanbo_amd_k17_package_chain(audit):
+    parent, upstream = _hanbo_amd_k17_package_dependencies()
+    for original in parent["complete_originals"]:
+        audit.read(original)
+    for artifact in parent["verified_artifacts"]:
+        if not artifact["path"].startswith("tools/"):
+            audit.artifact(a.ROOT / artifact["path"], artifact)
+    original = parent["native"]["input"]
+    native = audit.families.verify_native_functions(original, _hanbo_amd_k17_package_roles(),
+        _hanbo_amd_k17_package_slots())
+    contract = _hanbo_amd_k17_package_native_contract(native, audit.read(original))
+    rust_inputs = []
+    for path in ("crates/razer-platform/src/observation/hardware_monitor/amd_cpu.rs",
+            "crates/razer-platform/src/observation/hardware_monitor/amd_cpu_tests.rs",
+            "crates/razer-platform/src/platform/windows/hardware_monitor/amd_cpu.rs",
+            "crates/razer-platform/src/observation/hardware_driver.rs",
+            "crates/razer-platform/src/observation/hardware_driver_tests.rs"):
+        rust_inputs.append(identity(a.ROOT / path))
+    return {"schema_version": 1, "kind": "current_hanbo_amd_k17_package_chain", "product_id": 3893,
+        "query": "hanbo-amd-k17-package-chain", "upstream_sections": upstream,
+        "resumes_upstream_pointer": upstream[1]["pointer"],
+        "host_release": parent["host_release"], "source_selection": parent["source_selection"],
+        "native": _hanbo_cpu_monitor_native_reference(audit, native), "native_contract": contract,
+        "reused_shared_chain": {"upstream": upstream[0], "shared": parent["reused_shared_chain"]},
+        "existing_rust": {"artifacts": rust_inputs, "implementation_present": True,
+            "temperature_calibration_and_smn_transport_present": True, "revalidated_by_this_query": False,
+            "actual_dll_comparison": "unverified"},
+        "semantics": {
+            "selection": "Actual family17/19/1a constructs the same K17 vtable. CPUID8000001e.ECX bits10:8 plus one selects single versus other-node sampling; missing leaf retains constructor -1. Enabled PCI identity precedence and topology gates select the actual endpoint. Single-node may use the initialized data-fabric bus override, read from bus0/device(cpu68+24)/function0 at84 orc04 for the recorded model groups. The optional SMU pointer contributes method32, otherwise method2; its non-null producer is not inferred from the field or name.",
+            "read": "A successful nonzero59800 word creates the Package sensor before checking raw>>21. Calibration is fixed at creation: minus brand offset and optionally49; single-node checks bit19 or bits17:16==3, multi-node only bit19. Zero shifted temperature leaves cur unchanged and returns-1 even if calibration was just created. IOCTL9c402584 rejects three error words but ignores BytesReturned; stale cached values and numeric output are not fresh confirmation.",
+            "consumer": "Single-node name is Package; multi-node is Package (Node %d), indexed directly from topology field4 without increment. Service preserves the SDK name as its JSON key; Hanbo only reads the plain Package key from CPUInfo[0], so a node measurement does not prove a usable Hanbo value. Subsequent CCD/voltage branches do not overwrite the returned package scalar, although CCD may update the shared overheat flag. Their independent measurement semantics remain separate.",
+            "release": "The temperature phase accepts mutex wait0/128 at100ms, skips sampling on other wait results and releases the mutex without checking success. Later sibling reads reacquire independently. Temporary list entries are released; sensors belong to the SDK list. K17 stop is empty; deleting wrapper3fe0 actually calls1906c0 despite the misleading filebuf label, releasing members200/208/216/224 then inherited controls. No per-read cancellation or whole-service callback drain is proved."},
+        "source_slice_complete": True, "selected_static_semantics_reviewed": True,
+        "source_chain_complete": False, "whole_cpu_monitor_complete": False, "whole_product_complete": False,
+        "remaining_chains": [
+            {"entry": "K17 owner+216 optional non-null SMU object -> member32", "required": "Resolve any actual non-null producer and target-specific object destruction; default null is proven, field reads alone do not prove a live optional branch."},
+            {"entry": "0x1841d0 CCD/voltage siblings and 0x191c60 non-temperature initialization", "required": "Review independently if consumed; full function capture does not mark non-Package branches semantically complete."},
+            "Other CPU owner32/Intel/GPU/clock/usage and complete service callback drain remain at existing boundaries.",
+            "Existing Rust calibration/transport is preserved; full topology/consumer wiring and actual DLL/device/error/cancel/restore/release comparison are not validated by this static query."],
+        "new_native_captures": 0, "new_analysis_sessions": 0, "temporary_resources_created": [],
+        "target_execution": False, "real_device_operations": False, "product_code_modified": False,
+        "rust_independent_implementation": "existing_partial_unverified_for_full_chain", "ui_backend_wiring": "unverified",
+        "actual_dll_comparison": "unverified", "runtime_acceptance": "unverified"}
+
+
+def audit_hanbo_amd_k17_package_chain(args):
+    import host
+    if (args.family != "accessories" or args.function != "main"
+            or (args.product or [3893]) != [3893] or getattr(args, "prepare", False)):
+        raise ValueError("Hanbo AMD K17 Package requires accessories/main PID3893 without preparation")
+    audit = host.HostLocalAudit()
+    report = {"schema_version": 1, "query": "hanbo-amd-k17-package-chain", "failures": [],
+        "bounded_observation_complete": False, "source_chain_complete": False, "target_execution": False}
+    try:
+        for name in ("tools/families.py", "tools/host.py", "tools/frontend.py", "tools/evidence.py"):
+            audit.artifact(a.ROOT / name)
+        report.update(collect_hanbo_amd_k17_package_chain(audit))
+    except (OSError, ValueError, KeyError, IndexError, TypeError, StopIteration) as error:
+        report["failures"].append(type(error).__name__ + ": " + str(error))
+    changed = audit.final_snapshot() + host._keypad_temporary_keymap_dependency_changes(report.get("upstream_sections", []))
+    changed.extend(row["path"] for row in report.get("existing_rust", {}).get("artifacts", []) if not valid(row))
+    report["failures"].extend("Hanbo AMD K17 Package input changed: " + name for name in changed)
+    report.update(recorded_at_utc=a.stamp(), changed_during_query=changed, snapshot_stable=not changed,
+        bounded_observation_complete=not report["failures"], complete_originals=list(audit.sources.values()),
+        complete_source_owners=list(audit.owners.values()), verified_artifacts=list(audit.artifacts.values()))
+    destination = a.ROOT / ".analysis/results/frontend/accessories-main-audit.json"
+    host.publish_host_static_query(report, destination, a, "hanbo_amd_k17_package_chain")
+    print(json.dumps({"receipt": a.rel(destination), "query": report["query"], "failures": report["failures"],
+        "bounded_observation_complete": report["bounded_observation_complete"], "target_execution": False}), flush=True)
+    if report["failures"]:
+        raise ValueError("Hanbo AMD K17 Package observation remains unresolved")
+    return report
+
+
+def _hanbo_amd_k17_smu_owner_dependencies():
+    import host
+    receipt = ".analysis/results/frontend/accessories-main-audit.json"
+    upstream = [{"receipt": receipt, "pointer": pointer, "canonical_sha256": digest}
+        for pointer, digest in (
+            ("/hanbo_amd_k17_package_chain", "ea0050dea85f6bdb193041ab63725bad269765ecda40a1573e8bc0c5cb506fdc"),
+            ("/hanbo_amd_k17_package_chain/remaining_chains/0", "979625a7aadaf4f04dcae3d29ac84e989f16eb7a7d170ce0474dbec2bb0b6bbe"))]
+    if host._keypad_temporary_keymap_dependency_changes(upstream):
+        raise ValueError("Hanbo AMD K17 SMU owner upstream changed")
+    parent = json.loads((a.ROOT / receipt).read_bytes())["hanbo_amd_k17_package_chain"]
+    if (parent["failures"] or not parent["bounded_observation_complete"] or not parent["snapshot_stable"]
+            or parent["target_execution"] or parent["product_id"] != 3893):
+        raise ValueError("Hanbo AMD K17 SMU owner upstream is not stable")
+    return parent, upstream
+
+
+def _hanbo_amd_k17_smu_owner_roles():
+    return {0x191c60: "k17_initialize_owner_gate", 0x209750: "smu_owner_create_configure_and_thermal_query",
+        0x160b4: "smu_mailbox_boolean", 0x15f48: "smu_mailbox_ioctl", 0x40c0: "smu_deleting_destructor",
+        0x1906c0: "k17_owned_member_release", 0x190780: "k17_constructor",
+        0x187310: "brand_calibration_after_smu", 0x1841d0: "package_smu_method_and_thermal_fields"}
+
+
+def _hanbo_amd_k17_smu_owner_slots():
+    return [dict(role=role, vtable_rva=table, slot_byte_offset=offset, target_rva=target)
+        for role, table, offset, target in (("k17_initialize", 0x305018, 40, 0x191c60),
+            ("k17_delete", 0x305018, 112, 0x3fe0), ("smu_delete", 0x3050c0, 0, 0x40c0))]
+
+
+def _hanbo_amd_k17_smu_mailbox_layouts(body):
+    lines = [row["text"] for row in body["pseudocode"]["lines"]]
+    layouts = {}
+    assignment = re.compile(r"\s*\*\(_DWORD \*\)\(\*\(_QWORD \*\)\(a1 \+ 216\) \+ (\d+)LL\) = (\d+);\s*")
+    for name, start, end, third in (("k17_00", 330, 346, False), ("common", 308, 324, False),
+            ("common_hsmp", 351, 377, True), ("apu", 380, 396, False),
+            ("k19_40_70", 223, 239, False), ("family1a_20_60_70", 283, 299, False),
+            ("family1a_00", 252, 278, True)):
+        values = {}
+        for line in lines[start:end]:
+            match = assignment.fullmatch(line)
+            if match is None or int(match[1]) in values or int(match[2]) > 0xffffffff:
+                raise ValueError("Hanbo AMD K17 SMU mailbox assignment changed: " + name)
+            values[int(match[1])] = int(match[2])
+        expected = set(range(48, 80, 4)) | set(range(88, 120, 4))
+        if third:
+            expected.update(range(128, 168, 4))
+        if set(values) != expected:
+            raise ValueError("Hanbo AMD K17 SMU mailbox fields changed: " + name)
+        layouts[name] = {"source_pseudocode_lines": [start, end],
+            "mailboxes": [{"owner_offset": base, "register_words": [values.get(base + i * 4, 0) for i in range(10)]}
+                for base in (48, 88, 128)]}
+    return layouts
+
+
+def _hanbo_amd_k17_smu_owner_contract(native):
+    selected = native["complete_selected_functions"]
+    if (native["failures"] or not native["capture_complete"] or native["target_execution"]
+            or len(selected) != len(_hanbo_amd_k17_smu_owner_roles())
+            or {int(row["capture"]["rva"], 0): row["role"] for row in selected} != _hanbo_amd_k17_smu_owner_roles()):
+        raise ValueError("Hanbo AMD K17 SMU complete native set changed")
+    rows, bodies = [], {}
+    for row in selected:
+        body = row["capture"]
+        if (row["failures"] or not row["input_chunks_verified"] or not row["assembly_captured"]
+                or not row["pseudocode_captured"] or not body["chunks"]):
+            raise ValueError("Hanbo AMD K17 SMU complete owner is absent")
+        bodies[int(body["rva"], 0)] = body
+        rows.append([body["rva"], row["role"], "\n".join(line["text"] for line in body["pseudocode"]["lines"]),
+            [(line["rva"], line["text"], line["bytes"]) for line in body["assembly"]]])
+    fingerprint = hashlib.sha256(json.dumps(sorted(rows, key=lambda row: int(row[0], 0)),
+        ensure_ascii=False, separators=(",", ":")).encode()).hexdigest()
+    if fingerprint != "18320765a41bc7d167442fc5595dd16c11f925bd63a526cfd5a8ea9852193728":
+        raise ValueError("Hanbo AMD K17 SMU complete native fingerprint changed")
+    slots = [{key: int(row[key], 0) if isinstance(row[key], str) else row[key]
+        for key in ("vtable_rva", "slot_byte_offset", "target_rva")} | {"role": row["role"]}
+        for row in native["verified_indirect_slots"]]
+    if slots != _hanbo_amd_k17_smu_owner_slots() or not all(row["actual_pe_bytes_verified"]
+            for row in native["verified_indirect_slots"]):
+        raise ValueError("Hanbo AMD K17 SMU actual owner slots changed")
+    proofs = []
+    for function, instruction, expected in ((0x191c60, "0x1923b3", "e898730700"),
+            (0x209750, "0x209822", "c7462002000000"), (0x209750, "0x209832", "4889b3d8000000")):
+        line, = [line for line in bodies[function]["assembly"] if line["rva"] == instruction]
+        if line["bytes"] != expected:
+            raise ValueError("Hanbo AMD K17 SMU actual producer instruction changed")
+        proofs.append(dict(function_rva=hex(function), instruction_rva=instruction, bytes=expected,
+            instruction=line["text"]))
+    return {"complete_native_fingerprint": fingerprint, "producer_instruction_proofs": proofs,
+        "owner": {"k17_field_offset": 216, "producer_rva": "0x209750", "caller_rva": "0x191c60",
+            "caller_gate": "CPU+56 == 0", "families": [0x17, 0x19, 0x1a],
+            "allocation_bytes": 0xb8, "allocation_only_when_null": True, "vtable_rva": "0x3050c0",
+            "driver_member_offset": 8, "driver_is_borrowed": True, "method_offset": 32, "method_initial_value": 2,
+            "mailbox_offsets_and_bytes": [[48, 40], [88, 40], [128, 40]],
+            "zero_initial_scalar_offsets": [16, 20, 24, 28, 168, 172, 176], "zero_initial_pointer_offset": 40,
+            "allocation_failure_has_complete_null_guard": False,
+            "nonnull_owner_does_not_prove_successful_smu_probe": True,
+            "initializes_before_data_fabric_bus_override": True},
+        "mailbox_layouts": _hanbo_amd_k17_smu_mailbox_layouts(bodies[0x209750]),
+        "layout_selection": [
+            {"family": 0x17, "model_mask": 0xf0, "groups": {"0": "k17_00", "16": "apu", "48": "common_hsmp", "96": "apu", "112": "common"}},
+            {"family": 0x19, "model_mask": 0xf0, "groups": {"0": "common", "16": "common_hsmp", "32": "common", "64": "k19_40_70", "80": "apu", "96": "common", "112": "k19_40_70"}},
+            {"family": 0x1a, "model_mask": 0xf0, "groups": {"0": "family1a_00", "32": "family1a_20_60_70", "64": "common", "96": "family1a_20_60_70", "112": "family1a_20_60_70"}}],
+        "unmatched_model": "No mailbox assignment; fresh object retains zero registers and method2, existing object is not reset",
+        "probe": {"mutex_wait_ms": 1000, "accepted_wait_results": [0, 128],
+            "missing_pci_or_wait_failure_returns": 1, "initializer_checks_return": False,
+            "packed_pci": "0x80000000 when CPU124==-1, otherwise 0x80000000|(low8(CPU124)<<16)",
+            "version_mailbox_offset": 88, "version_command": 2, "version_result_offset": 16,
+            "version_success_flag_offset": 168, "version_zero_allowed": True,
+            "unrecognized_or_failed_probe_keeps_allocated_owner": True,
+            "release_mutex_return_checked": False, "per_query_cancel_token": False},
+        "ioctl": {"rva": "0x15f48", "code": 0x9c40258c, "driver_mode": 2,
+            "input_bytes": 68, "output_bytes": 28,
+            "input_u32_fields": ["packed_pci", "method", "command", "message_register", "response_register",
+                "six argument_registers (indices 0-5)", "six argument_values (indices 0-5)"],
+            "success_requires": "DeviceIoControl true and output[0]==1", "checks_bytes_returned": False,
+            "successful_output": "Copy output indices 1-6 to six argument values", "failure_preserves_argument_values": True,
+            "packet_completion_is_not_smu_field_validity": True},
+        "thermal": {"requires_version_success_flag": True, "mailbox_offset": 88,
+            "tdp_tjmax_commands": [{"family": 0x17, "model_groups": [0], "command": 54},
+                {"family": 0x17, "model_groups": [0x30, 0x70], "command": 35},
+                {"family": 0x19, "model_groups": [0, 0x10, 0x20, 0x60], "command": 35},
+                {"family": 0x19, "model_groups": [0x40, 0x70], "command": 95},
+                {"family": 0x1a, "model_groups": [0, 0x40], "command": 35},
+                {"family": 0x1a, "model_groups": [0x20, 0x60, 0x70], "command": 95}],
+            "result_owner_offset": 112, "tdp_cpu_offset": 1004, "tdp_value": "high16(argument0)",
+            "tjmax_cpu_offset": 1008, "tjmax_value": "low16(argument0)",
+            "offset_query": {"family": 0x17, "model_group": 0, "command": 58,
+                "raw_owner_offset": 116, "calibration_owner_offset": 92, "accepts": "signed argument0 >= 0",
+                "runs_before_brand_calibration": True, "positive_value_prevents_brand_override": True,
+                "zero_allows_source_brand_fallback": True},
+            "failure_leaves_prior_thermal_fields": True,
+            "package_consumer_reuses_creation_time_offset_and_tjmax": True},
+        "release": {"k17_destructor": "0x1906c0", "smu_slot": 0, "smu_target_rva": "0x40c0",
+            "k17_passes_deleting_flag": 1, "smu_deletes_allocation": True,
+            "smu_releases_borrowed_driver": False, "smu_sends_restore_mailbox": False,
+            "k17_clears_216_after_delete": True, "inherits_existing_stop_and_sensor_release": True,
+            "whole_service_callback_drain_proven": False}}
+
+
+def collect_hanbo_amd_k17_smu_owner_chain(audit):
+    parent, upstream = _hanbo_amd_k17_smu_owner_dependencies()
+    for original in parent["complete_originals"]:
+        audit.read(original)
+    for artifact in parent["verified_artifacts"]:
+        if not artifact["path"].startswith("tools/"):
+            audit.artifact(a.ROOT / artifact["path"], artifact)
+    native = audit.families.verify_native_functions(parent["native"]["input"],
+        _hanbo_amd_k17_smu_owner_roles(), _hanbo_amd_k17_smu_owner_slots())
+    contract = _hanbo_amd_k17_smu_owner_contract(native)
+    rust_inputs = [identity(a.ROOT / path) for path in (
+        "crates/razer-platform/src/observation/hardware_monitor/amd_cpu.rs",
+        "crates/razer-platform/src/platform/windows/hardware_monitor/amd_cpu.rs")]
+    return {"schema_version": 1, "kind": "current_hanbo_amd_k17_smu_owner_chain", "product_id": 3893,
+        "query": "hanbo-amd-k17-smu-owner-chain", "upstream_sections": upstream,
+        "resumes_upstream_pointer": upstream[1]["pointer"], "host_release": parent["host_release"],
+        "source_selection": parent["source_selection"], "native": _hanbo_cpu_monitor_native_reference(audit, native),
+        "native_contract": contract, "reused_package_chain": upstream[0],
+        "semantics": {
+            "actual_owner": "K17 initialization calls209750 with the actual family object when CPU56 is zero. This helper creates a B8-byte CSMUInterface at owner216 before probing; method32 starts at2. The pointer can remain present after no PCI manager, mutex failure, unknown model or failed command, so non-null is not successful SMU observation. This is the actual producer missing from the earlier bounded Package review.",
+            "selection": "Actual family17/19/1a model high-nibble dispatch selects seven recorded mailbox layouts. Fresh unknown models retain zero mailbox arrays; no assumed same-family layout is substituted. This helper precedes the later data-fabric bus override in191c60 and uses the CPU124 value available at that call.",
+            "thermal": "Mailbox88 command2 success sets version flag168, including version zero. Selected family/model thermal commands54/35/95 then split argument0 into high16 TDP and low16 TJMAX. Family17/group0 also requests58 and stores a nonnegative signed offset before brand identification; positive SMU offset suppresses brand fallback, zero permits it. Existing Package creation consumes that retained offset and periodic reads consume TJMAX. Failed queries preserve prior fields.",
+            "transport_release": "160b4 wraps15f48 mode2 IOCTL9c40258c: 17 input words, seven output words, success checks output0==1 and copies six values but not BytesReturned. Parameter preparation and mutex release are synchronous and have no per-query cancellation. K17 destructor dispatches actual SMU slot0 to40c0 with deleting flag1, frees only the SMU allocation, then clears216. It does not close the borrowed driver or perform a restore command."},
+        "source_slice_complete": True, "selected_static_semantics_reviewed": True, "source_chain_complete": False,
+        "smu_owner_and_package_thermal_branch_complete": True, "whole_cpu_monitor_complete": False,
+        "whole_product_complete": False, "existing_rust": {"implementation_preserved": True, "artifacts": rust_inputs,
+            "package_static_brand_calibration_present": True, "smu_offset_and_tjmax_query_integration": "unimplemented",
+            "revalidated_by_this_query": False},
+        "remaining_chains": [
+            "Non-temperature power/frequency/HSMP command results inside the retained complete producer are outside this Package-owner slice; do not mark them complete from mailbox tables alone.",
+            "Other actual CPU/GPU providers and whole-service callback drain remain separate existing chains.",
+            "Independent Rust SMU thermal-query integration, UI/backend consumers and actual DLL/device error/cancel/restore/release comparison remain unfinished or unverified."],
+        "new_native_captures": 0, "new_analysis_sessions": 0, "temporary_resources_created": [],
+        "target_execution": False, "real_device_operations": False, "product_code_modified": False,
+        "rust_independent_implementation": "existing_partial_unverified_for_full_chain", "ui_backend_wiring": "unverified",
+        "actual_dll_comparison": "unverified", "runtime_acceptance": "unverified"}
+
+
+def audit_hanbo_amd_k17_smu_owner_chain(args):
+    import host
+    if (args.family != "accessories" or args.function != "main"
+            or (args.product or [3893]) != [3893] or getattr(args, "prepare", False)):
+        raise ValueError("Hanbo AMD K17 SMU owner requires accessories/main PID3893 without preparation")
+    audit = host.HostLocalAudit()
+    report = {"schema_version": 1, "query": "hanbo-amd-k17-smu-owner-chain", "failures": [],
+        "bounded_observation_complete": False, "source_chain_complete": False, "target_execution": False}
+    try:
+        for path in ("tools/families.py", "tools/host.py", "tools/frontend.py", "tools/evidence.py"):
+            audit.artifact(a.ROOT / path)
+        report.update(collect_hanbo_amd_k17_smu_owner_chain(audit))
+    except (OSError, ValueError, KeyError, TypeError, IndexError, StopIteration) as error:
+        report["failures"].append(type(error).__name__ + ": " + str(error))
+    changed = audit.final_snapshot() + host._keypad_temporary_keymap_dependency_changes(report.get("upstream_sections", []))
+    changed.extend(row["path"] for row in report.get("existing_rust", {}).get("artifacts", []) if not valid(row))
+    report["failures"].extend("Hanbo AMD K17 SMU input changed: " + path for path in changed)
+    report.update(recorded_at_utc=a.stamp(), changed_during_query=changed, snapshot_stable=not changed,
+        bounded_observation_complete=not report["failures"], complete_originals=list(audit.sources.values()),
+        complete_source_owners=list(audit.owners.values()), verified_artifacts=list(audit.artifacts.values()))
+    destination = a.ROOT / ".analysis/results/frontend/accessories-main-audit.json"
+    host.publish_host_static_query(report, destination, a, "hanbo_amd_k17_smu_owner_chain")
+    print(json.dumps({"receipt": a.rel(destination), "query": report["query"], "failures": report["failures"],
+        "bounded_observation_complete": report["bounded_observation_complete"], "target_execution": False}), flush=True)
+    if report["failures"]:
+        raise ValueError("Hanbo AMD K17 SMU owner observation remains unresolved")
+    return report
+
+
 def _hanbo_hid_write_current_inputs(audit):
     """Select the retained current Hanbo middleware and its actual Host package."""
     import frontend
@@ -53596,7 +55990,7 @@ def add_commands(parsers):
     audit.add_argument("--acquisition", action="append", help="Explicit indexed acquisition for matcher deployment comparison; repeat for each product/layer")
     audit.add_argument("--workers", type=int, choices=range(2, 17), default=4,
                        help="bounded worker threads for independent product audits")
-    audit.add_argument("--query", choices=["mouse-dpi", "mouse-dpi-profile", "mouse-local-profile-schema", "mouse-dpi-matcher", "mouse-matcher-deployment", "mouse-matcher-ui-names", "mouse-input-monitoring", "mouse-dynamic-sensitivity", "mouse-rotation", "mouse-customize", "mouse-page-layout", "mouse-power", "mouse-power-190-consumers", "mouse-power-196-consumers", "mouse-scroll", "mouse-dpi-backend", "mouse-dpi-active-slot-chain", "mouse-182-profile-slot-chain", "mouse-182-profile-action-chain", "mouse-182-profile-duplicate-chain", "mouse-182-profile-import-chain", "mouse-182-legacy-worker-chain", "mouse-tracking", "mouse-calibration", "global-shortcuts", "shared-preferences", "system-display-refresh-native-chain", "system-battery-native-chain", "system-gpu-route-native-chain", "system-737-performance-native-chain", "system-737-overclock-service-chain", "system-737-overclock-sdk-lifecycle-chain", "system-737-xtu-service-info-chain", "hanbo-hid-write-current-chain", "profile-import-processors", "mouse-runtime-artwork", "mouse-receiver-polling", "mouse-receiver-indicator", "mouse-receiver-legacy", "mouse-receiver-mapping", "mouse-dpi-profile-events", "keyboard-analog-keys", "keyboard-gamepad-tester", "keyboard-driver-request-lifecycle", "keyboard-756-calibration-session-chain", "keyboard-756-calibration-batch-chain", "keyboard-756-switch-type-chain", "keyboard-756-appengine-apply-chain", "driver-install-selection", "keyboard-local-controls", "keyboard-local-profile-adoption", "keyboard-wireless-power", "keyboard-brightness", "keyboard-artwork", "keyboard-metadata", "keyboard-page-layout", "keyboard-actuation-selection", "receiver-page-layout", "receiver-local-runtime", "shared-page-layout", "gamepad-artwork", "gamepad-triggers", "gamepad-input", "gamepad-mode-socd", "gamepad-thumbsticks", "gamepad-lighting", "gamepad-lighting-selection", "gamepad-polling-native-chain", "gamepad-obm-mapping-chain", "gamepad-profile-apply-chain", "gamepad-profile-reset-chain", "gamepad-profile-import-chain", "gamepad-2636-profile-lifecycle-chain", "gamepad-2636-device-removal-chain", "gamepad-2636-removal-notification-chain", "gamepad-2636-detection-native-chain", "mapping-engine", "audio-firmware-selector", "audio-help-reset", "audio-auto-pause-chain", "audio-auto-pause-ui-consumers", "audio-auto-pause-hid-chain", "audio-local-profiles", "hue-profile-actions", "accessory-text-inputs", "audio-preset-inputs", "chroma-text-inputs", "audio-seiren-eq", "audio-seiren-current-mw", "audio-seiren-native-dsp", "audio-endpoint-local-chain", "audio-endpoint-notification-chain", "audio-driver-lifecycle", "audio-driver-close-quiescence", "audio-marie-1446-lifecycle-chain", "audio-1446-multi-function-chain", "audio-1446-mute-mapping-chain", "audio-1446-tap-notification-chain", "audio-1446-quick-output-chain", "quick-effect-binding-1446-chain", "audio-leviathan", "audio-demo", "audio-surround", "camera-local-pages", "camera-ultra-watermark-chain", "camera-3594-exposure-chain", "camera-3594-profile-replay-chain", "camera-3594-initial-get-chain", "camera-3595-3596-processing-control-chain", "camera-3595-3596-low-light-chain", "camera-3595-hdr-chain", "camera-3595-mjpeg-chain", "camera-source-review", "camera-legacy-selection", "camera-legacy-native-properties", "camera-properties-lifecycle", "camera-image-properties", "camera-image-host-chain", "camera-device-lifecycle", "camera-media-preview-chain", "camera-kimberly-identity-chain", "hanbo-local-runtime", "hanbo-gpu-temperature-chain", "hanbo-cpu-monitor-chain", "hanbo-hygon-package-chain", "hanbo-amd-package-chain", "hanbo-system-monitor-versions"], help="Append a semantic query to an existing complete capture audit")
+    audit.add_argument("--query", choices=["mouse-dpi", "mouse-dpi-profile", "mouse-local-profile-schema", "mouse-dpi-matcher", "mouse-matcher-deployment", "mouse-matcher-ui-names", "mouse-input-monitoring", "mouse-dynamic-sensitivity", "mouse-rotation", "mouse-customize", "mouse-page-layout", "mouse-power", "mouse-power-190-consumers", "mouse-power-196-consumers", "mouse-scroll", "mouse-dpi-backend", "mouse-dpi-active-slot-chain", "mouse-182-profile-slot-chain", "mouse-182-profile-action-chain", "mouse-182-profile-duplicate-chain", "mouse-182-profile-import-chain", "mouse-182-legacy-worker-chain", "legacy-mapping-conversion-chain", "mouse-tracking", "mouse-calibration", "global-shortcuts", "shared-preferences", "system-display-refresh-native-chain", "system-battery-native-chain", "system-gpu-route-native-chain", "system-737-performance-native-chain", "system-737-overclock-service-chain", "system-737-overclock-sdk-lifecycle-chain", "system-737-xtu-service-info-chain", "hanbo-hid-write-current-chain", "profile-import-processors", "mouse-runtime-artwork", "mouse-receiver-polling", "mouse-receiver-indicator", "mouse-receiver-legacy", "mouse-receiver-mapping", "mouse-dpi-profile-events", "keyboard-analog-keys", "keyboard-gamepad-tester", "keyboard-driver-request-lifecycle", "keyboard-756-calibration-session-chain", "keyboard-756-calibration-batch-chain", "keyboard-756-switch-type-chain", "keyboard-756-appengine-apply-chain", "driver-install-selection", "keyboard-local-controls", "keyboard-local-profile-adoption", "keyboard-wireless-power", "keyboard-brightness", "keyboard-artwork", "keyboard-metadata", "keyboard-page-layout", "keyboard-actuation-selection", "receiver-page-layout", "receiver-local-runtime", "shared-page-layout", "gamepad-artwork", "gamepad-triggers", "gamepad-input", "gamepad-mode-socd", "gamepad-thumbsticks", "gamepad-lighting", "gamepad-lighting-selection", "gamepad-polling-native-chain", "gamepad-obm-mapping-chain", "gamepad-profile-apply-chain", "gamepad-profile-reset-chain", "gamepad-profile-import-chain", "gamepad-2636-profile-lifecycle-chain", "gamepad-2636-device-removal-chain", "gamepad-2636-removal-notification-chain", "gamepad-2636-detection-native-chain", "mapping-engine", "audio-firmware-selector", "audio-help-reset", "audio-auto-pause-chain", "audio-auto-pause-ui-consumers", "audio-auto-pause-hid-chain", "audio-local-profiles", "hue-profile-actions", "accessory-text-inputs", "audio-preset-inputs", "chroma-text-inputs", "audio-seiren-eq", "audio-seiren-current-mw", "audio-seiren-native-dsp", "audio-endpoint-local-chain", "audio-endpoint-notification-chain", "audio-driver-lifecycle", "audio-driver-close-quiescence", "audio-marie-1446-lifecycle-chain", "audio-1446-multi-function-chain", "audio-1446-mute-mapping-chain", "audio-1446-tap-notification-chain", "audio-1446-quick-output-chain", "quick-effect-binding-1446-chain", "audio-leviathan", "audio-demo", "audio-surround", "camera-local-pages", "camera-ultra-watermark-chain", "camera-3594-exposure-chain", "camera-3594-profile-replay-chain", "camera-3594-initial-get-chain", "camera-3595-3596-processing-control-chain", "camera-3595-3596-low-light-chain", "camera-3595-hdr-chain", "camera-3595-mjpeg-chain", "camera-source-review", "camera-legacy-selection", "camera-legacy-native-properties", "camera-properties-lifecycle", "camera-image-properties", "camera-image-host-chain", "camera-device-lifecycle", "camera-media-preview-chain", "camera-kimberly-identity-chain", "hanbo-local-runtime", "hanbo-gpu-temperature-chain", "hanbo-cpu-monitor-chain", "hanbo-hygon-package-chain", "hanbo-amd-package-chain", "hanbo-amd-legacy-package-chain", "hanbo-system-monitor-versions", 'legacy-product-mapping-chain', 'system-737-xtu-ipf-lifecycle-chain', 'hanbo-amd-k17-package-chain', "legacy-shared-scalar-chain", 'legacy-shared-structured-chain', 'host-monitor-enumeration-chain', 'gamepad-2636-shutdown-reconnect-chain', "legacy-source-product-chain", 'system-737-xtu-client-api-chain', 'hanbo-amd-k17-smu-owner-chain', 'keyboard-756-analog-registration-chain'], help="Append a semantic query to an existing complete capture audit")
     audit.add_argument("--prepare", action="store_true", help="Prepare verified current artwork resources through the shared workflow")
     audit.add_argument("--receipt-only", action="store_true", help="Refresh supported mouse or mapping-engine evidence without rewriting runtime descriptors")
     audit.add_argument("--native-driver-lifecycle", choices=["capture", "check", "negative"],

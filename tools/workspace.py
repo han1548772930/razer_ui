@@ -7615,7 +7615,113 @@ def _clean_upload_evidence(target):
                                  "worktree_clean": True, "unpublished_content": False, "network_access": False}}
 
 
-def _clean_candidates(before=None):
+def _clean_native_batch_candidates(selectors):
+    """Bind explicitly released batch copies to complete retained capture evidence."""
+    rows = []
+    for selector in selectors or ():
+        match = re.fullmatch(r"(\.analysis/results/frontend/[A-Za-z0-9_-]+-audit\.json)#/([A-Za-z0-9_]+)", selector)
+        if not match:
+            raise ValueError("Native batch owner must name a formal audit top-level section")
+        owner_name, section = match.groups()
+        owner = safe(ROOT / owner_name)
+        report = json.loads(owner.read_bytes())[section]
+        if (report.get("bounded_observation_complete") is not True or report.get("source_slice_complete") is not True
+                or report.get("snapshot_stable") is not True or report.get("changed_during_query") != []
+                or report.get("failures") != [] or report.get("target_execution") is not False
+                or report.get("private_analysis_database_required") is not False):
+            raise ValueError("Native batch semantic owner has not released its database")
+        native = report["native"]
+        original = native["input"]
+        sha = original["sha256"]
+        if not re.fullmatch(r"[a-f0-9]{64}", sha):
+            raise ValueError("Native batch input identity is invalid")
+        name = ".work/native/" + sha + "/batch"
+        if report.get("temporary_resources_created") != [name]:
+            raise ValueError("Native batch owner does not own the exact scratch directory")
+        target = _clean_path(name)
+        if not target.exists():
+            continue
+        result = ".analysis/results/native/" + sha
+        basis = []
+
+        def retained(reference, prefix):
+            path = reference["path"]
+            if (not isinstance(path, str) or not path.startswith(prefix) or ".." in Path(path).parts
+                    or "\\" in path or Path(path).is_absolute()):
+                raise ValueError("Native batch retained evidence escaped its scope")
+            actual = safe(ROOT / path)
+            if any(_scratch_link(parent) for parent in [actual, *actual.parents] if parent.exists()):
+                raise ValueError("Native batch retained evidence is linked")
+            identity = _clean_file_identity(actual)
+            if any(identity[key] != reference[key] for key in ("sha256", "bytes") if key in reference):
+                raise ValueError("Native batch retained evidence changed")
+            basis.append(identity)
+            return actual
+
+        retained({"path": owner_name}, ".analysis/results/frontend/")
+        raw = retained(original, ".analysis/inputs/")
+        capture_ref = native["capture_receipt"]
+        if capture_ref["path"] != result + "/capture.json":
+            raise ValueError("Native batch capture belongs to another input")
+        capture = json.loads(retained(capture_ref, result + "/").read_bytes())
+        session_path, plan_path = (retained({"path": result + "/" + item}, result + "/")
+                                  for item in ("batch-session.json", "plan.json"))
+        session, plan = (json.loads(path.read_bytes()) for path in (session_path, plan_path))
+        private = name + "/" + raw.name
+        if (session.get("passed") is not True or session.get("exit_code") != 0
+                or type(session.get("pid")) is not int or session["pid"] <= 0
+                or session.get("mode") != "batch" or session.get("capture_complete") is not True
+                or session.get("target_execution") is not False or session.get("input") != private
+                or session.get("database_resume") is not None or plan.get("database_resume") is not None
+                or plan.get("database_rebuild") is not None
+                or plan.get("input") != original["path"] or plan.get("sha256") != sha
+                or plan.get("output") != result or capture.get("input") != original["path"]
+                or capture.get("input_sha256") != sha or capture.get("input_bytes") != raw.stat().st_size
+                or capture.get("capture_complete") is not True or capture.get("functions_complete") is not True
+                or capture.get("target_execution") is not False or native.get("failures") != capture.get("failures")):
+            raise ValueError("Native batch completion or preserved failure identity differs")
+        times = [datetime.fromisoformat(value) for value in (session["started_at_utc"], capture["finished_at_utc"],
+                 session["finished_at_utc"], report["recorded_at_utc"])]
+        if any(value.tzinfo is None for value in times) or times != sorted(times) or times[-1] > datetime.now(timezone.utc):
+            raise ValueError("Native batch completion order is invalid")
+        functions = capture["functions"]
+        if (len(functions) != capture["functions_captured"] or len(functions) != capture["functions_total"]
+                or len({item["rva"] for item in functions}) != len(functions)):
+            raise ValueError("Native batch capture inventory is incomplete")
+        inventory = {}
+        for item in functions + capture["outputs"]:
+            retained({**item, "path": result + "/" + item["path"]}, result + "/")
+            if "rva" in item:
+                inventory[item["rva"]] = item
+                if item.get("assembly_captured") is not True:
+                    raise ValueError("Native batch function assembly is missing")
+        selected = native["functions"]
+        if not selected or len({item["rva"] for item in selected}) != len(selected):
+            raise ValueError("Native batch selected function inventory is invalid")
+        for item in selected:
+            captured = inventory[item["rva"]]
+            if (captured.get("pseudocode_captured") is not True or captured.get("new_failures") != 0
+                    or item.get("input_chunks_verified") is not True
+                    or item["artifact"]["path"] != result + "/" + captured["path"]
+                    or item["artifact"]["sha256"] != captured["sha256"]):
+                raise ValueError("Native batch selected function is incomplete or mismatched")
+        if digest(_clean_path(private)) != sha:
+            raise ValueError("Native batch private input changed")
+        permitted = {raw.name, raw.name + ".i64", raw.name + ".idb", "ida.log", "process.log"}
+        if (any(not path.is_file() or _scratch_link(path) or path.name not in permitted for path in target.iterdir())
+                or not any((target / (raw.name + suffix)).is_file() for suffix in (".i64", ".idb"))):
+            raise ValueError("Native batch contains unknown or unrecoverable resources")
+        rows.append({"path": name, "kind": "ended_native_batch_private_copy", "native_batch_owner": selector,
+            "analyzer_pid": session["pid"],
+            "owner_receipts": [owner_name, relative(session_path), relative(plan_path)],
+            "basis": list({entry["path"]: entry for entry in basis}.values()),
+            "retained_capture_failures": capture["failures"]})
+    if len({row["path"] for row in rows}) != len(rows):
+        raise ValueError("Native batch owner selection duplicates a directory")
+    return rows
+
+
+def _clean_candidates(before=None, native_batch_owners=()):
     import configparser
     cutoff = datetime.now(timezone.utc).timestamp() if before is None else before
     queue = ROOT / ".analysis/results/reverse-pending.json"
@@ -7688,6 +7794,16 @@ def _clean_candidates(before=None):
             candidates.append({"path": name, "kind": "ended_supplement_private_copy",
                                "owner_receipts": [relative(path) for path in basis],
                                "basis": [_clean_file_identity(path) for path in basis]})
+    for row in _clean_native_batch_candidates(native_batch_owners):
+        sha = row["path"].split("/")[2]
+        if sha in reserved:
+            retained.append({"path": row["path"], "reason": "reserved_analysis_family", "owners": reserved[sha]})
+        else:
+            session = json.loads((ROOT / row["owner_receipts"][1]).read_bytes())
+            if datetime.fromisoformat(session["finished_at_utc"]).timestamp() >= cutoff:
+                retained.append({"path": row["path"], "reason": "current_run_native_batch"})
+            else:
+                candidates.append(row)
     uploads = ROOT / ".work/asset-releases/uploads"
     if uploads.exists():
         _clean_path(".work/asset-releases/uploads")
@@ -7976,7 +8092,7 @@ def _clean_json_dependencies(value, *, own_receipt=False, field=None, ended_batc
                              formal_stdout_jobs=(), verification_owners=(), released_checkouts=(), native_release_items=()):
     """Keep dependency fields while excluding explicitly historical inventory facts."""
     if isinstance(value, dict):
-        if value.get("mode") in {"scratch_cleanup_plan", "scratch_cleanup_apply"}:
+        if value.get("mode") in ("scratch_cleanup_plan", "scratch_cleanup_apply"):
             return
         for key, child in value.items():
             if id(value) in native_release_items and key in {
@@ -8187,10 +8303,19 @@ def _clean_references(candidates, *, exclude=(), bind_history=False):
                 errors.append("Invalid verification historical owner: " + str(error))
         for name in matched_names:
             row = names[name]
+            scan_document = document
+            if row.get("kind") == "ended_native_batch_private_copy" and isinstance(document, dict):
+                owner_name, section = row["native_batch_owner"].split("#/", 1)
+                if filename == owner_name:
+                    scan_document = dict(document)
+                    scan_document[section] = {key: value for key, value in document[section].items()
+                                              if key != "temporary_resources_created"}
+                elif filename == row["owner_receipts"][1]:
+                    scan_document = {key: value for key, value in document.items() if key not in {"input", "argv"}}
             ended_batch = (isinstance(document, dict)
                            and re.fullmatch(r"\.work/reverse-pending/[^/]+-capture-batch\.json", filename)
                            and _clean_capture_batch_ended(document, datetime.now(timezone.utc).timestamp()))
-            strings = (_clean_json_dependencies(document, own_receipt=filename in row["owner_receipts"]
+            strings = (_clean_json_dependencies(scan_document, own_receipt=filename in row["owner_receipts"]
                                                  and row.get("kind") != "owned_empty_verification_temp",
                                                  ended_batch=ended_batch, formal_stdout_jobs={
                                                       job for job, target in formal_history.items() if target == name},
@@ -8225,7 +8350,9 @@ def _clean_process_guard(candidates):
                                    and (re.search(r"(?:^|[/\s\"])(?:cargo|rustc|ml64)(?:\.exe)?(?:[\s\"]|$)", command)
                                         or "workspace.py" in command and "validate-rust" in command
                                         or "test_evidence" in command or "native_source_correspondence" in command))
-            if name in command or verification_active or upload_git_active:
+            batch_analyzer_active = (row.get("kind") == "ended_native_batch_private_copy"
+                                     and process["pid"] == row.get("analyzer_pid"))
+            if name in command or verification_active or upload_git_active or batch_analyzer_active:
                 references.setdefault(row["path"], []).append(process["pid"])
     return references, errors
 
@@ -8393,14 +8520,14 @@ def _clean_create_receipt(path, report):
 
 
 def clean(stale=False, *, before=None, dry_run=False, plan=None, apply=None, plan_sha256=None,
-          verification_recovery=None):
+          verification_recovery=None, native_batch_owners=()):
     """Plan conservative scratch cleanup; deletion requires an unchanged explicit plan."""
     if stale:
-        if dry_run or plan or apply or plan_sha256 or verification_recovery is not None:
+        if dry_run or plan or apply or plan_sha256 or verification_recovery is not None or native_batch_owners:
             raise ValueError("--stale cannot be combined with planned cleanup")
         return _clean_stale(before)
     if apply:
-        if dry_run or plan or verification_recovery is not None or not re.fullmatch(r"[a-f0-9]{64}", plan_sha256 or ""):
+        if dry_run or plan or verification_recovery is not None or native_batch_owners or not re.fullmatch(r"[a-f0-9]{64}", plan_sha256 or ""):
             raise ValueError("Cleanup apply requires only --apply and --plan-sha256")
         source = _clean_receipt_path(apply)
         raw = source.read_bytes()
@@ -8414,12 +8541,12 @@ def clean(stale=False, *, before=None, dry_run=False, plan=None, apply=None, pla
             rows = report["candidates"]
             current = []
             if rows:
-                current, _ = _clean_candidates()
+                current, _ = _clean_candidates(native_batch_owners=report.get("native_batch_owners", ()))
                 verification_rows, _ = _verification_candidates()
                 current.extend(verification_rows)
             current_names = {row["path"]: row for row in current}
             for row in rows:
-                if row.get("kind") not in {"ended_supplement_private_copy", "old_asset_upload_clone", "owned_empty_verification_temp"}:
+                if row.get("kind") not in {"ended_supplement_private_copy", "ended_native_batch_private_copy", "old_asset_upload_clone", "owned_empty_verification_temp"}:
                     raise ValueError("Cleanup plan contains an unowned target")
                 name = row["path"]
                 if row["kind"] == "owned_empty_verification_temp":
@@ -8429,13 +8556,18 @@ def clean(stale=False, *, before=None, dry_run=False, plan=None, apply=None, pla
                         raise ValueError("Verification cleanup plan omitted or changed ownership evidence")
                 else:
                     allowed = (re.fullmatch(r"\.work/native/[a-f0-9]{64}/supplements/[a-f0-9]{16}(?:-[a-f0-9]{16})?", name)
-                           if row["kind"] == "ended_supplement_private_copy" else re.fullmatch(
+                           if row["kind"] == "ended_supplement_private_copy" else re.fullmatch(r"\.work/native/[a-f0-9]{64}/batch", name)
+                           if row["kind"] == "ended_native_batch_private_copy" else re.fullmatch(
                                r"\.work/asset-releases/uploads/assets-[a-f0-9]{20}-[A-Za-z0-9_-]+", name))
                     tree = _clean_tree(name)
                 if not allowed or tree != row["tree"]:
                     raise ValueError("Cleanup target changed or escaped its owned scope")
                 if name not in current_names:
                     raise ValueError("Cleanup target acquired a current analysis reservation or lost completion ownership")
+                if row["kind"] == "ended_native_batch_private_copy" and any(
+                        row.get(key) != current_names[name].get(key) for key in (
+                            "basis", "owner_receipts", "native_batch_owner", "retained_capture_failures", "analyzer_pid")):
+                    raise ValueError("Native batch cleanup omitted or changed ownership evidence")
                 if row["kind"] == "old_asset_upload_clone":
                     owner = current_names[name]
                     if (row.get("rebuild_evidence") != owner.get("rebuild_evidence")
@@ -8499,7 +8631,7 @@ def clean(stale=False, *, before=None, dry_run=False, plan=None, apply=None, pla
     destination = _clean_receipt_path(plan or default_name)
     if destination.exists():
         raise FileExistsError("Cleanup plan already exists; choose a new reserved receipt name")
-    rows, retained = _clean_candidates(before)
+    rows, retained = _clean_candidates(before, native_batch_owners)
     verification_rows, verification_retained = _verification_candidates()
     rows.extend(verification_rows)
     retained.extend(verification_retained)
@@ -8518,7 +8650,7 @@ def clean(stale=False, *, before=None, dry_run=False, plan=None, apply=None, pla
     report = {"schema_version": 1, "mode": "scratch_cleanup_plan", "workspace": str(ROOT.resolve()),
               "recorded_at_utc": datetime.now(timezone.utc).isoformat(), "target_execution": False,
                "protected": [".analysis/inputs", ".analysis/results", "target/verification-temp",
-                             ".work/native/*/batch",
+                             ".work/native/*/batch except explicitly verified native_batch_owners",
                             ".work/native/*/batch/invalid-database", ".work/reverse-pending"],
               "reference_scope": "all maintained text owners and JSON receipts, including frozen reviews; raw original bodies excluded",
               "historical_fields": ["scratch_cleanup", "ended supplement owner's database and argv",
@@ -8527,6 +8659,7 @@ def clean(stale=False, *, before=None, dry_run=False, plan=None, apply=None, pla
                                      "source-bound frozen capture job structured stdout log inventory",
                                       "frozen owner-validated released private database inventory",
                                      "validated verification ledger directory ownership field"],
+              "native_batch_owners": list(native_batch_owners),
               "guard_failures": errors + process_errors, "candidates": eligible, "retained": retained,
               "candidate_bytes": sum(row["tree"]["bytes"] for row in eligible)}
     _clean_create_receipt(destination, report)
@@ -14359,6 +14492,7 @@ def main():
     scratch_clean.add_argument("--apply", help="Apply an unchanged retained cleanup plan after repeating dependency and activity checks")
     scratch_clean.add_argument("--plan-sha256", help="Actual SHA-256 of the reviewed cleanup plan; required with --apply")
     scratch_clean.add_argument("--verification-recovery", help="Register explicit legacy empty-directory recovery JSON, or - for stdin; planning only")
+    scratch_clean.add_argument("--native-batch-owner", action="append", default=[], help="Release an explicitly completed semantic owner: .analysis/results/frontend/name-audit.json#/section")
     runtime_audit = commands.add_parser("audit-runtime-resources", help="Trace Rust/catalog resource references against the fixed installed directory")
     runtime_audit.add_argument("--repair", action="store_true", help="Verify current inline ARGB layers and attach missing aliases; do not restore source media")
     pack_audit = commands.add_parser("audit-asset-pack")
@@ -14438,7 +14572,7 @@ def main():
         recovery = (json.loads(sys.stdin.read() if args.verification_recovery == "-" else args.verification_recovery)
                     if args.verification_recovery is not None else None)
         clean(stale=args.stale, dry_run=args.dry_run, plan=args.plan, apply=args.apply,
-              plan_sha256=args.plan_sha256, verification_recovery=recovery)
+              plan_sha256=args.plan_sha256, verification_recovery=recovery, native_batch_owners=args.native_batch_owner)
     elif args.command == "verify":
         verify()
     elif args.command == "audit-inputs":

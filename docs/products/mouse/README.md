@@ -245,8 +245,106 @@ PID199、208 声明 `isHidingKeyMapping=true`、`defaultVisibleFunctionsCount=5`
 - 宏名称按当前库去重；只有 GUID 碰撞才生成新 GUID，并修复选中映射的对应引用。宏事件先生成 appEngine 并计算哈希，再设置实际 mouseMoveType。每个宏先写 MACRO_CONFIG，之后才整体提交 IndexedDB；IDB 使用独占锁、等待事务完成再发变更通知。原生宏投影删除外层维护字段，但会修改共享 appEngine 的虚拟延迟与哈希，因此 IDB 提交和后续 runtime 发布属于不同阶段。
 - 配置浅合并当前 defaultProfile 和导入对象，生成新名称／GUID并追加。当前处理器明确调用 `qe(o.mappings,o,!1,g.concat(h))`：普通映射编译，第四参数保留其他配置档的 turbo 引用；不能套用旧 Xt 快照的第三参数语义。普通配置 handler 不修改 activeProfile，本动作不切换活动配置、不调用设备恢复，也没有对应的设备确认阶段。
 - 提交顺序是逐宏配置 → 宏 IDB → 原生宏投影 → 设备配置文档／钩子 → runtime → 配置列表／宏列表 → completed → postprocess → 可选任务内存保存。跨存储没有事务或回滚；原生布尔返回未被消费者核对，晚期内存写入失败可能在完成通知后才补发 error。弹层确认立即关闭，Cancel／关闭只关闭弹层，没有 FileReader abort、连接代次取消或已派发工作的排空保证。
-- 旧格式实际请求 `${origin}/profile-migration/worker.js`。本批只复核已保留业务 worker 的请求／响应及失败生命周期；每次 onmessage 内才创建 2 秒计时器，ready 等忽略消息留下的计时器也可能使请求拒绝，且没有 port.close。该 worker 的最新业务部署、内部 loadSyn3File／toSyn4 产品版本转换及监视器坐标分支仍须取证，不能从旧原件或 envelope 推断全部转换完成。
+- 旧格式实际请求 `${origin}/profile-migration/worker.js`。后续[旧版配置与宏坐标专题](customize.md#pid182本地旧版配置导入与宏坐标)已核当前两轮 HTTP 部署、ZIP／XML 分组、源 PID 分派、九项共享转换、宏事件、坐标计算及当前 Host 4.0.896 的 monitor 回复／释放边界。每次 onmessage 内才创建 2 秒计时器，ready 等忽略消息留下的计时器也可能使请求拒绝，且没有 port.close。其余共享／源产品转换、原生 monitor 枚举和实际执行仍未闭合；入口清单与静态测试不代表完整迁移、Rust 或设备对照完成。
 
 `Mouse182ProfileImportChainTests` 静态反例 12/12 通过，包含入口、文件身份／哈希、选择与预处理、宏冲突、当前普通映射、活动配置、提交／结果顺序、取消和失效输入拒绝。未执行厂商 JS、DLL、应用或设备，新增捕获、分析会话和临时资源均为 0。后续从 `mouse_182_profile_import_chain/remaining_chains/1` 接续其余实际动作；legacy 独立缺项保留在 remaining_chains/0。既有 `PreparedMouseImport` 只是本地候选结果，其当前源码一致性、真实发布、UI／后端接线、实际 DLL／设备对照和运行验收仍分别待完成／未验证。
+
+## 旧版文件：共享映射转换
+
+统一入口 `python -B -X utf8 tools/workspace.py audit-family-function --family mouse --function mw --product 182 --query legacy-mapping-conversion-chain`；正式结果归[鼠标中间件收据](../../../.analysis/results/frontend/mouse-mw-audit.json)的 `legacy_mapping_conversion_chain`。本段接续 `mouse_182_legacy_worker_chain` 的 Mappings 缺项，复用同一当前 worker、两轮 HTTP 部署收据及实际 Import 消费者；29 个完整模块覆盖 `8061 → input62/output3405`、21 个实际输出分组、19 个输出 helper 及键表／别名／解析依赖。源产品专属转换调用方仍另行判断，不把目标 PID182 当作源文件范围。
+
+- 共享注册器只在 all／源产品专属转换未接管该特征时调用 Mappings。键盘判断为 `deviceInfo.Type === "2"`；第一代 analog 仅按源 PID614／580／642 选择。源 PID677 在过滤之后，将禁用 HyperShift 列表内输入改成 `IsDefault:"true"`，不是先删除整条映射。
+- analog 过滤函数 `u` 返回逗号表达式：先读取可选第二 actuation，再判断“第一点不等于默认且至少为 unit”，或 Level1 非默认，或“第二点 truthy、严格大于第一点且 Level2 非默认”。缺少／异常 analog 数据被 catch 后返回 undefined，因而不入选；不能把这条表达式误读为无 return。选中项继续双段与 RapidTrigger 转换。Broadcaster 输入绕过默认过滤；普通输入要求精确字符串 `IsDefault === "false"`，键盘滚轮音量默认映射另排除。
+- `Boolean(IsHyperShift)` 将非空字符串 `"false"` 也当 true。Key／analog 输入优先扫描码，否则 HID，并取键表中第一个匹配项；找不到键时省略映射。未知输入类型或未匹配 Dial 可留下空 inputID，随后仍能合并有效输出。当前键表顺序、扩展键、数字键盘转换和别名必须保留，不能自行按名称修正。
+- 直接 analog 转换以 gen1 unit12／default0 或 gen2 unit1638／default19656 形成按下值与 `max(value-unit,0)`；第一段输出必需，缺第二段时补 defaultGroup。RapidTrigger 的上下行灵敏度分别除 unit 并 Math.round，continuous 恒 true。Controller 曲线 x 为 gen1 的 `round2(210*x/25500)+1.5` 或其他代次的 `round2(390*x/25500)+0.1`，y 解析整数，无范围截断；输入数组与未知值仍遵循实际失败路径。
+- 输出 dispatcher 实际有 21 个 case。键盘默认或同键且无 modifier／turbo 时得到空 keyboardGroup；Chroma_Effect、AdvanceGainSettings 虽在常量表声明，dispatcher 没有分支。鼠标、DPI clutch、文本、媒体／Windows／XBOX、配置跳转、Joystick、Keymap、灯光／全局亮度、Lightpac、音频与 Interdevice 均按原表和字段转换；表 helper 使用 `in` 与 truthiness，不是新增的严格 own-key 校验。
+- HyperShift 输出按 inputID 计数，恰好一次时复制**列表中第一个相同 inputID 的映射**并设 isHyperShift=true；没有验证被复制项的输出类型、原层或重复目标层。共享转换仅向输出 dispatcher 传三个参数，宏 helper 的第四参数列表缺失，合法宏引用因此保留原 GUID，名称可成为非空 `undefined - S3`，不会落入写在后面的 `Macro 1` 回退。
+- Launch 只要求 Path 或 Url 之一；Url 不含 `https://` 子串便加前缀，因此仅 Path 输入也能生成 `https://undefined`。Interdevice 按 PID 别名表第一个匹配项规范身份，Profile_Lightpac 另要求 LightpackGuid。音频切换 payload 按 PrimaryEndpointID 字段存在判定，不要求非空；这些都是当前文件转换行为，不代表已执行启动、音频或设备动作。
+- 单项 `convertMapping` 内异常被吞并省略该项，但过滤和预转换 input-map 在 catch 外，畸形输入仍可能拒绝整个共享 worker。同步转换不增加取消、回滚、端口释放或设备确认；结果继续沿已确认的导入选择、普通映射编译和本机／原生发布链，不能把转换完成当成硬件写回。
+
+首次定向验证发现 analog 返回逗号表达式被误读及测试缺少 argparse 导入，已按原件修正且保留失败事实。静态验证包含完整原件／范围／哈希、29 个模块缺失与正文变化拒绝、AST 返回逗号表达式、输入身份、源 PID、全部输出 case、键盘／analog／宏／HyperShift／失败边界。已有 `PreparedMouseImport` 和 `mouse_legacy_mapping` 保留原实现事实，本批未改 Rust 或重新验收它们；三类源产品 Mappings 调用由下节接续，其他共享转换、原生 monitor 枚举、UI／后端和真实 DLL／设备对照仍按各自缺项继续。未执行厂商 JS、DLL 或应用，未新增捕获、分析会话及临时资源。
+
+## 旧版文件：源产品映射转换
+
+统一入口 `python -B -X utf8 tools/workspace.py audit-family-function --family mouse --function mw --product 182 --query legacy-product-mapping-chain`；正式结果归[鼠标中间件收据](../../../.analysis/results/frontend/mouse-mw-audit.json)的 `legacy_product_mapping_chain`。本段复用当前 worker 的两轮部署证明、共享映射及导入消费者，保留 11 个完整模块；对整份 worker 的 AST 核对确认，直接导入 shared8061 的模块只有共享注册器4104与侧板转换6892。目标 PID182 不筛掉旧文件的其他实际源产品。
+
+| 实际源转换 | 原始 source Product_ID | 当前行为 |
+| --- | --- | --- |
+| 6892 侧板 | 167、143、103、150、83、80、141、147、180 | 每次仅以 profile 一个参数调用 shared8061，再按 `profile.deviceInfo.Product_ID` 的 swapPID 结果查侧板表。只建立该产品声明的侧板数组，按 2键 → 12键且非DKMInput → 6键 → 7键 → 主映射的先后顺序分流；6／7键分支改 inputType 为 KeyInput，其他分支保留。没有按当前连接侧板选择，也不跨侧板复制。 |
+| 8667 广播器 | 1391、1386 | 直接对 Mapping 调用 forEach，不归一化单例；没有映射列表时返回 dialControl=0 和空映射，单例对象会抛错。FrontDialClick 按 Headphone 设 dialControl=1，否则0，后项覆盖前项；该输入不在五项输入映射表中，不形成映射。实际只处理 Chroma_Effect、AdvanceGainSettings、Multimedia，保留原效果ID、向下循环和麦克风音量转换。 |
+| 8311 音频 | 1387、1388、1383、1393 | 单例与数组均归一化，跳过 falsy 条目；支持的 Audio 项固定使用 KEY_SWITCH_AUDIO_EQ／AudioInput／非HyperShift。SwitchAudioEQ 转成 SwitchAudioEq，ToggleMicMonitoring 保留；重复项保留，未知分组／assignment省略，缺 AudioGroup 会抛错。 |
+
+源 registry 在 swapPID **之前**按原始 PID 选择，因此不能自动将143的144／146、167的168／169、180的181或1383的1384别名补入这些专属范围。专属 Mappings 会抑制共享同名特征；dispatcher 仅在真正执行某个共享转换时才通过 `Object.assign(profile,{deviceInfo})` 注入上下文。完全由专属转换处理的 profile 可能没有 deviceInfo，6892因此查不到侧板定义，shared8061也不进入键盘／第一代analog分支；这种输入仍按原链转换，不能自行补设备上下文。
+
+all及源产品转换分别位于独立 try/catch，实际表达式为 `converter(profile) && Object.assign(result, converter(profile))`：成功返回对象时同一转换执行两次。转换内部异常丢失本次局部结果，之前已合入的字段和其他转换仍保留；三种专属转换都没有单条映射的 catch。同步转换返回的聚合对象继续交给既有 worker／Import 发布链，不增加设备确认、回滚、取消或端口排空语义。
+
+静态验证核对实际参数、源PID与别名、侧板优先级、广播器与音频输入差异、双调用／catch边界、完整原件及变更拒绝、正式CLI分派和失败发布。其他源产品功能转换与共享功能仍按原清单独立接续；现有 Rust 导入候选、sidePanelMappings 宏引用修复及存储实现保留原验证范围。本段没有修改产品 Rust、执行厂商代码或新增临时资源，UI／后端和实际 DLL／设备验收仍未验证。
+
+## 旧版文件：跨产品共享标量与开关
+
+统一入口 `python -B -X utf8 tools/workspace.py audit-family-function --family mouse --function mw --product 182 --query legacy-shared-scalar-chain`；正式结果归[鼠标中间件收据](../../../.analysis/results/frontend/mouse-mw-audit.json)的 `legacy_shared_scalar_chain`。本段一次覆盖共享注册器中的25个实际转换及6个依赖模块，复用相同 worker、源特征分派、导入消费者与部署证明；这些是旧文件的键盘／鼠标／音频／系统／充电设置转换，不代表只适用目标PID182，也不增加新产品能力。
+
+| 源功能组 | 本次核对的转换 |
+| --- | --- |
+| 输入与系统 | GamingMode、BossKey、FunctionSwitch、InGamePollingRate、ModTap、PowerSavingsRefreshRate、MouseRotation、LedState |
+| 音频与触觉 | MicrophoneVolumeNormalization、SpeakerBassBoost、MicrophoneAmbientNoiseReduction、MicrophoneSidetone、MicrophoneVoiceGate、SpeakerSoundNormalization、SpeakerVoiceClarity、MicrophoneVocalClarity、VirtualSurround、HapticIntensity、MonitorTHXMode、GameChatBalance |
+| 灯光开关与充电标量 | PreventChromaSDKControl、SmartHome、EnableChromaEffects、ChargingLedBrightness、ChargingForceChromaControl |
+
+各转换保留原字段与判定：多数开关要求精确字符串 `"1"`；轮询状态、刷新率节电和鼠标旋转使用精确 `"true"`；MonitorTHXMode要求 `BrightRoom`。FunctionSwitch直接判断FNKeyState的truthiness，因此非空 `"0"` 也得到multi。GamingMode另设isGameOn=false，并按Off／On／GameLaunched表取state；BossKey以“结果不等于undefined”接受合法值0，表查询仍使用原来的 `in` 语义。
+
+数值使用 `value ? parseInt(value) : default`，默认0；truthy但不可解析的字符串保留NaN，不换成默认或做范围截断。MicrophoneVoiceGate显式传默认50后计算 `Math.round(n/20) || 1`，GameChatBalance计算 `Math.floor((100-n)/5)`。SpeakerVoiceClarity读取Volume、ChargingLedBrightness读取Brightness，其余相应值读取Value；InGamePollingRate分别保留WiredValue和DongleValue。LedState只生成logoBrightness开关和固定值0。这些默认值仅属于文件转换，不能作为设备初始化或读失败回退依据。
+
+PreventChromaSDKControl与SmartHome实际都写入preventChromaConnectLighting；后者声明的syn4FeatureKey虽为SmartHome，dispatcher不读取该声明来改写输出。真正的覆盖顺序由 `Object.keys(profile)` 和每次 `Object.assign` 决定，不能用注册器顺序重排。专属all／源产品特征仍优先阻止共享转换，并沿已核专属链处理。
+
+只有三个选定转换自带catch：MicrophoneVolumeNormalization失败返回空对象，两个充电标量失败返回undefined，均不会向聚合对象增加字段；其他畸形必需字段可使共享转换向外抛错。同步转换不提供逐特征取消、回滚、设备应答或清理保证，结果继续沿既有worker和Import发布链。静态反例覆盖全部25个转换的原件身份与真实分支，并核对真值、解析／取整、重复输出覆盖、catch差异及失败发布。
+
+共享8061和三类源Mappings由前两节独立记录；其余17个共享转换由下节接续，其他专属源产品转换继续独立核对。没有新增捕获、分析会话、临时资源或产品Rust修改；独立实现、UI／后端与实际DLL／设备对照仍按各自收据判断。
+
+## 旧版文件：共享结构化转换与完整注册表覆盖
+
+统一入口 `python -B -X utf8 tools/workspace.py audit-family-function --family mouse --function mw --product 182 --query legacy-shared-structured-chain`；正式结果归[鼠标中间件收据](../../../.analysis/results/frontend/mouse-mw-audit.json)的 `legacy_shared_structured_chain`。本段复用worker、已发布标量和共享映射三个正式段，核对最后17个导入共享转换及11个直接依赖，共28个完整模块。当前导入共享注册表的52项，恰由既有9项、共享映射1项、标量25项和本组17项覆盖；内置name／guid仍由原注册器链记录。这个集合闭合只证明当前共享文件转换的分段静态语义覆盖，整个worker、产品及独立实现仍未完成。
+
+| 功能组 | 当前原件中的分支与结果 |
+| --- | --- |
+| 基础灯光、显示器颜色、系统灯光电源 | BasicLightingEffects只专门处理breathing／static，其他效果生成ID3；其static不做已有4982 helper的颜色数组归一化。MonitorColorPreset仅接受truthy模式查表结果，无VideoGain时RGB保留50。SystemLedPowerSettings无论是否联动均读取三套嵌套状态，idle值除60不取整；SystemLighting的off=0经 `||1` 变成ID1，twoMode的logo沿用电池LogoEffect。 |
+| 扬声器校准、三类EQ、应用预设 | CalibrationV3直接map数组，随后 `filter(e=>e)` 保留id未定义的对象。EqualizerV3可用SystemEQs替换standard列表，但仍必须从StandardEQs读取headphones；选中预设未匹配时currentFrequencyData保持undefined。MicrophoneEqualizer固定currentBands为空，普通Equalizer在未匹配模式时不输出。SpatialApplicationsV3只归一化外层单例，保留ExeList.string和重复项，按实际输出名称／后缀选择预设。 |
+| Camera | 先构造全部Presets.Preset图像条目，最后一个custom预设可覆盖基础focus。仅原始源PID3592进入扩展分支；扩展camera替换基础camera，不继承cameraEnabled／previewActive／FOV／hdrActive字段。MJPEG自动值要求字符串5，resolution默认3840×2160／30fps；各HDR、对焦、曝光、降噪、水印和ViewPreset字段按完整原件及shortcut helper转换，缺必需嵌套对象会抛错。 |
+| Keymappings与commandDial | Keymappings归一化Keymapping列表，但内部Mapping必须是数组；按源PID选择analog代次，向输出helper传四个参数，第四个来自 `profile.macro?.items`。它返回顶层mappings空数组，可按profile键序覆盖普通Mappings。commandDial自定义项只传两个参数，不调用input helper；八种内置功能各保留两方向映射。槽位按parseInt(Slot)-1直接写数组，保留空洞和覆盖，内置UID每次重新生成。 |
+| 充电灯效 | Object.entries保留区域顺序；已知区域的未知效果仍可得到只有regionId的对象。wave helper只收一个参数，因此不应用源PID方向分支；fastwave使用字符串FAST_WAVE。未知区域或任一效果异常被唯一的整组catch吞并，整组返回undefined，没有部分hardwareEffects发布。 |
+| PWM与HapticsSettings | PWM跳过数组index0，其余端口从26编号；Off仍读取曲线，未知模式可留下undefined。触觉区域必须在实际四区域表中，否则向外抛错；各数组顺序、重复项和整数值保留，没有排序、范围截断或逐项catch。 |
+| KillSwitch与PerformanceMode | KillSwitch归一化按键对，只有两个HID都解析成功才追加并递增ID；结构有效却无可用按键对时补A／D，缺嵌套数据仍会先抛错。PerformanceMode缺失返回空对象，未知模式抛错；已知模式仍读取全部三套插电风扇设置，电池固定balanced／auto／4500，custom模式不补造custom payload。 |
+
+所有源数组的直接map／forEach与显式concat归一化均分别记录，不能统一补单例、过滤未知值或忽略缺字段。该组仅充电灯效6415带转换级catch；其他异常沿共享转换向外传播。BasicLightingEffects／LightingEffects同写quickEffects，Keymappings／Mappings同写mappings，SystemLighting同写brightness／logoLighting；最终覆盖由profile自身键顺序和Object.assign决定，不能按注册器顺序改写。
+
+16项静态反例核对了全部原件、实际依赖、52项共享注册表分段覆盖、数组／单例、真值／默认、相机源PID和替换边界、analog／dial调用参数、未知效果／区域及失败发布。测试读取源码AST，不执行厂商JavaScript。独立Rust、UI／后端与实际DLL／设备对照仍另行验收；源产品专属转换由下节接续，原生monitor枚举及worker完整取消／释放继续保留各自缺项。没有新增捕获、会话或临时文件。
+
+## 旧版文件：其余源产品转换与完整源注册表覆盖
+
+统一入口 `python -B -X utf8 tools/workspace.py audit-family-function --family mouse --function mw --product 182 --query legacy-source-product-chain`；正式结果归[鼠标中间件收据](../../../.analysis/results/frontend/mouse-mw-audit.json)的 `legacy_source_product_chain`。本段核对剩余22个源产品转换及8个共享依赖，共30个完整模块。实际source registry共26项，由已核all6283、三类Mappings和本组22项形成无遗漏、无重复的分段覆盖。原始source Product_ID、注册顺序与特征选择器逐项保留；不能由swapPID结果补入原registry没有的别名，也不能按目标PID182删去其他源分支。
+
+| 实际转换组 | 已核输入与结果差异 |
+| --- | --- |
+| 4714／PID1342混音器 | 完整初值对象的17个输出字段、数值范围／步长及默认绑定保留原始区间／SHA，随后按源码18步读取设置。声明的LedPowerSettings／LedBrightness被专属接管但不读取。路由音量按原min/max线性换算，输入通道百分比保留各自一位／两位取整。未知Fader Mode保留indexOf的-1并选meterEffects；EQ使用固定10／3个频率按下标取值，字符串CustomBands保留零默认，缺必需对象仍抛错。 |
+| 4349显示器、8011面板 | 显示器按固定顺序读取五组必需设置，ColorGamut可选，未知模式保留undefined。面板亮度可缺省为关闭／10，但ColorTemperature始终读取并覆盖初始3000，缺对象不会成功返回默认暖度。 |
+| 3803滚轮阶段 | 源167／168／169／180／181按Order-1写阶段数组，保留空洞与覆盖。自定义曲线按520×330尺度转换，y反向、保留两位小数，tension／steps默认11／15；原始三点及控制点必须存在，没有裁剪或排序。 |
+| 1978低音、7337指示灯、5929语音门限、338 EQ | 低音字段缺失时本地转换生成enabled／level4，存在时复用1423并改字段名。指示灯四组设置均必需。特定音频源的语音门限用 `floor(value/50)+1`，不沿用共享 `round(value/20)||1`；PID1303只输出preset，不生成共享EQ频带。 |
+| 6016主板、219水冷、7385面板灯、7526多端口 | 主板源Edition_ID精确字符串129选择第三ARGB，其余分支选择第二RGB；其brightness按PortID匹配。水冷的PortID精确字符串4指向泵，其余指向风扇，曲线只覆盖已有5／7项。7526的brightness和灯效按数组位置处理，忽略PortID；GlobalEffect helper在后续truthiness判断前执行，缺失仍可抛错。四类外层catch返回空对象，6016／7526另有brightness局部catch，可能保留部分结果继续转换。 |
+| 2984与1182混音输出 | PID1346按registry顺序同时运行两者，分别产生streamMixerSettings与streamMixerSettingsAsPreset，互不替代。2984声明ListenMonitoringMix却不读取，两个总开关保持false；1182读取并反转Listen状态。1182的isDefault只按两个有序输入、字符串音量50及输出音量／部分状态判定，不额外核对link、route、playback state或listen状态。 |
+| 5784系统灯光电源 | 只以 `{SystemLighting}` 调共享1627，另生成switchOffLighting的固定plugged／battery和真实twoMode转换。LedPowerSettings仅空字符串有特殊处理，null／缺失不能冒充空字符串；返回还包含brightness／logoLighting，不能按syn4FeatureKey声明丢掉它们。 |
+
+七个性能转换保留实际差异；均不执行设备初始化，源字段缺失、空对象、未匹配值和抛错分别记录：
+
+| 模块／源PID | 实际分支 |
+| --- | --- |
+| 5077：601、594 | 电池与插电balanced／batterySaver／gaming默认4000；缺PluggedInPerformanceMode抛错，模式查表结果可为undefined。 |
+| 5093：587 | PerformanceMode与Wattage形成balanced／custom，默认4500；不执行其他严格分支的CPU／GPU数字类型和模式truthiness校验。 |
+| 7717：616、652 | 电池4900，插电balanced／creator／gaming默认4300；缺插电分组抛错。 |
+| 1723：621；8777：670、630、650、671 | 两者converter正文SHA相同，源PID组仍独立。默认4100；模式须truthy，CPU／GPU须number，合法0保留；silent风扇值固定4100。 |
+| 9871：669、694 | 同样严格校验，默认3800，并增加turbo的Auto／FanRPM读取。 |
+| 6628：672 | 同样严格校验，默认3000，无turbo字段。 |
+
+每个profile先执行共享转换，再执行all6283，最后按registry顺序执行所有匹配源转换。专属转换只接收profile一个参数，不能保证共享阶段已经注入deviceInfo；成功的truthy结果会被调用两次。源码使用Object.assign替换整个输出字段：成功源性能结果会替换all的整个performance，源转换抛错则保留此前all结果。所有初值、局部失败和结果覆盖均为本地文件转换语义，不能当成设备实测、写回确认或通用恢复行为。
+
+14项静态反例首次运行全部通过，覆盖30个完整模块、26项源registry集合、实际PID、mixer完整初值与18步顺序、原共享helper参数、数组位置、类型／默认／失败差异及正式CLI失败发布。当前共享52项与源26项转换分别具有可复核覆盖；原生monitor枚举、实际Import发布依赖、完整取消／释放及独立Rust、UI／后端、实际DLL／设备验收仍另行推进。没有新增捕获、会话、临时文件或产品Rust改动。
 
 这里记录当前官方源码语义。源码获取、逆向语义、Rust 独立实现、UI／后端接线、静态／模拟验证和真实运行验收分别判断，不能由此索引推断整族功能已完成。

@@ -99,6 +99,22 @@
 
 部分 import catch 只记录错误并继续队列；doneMigrating 把管理器状态改为 success，并不证明每条写入、游戏关联和依赖都成功。结束页先显示本地游戏/未使用宏警告；有转换 warning 的项目可继续打开失败清单。历史、warning、真实存储结果与设备实测状态必须分别保留。
 
+## 宏坐标使用的当前 Host 显示器查询
+
+旧配置 worker 的显示器依赖接续于[鼠标中间件收据](../../../.analysis/results/frontend/mouse-mw-audit.json)的 `host_monitor_enumeration_chain`，复核命令为 `audit-family-function --family mouse --function mw --product 182 --query host-monitor-enumeration-chain`。该项绑定当前 Host 4.0.896 包中的 SysUtilsNative 1.2.3.0，复用[完整捕获](../../../.analysis/results/native/bc0387a0913c882a9cd82aa1a8e147d6408fc7bb7f77519f4f8860f16c5b17c8/capture.json)及 22 个当前 JS 所有者，选择 21 个已有原生函数。未选 CRT `0xabcbc` 的反编译失败保留，不能把本链核验等同于整个 DLL 完成。已有 worker 的转换、主机指针回复和释放接线继续复用。
+
+实际调用为无参数、返回 pointer 的 `getMonitorInfo`（RVA `0x6fc00`）和 `getVirtualScreenRect`（`0x6fee0`），两者共同使用 Win32 callback `0x6f090`。前端依次 await 两个调用；主机虽有 async 外层，实际 FFI 调用同步执行。Windows 正常安装分支定位版本目录的 `CommonDLL`；debug 分支会保留已存在的覆盖 DLL。本项证明当前安装包原件，不把它冒充本机实际加载或 debug 覆盖版本。
+
+显示器名称先通过 `EnumDisplayDevicesW` 按适配器枚举下标取得，使用 codepage 3 转换并写入全局字符串槽；没有按 HMONITOR 身份重新匹配，也没有 StateFlags 过滤。每次存入适配器名后查询 child 0，child 名为空就停止；child 结构仅在循环前清零，查询返回值没有检查。随后清空全局 JSON、重置计数并枚举 monitor。callback 使用相同下标取名称，输出 `deviceName`、`dpiScaleX/Y`、`isPrimaryMonitor`、`MonitorRect` 和 `WorkRect`；矩形为有符号原坐标，DPI 除以 96，primary 判断为 flags 恰好等于 1。
+
+原生 callback 只设置 MONITORINFO 的 cbSize，没有先清零其余字段，也不检查 `GetMonitorInfoW` 返回；DPI 输出先置零，但 HRESULT 同样被忽略。`EnumDisplayMonitors` 返回亦未检查。首次无 callback 时全局 JSON 仍为 null，曾经有列表后清空则为 `[]`，不是统一的“成功空快照”。另一个 `getCurrentMonitor` 临时关闭共享返回开关以刷新这些全局量；开关初值、临时切换及恢复按原字节核验，未推导并发安全或失败时必然恢复。
+
+虚拟屏幕查询另开一次枚举，将 rcMonitor 写入全局矩形槽。union 使用枚举前的 `GetSystemMetrics(80)` 数量，**不使用 callback 实际数量**，也没有清除未覆盖的槽位。标量和 SIMD 分支均以最小值 600000、最大值 -600000 开始，输出 `MonitorRect{left,top,width,height}`；数量为零时保留 left/top 600000、width/height -1200000。拓扑变化或部分失败可能使其读取旧槽或零值，两个调用不构成原子快照。此处记录原件行为，不把异常结果标为可信设备状态。
+
+两种返回都先将 JSON 序列化到临时字符串，再分配、清零并复制 NUL 结尾输出；分配失败返回 null。正常返回释放临时字符串及每次调用对象，共享列表由登记的退出析构函数另行释放。`FreeMalloc`（`0x69d10`）检查非空后最终调用 HeapFree，失败只记录 errno。Host 的 readCString 返回后才设置 finally 的释放标志，因此解码抛错可留下未释放指针；其 catch 返回 undefined。前端 JSON.parse 不检查形状，损坏的非空字符串与无结果分别保留原有 undefined／空数组语义，不能自行合并成成功。
+
+已有 [macro_geometry.rs](../../../crates/razer-platform/src/input/macro_geometry.rs) 保留每次调用状态、检查 OS 返回并在一次枚举中合并列表和边界，头部仍引用旧输入；本轮没有修改或宣称它与当前原件等价。当前原生枚举、参数、结果字段和所选清理路径已静态核对，普通主机功能、完整通用 CRT／JSON 异常展开、Darwin、独立 Rust 接线及实际 DLL／OS 对照继续分别验收。本批没有执行厂商代码、显示器 OS 查询或新增临时分析文件。
+
 ## 宏迁移的提交与实际消费者
 
 `importMacro` 的目标不是浏览器旧 `synapseMacros` 字符串，而是与当前宏页面共用的 IndexedDB 数据库 `macros`、同名 object store 和 `macros-change-channel`。读取使用 `macros-idb` shared navigator lock，写入使用 exclusive lock；set 在 readwrite 事务内读取旧列表、clear、按 GUID 逐项 put 并 commit，等待事务完成才发 `{oldValue,newValue}`。这确认单次 IDB 列表事务，不涵盖后面的编辑配置、迁移历史和原生发布。

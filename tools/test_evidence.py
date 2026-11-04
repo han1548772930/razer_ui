@@ -7885,7 +7885,7 @@ VERIFICATION_INPUT_NAMES = ("tools/evidence.py", "tools/test_evidence.py", "tool
                                        "tools/native_import_forwarders.py", "tools/test_native_import_forwarders.py",
                                        "tools/native_source_correspondence.py", "tools/test_native_source_correspondence.py",
                                        "tools/native_static_reviews.py", "tools/test_native_static_reviews.py",
-                                       "tools/test_frontend.py")
+                                       "tools/test_frontend.py", "tools/test_scratch_cleanup.py")
 
 
 def verification_input_snapshot():
@@ -8271,7 +8271,8 @@ VERIFICATION_TEST_MODULES = ("test_evidence", "test_rust_data", "test_typed_tabl
                     "test_native_adjudication", "test_native_callsites", "test_ida_capture",
                     "test_native_attempt_history", "test_native_boundaries", "test_native_embedded",
                     "test_native_ia64_contracts", "test_native_import_forwarders",
-                    "test_native_source_correspondence", "test_native_static_reviews", "test_frontend")
+                    "test_native_source_correspondence", "test_native_static_reviews", "test_frontend",
+                    "test_scratch_cleanup")
 
 
 def run(selected_tests=None):

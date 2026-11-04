@@ -185,7 +185,55 @@ vendor 必须实际等于 `AuthenticAMD`，支持 CPUID `0x80000001` 时把 base
 
 Service 与 Hanbo 仍使用本页前述真实 `Package` 消费链；源码的数值有效性没有携带本次传输成功事实。缺少 Package 时的投影零值、提前更新的 last-temperature 缓存以及上述失败数值，均与设备实测状态分开记录。本项目已有 K17 温度／时钟 Rust 实现；它与本批 K10／K12 是不同分支，本批没有修改或重新验收该实现，独立 Rust、UI／后端接线和实际 DLL／设备对照仍分别未验证。
 
-后续独立入口保留为 K8 `0x17d850`、K15 `0x19d2c0`、K16 `0x195330`、K17／K19／family `0x1a` 共用的 `0x1841d0`，以及 K14 `0x19ed50` 与旧 family／default 的实际温度槽。K10／K12 初始化中非温度的 FIDVID／clock／control 依赖、优先 owner `+32` 和全服务取消／恢复也未由本节宣称闭合；具体入口统一留在本收据的 `remaining_chains`。
+K8、K15、K16、K14 与旧 family／default 的温度槽已接续到下节；本节原始 `remaining_chains` 保留为可复核的交接依据。K17／K19／family `0x1a` 共用的 `0x1841d0`、初始化中非温度的 FIDVID／clock／control 依赖、优先 owner `+32` 和全服务取消／恢复仍分别未闭合。
+
+### AMD K8／K14／K15／K16 与旧 family 温度分支
+
+统一查询 `audit-family-function --family accessories --function main --product 3893 --query hanbo-amd-legacy-package-chain` 接续同一[配件收据](../../../.analysis/results/frontend/accessories-main-audit.json)的 `hanbo_amd_package_chain/remaining_chains/0、1、2、4`，结果字段为 `hanbo_amd_legacy_package_chain`。复用当前 `cpuidsdk64.dll` 的完整捕获，新增核对 26 个完整函数和 17 个实际 PE 槽；前端结果投影、CPU 优先级、PCI 传输、ECS 恢复及 SDK 释放复用上一节的绑定证据，不新建分析会话。
+
+| 实际分支 | 读取／修改与结果 | 失败、恢复与边界 |
+| --- | --- | --- |
+| K8 family `0x0f` | 初始化 `0x181be0` 经实际 revision 选择与 socket PCI 列表，在 revision≥8 时改写 `0xe4`，采样字段非零才建立 Package，offset 为 **−49**。周期 `0x17d850` 要求已有 sensor，从首个 `0x1103` 读取 E4，按 CPU `+72` 奇偶设置 bit2，并清 bit31／6，再读 E4。revision<96 用 bits16–23；≥96 加 bits14–15 的 0.25 分数，socket 标识 65546 再加 21°C，最后应用 offset／multiplier。 | 读／写结果均不检查，E4 没有恢复原值；失败哨兵可产生 206°C 或 206.75°C（特殊 socket 另加21）。初始化失败哨兵也可能通过非零判定。汇编 `0x17da33` 明确 `and esi,3`，不能把反编译的字宽表达式误读为更多小数位。 |
+| K15 family `0x15`，model `&0xf0` 为 0／0x10／0x30 | `0x19d2c0` 从首个 `0x1603/0x1403/0x141d` 采样。可选 ECS `function3:0x1e8` 保存原值，依次选择 0x31／0x30 并读 0x1ec，计算 **Cores**，随后恢复原选择。Package 另走 `0xa4` 检查后双读，后一次结果不检查。 | Cores 仅最初保存读取检查成功；其余读写和恢复均未确认，无恢复读回。若 Package 检查失败，函数可返回本次 Cores，但服务按名称消费的 Package 仍是另一对象；不能把函数返回值冒充 Package 观测。 |
+| K15 model `&0xf0` 为 0x60／0x70 | `0x15e68→0x15db8` 使用 driver mode2 的 `0x9c402584`，三个 u32 输入为 `80000000,0,d8200ca4`（12字节），输出4字节；成功后 `(raw>>21)*0.125` 再应用 sensor offset／multiplier。 | 排除 `aaaaaaaa/bbbbbbbb/cccccccc`，不检查 `BytesReturned`；只读一次。其他 model 返回−1，不从名称推断支持。 |
+| K16 family `0x16` | `0x195330` 遍历所有匹配 `0x1533/0x1583`，各自执行 A4 检查后双读；第二次失败可产生255.875°C。 | 返回最后一次通过首读检查的结果；后续首读失败保留前一轮局部结果。全无成功则−1；旧 sensor 不清空，不能当新观测。 |
+| K14、Am486、K5、K6、K7 与 default | 实际 PE 温度槽分别指向 `0x19ed50`／`0x38b0`，均直接返回−1，无读取和 sensor 更新。family0x21 仅设 CPU `+948=1`；default 仅在 base family4／5 挂载旧 owner。 | 结论只针对这些实际 family 槽，不排除优先级更高的 CPU owner `+32`，也不从负返回推断整机缺少温度。 |
+
+K15／K16 的 ECS register owner 通过实际 bus／device 绑定已存在的 kind18 owner，或注册 `AMD_K10_ECS_Status` 后调用保存／启用；共享 SDK 关闭时执行其恢复，结果仍未确认。所选 stop 槽均为空。K15 删除器释放其 `+104/+112` 对象后走继承清理，K8／K16 同样由继承清理释放控制与借用列表；sensor 由共享 SDK 列表拥有。周期读取没有取消 token，不等于整个服务回调排空。
+
+这批闭合上述温度采样、选择和局部恢复边界。保留函数中的非温度 FIDVID／时钟／控制及可选内存 register-space 初始化、K15 `+104/+112` 实际对象析构、K17／其他 Intel／owner32 和整服务排空仍有独立缺项。独立 Rust、UI／后端及实际 DLL／设备对照均未由本批静态工具测试验证。
+
+### K17／K19／family 0x1a 的 Package 采样
+
+[配件收据](../../../.analysis/results/frontend/accessories-main-audit.json)的 `hanbo_amd_k17_package_chain` 从上一节第一项未决链接续，复用当前 SDK 的 16 个完整函数与 6 个实际 PE 槽，不新增分析会话。`0x1a6d50` 对 family `0x17/0x19/0x1a` 均构造 `0x190780`，经 `0x305018+64` 调 `0x1841d0`。初始化、identify、品牌校准顺序为 `+40 → +32 → +48`；节点数量由 `CPUID 0x8000001e.ECX[10:8]+1` 得到，只有值恰为 1 进入单节点路径，缺该 leaf 时保留构造值 −1，不能根据型号名补成单节点。
+
+| 分支 | 实际选择与读取 | 结果边界 |
+| --- | --- | --- |
+| 单节点 | 按 `1450/1480/15d0/1630/14d8/14a4/14e8/1507/14b5/153a/1122/115b` 顺序取首个有启用设备的 AMD PCI ID；CPU `+72/+76` 均为0才读 Package。 | 可用 CPU `+124` 替换 bus；返回的传感器名是 `Package`。 |
+| 多节点及未取得节点数 | 仅前五个 PCI ID；topology `u32[0..2]=0` 且 `[3]` 为0或−1，按 `[4]` 选择匹配列表中的节点。 | 不使用单节点 bus override；实际名为 `Package (Node %d)`，编号直接取 `[4]`，不加1。 |
+| data-fabric bus 初始化 | family17/model组30 与 family19/组00、20 读 `0x84`；family19/组10、60、70、a0 与 family1a/组40 读 `0xc04`。目标是 bus0、device=`CPU+68+24`、function0，成功才保存低8位。 | 不能将所有型号固定成 device24，也不能把失败读数当 bus0。 |
+
+两条温度路径均对 `0x59800` 读一次。当前 `0x15db8` 要求 driver mode2，以 IOCTL `0x9c402584` 发送 `[packedPCI, method, register]` 三个 u32，输出4字节；拒绝 `aaaaaaaa/bbbbbbbb/cccccccc`，但不检查 `BytesReturned`。method 取非空 SMU owner `+216` 的字段 `+32`，否则为2；构造时该指针为空，其实际非空producer、热参数与析构接续见下节。
+
+成功且非零的原始 word 会先创建 sensor，再判断 `raw>>21`。创建时固定 `offset=-owner92`，其来源包括下节SMU热参数与之后的品牌校准；单节点遇 bit19 或 bits17:16=`3` 额外减49，多节点只看 bit19；后续采样不重算校准。`raw>>21` 非零时计算 `((raw>>21)*0.125+offset)*multiplier`，有效性检查只控制 extrema。读取失败或零 word 不更新旧 sensor；非零 word 但 shifted sample 为0时也不更新 cur，返回−1。family17 的品牌差异由 `0x187310` 的实际 model0/1/8 与字符串分支决定，保留20／27／10°C偏移及正值已存在时不替换的条件。
+
+Service 使用 SDK 名称作为 JSON key，而 Hanbo 只读取 `CPUInfo[0].Temperatures.Package.cur`。因此多节点 sensor 并不自动满足这个键；原版缺键零投影不能升级为实测。后续 CCD／电压路径不覆盖函数返回的 Package 标量；CCD 可改共享过热标志，其完整独立语义不由本片计完成。
+
+温度阶段等待 mutex100ms，仅接受0／128；其他结果跳过本阶段，后续非温度阶段独立重取锁。ReleaseMutex 不检查结果，临时借用列表节点在出口释放，sensor 仍由共享 SDK 列表拥有。stop `0x187300` 为空；删除器 `0x3fe0` 实际调用 `0x1906c0`，释放成员200／208／216／224后进入继承清理，反编译器的 `filebuf` 名称不是对象类型依据。没有逐读取消或整服务回调排空证明。
+
+现有 Rust 品牌校准、首次样本校准、SMN transport 及其测试文件继续保留，当前输入身份单独记入收据；本次未执行或扩大它们的验证结论。SMU producer、热参数与目标析构由下节接续；CCD／电压和非温度初始化、其他CPU provider、完整 UI／后端与实际 DLL／设备对照仍分别保留真实缺项。
+
+### K17 实际 SMU owner 与热参数初始化
+
+[配件收据](../../../.analysis/results/frontend/accessories-main-audit.json)的 `hanbo_amd_k17_smu_owner_chain` 核对9个完整函数和3个实际PE槽，接回 `0x191c60 → 0x209750` 的真实调用。前者在 CPU `+56==0` 时传入当前K17对象；后者仅在 `+216` 为空时分配184字节的 `CSMUInterface`，写入真实vtable `0x3050c0`、借用driver指针 `+8`，并令method `+32=2`。这条调用位于后续data-fabric bus override之前，不能按较晚的bus结果重解释其输入。
+
+family17／19／1a按model高四位选择七组实际mailbox布局，完整寄存器与分支表保存在收据。三个mailbox位于SMU `+48/+88/+128`，各40字节，构造时清零；未匹配model不套用同族布局，新对象保留零寄存器，已存在对象不被统一重置。没有PCI manager或mutex等待失败仍返回1，调用方不检查返回；已分配指针继续保留。分配失败也没有覆盖所有路径的空指针保护，不能将构造或nonnull当作SMU查询成功。
+
+查询等待mutex1000ms，仅接受0／128。输入PCI为 `0x80000000`，或在调用当时CPU `+124!=-1`时合入其低8位bus；mailbox `+88`先执行command2，成功则保存version并置 `+168=1`，version数值为0也不阻止置位。`0x160b4 → 0x15f48` 的mode2 IOCTL `0x9c40258c` 输入68字节，依次为PCI、method、command、message／response寄存器、六个argument寄存器和六个argument值；输出28字节。仅在DeviceIoControl成功且输出首word为1时复制六个返回值，未检查BytesReturned，失败保持调用方原值。
+
+version成功门内，family17组00使用command54，组30／70用35；family19组00／10／20／60用35，40／70用95；family1a组00／40用35，20／60／70用95。返回首word的高16位写CPU `+1004`（TDP），低16位写 `+1008`（TJMAX），后者进入Package过热判断。family17组00另执行command58，把非负的有符号返回写入K17 `+92`校准偏移；它早于品牌识别，因此**正SMU偏移优先于品牌默认值，零才允许之后的品牌分支补值**。失败保留原字段；已有Rust只含品牌校准的实现不能据此算完整热参数链。
+
+释放时 `0x1906c0` 对SMU调用实际虚槽0的 `0x40c0`，传入deleting flag1，释放对象后清K17 `+216`。该析构只释放SMU分配，不关闭借用driver、不发送恢复mailbox。共享stop、sensor列表和服务释放复用原收据，仍没有整服务回调排空证明。12项定向测试通过；本片没有新增捕获、分析会话或临时资源。非温度power／frequency／HSMP结果、Rust热参数接线与实际DLL／设备对照继续分别未完成。
 
 ## 3900 PWM 风扇控制器
 

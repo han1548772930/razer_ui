@@ -132,6 +132,40 @@ SDK ServiceInfo Reset 只清初始化、视图缓存和 available，不清 chann
 
 本项完成所选 10.0.1.35 服务信息与兼容性链的静态语义；Monitoring／Tuning／Events、SDK 存储／元数据／hook、安装选择和 IPF／驱动继续保持各自边界。现有 [Windows 服务适配](../../../crates/razer-platform/src/platform/windows/services.rs) 仅有 `XTU3SERVICE` 的 SCM 控制，不能视为该 WCF 兼容性链已经由 Rust 实现。本批未修改 Rust、未新增提取／会话／临时输出、未执行官方代码；独立实现、UI／后端接线、真实 DLL／服务／设备对照与运行验收仍未验证。
 
+### PID737 IPF 角色激活、版本与状态生命周期
+
+本链接续 ServiceInfo 的 IPF 缺项，复核入口为 `audit-family-function --family system --function mw --product 737 --query system-737-xtu-ipf-lifecycle-chain`，正式结果归[系统中间件收据](../../../.analysis/results/frontend/system-mw-audit.json)的 `overclock_ipf_lifecycle_chain`。复用 93 个完整 IL 方法与 3 个原生函数；服务包内 IPF 托管库和 SDK 包捕获原件按实际字节确认相同，版本为 2.2.10200.11；NativeServiceUtilities 为 10.0.1.35。来源、IL／MethodDef／异常区间和原生汇编分别校验，未解析 C# 诊断保留。候选包身份不证明实际安装版本或通道绑定。
+
+`CoreServer.Init` 先调用 `ActivateXTURoleInIPF(30,1000)`，再初始化 HardwareServices。循环条件为 `attempt <= retries`，最多调用 31 次；重试前睡眠 1000 ms。`ShortIpfTimeout` 从 HKCU 的 `SOFTWARE\Intel\XTU` 读取，缺失或解析失败启用快速检查：前三次失败后，在第四次调用前查询 WMI 的 `ipf_cpu` 驱动。没有匹配就停止，WMI 异常则返回 true 并继续尝试。`OnServicePreShutDown` 只设置普通布尔标志，下一轮循环才检查；没有中断当前 sleep／native 调用，也没有此所有者的注销或状态重置。
+
+实际调用为非 Ex 的 `IpfCore_SetAppDir("XtuDir", 当前程序集目录)`，不能用 Ex 的取消导出补造取消语义。原生 RVA `0x2690` 枚举当前 PCI 和 IPF 接口 GUID `ee27098e-1b22-472a-89d8-5ccce16b1356`，访问设备注册表 `IPF/XtuDir`。已有值大小写不敏感相同则直接成功；缺失或不同才写 REG_SZ，随后经 `0x2460 → 0x23a0` 请求 SetupAPI 的设备属性变更重启。重启 helper 的返回值被丢弃，外层读取 `{状态, 已尝试}`：未尝试或失败归为 34；已写值不回滚。null key 返回 3，null value 分支删除已有值且不重启；当前托管调用提供非 null 目录。注册表句柄、设备列表和 heap buffer 有各自清理；无匹配接口的边缘分支保留最后 CONFIGRET，不能改述为总能返回明确“未找到”。
+
+激活返回 0／34／其他分别转为角色状态 1／2／3。仅状态 1 创建 `ClientApiJson`，provider 配置指定 `XtuProvider.dll`；随后读取 `GetProperties("")` 的 `body.product_version`，以 `System.Version` 比较最低 2.2.10200.11，通过后依次读取 provider 版本和 CoreCount。IPF 状态在创建客户端后、资格检查前就先写 0；版本缺失／错误／不足改为 3，IPF 异常为 1，其他异常为 2，需重启为 4。已创建客户端在后续失败时仍保留，状态 0 本身不等于新的硬件确认。
+
+初始化查询调用的 `GetIpfValue` 首次读取后最多重试 99 次，间隔 500 ms，同时受调用参数和 `TimeoutController.DoRetries` 控制。读取异常当作 null 继续尝试；最终 null 写状态 2 并抛出 `DriverAccessException`，不会通过外层 getter 的初值返回伪造成功。`IpfNullOverride` 虽被读取，实际 helper 直接调用 `GetValue`，没有应用该覆盖值。版本失败不重新读取其他值；构造错误的诊断另以 `Framework.GetLastError` 和 `GetLastError=10` 查询，诊断失败单独捕获。
+
+托管 `ClientApi` 入口与结果 delegate 使用 Cdecl、自定义 UTF-8 marshaler；输入字符串分配与释放配对，原生字符串解码失败可变成 null。wrapper 先检查 native 错误码，再解析局部回调字符串；空白／精确 `null` 为 null，损坏 JSON 抛异常。错误信息长度界限为 2048／256，并按九类异常名转换。`ClientApiJson.Dispose(true)` 经 SafeHandle 调 `IpfDestroy` 后清空句柄，finalizer 的 `Dispose(false)` 不直接调用它；`IpfService` 自身没有显式 Dispose／关闭链。CoreServer 的关机通知位于 host Abort 之后，前序异常可能使其无法到达。GC、普通停止和回调排空不能互相替代。
+
+本项闭合角色激活／设备重启和托管初始化、状态、错误与所有权的选定静态边界。原生 ClientApi、XtuProvider、mailbox／driver 报文及其真实应答、其他 IPF 功能与安装选择仍按独立缺项接续；没有新增捕获、临时数据库或产品 Rust 修改，也未执行官方代码。独立实现、UI／后端和实际 DLL／设备验收保持未验证。
+
+### PID737 原生 ClientApi 回调与 mailbox 读取
+
+原生接续归[系统中间件收据](../../../.analysis/results/frontend/system-mw-audit.json)的 `overclock_client_api_chain`，复核入口为 `audit-family-function --family system --function mw --product 737 --query system-737-xtu-client-api-chain`。当前服务包与 SDK 包的 ClientApi.dll 实际字节相同，文件版本 2.2.10200.11、产品版本字段 0.0.0.0，均按原件记录。本链复用[完整捕获](../../../.analysis/results/native/974cdf786bc04bff4e4aa91d2ecab01692a41831a2355c9c02f438962c6af58c/capture.json)中的 27 个函数、7 个 PE 虚表槽及 22 处汇编参数现场，并核对 15 个 mailbox／互斥／结果消费 IL 方法；此前托管激活、版本与释放结论不重复发布。
+
+`IpfCreate`（RVA `0x1b120`）先清空有效 out 指针，null／空配置选择 `{}`，其余配置原样进入实例构造。它并不直接创建 XtuProvider：loader 枚举 SWD 设备接口 `9dd57132-5929-476a-8ccb-9d42b1e4abed`，从接口注册表读 `InstallDir`，再拼接 `ClientApiProxy.dll`。路径空／查询失败进入异常；实际加载前执行 WinVerifyTrust 并关闭验证状态，再用 `LoadLibraryExA(...,0x1000)`，核对 `ClientApiR4Create/Destroy/Revision`、`GetDllBuildType` 的 0x200 位清零、revision 在 3—4 内。这里的 revision 是接口资格，不是 DLL 文件版本，也没有按固定发布者名称判断信任。
+
+当前来源索引没有可绑定的 ClientApiProxy 原件；当前 PID737 声明的 Blade tools 和设备 driver 包已有完整直接解压结果，分别 36／17 项，未发现该名字。实际源码要求的文件来自 IPF 接口安装目录，不能用任意同名库、已存在的 XtuProvider 或本次包内 ClientApi 替代。下一步仍须取得对应官方 IPF proxy／驱动包、核实其版本和 revision，再追 proxy 对象的 provider dispatch。源码未提供该依赖的下载地址；未取得输入不表示功能不存在，也不能把候选包当成本机安装绑定。
+
+`IpfGetPropertiesWithCallback`（`0x1c800`）、`IpfGetValueWithCallback`（`0x1d660`）和 `IpfExecuteCommandWithCallback`（`0x1b8d0`）分别进入实际 proxy 虚槽 +8／+16／+40。路径／配置通过 R8，command 另用 R9；多处伪代码省略了这些参数，已以汇编纠正解释。成功时同步把本次 std::string 的 SSO／heap 指针经 RCX 传给回调，回调返回后才释放字符串；捕获到后端异常时同步回调 null 一次。参数校验失败返回 4，不调用回调。callback 本身不处于这些后端 catch 的保护内，不能擅自承诺其抛错也会变成受控返回。
+
+捕获 IPF 异常时，Create／Properties／Value／Command 分别返回 5／6／13／9；std 异常返回 1，未知异常返回 2。native 异常转换器会重抛 IPF 分类，并将 JSON 库异常转为 code 600 的 JsonException；临时 `{}` 初始化不是失败后成功回退。错误消息和类型写入当前线程 TLS 的 2048／256 字节缓冲，getter 返回借用指针；参数错误只更新消息，成功调用不清除旧错误类型。command 校验在保护块前先扫描字符串，空串有受控返回，但 null 指针没有先安全判定；当前托管调用提供序列化后的非 null JObject，不能因此补造 native 的 null 安全性。
+
+实际平台读链先调用 `ReadMailboxForCompletionCode(1,0,0)`，completion 5 表示 OC lock；其后按条件查询 IAOverclockingStatus／UndervoltProtectionEnabled，并比较命令 1／5 的读取。非 affinity 请求使用 `Platform.SOC.Overclocking` 和 `MailboxAction{version:1,cmd,param1:0,param2:0,ocmb_affinity_data:[{group:0,affinity_mask:0,data:0}]}`。WindowsMutex 缓存命名句柄并等待 100 ms，但 caller 丢弃 TakeMutex 的 bool；仍执行命令并在 finally Release。Dispose 也仅 Release，未调用 CloseMutex；不能据 finally 存在宣称确实取得互斥或完成句柄关闭。
+
+`GetMailboxValue` 先分配 `Response[CoreCount]`，再进行请求。缺失／false 的 success 可以按原规则重试，最多 100 次、间隔 500 ms；native 抛错或 malformed bool 则直接进入外层 catch。`return_code` 转成字符串后未参与判断。**IsSuccessful 在解析 response 之前写入**，DataCompletionCode／IpfOcMailboxResponse 均为 struct；后续解析失败或响应不足可能保留 true 与零填充／部分填充条目，catch 不清除它们。非 affinity caller 检查 success 后直接访问 `[0]`，非零 completion 只记录再返回；CoreCount 为零还可能越界。初始化零值不证明设备返回了零，独立实现与真实确认仍须分开验收。
+
+正常释放经 `IpfDestroy → ClientApi` 删除析构，先调用 proxy Destroy，再卸载 loader 并清除函数槽、释放对象；没有新增后台线程、取消或 join。该结论不覆盖尚未取得的 proxy 内部释放、provider／mailbox 驱动应答或全部设置。本项未执行厂商代码、设备命令或产品程序，没有新增分析会话或临时解压；原生 proxy 缺输入、完整 Rust／UI／后端及实际 DLL／设备对照继续保持未完成。
+
 ## 打开、切换、失败与停止
 
 初始化读取真实 thermal fan ID 列表；本地配置恢复先发 `MW_SET_PERFORMANCE` 类状态，再按真实供电分支排队恢复。UI 与中间件的默认构造器并不完全相同：例如 PID737 UI 初始模式为 Balanced，中间件默认接电模式为 Maximum Power；不能从其中一个常量推断新连接的实测模式。电池优化恢复还具有系列及 `getBatteryOptimizerFromFW` 门控，见 [显示与电池](display-power.md)。

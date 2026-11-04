@@ -6009,6 +6009,1213 @@ class Mouse182ProfileImportChainTests(unittest.TestCase):
                 families.audit_mouse_182_profile_import_chain(invalid)
 
 
+class LegacyProductMappingChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_legacy_product_mapping_chain(cls.audit)
+        cls.owners = {role: cls.audit.owners[key] for role, key in cls.report["roles"].items()}
+
+    def body(self, mid):
+        return self.owners[str(mid)]["body"]
+
+    def nodes(self, mid, kind):
+        factory = self.audit.webpack_factories([self.owners[str(mid)]["original"]], mid)[0][1]
+        pending, found = [factory], []
+        while pending:
+            node = pending.pop()
+            pending.extend(reversed(node.named_children))
+            if node.type == kind:
+                found.append(node)
+        return found
+
+    def test_current_complete_originals_and_both_parents_are_stable(self):
+        self.assertEqual(len(self.owners), 11)
+        for owner in self.owners.values():
+            raw = self.audit.read(owner["original"])[owner["byte_start"]:owner["byte_end"]]
+            self.assertEqual(raw.decode(), owner["body"])
+            self.assertEqual(hashlib.sha256(raw).hexdigest(), owner["body_sha256"])
+        self.assertEqual(self.audit.final_snapshot(), [])
+        self.assertEqual(host._otfm_macro_encoding_dependency_changes(self.report["upstream_sections"]), [])
+        self.assertEqual(len(self.report["upstream_sections"]), 2)
+
+    def test_actual_source_registry_does_not_add_normalized_aliases(self):
+        expected = {6892: [167, 143, 103, 150, 83, 80, 141, 147, 180],
+                    8667: [1391, 1386], 8311: [1387, 1388, 1383, 1393]}
+        self.assertEqual({row["module_id"]: row["source_pids"] for row in self.report["source_registry"]}, expected)
+        for mid, pids in expected.items():
+            fields = {node.child_by_field_name("key").text.decode(): node.child_by_field_name("value")
+                      for node in self.nodes(mid, "pair")
+                      if node.child_by_field_name("key").text in (b"groupPID", b"syn3FeatureKey")}
+            self.assertEqual(json.loads(fields["groupPID"].text), pids)
+            self.assertEqual(json.loads(fields["syn3FeatureKey"].text), "Mappings")
+        self.assertIn("s.default[(0,o.tryParseInt)(n.Product_ID)]", self.body(5167))
+        self.assertIn("productId:(0,u.swapPID)(r)", self.body(5167))
+        self.assertIn("143:[143,144,146]", self.body(4483))
+        self.assertIn("167:[167,168,169]", self.body(4483))
+        self.assertNotIn(1384, expected[8311])
+
+    def test_only_shared_registry_and_panel_converter_import_shared_mapping(self):
+        self.assertEqual(self.report["direct_shared_mapping_importers"], [4104, 6892])
+        for mid in (4104, 6892):
+            bindings = evidence.JavascriptBindings(self.audit.read(self.owners[str(mid)]["original"]),
+                                                 self.audit.tree(self.owners[str(mid)]["original"]))
+            factory = self.audit.webpack_factories([self.owners[str(mid)]["original"]], mid)[0][1]
+            self.assertIn(8061, families.javascript_factory_static_imports(factory, bindings))
+        calls = [node for node in self.nodes(6892, "call_expression")
+                 if b"convertMappings" in node.child_by_field_name("function").text]
+        self.assertEqual(len(calls), 1)
+        self.assertEqual([node.text for node in calls[0].child_by_field_name("arguments").named_children], [b"e"])
+        self.assertIn("a(Object.assign(e,{deviceInfo:n}))", self.body(5167))
+        injections = [node for node in self.nodes(5167, "call_expression")
+                      if node.child_by_field_name("function").text == b"Object.assign"
+                      and [item.text for item in node.child_by_field_name("arguments").named_children]
+                      == [b"e", b"{deviceInfo:n}"]]
+        self.assertEqual(len(injections), 1)
+
+    def test_panel_definitions_and_first_match_priority_are_from_original(self):
+        expected = {"80": [7], "83": [12], "103": [2, 7, 12], "141": [12], "143": [2, 6, 12],
+                    "147": [2, 7, 12], "150": [12], "167": [2, 6, 12], "180": [12]}
+        self.assertEqual(self.report["semantics"]["side_panels"]["panel_sets"], expected)
+        self.assertIn('const r=["Button5","Button4"]', self.body(4329))
+        self.assertIn('103:{SidePanel2:r,SidePanel7:o,SidePanel12:s}', self.body(4329))
+        self.assertIn('143:{SidePanel2:r,SidePanel6:i,SidePanel12:s}', self.body(4329))
+        self.assertIn('180:{SidePanel12:s}', self.body(4329))
+        reduce = next(node for node in self.nodes(6892, "call_expression")
+                      if node.child_by_field_name("function").text == b"n.reduce")
+        branches = [node for node in self.nodes(6892, "ternary_expression")
+                    if reduce.start_byte < node.start_byte < reduce.end_byte
+                    and b"includes(t.inputID)" in node.child_by_field_name("condition").text]
+        self.assertEqual(len(branches), 4)
+        conditions = [node.child_by_field_name("condition").text.decode() for node in branches]
+        self.assertEqual([next(panel for panel in ("SidePanel2", "SidePanel12", "SidePanel6", "SidePanel7")
+                                   if panel in condition) for condition in conditions],
+                         ["SidePanel2", "SidePanel12", "SidePanel6", "SidePanel7"])
+        self.assertIn('"DKMInput"!==t.inputType', conditions[1])
+        self.assertEqual(self.body(6892).count('t.inputType="KeyInput"'), 2)
+        self.assertIn('(e.mappings.push(t),e)', self.body(6892))
+
+    def test_broadcaster_singleton_and_front_click_differ_from_button_mapping(self):
+        body = self.body(8667)
+        self.assertIn("s.forEach", body)
+        self.assertNotIn("[].concat", body)
+        self.assertNotIn("IsDefault", body)
+        self.assertIn('const l={dialControl:0,mappings:[]}', body)
+        self.assertIn('l.dialControl="Headphone"===n?1:0', body)
+        self.assertEqual(len(self.report["semantics"]["broadcaster"]["input_map"]), 5)
+        self.assertNotIn("FrontDialClick", self.report["semantics"]["broadcaster"]["input_map"])
+        self.assertIn('TopButtonTripleClick:"MUTE_BUTTON_TRIPLE_TAP"', self.body(4544))
+        self.assertIn('inputType:"Broadcaster",isHyperShift:!1', body)
+
+    def test_broadcaster_actual_output_groups_and_undefined_specific_effect(self):
+        cases = [node.child_by_field_name("value").text.decode()
+                 for node in self.nodes(8667, "switch_case")]
+        self.assertEqual(cases, ["a.MAPPING_GROUP_SYN3.CHROMA_EFFECT_GROUP",
+                                "a.MAPPING_GROUP_SYN3.GAIN_SETTING_GROUP",
+                                "a.MAPPING_GROUP_SYN3.MULTIMEDIA_GROUP"])
+        for token in ('n.config={selectedEffectId:o[e.ChromaEffect]}', 'n.direction="Down"',
+                      '"ToggleAdvanceGainSettingsOnOff"===e.AdvanceGainSettingsAssignment',
+                      'MicVolumeUp:"VOLUME_UP",MicVolumeDown:"VOLUME_DOWN"'):
+            self.assertIn(token, self.body(8667))
+        self.assertEqual(self.nodes(8667, "try_statement"), [])
+
+    def test_audio_singleton_fixed_input_duplicates_and_missing_group_boundary(self):
+        body = self.body(8311)
+        self.assertIn("[].concat", body)
+        self.assertIn('.Mapping).forEach((e=>{if(e)', body)
+        self.assertIn('inputID:"KEY_SWITCH_AUDIO_EQ",inputType:"AudioInput",isHyperShift:!1', body)
+        self.assertIn('"SwitchAudioEQ"===(t=e.AudioGroup).AudioGroupAssignment', body)
+        self.assertIn('{audioAssignment:"SwitchAudioEq"}', body)
+        self.assertIn('{audioAssignment:"ToggleMicMonitoring"}', body)
+        for token in ("IsDefault", "new Set", ".find(", ".filter("):
+            self.assertNotIn(token, body)
+        self.assertEqual(self.nodes(8311, "try_statement"), [])
+
+    def test_exclusive_results_are_called_twice_inside_each_independent_catch(self):
+        tries = self.nodes(5167, "try_statement")
+        self.assertEqual(len(tries), 2)
+        for node in tries:
+            self.assertEqual(node.text.decode().count("n(e)"), 2)
+            self.assertIn("n(e)&&Object.assign(t,n(e))", node.text.decode())
+            self.assertIsNotNone(node.child_by_field_name("handler"))
+        self.assertIn("l.push(t)", self.body(5167))
+        self.assertEqual(self.nodes(6892, "try_statement"), [])
+
+    def test_missing_or_changed_complete_module_is_rejected(self):
+        for role in self.owners:
+            changed = {key: dict(row) for key, row in self.owners.items()}
+            changed[role]["body"] += " "
+            changed[role]["body_sha256"] = hashlib.sha256(changed[role]["body"].encode()).hexdigest()
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "reviewed owners differ"):
+                families._legacy_product_mapping_contract(changed)
+        with self.assertRaisesRegex(ValueError, "coverage differs"):
+            families._legacy_product_mapping_contract({key: row for key, row in self.owners.items() if key != "6892"})
+        changed = {key: dict(row) for key, row in self.owners.items()}
+        changed["8311"]["body"] += " "
+        with self.assertRaisesRegex(ValueError, "body/hash differs"):
+            families._legacy_product_mapping_contract(changed)
+
+    def test_parent_change_stops_before_collecting_or_promoting(self):
+        with patch.object(host, "_otfm_macro_encoding_dependency_changes", return_value=["changed"]), \
+                self.assertRaisesRegex(ValueError, "parent evidence changed"):
+            families.collect_legacy_product_mapping_chain(host.HostLocalAudit())
+        for key in ("source_chain_complete", "whole_product_complete", "target_execution", "real_device_operations",
+                    "product_code_modified"):
+            self.assertFalse(self.report[key])
+        self.assertEqual(self.report["temporary_resources_created"], [])
+        self.assertEqual(self.report["new_native_captures"], 0)
+        self.assertEqual(self.report["runtime_acceptance"], "unverified")
+
+    def test_cli_dispatch_scope_and_failure_publication_preserve_unresolved_state(self):
+        import argparse
+        args = argparse.Namespace(family="mouse", function="mw", product=[182], prepare=False,
+                                  query="legacy-product-mapping-chain")
+        with patch.object(families, "audit_legacy_product_mapping_chain", return_value="dispatched") as dispatch:
+            self.assertEqual(families.audit_family_function(args), "dispatched")
+            dispatch.assert_called_once_with(args)
+        for mode in ("success", "failure", "changed"):
+            audit = host.HostLocalAudit()
+            outcome = ({"side_effect": ValueError("source rejected")} if mode == "failure"
+                       else {"return_value": {"source_chain_complete": False, "upstream_sections": []}})
+            with patch.object(host, "HostLocalAudit", return_value=audit), \
+                    patch.object(audit, "artifact", return_value=b""), \
+                    patch.object(audit, "final_snapshot", return_value=["changed.py"] if mode == "changed" else []), \
+                    patch.object(families, "collect_legacy_product_mapping_chain", **outcome), \
+                    patch.object(host, "_otfm_macro_encoding_dependency_changes", return_value=[]), \
+                    patch.object(host, "publish_host_static_query") as publish:
+                if mode == "success":
+                    families.audit_legacy_product_mapping_chain(args)
+                else:
+                    with self.assertRaisesRegex(ValueError, "unresolved"):
+                        families.audit_legacy_product_mapping_chain(args)
+            report, _, _, section = publish.call_args.args
+            self.assertEqual(section, "legacy_product_mapping_chain")
+            self.assertEqual(report["bounded_observation_complete"], mode == "success")
+            self.assertEqual(bool(report["failures"]), mode != "success")
+            self.assertFalse(report["target_execution"])
+            self.assertFalse(report["source_chain_complete"])
+        for field, value in (("family", "audio"), ("function", "main"), ("product", [183]), ("prepare", True)):
+            invalid = copy.copy(args)
+            setattr(invalid, field, value)
+            with self.assertRaisesRegex(ValueError, "PID182"):
+                families.audit_legacy_product_mapping_chain(invalid)
+
+
+class LegacySharedScalarChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_legacy_shared_scalar_chain(cls.audit)
+        cls.owners = {role: cls.audit.owners[key] for role, key in cls.report["roles"].items()}
+
+    def body(self, mid):
+        return self.owners[str(mid)]["body"]
+
+    def nodes(self, mid, kind):
+        factory = self.audit.webpack_factories([self.owners[str(mid)]["original"]], mid)[0][1]
+        pending, found = [factory], []
+        while pending:
+            node = pending.pop()
+            pending.extend(reversed(node.named_children))
+            if node.type == kind:
+                found.append(node)
+        return found
+
+    def test_all_current_originals_and_exact_pending_registry_remain_stable(self):
+        self.assertEqual(len(self.owners), 31)
+        self.assertEqual(len(self.report["source_registry"]), 25)
+        self.assertEqual([row["module_id"] for row in self.report["source_registry"]],
+                         [8432, 2353, 7666, 2541, 515, 1423, 839, 2977, 7913, 3457, 8147, 6113,
+                          8005, 5056, 1322, 2492, 4502, 7175, 6661, 3581, 5815, 4247, 5091, 948, 2272])
+        for owner in self.owners.values():
+            raw = self.audit.read(owner["original"])[owner["byte_start"]:owner["byte_end"]]
+            self.assertEqual(raw.decode(), owner["body"])
+            self.assertEqual(hashlib.sha256(raw).hexdigest(), owner["body_sha256"])
+        self.assertEqual(self.audit.final_snapshot(), [])
+        self.assertEqual(host._otfm_macro_encoding_dependency_changes(self.report["upstream_sections"]), [])
+
+    def test_scalar_boolean_variants_keep_exact_source_literals(self):
+        for mid, expression in (
+                (2353, '"1"===e[n].State'), (7666, '"1"===e[n].Value'),
+                (2541, '"1"===e[a.EnableChromaEffects].Enabled'), (8005, '"1"===e[n].State'),
+                (7175, '"1"===e[n].State'), (6661, '"true"===e[n].State'),
+                (4247, '"1"===e[a.ChargingForceChromaControl].Enabled'),
+                (5091, '"BrightRoom"===e[n].Mode'), (2272, '"1"===e[n].State')):
+            with self.subTest(module=mid):
+                expressions = [node.text.decode() for node in self.nodes(mid, "binary_expression")]
+                self.assertIn(expression, expressions)
+        self.assertIn('logoBrightness:{isEnabled:"1"===e[n].State,value:0}', self.body(2272))
+        self.assertIn('rotation:{isEnabled:"true"===t.State,value:(0,a.fallBackParseInt)(t.Value)}', self.body(3581))
+
+    def test_audio_haptic_and_charging_numeric_fields_are_distinct(self):
+        expected = {515: ("micVolumeNormalization", "Value"), 1423: ("bassBoost", "Value"),
+                    839: ("micAmbientNoiseReduction", "Value"), 2977: ("micSideTone", "Value"),
+                    3457: ("soundNormalization", "Value"), 8147: ("voiceClarity", "Volume"),
+                    6113: ("micVoiceClarity", "Value"), 2492: ("hapticIntensity", "Value"),
+                    5815: ("chargingBrightness", "Brightness")}
+        for mid, (output, field) in expected.items():
+            with self.subTest(module=mid):
+                self.assertIn(output + ':{isEnabled:"1"===', self.body(mid))
+                calls = [node for node in self.nodes(mid, "call_expression")
+                         if b"fallBackParseInt" in node.child_by_field_name("function").text]
+                self.assertEqual(len(calls), 1)
+                arguments = calls[0].child_by_field_name("arguments").named_children
+                self.assertEqual(len(arguments), 1)
+                self.assertEqual(arguments[0].child_by_field_name("property").text.decode(), field)
+
+    def test_parse_truthiness_rounding_and_floor_keep_source_failure_semantics(self):
+        assignments = [node for node in self.nodes(7419, "assignment_expression")
+                       if node.child_by_field_name("left").text == b"t.fallBackParseInt"
+                       and node.child_by_field_name("right").type == "arrow_function"]
+        self.assertEqual(len(assignments), 1)
+        self.assertEqual(assignments[0].child_by_field_name("right").text, b"(e,t=0)=>e?parseInt(e):t")
+        self.assertIn('(0,a.fallBackParseInt)(t.Value,50)', self.body(7913))
+        self.assertIn('value:Math.round(n/20)||1', self.body(7913))
+        self.assertIn('balanceMode:Math.floor((100-(0,a.fallBackParseInt)(t.Value))/5)', self.body(948))
+        for mid in (7913, 948):
+            self.assertNotIn("isNaN", self.body(mid))
+            self.assertNotIn("Math.min", self.body(mid))
+            self.assertNotIn("Math.max", self.body(mid))
+
+    def test_function_switch_uses_raw_truthiness_and_gaming_has_own_flags(self):
+        switches = self.nodes(1322, "ternary_expression")
+        self.assertEqual(len(switches), 1)
+        self.assertEqual(switches[0].child_by_field_name("condition").text, b"e[a.FunctionSwitch].FNKeyState")
+        self.assertEqual(switches[0].child_by_field_name("consequence").text, b'"multi"')
+        self.assertEqual(switches[0].child_by_field_name("alternative").text, b'"func"')
+        for token in ('"1"===t.DisableWindowsKeyState', '"1"===t.DisableAltTabState',
+                      '"1"===t.DisableAltF4State', 'isGameOn:!1', 'state:{Off:0,On:1,GameLaunched:2}[t.State]||0'):
+            self.assertIn(token, self.body(8432))
+
+    def test_polling_uses_true_string_with_separate_wired_and_dongle_values(self):
+        body = self.body(4502)
+        self.assertIn('state:"true"===t.State?1:0', body)
+        self.assertIn('wired:(0,a.fallBackParseInt)(t.WiredValue)', body)
+        self.assertIn('wireless:(0,a.fallBackParseInt)(t.DongleValue)', body)
+        self.assertIn('return{[i.inGamePollingRate]:n}', body)
+
+    def test_boss_key_accepts_zero_and_preserves_map_lookup_behavior(self):
+        body = self.body(5056)
+        self.assertIn('if(t){const e=a.bossKey34.get(t.BossKeyConfiguration);if(void 0!==e)', body)
+        self.assertIn('MinimizeAllWindows:0,AltTab:1,WinTab:2,LockComputer:3,OpenWebsite:4', self.body(4329))
+        self.assertIn('if(t in e)return e[t]', self.body(4329))
+        self.assertEqual(self.nodes(5056, "try_statement"), [])
+
+    def test_output_collision_follows_profile_key_order_and_not_declared_output_key(self):
+        self.assertIn('preventChromaConnectLighting:', self.body(2353))
+        self.assertIn('preventChromaConnectLighting:', self.body(7666))
+        self.assertIn('syn4FeatureKey:"SmartHome"', self.body(7666))
+        self.assertIn('Object.keys(e).forEach', self.body(5167))
+        self.assertIn('const a=r.shareConverterMap[o];a?Object.assign(t,a(Object.assign(e,{deviceInfo:n})))', self.body(5167))
+        self.assertNotIn('syn4FeatureKey', self.body(5167))
+        self.assertIn('ne.forEach((({syn3FeatureKey:e,converter:t})=>{ae[e]=t}))', self.body(4104))
+        self.assertIn('if(s||l)', self.body(5167))
+
+    def test_only_three_converters_catch_and_empty_object_differs_from_undefined(self):
+        catchers = [int(mid) for mid in self.owners if int(mid) in families._LEGACY_SHARED_SCALAR_MODULES
+                    and self.nodes(int(mid), "try_statement")]
+        self.assertEqual(catchers, [515, 5815, 4247])
+        self.assertIn('catch(e){}return{}', self.body(515))
+        for mid in (5815, 4247):
+            body = self.body(mid)
+            self.assertIn('catch(e){}', body)
+            self.assertNotIn('catch(e){}return', body)
+            self.assertEqual(len(self.nodes(mid, "return_statement")), 1)
+
+    def test_complete_module_omission_hash_and_semantic_changes_require_review(self):
+        for role in self.owners:
+            changed = {key: dict(row) for key, row in self.owners.items()}
+            changed[role]["body"] += " "
+            changed[role]["body_sha256"] = hashlib.sha256(changed[role]["body"].encode()).hexdigest()
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "reviewed owners differ"):
+                families._legacy_shared_scalar_contract(changed)
+        with self.assertRaisesRegex(ValueError, "coverage differs"):
+            families._legacy_shared_scalar_contract({key: row for key, row in self.owners.items() if key != "7419"})
+        changed = {key: dict(row) for key, row in self.owners.items()}
+        changed["1322"]["body"] += " "
+        with self.assertRaisesRegex(ValueError, "body/hash differs"):
+            families._legacy_shared_scalar_contract(changed)
+
+    def test_parent_change_and_static_result_cannot_promote_execution_or_implementation(self):
+        with patch.object(host, "_otfm_macro_encoding_dependency_changes", return_value=["changed"]), \
+                self.assertRaisesRegex(ValueError, "parent evidence changed"):
+            families.collect_legacy_shared_scalar_chain(host.HostLocalAudit())
+        for key in ("source_chain_complete", "whole_product_complete", "target_execution", "real_device_operations",
+                    "product_code_modified"):
+            self.assertFalse(self.report[key])
+        self.assertEqual(self.report["temporary_resources_created"], [])
+        self.assertEqual(self.report["new_native_captures"], 0)
+        self.assertEqual(self.report["official_dll_comparison"], "not_executed")
+        self.assertEqual(self.report["runtime_acceptance"], "unverified")
+
+    def test_cli_dispatch_scope_and_failed_publication_do_not_claim_completion(self):
+        import argparse
+        args = argparse.Namespace(family="mouse", function="mw", product=[182], prepare=False,
+                                  query="legacy-shared-scalar-chain")
+        with patch.object(families, "audit_legacy_shared_scalar_chain", return_value="dispatched") as dispatch:
+            self.assertEqual(families.audit_family_function(args), "dispatched")
+            dispatch.assert_called_once_with(args)
+        for mode in ("success", "failure", "changed"):
+            audit = host.HostLocalAudit()
+            outcome = ({"side_effect": ValueError("source rejected")} if mode == "failure"
+                       else {"return_value": {"source_chain_complete": False, "upstream_sections": []}})
+            with patch.object(host, "HostLocalAudit", return_value=audit), \
+                    patch.object(audit, "artifact", return_value=b""), \
+                    patch.object(audit, "final_snapshot", return_value=["changed.py"] if mode == "changed" else []), \
+                    patch.object(families, "collect_legacy_shared_scalar_chain", **outcome), \
+                    patch.object(host, "_otfm_macro_encoding_dependency_changes", return_value=[]), \
+                    patch.object(host, "publish_host_static_query") as publish:
+                if mode == "success":
+                    families.audit_legacy_shared_scalar_chain(args)
+                else:
+                    with self.assertRaisesRegex(ValueError, "unresolved"):
+                        families.audit_legacy_shared_scalar_chain(args)
+            report, _, _, section = publish.call_args.args
+            self.assertEqual(section, "legacy_shared_scalar_chain")
+            self.assertEqual(report["bounded_observation_complete"], mode == "success")
+            self.assertEqual(bool(report["failures"]), mode != "success")
+            self.assertFalse(report["target_execution"])
+            self.assertFalse(report["source_chain_complete"])
+        for field, value in (("family", "audio"), ("function", "main"), ("product", [183]), ("prepare", True)):
+            invalid = copy.copy(args)
+            setattr(invalid, field, value)
+            with self.assertRaisesRegex(ValueError, "PID182"):
+                families.audit_legacy_shared_scalar_chain(invalid)
+
+
+class LegacySharedStructuredChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_legacy_shared_structured_chain(cls.audit)
+        cls.owners = {role: cls.audit.owners[key] for role, key in cls.report["roles"].items()}
+
+    def body(self, mid):
+        return self.owners[str(mid)]["body"]
+
+    def nodes(self, mid, kind):
+        factory = self.audit.webpack_factories([self.owners[str(mid)]["original"]], mid)[0][1]
+        pending, found = [factory], []
+        while pending:
+            node = pending.pop()
+            pending.extend(reversed(node.named_children))
+            if node.type == kind:
+                found.append(node)
+        return found
+
+    def test_complete_current_originals_dependencies_and_three_parents_are_stable(self):
+        self.assertEqual(len(self.owners), 28)
+        self.assertEqual(len(self.report["source_registry"]), 17)
+        for owner in self.owners.values():
+            raw = self.audit.read(owner["original"])[owner["byte_start"]:owner["byte_end"]]
+            self.assertEqual(raw.decode(), owner["body"])
+            self.assertEqual(hashlib.sha256(raw).hexdigest(), owner["body_sha256"])
+        self.assertEqual(self.report["direct_import_dependencies"]["2516"], [62, 3405, 4483, 7419])
+        self.assertEqual(self.report["direct_import_dependencies"]["126"], [3405, 4982, 7419])
+        self.assertEqual(self.audit.final_snapshot(), [])
+        self.assertEqual(len(self.report["upstream_sections"]), 3)
+        self.assertEqual(host._otfm_macro_encoding_dependency_changes(self.report["upstream_sections"]), [])
+
+    def test_all_imported_shared_modules_are_covered_without_promoting_whole_worker(self):
+        coverage = self.report["imported_shared_inventory_coverage"]
+        self.assertEqual(coverage["total_modules"], 52)
+        self.assertEqual([len(coverage[key]) for key in ("prior_parent_modules", "shared_mapping_modules",
+                                                       "scalar_modules", "structured_modules")], [9, 1, 25, 17])
+        self.assertTrue(coverage["selected_static_semantics_covered"])
+        self.assertFalse(coverage["whole_worker_or_product_complete"])
+        self.assertIn('syn3FeatureKey:"name",syn4FeatureKey:"name",converter:({name:e})=>({name:e})', self.body(4104))
+        self.assertIn('syn3FeatureKey:"guid",syn4FeatureKey:"guid",converter:({guid:e})=>({guid:e})', self.body(4104))
+
+    def test_basic_lighting_and_system_logo_keep_truthy_blank_and_off_fallback(self):
+        cases = [node.child_by_field_name("value").text for node in self.nodes(1654, "switch_case")]
+        self.assertEqual(cases, [b'"breathing"', b'"static"'])
+        for token in ('RzColor[0].IsBlank?"no-color"', 'RzColor[1].IsBlank?"no-color"',
+                      'JSON.parse(e.RandomColor||"false")', 'return{quickEffects:{selectedEffectId:3}}',
+                      'color1:(0,t.getColor)(e.Colors.RzColor)'):
+            self.assertIn(token, self.body(1654))
+        self.assertNotIn('Array.isArray', self.body(1654))
+        self.assertIn('r={breathing:2,static:1,off:0}', self.body(1627))
+        self.assertIn('twoMode:{effectId:r[t.OnBatteryBrightness.LogoEffect]||1}', self.body(1627))
+        self.assertIn('currentMode:"plugged",isTwoMode:"true"===t.IsLinked', self.body(1627))
+        self.assertIn('isEnabled:"false"!==t.PluggedInBrightness.IsOn', self.body(1627))
+        self.assertEqual(self.body(1627).count(',100)'), 3)
+
+    def test_system_power_reads_three_full_branches_and_keeps_fractional_minutes(self):
+        body = self.body(5216)
+        for branch in ('OnBatteryLedPowerSettings', 'PluggedInLedPowerSettings', 'LinkStateLedPowerSettings'):
+            for suffix in ('IdleStateValue)/60', 'DisplayState', 'IdleState'):
+                self.assertIn(branch + '.LedPowerSettings.' + suffix, body)
+        self.assertIn('isTwoMode:(0,a.fallBackParseBool)(t.IsLinked)', body)
+        self.assertEqual(body.count('.Percentage,50)'), 3)
+        self.assertNotIn('Math.round', body)
+        self.assertIn('t.fallBackParseBool=(e,t=!1)=>e?JSON.parse(e):t', self.body(7419))
+
+    def test_color_and_equalizer_variants_keep_actual_shapes_and_unobserved_values(self):
+        for token in ('customData:{red:50,green:50,blue:50},selectedPreset:5', 'if(o){', 'if(t.selectedPreset=o,n.VideoGain)'):
+            self.assertIn(token, self.body(3696))
+        for token in ('currentBands:[]', 't.CustomBands.MicrophoneBand.map', 'mode:i[t.Mode]'):
+            self.assertIn(token, self.body(9928))
+        self.assertIn('if(n)return{equalizer:{mode:n,customBands:t.CustomBands.Band.map', self.body(2384))
+        self.assertIn('vocal:"vocals",enhancedbass:"bassboost"', self.body(4329))
+        for mid in (3696, 9928, 2384):
+            self.assertNotIn('Math.min', self.body(mid))
+            self.assertNotIn('Math.max', self.body(mid))
+
+    def test_equalizer_v3_still_requires_headphone_source_and_has_no_selection_fallback(self):
+        body = self.body(8867)
+        for token in ('esports:n.EsportsEQs.EsportsEQ.map', 'standard:n.SystemEQs?',
+                      'headphones:n.StandardEQs.StandardEQ.map', '"Esports"===n.ActiveMode?"esports":"standard"',
+                      'o[s].find((({name:e})=>l===e))', 'currentFrequencyData:u', 'r[e]||(0,a.camelize)(e)'):
+            self.assertIn(token, body)
+        self.assertNotIn('currentFrequencyData:u||', body)
+        self.assertNotIn('[].concat', body)
+
+    def test_speaker_filter_keeps_unknown_id_objects_and_spatial_apps_normalize_only_outer_item(self):
+        self.assertIn('.map((({SpeakerID:e,Angle:t})=>({id:o[e],angle:(0,a.fallBackParseInt)(t)}))).filter((e=>e))', self.body(1639))
+        self.assertNotIn('[].concat', self.body(1639))
+        body = self.body(8416)
+        for token in ('e=e.concat(r.SpatialApplicationV3List.SpatialApplicationV3)', '"CurrentAudio"===t.Output',
+                      't.Output.endsWith("_imm")', 'r="thx_env"', 't.Output.endsWith("_cmm")', 'r="thx_comp"',
+                      'exeName:t.ExeList.string,name:t.Input', 'return{}'):
+            self.assertIn(token, body)
+        self.assertNotIn('new Set', body)
+
+    def test_camera_exact_source_pid_extended_output_replaces_base_state(self):
+        body = self.body(8341)
+        gate = [node for node in self.nodes(8341, "if_statement")
+                if b"3592===" in node.child_by_field_name("condition").text]
+        self.assertEqual(len(gate), 1)
+        self.assertIn(b'(0,a.fallBackParseInt)(e.deviceInfo.Product_ID)', gate[0].child_by_field_name("condition").text)
+        extended = gate[0].child_by_field_name("consequence").text.decode()
+        for field in ('cameraEnabled', 'previewActive', 'fieldOfViewActive', 'hdrActive'):
+            self.assertNotIn(field, extended)
+        self.assertIn('cameraMode:"auto",cameraValue:128', body)
+        self.assertIn('"custom"===s&&(n.cameraValue=', body)
+        self.assertIn('cameraMode:e.autoFocus.isEnabled?"auto":"manual",cameraValue:e.autoFocus.manualFocus', extended)
+        for token in ('autoQuality:"5"===', 'mode:5', '.Height,2160)', '.Width,3840)', '.FPS,30)',
+                      '"DarkRoom"===e.HDRMode?0:1', '"Legacy"===e.FDAFMode?0:1', 'metering:l[e.AEMetering]',
+                      '(0,a.fallBackParseInt)(e.Zoom,100)/100', '(0,r.parseShortcut)(e.ShortcutKey)'):
+            self.assertIn(token, extended)
+        self.assertNotIn('swapPID', body)
+
+    def test_keymapping_arrays_analog_predicate_and_macro_argument_differ_from_shared_mapping(self):
+        body = self.body(2516)
+        for token in ('directionMode:1,mappings:[]', '[].concat(t.KeymapList.Keymapping)',
+                      'guid:u,name:t,slot:c', 'mappings:d.Mapping.filter(n)',
+                      's!==this.analogValue.defaultValue&&s>=this.analogValue.unit||i||l>s&&o',
+                      'l=s)', 'r.ANALOG_GEN1_PID.includes', 'e.deviceInfo.Product_ID',
+                      'null===(u=e.macro)||void 0===u?void 0:u.items', 'activeKeymapId:t.ActiveKeymapId'):
+            self.assertIn(token, body)
+        calls = [node for node in self.nodes(2516, "call_expression")
+                 if node.child_by_field_name("function").text == b"(0,i.convertOutputFunction)"]
+        self.assertEqual(len(calls), 1)
+        self.assertEqual([node.text for node in calls[0].child_by_field_name("arguments").named_children],
+                         [b"a", b"e", b"t", b"n"])
+        self.assertEqual(self.nodes(2516, "try_statement"), [])
+        self.assertIn('isDefault:!0,outputType:"defaultGroup"', body)
+        self.assertIn('continuous:!0,isEnableUpStroke:"true"===t.SeparatedStroke', body)
+
+    def test_command_dial_uses_two_argument_custom_conversion_and_sparse_slot_overwrite(self):
+        body = self.body(126)
+        calls = [node for node in self.nodes(126, "call_expression")
+                 if b"convertOutputFunction" in node.child_by_field_name("function").text]
+        self.assertEqual(len(calls), 1)
+        self.assertEqual([node.text for node in calls[0].child_by_field_name("arguments").named_children], [b"e", b"e"])
+        for token in ('KeyboardBrightness:0,ZoomInAndZoomOut:1,SwitchApplications:2,TrackJogging:3,TrackSelector:4,VerticalScroll:5,HorizontalScroll:6,SwitchBrowserTabs:7',
+                      'uid:"Custom"===h?m:(0,a.uuidv4)()', 'name:null!=g?g:s[e]',
+                      't.ActiveKnobAdjustment===e&&(c=v.uid)', 'n[(0,a.fallBackParseInt)(d)-1]=v'):
+            self.assertIn(token, body)
+        self.assertEqual(body.count('inputID:"ScrollRight"'), 8)
+        self.assertEqual(body.count('inputID:"ScrollLeft"'), 8)
+        self.assertNotIn('convertMappingInput', body)
+        self.assertNotIn('.filter(', body)
+
+    def test_charging_unknown_effect_preserves_region_but_bad_region_aborts_whole_result(self):
+        body = self.body(6415)
+        cases = [node.child_by_field_name("value").text for node in self.nodes(6415, "switch_case")]
+        self.assertEqual(cases, [b'"breathing"', b'"static"', b'"spectrum"', b'"wave"', b'"fastwave"'])
+        self.assertIn('if(r)return Object.assign({regionId:r},n);throw new Error', body)
+        self.assertIn('selectedEffectId:"FAST_WAVE"', body)
+        waves = [node for node in self.nodes(6415, "call_expression")
+                 if node.child_by_field_name("function").text == b"(0,a.convertWave)"]
+        self.assertEqual(len(waves), 2)
+        for node in waves:
+            self.assertEqual([arg.text for arg in node.child_by_field_name("arguments").named_children], [b"e"])
+        self.assertEqual(len(self.nodes(6415, "try_statement")), 1)
+        self.assertIn('NormalCharging:32,FastCharging:33,FullCharging:34', self.body(4329))
+
+    def test_fan_haptic_arrays_keep_skipped_index_and_required_disabled_branch_data(self):
+        for token in ('let i=26', 'if(0!==n)', 'const n="Off"===e.FanMode', 'modeSelected:n?r.Silent:r[e.FanMode]',
+                      'advancedSetting:e.FanCurve.Item.map', 'i+=1'):
+            self.assertIn(token, self.body(6844))
+        for token in ('t.HapticActuators.HapticActuator.map', 'if(!t)throw new Error',
+                      'isEnabled:"true"===e.State', '(t.HapticIntensity.Value,4)',
+                      'applyToAllRegions:"true"===t.ApplyToAllOtherZones'):
+            self.assertIn(token, self.body(7033))
+        self.assertIn('RightLeg:126,LeftLeg:226,LowerBack:325,UpperBack:340', self.body(4329))
+        for mid in (6844, 7033):
+            self.assertNotIn('[].concat', self.body(mid))
+            self.assertNotIn('.sort(', self.body(mid))
+
+    def test_snap_tap_fallback_and_performance_defaults_are_file_conversion_only(self):
+        for token in ('[].concat(n.PairedKeys.PairedKey)', 'i&&o&&(r.push({key1:i,key2:o,id:e}),e+=1)',
+                      '0===r.length&&r.push({key1:"KEY_A",key2:"KEY_D",id:1})', 'isEnabled:"1"===n.State'):
+            self.assertIn(token, self.body(522))
+        for token in ('if(!t)return{}', 'battery:{mode:"balanced",balanced:{active:"auto",manualFanSpeed:4500}}',
+                      't.BalancedSetting.FanRPM,4500', 't.ProductivitySetting.FanRPM,4600',
+                      't.GamingSetting.FanRPM,4600', 'throw new Error("powerPerformance error")'):
+            self.assertIn(token, self.body(9481))
+        self.assertIn('Balanced:"balanced",Productivity:"creator",Gaming:"gaming",Custom:"custom"', self.body(4329))
+
+    def test_only_charging_catches_and_profile_key_order_controls_output_replacement(self):
+        catchers = [mid for mid in families._LEGACY_SHARED_STRUCTURED_MODULES if self.nodes(mid, "try_statement")]
+        self.assertEqual(catchers, [6415])
+        self.assertIn('Object.keys(e).forEach', self.body(5167))
+        self.assertIn('Object.assign(t,a(Object.assign(e,{deviceInfo:n})))', self.body(5167))
+        self.assertIn('if(s||l)', self.body(5167))
+        for key in ('source_chain_complete', 'whole_product_complete', 'target_execution', 'real_device_operations', 'product_code_modified'):
+            self.assertFalse(self.report[key])
+        self.assertEqual(self.report['temporary_resources_created'], [])
+        self.assertEqual(self.report['runtime_acceptance'], 'unverified')
+
+    def test_changed_or_missing_complete_owner_and_parent_are_rejected(self):
+        for role in self.owners:
+            changed = {key: dict(row) for key, row in self.owners.items()}
+            changed[role]["body"] += " "
+            changed[role]["body_sha256"] = hashlib.sha256(changed[role]["body"].encode()).hexdigest()
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "reviewed owners differ"):
+                families._legacy_shared_structured_contract(changed)
+        with self.assertRaisesRegex(ValueError, "coverage differs"):
+            families._legacy_shared_structured_contract({key: row for key, row in self.owners.items() if key != "3405"})
+        changed = {key: dict(row) for key, row in self.owners.items()}
+        changed["2516"]["body"] += " "
+        with self.assertRaisesRegex(ValueError, "body/hash differs"):
+            families._legacy_shared_structured_contract(changed)
+        with patch.object(host, "_otfm_macro_encoding_dependency_changes", return_value=["changed"]), \
+                self.assertRaisesRegex(ValueError, "parent evidence changed"):
+            families.collect_legacy_shared_structured_chain(host.HostLocalAudit())
+
+    def test_cli_dispatch_scope_and_failed_publication_preserve_unresolved_state(self):
+        import argparse
+        args = argparse.Namespace(family="mouse", function="mw", product=[182], prepare=False,
+                                  query="legacy-shared-structured-chain")
+        with patch.object(families, "audit_legacy_shared_structured_chain", return_value="dispatched") as dispatch:
+            self.assertEqual(families.audit_family_function(args), "dispatched")
+            dispatch.assert_called_once_with(args)
+        for mode in ("success", "failure", "changed"):
+            audit = host.HostLocalAudit()
+            outcome = ({"side_effect": ValueError("source rejected")} if mode == "failure"
+                       else {"return_value": {"source_chain_complete": False, "upstream_sections": []}})
+            with patch.object(host, "HostLocalAudit", return_value=audit), \
+                    patch.object(audit, "artifact", return_value=b""), \
+                    patch.object(audit, "final_snapshot", return_value=["changed.py"] if mode == "changed" else []), \
+                    patch.object(families, "collect_legacy_shared_structured_chain", **outcome), \
+                    patch.object(host, "_otfm_macro_encoding_dependency_changes", return_value=[]), \
+                    patch.object(host, "publish_host_static_query") as publish:
+                if mode == "success":
+                    families.audit_legacy_shared_structured_chain(args)
+                else:
+                    with self.assertRaisesRegex(ValueError, "unresolved"):
+                        families.audit_legacy_shared_structured_chain(args)
+            report, _, _, section = publish.call_args.args
+            self.assertEqual(section, "legacy_shared_structured_chain")
+            self.assertEqual(report["bounded_observation_complete"], mode == "success")
+            self.assertEqual(bool(report["failures"]), mode != "success")
+            self.assertFalse(report["target_execution"])
+            self.assertFalse(report["source_chain_complete"])
+        for field, value in (("family", "audio"), ("function", "main"), ("product", [183]), ("prepare", True)):
+            invalid = copy.copy(args)
+            setattr(invalid, field, value)
+            with self.assertRaisesRegex(ValueError, "PID182"):
+                families.audit_legacy_shared_structured_chain(invalid)
+
+
+class HostMonitorEnumerationTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_host_monitor_enumeration_chain(cls.audit)
+        cls.owners = {role: cls.audit.owners[key] for role, key in cls.report["roles"].items()}
+        cls.native = families._host_monitor_enumeration_native(cls.audit, cls.report["native_original"])
+
+    def native_function(self, rva):
+        row, = [row for row in self.native["complete_selected_functions"] if row["capture"]["rva"] == hex(rva)]
+        return row["capture"]
+
+    def text(self, rva):
+        return "\n".join(row["text"] for row in self.native_function(rva)["pseudocode"]["lines"])
+
+    def next_instruction(self, rva, call):
+        lines = [row["text"] for row in self.native_function(rva)["assembly"]]
+        index, = [i for i, text in enumerate(lines) if text == "call    cs:" + call]
+        return lines[index + 1]
+
+    def test_current_host_native_and_selected_original_chunks(self):
+        self.assertEqual(self.report["host_release"]["version"], "4.0.896")
+        self.assertEqual(self.report["native_original"]["sha256"], "bc0387a0913c882a9cd82aa1a8e147d6408fc7bb7f77519f4f8860f16c5b17c8")
+        self.assertEqual((len(self.owners), len(self.native["complete_selected_functions"])), (22, 21))
+        _, read, _ = families.audio_native_evidence_pe(self.audit.read(self.report["native_original"]))
+        for row in self.native["complete_selected_functions"]:
+            self.assertTrue(row["input_chunks_verified"])
+            self.assertTrue(row["pseudocode_captured"])
+            self.assertEqual(row["failures"], 0)
+            for chunk in row["capture"]["chunks"]:
+                start, end = int(chunk["start"], 16), int(chunk["end"], 16)
+                self.assertEqual(read(start - 0x180000000, end - start), bytes.fromhex(chunk["raw_hex"]))
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_packaged_debug_and_pointer_abi_are_actual_branches(self):
+        body = self.owners["host_library_directory"]["body"]
+        self.assertIn('process.env.programFiles,"Razer","RazerAppEngine","app-"+$e,"CommonDLL"', body)
+        selection = self.owners["host_library_selection"]["body"]
+        self.assertIn("b.isDebugCommonDLL", selection)
+        self.assertIn("if(!m.existsSync(t))", selection)
+        self.assertIn("await po.initDll(t)", selection)
+        api = self.owners["host_sysutil_initDll"]["body"]
+        self.assertIn('getMonitorInfo:["pointer",[]],getVirtualScreenRect:["pointer",[]]', api)
+        self.assertIn('FreeMalloc:["void",["pointer"]]', api)
+
+    def test_adapter_order_child_break_and_name_encoding(self):
+        text = self.text(0x6fc00)
+        for fragment in ("EnumDisplayDevicesW(0, i, &DisplayDevice, 0)", "DisplayDevice.DeviceName, 3u", "128 * (__int64)i, 100, lpMem",
+                         "EnumDisplayDevicesW(DisplayDevice.DeviceName, 0, &v17, 0)", "if ( !lstrlenW(v17.DeviceName) )"):
+            self.assertIn(fragment, text)
+        self.assertLess(text.index("128 * (__int64)i, 100, lpMem"), text.index("if ( !lstrlenW(v17.DeviceName) )"))
+        self.assertNotIn("StateFlags", text)
+        self.assertIn("WideCharToMultiByte(a3, 0, a2", self.text(0x3beb0))
+
+    def test_callback_ignores_os_results_and_uses_unscaled_signed_rects(self):
+        self.assertEqual(self.next_instruction(0x6f090, "GetMonitorInfoW"), "xor     r15d, r15d")
+        self.assertEqual(self.next_instruction(0x6f090, "GetDpiForMonitor"), "cmp     cs:byte_180106839, r15b")
+        text = self.text(0x6f090)
+        for fragment in ("mi.cbSize = 40", "v79 = 0", "v80 = 0", "(double)v79 / 96.0", "(double)v80 / 96.0", "mi.dwFlags == 1"):
+            self.assertIn(fragment, text)
+        for name in ("deviceName", "dpiScaleX", "dpiScaleY", "isPrimaryMonitor", "MonitorRect", "WorkRect", "left", "top", "right", "bottom"):
+            self.assertIn('"' + name + '"', text)
+        self.assertIn("*(_QWORD *)&v23 = mi.rcMonitor.left", text)
+        self.assertIn("return 1;", text)
+
+    def test_mode_and_count_are_globals_not_lparam_state(self):
+        callback = self.text(0x6f090)
+        self.assertIn("if ( byte_180106839 )", callback)
+        self.assertIn("xmmword_180106E30[dword_180106E20] = (__int128)mi.rcMonitor", callback)
+        self.assertIn("qword_180106ED0[v4] = (__int64)a1", callback)
+        self.assertIn("dword_180106E20 = v4 + 1", callback)
+        self.assertIn("byte_180106839 = 0", self.text(0x6fc00))
+        self.assertIn("byte_180106839 = 1", self.text(0x6fee0))
+        self.assertEqual(self.next_instruction(0x6fee0, "EnumDisplayMonitors"), "mov     r14d, 927C0h")
+
+    def test_virtual_bounds_use_metric_count_and_exact_simd_sentinels(self):
+        text = self.text(0x6fee0)
+        self.assertIn("SystemMetrics = GetSystemMetrics(80)", text)
+        self.assertIn("if ( v6 < SystemMetrics )", text)
+        self.assertIn("v25 = SystemMetrics - v6", text)
+        self.assertNotIn("v25 = dword_180106E20", text)
+        self.assertIn("_mm_min_epi32", text)
+        self.assertIn("_mm_max_epi32", text)
+        regions = {row["role"]: bytes.fromhex(row["raw_hex"]) for row in self.native["data_regions"]}
+        self.assertEqual(struct.unpack("<4i", regions["minimum_bounds_sentinel"]), (600000,) * 4)
+        self.assertEqual(struct.unpack("<4i", regions["maximum_bounds_sentinel"]), (-600000,) * 4)
+        self.assertEqual(self.report["semantics"]["virtual_bounds"]["zero_count_result"],
+                         {"MonitorRect": {"left": 600000, "top": 600000, "width": -1200000, "height": -1200000}})
+        self.assertIn("*(_QWORD *)(v39 + 8) = v4 - v2", text)
+        self.assertIn("*(_QWORD *)(v43 + 8) = v5 - v3", text)
+
+    def test_initial_null_and_reused_array_empty_are_different(self):
+        self.assertIn("sub_180008860(&qword_1801067C0, 0)", self.text(0x1200))
+        self.assertIn("switch ( byte_1801067B8 )", self.text(0x6fc00))
+        self.assertIn("byte_1801067B8 = 2", self.text(0x6f090))
+        serializer = self.text(0x3c90)
+        self.assertIn('"null", 4', serializer)
+        self.assertIn('"[]", 2', serializer)
+        self.assertEqual(self.native["zero_filled_global_section"]["name"], ".data")
+
+    def test_return_gate_owner_and_normal_buffer_release_are_explicit(self):
+        gate = self.text(0x705b0)
+        self.assertLess(gate.index("dword_180100EBC = 0"), gate.index("getMonitorInfo()"))
+        self.assertLess(gate.index("getMonitorInfo()"), gate.index("dword_180100EBC = 1"))
+        self.assertIn("if ( !dword_180100EBC )", self.text(0x6fc00))
+        self.assertIn("2 * v14 + 1", self.text(0x6fc00))
+        self.assertIn("2 * v60 + 1", self.text(0x6fee0))
+        self.assertIn("if ( a1 )", self.text(0x69d10))
+        self.assertIn("sub_180098C30(a1)", self.text(0x69d10))
+        self.assertIn("HeapFree(hHeap, 0, lpMem)", self.text(0xaa840))
+        self.assertIn("atexit(sub_1800C8380)", self.text(0x1200))
+        self.assertIn("sub_180008FF0", self.text(0xc8380))
+
+    def test_decode_throw_precedes_free_flag_and_frontend_has_no_shape_validation(self):
+        ffi = self.owners["host_ffi_call"]["body"]
+        self.assertIn("(f=n.readCString(),t=!0)", ffi)
+        self.assertIn("finally{t&&(n&&l.FreeMalloc?l.FreeMalloc(n)", ffi)
+        monitor = self.owners["service_getMonitorInfo"]["body"]
+        self.assertIn("if(t)try{return JSON.parse(t)}", monitor)
+        self.assertIn("return[]", monitor)
+        virtual = self.owners["service_getVirtualScreenRect"]["body"]
+        self.assertIn("try{return JSON.parse(t)}", virtual)
+        self.assertNotIn("Array.isArray", monitor)
+
+    def test_unselected_failure_remains_and_selected_incomplete_is_rejected(self):
+        self.assertEqual(len(self.native["failures"]), 1)
+        self.assertEqual(self.native["failures"][0]["stage"], "abcbc:hexrays")
+        self.assertTrue(all(row["capture"]["rva"] != "0xabcbc" for row in self.native["complete_selected_functions"]))
+        changed = copy.deepcopy(self.native)
+        changed["complete_selected_functions"][0]["pseudocode_captured"] = False
+        with patch.object(families, "verify_native_functions", return_value=changed), self.assertRaisesRegex(ValueError, "selected native capture is incomplete"):
+            families._host_monitor_enumeration_native(self.audit, self.report["native_original"])
+        for mode in ("owner", "native", "constant"):
+            owners, native = copy.deepcopy(self.owners), copy.deepcopy(self.native)
+            if mode == "owner":
+                owners["host_ffi_call"]["body"] += " "
+            elif mode == "native":
+                native["complete_selected_functions"][0]["input_chunks_verified"] = False
+            else:
+                native["data_regions"][0]["raw_hex"] = "00000000"
+            with self.subTest(mode=mode), self.assertRaises(ValueError):
+                families._host_monitor_enumeration_contract(owners, native)
+
+    def test_current_deployment_and_exact_parent_cannot_be_substituted(self):
+        import frontend
+        with patch.object(frontend, "current_source_selection", return_value={"name": "changed", "acquisition": {}}), \
+                self.assertRaisesRegex(ValueError, "current consumer deployment differs"):
+            families._host_monitor_enumeration_sources(host.HostLocalAudit())
+        dep = self.report["upstream_sections"]
+        document = json.loads((analysis.ROOT / dep[0]["receipt"]).read_bytes())
+        document["other_owner"] = True
+        with patch.object(Path, "read_bytes", return_value=json.dumps(document).encode()):
+            self.assertEqual(host._otfm_macro_encoding_dependency_changes(dep), [])
+        document["mouse_182_legacy_worker_chain"]["remaining_chains"][2] += " changed"
+        with patch.object(Path, "read_bytes", return_value=json.dumps(document).encode()), \
+                self.assertRaisesRegex(ValueError, "exact worker section/finding requires review"):
+            families._host_monitor_enumeration_sources(host.HostLocalAudit())
+
+    def test_cli_scope_failure_snapshot_and_cancellation(self):
+        import argparse
+        parser = argparse.ArgumentParser()
+        families.add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["audit-family-function", "--family", "mouse", "--function", "mw", "--query", "host-monitor-enumeration-chain"])
+        with patch.object(families, "audit_host_monitor_enumeration_chain") as dispatch:
+            families.audit_family_function(args)
+        dispatch.assert_called_once_with(args)
+        for mode in ("success", "failure", "snapshot"):
+            kwargs = {"side_effect": ValueError("missing source")} if mode == "failure" else {"return_value": {"failures": []}}
+            with self.subTest(mode=mode), patch.object(families, "collect_host_monitor_enumeration_chain", **kwargs), \
+                    patch.object(host.HostLocalAudit, "artifact"), \
+                    patch.object(host.HostLocalAudit, "final_snapshot", return_value=["changed"] if mode == "snapshot" else []), \
+                    patch.object(host, "_otfm_macro_encoding_dependency_changes", return_value=[]), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+                if mode == "success":
+                    families.audit_host_monitor_enumeration_chain(args)
+                else:
+                    with self.assertRaisesRegex(ValueError, "remains unresolved"):
+                        families.audit_host_monitor_enumeration_chain(args)
+            report, _, _, section = publish.call_args.args
+            self.assertEqual(section, "host_monitor_enumeration_chain")
+            self.assertEqual(report["bounded_observation_complete"], mode == "success")
+            for flag in ("source_chain_complete", "whole_product_complete", "target_execution", "real_device_operations"):
+                self.assertFalse(report[flag])
+        with patch.object(families, "collect_host_monitor_enumeration_chain", side_effect=KeyboardInterrupt), \
+                patch.object(host.HostLocalAudit, "artifact"), patch.object(host, "publish_host_static_query") as publish:
+            with self.assertRaises(KeyboardInterrupt):
+                families.audit_host_monitor_enumeration_chain(args)
+            publish.assert_not_called()
+
+
+class LegacySourceProductChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_legacy_source_product_chain(cls.audit)
+        cls.owners = {role: cls.audit.owners[key] for role, key in cls.report["roles"].items()}
+
+    def body(self, mid):
+        return self.owners[str(mid)]["body"]
+
+    def nodes(self, mid, kind):
+        factory = self.audit.webpack_factories([self.owners[str(mid)]["original"]], mid)[0][1]
+        pending, found = [factory], []
+        while pending:
+            node = pending.pop()
+            pending.extend(reversed(node.named_children))
+            if node.type == kind:
+                found.append(node)
+        return found
+
+    def test_current_complete_originals_dependencies_and_parent_sections_are_stable(self):
+        self.assertEqual(len(self.owners), 30)
+        self.assertEqual(len(self.report["source_registry"]), 22)
+        for owner in self.owners.values():
+            raw = self.audit.read(owner["original"])[owner["byte_start"]:owner["byte_end"]]
+            self.assertEqual(raw.decode(), owner["body"])
+            self.assertEqual(hashlib.sha256(raw).hexdigest(), owner["body_sha256"])
+        self.assertEqual(self.report["direct_import_dependencies"]["1978"], [1423])
+        self.assertEqual(self.report["direct_import_dependencies"]["5784"], [1627, 7419])
+        self.assertEqual(self.audit.final_snapshot(), [])
+        self.assertEqual(len(self.report["upstream_sections"]), 3)
+        self.assertEqual(host._otfm_macro_encoding_dependency_changes(self.report["upstream_sections"]), [])
+
+    def test_all_26_registry_entries_have_disjoint_evidence_and_actual_source_groups(self):
+        coverage = self.report["source_product_inventory_coverage"]
+        self.assertEqual(coverage["total_modules"], 26)
+        self.assertEqual(coverage["prior_parent_modules"], [6283])
+        self.assertEqual(coverage["mapping_modules"], [6892, 8667, 8311])
+        self.assertEqual(len(coverage["current_modules"]), 22)
+        self.assertTrue(coverage["selected_static_semantics_covered"])
+        self.assertFalse(coverage["whole_worker_or_product_complete"])
+        for row in self.report["source_registry"]:
+            groups = [node.child_by_field_name("value") for node in self.nodes(row["module_id"], "pair")
+                      if node.child_by_field_name("key").text == b"groupPID"]
+            self.assertEqual(len(groups), 1)
+            self.assertEqual(json.loads(groups[0].text), row["source_pids"])
+        self.assertIn('s.default[(0,o.tryParseInt)(n.Product_ID)]', self.body(5167))
+        self.assertIn('productId:(0,u.swapPID)(r)', self.body(5167))
+
+    def test_mixer_complete_initial_state_and_18_consumed_steps_are_preserved(self):
+        initial = self.report["mixer_initial_state"]
+        owner = self.owners["4714"]
+        raw = self.audit.read(owner["original"])[initial["byte_start"]:initial["byte_end"]]
+        self.assertEqual(hashlib.sha256(raw).hexdigest(), initial["body_sha256"])
+        self.assertEqual(len(initial["top_level_fields"]), 17)
+        for token in ('softKneeWidth:{value:30,min:0,max:76,step:1}', 'ratio:{value:2,min:1,max:10,step:1}',
+                      'lineOut:{volume:{isEnabled:!0,value:-31.12,min:-62.25,max:0,step:.01}',
+                      'voiceChat:{volume:{isEnabled:!0,value:-6,min:-12,max:0,step:.01}',
+                      'longPressMicMuteButton:"voiceChanger",bleepButton:"bleep"'):
+            self.assertIn(token, raw.decode())
+        steps = []
+        for node in self.nodes(4714, "call_expression"):
+            args = node.child_by_field_name("arguments").named_children
+            if len(args) in (2, 3) and args[0].text == b"t" and args[-1].type == "member_expression":
+                if args[-1].child_by_field_name("object").text == b"e":
+                    steps.append(args[-1].child_by_field_name("property").text.decode())
+        self.assertEqual(steps, ["MicSetup", "RazerWordMark", "MicMuteLighting", "BleepButtonLighting", "ChannelNumber",
+            "FaderBase", "ChannelMuteLighting", "FaderForeground", "Compressor", "LineOutRoute", "VoiceChatRoute",
+            "PlaybackMixRoute", "StreamMixRoute", "MixerChannels", "FaderChannels", "NoiseGate", "MicMonitor", "MixerMicEqualizer"])
+        members = [node.text for node in self.nodes(4714, "member_expression")]
+        self.assertNotIn(b'e.LedBrightness', members)
+        self.assertNotIn(b'e.LedPowerSettings', members)
+
+    def test_mixer_routing_rounding_unknown_modes_and_eq_use_actual_source_rules(self):
+        body = self.body(4714)
+        for token in ('n.useMode="MIC_IN"===t.Type?1:0', 't.XLRGain)*n.xlr.max/100).toFixed(1)',
+                      'value:n.min+(n.max-n.min)*t.percentage/100', 'isEnabled:!!a&&JSON.parse(a)',
+                      '0===r.useMode&&(n.Mic="xlr")', '(a[r].max-a[r].min)/100).toFixed(2)',
+                      'const n=i.indexOf(t.Mode)||0', '0===n&&(l=s.quickEffects)',
+                      'micEqualizerMode="false"===t.IsBasic?0:1', '"string"!=typeof t.AdvMixerMicEqualizer.CustomBands',
+                      'frequency:l[t],decibel:', 'frequency:u[t],decibel:'):
+            self.assertIn(token, body)
+        calls = [node for node in self.nodes(4714, "call_expression")
+                 if node.child_by_field_name("function").text == b'e.ports.push'
+                 and not node.child_by_field_name("arguments").named_children]
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(self.nodes(4714, "try_statement"), [])
+        self.assertIn('l=[30,60,120,250,500,1e3,2e3,4e3,8e3,16e3],u=[30,500,8e3]', body)
+
+    def test_monitor_and_panel_required_fields_are_not_optional_defaults(self):
+        self.assertIn('c(t,e.MonitorOverdrive),s(t,e.MonitorGamma),u(t,e.MonitorDisplayMode),i(t,e.MonitorBrightness),o(t,e.MonitorContrast)', self.body(4349))
+        self.assertIn('e.MonitorColorGamut&&l(t,e.MonitorColorGamut)', self.body(4349))
+        self.assertIn('customData:{},selectedPreset:""', self.body(4349))
+        body = self.body(8011)
+        self.assertIn('isEnabled:!1,value:10,warmthLevel:3e3', body)
+        self.assertIn('n&&(t.isEnabled="1"===n.State', body)
+        self.assertIn('const r=e.ColorTemperature;return t.warmthLevel=(0,a.fallBackParseInt)(r.ColorTemp)', body)
+
+    def test_scroll_curves_preserve_scale_order_sparse_slots_and_source_pid_differences(self):
+        body = self.body(3803)
+        for token in ('groupPID:[167,168,169,180,181]', 'i=330,o=520', 'parseFloat(e.toFixed(2))',
+                      't[0].ControlPoint.X)*o/100', 'y:i-s((0,a.fallBackParseInt)(t[2].Y)*i/100)',
+                      'scrollTension:(0,a.fallBackParseInt)(e.ScrollTension,11)',
+                      'scrollSteps:(0,a.fallBackParseInt)(e.ScrollSteps,15)', 'o.isLinkedCurves="false"!==a',
+                      'e[parseInt(a)-1]=o', 's.scrollWheelStages=t,s.activeStage=e'):
+            self.assertIn(token, body)
+        self.assertNotIn('.sort(', body)
+        self.assertNotIn('Math.min', body)
+        self.assertNotIn('Math.max', body)
+
+    def test_shared_wrapper_arguments_and_source_only_fallbacks_remain_distinct(self):
+        for token in ('if(!e[r])return{subWoofer:{level:4,isEnabled:!0}}', '(0,a.converter)(e)',
+                      'level:t.bassBoost.value'):
+            self.assertIn(token, self.body(1978))
+        calls = [node for node in self.nodes(5784, "call_expression")
+                 if node.child_by_field_name("function").text == b'(0,r.converter)']
+        self.assertEqual(len(calls), 1)
+        self.assertEqual([arg.text for arg in calls[0].child_by_field_name("arguments").named_children], [b'{SystemLighting:n}'])
+        for token in ('isTwoMode:!0', 'idleMinutes:30', 'idleMinutes:15', 'lowBatteryPercent:20',
+                      'idleMinutes:""===t?1:(0,a.fallBackParseInt)(t.IdleStateValue)/60||1',
+                      'return Object.assign({switchOffLighting:o},i)'):
+            self.assertIn(token, self.body(5784))
+        self.assertIn('microphoneAdjustment="1"===t.State', self.body(7337))
+        self.assertIn('headphoneAdjustment="1"===t.State', self.body(7337))
+
+    def test_lighting_product_identity_indexing_partial_and_whole_catches_differ(self):
+        self.assertIn('e.deviceInfo.Edition_ID,"129"===t?', self.body(6016))
+        self.assertIn('id:2147483656,name:"Addressable RGB 3"', self.body(6016))
+        self.assertIn('e.ports.findIndex((e=>e.id===(0,a.fallBackParseInt)(t.PortID)))', self.body(6016))
+        self.assertIn('"4"===t.PortID?e.ports[0].brightness.value=', self.body(219))
+        self.assertIn('i&&"quickEffects"in i&&(i.quickEffects=n.quickEffects)', self.body(219))
+        self.assertIn('r<n&&(e.ports[0].thermal.advancedSetting[r]=', self.body(219))
+        self.assertIn('e.ports[n].brightness.value=', self.body(7526))
+        self.assertIn('e.ports[n].quickEffects=a.quickEffects', self.body(7526))
+        self.assertIn('let n=(0,r.convertPortGlitterLighting)(t.GlobalEffect);t.GlobalEffect&&', self.body(7526))
+        self.assertIn('color1:(0,a.getColor)(e.Colors.RzColor[0])', self.body(7419))
+        self.assertIn('direction:["up","clock","out","left"].includes(e.Direction)?0:1', self.body(7419))
+        catches = {mid: len(self.nodes(mid, "try_statement")) for mid in families._LEGACY_SOURCE_PRODUCT_MODULES}
+        self.assertEqual({mid: count for mid, count in catches.items() if count}, {6016: 2, 219: 1, 7385: 1, 7526: 2})
+
+    def test_stream_converters_coexist_for_1346_and_use_different_listen_behavior(self):
+        registry = self.report["source_registry"]
+        rows = {row["module_id"]: row for row in registry}
+        self.assertIn(1346, rows[2984]["source_pids"])
+        self.assertIn(1346, rows[1182]["source_pids"])
+        self.assertLess(rows[2984]["registry_order"], rows[1182]["registry_order"])
+        self.assertIn('return', self.body(2984))
+        self.assertIn('{streamMixerSettings:t}', self.body(2984))
+        self.assertIn('{streamMixerSettingsAsPreset:t}', self.body(1182))
+        self.assertIn('isStreamMixMonitor:!1,isStreamMixerEnabled:!1', self.body(2984))
+        self.assertNotIn(b'e.ListenMonitoringMix', [node.text for node in self.nodes(2984, "member_expression")])
+        self.assertIn('isStreamMixMonitor=!("true"===t.State)', self.body(1182))
+        self.assertIn('2===t.InputChannels.InputChannelItem.length&&', self.body(1182))
+        self.assertIn('n[t].Name===e.Name&&n[t].StreamingVolume===e.StreamingVolume&&n[t].PlaybackVolume===e.PlaybackVolume', self.body(1182))
+        self.assertIn('const n=50===(0,a.fallBackParseInt)(t.Value);', self.body(1182))
+        self.assertIn('const n=50===(0,a.fallBackParseInt)(t.Value)&&"false"!==t.State;', self.body(1182))
+        self.assertEqual(self.body(1182).count('inputChannelType:"fixed"'), 8)
+        self.assertEqual(self.body(1182).count('inputChannelType:"configurable"'), 3)
+
+    def test_voice_gate_and_equalizer_use_source_product_outputs(self):
+        self.assertIn('groupPID:[1383,1384,1387,1388]', self.body(5929))
+        self.assertIn('value:Math.floor(n/50)+1', self.body(5929))
+        self.assertIn('(0,a.fallBackParseInt)(t.Value,50)', self.body(5929))
+        self.assertIn('preset:a.equalizerMode1303Index34.get(t.Mode)||"default"', self.body(338))
+        self.assertNotIn('CustomBands', self.body(338))
+
+    def test_performance_identical_functions_keep_distinct_pid_groups_and_fan_defaults(self):
+        def converter(mid):
+            return next(node.child_by_field_name("value") for node in self.nodes(mid, "pair")
+                        if node.child_by_field_name("key").text == b'converter')
+        self.assertEqual(converter(1723).text, converter(8777).text)
+        self.assertEqual(self.report['equivalent_converter_groups'][0]['modules'], [1723, 8777])
+        self.assertIn('groupPID:[621]', self.body(1723))
+        self.assertIn('groupPID:[670,630,650,671]', self.body(8777))
+        for mid, token in ((5077, 'manualFanSpeed:4e3'), (5093, 'manualFanSpeed:4500'),
+                           (7717, 'manualFanSpeed:4900'), (1723, 'manualFanSpeed:4100'),
+                           (8777, 'manualFanSpeed:4100'), (9871, 'manualFanSpeed:3800'), (6628, 'manualFanSpeed:3e3')):
+            self.assertIn(token, self.body(mid))
+        self.assertIn('n.BalancedSetting.FanRPM,4300', self.body(7717))
+        self.assertIn('batterySaver:{active:', self.body(5077))
+        self.assertIn('turbo:{active:', self.body(9871))
+        self.assertNotIn('turbo:', self.body(6628))
+
+    def test_performance_validation_and_all_before_source_preserve_prior_result_on_error(self):
+        for mid in (1723, 8777, 9871, 6628):
+            body = self.body(mid)
+            self.assertIn('if(i&&o&&"number"==typeof s&&"number"==typeof l)', body)
+            self.assertIn('throw new Error("powerPerformance.system error")', body)
+        self.assertNotIn('typeof', self.body(5093))
+        self.assertNotIn('if(i&&o', self.body(5093))
+        dispatch = self.body(5167)
+        self.assertLess(dispatch.index('i&&i.forEach'), dispatch.index('a&&a.forEach'))
+        self.assertEqual(dispatch.count('n(e)&&Object.assign(t,n(e))'), 2)
+        self.assertEqual(len(self.nodes(5167, 'try_statement')), 2)
+        for key in ('source_chain_complete', 'whole_product_complete', 'target_execution', 'real_device_operations', 'product_code_modified'):
+            self.assertFalse(self.report[key])
+
+    def test_missing_changed_complete_owners_and_parent_require_review(self):
+        for role in self.owners:
+            changed = {key: dict(row) for key, row in self.owners.items()}
+            changed[role]["body"] += " "
+            changed[role]["body_sha256"] = hashlib.sha256(changed[role]["body"].encode()).hexdigest()
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "reviewed owners differ"):
+                families._legacy_source_product_contract(changed)
+        with self.assertRaisesRegex(ValueError, "coverage differs"):
+            families._legacy_source_product_contract({key: row for key, row in self.owners.items() if key != "4714"})
+        changed = {key: dict(row) for key, row in self.owners.items()}
+        changed['5077']['body'] += ' '
+        with self.assertRaisesRegex(ValueError, 'body/hash differs'):
+            families._legacy_source_product_contract(changed)
+        with patch.object(host, "_otfm_macro_encoding_dependency_changes", return_value=["changed"]), \
+                self.assertRaisesRegex(ValueError, "parent evidence changed"):
+            families.collect_legacy_source_product_chain(host.HostLocalAudit())
+        self.assertEqual(self.report['temporary_resources_created'], [])
+        self.assertEqual(self.report['new_native_captures'], 0)
+
+    def test_cli_dispatch_scope_and_failed_publication_preserve_unresolved_state(self):
+        import argparse
+        args = argparse.Namespace(family="mouse", function="mw", product=[182], prepare=False,
+                                  query="legacy-source-product-chain")
+        with patch.object(families, "audit_legacy_source_product_chain", return_value="dispatched") as dispatch:
+            self.assertEqual(families.audit_family_function(args), "dispatched")
+            dispatch.assert_called_once_with(args)
+        for mode in ("success", "failure", "changed"):
+            audit = host.HostLocalAudit()
+            outcome = ({"side_effect": ValueError("source rejected")} if mode == "failure"
+                       else {"return_value": {"source_chain_complete": False, "upstream_sections": []}})
+            with patch.object(host, "HostLocalAudit", return_value=audit), \
+                    patch.object(audit, "artifact", return_value=b""), \
+                    patch.object(audit, "final_snapshot", return_value=["changed.py"] if mode == "changed" else []), \
+                    patch.object(families, "collect_legacy_source_product_chain", **outcome), \
+                    patch.object(host, "_otfm_macro_encoding_dependency_changes", return_value=[]), \
+                    patch.object(host, "publish_host_static_query") as publish:
+                if mode == "success":
+                    families.audit_legacy_source_product_chain(args)
+                else:
+                    with self.assertRaisesRegex(ValueError, "unresolved"):
+                        families.audit_legacy_source_product_chain(args)
+            report, _, _, section = publish.call_args.args
+            self.assertEqual(section, "legacy_source_product_chain")
+            self.assertEqual(report["bounded_observation_complete"], mode == "success")
+            self.assertEqual(bool(report["failures"]), mode != "success")
+            self.assertFalse(report["target_execution"])
+            self.assertFalse(report["source_chain_complete"])
+        for field, value in (("family", "audio"), ("function", "main"), ("product", [183]), ("prepare", True)):
+            invalid = copy.copy(args)
+            setattr(invalid, field, value)
+            with self.assertRaisesRegex(ValueError, "PID182"):
+                families.audit_legacy_source_product_chain(invalid)
+
+
+class LegacyMappingConversionChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_legacy_mapping_conversion_chain(cls.audit)
+        cls.owners = {role: cls.audit.owners[key] for role, key in cls.report["roles"].items()}
+
+    def body(self, mid):
+        return self.owners[str(mid)]["body"]
+
+    def test_complete_current_original_and_parent_are_stable(self):
+        self.assertEqual(len(self.owners), 29)
+        for row in self.owners.values():
+            raw = self.audit.read(row["original"])[row["byte_start"]:row["byte_end"]]
+            self.assertEqual(raw.decode(), row["body"])
+            self.assertEqual(hashlib.sha256(raw).hexdigest(), row["body_sha256"])
+        self.assertEqual(self.audit.final_snapshot(), [])
+        self.assertEqual(host._otfm_macro_encoding_dependency_changes(self.report["upstream_sections"]), [])
+        self.assertEqual(self.report["semantics"]["reviewed_source_sha256"], families._LEGACY_MAPPING_REVIEWED)
+
+    def test_analog_filter_return_comma_expression_preserves_level_predicate(self):
+        row = self.owners["8061"]
+        factory = self.audit.webpack_factories([row["original"]], 8061)[0][1]
+        pending, matches = [factory], []
+        while pending:
+            node = pending.pop()
+            pending.extend(node.named_children)
+            if node.type == "function_declaration" and node.child_by_field_name("name").text == b"u":
+                matches.append(node)
+        self.assertEqual(len(matches), 1)
+        pending, returns = [matches[0]], []
+        while pending:
+            node = pending.pop()
+            pending.extend(node.named_children)
+            if node.type == "return_statement":
+                returns.append(node)
+        self.assertEqual(len(returns), 1)
+        self.assertIn("return i[1]&&(s=", returns[0].text.decode())
+        self.assertIn("o!==this.analogValue.defaultValue&&o>=this.analogValue.unit||n||s&&s>o&&r", matches[0].text.decode())
+        self.assertIn("return u.bind(this)(e)", self.body(8061))
+        self.assertIn("f.MappingList.Mapping).filter(p).map", self.body(8061))
+
+    def test_default_broadcaster_keyboard_and_source_pid_conditions(self):
+        for token in ('"BroadcasterInput"===e.InputType', '"false"===e.IsDefault',
+                '"2"===(null===', "r.ANALOG_GEN1_PID.includes", '"677"==`${',
+                "g.includes(n)", '{IsDefault:"true"}', 'MultimediaAssignment:"VolumeDown"',
+                'MultimediaAssignment:"VolumeUp"'):
+            self.assertIn(token, self.body(8061))
+        self.assertIn("ANALOG_GEN1_PID=[614,580,642]", self.body(4483))
+        self.assertIn("s.default[(0,o.tryParseInt)(n.Product_ID)]", self.body(5167))
+        self.assertIn("if(s||l)", self.body(5167))
+
+    def test_inputs_preserve_bool_scan_precedence_empty_id_and_aliases(self):
+        self.assertIn("isHyperShift:Boolean(e.IsHyperShift)", self.body(62))
+        self.assertIn('inputID:""', self.body(62))
+        self.assertIn("r?(0,a.getInputIDByScancode)(r):(0,a.getInputIDByHID)", self.body(62))
+        for group in ("KeyInputAnalog", "AnalogInputV2", "MouseInput", "DKMInput", "KeyInput", "DPADInput", "DialInput", "BroadcasterInput"):
+            self.assertIn('case"' + group + '"', self.body(62))
+        self.assertIn("return u", self.body(62))
+        self.assertIn("if(t in e)return e[t]", self.body(4329))
+
+    def test_all_actual_output_cases_not_declared_unused_groups(self):
+        groups = self.report["semantics"]["output_groups_in_source_order"]
+        self.assertEqual(len(groups), 21)
+        self.assertNotIn("CHROMA_EFFECT", groups)
+        self.assertNotIn("GAIN_SETTING", groups)
+        self.assertIn("CHROMA_EFFECT_GROUP", self.body(4544))
+        for mid in (915, 3067, 6994, 5736, 1028, 9346, 272, 8786, 7474, 2130, 6919, 9140, 567, 7349, 1463, 849, 3197, 1133, 7949):
+            self.assertIn("n(" + str(mid) + ")", self.body(3405))
+
+    def test_direct_analog_defaults_rapid_trigger_and_curve_generation(self):
+        for token in ("if(!n)return s[0]", "1===(null==t?void 0:t.analogVersion)",
+                "1:t>=0?t:0", 'isDefault:!0,outputType:"defaultGroup"',
+                "Math.round((0,a.fallBackParseInt)(t.DownStrokeValue)/u.unit)",
+                'continuous:!0,isEnableUpStroke:"true"===t.SeparatedStroke'):
+            self.assertIn(token, self.body(8061))
+        self.assertIn("(390*e/25500).toFixed(2),0)+.1", self.body(7949))
+        self.assertIn("(210*r/25500).toFixed(2),0)+1.5", self.body(7949))
+        self.assertIn("AnalogSensitivityAssignment.map", self.body(7949))
+        self.assertIn("ACTUATION_GEN_1={unit:12,max:255,min:0,defaultValue:0,minBreak:12}", self.body(4483))
+
+    def test_hypershift_count_clones_first_matching_mapping_without_layer_guard(self):
+        body = self.body(8061)
+        for token in ("y[a.inputID]=y[a.inputID]?2:1", "filter((([e,t])=>1===t))",
+                "const n=_.find((t=>t.inputID===e))", "{isHyperShift:!0}"):
+            self.assertIn(token, body)
+        self.assertNotIn("t.inputID===e&&", body)
+
+    def test_macro_optional_list_is_not_passed_and_name_fallback_is_truthy(self):
+        self.assertIn("(0,i.convertOutputFunction)(n,e,t)", self.body(8061))
+        self.assertIn("(0,m.convertMacroGroup)(e.MacroGroup,a)", self.body(3405))
+        self.assertIn("t||[]", self.body(567))
+        self.assertIn('`${null==r?void 0:r.name} - S3`||"Macro 1"', self.body(567))
+        self.assertIn("e.Id&&e.MacroPlaybackOption", self.body(567))
+
+    def test_keyboard_key_identity_modifier_and_turbo_boundaries(self):
+        for token in ("1===t.length", "2===t.length", "3===t.length", '"Modifier"===e',
+                "e.toString()", "isTurbo:JSON.parse(e.IsTurbo)", "e.KeysPerSecond):7"):
+            self.assertIn(token, self.body(8599))
+        for token in ("e.KeyAssignment.VirtualKey?", "Number(e.KeyAssignment.Scancode)",
+                "!e.KeyAssignment.ExtendedKey", "0===i.modifiers.length&&!i.turboMode", "===i.key)return{}"):
+            self.assertIn(token, self.body(6994))
+
+    def test_launch_interdevice_audio_and_table_edge_semantics(self):
+        for token in ("if(!e.Path&&!e.Url)return", 'includes("https://")', "`https://${e.Url}`"):
+            self.assertIn(token, self.body(1028))
+        for token in ("Object.entries(l.PID_PIDList).find", "t.includes(n)", "lightpacId:e.LightpackGuid"):
+            self.assertIn(token, self.body(915))
+        self.assertIn('"PrimaryEndpointID"in e.SwitchPlaybackDevicesGroup', self.body(3197))
+        for token in ('MenuuButton:"MENUBUTTON"', 'AGGRO:"FAST"', 'ScrollClick:"ScrollButton"'):
+            self.assertIn(token, self.body(4329))
+
+    def test_per_record_catch_does_not_cover_filter_or_premap(self):
+        self.assertIn("if(s&&n)return Object.assign(n,s)}catch(e){}", self.body(8061))
+        self.assertIn("f.MappingList.Mapping).filter(p).map", self.body(8061))
+        self.assertIn("const t=(0,o.convertMappingInput)(e)", self.body(8061))
+        self.assertIn("a(Object.assign(e,{deviceInfo:n}))", self.body(5167))
+
+    def test_complete_module_tampering_or_omission_requires_review(self):
+        for role in self.owners:
+            changed = {key: dict(row) for key, row in self.owners.items()}
+            changed[role]["body"] += " "
+            changed[role]["body_sha256"] = hashlib.sha256(changed[role]["body"].encode()).hexdigest()
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "reviewed owners differ"):
+                families._legacy_mapping_contract(changed)
+        with self.assertRaisesRegex(ValueError, "coverage differs"):
+            families._legacy_mapping_contract({key: row for key, row in self.owners.items() if key != "62"})
+
+    def test_current_parent_change_fails_before_interpreting_raw(self):
+        with patch.object(host, "_otfm_macro_encoding_dependency_changes", return_value=["changed"]):
+            with self.assertRaisesRegex(ValueError, "parent requires review"):
+                families.collect_legacy_mapping_conversion_chain(host.HostLocalAudit())
+
+    def test_no_execution_or_completion_promotion_and_query_scope(self):
+        import argparse
+        for key in ("target_execution", "source_chain_complete", "whole_product_complete", "product_code_modified"):
+            self.assertFalse(self.report[key])
+        self.assertEqual(self.report["temporary_resources_created"], [])
+        self.assertEqual(self.report["new_native_captures"], 0)
+        self.assertEqual(len(self.report["remaining_chains"]), 3)
+        with self.assertRaises(ValueError):
+            families.audit_legacy_mapping_conversion_chain(argparse.Namespace(
+                family="mouse", function="mw", product=[183], prepare=False))
+
+
 class Mouse182LegacyWorkerChainTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -6999,6 +8206,144 @@ class Keyboard756AppEngineApplyChainTests(unittest.TestCase):
         args.product = [752]
         with self.assertRaisesRegex(ValueError, "PID756"):
             families.audit_keyboard_756_appengine_apply_chain(args)
+
+
+class Keyboard756AnalogRegistrationChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        original = families.verify_native_functions
+
+        def retain(*args, **kwargs):
+            result = original(*args, **kwargs)
+            cls.native_bodies = {int(row["capture"]["rva"], 16): row["capture"]
+                                 for row in result["complete_selected_functions"]}
+            return result
+
+        with patch.object(families, "verify_native_functions", side_effect=retain):
+            cls.report = families.collect_keyboard_756_analog_registration_chain(cls.audit)
+        cls.owners = {role: cls.audit.owners[key] for role, key in cls.report["roles"].items()}
+
+    def nodes(self, role, kind):
+        row = self.owners[role]
+        root = self.audit.tree(row["original"]).root_node.descendant_for_byte_range(row["byte_start"], row["byte_end"] - 1)
+        pending, found = [root], []
+        while pending:
+            node = pending.pop()
+            pending.extend(reversed(node.named_children))
+            if node.type == kind:
+                found.append(node)
+        return found
+
+    def variable(self, name):
+        return next(node for node in self.nodes("registration", "variable_declarator")
+                    if node.child_by_field_name("name").text == name.encode())
+
+    def native_text(self, rva):
+        return "\n".join(row["text"] for row in self.native_bodies[rva]["pseudocode"]["lines"])
+
+    def test_current_product_gate_and_registered_configuration_select_normal_events(self):
+        info = self.nodes("device_info", "variable_declarator")[0].child_by_field_name("value")
+        values = {node.child_by_field_name("key").text.decode(): node.child_by_field_name("value")
+                  for node in info.named_children if node.type == "pair"}
+        self.assertEqual(values["productId"].text, b"756")
+        self.assertEqual(values["is8kAnalogDevice"].text, b"!0")
+        rates = {int(float(node.child_by_field_name("key").text)): int(node.child_by_field_name("value").text)
+                 for node in values["PollingRateSkipMap"].named_children}
+        self.assertEqual(rates, {125: 50, 250: 50, 500: 50, 1000: 50, 2000: 16, 4000: 16, 8000: 16})
+        calls = [node for node in self.nodes("product_registration", "call_expression")
+                 if node.child_by_field_name("function").type == "member_expression"
+                 and node.child_by_field_name("function").child_by_field_name("property").text == b"useFeature"
+                 and node.child_by_field_name("arguments").named_children[0].text == b'"analogV3"']
+        self.assertEqual(len(calls), 1)
+        args = calls[0].child_by_field_name("arguments").named_children
+        self.assertEqual(args[1].text, b'"yes"')
+        self.assertEqual([node.child_by_field_name("key").text for node in args[2].named_children], [b"presetProfiles"])
+
+    def test_skip_reduction_has_finite_bounds_and_can_produce_zero(self):
+        candidate = [node for node in self.nodes("registration", "function_expression")
+                     if node.child_by_field_name("parameters").text == b"(e,t,i)"
+                     and node.child_by_field_name("body").text.startswith(b"{if(!Number.isFinite")]
+        self.assertEqual(len(candidate), 1)
+        body = candidate[0].child_by_field_name("body")
+        condition = body.named_children[0].child_by_field_name("condition").text.decode()
+        self.assertEqual(condition, "(!Number.isFinite(e)||e<125||e>8e3||!Number.isFinite(t)||t<=0||t>=1)")
+        self.assertEqual(body.named_children[0].child_by_field_name("consequence").text, b"return i;")
+        self.assertEqual(body.named_children[1].text, b"const n=Math.max(1,Math.floor(e/8e3*17*t));")
+        self.assertEqual(body.named_children[2].text, b"return Math.min(i,n-1)")
+        z = self.variable("Z").text.decode()
+        self.assertIn("null!=i?i:(null==d?void 0:d.pollingRate)||8e3", z)
+        self.assertIn("Math.min(h,...Array.from(E.values(),e=>e.maximum))", z)
+
+    def test_refresh_serialization_and_false_registration_results_use_native_status(self):
+        self.assertIn("const t=D.then(e);return D=t.catch(()=>{}),t", self.variable("T").text.decode())
+        self.assertIn("h&&E===o.jf.rzDevice", self.variable("C").text.decode())
+        all_body, single = self.variable("te").text.decode(), self.variable("ie").text.decode()
+        self.assertIn("(_!==c||I!==A)", all_body)
+        self.assertIn("g||(yield n.A.isAllAnalogKeysEventRegistered(c.device))?", all_body)
+        self.assertIn("(yield n.A.registerAnalogKeyEvent(c.device,l,i))||(yield n.A.isAnalogKeyEventRegistered(c.device,l))?", single)
+        self.assertIn('const s="number"==typeof a.outputFlag?a.outputFlag:a.flag,l={scancode:a.scancode,flag:s}', single)
+        self.assertIn("yield t(e)", self.owners["polling_refresh"]["body"])
+        self.assertIn("this.assertCurrent(n),yield e()", self.owners["switch_refresh"]["body"])
+
+    def test_unregister_clears_request_before_io_but_leaves_pending_throttle_and_samples(self):
+        unregister = self.variable("ne").text.decode()
+        self.assertLess(unregister.index("h=void 0,E=void 0,_=void 0,I=void 0,S=void 0"), unregister.index("yield R"))
+        self.assertIn("M=null,N(),U(),t&&!i?", unregister)
+        for expression in ("X.cancel", "X.flush", "H.length=0", "Y=", "D=Promise.resolve"):
+            self.assertNotIn(expression, unregister)
+        self.assertIn("r=!0,a=!0", self.owners["throttle"]["body"])
+        self.assertIn("n(e,t,{leading:r,maxWait:t,trailing:a})", self.owners["throttle"]["body"])
+        self.assertIn("I.cancel=function(){void 0!==d&&clearTimeout(d)", self.owners["debounce"]["body"])
+        self.assertIn("},16)", self.variable("X").text.decode())
+        self.assertEqual(self.owners["bridge_close"]["body"], 'function ge(){A&&"function"==typeof A.close&&(A.close(),u())}')
+
+    def test_sample_consumer_keeps_forced_records_and_does_not_filter_stale_events(self):
+        self.assertIn("0!==o.input.level&&o.input.level!==z&&i%t!==0&&i!==e.length-1||q(o)", self.variable("J").text.decode())
+        single = self.variable("k").text.decode()
+        self.assertIn("JSON.parse(e.jsonEvent).input", single)
+        self.assertNotIn("productId", single)
+        self.assertNotIn("timeTick", single)
+        all_body = self.variable("q").text.decode()
+        self.assertIn('!e.input||59===e.input.keyId||"analogKey"!==e.input.type', all_body)
+        self.assertIn('H.length=0,j=x[7],X({level:0,inputID:"inputID"', all_body)
+        self.assertIn("postBCMsg(s.qg.REDUX_STORE_UPDATE,e)", self.owners["ui_publication"]["body"])
+
+    def test_native_usb_interface_and_status_flags_are_not_hardware_readback(self):
+        slots = self.report["native"]["verified_indirect_slots"]
+        usb = [row for row in slots if row["vtable_rva"] == "0x2e8e18"]
+        self.assertEqual([row["slot_byte_offset"] for row in usb], list(range(296, 353, 8)))
+        self.assertEqual([row["target_rva"] for row in usb], ["0x72050", "0x72390", "0x72770", "0x72b50", "0x72e30", "0x73340", "0x739d0", "0x73ed0"])
+        self.assertIn("v4 = (_BYTE *)(a1 + 400)", self.native_text(0x72230))
+        single = self.native_text(0x73000)
+        self.assertLess(single.index("v25 = *(_BYTE *)(a1 + 400)"), single.index("if ( !v25 )"))
+        self.assertIn("sub_18009ECA4(a1 + 352", single)
+        self.assertNotIn('"invalid device data"', self.native_text(0x73ba0))
+        self.assertFalse(self.report["target_execution"])
+        self.assertEqual(self.report["official_dll_comparison"], "not_executed")
+
+    def test_native_key_fallback_uses_word_fields_and_modern_flag_zero(self):
+        self.assertIn('(__int64)"type"', self.native_text(0xee821))
+        self.assertIn('(__int64)"scancode", a2, 0', self.native_text(0x10c7d1))
+        self.assertIn('(__int64)"flag", a2 + 1, 0', self.native_text(0x10c7d1))
+        self.assertIn("*a3 = WORD2(v12)", self.native_text(0xdbaf3))
+        asm = [" ".join(row["text"].split()) for row in self.native_bodies[0x10c6bc]["assembly"]]
+        self.assertLess(asm.index("test dx, dx"), asm.index("cmp [r8+r9*4+4], cx"))
+        self.assertIn("or ax, cx", asm)
+        self.assertIn("cmp rax, 0FFh", asm)
+        self.assertEqual([row["rva"] for row in self.report["native"]["key_tables"]], ["0x2f0c30", "0x2f1030"])
+
+    def test_host_url_mode_and_callback_setup_have_separate_failure_boundaries(self):
+        all_body = self.owners["host_registerAllAnalogKeysEvent"]["body"]
+        self.assertIn("await this.setAnalogKeyEventCallback(t,e),g.bSetAnalogKeyEventCallback=!0", all_body)
+        interval = self.owners["host_registerIntervaledAnalogKeysEvent"]["body"]
+        self.assertIn('"number"!=typeof n?.payload?.interval_in_milliseconds||n.payload.interval_in_milliseconds<0', interval)
+        self.assertNotIn("Number.isFinite", interval)
+        unregister = self.owners["host_unregisterAllAnalogKeysEvent"]["body"]
+        self.assertLess(unregister.index("analogKeyEventList.filter"), unregister.index("this.libFFI[n.action]"))
+        self.assertIn("r?.analogKeyEventList.includes(e.getURL())", self.owners["host_createCbAnalogKeyEvent"]["body"])
+        self.assertTrue(self.report["source_chain_complete"])
+        self.assertFalse(self.report["whole_product_complete"])
 
 
 class GamepadProfileResetChainTests(unittest.TestCase):
@@ -10530,6 +11875,469 @@ class HanboHygonPackageChainTests(unittest.TestCase):
             self.assertTrue(publish.call_args.args[0]["failures"])
 
 
+class HanboAmdK17SmuOwnerChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        check = families._hanbo_amd_k17_smu_owner_contract
+
+        def native(module):
+            cls.native = module
+            return check(module)
+
+        with patch.object(families, "_hanbo_amd_k17_smu_owner_contract", side_effect=native):
+            cls.result = families.collect_hanbo_amd_k17_smu_owner_chain(cls.audit)
+
+    def args(self, **changes):
+        import argparse
+        return argparse.Namespace(**(dict(family="accessories", function="main", product=[3893],
+            prepare=False, query="hanbo-amd-k17-smu-owner-chain") | changes))
+
+    def reject(self, rva, before, after):
+        native = copy.deepcopy(self.native)
+        row = next(row for row in native["complete_selected_functions"] if row["capture"]["rva"] == rva)
+        line = next(line for line in row["capture"]["pseudocode"]["lines"] if before in line["text"])
+        line["text"] = line["text"].replace(before, after, 1)
+        with self.assertRaisesRegex(ValueError, "complete native fingerprint changed"):
+            families._hanbo_amd_k17_smu_owner_contract(native)
+
+    def test_current_producer_is_real_and_prior_unresolved_reference_is_preserved(self):
+        r = self.result
+        self.assertEqual((len(r["native"]["functions"]), len(r["native"]["verified_indirect_slots"])), (9, 3))
+        self.assertEqual(r["resumes_upstream_pointer"], "/hanbo_amd_k17_package_chain/remaining_chains/0")
+        self.assertTrue(r["smu_owner_and_package_thermal_branch_complete"])
+        self.assertFalse(r["source_chain_complete"])
+        self.assertFalse(r["target_execution"])
+        self.assertEqual(r["temporary_resources_created"], [])
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_caller_gate_and_actual_nonnull_field_write_are_not_inferred_from_reads(self):
+        c = self.result["native_contract"]
+        self.assertEqual(c["owner"]["caller_gate"], "CPU+56 == 0")
+        self.assertEqual(c["owner"]["allocation_bytes"], 184)
+        self.assertEqual(c["producer_instruction_proofs"][-1]["bytes"], "4889b3d8000000")
+        self.reject("0x191c60", "if ( !*(_DWORD *)(v2 + 56) )", "if ( *(_DWORD *)(v2 + 56) )")
+        self.reject("0x209750", "a1 + 216) = v7", "a1 + 208) = v7")
+
+    def test_method_is_initialized_two_and_owner_presence_is_not_probe_success(self):
+        c = self.result["native_contract"]
+        self.assertEqual(c["owner"]["method_initial_value"], 2)
+        self.assertTrue(c["owner"]["nonnull_owner_does_not_prove_successful_smu_probe"])
+        self.assertFalse(c["owner"]["allocation_failure_has_complete_null_guard"])
+        self.reject("0x209750", "*((_DWORD *)v7 + 8) = 2", "*((_DWORD *)v7 + 8) = 1")
+        self.reject("0x209750", "if ( !v5 )", "if ( v5 )")
+
+    def test_mailbox_register_layouts_preserve_actual_model_differences(self):
+        c = self.result["native_contract"]
+        layouts = c["mailbox_layouts"]
+        self.assertEqual(len(layouts), 7)
+        self.assertEqual(layouts["k17_00"]["mailboxes"][0]["register_words"][:3],
+            [0x3b1051c, 0x3b10568, 0x3b10590])
+        self.assertEqual(layouts["apu"]["mailboxes"][1]["register_words"][1], 0x3b10564)
+        self.assertEqual(layouts["k19_40_70"]["mailboxes"][1]["register_words"][1], 0x3b10578)
+        self.assertEqual(layouts["common"]["mailboxes"][2]["register_words"], [0] * 10)
+        self.assertNotEqual(layouts["common_hsmp"]["mailboxes"][2]["register_words"], [0] * 10)
+        self.assertEqual(c["layout_selection"][2]["groups"]["64"], "common")
+
+    def test_mailbox_parser_rejects_duplicate_missing_dynamic_and_oversized_fields(self):
+        body = next(row["capture"] for row in self.native["complete_selected_functions"]
+            if row["capture"]["rva"] == "0x209750")
+        for before, after in (("+ 52LL", "+ 48LL"), ("61932904", "dynamic_value"),
+                ("61932904", "4294967296"), ("+ 52LL", "+ 80LL")):
+            changed = copy.deepcopy(body)
+            changed["pseudocode"]["lines"][331]["text"] = changed["pseudocode"]["lines"][331]["text"].replace(before, after)
+            with self.subTest(after=after), self.assertRaisesRegex(ValueError, "mailbox (assignment|fields) changed"):
+                families._hanbo_amd_k17_smu_mailbox_layouts(changed)
+
+    def test_mailbox_ioctls_keep_full_argument_order_and_explicit_status(self):
+        c = self.result["native_contract"]["ioctl"]
+        self.assertEqual((c["code"], c["input_bytes"], c["output_bytes"]), (0x9c40258c, 68, 28))
+        self.assertFalse(c["checks_bytes_returned"])
+        self.assertTrue(c["failure_preserves_argument_values"])
+        self.reject("0x15f48", "InBuffer[1] = a3", "InBuffer[1] = a4")
+        self.reject("0x15f48", "OutBuffer[0] == 1", "OutBuffer[0] != 0")
+        self.reject("0x15f48", "0x44u, OutBuffer, 0x1Cu", "0x40u, OutBuffer, 0x18u")
+
+    def test_version_success_gate_does_not_require_nonzero_version(self):
+        c = self.result["native_contract"]["probe"]
+        self.assertEqual((c["version_command"], c["version_success_flag_offset"]), (2, 168))
+        self.assertTrue(c["version_zero_allowed"])
+        self.reject("0x209750", "a1 + 216) + 168LL) = 1", "a1 + 216) + 168LL) = v173")
+        self.reject("0x209750", "WaitForSingleObject(v10, 0x3E8u)", "WaitForSingleObject(v10, 0x64u)")
+
+    def test_thermal_queries_preserve_family_model_commands_and_halfword_order(self):
+        c = self.result["native_contract"]["thermal"]
+        self.assertEqual([(row["family"], row["command"]) for row in c["tdp_tjmax_commands"]],
+            [(23, 54), (23, 35), (25, 35), (25, 95), (26, 35), (26, 95)])
+        self.assertEqual(c["tjmax_value"], "low16(argument0)")
+        self.reject("0x209750", "(a1 + 114)", "(a1 + 112)")
+        self.reject("0x209750", "v114 != 16", "v114 != 32")
+
+    def test_smu_offset_precedes_brand_and_accepts_only_nonnegative_signed_result(self):
+        c = self.result["native_contract"]["thermal"]["offset_query"]
+        self.assertEqual((c["command"], c["calibration_owner_offset"]), (58, 92))
+        self.assertTrue(c["positive_value_prevents_brand_override"])
+        self.assertTrue(c["zero_allows_source_brand_fallback"])
+        self.reject("0x209750", "v171 >= 0", "v171 > 0")
+        self.reject("0x209750", "(float)v171", "(float)(unsigned int)v171")
+        self.reject("0x187310", "a1 + 92) <= 0.0", "a1 + 92) >= 0.0")
+
+    def test_actual_destructor_frees_only_smu_and_clears_parent_field(self):
+        c = self.result["native_contract"]["release"]
+        self.assertEqual(c["smu_target_rva"], "0x40c0")
+        self.assertTrue(c["k17_clears_216_after_delete"])
+        self.assertFalse(c["smu_releases_borrowed_driver"])
+        self.assertFalse(c["smu_sends_restore_mailbox"])
+        self.reject("0x40c0", "j_free(a1)", "j_free(a1 + 1)")
+        self.reject("0x1906c0", "a1[27] = 0", "a1[26] = 0")
+        native = copy.deepcopy(self.native)
+        native["verified_indirect_slots"][-1]["target_rva"] = "0x3fe0"
+        with self.assertRaisesRegex(ValueError, "actual owner slots changed"):
+            families._hanbo_amd_k17_smu_owner_contract(native)
+
+    def test_changed_upstream_or_incomplete_capture_reject(self):
+        upstream = self.result["upstream_sections"]
+        doc = json.loads((families.a.ROOT / upstream[0]["receipt"]).read_bytes())
+        doc["hanbo_amd_k17_package_chain"]["target_execution"] = True
+        with patch.object(Path, "read_bytes", return_value=json.dumps(doc).encode()):
+            with self.assertRaisesRegex(ValueError, "upstream changed"):
+                families._hanbo_amd_k17_smu_owner_dependencies()
+        native = copy.deepcopy(self.native)
+        native["complete_selected_functions"][0]["input_chunks_verified"] = False
+        with self.assertRaisesRegex(ValueError, "complete owner is absent"):
+            families._hanbo_amd_k17_smu_owner_contract(native)
+
+    def test_dispatch_scope_and_failure_publication_remain_unverified(self):
+        with patch.object(families, "audit_hanbo_amd_k17_smu_owner_chain", return_value="selected"):
+            self.assertEqual(families.audit_family_function(self.args()), "selected")
+        for changes in (dict(family="audio"), dict(function="mw"), dict(product=[3900]), dict(prepare=True)):
+            with self.subTest(changes=changes), self.assertRaises(ValueError):
+                families.audit_hanbo_amd_k17_smu_owner_chain(self.args(**changes))
+        with patch.object(families, "collect_hanbo_amd_k17_smu_owner_chain", side_effect=ValueError("changed")), \
+                patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+            with self.assertRaisesRegex(ValueError, "observation remains unresolved"):
+                families.audit_hanbo_amd_k17_smu_owner_chain(self.args())
+        self.assertEqual(publish.call_args.args[3], "hanbo_amd_k17_smu_owner_chain")
+        self.assertFalse(publish.call_args.args[0]["bounded_observation_complete"])
+        self.assertFalse(publish.call_args.args[0]["target_execution"])
+
+
+class HanboAmdK17PackageChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        check = families._hanbo_amd_k17_package_native_contract
+
+        def native(module, raw):
+            cls.native, cls.raw = module, raw
+            return check(module, raw)
+
+        with patch.object(families, "_hanbo_amd_k17_package_native_contract", side_effect=native):
+            cls.result = families.collect_hanbo_amd_k17_package_chain(cls.audit)
+
+    def args(self, **changes):
+        import argparse
+        return argparse.Namespace(**(dict(family="accessories", function="main", product=[3893],
+            prepare=False, query="hanbo-amd-k17-package-chain") | changes))
+
+    def reject(self, rva, before, after):
+        native = copy.deepcopy(self.native)
+        row, = [row for row in native["complete_selected_functions"] if row["capture"]["rva"] == rva]
+        line = next(line for line in row["capture"]["pseudocode"]["lines"] if before in line["text"])
+        line["text"] = line["text"].replace(before, after, 1)
+        with self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+            families._hanbo_amd_k17_package_native_contract(native, self.raw)
+
+    def test_current_families_reuse_complete_capture_without_promoting_rust(self):
+        r = self.result
+        self.assertEqual(r["native_contract"]["families"], [23, 25, 26])
+        self.assertEqual((len(r["native"]["functions"]), len(r["native"]["verified_indirect_slots"])), (16, 6))
+        self.assertEqual(r["resumes_upstream_pointer"], "/hanbo_amd_legacy_package_chain/remaining_chains/0")
+        self.assertTrue(r["existing_rust"]["implementation_present"])
+        self.assertFalse(r["existing_rust"]["revalidated_by_this_query"])
+        self.assertFalse(r["source_chain_complete"])
+        self.assertFalse(r["target_execution"])
+        self.assertEqual(r["temporary_resources_created"], [])
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_topology_leaf_and_exact_single_node_gate_are_required(self):
+        c = self.result["native_contract"]["initialization"]
+        self.assertEqual(c["nodes_field"], "CPUID8000001e.ECX[10:8]+1")
+        self.assertEqual(c["nodes_without_leaf"], -1)
+        self.reject("0x191c60", "((v20 >> 8) & 7) + 1", "((v20 >> 8) & 7)")
+        self.reject("0x1841d0", "a1 + 100) != 1", "a1 + 100) <= 1")
+        self.reject("0x190780", "a1 + 100) = -1", "a1 + 100) = 1")
+
+    def test_pci_order_and_node_identity_cannot_be_interchanged(self):
+        c = self.result["native_contract"]["pci"]
+        self.assertEqual(c["multiple_node_device_precedence"], c["single_node_device_precedence"][:5])
+        self.assertEqual(c["single_node_device_precedence"][-2:], [0x1122, 0x115b])
+        self.assertFalse(c["multiple_node_bus_override"])
+        self.reject("0x1841d0", "4130, 5200", "4130, 5248")
+        self.reject("0x1841d0", "v97 != -1", "v97 != 1")
+        self.reject("0x1841d0", "v96[4]", "v96[3]")
+
+    def test_bus_override_uses_source_model_and_socket_device(self):
+        c = self.result["native_contract"]["pci"]
+        self.assertEqual([(x["family"], x["register"]) for x in c["bus_register_branches"]],
+            [(23, 0x84), (25, 0x84), (25, 0xc04), (26, 0xc04)])
+        self.reject("0x191c60", "v2 + 68) + 24", "v2 + 68) + 25")
+        self.reject("0x191c60", "v126, 0, 3076, 4", "v126, 0, 132, 4")
+        self.reject("0x1841d0", "v13 == -1", "v13 == 0")
+
+    def test_calibration_is_creation_time_and_single_multi_range_differs(self):
+        c = self.result["native_contract"]["sample"]
+        self.assertFalse(c["calibration_updates_after_creation"])
+        self.assertEqual(c["extended_range_subtract"], 49.0)
+        self.assertNotEqual(c["single_node_range_condition"], c["multiple_node_range_condition"])
+        self.reject("0x1841d0", "if ( !*(_QWORD *)(a2 + 1264) )", "if ( 1 )")
+        self.reject("0x1841d0", "(v246 & 0x30000) == 0x30000", "(v246 & 0x30000) != 0")
+        self.reject("0x1841d0", "v111 - 49.0", "v111 - 0.0")
+
+    def test_failure_and_zero_do_not_refresh_cur_or_imply_confirmation(self):
+        c = self.result["native_contract"]["sample"]
+        self.assertEqual(c["read_count_per_package"], 1)
+        self.assertTrue(c["sensor_created_for_nonzero_word_before_shift_check"])
+        self.assertFalse(c["zero_shifted_sample_updates_cur"])
+        self.assertTrue(c["validity_only_gates_extrema"])
+        self.reject("0x1841d0", "if ( v246 )", "if ( 1 )")
+        self.reject("0x1841d0", "if ( v113 )", "if ( 1 )")
+        self.reject("0x1841d0", "v108 >> 21", "v108 >> 20")
+
+    def test_smn_method_and_ioctl_sentinels_are_exact(self):
+        c = self.result["native_contract"]["sample"]
+        self.assertEqual(c["input_u32_order"], ["packed_pci", "smn_method", "register"])
+        self.assertEqual(c["rejected_words"], [0xaaaaaaaa, 0xbbbbbbbb, 0xcccccccc])
+        self.assertFalse(c["checks_bytes_returned"])
+        self.assertFalse(self.result["native_contract"]["initialization"]["smu_nonnull_producer_proven"])
+        self.reject("0x1841d0", "v107 = 2", "v107 = 1")
+        self.reject("0x15db8", "InBuffer[1] = a3", "InBuffer[1] = a4")
+        self.reject("0x15db8", "OutBuffer != -858993460", "OutBuffer != 0")
+
+    def test_actual_node_name_cannot_become_plain_package_projection(self):
+        c = self.result["native_contract"]
+        self.assertTrue(c["consumer"]["node_name_is_not_plain_package"])
+        self.assertFalse(c["consumer"]["missing_projection_zero_is_measurement"])
+        self.assertEqual(c["sample"]["multiple_node_name_index"], "cpu96.u32[4] (no increment)")
+        temperature = next(row["capture"] for row in self.native["complete_selected_functions"]
+            if row["capture"]["rva"] == "0x1841d0")
+        argument = next(row for row in temperature["assembly"] if row["rva"] == "0x185661")
+        self.assertEqual(argument["text"], "mov     r9d, [rax+10h]")
+        proof = next(p for p in c["sensor_name_proofs"] if p["name"] == "Package (Node %d)")
+        raw = bytearray(self.raw)
+        raw[proof["file_offset"]] = ord("X")
+        with self.assertRaisesRegex(ValueError, "actual sensor name changed"):
+            families._hanbo_amd_k17_package_native_contract(self.native, raw)
+
+    def test_brand_calibration_keeps_model_and_positive_prior_gates(self):
+        self.assertEqual(self.result["native_contract"]["brand_offsets"]["model8"]["Threadripper2990WX_2990X"], 27.0)
+        self.reject("0x187310", "v18 != 8", "v18 != 9")
+        self.reject("0x187310", "a1 + 92) <= 0.0", "a1 + 92) >= 0.0")
+        self.reject("0x187310", "1104674816", "1101004800")
+
+    def test_mutex_cleanup_and_misnamed_destructor_preserve_actual_targets(self):
+        c = self.result["native_contract"]["release"]
+        self.assertEqual(c["accepted_wait_results"], [0, 128])
+        self.assertEqual(c["owned_destructor_offsets"], [200, 208, 216, 224])
+        self.assertFalse(c["whole_callback_drain_proven"])
+        self.reject("0x1841d0", "WaitForSingleObject(v104, 0x64u)", "WaitForSingleObject(v104, 0)")
+        self.reject("0x1841d0", "v105 != 128", "v105 != 258")
+        self.reject("0x1906c0", "a1[27] = 0", "a1[26] = 0")
+        native = copy.deepcopy(self.native)
+        native["verified_indirect_slots"][-1]["target_rva"] = "0x1a83e0"
+        with self.assertRaisesRegex(ValueError, "actual provider slots changed"):
+            families._hanbo_amd_k17_package_native_contract(native, self.raw)
+
+    def test_upstream_change_and_incomplete_capture_reject(self):
+        upstream = self.result["upstream_sections"]
+        document = json.loads((families.a.ROOT / upstream[0]["receipt"]).read_bytes())
+        document["hanbo_amd_legacy_package_chain"]["target_execution"] = True
+        with patch.object(Path, "read_bytes", return_value=json.dumps(document).encode()):
+            with self.assertRaisesRegex(ValueError, "upstream changed"):
+                families._hanbo_amd_k17_package_dependencies()
+        native = copy.deepcopy(self.native)
+        native["complete_selected_functions"][0]["input_chunks_verified"] = False
+        with self.assertRaisesRegex(ValueError, "complete owner is absent"):
+            families._hanbo_amd_k17_package_native_contract(native, self.raw)
+
+    def test_dispatch_scope_and_failure_publication_keep_execution_unverified(self):
+        with patch.object(families, "audit_hanbo_amd_k17_package_chain", return_value="selected"):
+            self.assertEqual(families.audit_family_function(self.args()), "selected")
+        for changes in (dict(family="audio"), dict(function="mw"), dict(product=[3900]), dict(prepare=True)):
+            with self.subTest(changes=changes), self.assertRaises(ValueError):
+                families.audit_hanbo_amd_k17_package_chain(self.args(**changes))
+        with patch.object(families, "collect_hanbo_amd_k17_package_chain", side_effect=ValueError("changed")), \
+                patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+            with self.assertRaisesRegex(ValueError, "observation remains unresolved"):
+                families.audit_hanbo_amd_k17_package_chain(self.args())
+        self.assertEqual(publish.call_args.args[3], "hanbo_amd_k17_package_chain")
+        self.assertFalse(publish.call_args.args[0]["bounded_observation_complete"])
+        self.assertFalse(publish.call_args.args[0]["target_execution"])
+
+
+class HanboAmdLegacyPackageChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        check = families._hanbo_amd_legacy_package_native_contract
+
+        def native(module, raw):
+            cls.native, cls.raw = module, raw
+            return check(module, raw)
+
+        with patch.object(families, "_hanbo_amd_legacy_package_native_contract", side_effect=native):
+            cls.result = families.collect_hanbo_amd_legacy_package_chain(cls.audit)
+
+    def args(self, **changes):
+        import argparse
+        values = dict(family="accessories", function="main", product=[3893], prepare=False,
+            query="hanbo-amd-legacy-package-chain")
+        return argparse.Namespace(**(values | changes))
+
+    def reject(self, rva, before, after):
+        native = copy.deepcopy(self.native)
+        row, = [row for row in native["complete_selected_functions"] if row["capture"]["rva"] == rva]
+        line = next(line for line in row["capture"]["pseudocode"]["lines"] if before in line["text"])
+        line["text"] = line["text"].replace(before, after, 1)
+        with self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+            families._hanbo_amd_legacy_package_native_contract(native, self.raw)
+
+    def test_four_family_and_older_default_slice_reuses_current_complete_capture(self):
+        r = self.result
+        self.assertEqual(len(r["native"]["functions"]), 26)
+        self.assertEqual(len(r["native"]["verified_indirect_slots"]), 17)
+        self.assertEqual(r["native"]["input"]["sha256"],
+            "c67f23ef5fd6e5a1db8f96d9a0509447f9657969e7a2c7fed7b293b72240cfb7")
+        self.assertEqual(r["resumes_upstream_pointers"],
+            ["/hanbo_amd_package_chain/remaining_chains/" + str(i) for i in (0, 1, 2, 4)])
+        self.assertFalse(r["target_execution"])
+        self.assertFalse(r["source_chain_complete"])
+        self.assertEqual(r["temporary_resources_created"], [])
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_k8_initialization_gate_minus49_offset_and_no_sensor_creation_on_sample(self):
+        k8 = self.result["native_contract"]["k8"]
+        self.assertEqual((k8["initialization_min_revision"], k8["initial_offset"]), (8, -49.0))
+        self.assertFalse(k8["creates_sensor_during_periodic_read"])
+        for before, after in ((">= 8", ">= 1"), ("if ( v31 )", "if ( 1 )"),
+                ("-1035730944", "0")):
+            self.reject("0x181be0", before, after)
+
+    def test_k8_sample_write_core_selection_fractional_and_socket_adjustment(self):
+        k8 = self.result["native_contract"]["k8"]
+        self.assertEqual(k8["sample_sequence"], ["read_e4", "write_e4_selector", "read_e4"])
+        self.assertFalse(k8["checks_read_or_write_result"])
+        self.assertFalse(k8["restores_e4"])
+        self.assertEqual((k8["sentinel_celsius_integer"], k8["sentinel_celsius_fractional"]), (206.0, 206.75))
+        for before, after in (("a2 + 72", "a2 + 60"), ("0x7FFFFFBF", "0xFFFFFFFF"),
+                (">= 96", ">= 64"), ("65546", "65547"), ("21.0", "0.0")):
+            self.reject("0x17d850", before, after)
+        native = copy.deepcopy(self.native)
+        row = next(row for row in native["complete_selected_functions"] if row["capture"]["rva"] == "0x17d850")
+        line = next(line for line in row["capture"]["assembly"] if line["rva"] == "0x17da33")
+        self.assertEqual(line["text"], "and     esi, 3")
+        line["bytes"] = "83e607"
+        with self.assertRaisesRegex(ValueError, "complete native boundary changed"):
+            families._hanbo_amd_legacy_package_native_contract(native, self.raw)
+
+    def test_k15_model_routes_and_cores_result_are_not_package_confirmation(self):
+        c = self.result["native_contract"]["k15"]
+        self.assertEqual(c["pci_model_groups"], [0, 16, 48])
+        self.assertEqual(c["special_model_groups"], [96, 112])
+        self.assertTrue(c["cores_result_survives_package_gate_failure"])
+        for before, after in (("v6 == 48", "v6 == 32"), ("v6 == 112", "v6 == 80"),
+                ("a2 + 1272", "a2 + 1264"), ("v5 = *(unsigned int *)(v21 + 348)", "v5 = 0")):
+            self.reject("0x19d2c0", before, after)
+
+    def test_k15_selector_restore_is_unchecked_and_has_no_confirming_read(self):
+        c = self.result["native_contract"]["k15"]
+        self.assertEqual(c["cores_sequence"][-1], "restore_original_1e8")
+        self.assertFalse(c["cores_later_io_or_restore_checked"])
+        self.assertFalse(c["restore_readback"])
+        for before, after in (("0xFFFFF800", "0xFFFFFF00"), ("| 0x31", "| 0x30"),
+                ("sub_180079160(v16, 3, 488, v33)", "sub_180079160(v16, 3, 488, 0)")):
+            self.reject("0x19d2c0", before, after)
+
+    def test_k15_special_ioctl_gates_sentinels_but_not_bytes_returned(self):
+        c = self.result["native_contract"]["k15"]
+        self.assertEqual(c["special_input"], [0x80000000, 0, 0xd8200ca4])
+        self.assertEqual(c["special_rejected_values"], [0xaaaaaaaa, 0xbbbbbbbb, 0xcccccccc])
+        self.assertFalse(c["special_checks_bytes_returned"])
+        for before, after in (("v7 == 2", "v7 == 1"), ("0x9C402584", "0x9C402720"),
+                ("OutBuffer != -858993460", "OutBuffer != 0")):
+            self.reject("0x15db8", before, after)
+
+    def test_k16_all_endpoint_iteration_and_unchecked_second_read(self):
+        c = self.result["native_contract"]["k16"]
+        self.assertTrue(c["visits_all_matching_endpoints"])
+        self.assertTrue(c["later_failed_gate_preserves_previous_iteration_result"])
+        self.assertFalse(c["second_read_checked"])
+        for before, after in (("v8 == 5507", "v8 == 5635"), ("v6 = *(_QWORD *)(v6 + 16)", "v6 = 0"),
+                ("v19 = -1", "v19 = 0"), ("v13 >> 21", "v13 >> 20")):
+            self.reject("0x195330", before, after)
+
+    def test_negative_slots_are_actual_pe_and_never_exclude_owner32(self):
+        c = self.result["native_contract"]["negative_providers"]
+        self.assertTrue(c["higher_priority_owner32_excluded_from_negative_claim"])
+        self.assertFalse(c["family21_attaches_provider"])
+        self.reject("0x19ed50", "return -1.0", "return 0.0")
+        native = copy.deepcopy(self.native)
+        native["verified_indirect_slots"][-1]["target_rva"] = "0x17d850"
+        with self.assertRaisesRegex(ValueError, "actual provider slots changed"):
+            families._hanbo_amd_legacy_package_native_contract(native, self.raw)
+
+    def test_sensor_names_and_complete_owner_bytes_cannot_be_substituted(self):
+        proof = next(p for p in self.result["native_contract"]["sensor_name_proofs"] if p["name"] == "Cores")
+        raw = bytearray(self.raw)
+        raw[proof["file_offset"]] = ord("X")
+        with self.assertRaisesRegex(ValueError, "actual sensor name changed"):
+            families._hanbo_amd_legacy_package_native_contract(self.native, raw)
+        native = copy.deepcopy(self.native)
+        native["complete_selected_functions"][0]["input_chunks_verified"] = False
+        with self.assertRaisesRegex(ValueError, "complete owner is absent"):
+            families._hanbo_amd_legacy_package_native_contract(native, self.raw)
+
+    def test_release_retains_actual_owned_members_and_shared_unconfirmed_ecs_restore(self):
+        c = self.result["native_contract"]["release"]
+        self.assertEqual(c["k15_extra_owned_offsets"], [104, 112])
+        self.assertTrue(c["shared_ecs_original_enable_restore_reused"])
+        self.assertFalse(c["whole_callback_drain_proven"])
+        self.reject("0x197f70", "a1[13]", "a1[12]")
+        self.reject("0x79270", "+ 16LL", "+ 24LL")
+
+    def test_upstream_change_rejects_and_unrelated_publication_does_not(self):
+        upstream = self.result["upstream_sections"]
+        path = families.a.ROOT / upstream[0]["receipt"]
+        document = json.loads(path.read_bytes())
+        document["hanbo_amd_package_chain"]["target_execution"] = True
+        with patch.object(Path, "read_bytes", return_value=json.dumps(document).encode()):
+            with self.assertRaisesRegex(ValueError, "upstream changed"):
+                families._hanbo_amd_legacy_package_dependencies()
+        document = json.loads(path.read_bytes())
+        document["unrelated"] = {}
+        with patch.object(Path, "read_bytes", return_value=json.dumps(document).encode()):
+            self.assertEqual(host._keypad_temporary_keymap_dependency_changes(upstream), [])
+
+    def test_dispatch_scope_and_failure_publication_keep_execution_unverified(self):
+        with patch.object(families, "audit_hanbo_amd_legacy_package_chain", return_value="selected"):
+            self.assertEqual(families.audit_family_function(self.args()), "selected")
+        for changes in (dict(family="audio"), dict(function="mw"), dict(product=[3900]), dict(prepare=True)):
+            with self.subTest(changes=changes), self.assertRaises(ValueError):
+                families.audit_hanbo_amd_legacy_package_chain(self.args(**changes))
+        for failure in (False, True):
+            configured = dict(side_effect=ValueError("changed")) if failure else dict(return_value={})
+            with patch.object(families, "collect_hanbo_amd_legacy_package_chain", **configured), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+                if failure:
+                    with self.assertRaisesRegex(ValueError, "observation remains unresolved"):
+                        families.audit_hanbo_amd_legacy_package_chain(self.args())
+                else:
+                    families.audit_hanbo_amd_legacy_package_chain(self.args())
+            self.assertEqual(publish.call_args.args[3], "hanbo_amd_legacy_package_chain")
+            self.assertEqual(publish.call_args.args[0]["bounded_observation_complete"], not failure)
+            self.assertFalse(publish.call_args.args[0]["target_execution"])
+
+
 class HanboAmdPackageChainTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -13449,6 +15257,129 @@ class System737OverclockServiceChainTests(unittest.TestCase):
             self.assertEqual(report["official_dll_comparison"], "not_executed")
 
 
+class Gamepad2636ShutdownReconnectChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.result = families.collect_gamepad_2636_shutdown_reconnect_chain(cls.audit)
+        cls.owners = {role: cls.audit.owners[key] for role, key in cls.result["roles"].items()}
+
+    def changed(self, role, before, after):
+        owners = copy.deepcopy(self.owners)
+        self.assertIn(before, owners[role]["body"])
+        owners[role]["body"] = owners[role]["body"].replace(before, after, 1)
+        return owners
+
+    def reject(self, role, before, after, error):
+        with self.assertRaisesRegex(ValueError, error):
+            families._gamepad_2636_shutdown_reconnect_contract(self.audit.parser,
+                self.changed(role, before, after))
+
+    def test_current_slice_preserves_native_and_unverified_boundaries(self):
+        self.assertEqual(len(self.result["roles"]), 49)
+        self.assertEqual(len(self.audit.owners), 68)
+        self.assertFalse(self.result["reused_native"]["recaptured"])
+        self.assertEqual(self.result["temporary_resources_created"], [])
+        self.assertFalse(self.result["source_chain_complete"])
+        self.assertFalse(self.result["target_execution"])
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_missing_generic_feature_is_proven_at_defaults_and_bootstrap(self):
+        c = self.result["semantics"]["generic_shutdown"]
+        self.assertEqual(c["default_generic_features"], [])
+        self.assertEqual(c["runtime_module_exports"], ["A"])
+        self.assertFalse(c["runtime_module_has_injector_defaults"])
+        self.assertFalse(c["external_unreviewed_injection_proven_absent"])
+        self.reject("product_bootstrap", 'useFeature("loadProfileDataFromDevice","yes")',
+            'useFeature("genericFeature","config")', "mounted feature sequence changed")
+        self.reject("product_runtime_factory", 'n.d(t,{A:()=>o})',
+            'n.d(t,{A:()=>o,injectorDefaults:()=>o})', "actual default feature source changed")
+
+    def test_dynamic_bootstrap_feature_cannot_be_reported_as_empty(self):
+        self.reject("product_bootstrap", 'useFeature("useMWManifest","yes")',
+            'useFeature(dynamicFeature,"yes")', "feature selection is dynamic")
+        self.reject("derive_default_features", "const t={}",
+            "const t={genericFeature:{config:{features:[]}}}", "actual default feature source changed")
+
+    def test_generic_shutdown_does_not_reset_init_or_join_work(self):
+        c = self.result["semantics"]["generic_shutdown"]
+        self.assertTrue(c["init_sets_done_for_empty_features"])
+        self.assertFalse(c["shutdown_resets_init_done"])
+        self.assertFalse(c["shutdown_clears_features"])
+        self.reject("generic_manager", 'n.shutdown&&(yield n.shutdown())',
+            'n.shutdown&&(yield n.shutdown());this.initDone=false', "selected lifecycle changed|fingerprint changed")
+
+    def test_inherited_terminate_is_empty_and_no_beforeunload_override(self):
+        c = self.result["semantics"]["protocol"]
+        self.assertTrue(c["terminate_is_empty"])
+        self.assertFalse(c["handle_before_unload_present"])
+        self.reject("base_class", "terminate(){}", "terminate(){this.device.close()}",
+            "inherited terminate is not the empty")
+        self.reject("sage_class", "class h extends i.A{", "class h extends i.A{handleBeforeUnload(){}",
+            "selected destructor override changed")
+
+    def test_sage_mode_echo_is_not_device_write_or_restore(self):
+        c = self.result["semantics"]["protocol"]
+        self.assertFalse(c["sage_set_device_mode_transmits"])
+        self.assertTrue(c["mode_wrapper_getter_is_real_protocol"])
+        self.assertFalse(c["setter_result_is_device_confirmation"])
+        self.reject("sage_class", 'return{status:l.STATUS_SUCCESS,error:"",jsonData:{mode:e,param:t}}',
+            'return this.sendCommand(e,t)', "Sage mode now has a transport call")
+        self.reject("sage_class", 'return{status:l.STATUS_SUCCESS,error:"",jsonData:{mode:e,param:t}}',
+            'return{status:l.STATUS_FAIL,error:"",jsonData:{mode:e,param:t}}', "Sage mode result changed")
+
+    def test_connection_failure_does_not_clear_published_device_or_prove_ble(self):
+        c = self.result["semantics"]["connection"]
+        self.assertEqual((c["inner_connect_attempts"], c["outer_default_attempts"]), (3, 5))
+        self.assertEqual(c["outer_retry_delays_ms"], [1000, 2000, 4000, 8000])
+        self.assertFalse(c["qualified_ble_transport"])
+        self.assertFalse(c["failed_connect_clears_published_device"])
+        self.assertTrue(c["setup_tests_current_object_not_connect_return"])
+        self.reject("connect_device", "for(let n=0;n<=t;n++)", "for(let n=0;n<t;n++)", "selected lifecycle changed")
+        self.reject("connection_observation", "getDockExtendedFirmwareVersion()).status===i.STATUS_SUCCESS",
+            "getDockExtendedFirmwareVersion()).status!==i.STATUS_SUCCESS", "selected lifecycle changed")
+
+    def test_resume_uses_retained_promise_and_only_changes_power_when_different(self):
+        c = self.result["semantics"]["resume"]
+        self.assertTrue(c["power_checks_serialized_by_retained_promise"])
+        self.assertFalse(c["queued_checks_cancelled_on_unsubscribe"])
+        self.reject("resume_serialized", "Ce.then((()=>Ne()))", "Ne()", "selected lifecycle changed")
+        self.reject("resume_power_check", "n===t", "n!==t", "selected lifecycle changed")
+        self.reject("remove_resume_listener", 'v.A.off("systemresume",we)',
+            'v.A.off("systemresume",Me)', "fingerprint changed")
+
+    def test_reconnect_event_guard_and_brightness_replay_are_source_ordered(self):
+        c = self.result["semantics"]["resume"]
+        self.assertFalse(c["mode_promise_awaited_by_event"])
+        self.assertTrue(c["missing_serial_calls_setup_ready"])
+        self.reject("wireless_power_event", "(0,v.L4)(g.xZ).finally", "(0,v.L4)(g.xZ).then", "selected lifecycle changed")
+        self.reject("restore_brightness", 'type:"ON_INIT_BRIGHTNESS"', 'type:"ON_SET_BRIGHTNESS"', "selected lifecycle changed")
+        self.reject("setup_ready", "e)window.location.reload()", "e)window.close()", "selected lifecycle changed")
+
+    def test_changed_upstream_and_broken_ast_reject(self):
+        document = json.loads((families.a.ROOT / self.result["upstream_sections"][0]["receipt"]).read_bytes())
+        document["gamepad_2636_detection_native_chain"]["target_execution"] = True
+        with patch.object(Path, "read_bytes", return_value=json.dumps(document).encode()):
+            with self.assertRaisesRegex(ValueError, "upstream changed"):
+                families._gamepad_2636_shutdown_reconnect_sources(host.HostLocalAudit())
+        self.reject("resume_queue", "Promise.resolve()", "Promise.resolve(", "invalid syntax")
+
+    def test_scope_and_failed_publication_never_report_complete(self):
+        import argparse
+        args = argparse.Namespace(family="gamepad", function="mw", product=[2636], prepare=False,
+            query="gamepad-2636-shutdown-reconnect-chain")
+        for changes in (dict(family="audio"), dict(function="main"), dict(product=[2635]), dict(prepare=True)):
+            with self.subTest(changes=changes), self.assertRaises(ValueError):
+                families.audit_gamepad_2636_shutdown_reconnect_chain(argparse.Namespace(**(vars(args) | changes)))
+        with patch.object(families, "collect_gamepad_2636_shutdown_reconnect_chain", side_effect=ValueError("changed")), \
+                patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+            with self.assertRaisesRegex(ValueError, "observation remains unresolved"):
+                families.audit_gamepad_2636_shutdown_reconnect_chain(args)
+        self.assertEqual(publish.call_args.args[3], "gamepad_2636_shutdown_reconnect_chain")
+        self.assertFalse(publish.call_args.args[0]["bounded_observation_complete"])
+        self.assertFalse(publish.call_args.args[0]["target_execution"])
+
+
 class Gamepad2636DetectionNativeChainTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -15220,6 +17151,423 @@ class System737XtuServiceInfoChainTests(unittest.TestCase):
             for field in ("source_chain_complete", "whole_product_complete", "target_execution", "real_device_operations"):
                 self.assertFalse(report[field])
             self.assertEqual(report["official_dll_comparison"], "not_executed")
+
+
+class System737XtuClientApiChainTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_system_737_xtu_client_api_chain(cls.audit)
+        cls.managed = cls.report["managed"]
+        cls.native = families._system_737_xtu_client_api_native(cls.audit, cls.report["originals"]["client_api"])
+
+    def function(self, rva):
+        row, = [row for row in self.native["complete_selected_functions"] if row["capture"]["rva"] == hex(rva)]
+        return row["capture"]
+
+    def text(self, rva):
+        return "\n".join(row["text"] for row in self.function(rva)["pseudocode"]["lines"])
+
+    def method(self, role, owner, name):
+        row, = [row for row in self.managed[role]["complete_methods"]
+                if row["declaring_type"].split(".")[-1] == owner and row["name"] == name]
+        return row
+
+    def test_current_alias_versions_and_unacquired_proxy_are_separate(self):
+        versions = self.report["native_member_versions"]
+        self.assertEqual(versions["client_api"], {"file_version": "2.2.10200.11", "product_version": "0.0.0.0", "architecture": "x64"})
+        self.assertEqual(self.audit.read(self.report["originals"]["client_api"]),
+                         self.audit.read(self.report["originals"]["client_api_service_alias"]))
+        search = self.report["unacquired_proxy"]
+        self.assertFalse(search["source_absence_claimed"])
+        self.assertEqual(search["selection_status"], "not_bound")
+        self.assertEqual(search["indexed_candidates"], [])
+        self.assertEqual({row["name"]: row["direct_members"] for row in search["current_declared_package_search"]},
+                         {"Blade10ToolsSetup": 36, "NormalDriver_PID02e1Drv": 17})
+        self.assertTrue(all(not row["proxy_name_matches"] for row in search["current_declared_package_search"]))
+        self.assertFalse(self.report["service_package"]["installed_selection_observed"])
+
+    def test_complete_original_il_native_chunks_and_vtable_slots(self):
+        self.assertEqual(len(self.native["complete_selected_functions"]), 27)
+        self.assertEqual(len(self.native["verified_indirect_slots"]), 7)
+        self.assertEqual({role: len(row["complete_methods"]) for role, row in self.managed.items()},
+                         {"hardware_services": 10, "common": 4, "hardware_interfaces": 0, "access": 1})
+        _, read, _ = families.audio_native_evidence_pe(self.audit.read(self.report["originals"]["client_api"]))
+        for row in self.native["complete_selected_functions"]:
+            self.assertTrue(row["input_chunks_verified"])
+            self.assertEqual(row["failures"], 0)
+            for chunk in row["capture"]["chunks"]:
+                start, end = int(chunk["start"], 16), int(chunk["end"], 16)
+                self.assertEqual(read(start - 0x180000000, end - start), bytes.fromhex(chunk["raw_hex"]))
+        for role, capture in self.managed.items():
+            metadata = host._profile_gog_clr(self.audit.read(capture["original"]))
+            for method in capture["complete_methods"]:
+                original = metadata["methods"][int(method["token"], 16)]
+                self.assertEqual(method["raw_code_hex"], original["code"].hex())
+                self.assertEqual(method["exception_sections"], original["exception_sections"])
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_actual_install_dir_guid_signature_revision_and_release_build(self):
+        self.assertEqual(self.native["framework_interface_guid"]["value"], "9dd57132-5929-476a-8ccb-9d42b1e4abed")
+        find = self.text(0x4f80)
+        for fragment in ('"SWD", 0x101u', '"InstallDir"', "CM_Open_Device_Interface_Key_ExA", "RegCloseKey", "HeapFree"):
+            self.assertIn(fragment, find)
+        loader = self.text(0x5580)
+        self.assertLess(loader.index("WinVerifyTrust"), loader.index("LoadLibraryExA"))
+        self.assertIn("LoadLibraryExA(v19, 0, 0x1000u)", loader)
+        for name in ("Create", "Destroy", "Revision", "GetDllBuildType"):
+            self.assertIn('"' + name + '"', loader)
+        self.assertIn("ProcAddress() & 0x200", loader)
+        creator = self.text(0x31d0)
+        self.assertIn('"ClientApiR4"', creator)
+        self.assertIn('"ClientApiProxy.dll"', creator)
+        self.assertIn("*((_DWORD *)v5 + 18) = 3", creator)
+        self.assertIn("*((_DWORD *)v5 + 19) = 4", creator)
+
+    def test_real_arguments_override_incomplete_decompiler_signatures(self):
+        sites = families._system_737_xtu_client_api_argument_sites(self.native)
+        self.assertEqual(len(sites), 22)
+        by_rva = {row["rva"]: row["text"] for row in sites}
+        self.assertEqual(by_rva["0x5367"], "call    qword ptr [rax+8]")
+        self.assertEqual(by_rva["0x5519"], "call    qword ptr [rax+10h]")
+        self.assertEqual(by_rva["0x4f1f"], "call    qword ptr [rax+28h]")
+        self.assertIn("r9", by_rva["0x1baa7"])
+        self.assertIn("r8", by_rva["0x1baac"])
+        for rva in (0x1c800, 0x1d660):
+            self.assertIn("a3();", self.text(rva))
+        changed = copy.deepcopy(self.native)
+        row = next(row for item in changed["complete_selected_functions"] for row in item["capture"]["assembly"] if row["rva"] == "0x1ca61")
+        row["text"] = "xor     ecx, ecx"
+        with self.assertRaisesRegex(ValueError, "argument/callback site differs"):
+            families._system_737_xtu_client_api_argument_sites(changed)
+
+    def test_callback_is_before_owned_result_free_and_failure_argument_is_null(self):
+        for rva, success, failure, final_free in ((0x1c800, 0x1ca6a, 0x1ca6e, 0x1cabb),
+                (0x1d660, 0x1d8ca, 0x1d8ce, 0x1d91b), (0x1b8d0, 0x1bbe1, 0x1bbe6, 0x1bc33)):
+            lines = {int(row["rva"], 16): row for row in self.function(rva)["assembly"]}
+            self.assertTrue(lines[success]["text"].startswith("call    r"))
+            self.assertEqual(lines[failure]["text"], "xor     ecx, ecx")
+            self.assertEqual(lines[final_free]["text"], "call    j_j_free")
+            self.assertLess(success, final_free)
+            self.assertLess(failure, final_free)
+
+    def test_native_error_codes_and_tls_are_operation_specific(self):
+        for rva, code in ((0x1c800, 6), (0x1d660, 13), (0x1b8d0, 9)):
+            text = self.text(rva)
+            self.assertIn(" = " + str(code) + ";", text)
+            self.assertIn(" = 1;", text)
+            self.assertIn(" = 2;", text)
+            self.assertIn("return 4;", text)
+            self.assertIn("0x800u", text)
+            self.assertIn("0x100u", text)
+        self.assertIn("+ 272LL", self.text(0x1bc60))
+        self.assertIn("+ 16LL", self.text(0x1bc80))
+        self.assertIn("__stdio_common_vsnprintf_s", self.text(0x24e60))
+        self.assertIn("void __noreturn", self.text(0x6030))
+        self.assertIn("Ipf::JsonException", self.text(0x6030))
+
+    def test_validation_does_not_add_nonexistent_null_command_guard(self):
+        text = self.text(0x1b8d0)
+        self.assertLess(text.index("while ( a3[v11] )"), text.index("if ( !a4 )"))
+        self.assertNotIn("if ( !a3 )", text)
+        self.assertIn('"command is null or empty"', text)
+        self.assertIn("if ( a2 )", self.text(0x1c800))
+        self.assertIn('sub_180006DC0(Block, "{}", 2u)', self.text(0x3040))
+        self.assertIn("*a2 = 0", self.text(0x1b120))
+        self.assertIn("return 5;", self.text(0x1b120))
+
+    def test_instance_destroy_precedes_proxy_unload_and_no_success_close_claim(self):
+        destructor = self.text(0x4250)
+        self.assertLess(destructor.index("v3(v1[1])"), destructor.index("(v2, 1)"))
+        self.assertIn("j_j_free(v1)", destructor)
+        unload = self.text(0x4e50)
+        for fragment in ("FreeLibrary(v2)", "a1[1] = 0", "a1[6] = 0", "a1[7] = 0", "a1[8] = 0"):
+            self.assertIn(fragment, unload)
+        self.assertFalse(self.report["semantics"]["native_proxy_semantics_complete"])
+
+    def test_actual_platform_read_inputs_and_single_affinity_request(self):
+        platform = self.method("access", "PlatformInformation", "PopulatePlatformStatus")["complete_il"]
+        self.assertIn("::ReadMailboxForCompletionCode(uint8, uint8, uint8)", platform)
+        self.assertIn('"Platform.SOC.Overclocking.Info.IAOverclockingStatus"', platform)
+        self.assertIn('"Platform.SOC.Overclocking.Info.UndervoltProtectionEnabled"', platform)
+        request = self.method("hardware_services", "IpfService", "GetMailboxValue")["complete_il"]
+        for name in ("MailboxAction", "version", "cmd", "param1", "param2", "ocmb_affinity_data", "group", "affinity_mask", "data", "Platform.SOC.Overclocking"):
+            self.assertIn('"' + name + '"', request)
+        self.assertIn("ldc.i4.s 100", request)
+        self.assertIn("ldc.i4 500", request)
+        consumer = self.method("hardware_services", "OcMailboxService", "SubmitNonAffinitizedReadMailboxCommand")["complete_il"]
+        self.assertIn("Dictionary`2<uint32, uint64>", consumer)
+
+    def test_mailbox_success_is_not_reset_after_response_parse_failure(self):
+        row = self.method("hardware_services", "IpfService", "GetMailboxValue")
+        instructions = row["instructions"]
+        assignments = [i for i, item in enumerate(instructions) if item["opcode"] == "stfld" and "::IsSuccessful" in item["operand"]]
+        parse = next(i for i, item in enumerate(instructions) if "JArray::Parse(" in item["operand"])
+        self.assertEqual(len(assignments), 2)
+        self.assertLess(assignments[-1], parse)
+        self.assertFalse(any(item["opcode"] == "stfld" and "::IsSuccessful" in item["operand"] for item in instructions[parse:]))
+        for name in ("DataCompletionCode", "IpfOcMailboxResponse"):
+            artifact, = [item for item in self.managed["hardware_interfaces"]["source_artifacts"] if item["path"].endswith("/" + name + ".cs")]
+            self.assertIn("public struct " + name, self.audit.artifact(analysis.ROOT / artifact["path"], artifact).decode())
+
+    def test_mailbox_ignores_mutex_result_but_keeps_finally_release(self):
+        row = self.method("hardware_services", "OcMailboxService", "SubmitAffinitizedReadMailboxCommand")
+        instructions = row["instructions"]
+        take = next(i for i, item in enumerate(instructions) if "WindowsMutex::TakeMutex" in item["operand"])
+        self.assertEqual(instructions[take + 1]["opcode"], "pop")
+        self.assertIn("finally", row["complete_il"])
+        self.assertIn("WindowsMutex::ReleaseMutex", row["complete_il"])
+        take_body = self.method("common", "WindowsMutex", "TakeMutex")["complete_il"]
+        self.assertIn("ldc.i4.s 100", take_body)
+        self.assertIn("WaitForSingleObject", take_body)
+
+    def test_changed_parent_native_and_managed_semantics_reject(self):
+        for mode in ("managed", "native", "guid"):
+            managed, native = copy.deepcopy(self.managed), copy.deepcopy(self.native)
+            if mode == "managed":
+                managed["hardware_services"]["complete_methods"][0]["raw_code_hex"] = "00"
+            elif mode == "native":
+                native["complete_selected_functions"][0]["input_chunks_verified"] = False
+            else:
+                native["framework_interface_guid"]["raw_hex"] = "00"
+            with self.subTest(mode=mode), self.assertRaisesRegex(ValueError, "complete semantic review differs"):
+                families._system_737_xtu_client_api_contract(managed, native)
+        dep = self.report["upstream_sections"]
+        doc = json.loads((analysis.ROOT / dep[0]["receipt"]).read_bytes())
+        doc["unrelated"] = True
+        with patch.object(Path, "read_bytes", return_value=json.dumps(doc).encode()):
+            self.assertEqual(host._otfm_macro_encoding_dependency_changes(dep), [])
+        doc["overclock_ipf_lifecycle_chain"]["remaining_chains"][1] += " changed"
+        with patch.object(Path, "read_bytes", return_value=json.dumps(doc).encode()), self.assertRaisesRegex(ValueError, "exact IPF section/finding requires review"):
+            families._system_737_xtu_client_api_sources(host.HostLocalAudit())
+
+    def test_cli_dispatch_failures_and_cancellation_cannot_mark_complete(self):
+        import argparse
+        parser = argparse.ArgumentParser()
+        families.add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["audit-family-function", "--family", "system", "--function", "mw", "--query", "system-737-xtu-client-api-chain"])
+        with patch.object(families, "audit_system_737_xtu_client_api_chain") as dispatch:
+            families.audit_family_function(args)
+        dispatch.assert_called_once_with(args)
+        for mode in ("success", "failure", "snapshot"):
+            kwargs = {"side_effect": ValueError("missing input")} if mode == "failure" else {"return_value": {"failures": []}}
+            with self.subTest(mode=mode), patch.object(families, "collect_system_737_xtu_client_api_chain", **kwargs), \
+                    patch.object(host.HostLocalAudit, "artifact"), \
+                    patch.object(host.HostLocalAudit, "final_snapshot", return_value=["changed"] if mode == "snapshot" else []), \
+                    patch.object(host, "_otfm_macro_encoding_dependency_changes", return_value=[]), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+                if mode == "success":
+                    families.audit_system_737_xtu_client_api_chain(args)
+                else:
+                    with self.assertRaisesRegex(ValueError, "remains unresolved"):
+                        families.audit_system_737_xtu_client_api_chain(args)
+            report, _, _, section = publish.call_args.args
+            self.assertEqual(section, "overclock_client_api_chain")
+            self.assertEqual(report["bounded_observation_complete"], mode == "success")
+            for flag in ("source_chain_complete", "whole_product_complete", "target_execution", "real_device_operations"):
+                self.assertFalse(report[flag])
+        with patch.object(families, "collect_system_737_xtu_client_api_chain", side_effect=KeyboardInterrupt), \
+                patch.object(host.HostLocalAudit, "artifact"), patch.object(host, "publish_host_static_query") as publish:
+            with self.assertRaises(KeyboardInterrupt):
+                families.audit_system_737_xtu_client_api_chain(args)
+            publish.assert_not_called()
+
+
+class System737XtuIpfLifecycleTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.audit = host.HostLocalAudit()
+        cls.report = families.collect_system_737_xtu_ipf_lifecycle_chain(cls.audit)
+        cls.managed = cls.report["managed"]
+        cls.native = families._system_737_xtu_ipf_native(cls.audit, cls.report["originals"]["native_utilities"])
+
+    def method(self, role, owner, name):
+        row, = [row for row in self.managed[role]["complete_methods"]
+                if row["declaring_type"].split(".")[-1] == owner and row["name"] == name]
+        return row
+
+    def source(self, role, name):
+        row, = [row for row in self.managed[role]["source_artifacts"] if row["path"].endswith("/" + name + ".cs")]
+        return self.audit.artifact(analysis.ROOT / row["path"], row).decode("utf-8-sig")
+
+    def native_text(self, rva):
+        row, = [row for row in self.native["complete_selected_functions"] if row["capture"]["rva"] == hex(rva)]
+        return "\n".join(line["text"] for line in row["capture"]["pseudocode"]["lines"])
+
+    def test_current_package_alias_and_complete_original_il(self):
+        self.assertEqual(self.report["member_versions"], {"ipf_client": ["2.2.10200.11"], "native_utilities": ["10.0.1.35"]})
+        self.assertEqual(self.audit.read(self.report["originals"]["ipf_client"]),
+                         self.audit.read(self.report["originals"]["ipf_client_service_alias"]))
+        self.assertFalse(self.report["service_package"]["installed_selection_observed"])
+        self.assertEqual({role: len(row["complete_methods"]) for role, row in self.managed.items()},
+                         {"server": 8, "hardware_services": 23, "common": 8, "ipf_client": 54})
+        for role, capture in self.managed.items():
+            metadata = host._profile_gog_clr(self.audit.read(capture["original"]))
+            for method in capture["complete_methods"]:
+                original = metadata["methods"][int(method["token"], 16)]
+                self.assertEqual(method["raw_code_hex"], original["code"].hex())
+                self.assertEqual(method["exception_sections"], original["exception_sections"])
+                self.assertEqual(method["method_identity"]["metadata_row_hex"], original["metadata_row_hex"])
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_activation_precedes_services_and_retries_are_inclusive(self):
+        init = self.method("server", "CoreServer", "Init")["complete_il"]
+        self.assertLess(init.index("::ActivateXTURoleInIPF"), init.index("UnityInitialization::Initialize"))
+        self.assertIn("ldc.i4.s 30", init)
+        self.assertIn("ldc.i4 1000", init)
+        row = self.method("server", "IpfRegistryInjection", "ActivateXTURoleInIPF")
+        ops = [(item["opcode"], item["operand"]) for item in row["instructions"]]
+        self.assertIn(("bgt.s", "IL_00d5"), ops)
+        self.assertIn("ldc.i4.3", row["complete_il"])
+        self.assertIn("IpfCore_SetAppDir(string, string)", row["complete_il"])
+        self.assertNotIn("IpfCore_SetAppDirEx", row["complete_il"])
+        self.assertEqual(self.report["semantics"]["activation"]["maximum_attempts"], 31)
+
+    def test_fast_probe_exception_preserves_retry_and_stop_only_sets_flag(self):
+        probe = self.method("server", "IpfRegistryInjection", "CheckIfIpfIsInstalled")["complete_il"]
+        self.assertIn("SELECT * FROM Win32_SystemDriver WHERE Name = 'ipf_cpu'", probe)
+        self.assertIn("catch [mscorlib]System.Exception", probe)
+        self.assertIn("return true;", self.source("server", "IpfRegistryInjection"))
+        row = self.method("server", "IpfRegistryInjection", "OnServicePreShutDown")
+        self.assertEqual(row["calls"], [])
+        self.assertIn("IpfRegistryInjection::_stopRequested", row["complete_il"])
+        self.assertNotIn("volatile.", row["complete_il"])
+        source = self.source("common", "RegistryAbstraction")
+        self.assertIn('"ShortIpfTimeout", "1"', source)
+        self.assertNotIn("OnServicePreShutDown -=", self.source("server", "IpfRegistryInjection"))
+
+    def test_native_exact_guid_write_restart_and_no_rollback(self):
+        self.assertEqual(self.native["interface_guid"]["raw_hex"], "8e0927ee221b2a4789d85ccce16b1356")
+        text = self.native_text(0x2690)
+        for fragment in ('"PCI", 0x101u', '"IPF", lpValueName, 2u', "stricmp(pvData, lpData)",
+                         "strnlen(lpData, 0x104u)", "RegSetKeyValueA", "v22 = 19", "HIDWORD(v22)", "RegCloseKey(hkey)", "HeapFree"):
+            self.assertIn(fragment, text)
+        self.assertEqual(text.count("RegSetKeyValueA"), 1)
+        self.assertIn("sub_180002460(v16, v15, (int *)&v22);", text)
+        self.assertIn("Device_ID_List_SizeA = v22;", text)
+        self.assertIn("Device_ID_List_SizeA = 34;", text)
+        restart = self.native_text(0x23a0)
+        for fragment in ("a5[1] = 1", "InstallFunction = 18", "v11 = 3", "v12 = 2", "SetupDiCallClassInstaller(0x12u", "v8 = 32", "*a5 = v8"):
+            self.assertIn(fragment, restart)
+        self.assertIn("SetupDiDestroyDeviceInfoList", self.native_text(0x2460))
+
+    def test_client_version_and_query_order_do_not_create_confirmed_hardware(self):
+        source = self.source("hardware_services", "IpfService")
+        self.assertIn('private static string _minSupportedVersion = "2.2.10200.11";', source)
+        self.assertLess(source.index("_ipf = new ClientApiJson(val)"), source.index("if (IsIpfVersionValid())"))
+        self.assertLess(source.index('GetStringValue("Platform.SOC.Overclocking.Version")'), source.index('GetUintValue("Platform.SOC.Info.CoreCount")'))
+        method = self.method("hardware_services", "IpfService", "IsIpfVersionValid")["complete_il"]
+        self.assertIn("System.Version::op_GreaterThanOrEqual", method)
+        self.assertIn('ldstr "product_version"', method)
+        self.assertIn("catch [mscorlib]System.Exception", method)
+        self.assertFalse(self.report["semantics"]["client_boundary"]["native_provider_completed"])
+
+    def test_value_retry_failure_throws_and_override_is_not_applied(self):
+        row = self.method("hardware_services", "IpfService", "GetIpfValue")
+        for fragment in ("ldc.i4.s 100", "ldc.i4 500", "TimeoutController::get_DoRetries", "IpfService::set_IpfStatus", "DriverAccessException::.ctor"):
+            self.assertIn(fragment, row["complete_il"])
+        self.assertEqual(sum(item["opcode"] == "throw" for item in row["instructions"]), 2)
+        override = self.method("hardware_services", "IpfService", "GetIpfValueWithOverride")
+        self.assertEqual(len(override["calls"]), 1)
+        self.assertIn("ClientApiJson::GetValue", override["calls"][0]["operand"])
+        self.assertNotIn("_nullOverride", override["complete_il"])
+        uint = self.method("hardware_services", "IpfService", "GetUintValue")
+        self.assertEqual(uint["exception_sections"], [])
+        self.assertIn("System.UInt32::Parse", uint["complete_il"])
+
+    def test_callbacks_are_local_and_error_is_checked_before_json(self):
+        for method_name in ("GetProperties", "GetValue", "ExecuteCommand"):
+            row = self.method("ipf_client", "ClientApiJson", method_name)
+            calls = [item["operand"] for item in row["calls"]]
+            error = next(i for i, item in enumerate(calls) if "::CheckError(" in item)
+            parse = next(i for i, item in enumerate(calls) if "::StringToJ" in item)
+            self.assertLess(error, parse)
+            callback, = [item for item in self.managed["ipf_client"]["complete_methods"] if item["name"] == "<" + method_name + ">b__0"]
+            self.assertEqual(callback["calls"], [])
+            self.assertIn("::result", callback["complete_il"])
+        error = self.method("ipf_client", "ClientApiJson", "CheckError")["complete_il"]
+        self.assertIn("ldc.i4 2048", error)
+        self.assertIn("ldc.i4 256", error)
+        self.assertIn("ExceptionMap::UnmanagedToManagedExceptionMap", error)
+
+    def test_utf8_allocation_cleanup_and_failure_to_null_are_explicit(self):
+        source = self.source("ipf_client", "Utf8StringMarshaler")
+        for fragment in ("Encoding.UTF8.GetBytes", "Marshal.AllocHGlobal(bytes.Length + 1)", "Marshal.WriteByte", "Marshal.FreeHGlobal", "catch (Exception)"):
+            self.assertIn(fragment, source)
+        wrapper = self.source("ipf_client", "ExtensibleFrameworkWrapper")
+        self.assertIn('DllImport("ClientApi"', wrapper)
+        self.assertIn("CallingConvention.Cdecl", wrapper)
+        self.assertIn("MarshalType = \"Ipf.Utf8StringMarshaler\"", wrapper)
+        self.assertIn("CallingConvention.Cdecl", self.source("ipf_client", "ResultHandler"))
+
+    def test_safehandle_release_does_not_imply_owner_dispose_or_drain(self):
+        row = self.method("ipf_client", "IpfEfHandle", "ReleaseHandle")
+        self.assertEqual(len(row["calls"]), 1)
+        self.assertIn("IpfDestroy(native int)", row["calls"][0]["operand"])
+        self.assertLess(row["complete_il"].index("::IpfDestroy"), row["complete_il"].index("stfld native int"))
+        source = self.source("ipf_client", "ClientApiJson")
+        self.assertIn("if (disposing)", source)
+        self.assertLess(source.index("ipf.Dispose();"), source.index("disposedValue = true;"))
+        ipf = host._profile_gog_clr(self.audit.read(self.report["originals"]["hardware_services"]))
+        self.assertFalse(any(row["name"] in ("Dispose", "Finalize") and row["declaring_type"].endswith(".IpfService") for row in ipf["methods"].values()))
+        stop = self.method("server", "CoreServer", "Stop")["complete_il"]
+        self.assertLess(stop.index("::Abort()"), stop.index("::NotifyServiceShutDown()"))
+
+    def test_semantic_mutations_and_native_identity_cannot_pass(self):
+        for mode in ("il", "native", "guid"):
+            managed, native = copy.deepcopy(self.managed), copy.deepcopy(self.native)
+            if mode == "il":
+                managed["server"]["complete_methods"][0]["raw_code_hex"] = "00"
+            elif mode == "native":
+                native["complete_selected_functions"][0]["input_chunks_verified"] = False
+            else:
+                native["interface_guid"]["raw_hex"] = "00"
+            with self.subTest(mode=mode), self.assertRaisesRegex(ValueError, "complete semantic review differs"):
+                families._system_737_xtu_ipf_contract(managed, native)
+
+    def test_upstream_and_finding_changes_reject_but_siblings_do_not(self):
+        dependencies = self.report["upstream_sections"]
+        document = json.loads((analysis.ROOT / dependencies[0]["receipt"]).read_bytes())
+        document["unrelated"] = True
+        with patch.object(Path, "read_bytes", return_value=json.dumps(document).encode()):
+            self.assertEqual(families._system_737_xtu_service_info_upstream_changes(dependencies), [])
+        document["overclock_service_info_chain"]["remaining_chains"][1] += " changed"
+        with patch.object(Path, "read_bytes", return_value=json.dumps(document).encode()):
+            with self.assertRaisesRegex(ValueError, "exact service section/finding requires review"):
+                families._system_737_xtu_ipf_dependencies(host.HostLocalAudit())
+            self.assertEqual(len(families._system_737_xtu_service_info_upstream_changes(dependencies)), 2)
+
+    def test_cli_dispatch_and_failure_keep_completion_false(self):
+        import argparse
+        parser = argparse.ArgumentParser()
+        families.add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["audit-family-function", "--family", "system", "--function", "mw", "--query", "system-737-xtu-ipf-lifecycle-chain"])
+        with patch.object(families, "audit_system_737_xtu_ipf_lifecycle_chain") as dispatch:
+            families.audit_family_function(args)
+        dispatch.assert_called_once_with(args)
+        for mode in ("success", "failure", "changed"):
+            kwargs = {"side_effect": ValueError("missing IPF input")} if mode == "failure" else {"return_value": {"failures": []}}
+            with self.subTest(mode=mode), patch.object(families, "collect_system_737_xtu_ipf_lifecycle_chain", **kwargs), \
+                    patch.object(host.HostLocalAudit, "artifact"), \
+                    patch.object(host.HostLocalAudit, "final_snapshot", return_value=["changed input"] if mode == "changed" else []), \
+                    patch.object(families, "_system_737_xtu_service_info_upstream_changes", return_value=[]), \
+                    patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+                if mode == "success":
+                    families.audit_system_737_xtu_ipf_lifecycle_chain(args)
+                else:
+                    with self.assertRaisesRegex(ValueError, "remains unresolved"):
+                        families.audit_system_737_xtu_ipf_lifecycle_chain(args)
+            report, destination, _, section = publish.call_args.args
+            self.assertEqual(section, "overclock_ipf_lifecycle_chain")
+            self.assertEqual(report["bounded_observation_complete"], mode == "success")
+            self.assertFalse(report["source_chain_complete"])
+            self.assertFalse(report["target_execution"])
+            self.assertFalse(report["real_device_operations"])
+        with patch.object(families, "collect_system_737_xtu_ipf_lifecycle_chain", side_effect=KeyboardInterrupt), \
+                patch.object(host.HostLocalAudit, "artifact"), patch.object(host, "publish_host_static_query") as publish:
+            with self.assertRaises(KeyboardInterrupt):
+                families.audit_system_737_xtu_ipf_lifecycle_chain(args)
+            publish.assert_not_called()
 
 
 class Camera3595MjpegChainTests(unittest.TestCase):

@@ -12,6 +12,171 @@ from unittest.mock import MagicMock, patch
 import workspace
 
 
+class NativeBatchCleanupTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name).resolve()
+        patcher = patch.object(workspace, "ROOT", self.root)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.owner = ".analysis/results/frontend/example-audit.json"
+        self.selector = self.owner + "#/selected_chain"
+        original = self.file(".analysis/inputs/original.dll", b"original native bytes")
+        sha = workspace.digest(original)
+        self.name = ".work/native/" + sha + "/batch"
+        self.result = ".analysis/results/native/" + sha
+        self.file(self.name + "/original.dll", original.read_bytes())
+        self.file(self.name + "/original.dll.i64", b"private database")
+        rows = []
+        for rva, passed in (("0x1000", True), ("0x2000", False)):
+            path = self.file(self.result + "/functions/" + rva[2:] + ".json", b"retained assembly and failure")
+            rows.append({"rva": rva, "path": "functions/" + path.name, "sha256": workspace.digest(path),
+                         "assembly_captured": True, "pseudocode_captured": passed, "new_failures": int(not passed)})
+        self.capture = {"input": ".analysis/inputs/original.dll", "input_sha256": sha, "input_bytes": original.stat().st_size,
+            "capture_complete": True, "functions_complete": True, "target_execution": False, "functions": rows,
+            "functions_total": 2, "functions_captured": 2, "outputs": [], "failures": [{"stage": "2000:hexrays", "error": "retained"}],
+            "finished_at_utc": "2000-01-01T00:00:01+00:00"}
+        self.write(self.result + "/capture.json", self.capture)
+        self.session = {"pid": 4321, "passed": True, "exit_code": 0, "mode": "batch", "capture_complete": True,
+            "target_execution": False, "input": self.name + "/original.dll", "argv": [self.name + "/original.dll"],
+            "started_at_utc": "2000-01-01T00:00:00+00:00", "finished_at_utc": "2000-01-01T00:00:02+00:00"}
+        self.write(self.result + "/batch-session.json", self.session)
+        self.write(self.result + "/plan.json", {"input": ".analysis/inputs/original.dll", "sha256": sha, "output": self.result})
+        self.report = {"bounded_observation_complete": True, "source_slice_complete": True, "snapshot_stable": True,
+            "changed_during_query": [], "failures": [], "target_execution": False, "private_analysis_database_required": False,
+            "temporary_resources_created": [self.name], "recorded_at_utc": "2000-01-01T00:00:03+00:00",
+            "native": {"input": self.identity(".analysis/inputs/original.dll"),
+                "capture_receipt": self.identity(self.result + "/capture.json"), "failures": self.capture["failures"],
+                "functions": [{"rva": "0x1000", "input_chunks_verified": True,
+                    "artifact": self.identity(self.result + "/functions/1000.json")}]}}
+        self.publish()
+
+    def file(self, name, raw):
+        path = self.root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(raw)
+        return path
+
+    def write(self, name, value):
+        return self.file(name, json.dumps(value).encode())
+
+    def identity(self, name):
+        path = self.root / name
+        return {"path": name, "bytes": path.stat().st_size, "sha256": workspace.digest(path)}
+
+    def publish(self):
+        self.write(self.owner, {"selected_chain": self.report})
+
+    def rows(self):
+        return workspace._clean_native_batch_candidates([self.selector])
+
+    def test_explicit_owner_preserves_unselected_failure_and_all_capture_files(self):
+        self.assertEqual(list(workspace._clean_json_dependencies({"mode": {"source_database": "retain"}})), ["retain"])
+        self.assertEqual(workspace._clean_native_batch_candidates([]), [])
+        row, = self.rows()
+        self.assertEqual(row["retained_capture_failures"], self.capture["failures"])
+        self.assertIn(self.result + "/functions/2000.json", {entry["path"] for entry in row["basis"]})
+
+    def test_incomplete_semantic_owner_or_database_requirement_refuses(self):
+        for field, value in (("private_analysis_database_required", True), ("snapshot_stable", False),
+                             ("failures", ["failed"]), ("source_slice_complete", False)):
+            with self.subTest(field=field):
+                previous = self.report[field]
+                self.report[field] = value
+                self.publish()
+                with self.assertRaises(ValueError):
+                    self.rows()
+                self.report[field] = previous
+        self.publish()
+
+    def test_selected_failure_and_changed_retained_bytes_refuse(self):
+        self.report["native"]["functions"][0]["rva"] = "0x2000"
+        self.publish()
+        with self.assertRaisesRegex(ValueError, "selected function"):
+            self.rows()
+        self.report["native"]["functions"][0]["rva"] = "0x1000"
+        self.publish()
+        self.file(self.result + "/functions/2000.json", b"changed failure")
+        with self.assertRaisesRegex(ValueError, "changed"):
+            self.rows()
+
+    def test_changed_completion_private_input_unknown_files_and_path_escape_refuse(self):
+        self.session["exit_code"] = 1
+        self.write(self.result + "/batch-session.json", self.session)
+        with self.assertRaises(ValueError):
+            self.rows()
+        self.session["exit_code"] = 0
+        self.write(self.result + "/batch-session.json", self.session)
+        extra = self.file(self.name + "/future-owner.json", b"must keep")
+        with self.assertRaisesRegex(ValueError, "unknown"):
+            self.rows()
+        extra.unlink()
+        self.file(self.name + "/original.dll", b"changed")
+        with self.assertRaisesRegex(ValueError, "private input changed"):
+            self.rows()
+        with self.assertRaises(ValueError):
+            workspace._clean_native_batch_candidates(["../owner.json#/x"])
+
+    def test_only_exact_owned_inventory_is_historical_source_database_is_live(self):
+        rows = self.rows()
+        references, errors = workspace._clean_references(rows)
+        self.assertEqual((references, errors), ({}, []))
+        self.write(".analysis/results/future.json", {"source_database": {"path": self.name + "/original.dll.i64"}})
+        references, errors = workspace._clean_references(rows)
+        self.assertEqual(errors, [])
+        self.assertIn(".analysis/results/future.json", references[self.name])
+
+    def test_reserved_analysis_family_and_current_process_stay_protected(self):
+        sha = self.name.split("/")[2]
+        self.write(".work/reverse-pending/future-capture-batch.json", {"jobs": [{"sha256": sha}]})
+        rows, retained = workspace._clean_candidates(native_batch_owners=[self.selector])
+        self.assertEqual(rows, [])
+        self.assertEqual(retained[0]["reason"], "reserved_analysis_family")
+        with patch.object(workspace, "_scratch_processes", return_value=([
+                {"pid": 1234, "command_line": "idat.exe " + self.name + "/original.dll"}], [])):
+            active, errors = workspace._clean_process_guard(self.rows())
+        self.assertEqual(active, {self.name: [1234]})
+        self.assertFalse(errors)
+
+    def test_plan_apply_checks_evidence_before_deletion(self):
+        with patch.object(workspace, "_scratch_processes", return_value=([], [])), redirect_stdout(io.StringIO()):
+            plan = workspace.clean(native_batch_owners=[self.selector])
+            path = next((self.root / ".analysis/results").glob("scratch-cleanup-*-plan.json"))
+            self.assertEqual(len(plan["candidates"]), 1)
+            self.report["private_analysis_database_required"] = True
+            self.publish()
+            with self.assertRaises(ValueError):
+                workspace.clean(apply=path.relative_to(self.root).as_posix(), plan_sha256=workspace.digest(path))
+        self.assertTrue((self.root / self.name / "original.dll.i64").exists())
+
+    def test_successful_apply_preserves_failed_capture(self):
+        with patch.object(workspace, "_scratch_processes", return_value=([], [])), redirect_stdout(io.StringIO()):
+            workspace.clean(native_batch_owners=[self.selector])
+            path = next((self.root / ".analysis/results").glob("scratch-cleanup-*-plan.json"))
+            result = workspace.clean(apply=path.relative_to(self.root).as_posix(), plan_sha256=workspace.digest(path))
+        self.assertEqual(result["status"], "completed")
+        self.assertEqual(len(result["removed"]), 1)
+        self.assertFalse((self.root / self.name).exists())
+        self.assertTrue((self.root / self.result / "functions/2000.json").exists())
+        self.assertEqual(json.loads((self.root / self.result / "capture.json").read_bytes())["failures"], self.capture["failures"])
+
+    def test_exclusive_open_and_pid_only_analyzer_protect_batch(self):
+        rows = self.rows()
+        with patch.object(workspace, "_scratch_processes", return_value=([
+                {"pid": 4321, "command_line": "idat.exe"}], [])):
+            active, errors = workspace._clean_process_guard(rows)
+        self.assertEqual(active, {self.name: [4321]})
+        self.assertFalse(errors)
+        with patch.object(workspace, "_scratch_processes", return_value=([], [])), redirect_stdout(io.StringIO()):
+            workspace.clean(native_batch_owners=[self.selector])
+            path = next((self.root / ".analysis/results").glob("scratch-cleanup-*-plan.json"))
+            with (self.root / self.name / "original.dll.i64").open("rb"):
+                with self.assertRaises((OSError, ValueError)):
+                    workspace.clean(apply=path.relative_to(self.root).as_posix(), plan_sha256=workspace.digest(path))
+        self.assertTrue((self.root / self.name / "original.dll.i64").exists())
+
+
 class StaleScratchTests(unittest.TestCase):
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
