@@ -10408,6 +10408,260 @@ class MatcherNumericReviewTests(unittest.TestCase):
                 self.assertFalse(list(root.rglob("*.tmp")))
 
 
+class CapabilityStaticReviewPublicationTests(unittest.TestCase):
+    keyboard_review_sha = "6b5a55220aaafe4e3cab0f4d9ffcaf4572b24b1afeff15a9f61832c92ac4f8ed"
+    native_review_sha = "bf2bb52b4fbc99641a812990d98bf10438ea9e8947b579d4ac40fea0461c3672"
+
+    @classmethod
+    def setUpClass(cls):
+        cls.workspace_root = analysis.ROOT
+        cls.parser = host.HostLocalAudit().parser
+
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.root = Path(directory.name).resolve()
+        self.enterContext(patch.object(analysis, "ROOT", self.root))
+        self.enterContext(patch("builtins.print"))
+        source = b"function apply(value) { return value; }"
+        original = self.write(".analysis/inputs/frontend/capability/source.js", source)
+        audit = host.HostLocalAudit()
+        node = audit.tree(original).root_node.named_children[0]
+        owner = audit.retain_range("test_complete_capability", original, node.start_byte, node.end_byte, node.type)
+        upstream = {"status": "reviewed", "branches": [1, 2]}
+        self.write(".analysis/results/frontend/parent.json", json.dumps({"parent": upstream}).encode())
+        self.review = {"schema_version": 1, "kind": "current_keyboard_756_output_review", "product_id": 756,
+            "scope": "Complete source fixture for the common publication mechanism",
+            "semantics": {"identity": "Return the supplied value"}, "remaining_chains": ["runtime comparison"],
+            "complete_owners": dict(audit.owners), "originals": [original], "verified_artifacts": [],
+            "roles": {"apply": owner}, "upstream_sections": [{"receipt": ".analysis/results/frontend/parent.json",
+                "pointer": "/parent", "canonical_sha256": host._keypad_temporary_keymap_digest(upstream)}],
+            "bounded_observation_complete": True, "snapshot_stable": True, "source_slice_complete": True,
+            "source_chain_complete": True, "target_execution": False, "whole_page_complete": False,
+            "whole_product_complete": False, "product_code_modified": False, "failures": [], "changed_during_query": []}
+        self.reference = host.freeze_host_static_review(self.review, analysis)
+        self.destination = self.root / ".analysis/results/frontend/keyboard-main-audit.json"
+        self.previous = {"schema_version": 1, "retained_parent": {"failure": "retained", "order": [2, 1]}}
+        self.destination.write_bytes(json.dumps(self.previous).encode())
+
+    def write(self, name, raw):
+        path = self.root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(raw)
+        return {"path": name, "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()}
+
+    def args(self, review=None, reference=None, **changes):
+        import argparse
+        review, reference = review or self.review, reference or self.reference
+        if review["kind"] == "current_hanbo_cpu_owner32_review":
+            family, function, query, pid = "accessories", "main", "hanbo-cpu-monitor-chain", 3893
+        else:
+            family, function, query, pid = "keyboard", "mw", "keyboard-756-appengine-apply-chain", 756
+        return argparse.Namespace(**(dict(family=family, function=function, query=query, product=[pid], prepare=False,
+            semantic_review=reference["path"], semantic_review_sha256=reference["sha256"]) | changes))
+
+    def reject_frozen(self, review, message):
+        reference = host.freeze_host_static_review(review, analysis)
+        before = self.destination.read_bytes()
+        with patch.object(host, "publish_host_static_query") as publish, self.assertRaisesRegex(ValueError, message):
+            families.publish_frontend_semantic_review(self.args(review, reference))
+        publish.assert_not_called()
+        self.assertEqual(self.destination.read_bytes(), before)
+
+    def native_fixture(self):
+        review = copy.deepcopy(self.review)
+        raw, _ = pe_fixture()
+        raw[0x200:0x202] = b"\x90\xc3"
+        original = self.write(".analysis/inputs/native/capability.dll", bytes(raw))
+        capture = {"rva": "0x1000", "address": "0x180001000",
+            "chunks": [{"start": "0x180001000", "end": "0x180001002", "raw_hex": "90c3",
+                "sha256": hashlib.sha256(b"\x90\xc3").hexdigest()}],
+            "assembly": [{"address": "0x180001000", "rva": "0x1000", "bytes": "90", "text": "nop"},
+                {"address": "0x180001001", "rva": "0x1001", "bytes": "c3", "text": "ret"}],
+            "pseudocode": {"lines": [{"text": "void fixture(void) { }"}]}}
+        review.update(kind="current_hanbo_cpu_owner32_review", product_id=3893, native_original=original,
+            native={"original": original, "image_base": "0x180000000", "failures": [], "decompiler_failures": [],
+                "target_execution": False, "all_selected_pseudocode_captured": True,
+                "complete_functions": [{"capture": capture}], "verified_data_regions": []})
+        review["originals"].append(original)
+        return review
+
+    def test_existing_cli_verifies_current_complete_source_and_native_formats_read_only(self):
+        import re
+        cases = ((self.keyboard_review_sha, "keyboard_756_appengine_output_chain", False),
+                 (self.native_review_sha, "hanbo_cpu_owner32_chain", True))
+        with patch.object(analysis, "ROOT", self.workspace_root), \
+                patch.object(analysis, "save", side_effect=AssertionError("Read-only verification must not save audits")):
+            for digest, section, has_native in cases:
+                path = self.workspace_root / ".analysis/results/reverse-pending/review-sources" / (digest + ".json")
+                raw = path.read_bytes()
+                self.assertEqual(hashlib.sha256(raw).hexdigest(), digest)
+                review = json.loads(raw)
+                reference = {"path": analysis.rel(path), "bytes": len(raw), "sha256": digest}
+                changed_tools = []
+                for artifact in review["verified_artifacts"]:
+                    if artifact["path"].startswith("tools/"):
+                        actual = (self.workspace_root / artifact["path"]).read_bytes()
+                        if len(actual) != artifact["bytes"] or hashlib.sha256(actual).hexdigest() != artifact["sha256"]:
+                            changed_tools.append(artifact["path"])
+                with self.subTest(kind=review["kind"]), patch.object(host, "publish_host_static_query") as publish:
+                    if changed_tools:
+                        expected = "Local host audit artifact identity differs: " + changed_tools[0]
+                        with self.assertRaisesRegex(ValueError, "^" + re.escape(expected) + "$"):
+                            families.publish_frontend_semantic_review(self.args(review, reference))
+                        publish.assert_not_called()
+                        continue
+                    result = families.publish_frontend_semantic_review(self.args(review, reference))
+                publish.assert_called_once()
+                payload, _, _, actual_section = publish.call_args.args
+                self.assertEqual(actual_section, section)
+                self.assertEqual(result["section"], section)
+                self.assertEqual(publish.call_args.kwargs, {"replace_existing": False})
+                self.assertEqual(payload["review_source"], reference)
+                self.assertNotIn("complete_owners", payload)
+                self.assertNotIn("native", payload)
+                self.assertEqual("native_evidence_reference" in payload, has_native)
+                self.assertFalse(payload["whole_product_complete"])
+                self.assertFalse(payload["target_execution"])
+
+    def test_append_only_publication_takes_one_lock_per_call_and_same_proof_is_idempotent(self):
+        import contextlib
+        actual_lock, entered, held = analysis.index_lock, [], False
+
+        @contextlib.contextmanager
+        def single_lock(path, *args, **kwargs):
+            nonlocal held
+            self.assertFalse(held, "Capability and shared publisher must not acquire the same lock recursively")
+            held = True
+            entered.append(path)
+            try:
+                with actual_lock(path, *args, **kwargs):
+                    yield
+            finally:
+                held = False
+
+        with patch.object(analysis, "index_lock", side_effect=single_lock), \
+                patch.object(analysis, "save", wraps=analysis.save) as save:
+            first = families.publish_frontend_semantic_review(self.args())
+            frozen = self.destination.read_bytes()
+            second = families.publish_frontend_semantic_review(self.args())
+        self.assertEqual(first, second)
+        self.assertEqual(len(entered), 2)
+        self.assertEqual(save.call_count, 1)
+        self.assertEqual(self.destination.read_bytes(), frozen)
+        after = json.loads(frozen)
+        self.assertEqual({key: after[key] for key in self.previous}, self.previous)
+
+    def test_different_frozen_proof_cannot_replace_an_existing_capability(self):
+        families.publish_frontend_semantic_review(self.args())
+        before = self.destination.read_bytes()
+        changed = copy.deepcopy(self.review)
+        changed["semantics"]["identity"] = "A different reviewed result"
+        reference = host.freeze_host_static_review(changed, analysis)
+        with self.assertRaisesRegex(ValueError, "different retained proof"):
+            families.publish_frontend_semantic_review(self.args(changed, reference))
+        self.assertEqual(self.destination.read_bytes(), before)
+
+    def test_product_query_and_preparation_scope_reject_before_publication(self):
+        for changed in (dict(family="mouse"), dict(function="main"), dict(query="mouse-dpi"),
+                dict(product=[679]), dict(prepare=True)):
+            with self.subTest(changed=changed), patch.object(host, "publish_host_static_query") as publish, \
+                    self.assertRaisesRegex(ValueError, "product scope"):
+                families.publish_frontend_semantic_review(self.args(**changed))
+            publish.assert_not_called()
+
+    def test_failed_incomplete_or_runtime_promoting_reviews_reject(self):
+        for key, value in (("failures", ["retained failure"]), ("snapshot_stable", False),
+                ("bounded_observation_complete", False), ("source_slice_complete", False),
+                ("target_execution", True), ("whole_product_complete", True),
+                ("source_chain_complete", "true"), ("changed_during_query", ["changed"]),
+                ("remaining_implementation_chains", {}), ("remaining_runtime_checks", "not-a-list"),
+                ("complete_owners", {})):
+            review = copy.deepcopy(self.review)
+            review[key] = value
+            with self.subTest(field=key):
+                self.reject_frozen(review, "bounded static proof|runtime completion")
+
+    def test_reference_and_direct_payload_must_describe_the_same_frozen_proof(self):
+        changed = copy.deepcopy(self.review)
+        changed["semantics"]["identity"] = "Unfrozen replacement"
+        with patch.object(host, "publish_host_static_query") as publish, \
+                self.assertRaisesRegex(ValueError, "payload differs from its frozen source"):
+            families.publish_capability_static_review(self.args(), changed, self.reference)
+        publish.assert_not_called()
+
+    def test_truncated_owner_is_rejected_even_with_consistent_prefix_hash_and_id(self):
+        review = copy.deepcopy(self.review)
+        _, owner = review["complete_owners"].popitem()
+        owner["byte_end"] -= 1
+        owner["body"] = owner["body"][:-1]
+        owner["body_sha256"] = hashlib.sha256(owner["body"].encode()).hexdigest()
+        key = ":".join((owner["original"]["sha256"], str(owner["byte_start"]), str(owner["byte_end"])))
+        owner["id"] = key
+        review["complete_owners"][key] = owner
+        review["roles"]["apply"] = key
+        self.reject_frozen(review, "complete original AST node")
+
+    def test_changed_original_or_upstream_identity_rejects(self):
+        original = self.review["originals"][0]
+        path = self.root / original["path"]
+        old = path.read_bytes()
+        path.write_bytes(old.replace(b"return", b"typeof"))
+        with patch.object(host, "publish_host_static_query") as publish, \
+                self.assertRaisesRegex(ValueError, "identity differs"):
+            families.publish_frontend_semantic_review(self.args())
+        publish.assert_not_called()
+        path.write_bytes(old)
+        self.write(".analysis/results/frontend/parent.json", b'{"parent":{"status":"changed"}}')
+        with patch.object(host, "publish_host_static_query") as publish, \
+                self.assertRaisesRegex(ValueError, "upstream evidence changed"):
+            families.publish_frontend_semantic_review(self.args())
+        publish.assert_not_called()
+
+    def test_native_pe_bytes_and_nonempty_capture_are_required(self):
+        valid = self.native_fixture()
+        reference = host.freeze_host_static_review(valid, analysis)
+        with patch.object(host, "verify_retained_native_pe", wraps=host.verify_retained_native_pe) as verify, \
+                patch.object(host, "publish_host_static_query"):
+            families.publish_frontend_semantic_review(self.args(valid, reference))
+        verify.assert_called_once()
+        for mode in ("chunk", "instruction", "empty", "partial"):
+            review = self.native_fixture()
+            function = review["native"]["complete_functions"][0]["capture"]
+            if mode == "chunk":
+                function["chunks"][0].update(raw_hex="91c3", sha256=hashlib.sha256(b"\x91\xc3").hexdigest())
+            elif mode == "instruction":
+                function["assembly"][0]["bytes"] = "91"
+            elif mode == "empty":
+                review["native"]["complete_functions"] = []
+            else:
+                review["native"]["all_selected_pseudocode_captured"] = False
+            with self.subTest(mode=mode):
+                self.reject_frozen(review, "PE bytes|incomplete original|complete native|empty")
+
+    def test_late_source_and_parent_changes_are_checked_before_locking_or_writing(self):
+        actual = host._otfm_macro_encoding_dependency_changes
+        for mode in ("source", "parent"):
+            with self.subTest(mode=mode), patch.object(host, "publish_host_static_query") as publish, \
+                    patch.object(analysis, "index_lock") as lock:
+                if mode == "source":
+                    with patch.object(host.HostLocalAudit, "final_snapshot", return_value=["source changed"]), \
+                            self.assertRaisesRegex(ValueError, "inputs changed during verification"):
+                        families.publish_frontend_semantic_review(self.args())
+                else:
+                    calls = []
+
+                    def changes(upstream):
+                        calls.append(upstream)
+                        return actual(upstream) if len(calls) == 1 else ["parent changed"]
+
+                    with patch.object(host, "_otfm_macro_encoding_dependency_changes", side_effect=changes), \
+                            self.assertRaisesRegex(ValueError, "inputs changed during verification"):
+                        families.publish_frontend_semantic_review(self.args())
+                publish.assert_not_called()
+                lock.assert_not_called()
+
+
 class FrontendSemanticMergeTests(unittest.TestCase):
     def receiver_mapping_fixture(self):
         reference = {"path": "review.json", "bytes": 10, "sha256": "a" * 64}

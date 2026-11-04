@@ -198,11 +198,11 @@ reducer 在 set/reset 时先乐观合并/清空显示；全表响应只接受数
 
 轴体复位发送 `{keyId:255,switchIndex:255,keyTravel:255}`，之后清当前 serial 的本机轴体记录并执行同一联动。它没有 setter 专用的 Success/Fail 状态发布，通用任务结果与表发布须独立消费；与整机校准数据 reset65/C1 各有单独确认窗口。取消确认窗只关闭，不发 reset。
 
-本片段未重新捕获校准查询/轮询或 native 通知。上述 AppEngine 生成编排、当前 OBM 引擎阈值缓存/协议和 MappingEngine 存储交接已由下一专题接续；旧收据保留其原有观察边界。analog skip-count 的原生注册仍独立未决，不能借校准通知 128 的 provider 结论宣称完成。没有修改产品 Rust，没有执行厂商 JS、DLL 或设备写入，没有新增临时副本/分析会话；现有实现与 UI/后台接线未在本批重验，实际对照和运行验收仍未验证。
+本片段未重新捕获校准查询/轮询或 native 通知。上述 AppEngine 生成编排、当前 OBM 引擎阈值缓存/协议和 MappingEngine 存储交接已由下一专题接续；旧收据保留其原有观察边界。analog skip-count 的原生注册由下文“模拟键事件注册与刷新”独立闭合，没有借用校准通知128的provider充当证明。没有修改产品 Rust，没有执行厂商 JS、DLL 或设备写入，没有新增临时副本/分析会话；现有实现与 UI/后台接线未在本批重验，实际对照和运行验收仍未验证。
 
 ## 756：AppEngine 生成与 OBM 阈值应用
 
-统一入口为 `python tools/workspace.py audit-family-function --family keyboard --function mw --product 756 --query keyboard-756-appengine-apply-chain`，归 [keyboard-main-audit.json](../../../.analysis/results/frontend/keyboard-main-audit.json) 的 `/keyboard_756_appengine_apply_chain`。从轴体收据首个未决项接续，按精确 section SHA 复用当前 MappingEngine producer/storage、analog 结果消费者、shutdown 及 Protocol25/HID 传输，不重复捕获原生函数。该专题确认生成编排、当前 OBM 阈值写入和实际存储交接；全部输出执行器、条件 GameMode helper 和其他 analog 注册仍有独立边界。
+统一入口为 `python tools/workspace.py audit-family-function --family keyboard --function mw --product 756 --query keyboard-756-appengine-apply-chain`，归 [keyboard-main-audit.json](../../../.analysis/results/frontend/keyboard-main-audit.json) 的 `/keyboard_756_appengine_apply_chain`。从轴体收据首个未决项接续，按精确 section SHA 复用当前 MappingEngine producer/storage、analog 结果消费者、shutdown 及 Protocol25/HID 传输，不重复捕获原生函数。该专题确认生成编排、当前 OBM 阈值写入和实际存储交接；共享输出编译与条件 GameMode 已由下节接回，原生各输出族仍按其真实证明边界判断。
 
 `40757` 只为改变的 profile 调用 `50574.generateAppEngineFromProfileMapping`。生成前先按当前 profile/行程 clamp，再经 `6258.zm` 修复/规范真实输入、补空 keyboardGroup 并处理现有输出分支；实际 `DeviceInfo.category=KEYBOARD` 不进入 keypad 专用路径。按当前布局过滤键并排除 modTapGroup，普通输入调用当前 `9299` singleton 的普通生成器，AnalogInput 调用 analog 生成器；每项先深拷贝。合并 mappings、actuations、rapidTriggers 后再套当前行程约束，只过滤非 hypershift、同 scancode 的 analogKey→keyboard 自映射。hash 使用实际工具，排除 hash/gamemode 字段；生成函数本身没有连接代次或 AbortSignal，保护来自外层 reconcile。
 
@@ -214,7 +214,51 @@ turbo 先读本机默认/用户表，补缺省并剔除旧 profile 的 turbo 引
 
 本机保存沿既有 `89423 → LocalStorageHook → PostSet → 1101 GameMode projection → mappingEngineSetLocalStorage`。Hook 不等待 lockable CAS 和 PostSet；FW analog 分支异步生成原版 GameMode 投影。mapping 去重快照先更新，再 await facade，返回 bool 不被消费，失败后的同内容发布可能被去重跳过。当前 Host 的 bool/string callback、native storage queue、USB candidate 解析/发布及 analog 消费者复用共享正式证据；存储 callback 完成、解析完成、服务发布和设备确认分别判断。window storage 只投影当前产品/active GUID 与 profile name/GUID，合并 runtimeData 后发服务，不构成阈值写回。
 
-取消/重连仍由外层 reconcile 核对设备、代次及 OBM 引擎；stale return 不取消此前副作用。现有 cleanup/shutdown 的已证实释放边界保留，未推断全部 JS/FFI callback 或 timer 已 drain。`78127` 的 analog skip-count 原生注册仍未决，不能用已确认的校准通知 128 provider 替代。现有 Rust `keyboard_latest_mapping` 普通/analog 生成、actuations/rapidTriggers 合并、自映射过滤与 hash，以及 `keyboard_actuation_write`/worker 提交路径均保留，本批未修改或重验；完整源码→独立 Rust→UI/后台、当前 DLL/设备对照和运行验收仍分别待完成。
+取消/重连仍由外层 reconcile 核对设备、代次及 OBM 引擎；stale return 不取消此前副作用。现有 cleanup/shutdown 的已证实释放边界保留，未推断全部 JS/FFI callback 或 timer 已 drain。`78127` 的analog skip-count注册已由后文接回；输出编译与条件投影见下节。现有 Rust `keyboard_latest_mapping` 普通/analog 生成、actuations/rapidTriggers 合并、自映射过滤与 hash，以及 `keyboard_actuation_write`/worker 提交路径均保留，本批未修改或重验；独立 Rust→UI/后台、当前 DLL/设备对照和运行验收仍分别待完成。
+
+## 756：共享输出编译与 GameMode 条件投影
+
+同一[正式键盘收据](../../../.analysis/results/frontend/keyboard-main-audit.json)的 `keyboard_756_appengine_output_chain` 保留当前 `1451:9299` 的完整编译器、54项 `$e` 输出分派表及 `6737:1101` 的完整GameMode条件投影。三个既有原件闭合静态模块依赖，复用原有AST及审阅发布机制；模块依赖数量不等于产品功能数量，也不证明每个输出组在PID756编辑器中可选。父AppEngine收据保留原样，后续证明独立接回。
+
+普通入口先选择 `$e[outputType]`，未知组返回空数组；`zt` 把真实down/up输入与输出配对。它只检查输出真值，空对象仍能生成条目；handler抛出、返回undefined或返回空对象是不同结果。`Zt` 根据实际analog controller／joystick标志决定是否生成actuation，`Qt` 单独处理空主键盘、第二段、rapidTrigger及仅阈值结果。两段数字映射生成有序triggers；混合映射保留首个analog输出并重新编号有效digital输出，up侧保留analog映射而另生成digital释放。单项catch、整个生成器拒绝与已发生的turbo缓存修改分别保留。
+
+| 输出能力 | 当前源码语义 |
+| --- | --- |
+| 键盘／鼠标／多媒体 | 普通键盘、组合修饰键、单状态输入、turbo、滚轮与鼠标组合各有独立按下／释放顺序。turbo周期来自keysPerSecond，鼠标另减既定延迟；生成turbo会更新singleton缓存。普通修饰键释放与dual-key的反序释放不能合并。 |
+| dual-key／DKS／mod-tap | dual-key保留两段actuation、输出ID和原顺序；DKS按四个明确状态组装两段make／break，空输出写原版 `disable`。mod-tap固定50ms，hold从实际分派表选择，缺handler才用自身键输出。 |
+| analog与controller | 软件Rapid Trigger使用1628／12两种系数，actuation的analogV1下限是16；这些不是板载换算常量。Xbox方向按符号换算到−32768／32767，joystick按−128..127及实际binaryRange生成表；无效参数由各handler自身catch决定。 |
+| 宏／配置档／本机动作 | 宏的Once／NTimes／Held／Toggle／Sequence／Queue／Phased保留不同flag、repeat和释放；配置档导航在释放侧输出。灯光、电源、风扇、音频、启动程序等按各handler真实字段生成，原版 `disable` 与 `disabled` 拼写均原样记录；生成描述符不代表本机动作已执行。 |
+
+GameMode先深拷贝文档，按active GUID找到实际profile；状态1直接启用，其他正状态读取本机 `gms-running-games`，查询／解析失败视为未激活。显式 `gameModeEnabled` 优先决定开关。生成前恢复同profile的 `__gameModeConsumedMappings` version1快照，按真实输入身份与原位置复原被消耗条目，并清旧gamemode映射；raw来源已经不存在时不会凭旧快照复活。没有匹配profile时返回原输入。
+
+条件合并区分native输入身份、包含modifiers的匹配身份和忽略make/break位的条件路径。原始modifier映射转换为嵌套cascade，保留track fallback；12种modifier mask对应左右Alt／Ctrl／Shift／GUI的实际选择，未知mask不套默认。禁用组合的条件路径先被保护，后续自定义映射不能覆盖这些禁用路径。Alt-Tab／F4／Space／Enter、Windows／菜单键、Hypershift Fn-F4和Fn-Sleep按各自标志、输入类型及make/break区别生成，混合固件路径分别处理analog与keyboard。
+
+自定义mapping set与combo按真实配置合并；有效key1但无有效key2的combo成为disable-only。每项转换异常记录后继续，外层深拷贝与hash失败仍可拒绝。GameMode激活分支在存在消耗项和profile GUID时保存快照，重算hash，并把活动profile从原位置移到profiles末尾；未激活分支重算hash但不重排profile。hash克隆对象后只删除顶层hash／gamemode，再进行稳定JSON、`<`转义及MD5；内部消耗快照没有被自动排除。
+
+当前原生接线只复用已核4.0.896／Mapping 1.3.17.2的配置producer／发布、ordinary trigger、keyboard／mouse／joystick部分消费者、analog路由及shutdown。旧 `mapping_descriptors` 仍属于4.0.827，不能用于补齐当前条件执行。其余cascade／modtap／timed／macro／Xbox或服务输出的完整执行、恢复及取消仍按共享原生缺项继续；本节完成的是编译与条件重写源语义，不宣称所有输出动作或整个键盘已完成。没有执行厂商JS、DLL或产品，Rust接线及实际对照仍独立验收。
+
+## 756：模拟键事件注册与刷新
+
+统一入口 `python -B -X utf8 tools/workspace.py audit-family-function --family keyboard --function mw --product 756 --query keyboard-756-analog-registration-chain`；正式段为[键盘收据](../../../.analysis/results/frontend/keyboard-main-audit.json)的 `keyboard_756_analog_registration_chain`。当前PID756注册／状态查询／注销、轮询及行程变化刷新、实际sample消费者与计时器的静态语义已闭合。复用当前Host身份、输入事件和engine shutdown正式证据，仅补本产品接线及实际API到状态所有者的分派；这不代表整个键盘、独立Rust或真实设备验收完成。
+
+当前productId=756且is8kAnalogDevice=true，使请求经共享Promise D串行；队尾catch允许下一项继续，原调用者仍接收异常。实际analogV3配置只有presetProfiles，没有开启useIntervaledAnalogKeyEvent。普通全键路径传“跳过事件数”，源码保留的interval分支则把同一计算结果作为毫秒传给Host，不能混淆单位。
+
+skip来源为显式新轮询率，或活动profile的pollingRate／8000。当前表在125／250／500／1000Hz取50，在2000／4000／8000Hz取16；未命中时用全键25／单键50。PID756再按当前设备行程表与共享actuationMax计算比例，单键取所选键，全键取最小最大行程。仅当频率有限且位于125…8000、比例有限且严格位于0…1时，用 `min(base,max(1,floor(rate/8000*17*ratio))-1)` 缩减，结果0合法。应用轴体先更新行程表并检查调用方身份再刷新；修改轮询率则在实际轮询设置后携带新值刷新。注册内部没有在每次await后重新核对连接代次。
+
+同设备、同skip的已注册状态复用；改变skip必须先注销再注册。单键按真实键表查inputID，优先用数字outputFlag，否则flag，并只传 `{scancode,flag}`。部分注销失败使当前PID756提前返回；注册返回false后仍会查询native状态，后续状态为true时安装监听。因此布尔API返回、原生软件注册状态、已收到sample和设备读回是不同事实。
+
+| 原生API组 | 当前语义 |
+| --- | --- |
+| all／single状态 | all读取DeviceData存在时的byte400；single先转换键ID，再返回all标志或单键map352成员关系。all为真可使有效单键查询为真，不能据此判断存在独立单键登记。 |
+| normal／interval注册 | 已注册分支保留原设置。普通模式word1与skip348、interval模式word257与`uint32(ms*1000)`分别维护；单键已有项返回成功警告而不替换skip。 |
+| 单键身份 | 当前JS没有type，typed-input路径失败后走scan表。report class0／1按scan+flag查256项；class2的(0,0)直接为ID0，否则要求flag=0并查1…255项。完整汇编确认两个16位字段的检查；class3返回无analog report错误，不从静态源码推定当前设备已发布哪种class。 |
+| 注销与回调 | 单键只删该ID，无登记则失败；全键清all标志及ID表，但不清interval、timer、sample队列或回调。单键注销查询DeviceData前没有同其他入口相同的空值guard。当前USB实际interface表为`0x2e8e18`，未借BLE虚表推导产品分派。 |
+
+八个导出均经完成回调返回bool／reason／identity；skip及interval参数是uint32。engine、manager、设备队列和状态更新分别执行，排队完成不构成硬件应答。Host先设置共享event callback，再不检查该步结果就置标志；订阅URL及normal／interval模式另行维护。全键注销先删URL，仅最后订阅者触发native注销，失败不恢复URL。native回调按当前身份及URL投递，没有旧连接代次门禁。
+
+单键消费者只发布jsonEvent.input.level；全键数组按w采样，同时保留level0、最大level及最后项，w=0的取模为NaN，普通中间项会被跳过。全键消费者保留一个键的H历史及Y输入状态，再经默认leading／trailing均开的16ms throttle发布。注销清请求元数据并移除监听，却不清H／Y，也不调用throttle.cancel；已排队的trailing发布可能继续。现有native收据同样证明delayed flush不重新检查注册标志，已投递事件保有callback／payload。上述迟到行为是已核源码结论，不因尚未运行真机而重复列为待逆向，也不宣称注销已排空。
+
+本次8项定向反例首次通过，集中核对真实配置分支、有限值／零skip、重新注册及false后状态查询、消费者取样、未取消计时器、USB槽、原生键身份和Host失败语义；来源／快照／并发发布保护复用既有工具测试。41个源码所有者、58个复用完整原生函数及24个实际PE槽可回读；没有新增捕获、临时资源、产品Rust修改或厂商代码执行。该注册链静态阶段完成；实际固件／设备事件、独立实现、UI／后端及DLL对照分别保持未验证，输出编译器和其他产品继续按各自范围推进。
 
 ## 756：可见性与释放
 

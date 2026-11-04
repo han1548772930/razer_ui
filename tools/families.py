@@ -49543,6 +49543,94 @@ def audit_mouse_matcher_numeric_boundary(args):
     return publish_frontend_semantic_review(publication)
 
 
+_CAPABILITY_REVIEW_TARGETS = {
+    "current_hanbo_cpu_owner32_review": ("accessories", "main", "hanbo-cpu-monitor-chain", 3893,
+        "accessories-main-audit.json", "hanbo_cpu_owner32_chain"),
+    "current_keyboard_756_output_review": ("keyboard", "mw", "keyboard-756-appengine-apply-chain", 756,
+        "keyboard-main-audit.json", "keyboard_756_appengine_output_chain"),
+    "current_mouse_profile_import_review": ("mouse", "mw", "mouse-182-profile-import-chain", 182,
+        "mouse-mw-audit.json", "mouse_182_profile_import_complete_chain"),
+    "current_headset_anc_review": ("audio", "mw", None, 2657,
+        "audio-mw-audit.json", "headset_2657_anc_chain"),
+}
+
+
+def publish_capability_static_review(args, review, reference):
+    """Publish a frozen complete capability through the existing source and native verifiers."""
+    import host
+    family, function, query, pid, filename, section = _CAPABILITY_REVIEW_TARGETS[review["kind"]]
+    if (args.family != family or args.function != function or args.query != query
+            or (args.product or [pid]) != [pid] or review.get("product_id") != pid
+            or getattr(args, "prepare", False)):
+        raise ValueError("Capability review publication does not match its current product scope")
+    if (any(review.get(key) is not True for key in (
+                "bounded_observation_complete", "snapshot_stable", "source_slice_complete"))
+            or any(review.get(key) is not False for key in (
+                "target_execution", "whole_page_complete", "whole_product_complete", "product_code_modified"))
+            or type(review.get("source_chain_complete")) is not bool
+            or review.get("failures") != [] or review.get("changed_during_query") != []
+            or not isinstance(review.get("scope"), str) or not review["scope"]
+            or not isinstance(review.get("semantics"), dict) or not review["semantics"]
+            or not isinstance(review.get("remaining_chains"), list)
+            or any(not isinstance(review.get(key, []), list) for key in (
+                "remaining_implementation_chains", "remaining_runtime_checks"))
+            or not isinstance(review.get("complete_owners"), dict) or not review["complete_owners"]
+            or not isinstance(review.get("originals"), list) or not review["originals"]
+            or not isinstance(review.get("verified_artifacts"), list)
+            or not isinstance(review.get("upstream_sections"), list) or not review["upstream_sections"]):
+        raise ValueError("Capability review lacks a successful, separately bounded static proof")
+    if host._otfm_macro_encoding_dependency_changes(review["upstream_sections"]):
+        raise ValueError("Capability review upstream evidence changed")
+    audit = host.HostLocalAudit()
+    if json.loads(audit.artifact(a.ROOT / reference["path"], reference)) != review:
+        raise ValueError("Capability review payload differs from its frozen source")
+    for original in review["originals"]:
+        audit.read(original)
+    for artifact in review["verified_artifacts"]:
+        audit.artifact(a.ROOT / artifact["path"], artifact)
+    for key, owner in review["complete_owners"].items():
+        original = owner["original"]
+        if original["path"] not in audit.sources:
+            raise ValueError("Capability review owner has no declared original")
+        raw = audit.read(original)
+        start, end = owner["byte_start"], owner["byte_end"]
+        if type(start) is not int or type(end) is not int or not 0 <= start < end <= len(raw):
+            raise ValueError("Capability review owner range is invalid")
+        node = audit.tree(original).root_node.descendant_for_byte_range(start, end - 1)
+        while node is not None and (node.start_byte != start or node.end_byte != end
+                                    or node.type != owner["syntax"]):
+            node = node.parent
+        body = raw[start:end]
+        if (node is None or body.decode("utf-8") != owner["body"]
+                or hashlib.sha256(body).hexdigest() != owner["body_sha256"]
+                or key != ":".join((original["sha256"], str(start), str(end)))):
+            raise ValueError("Capability review owner differs from a complete original AST node")
+    if "native" in review:
+        native = review["native"]
+        original = review.get("native_original")
+        if (not isinstance(original, dict) or original["path"] not in audit.sources
+                or native.get("original") != original or native.get("failures") != []
+                or native.get("decompiler_failures") != [] or native.get("target_execution") is not False
+                or not isinstance(native.get("complete_functions"), list) or not native["complete_functions"]
+                or native.get("all_selected_pseudocode_captured") is not True):
+            raise ValueError("Capability native proof has a different or incomplete original")
+        host.verify_retained_native_pe(audit.read(original), native, "Frozen capability")
+    if audit.final_snapshot() or host._otfm_macro_encoding_dependency_changes(review["upstream_sections"]):
+        raise ValueError("Capability review inputs changed during verification")
+    payload = {key: value for key, value in review.items() if key not in ("complete_owners", "native")}
+    payload["review_source"] = reference
+    payload["complete_owner_reference"] = {**reference, "pointer": "/complete_owners"}
+    if "native" in review:
+        payload["native_evidence_reference"] = {**reference, "pointer": "/native"}
+        payload["native_capture_failures"] = review["native"].get("capture_failures", [])
+    destination = a.ROOT / ".analysis/results/frontend" / filename
+    host.publish_host_static_query(payload, destination, a, section, replace_existing=False)
+    result = {"receipt": a.rel(destination), "section": section,
+              "source_chain_complete": payload["source_chain_complete"], "target_execution": False}
+    print(json.dumps(result), flush=True)
+    return result
+
+
 def merge_frontend_semantic_review(document, review, reference, *, expected_previous_review=None):
     """Add one reviewed semantic slice without replacing sibling audit state."""
     import copy
@@ -49885,6 +49973,9 @@ def publish_frontend_semantic_review(args):
     review = json.loads(raw)
     if review.get("target_execution") is not False or review.get("whole_page_complete") is not False:
         raise ValueError("Static semantic publication cannot promote runtime completion")
+    if review.get("kind") in _CAPABILITY_REVIEW_TARGETS:
+        return publish_capability_static_review(args, review,
+            {"path": a.rel(path), "bytes": len(raw), "sha256": digest})
     kinds = {"current_legacy_receiver_runtime_selection_review": ("mouse", "mouse-receiver-legacy", "mouse-main-audit.json"),
              MATCHER_NUMERIC_KIND: ("mouse", "mouse-dpi-matcher", "mouse-mw-audit.json"),
              "current_keyboard_wireless_power_review": ("keyboard", "keyboard-wireless-power", "keyboard-mw-audit.json"),

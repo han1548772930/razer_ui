@@ -431,6 +431,8 @@ SystemMonitor 的版本选择、当前 Hanbo 启动／订阅顺序、时钟及�
 
 `refresh-gaps --owner <项目相对收据路径>` 可重复指定语义报告、`native/<sha>/capture.json` 及 `host-current/managed/capture.json`，在同一有界批次重算选定所有者；省略参数仍执行原全量流程。两条路径共用缺项分类规则，保留分析器失败、未决链与实现／验收边界。发布前重读选定来源的实际字节；来源变化、路径逃逸、非规范路径或不适用的所有者均拒绝发布，其他所有者保持原样。当前来源身份记录在 `gaps.json` 的 `selected_refresh`，避免补查一个共享链就重扫整份语料。
 
+同一刷新入口还归并经过逐项审阅的后续静态证明：精确匹配当前owner、原finding的JSON pointer／规范SHA和完整证明段SHA，要求证明的静态范围、成功及输入稳定标记有效。已闭合项使用 `semantic_query_chain_resolved`，明确只待实现／运行的项归对应阶段；原finding、原kind和证明引用保留在同一行。证明缺失／变化／失败、未审阅事项及部分覆盖的混合条目继续待办，不以子段存在或文字关键词自动结项。该机制只修正当前缺项投影，不改旧正式收据，也不证明整个产品或实际设备通过。
+
 媒体数量、固定 revision 和远端核对结果由[资源发布收据](../../.analysis/results/asset-release-update.json)维护；SQLite 的实际长度、SHA、schema 与有序回读结果由[目录库生成收据](../../.analysis/results/typed-data.json#resource_database)维护。[资源引用闭包](../../.analysis/results/resource-audit.json#runtime_reference_closure)和[键盘图像审计](../../.analysis/results/resource-audit.json#keyboard_artwork)分别保留其输入范围、像素结果与未决字体。生成、发布、checkout 释放和来源索引各有当时身份，后续工具或输入变化须重新复核，不能沿用旧快照证明当前代码、安装缓存或窗口验收。
 
 Lighting Engine 与 4115 MW 的当前来源分别由[稳定 LE snapshot](../../.analysis/inputs/frontend/synapse-lighting-engine-snapshot-1d1be731/acquisition.json)和[当前 MW 闭包](../../.analysis/inputs/frontend/gamepad-mw-4115-snapshot-81ed5dc91a596f97101f-closure/acquisition.json)接入共用选择器。[双轮部署复核](../../.analysis/results/frontend-revalidation/96d5e70f5112db87818c4bf0b227ff87b641f9dc3da5c0f9a045777e399fc23f.json)只证明所选入口与直接／显式脚本的当次 HTTP 身份稳定，保留可选缺失；其 `source_semantics_complete=false` 不提升为功能语义完成。source map 404、`declared_references_fetched=false` 与完整捕获不可用继续按各 acquisition 和审计正文分别记录，旧部署捕获不冒充新部署。

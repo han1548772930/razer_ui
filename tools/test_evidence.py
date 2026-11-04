@@ -275,7 +275,206 @@ class BatchPythonConcurrencyTests(unittest.TestCase):
                     ValueError, "Mapping producer workers"):
                 mapping_producers.prepare(workers=workers)
 
+class StaticGapContinuationTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.documents = {}
+        for name in ("mouse-mw-audit.json", "accessories-main-audit.json", "keyboard-main-audit.json",
+                     "accessories-camera-local-pages-audit.json", "audio-mw-audit.json"):
+            owner = ".analysis/results/frontend/" + name
+            cls.documents[owner] = json.loads((analysis.ROOT / owner).read_bytes())
+
+    def test_reviewed_current_scopes_separate_stages_and_keep_every_original(self):
+        expected = {"mouse-mw-audit.json": (11, 0, 0), "accessories-main-audit.json": (2, 0, 1),
+                    "keyboard-main-audit.json": (1, 1, 1),
+                    "accessories-camera-local-pages-audit.json": (2, 3, 12), "audio-mw-audit.json": (1, 8, 5)}
+        for owner, document in self.documents.items():
+            with self.subTest(owner=owner):
+                legacy = {name: (set(document[name]), field, document[name][field])
+                          for (source, name), field in analysis._STATIC_GAP_COMPLETION_FIELDS.items() if source == owner}
+                for name in legacy:
+                    self.assertNotIn("source_slice_complete", document[name])
+                original = analysis.semantic_query_gaps(document, owner)
+                result = analysis.semantic_result_gaps(document, owner)
+                self.assertEqual(len(result), len(original) + 1)
+                reviewed = [row for row in result if "current_review" in row]
+                self.assertEqual(tuple(sum(row["kind"] == kind for row in reviewed) for kind in (
+                    "semantic_query_chain_resolved", "runtime_acceptance_unverified", "implementation_acceptance_pending")),
+                    expected[Path(owner).name])
+                for name, (keys, field, value) in legacy.items():
+                    self.assertEqual(set(document[name]), keys)
+                    self.assertIs(document[name][field], value)
+                    self.assertNotIn("source_slice_complete", document[name])
+                for before, after in zip(original, result):
+                    if "current_review" not in after:
+                        self.assertEqual(after, before)
+                        continue
+                    self.assertEqual(before["kind"], "semantic_query_chain_unresolved")
+                    self.assertEqual(after["previous_kind"], before["kind"])
+                    self.assertEqual({k: v for k, v in after.items()
+                                      if k not in ("kind", "previous_kind", "current_review")},
+                                     {k: v for k, v in before.items() if k != "kind"})
+                    self.assertTrue(after["current_review"]["proofs"])
+                self.assertEqual(result[-1]["kind"], "page_implementation_acceptance_pending")
+
+    def test_missing_changed_failed_or_nonstatic_proof_leaves_dependency_unresolved(self):
+        owner = ".analysis/results/frontend/mouse-mw-audit.json"
+        original = self.documents[owner]
+        rows = analysis.semantic_query_gaps(original, owner)
+        source = "/mouse_182_legacy_worker_chain/remaining_chains"
+        finding = original["mouse_182_legacy_worker_chain"]["remaining_chains"][0]
+        for mode in ("missing", "body", "failure", "snapshot", "slice", "executed"):
+            changed = dict(original)
+            proof = dict(original["legacy_shared_structured_chain"])
+            if mode == "missing":
+                del changed["legacy_shared_structured_chain"]
+            else:
+                if mode == "body":
+                    proof["semantics"] = {"unreviewed": True}
+                elif mode == "failure":
+                    proof["failures"] = ["source incomplete"]
+                elif mode == "snapshot":
+                    proof["snapshot_stable"] = False
+                elif mode == "slice":
+                    proof["source_slice_complete"] = False
+                else:
+                    proof["target_execution"] = True
+                changed["legacy_shared_structured_chain"] = proof
+            with self.subTest(mode=mode):
+                result = analysis.reconcile_static_gap_reviews(changed, owner, rows)
+                row = next(row for row in result if row.get("pointer") == source and row["finding"] == finding)
+                self.assertEqual(row["kind"], "semantic_query_chain_unresolved")
+                self.assertNotIn("current_review", row)
+
+    def test_changed_or_moved_source_finding_cannot_inherit_a_completed_neighbor(self):
+        owner = ".analysis/results/frontend/mouse-mw-audit.json"
+        original = self.documents[owner]
+        for mode in ("changed", "moved"):
+            document = dict(original)
+            parent = dict(original["mouse_182_legacy_worker_chain"])
+            findings = list(parent["remaining_chains"])
+            if mode == "changed":
+                findings[0] += " Additional unreviewed dependency."
+            else:
+                findings[0], findings[1] = findings[1], findings[0]
+            parent["remaining_chains"] = findings
+            document["mouse_182_legacy_worker_chain"] = parent
+            rows = analysis.semantic_result_gaps(document, owner)
+            source = "/mouse_182_legacy_worker_chain/remaining_chains"
+            with self.subTest(mode=mode):
+                self.assertTrue(all(row["kind"] == "semantic_query_chain_unresolved"
+                    for row in rows if row.get("pointer") == source and row["finding"] in findings[:2]
+                    and (mode == "moved" or row["finding"] == findings[0])))
+
+    def test_mixed_import_release_and_other_provider_findings_remain_open(self):
+        selections = {
+            "mouse-mw-audit.json": {"mouse_182_legacy_worker_chain": (2, 3),
+                                    "legacy_shared_structured_chain": (2,),
+                                    "host_monitor_enumeration_chain": (0, 1, 2)},
+            "accessories-main-audit.json": {"hanbo_amd_package_chain": (3,),
+                                           "hanbo_amd_k17_package_chain": (1, 2, 3)},
+            "keyboard-main-audit.json": {"keyboard_756_appengine_apply_chain": (2, 3)},
+            "accessories-camera-local-pages-audit.json": {
+                "image_properties": (1, 2), "image_host_chain": (1,), "device_lifecycle": (0,),
+                "media_preview_chain": (1,), "camera_3594_exposure_chain": (0,),
+                "camera_3594_profile_replay_chain": (0,), "camera_3594_initial_get_chain": (0,)},
+            "audio-mw-audit.json": {"auto_pause_hid_chain": (1,), "multi_function_1446_chain": (2,)},
+        }
+        for name, sections in selections.items():
+            owner = ".analysis/results/frontend/" + name
+            document = self.documents[owner]
+            rows = analysis.semantic_result_gaps(document, owner)
+            field = ("remaining_local_chains" if name == "accessories-camera-local-pages-audit.json"
+                     else "unresolved_chains" if name == "audio-mw-audit.json" else "remaining_chains")
+            for section, indices in sections.items():
+                for index in indices:
+                    finding = document[section][field][index]
+                    with self.subTest(owner=owner, section=section, index=index):
+                        row = next(row for row in rows if row.get("pointer") == "/" + section + "/" + field
+                                   and row["finding"] == finding)
+                        self.assertEqual(row["kind"], "semantic_query_chain_unresolved")
+                        self.assertNotIn("current_review", row)
+
+    def test_legacy_completion_field_requires_exact_owner_section_and_true_value(self):
+        expected = {
+            (".analysis/results/frontend/accessories-camera-local-pages-audit.json", "image_host_chain"): "selected_host_semantics_reviewed",
+            (".analysis/results/frontend/accessories-camera-local-pages-audit.json", "device_lifecycle"): "selected_device_lifecycle_semantics_reviewed",
+            (".analysis/results/frontend/accessories-camera-local-pages-audit.json", "media_preview_chain"): "selected_media_preview_semantics_reviewed",
+            (".analysis/results/frontend/accessories-camera-local-pages-audit.json", "kimberly_identity_chain"): "selected_identity_semantics_reviewed",
+            (".analysis/results/frontend/audio-mw-audit.json", "quick_effect_binding_1446_chain"): "selected_effect_binding_complete",
+        }
+        self.assertEqual(analysis._STATIC_GAP_COMPLETION_FIELDS, expected)
+
+        def digest(value):
+            return hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True,
+                                              separators=(",", ":")).encode()).hexdigest()
+
+        finding = "Complete reviewed fixture scope"
+        for (owner, section), field in expected.items():
+            for mode in ("valid", "missing", "false", "integer", "wrong_owner", "wrong_section", "default_valid", "default_false"):
+                target_owner = owner + ".unreviewed" if mode == "wrong_owner" else owner
+                target_section = section + "_unreviewed" if mode in ("wrong_section", "default_valid", "default_false") else section
+                proof = {"bounded_observation_complete": True, "snapshot_stable": True,
+                         "target_execution": False, "failures": [], "changed_during_query": [], field: True}
+                if mode == "missing":
+                    del proof[field]
+                elif mode in ("false", "integer"):
+                    proof[field] = False if mode == "false" else 1
+                    proof["source_slice_complete"] = True
+                elif mode in ("default_valid", "default_false"):
+                    proof["source_slice_complete"] = mode == "default_valid"
+                data = {"parent": {"remaining_chains": [finding]}, target_section: proof}
+                reviews = {target_owner: (("/parent/remaining_chains/0", digest(finding), (target_section,), "resolved"),)}
+                with self.subTest(owner=owner, section=section, mode=mode), \
+                        patch.object(analysis, "_STATIC_GAP_PROOFS", {target_section: digest(proof)}), \
+                        patch.object(analysis, "_STATIC_GAP_REVIEWS", reviews):
+                    rows = analysis.semantic_query_gaps(data, target_owner)
+                    result = analysis.reconcile_static_gap_reviews(data, target_owner, rows)
+                row = next(row for row in result if row.get("pointer") == "/parent/remaining_chains")
+                self.assertEqual(row["kind"], "semantic_query_chain_resolved"
+                                 if mode in ("valid", "default_valid") else "semantic_query_chain_unresolved")
+                self.assertEqual(data[target_section], proof)
+
+    def test_runtime_and_implementation_remain_pending_after_static_completion(self):
+        owner = ".analysis/results/frontend/keyboard-main-audit.json"
+        rows = analysis.semantic_result_gaps(self.documents[owner], owner)
+        stages = {row["current_review"]["source_pointer"]: row for row in rows if "current_review" in row}
+        prefix = "/keyboard_756_analog_registration_chain/remaining_chains/"
+        self.assertEqual(stages[prefix + "0"]["kind"], "runtime_acceptance_unverified")
+        self.assertEqual(stages[prefix + "2"]["kind"], "implementation_acceptance_pending")
+        self.assertFalse(self.documents[owner]["keyboard_756_analog_registration_chain"]["whole_product_complete"])
+
+    def test_completed_subscope_does_not_close_remaining_native_families_or_providers(self):
+        for name, source in (
+            ("keyboard-main-audit.json", "/keyboard_756_appengine_apply_chain/remaining_chains/1"),
+            ("accessories-main-audit.json", "/hanbo_cpu_monitor_chain/remaining_chains/2")):
+            owner = ".analysis/results/frontend/" + name
+            rows = analysis.semantic_result_gaps(self.documents[owner], owner)
+            row = next(row for row in rows if row.get("current_review", {}).get("source_pointer") == source)
+            with self.subTest(owner=owner):
+                self.assertEqual(row["kind"], "semantic_query_chain_unresolved")
+                self.assertEqual(row["current_review"]["stage"], "partial_static")
+                self.assertTrue(row["current_review"]["proofs"])
+
+    def test_another_owner_and_unreviewed_findings_are_unchanged(self):
+        document = self.documents[".analysis/results/frontend/mouse-mw-audit.json"]
+        owner = ".analysis/results/frontend/unrelated-audit.json"
+        rows = analysis.semantic_query_gaps(document, owner)
+        self.assertEqual(analysis.reconcile_static_gap_reviews(document, owner, rows), rows)
+
+
 class SemanticQueryGapTests(unittest.TestCase):
+    def test_explicit_implementation_and_runtime_fields_do_not_reopen_source_work(self):
+        data = {"product_id": 2657, "remaining_chains": ["unreviewed native branch"],
+                "remaining_implementation_chains": ["independent Rust and UI"],
+                "remaining_runtime_checks": [{"check": "actual device confirmation", "state": "unverified"}]}
+        rows = analysis.semantic_query_gaps(data, "capability.json")
+        self.assertEqual([row["kind"] for row in rows], ["semantic_query_chain_unresolved",
+            "implementation_acceptance_pending", "runtime_acceptance_unverified"])
+        self.assertEqual([row["pointer"] for row in rows], ["/remaining_chains",
+            "/remaining_implementation_chains", "/remaining_runtime_checks"])
+        self.assertTrue(all(row["product_id"] == 2657 for row in rows))
+
     def test_acquisition_and_analyzer_findings_do_not_become_semantic_failures(self):
         data = {"queries": {"local": {"products": [{"product_id": 740,
             "acquisitions": [{"failed_acquisition": [{"url": "missing.js.map", "error": "404"}],

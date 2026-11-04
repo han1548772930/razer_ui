@@ -238,16 +238,20 @@ PID199、208 声明 `isHidingKeyMapping=true`、`defaultVisibleFunctionsCount=5`
 
 ## PID182：实际本地配置档导入
 
-统一入口 `python tools/workspace.py audit-family-function --family mouse --function mw --product 182 --query mouse-182-profile-import-chain`；正式结果归 [mouse-mw-audit.json](../../../.analysis/results/frontend/mouse-mw-audit.json) 的 `mouse_182_profile_import_chain`。本批接续 Duplicate 的精确剩余项，复用同一当前 UI／MW、共享存储和 7 个原生发布函数，不重捕获已确认的链。
+当前完整本地 Import 能力见[内容寻址 review](../../../.analysis/results/reverse-pending/review-sources/33238ee69607468de72881420a31ff4bbc5caaf6251dd4b48df45872be2686e5.json)，通过现有 `audit-family-function --semantic-review` 路径接入 [mouse-mw-audit.json](../../../.analysis/results/frontend/mouse-mw-audit.json) 的 `mouse_182_profile_import_complete_chain`。原 `mouse_182_profile_import_chain` 及其后续 worker、共享／源产品转换和 Host monitor 收据保留各自证据。当前 review 将文件选择、两种格式、候选与宏引用、用户选择、本机／原生发布、返回及实际 Cancel／释放行为接成同一能力；没有执行产品或厂商代码。
 
 - 实际入口为普通 Profile 菜单的 Import → `IEMode:"import"` → `Fc` 连接的 `Bc` 弹层；父组件同名空回调不是执行入口。弹层使用 Redux `importProfile`，选中配置档时选中其全部宏，派发仅保留所选配置档及其宏 GUID 并集。当前 PID182 没有禁用 HyperShift 按键、额外导入 sanitizer 或 analogSpecs 配置，不应用相应可选预处理。
 - 本地文件选择器声明 `.synapse4`，先按文本 JSON 的 profiles 字段识别当前格式，再尝试按 ZIP 的 DeviceInfo 前缀识别旧格式。当前格式按 URL-safe base64、UTF-8、JSON 解码；哈希排除顶层 hash／gamemode，使用稳定排序 JSON 的 MD5。配置按分类相同或匹配实际产品／dongle／BLE 身份接受，单项解码失败告警并继续；读取或外层 JSON 解析拒绝不在该局部 catch 内。宏通过哈希后，弹层还会递归解码字符串中的 XML 实体。
 - 宏名称按当前库去重；只有 GUID 碰撞才生成新 GUID，并修复选中映射的对应引用。宏事件先生成 appEngine 并计算哈希，再设置实际 mouseMoveType。每个宏先写 MACRO_CONFIG，之后才整体提交 IndexedDB；IDB 使用独占锁、等待事务完成再发变更通知。原生宏投影删除外层维护字段，但会修改共享 appEngine 的虚拟延迟与哈希，因此 IDB 提交和后续 runtime 发布属于不同阶段。
 - 配置浅合并当前 defaultProfile 和导入对象，生成新名称／GUID并追加。当前处理器明确调用 `qe(o.mappings,o,!1,g.concat(h))`：普通映射编译，第四参数保留其他配置档的 turbo 引用；不能套用旧 Xt 快照的第三参数语义。普通配置 handler 不修改 activeProfile，本动作不切换活动配置、不调用设备恢复，也没有对应的设备确认阶段。
 - 提交顺序是逐宏配置 → 宏 IDB → 原生宏投影 → 设备配置文档／钩子 → runtime → 配置列表／宏列表 → completed → postprocess → 可选任务内存保存。跨存储没有事务或回滚；原生布尔返回未被消费者核对，晚期内存写入失败可能在完成通知后才补发 error。弹层确认立即关闭，Cancel／关闭只关闭弹层，没有 FileReader abort、连接代次取消或已派发工作的排空保证。
-- 旧格式实际请求 `${origin}/profile-migration/worker.js`。后续[旧版配置与宏坐标专题](customize.md#pid182本地旧版配置导入与宏坐标)已核当前两轮 HTTP 部署、ZIP／XML 分组、源 PID 分派、九项共享转换、宏事件、坐标计算及当前 Host 4.0.896 的 monitor 回复／释放边界。每次 onmessage 内才创建 2 秒计时器，ready 等忽略消息留下的计时器也可能使请求拒绝，且没有 port.close。其余共享／源产品转换、原生 monitor 枚举和实际执行仍未闭合；入口清单与静态测试不代表完整迁移、Rust 或设备对照完成。
+- 旧格式实际请求 `${origin}/profile-migration/worker.js`。[旧版配置与宏坐标专题](customize.md#pid182本地旧版配置导入与宏坐标)、52 项共享转换、26 项源产品转换及当前 Host 4.0.896 monitor 枚举已接入完整 review。每次 onmessage 内才创建 2 秒计时器，ready／echo 等忽略消息留下的计时器也可能使请求拒绝；初次 post 没有计时器，没有 port.close、worker 终止或 Map 删除，当前请求也不提交 portId。没有取消入口和排空保证是已经查明的原版行为，不能继续当成待寻找的隐藏调用。
 
-`Mouse182ProfileImportChainTests` 静态反例 12/12 通过，包含入口、文件身份／哈希、选择与预处理、宏冲突、当前普通映射、活动配置、提交／结果顺序、取消和失效输入拒绝。未执行厂商 JS、DLL、应用或设备，新增捕获、分析会话和临时资源均为 0。后续从 `mouse_182_profile_import_chain/remaining_chains/1` 接续其余实际动作；legacy 独立缺项保留在 remaining_chains/0。既有 `PreparedMouseImport` 只是本地候选结果，其当前源码一致性、真实发布、UI／后端接线、实际 DLL／设备对照和运行验收仍分别待完成／未验证。
+当前普通 Profile 的 hooks 对象没有启用 `useLockableStorage`，文档写入走同步 localStorage；宏配置和 IDB 则分别等待自己的锁操作及事务。当前 MappingEngine 的 `20920 → 2fa0 → 3160 → d496c → d4b80` 将字符串写入原生 map，并分别投递观察者通知与存储回复。`62576／62510 → 519e0 → 20680` 保留实际 bool／reason 回调参数，`20680` 只在全局初始化位仍有效时交付外部回调。Host 等到 promise 结束才移除 cbMap，没有 Import 专属超时或取消；因而停止期间的待回复调用不能被描述为必然完成。
+
+`synapseMacros` 的实际消费者另外进入 `5cb50 → f6cf0 → f6e50／f7386`。候选要求数组、对象、唯一字符串 GUID、appEngine／hash；同 GUID／hash 复用旧事件，新项或 hash 变化才重新校验复制后的 appEngine 摘要、模式及 events 数组。整批成功后才在锁内替换运行 map，存储 ACK 不等待它。解析失败可以同时留下新的原生存储字符串、manager 缓存和旧运行 map；再次发送相同字符串不触发新的通知。变化 GUID 通知到 `5e710／5e600` 对活动记录发起 cancel；实际播放、执行器的物理清理及以后用户选择配置触发的设备 Apply 仍是其他动作。
+
+本地 Import 的当前源码与静态调用语义已经闭合，父段中旧的 legacy pending 边界由这些后续证据覆盖，旧记录不改写。既有 `PreparedMouseImport` 仍只是本地候选实现，其当前源码一致性、真正发布、UI／后端接线以及自动化／实际 DLL／设备和视觉验收须分别完成。其他 CRUD、宏播放或设备 Apply 未被本段升级为完成；本次只创建正式 review，没有新捕获、分析会话或临时副本。
 
 ## 旧版文件：共享映射转换
 
@@ -316,7 +320,7 @@ PreventChromaSDKControl与SmartHome实际都写入preventChromaConnectLighting�
 
 所有源数组的直接map／forEach与显式concat归一化均分别记录，不能统一补单例、过滤未知值或忽略缺字段。该组仅充电灯效6415带转换级catch；其他异常沿共享转换向外传播。BasicLightingEffects／LightingEffects同写quickEffects，Keymappings／Mappings同写mappings，SystemLighting同写brightness／logoLighting；最终覆盖由profile自身键顺序和Object.assign决定，不能按注册器顺序改写。
 
-16项静态反例核对了全部原件、实际依赖、52项共享注册表分段覆盖、数组／单例、真值／默认、相机源PID和替换边界、analog／dial调用参数、未知效果／区域及失败发布。测试读取源码AST，不执行厂商JavaScript。独立Rust、UI／后端与实际DLL／设备对照仍另行验收；源产品专属转换由下节接续，原生monitor枚举及worker完整取消／释放继续保留各自缺项。没有新增捕获、会话或临时文件。
+16项静态反例核对了全部原件、实际依赖、52项共享注册表分段覆盖、数组／单例、真值／默认、相机源PID和替换边界、analog／dial调用参数、未知效果／区域及失败发布。测试读取源码AST，不执行厂商JavaScript。源产品专属转换由下节覆盖，原生monitor及worker实际取消／释放行为已接入上述完整Import review；独立Rust、UI／后端与实际DLL／设备对照仍另行验收。没有新增捕获、会话或临时文件。
 
 ## 旧版文件：其余源产品转换与完整源注册表覆盖
 
@@ -345,6 +349,6 @@ PreventChromaSDKControl与SmartHome实际都写入preventChromaConnectLighting�
 
 每个profile先执行共享转换，再执行all6283，最后按registry顺序执行所有匹配源转换。专属转换只接收profile一个参数，不能保证共享阶段已经注入deviceInfo；成功的truthy结果会被调用两次。源码使用Object.assign替换整个输出字段：成功源性能结果会替换all的整个performance，源转换抛错则保留此前all结果。所有初值、局部失败和结果覆盖均为本地文件转换语义，不能当成设备实测、写回确认或通用恢复行为。
 
-14项静态反例首次运行全部通过，覆盖30个完整模块、26项源registry集合、实际PID、mixer完整初值与18步顺序、原共享helper参数、数组位置、类型／默认／失败差异及正式CLI失败发布。当前共享52项与源26项转换分别具有可复核覆盖；原生monitor枚举、实际Import发布依赖、完整取消／释放及独立Rust、UI／后端、实际DLL／设备验收仍另行推进。没有新增捕获、会话、临时文件或产品Rust改动。
+14项静态反例首次运行全部通过，覆盖30个完整模块、26项源registry集合、实际PID、mixer完整初值与18步顺序、原共享helper参数、数组位置、类型／默认／失败差异及正式CLI失败发布。共享52项与源26项、原生monitor和Import实际发布／取消／释放现已归入上述完整能力review；独立Rust、UI／后端及实际DLL／设备验收仍另行推进。没有新增捕获、会话、临时文件或产品Rust改动。
 
 这里记录当前官方源码语义。源码获取、逆向语义、Rust 独立实现、UI／后端接线、静态／模拟验证和真实运行验收分别判断，不能由此索引推断整族功能已完成。

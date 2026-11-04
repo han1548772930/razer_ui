@@ -18617,13 +18617,22 @@ def verify_profiles_static_receipt(report, audit=None):
         "source_sets": 2, "target_execution": False, "runtime_acceptance": "unverified"}
 
 
-def publish_host_static_query(report, destination, a, query):
+def publish_host_static_query(report, destination, a, query, *, replace_existing=True):
     """Update only this query while recording canonical identities of older fields."""
     def identity(value):
         return hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True,
             separators=(",", ":")).encode("utf-8")).hexdigest()
     with a.index_lock(destination.with_suffix(".lock")):
         previous = json.loads(destination.read_bytes()) if destination.is_file() else {"schema_version": 1}
+        if not replace_existing and query in previous:
+            current = previous[query]
+            if (isinstance(current, dict)
+                    and {key: value for key, value in current.items()
+                         if key != "preserved_top_level_canonical_sha256"}
+                    == {key: value for key, value in report.items()
+                        if key != "preserved_top_level_canonical_sha256"}):
+                return current["preserved_top_level_canonical_sha256"]
+            raise ValueError("Static capability already has a different retained proof")
         preserved = {key: identity(value) for key, value in previous.items() if key != query}
         failed = previous.get(query)
         reference = failed.get("previous_failed_query") if isinstance(failed, dict) else None

@@ -149,7 +149,7 @@ NVAPI 分支先核实实际 provider 与设备索引，探测 `-220` 睡眠状�
 
 [配件收据](../../../.analysis/results/frontend/accessories-main-audit.json)的 `hanbo_cpu_monitor_chain` 接续当前版本与 GPU 收据，核对 Hanbo 实际读取的 `CPUInfo[0].Temperatures.Package.cur`。本批复用 [CPUID SDK 完整捕获](../../../.analysis/results/native/c67f23ef5fd6e5a1db8f96d9a0509447f9657969e7a2c7fed7b293b72240cfb7/capture.json)的 39 个函数和 [Service 1.0.30.0 完整捕获](../../../.analysis/results/native/645d8ffdcaefe57b06ab4dd9888a7ce028fe25052f87762c23c452d3936a3cf8/capture.json)的 8 个函数，保留 17 个完整 JS 所有者并按实际 PE 核对 22 个间接调用槽；没有新增捕获、分析会话或临时副本。Host／SDK 的声明版本分别为 4.0.896／1.3.7.6，实际安装与加载版本未观测。
 
-SDK 先按真实 CPU vendor 选 Intel／AMD／Hygon owner；Intel `0x1766a0` 再按 family／model 选择具体构造器和虚表。已核对 Sandy Bridge、Haswell、Skylake、Silvermont、Goldmont 和 family `0x12` 六组的初始化槽 `+40`、温度槽 `+64` 及完整正文。温度入口 `0x13bff0` 依次尝试 owner `+32 → +24 → +16`，前一结果非正才继续；六组分支的存在不证明本机选中了它们，也不替代更高优先级 provider 的分析。
+SDK 先按真实 CPU vendor 选 Intel／AMD／Hygon owner；Intel `0x1766a0` 再按 family／model 选择具体构造器和虚表。已核对 Sandy Bridge、Haswell、Skylake、Silvermont、Goldmont 和 family `0x12` 六组的初始化槽 `+40`、温度槽 `+64` 及完整正文。温度入口 `0x13bff0` 依次尝试 owner `+32 → +24 → +16`，前一结果只有满足有序大于零才短路；零、负值和 NaN 均继续。六组分支的存在不证明本机选中了它们；owner `+32` 的实际构造边界见下节。
 
 MSR getter `0x13f930` 缓存寄存器对象，每次仍通过 `0x14e58` 真实读取。mode 1 使用 IOCTL `1`、4 字节输入、40 字节输出容量；mode 2 使用 `0x9c402440`、4 字节输入、8 字节输出容量。无效 handle、不支持的 mode、调用失败或两个返回 word 均为全 1 时失败；源码未检查 BytesReturned，不能自行补成完整协议确认。CPU affinity worker 的实际执行受源码 flag 控制，外层 mutex 等待 100 ms、driver lock 尝试 50 ms，循环 sleep 1000 ms；这些静态常量不表示已在本机运行。
 
@@ -159,7 +159,17 @@ Hanbo 当前回调走 `GetAllHardwareInfo 0x47ed0 → snapshot 0x16000 → senso
 
 CPU stop `0xbb2c0` 设置停止 flag，对保留的 system／CPU worker handle 等待 INFINITE，再 close／clear，未区分等待失败。worker 经 provider 槽 `+120` 停止；CPU owner、SDK 全局 sensor owner 与温度析构分别承担自己的释放责任。该局部 join 不能推定整个 Service 回调已排空，所选读取没有逐次取消 token；产品未 await 的 `DeviceTerminate` 仍仅记录日志。
 
-AMD 分派及 K10／K12 的共享 PCI Package 链已由[后续专题](#amd-k10k12-package-温度的-pci-读取与恢复)接续；其他 Intel family／model 及优先 owner `+32` 仍保留独立缺项。Hygon 默认 provider 的结论见下节。须沿实际 vendor／family 门槛继续追温度生产与释放，不能从型号名称推定 Package 能力。全 CPU／全产品逆向、独立 Rust、UI／后端接线和实际 DLL／设备对照仍未完成；本节只确认上述六组及其实际消费者边界。
+AMD 分派及 K10／K12 的共享 PCI Package 链已由[后续专题](#amd-k10k12-package-温度的-pci-读取与恢复)接续；其他 Intel family／model 仍保留独立缺项，owner `+32` 和 Hygon 默认 provider 各按下文的实际构造和槽判断。须沿实际 vendor／family 门槛继续追温度生产与释放，不能从型号名称推定 Package 能力。全 CPU／全产品逆向、独立 Rust、UI／后端接线和实际 DLL／设备对照仍未完成；本节只确认上述六组及其实际消费者边界。
+
+### CPU owner +32 的实际构造和温度分派
+
+[完整能力 review](../../../.analysis/results/reverse-pending/review-sources/bf2bb52b4fbc99641a812990d98bf10438ea9e8947b579d4ac40fea0461c3672.json)接续原 CPU 收据中 owner `+32` 的部分，复用当前 SDK 的 15 个完整函数、2,836 条经原件核验的指令、17 个 JS 所有者及既有 Service 结果链。它覆盖 CPU factory、共同构造、实际初始／周期分派和 stop／delete，未新增命令、collector 或捕获。原 CPU 的混合缺项还包含其他 Intel provider，不能整项删除。
+
+实际 system 初始化 `0xbb3a0` 在 processor-group 和普通 affinity 分支都调用 factory `0xc19c0`。普通 CPU、ARM 与 IA64 分支最终都经过共同构造器 `0x13edf0`，将 owner `+16／+24／+32` 置空。vendor／family 挂接分别要求 category 1／2，写入 `+16／+24`。保留的 category 3 helper `0x13db40` 的机器码确实读取绝对地址 `0x14／0x10／0`，并将 `+32` 写为零；它没有被省略的正常指针实参。完整捕获中唯一引用是已核验的 `.pdata` 三元组，既无代码调用、普通数据引用，也不是导出。这证明当前捕获中该 hook 没有实际挂载，不能据残留槽位新增一个温度 provider；并未执行这个函数。
+
+温度 selector `0x13bff0` 先把 XMM0 初始化为 -1.0，再对非空 owner 依次调用 `+64`。前两级使用 COMISS／JA，仅有序正值提前返回；最后一级结果直接保留。初始线程 `0xc1840` 和周期线程 `0xc1630` 在配置 bit 10 启用时调用它，并把 XMM0 存到 CPU `+1728`。这里的实际 float 返回和 NaN 分支以汇编为准，不能照抄反编译显示的 void／`<=0`。Package 的真实创建／刷新仍属于已经选中的 vendor／family provider；空 owner 或负返回不是实测零度。
+
+停止 `0x13bd60` 对非空的三个 owner 调用 `+120`；CPU 析构 `0x13fcf0` 调用各自 `+112` 删除槽，`0x4e90` 再释放 CPU 分配。空的 owner `+32` 不产生这些调用。该 review 完成的是此构造／hook／选择／释放能力边界，不代表其他 CPU 温度链、整个服务回调排空、独立 Rust 或实际 DLL／设备验收完成。
 
 ### Hygon 默认温度 provider 与 Package 缺测语义
 
@@ -167,7 +177,7 @@ AMD 分派及 K10／K12 的共享 PCI Package 链已由[后续专题](#amd-k10k1
 
 真实 vendor 必须等于 `HygonGenuine`。vendor 初始化在支持 CPUID `0x80000001` 时把 base family 与 extended family 相加；只有 family `0x18` 才经 `0x17a3e0 → 0x178740` 创建 `Hygon_C86_Infos`，挂到 CPU owner `+24`。初始化槽 `+40`、标识槽 `+32／+48` 与温度槽 `+64` 分别核对，不能把初始化中的 PCI、时钟、电压或功耗读取当成温度读取。
 
-该 C86 温度槽实际指向 `0x1785d0`，直接返回 PE `0x30f930` 的 float `-1.0`；vendor fallback `0x38b0` 也返回同一负值。两条温度调用都没有系统／驱动／SMU 温度读取、单位转换、传感器分配或 Package 刷新。它们只说明当前选定默认 provider 不产生 Package，不能推定所有 Hygon 系统都没有温度能力：CPU owner `+32` 优先于 C86，仍由原 CPU 收据的独立缺项继续分析。
+该 C86 温度槽实际指向 `0x1785d0`，直接返回 PE `0x30f930` 的 float `-1.0`；vendor fallback `0x38b0` 也返回同一负值。两条温度调用都没有系统／驱动／SMU 温度读取、单位转换、传感器分配或 Package 刷新。它们只说明当前选定默认 provider 不产生 Package，不能推定所有 Hygon 系统都没有温度能力。CPU owner `+32` 的优先检查及未挂载 hook 按上述构造 review 判断，残留 slot 不能提供缺失的温度读数。
 
 Service 仍按真实传感器名称生成结果；负函数返回不会自动变成 Package 字段。没有其他实际 provider 产生该测量时，首 CPU 转换器使用源码零值，Hanbo 会格式化、发布并可能转发，且在 Elsa 完成前更新 last-temperature。这个零值不是实测 0℃。所选温度调用没有逐次资源或取消 token；provider stop `+120` 为空，CPU thread 析构仍经 provider `+112` 调用删除包装器、继承的 owned-control 析构并释放分配。局部 stop 不证明 Service 回调已排空；本节不覆盖其他初始化能力、独立 Rust、UI／后端接线或实际 DLL／设备验收。
 
@@ -201,7 +211,7 @@ K8、K15、K16、K14 与旧 family／default 的温度槽已接续到下节；�
 
 K15／K16 的 ECS register owner 通过实际 bus／device 绑定已存在的 kind18 owner，或注册 `AMD_K10_ECS_Status` 后调用保存／启用；共享 SDK 关闭时执行其恢复，结果仍未确认。所选 stop 槽均为空。K15 删除器释放其 `+104/+112` 对象后走继承清理，K8／K16 同样由继承清理释放控制与借用列表；sensor 由共享 SDK 列表拥有。周期读取没有取消 token，不等于整个服务回调排空。
 
-这批闭合上述温度采样、选择和局部恢复边界。保留函数中的非温度 FIDVID／时钟／控制及可选内存 register-space 初始化、K15 `+104/+112` 实际对象析构、K17／其他 Intel／owner32 和整服务排空仍有独立缺项。独立 Rust、UI／后端及实际 DLL／设备对照均未由本批静态工具测试验证。
+这批闭合上述温度采样、选择和局部恢复边界。保留函数中的非温度 FIDVID／时钟／控制及可选内存 register-space 初始化、K15 `+104/+112` 实际对象析构、K17／其他 Intel 和整服务排空仍有独立缺项；owner `+32` 的构造／分派按上述独立 review 判断。独立 Rust、UI／后端及实际 DLL／设备对照均未由本批静态工具测试验证。
 
 ### K17／K19／family 0x1a 的 Package 采样
 

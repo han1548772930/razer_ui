@@ -1453,6 +1453,49 @@ class ProfilesOwnerReceiptTests(unittest.TestCase):
 
 
 class ProfilesPublicationTests(unittest.TestCase):
+    def test_append_only_shared_publisher_reuses_same_object_without_saving_again(self):
+        import analysis
+        with tempfile.TemporaryDirectory() as directory, patch.object(analysis, "ROOT", Path(directory).resolve()):
+            path = Path(directory) / "audit.json"
+            old = {"schema_version": 1, "parent": {"failure": "preserve", "order": [2, 1]}}
+            path.write_bytes(json.dumps(old).encode())
+            payload = {"review_source": {"sha256": "a" * 64}, "target_execution": False}
+            preserved = publish_host_static_query(payload, path, analysis, "capability", replace_existing=False)
+            before = path.read_bytes()
+            with patch.object(analysis, "save", side_effect=AssertionError("Idempotent publication must not save")):
+                self.assertEqual(publish_host_static_query(payload, path, analysis, "capability", replace_existing=False), preserved)
+                fresh = {key: value for key, value in payload.items() if key != "preserved_top_level_canonical_sha256"}
+                self.assertEqual(publish_host_static_query(fresh, path, analysis, "capability", replace_existing=False), preserved)
+            self.assertEqual(path.read_bytes(), before)
+            after = json.loads(before)
+            self.assertEqual({key: after[key] for key in old}, old)
+
+    def test_competing_append_only_publishers_preserve_one_complete_proof(self):
+        import analysis
+        with tempfile.TemporaryDirectory() as directory, patch.object(analysis, "ROOT", Path(directory).resolve()):
+            path = Path(directory) / "audit.json"
+            path.write_bytes(b'{"schema_version":1,"parent":{"retained":true}}')
+            barrier = threading.Barrier(2)
+
+            def publish(writer):
+                report = {"review_source": {"sha256": str(writer) * 64}, "writer": writer}
+                barrier.wait(timeout=5)
+                try:
+                    publish_host_static_query(report, path, analysis, "capability", replace_existing=False)
+                    return writer, "published"
+                except ValueError as error:
+                    return writer, str(error)
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+                futures = [pool.submit(publish, writer) for writer in (1, 2)]
+                results = [future.result(timeout=10) for future in futures]
+            self.assertEqual(sum(result == "published" for _, result in results), 1)
+            self.assertEqual(sum("different retained proof" in result for _, result in results), 1)
+            winner = next(writer for writer, result in results if result == "published")
+            after = json.loads(path.read_bytes())
+            self.assertEqual(after["capability"]["writer"], winner)
+            self.assertEqual(after["parent"], {"retained": True})
+
     def test_query_and_independent_verify_are_explicit_cli_options(self):
         parser = argparse.ArgumentParser()
         add_commands(parser.add_subparsers(dest="command", required=True))

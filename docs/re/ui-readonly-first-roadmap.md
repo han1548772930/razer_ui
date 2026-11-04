@@ -8,26 +8,20 @@
 
 已有基线：[输入审计](../../.analysis/results/input-audit.json)于 2026-10-29 核对 279,961 项保留输入，缺失／不匹配／错误均为 0；[原生索引](../../.analysis/results/native-bulk/semantic-index.json)覆盖 881 个 DLL／NODE／SYS 模块；[950 项冻结队列](../../.analysis/results/reverse-pending.json)最初通过 889 项，余下 61 项由[后续增量](../../.analysis/results/reverse-pending/unresolved-current.json)复核通过。这些证明输入和选定静态复核结果，收据仍为 `semantics_complete=false`，不能换算为全项目完成比例。各产品现状见[产品文档](../products/README.md)，已有 Rust 验证仍按[独立收据](../../.analysis/validation.json)判断。
 
-既有共享链、产品结论和验证事实继续复用，详细证据归[产品专题](../products/README.md)及正式收据。本轮从用户指定的上一对话接续，复核其未发布内容，再批量处理可共用依赖的剩余转换；没有重复启动原生捕获，也没有修改产品 Rust。
+既有共享链、产品结论和验证事实继续复用，详细证据归[产品专题](../products/README.md)及正式收据。此前旧配置52个导入共享模块、26项源产品注册表、当前Host枚举及PID2636退出／重连的所选静态范围已发布；对应两批100项验证仍由正式历史链保留，不重做取证。
 
-2026-11-04（Asia/Shanghai）本轮分两批发布以下八组静态结果：
+2026-11-04（Asia/Shanghai）本批按更新后的[执行规则](../../AGENTS.md#11-当前执行优先级先完成逆向)完成三条在途链，并修正当前台账没有接入后续完成证明的问题：
 
 | 功能链 | 正式结果与本次核对范围 | 结论与边界 |
 | --- | --- | --- |
-| 系统 IPF 激活与生命周期 | [系统收据](../../.analysis/results/frontend/system-mw-audit.json)的 `overclock_ipf_lifecycle_chain`；93个完整IL方法、3个原生函数。 | 激活先于硬件服务；30次retries最多调用31次。注册表写入后设备重启失败不回滚，SafeHandle释放不证明provider已停止。ClientApi／provider／mailbox原生链及实际安装绑定继续独立。 |
-| AMD K17／K19／family1a Package | [配件收据](../../.analysis/results/frontend/accessories-main-audit.json)的 `hanbo_amd_k17_package_chain`；16个完整函数、6个PE槽。 | 单／多节点校准条件不同，校准仅在传感器创建时确定；失败／零样本保留旧值。多节点名为Package (Node %d)，不能冒充页面读取的Package；Node编号无额外加1。非空SMU owner+216来源仍待证明，既有Rust事实另记。 |
-| 旧配置源产品映射 | [鼠标收据](../../.analysis/results/frontend/mouse-mw-audit.json)的 `legacy_product_mapping_chain`；11个完整模块及整份worker的直接8061导入核对。 | 6892侧板、8667广播器、8311音频三类实际源调用已核；只给专属转换传profile，deviceInfo并非必定注入。成功的专属转换实际可调用两次，失败边界和结果消费者按原件保留。 |
-| 跨产品共享标量与开关 | 同一[鼠标收据](../../.analysis/results/frontend/mouse-mw-audit.json)的 `legacy_shared_scalar_chain`；25个转换及6个依赖模块。 | 一批核对键盘／鼠标／音频／系统／充电设置的真值、默认、NaN、取整、同字段覆盖顺序和三种catch差异。其余17个共享转换由本轮后续结果接续，不再按父收据旧pending状态重复领取。 |
-| 其余共享结构化转换 | 同一鼠标收据的 `legacy_shared_structured_chain`；17个转换及依赖共28个完整模块。 | EQ／数组、相机、灯光、analog／dial、风扇／性能的实际形状、PID分支、覆盖与失败已核。`imported_shared_inventory_coverage` 核对当前52个导入模块恰为9＋1＋25＋17，无遗漏；该注册表静态覆盖已闭合。 |
-| 其余源产品专属转换 | 同一鼠标收据的 `legacy_source_product_chain`；22个转换及依赖共30个完整模块。 | `source_product_inventory_coverage` 核对26＝1＋3＋22项。保留实际PID组、mixer初值区间与18步、相同函数正文但不同PID组、性能默认值、顺序及失败覆盖；该源注册表静态覆盖已闭合。 |
-| 当前Host显示器枚举 | 同一鼠标收据的 `host_monitor_enumeration_chain`；22个JS owner、21个当前Host4.0.896原生函数。 | 两次枚举共享全局状态，首次空结果null与复用数组后的空结果不同；virtual按GetSystemMetrics计数，原版未检查部分OS返回。字符串读取异常先于FreeMalloc标志赋值，不能声称失败释放齐全。未选CRT反编译失败保留。 |
-| PID2636退出与重连 | [手柄收据](../../.analysis/results/frontend/gamepad-mw-audit.json)的 `gamepad_2636_shutdown_reconnect_chain`；49个角色、68个完整AST owner。 | 当前defaults/bootstrap的generic feature列表为空；Sage继承空terminate，mode setter只回显成功而无传输。5×3连接尝试、重连亮度及唤醒电源顺序已核，退订不取消旧promise。未审阅外部注入仍独立，不据通用loader补造功能退出。 |
+| 系统ClientApi与回调 | [系统收据](../../.analysis/results/frontend/system-mw-audit.json)的 `overclock_client_api_chain`；27个完整原生函数、7个PE槽、22处汇编参数现场和15个IL方法。 | 实际通过SWD接口InstallDir寻找ClientApiProxy并协商ClientApiR4，接受revision3..4；同步callback有字符串参数，错误传nullptr。mailbox的success先置true再解析，异常不重置。Proxy完整原件仍未取得，不能宣称provider／驱动链完成。 |
+| AMD SMU对象与Package热参数 | [配件收据](../../.analysis/results/frontend/accessories-main-audit.json)的 `hanbo_amd_k17_smu_owner_chain`；9个完整函数、3个PE槽。 | 191c60→209750真实创建owner+216；七组mailbox及family/model选择已核。正SMU校准先于品牌默认值，热参数失败保留原字段；析构只释放SMU、不关闭借用driver。不再把非空producer列为未知，Rust热查询接线仍单独未完成。 |
+| PID756模拟键采样注册 | [键盘收据](../../.analysis/results/frontend/keyboard-main-audit.json)的 `keyboard_756_analog_registration_chain`；41个选定源码引用、58个复用原生函数和24个真实PE槽。 | 当前产品走skip计数；interval分支将同值当毫秒。注册false后仍查状态，single-status可由all标志成立；注销不取消尾部throttle或清采样状态。当前注册链静态语义已闭合，整产品、Rust与真实验收不随之完成。 |
+| 已完成依赖归并 | 既有 `refresh-gaps --owner` 直接将已审阅的后续证明接入[gaps.json](../../.analysis/results/gaps.json)。 | 旧配置7条、AMD2条、键盘1条旧静态待办标记为已解决，另3条实现／运行事项回到对应阶段。保留每条原finding、原kind、精确来源pointer及证明段SHA；没有整条关闭混合Import／取消／其他provider事项。 |
 
-[最终工具验证](../../.analysis/results/tool-verification.json)为53/53通过，前一批47/47通过并由 `previous_receipt` 保留；两批共100项，失败／错误／跳过均为0，各批55项工具输入前后稳定。更早的79项验证仍在原历史链内，不计入本轮。八段均已正式发布和回读，四份父收据的旧字段完整保留；[gaps.json](../../.analysis/results/gaps.json)分别只刷新对应批次owner，四个受影响owner之外的3199项保持不变。已有 `Cargo.lock` 改动保持原样。
+三条链联合验证33/33通过；台账归并与既有刷新回归20/20通过，均无失败／错误／跳过，各次工具输入快照稳定。[最新验证收据](../../.analysis/results/tool-verification.json)通过 `previous_receipt` 保留33项及更早结果。键盘预检曾拒绝错误的source chunk选择，并发现局部import遗漏，修正后才进行正式验证；预检失败未发布成成功。
 
-开发定向验证曾发现四处测试AST筛选过宽及一处K17节点编号草稿误读，均按实际AST／汇编修正后验证，未发布错误语义。IPF依赖核验曾拒绝未明确绑定的同字节包别名，已补齐实际字节与两份提取收据的对应关系。首次正式发布命令因不适用的 `--no-refresh-gaps` 参数在解析阶段被拒绝；改用该子命令支持的参数后四项均成功。最终通过范围只按当前统一收据判断。
-
-后续结构化组的预检发现缺少局部import，首轮两处AST调用计数误包含外层IIFE，已改为精确callee检查。Host枚举首轮在setUp阶段因官方artifact所有者拒绝Rust路径而未执行测试，现将Rust身份与官方证据分开记录；零项执行不计通过。最后22项源产品转换14项定向测试首轮通过。原始工具输出保留在本轮对话回执，未虚构独立磁盘日志；最终53项统一结果有上述正式收据。
+归并只接受逐项审阅且原finding与完整证明段规范SHA均一致的范围；证明缺失、变动、失败或非静态时保持待办，未知／混合事项不按文字猜测分类。三个新结果均已回读，旧字段保留；只刷新四个实际受影响owner，其余3199个owner不变。既有 `Cargo.lock` 改动未覆盖。
 
 全量语义尚未完成。缺项中同时保留历史获取／分析器失败、静态语义、独立实现及运行验收，且父链的旧待办可能已有后续子收据；缺项条数、捕获数和本批测试数均不能当成项目完成比例。当前接续只按真实未闭合语义及最新结果，不重跑已完成取证。独立Rust、UI／后端和实际DLL／设备验收仍分阶段记录。
 
@@ -48,16 +42,18 @@
 
 ## 当前接续边界
 
-此前八组结果均已冻结、发布和清理。旧配置52个导入共享模块和26项源产品注册表、所选Host枚举及PID2636退出／重连路径不再重复领取；这些范围不等于整个worker、产品或运行验收完成。当前三个独立任务已从最新收据接续，未发布结果不计完成：
+产品顺序按[AGENTS.md第1.2节](../../AGENTS.md#12-产品推进优先级)执行：当前第一梯队为**鼠标、键盘、耳机**，同级并行。后续依次为手柄／摄像头、其他音频与独立接收器／底座、系统设备、独立灯光／散热及其余配件；必要共享依赖随第一梯队前置。
+
+此前ClientApi、SMU和PID756采样注册已发布；本轮已完成的相机／音频旧证明归并、已冻结CPU owner32证明只做发布与清理，不再扩展低优先级范围。键盘输出编译的完整能力证明继续作为第一梯队工作接续。新的分工为：
 
 | 槽位 | 功能链 | 输入与完成条件 |
 | --- | --- | --- |
-| 协调者 | 正式发布、缺项与清理 | 串行维护共享结果；已通过的定向验证直接复用，只检查新输入、未闭合语义及受影响依赖。 |
-| A | 系统ClientApi代理与回调 | 从 `overclock_ipf_lifecycle_chain/remaining_chains/1` 接续。当前ClientApi实际加载ClientApiProxy并协商ClientApiR4；沿真实选择路径获取代理原件，核properties/value/command、TLS错误及对象释放。复用managed生命周期，实际安装绑定仍单独判定。 |
-| B | AMD可选SMU来源与真实适用分支 | 从 `hanbo_amd_k17_package_chain/remaining_chains/0` 接续。已定位初始化0x191c60调用0x209750分配CSMUInterface并写owner+216；继续核实际family/model配置、影响Package的字段／阈值及析构。不重做Package数值，也不扩非温度业务。 |
-| C | PID756模拟输入采样注册 | 从 `keyboard_756_appengine_apply_chain/remaining_chains/0` 接续78127的skip-count重新注册、65200 MappingEngine provider、采样／回调／注销与计时器释放。相机／音频中已被后续子段覆盖的旧待办不重复领取；不扩Xbox展示或输出编译器。 |
+| 协调者 | 当前状态与批次验收 | 复用已通过验证，先把精确完成证明接回当前台账；只在真实缺口需要时增加维护能力，按批统一发布、刷新与清理。 |
+| A | 鼠标完整本地能力 | 先归并已闭合的52个共享转换、26项源产品转换及Host枚举；接续实际导入发布／取消、配置与映射消费者的剩余完整链。必要接收器／底座依赖随鼠标前置，不重做已有转换。 |
+| B | 键盘完整本地能力 | 接续当前54组输出编译、普通／analog分派和GameMode条件证明，再核真实未闭合输出执行器。复用已发布AppEngine／OBM及采样注册链，不重复取证。 |
+| C | 耳机完整本地能力 | 先按官方身份从audio族中确认耳机范围，再归并已有耳机证明，接续设备通信、Profiles、EQ／DSP、内置麦克风及读写／事件／释放的真实缺口；不扩独立音箱、麦克风或混音器。 |
 
-其他Intel／owner32、完整导入发布／取消、各族其余功能及平台分支继续保留在正式收据和缺项中；达到可核验边界后转向独立项，不无限追加单一产品的邻接范围。已完成片段与仍待证明的实际分支分别判断；源码未取得或调用未解析时继续取证，不据此判定功能不存在。
+ClientApiProxy来源、其他Intel／CPU provider、系统性能、独立散热及各后续梯队的缺项继续保留；除第一梯队实际必需的依赖外，当前不新开这些研究。已完成片段与仍待证明的实际分支分别判断；缺输入不能判定功能不存在，也不能把待运行验收重复派成静态逆向。
 
 ## 每批收尾与文档维护
 
@@ -68,6 +64,6 @@
 3. 用 `git diff --check`、Python AST／编译和文档相对链接检查收尾；失败事实写入收据，不删除正式原件或未决证据。
 4. 路线与当前阶段只写入本页，具体语义写入产品专题，机器可读结果写入 `.analysis/results/`；删除重复历史叙述、过期分工和失效链接，不新增平行进度档案。
 
-首批[清理计划](../../.analysis/results/scratch-cleanup-20261104T113445013202Z-plan.json)与[执行收据](../../.analysis/results/scratch-cleanup-20261104T113445013202Z-plan-applied.json)保留。后续[清理计划](../../.analysis/results/scratch-cleanup-20261104T115745686190Z-plan.json)的SHA-256为 `beefa4fdbbc52ec92c2b6d279b2041960f379b8c7bf34644a8502445744e520c`，[执行收据](../../.analysis/results/scratch-cleanup-20261104T115745686190Z-plan-applied.json)为 `completed`。两批均删除0项、释放0字节、失败0项；八组查询均未新增临时副本、捕获或分析会话。175项既有内容依其真实引用／未决依赖继续保留，不能将保留项或预计节省报为已清理。更早释放5,432,542字节的事实仍见[原执行收据](../../.analysis/results/scratch-cleanup-20261104T105637132423Z-plan-applied.json)，不计入本轮。
+本批[清理计划](../../.analysis/results/scratch-cleanup-20261104T121955411759Z-plan.json)的SHA-256为 `15987cabf764cc7697a3bfe6f853fddd975d702e2bb2c58e16e8f00d436474ef`，[执行收据](../../.analysis/results/scratch-cleanup-20261104T121955411759Z-plan-applied.json)为 `completed`，删除0项、释放0字节、失败0项。三条链没有新增临时副本、捕获或分析会话；175项既有内容按真实引用／未决依赖保留。此前各批清理收据保留，不合并计算本批释放量。
 
-本轮只更新维护查询／测试、五个产品／主机专题与本路线图，不新增平行进度档案。最终5份Python的AST、404个文档相对链接及 `git diff --check` 均通过；55项工具输入在发布后再次核对未变。未执行官方JS、业务DLL、应用、安装器、调试器或设备操作；应用窗口和实际硬件验收保持未验证。
+本轮修改维护查询／测试、实际所需的台账归并、既有专题和规则文档，不新增平行进度档案。发布后回读确认30个旧字段及3199个无关owner不变，55项工具输入稳定；最终当前差异中的Python AST、175个文档相对链接及 `git diff --check` 通过。未执行官方JS、业务DLL、应用、安装器、调试器或设备操作；应用窗口和实际硬件验收保持未验证。

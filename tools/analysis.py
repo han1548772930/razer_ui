@@ -624,6 +624,8 @@ def semantic_query_gaps(value, evidence, pointer="", product_id=None):
              "remaining_chains": "semantic_query_chain_unresolved",
              "remaining_closure": "semantic_query_chain_unresolved",
              "remaining_local_chains": "semantic_query_chain_unresolved",
+             "remaining_implementation_chains": "implementation_acceptance_pending",
+             "remaining_runtime_checks": "runtime_acceptance_unverified",
              "failed_acquisition": "acquisition_query_failure",
              "unresolved_acquisition": "acquisition_query_reference_unresolved",
              "capture_failures": "analyzer_query_failure"}
@@ -650,8 +652,160 @@ def semantic_query_gaps(value, evidence, pointer="", product_id=None):
     return rows
 
 
+_STATIC_GAP_PROOFS = {
+    "mouse_182_profile_import_complete_chain": "fe3b5c58e2dc8d8d331e31dcdf7ec85c2945b1db079f2227b9de2b6701555574",
+    "keyboard_756_appengine_output_chain": "af94c12633dcf96724593711307db868bb003d19a8f117a1a9bcd8ce69196a68",
+    "hanbo_cpu_owner32_chain": "8c7316cf187cba35ed13c0c9088e21d4b72941c631a1c2afbc5ac89d5c277ccf",
+    "legacy_shared_structured_chain": "58af03610ae6f86955729300eb2db1bf0530e90951a9223c5c913c19ebcba45e",
+    "legacy_source_product_chain": "d3b1b5c5f3655df3f9ba83cff22a06d3ca49ed86ab1183c1328d8520894f73e3",
+    "legacy_product_mapping_chain": "6d6b5f28e8c94a6d038ea097d90a222b67c1baab753197a24101c6903dde7530",
+    "hanbo_amd_k17_package_chain": "ea0050dea85f6bdb193041ab63725bad269765ecda40a1573e8bc0c5cb506fdc",
+    "hanbo_amd_k17_smu_owner_chain": "e963bd4d81aa85fd1820a32296a2aa11cc2c5f1e7d007027e248b0f521fe7232",
+    "keyboard_756_analog_registration_chain": "89fac7510d57de4fad9ecbd21728c6903e37bff12b48b485338daac28a80237e",
+    "image_host_chain": "cc1726ca839d2b346136e6860f8dbcb5f963d4bb0ed840930c80afc0c4383435",
+    "device_lifecycle": "a7e6e0675feaa1e44f9319f33fc40614d321f9b8375124338b74ee1d8bfcad0f",
+    "media_preview_chain": "a9c6673ab2195d8ea92612af359c40db174758da19b432087b2e633e855aae61",
+    "kimberly_identity_chain": "53e2cf8a7ad24ea5876855ed0adcc765c558965f9ecf9191827211f07ca62e8b",
+    "ultra_watermark_chain": "22fbe1294e4c04edbe3fb3799a29c7810feab32afffb044801160907268d5b7c",
+    "camera_3594_exposure_chain": "14aba8ddedf23141a33399916b62a38451df4d23eaeca9e8f20888f09e6bd1a5",
+    "camera_3594_profile_replay_chain": "fedde1c015ce2055ab10caeffaf60ee3f82a5d5946257939839889fa8ca36bdf",
+    "camera_3594_initial_get_chain": "9f9122bfd68d07018259f70b2e6ab32ad1354e5d243d7fa77e7f3c5322128d3b",
+    "camera_3595_3596_processing_control_chain": "758453dbdcfb0c88de13a83865a7e86b5b1a92b7020ca19f1716aa727fa9b59e",
+    "camera_3595_3596_low_light_chain": "3fbec3a3733860b927b4fe2e9eecec0eff52f2fa9464dc989ee9a5e39600b21d",
+    "camera_3595_hdr_chain": "7044e7ea4d3893f238ebfae348897c6ab531555ee2cd3f999c4695e05ff10b27",
+    "camera_3595_mjpeg_chain": "17bd0aa5b2de0a74574a78fe734c6bf4d76ba46398efaa91176b1858fe3c3899",
+    "auto_pause_ui_consumers": "d4c5a884e1e14c8f2040f2ab439b5eb2ca1bbe28fb2f731261e232ccc35c9f0d",
+    "auto_pause_hid_chain": "0b5ed5837574f527239263daa450d4e7f0b235364d34f6d42ef50181e917247c",
+    "multi_function_1446_chain": "46b4c35fd9fad10144a2448dbfe3a1883c490dae9d68b694b164eedebf49047a",
+    "mute_mapping_1446_chain": "434a4198ceaf9a99892c45bed069358861d0d15a819d458de7bc85a0321c0ea2",
+    "quick_effect_binding_1446_chain": "6bade65a33edf6b8dc93140bf5877c30fb8d90167a65de501eadd2238726fa78",
+    "tap_notification_1446_chain": "238cbcec357107a533744aa6588c637ff1efc3c4ab48099c24077fccbad6898f",
+}
+
+# These exact older receipts express reviewed scope through their original field.
+_STATIC_GAP_COMPLETION_FIELDS = {
+    (".analysis/results/frontend/accessories-camera-local-pages-audit.json", "image_host_chain"): "selected_host_semantics_reviewed",
+    (".analysis/results/frontend/accessories-camera-local-pages-audit.json", "device_lifecycle"): "selected_device_lifecycle_semantics_reviewed",
+    (".analysis/results/frontend/accessories-camera-local-pages-audit.json", "media_preview_chain"): "selected_media_preview_semantics_reviewed",
+    (".analysis/results/frontend/accessories-camera-local-pages-audit.json", "kimberly_identity_chain"): "selected_identity_semantics_reviewed",
+    (".analysis/results/frontend/audio-mw-audit.json", "quick_effect_binding_1446_chain"): "selected_effect_binding_complete",
+}
+
+# Each entry is a reviewed whole finding, never a substring or product-wide claim.
+_STATIC_GAP_REVIEWS = {
+    ".analysis/results/frontend/mouse-mw-audit.json": (
+        ("/mouse_182_profile_import_chain/remaining_chains/0", "29d69dd1e453e66e667cfd4765d488600cedee2923da685c30f49d8c043e4ba5", ("mouse_182_profile_import_complete_chain",), "resolved"),
+        ("/legacy_shared_scalar_chain/remaining_chains/1", "b69f1a2122ea98e35a0dd535f8e410697398aa58b40b9fbf4f16d3c1c76be23f", ("mouse_182_profile_import_complete_chain",), "resolved"),
+        ("/legacy_shared_structured_chain/remaining_chains/1", "aef6caa568c387fdce5706eae757f65cb8124f227e00205ce0d111f6601beeb8", ("mouse_182_profile_import_complete_chain",), "resolved"),
+        ("/legacy_source_product_chain/remaining_chains/1", "e972a08fbbc183abb67cc2da027442e27ac6a339b25d1a773ec2f7a6f831219f", ("mouse_182_profile_import_complete_chain",), "resolved"),
+        ("/mouse_182_legacy_worker_chain/remaining_chains/0", "eb333ff587584f8429ddc1cc6935db892e3b5995452596916dcb926312042c41", ("legacy_shared_structured_chain",), "resolved"),
+        ("/mouse_182_legacy_worker_chain/remaining_chains/1", "9d9de3d54392430c271fdf2f0e387958098b7e3c91412173ff71e516be7e5203", ("legacy_source_product_chain",), "resolved"),
+        ("/legacy_mapping_conversion_chain/remaining_chains/0", "8b24571d949c58dbb046069a8f9bb3f06cc8d35e9759b8489caa439d4fa434d4", ("legacy_shared_structured_chain",), "resolved"),
+        ("/legacy_mapping_conversion_chain/remaining_chains/1", "e82fbfc9b9f884e15a7ecff8f3875fd46520a84d15efb92a43325675cc8c3087", ("legacy_product_mapping_chain",), "resolved"),
+        ("/legacy_product_mapping_chain/remaining_chains/0", "23fa17fbc7b33476ade1d644c975005dd4cd8144125b7952c45016c4f6fb8229", ("legacy_source_product_chain",), "resolved"),
+        ("/legacy_shared_scalar_chain/remaining_chains/0", "d4dc8cd861f45488d9f04593c7f13a74f519aa6baca00f73429f61da33a587da", ("legacy_shared_structured_chain",), "resolved"),
+        ("/legacy_shared_structured_chain/remaining_chains/0", "742427ac59092a0d1e80994416ba5613ca2d6ed2d902a0eabeef7cb0d5ebedd9", ("legacy_source_product_chain",), "resolved"),
+    ),
+    ".analysis/results/frontend/accessories-main-audit.json": (
+        ("/hanbo_cpu_monitor_chain/remaining_chains/2", "5dae94c54ae83c4ebc217959a2f9322ac213a8ef34e02bbbc5921900f7b0b3f0", ("hanbo_cpu_owner32_chain",), "partial_static"),
+        ("/hanbo_amd_k17_package_chain/remaining_chains/0", "979625a7aadaf4f04dcae3d29ac84e989f16eb7a7d170ce0474dbec2bb0b6bbe", ("hanbo_amd_k17_smu_owner_chain",), "resolved"),
+        ("/hanbo_amd_legacy_package_chain/remaining_chains/0", "f43cfa6d559cc26fbc3bca4f43c0c53171c8aa1442ccf2039d5cc70016ae1dbb", ("hanbo_amd_k17_package_chain", "hanbo_amd_k17_smu_owner_chain"), "resolved"),
+        ("/hanbo_amd_k17_smu_owner_chain/remaining_chains/2", "a4106bda30bcce4126b5a1792c7723e7c4341ba01775d239a91ba29a6631445a", ("hanbo_amd_k17_smu_owner_chain",), "implementation_and_runtime"),
+    ),
+    ".analysis/results/frontend/keyboard-main-audit.json": (
+        ("/keyboard_756_appengine_apply_chain/remaining_chains/1", "15179dbf501f8c1b0e1ea88c002a7e49f998c934b9009b82205a1078c9748076", ("keyboard_756_appengine_output_chain",), "partial_static"),
+        ("/keyboard_756_appengine_apply_chain/remaining_chains/0", "baa03dd267b15550622a51deb76e32df2f3975cbdb7f4ef53fec0a06f4394c04", ("keyboard_756_analog_registration_chain",), "resolved"),
+        ("/keyboard_756_analog_registration_chain/remaining_chains/0", "765da90c144bbfc3bfe51bb97b577bf494c4ca4415c0891a1a05e7148c5377e9", ("keyboard_756_analog_registration_chain",), "runtime"),
+        ("/keyboard_756_analog_registration_chain/remaining_chains/2", "cbebdc45785f52aee7451460d6c847476aded0d3c926c2c593d602738f9f9255", ("keyboard_756_analog_registration_chain",), "implementation_and_runtime"),
+    ),
+    ".analysis/results/frontend/accessories-camera-local-pages-audit.json": (
+        ("/media_preview_chain/remaining_local_chains/0", "5eb8b6554e854a2b93cb224a72e65db244d6b5f6ff41ef6b4e06b1b1f715a8c6", ("kimberly_identity_chain",), "resolved"),
+        ("/camera_3595_hdr_chain/remaining_local_chains/0", "f3aaee612dd5fa94bd25c534e97993a0dca2c488da85177f8210102f6b8f8e0a", ("camera_3595_mjpeg_chain",), "resolved"),
+        ("/image_host_chain/remaining_local_chains/2", "903efbcc77fe5fb6e664cf0c4743c52fe0e2865155eb59462ceec0c630cfa7dd", ("image_host_chain",), "runtime"),
+        ("/device_lifecycle/remaining_local_chains/1", "6923a7653952718543e7f9ee54e776cbc218ec756154dd07a4c0bfb074480556", ("device_lifecycle", "image_host_chain"), "runtime"),
+        ("/kimberly_identity_chain/remaining_local_chains/0", "e6a8ddea6cd38b6e0e1be7e549b7db502c90049547f3be9367d5e5109cbdfdda", ("kimberly_identity_chain",), "runtime"),
+        ("/image_host_chain/remaining_local_chains/3", "2d556bf1d6ec876e3271f567bcf7575bc7b41c0380bc7ab77c28e52b6797834f", ("image_host_chain",), "implementation_and_runtime"),
+        ("/device_lifecycle/remaining_local_chains/3", "3037f274da691e85f08cd98e7eb4d8fded55a61e31fdc02ae22af55924166f9d", ("device_lifecycle",), "implementation_and_runtime"),
+        ("/media_preview_chain/remaining_local_chains/3", "1472eb207b1fc924a86ed91cbc483b5463aef2481b29a0e23f537ef4d8e60daf", ("media_preview_chain",), "implementation_and_runtime"),
+        ("/kimberly_identity_chain/remaining_local_chains/2", "1472eb207b1fc924a86ed91cbc483b5463aef2481b29a0e23f537ef4d8e60daf", ("kimberly_identity_chain",), "implementation_and_runtime"),
+        ("/ultra_watermark_chain/remaining_local_chains/2", "7703580598548088b8e47b315647ec50dc6cb8c129e4fed449f389f5bef2de15", ("ultra_watermark_chain",), "implementation_and_runtime"),
+        ("/camera_3594_exposure_chain/remaining_local_chains/2", "cd2b595cb44e2ff0edbe1f9561abe5772010b5623a61759f5cc99b22754ae493", ("camera_3594_exposure_chain",), "implementation_and_runtime"),
+        ("/camera_3594_profile_replay_chain/remaining_local_chains/2", "12dd05c87d3f082a35de174cef7e83126d4566794ddf5525cf7473c3603407fc", ("camera_3594_profile_replay_chain",), "implementation_and_runtime"),
+        ("/camera_3594_initial_get_chain/remaining_local_chains/2", "0a769eb869bdb08ac051d7f78bd0e1fa180d4b7d537ab1495ae48958d3b8cf77", ("camera_3594_initial_get_chain",), "implementation_and_runtime"),
+        ("/camera_3595_3596_processing_control_chain/remaining_local_chains/2", "1bba99efc17a55882f9b8666c51e2b9dac2b4a7dd5d391ab3a4f9e1c203ac5b5", ("camera_3595_3596_processing_control_chain",), "implementation_and_runtime"),
+        ("/camera_3595_3596_low_light_chain/remaining_local_chains/1", "f83363fbc2d686fb7f4470a6ea0d2dc0c71ecf6ad1b75179a1c5f331b602e006", ("camera_3595_3596_low_light_chain",), "implementation_and_runtime"),
+        ("/camera_3595_hdr_chain/remaining_local_chains/2", "f83363fbc2d686fb7f4470a6ea0d2dc0c71ecf6ad1b75179a1c5f331b602e006", ("camera_3595_hdr_chain",), "implementation_and_runtime"),
+        ("/camera_3595_mjpeg_chain/remaining_local_chains/1", "f83363fbc2d686fb7f4470a6ea0d2dc0c71ecf6ad1b75179a1c5f331b602e006", ("camera_3595_mjpeg_chain",), "implementation_and_runtime"),
+    ),
+    ".analysis/results/frontend/audio-mw-audit.json": (
+        ("/auto_pause_chain/unresolved_chains/0", "922651da0317710929b730aacb9531de3a9e2a385e3239ad478edfb779a5f7a3", ("auto_pause_ui_consumers", "auto_pause_hid_chain"), "runtime"),
+        ("/auto_pause_ui_consumers/unresolved_chains/0", "b3da6b8bf588e6437542811a8564014a74e5b5cf107d0c64694102f975079edd", ("auto_pause_hid_chain",), "runtime"),
+        ("/auto_pause_hid_chain/unresolved_chains/0", "76cd7af0c965b08143c0f63ed9f0d562cee92bfc1f65761730750c97a849a331", ("auto_pause_hid_chain",), "runtime"),
+        ("/multi_function_1446_chain/unresolved_chains/0", "8a3a2d70cd89ac1598da7a745a17c637dc54dc634ae21cbc069d451c2e88e121", ("multi_function_1446_chain",), "runtime"),
+        ("/multi_function_1446_chain/unresolved_chains/1", "da2bcfd0d42fc5e9ec35bd4c06ed04f485416d806f33a7e49611f2a10d4655ec", ("multi_function_1446_chain",), "implementation_and_runtime"),
+        ("/mute_mapping_1446_chain/unresolved_chains/0", "8831a1e88c690ebac0476069ca838e929be0ac23b71ef20b822e7bc581b0286a", ("tap_notification_1446_chain",), "runtime"),
+        ("/mute_mapping_1446_chain/unresolved_chains/1", "6f816b44197ae437909f77a32fff1180591f6a18c14cd7bd19099c66f52ac0c9", ("quick_effect_binding_1446_chain",), "runtime"),
+        ("/mute_mapping_1446_chain/unresolved_chains/2", "9c939d76b5d2bac3f6daf14bd2a541646b9286f514ebb12c219bcf3f3484e708", ("mute_mapping_1446_chain",), "implementation_and_runtime"),
+        ("/quick_output_1446_chain/unresolved_chains/0", "99d8859e02e405b162b48d156f683af55e00591b530a8d6ab3f2c3c7779f9af0", ("quick_effect_binding_1446_chain",), "resolved"),
+        ("/quick_output_1446_chain/unresolved_chains/1", "4dc0482951cccfba92984e3c00d94f7b095ee9689a542a67af733b93d8af1e42", ("quick_effect_binding_1446_chain",), "implementation_and_runtime"),
+        ("/quick_effect_binding_1446_chain/unresolved_chains/0", "66c99e8551a3eb3eeb51032b7fcd2aa9a6e761ff46674ac81d9fa09ccb781c54", ("quick_effect_binding_1446_chain",), "implementation_and_runtime"),
+        ("/tap_notification_1446_chain/unresolved_chains/0", "ba02c50954443fbe6cc2b6d0df4faa3e6da401684e066417c93bc477dab34897", ("tap_notification_1446_chain",), "runtime"),
+        ("/tap_notification_1446_chain/unresolved_chains/1", "842477d2fd3d5fc0821732a2422cdf9a2ed3709feadf7be047942da2ad18bc37", ("tap_notification_1446_chain",), "runtime"),
+        ("/tap_notification_1446_chain/unresolved_chains/2", "a377d9d15ac64e43f442aac1e218d52bfdd9758c5d2d6f85bcd2093ce9bed03f", ("tap_notification_1446_chain",), "implementation_and_runtime"),
+    ),
+}
+
+
+def reconcile_static_gap_reviews(data, evidence, rows):
+    """Keep original findings while applying exact, independently reviewed continuations."""
+    reviews = _STATIC_GAP_REVIEWS.get(evidence, ())
+    if not reviews:
+        return rows
+
+    def digest(value):
+        return hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True,
+                                        separators=(",", ":")).encode()).hexdigest()
+
+    proven = {}
+    for name in {name for _, _, names, _ in reviews for name in names}:
+        section = data.get(name)
+        completion_field = _STATIC_GAP_COMPLETION_FIELDS.get((evidence, name), "source_slice_complete")
+        if (isinstance(section, dict) and section.get("bounded_observation_complete") is True
+                and section.get("snapshot_stable") is True and section.get(completion_field) is True
+                and section.get("target_execution") is False and section.get("failures") == []
+                and section.get("changed_during_query") == []
+                and digest(section) == _STATIC_GAP_PROOFS[name]):
+            proven[name] = {"evidence": evidence, "pointer": "/" + name,
+                            "canonical_sha256": _STATIC_GAP_PROOFS[name]}
+    accepted = {}
+    for pointer, expected, names, stage in reviews:
+        value = data
+        try:
+            for part in pointer.split("/")[1:]:
+                part = part.replace("~1", "/").replace("~0", "~")
+                value = value[int(part)] if isinstance(value, list) else value[part]
+        except (KeyError, IndexError, TypeError, ValueError):
+            continue
+        if digest(value) == expected and all(name in proven for name in names):
+            accepted[(pointer.rsplit("/", 1)[0], expected)] = {
+                "source_pointer": pointer, "finding_sha256": expected,
+                "stage": stage, "proofs": [proven[name] for name in names]}
+    kinds = {"resolved": "semantic_query_chain_resolved", "partial_static": "semantic_query_chain_unresolved",
+             "runtime": "runtime_acceptance_unverified",
+             "implementation_and_runtime": "implementation_acceptance_pending"}
+    result = []
+    pointers = {pointer for pointer, _ in accepted}
+    for row in rows:
+        review = None
+        if row.get("kind") == "semantic_query_chain_unresolved" and row.get("pointer") in pointers:
+            review = accepted.get((row["pointer"], digest(row["finding"])))
+        result.append({**row, "kind": kinds[review["stage"]], "previous_kind": row["kind"],
+                       "current_review": review} if review else row)
+    return result
+
+
 def semantic_result_gaps(data, evidence):
-    rows = semantic_query_gaps(data, evidence)
+    rows = reconcile_static_gap_reviews(data, evidence, semantic_query_gaps(data, evidence))
     if evidence == ".analysis/results/host-current/local-audit.json":
         for query, report in data.items():
             if isinstance(report, dict) and report.get("source_chain_complete") is False:
