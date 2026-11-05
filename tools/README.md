@@ -7,6 +7,10 @@
 | [workspace.py](workspace.py) | 目录盘点、清理、输入／文档校验和 Rust 验证 |
 | [analysis.py](analysis.py) | 前端获取／恢复、原生输入索引、IDA 配置与批量函数导出 |
 | [families.py](families.py) | 全产品族 UI／middleware 获取、独立版本配对、native 资源来源闭包与静态恢复矩阵 |
+| [code_identity.py](code_identity.py)、[code_identity_native.py](code_identity_native.py)、[code_identity_reviews.py](code_identity_reviews.py) | 当前部署的跨产品代码身份、正式审阅范围传播与唯一变体队列；结果按需查询 SQLite |
+| [code_identity_navigation.py](code_identity_navigation.py)、[code_identity_roles.py](code_identity_roles.py)、[code_identity_compare.py](code_identity_compare.py) | 当前真实挂载、完整factory的数据／运行代码角色及显式局部绑定结构比较；不由结构对应推断行为等价 |
+| [workspace_storage.py](workspace_storage.py) | 工作区逻辑／磁盘占用盘点、构建产物清理与分析数据去重计划 |
+| [native_mcp_cleanup.py](native_mcp_cleanup.py) | 对已结束MCP会话、原件和选定查询逐项核验后，通过统一清理器释放私有数据库 |
 | [asset_release.py](asset_release.py) | 私有资源仓库快照、上传核验、固定提交与有类型运行时索引 |
 | [catalog_data.py](catalog_data.py) | 完整构造 AST 等价校验、去重目录编码及所属模块的普通有类型读取函数 |
 | [resource_database.py](resource_database.py) | 生成／回读核验随程序交付的 SQLite 表情、界面词表、页面分支与资源索引 |
@@ -19,6 +23,9 @@
 在项目根运行：
 
 ```powershell
+python -B -X utf8 tools/workspace.py code-identity --workers 4
+python -B -X utf8 tools/workspace.py capability-ledger
+python -B -X utf8 tools/workspace.py storage-plan --plan .analysis/results/workspace-storage-plan.json
 python tools/workspace.py fetch-frontend --url https://apps.razer.com/synapse/dashboard/index.html --output .analysis/inputs/frontend/synapse-dashboard-current
 python tools/workspace.py analyze-frontend --input .analysis/inputs/frontend/synapse-dashboard-current
 python tools/workspace.py acquire-family --family mouse --layer ui --stage all --workers 2
@@ -82,6 +89,24 @@ python tools/workspace.py validate-rust --suite mapping-engine --suite mapping-s
 python tools/workspace.py validate-rust --suite profiles-transfer-codec --suite ui-preferences-state --suite mouse-philips-protocol --suite mouse-philips-ipc --suite mouse-philips-routing --suite mouse-philips-service --suite mouse-philips-shell --suite mouse-philips-state
 python tools/workspace.py validate-rust --suite macro-recording-ipc --suite macro-shortcut-resume
 ```
+
+身份索引保存于 `.analysis/results/code-identity.sqlite3`。`--phase frontend/native/propagate` 可分阶段执行；前端中断后使用 `--phase frontend --resume`，重新核对已选择获取收据的 SHA 后，只解析尚未入库的源文件。JS 由 tree-sitter 解析，按原件字节 SHA 避免重复解析；规范化保留标识符、常量、运算符、AST 结构和依赖编号，模块编号支持压缩器的科学计数法写法。原生索引逐函数核对原件 chunk／指令字节，直接资源声明与容器内候选分别保存。
+
+`variant-work-queue.json` 只引用数据库中的能力候选变体和正式审阅范围。AST 中出现能力名称不等于完整调用链，完整源码所有者也不等于所有语义均已审阅；未归属代码、第三方代码和未核实的本地依赖单列。只有有明确产品范围且当前身份核验通过的完整证明可以保留能力闭合状态，局部证明传播保持局部。
+
+`code-identity --phase navigation` 复用当前部署与已有AST能力，提取实际createRoot、加载器、条件navigation和页面实现根；`--product <PID>`仅用于已定位的新输入形态，默认按版本／获取SHA复用已有结果。挂载保留完整occurrence、props、同名遮蔽和前项未决，wrapper不当作实现根。传播时重新核对原件与owner字节；当前部分挂载不能抹去尚未核实的旧页面范围。
+
+角色收据的纯字符串factory保留为 `verified_data_dependency`，不进入行为工作组；含逻辑的locale runtime继续排队。大收据流式读取保留完整整数精度，并在交换边界保持标准JSON的小数语义，不能因uint64溢出漏掉后续段落。
+
+`code-identity --phase assign --assignment owner,family,capability` 可重复传入最多三个完整能力，按规范化身份给交集指定唯一所有者；预留保存到同一SQLite和队列，旧队列原始字节按SHA保留。重建队列保留正在进行的分工，并标明其来源身份是否仍当前。
+
+`code-identity --phase shared --shared-source synapse-macro` 仅为已有实际调用证据的共享应用选择当前保留部署，复用同一源SHA／factory缓存。共享命名空间进入 `shared_deployments/shared_sources/shared_variants`，不会伪造产品PID或自动扩大消费范围。导航定向修复保留完整199产品摘要，条件push和已验证ASCII名称转换保留原始表达式依据。
+
+`storage-plan --apply <计划路径> --plan-sha256 <实际SHA>` 只执行计划内 Cargo dev profile 清理，并保留 `target/verification-temp` 等其他目录。`.work` 继续使用 `clean` 的依赖、会话和占用保护；分析原件去重迁移仅生成计划，不随构建清理删除。
+
+`storage-plan --finish <执行收据>` 记录三个目录的前后逻辑字节与实际占用。schema 1的早期体积计划缺少可靠文件身份分离，不能用于执行；schema 2使用实际文件身份去重硬链接并查询压缩占用。
+
+`clean --dry-run --native-mcp-owner .analysis/results/frontend/name-audit.json#/section` 支持已结束的MCP-only私有副本。它要求正式段明确释放数据库，绑定原件、实际结束会话、分析计划、完整查询清单和逐函数原件字节；仍检查新引用、保留任务、路径和独占占用。查询无需伪装成全库capture，退出请求也不能伪装成实际exit code。执行继续使用原 `clean --apply <计划> --plan-sha256 <SHA>`；所有原件、查询和历史失败留在分析目录。
 
 `PROJECTREL` 为 `.analysis/inputs/` 下已登记的 DLL／NODE／EXE。`capture-native` 使用 IDA 批处理与 Hex-Rays 保存全函数、汇编、CFG、xref、类型、字符串、导出／导入和失败；结束后正常退出。`--resume` 补齐同一输入的缺失结果，`--mcp-only` 使用独立私有副本启动查询会话。
 

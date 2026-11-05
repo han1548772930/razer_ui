@@ -619,6 +619,20 @@ class JavascriptBindings:
         def key(node):
             return node.type, node.start_byte, node.end_byte
 
+        def bound_names(pattern):
+            pending_patterns = [pattern]
+            while pending_patterns:
+                candidate = pending_patterns.pop()
+                if candidate.type in {"identifier", "shorthand_property_identifier_pattern"}:
+                    yield candidate
+                elif candidate.type in {"pair_pattern", "assignment_pattern", "object_assignment_pattern"}:
+                    nested = candidate.child_by_field_name(
+                        "value" if candidate.type == "pair_pattern" else "left")
+                    if nested is not None:
+                        pending_patterns.append(nested)
+                elif candidate.type in {"formal_parameters", "object_pattern", "array_pattern", "rest_pattern"}:
+                    pending_patterns.extend(candidate.named_children)
+
         definitions, pending = {}, [tree.root_node]
         while pending:
             node = pending.pop()
@@ -633,12 +647,8 @@ class JavascriptBindings:
                     definitions.setdefault(key(target), []).append((binding.text.decode("utf-8"), node, "declaration"))
                 else:
                     # Do not invent a value for a destructured binding.
-                    descendants = [binding]
-                    while descendants:
-                        candidate = descendants.pop()
-                        if candidate.type in {"identifier", "shorthand_property_identifier_pattern"}:
-                            definitions.setdefault(key(target), []).append((candidate.text.decode("utf-8"), node, "destructuring_requires_value_analysis"))
-                        descendants.extend(candidate.named_children)
+                    for candidate in bound_names(binding):
+                        definitions.setdefault(key(target), []).append((candidate.text.decode("utf-8"), node, "destructuring_requires_value_analysis"))
             elif node.type == "for_in_statement":
                 kind = node.child_by_field_name("kind")
                 binding = node.child_by_field_name("left")
@@ -647,19 +657,9 @@ class JavascriptBindings:
                 # The grammar places these declarations directly in `left`.
                 # Iteration values require analysis of the actual collection.
                 target = owner(node, function_scoped=True) if kind.type == "var" else node
-                descendants = [binding]
-                while descendants:
-                    candidate = descendants.pop()
-                    if candidate.type in {"identifier", "shorthand_property_identifier_pattern"}:
-                        definitions.setdefault(key(target), []).append((
-                            candidate.text.decode("utf-8"), node, "iteration_requires_value_analysis"))
-                    elif candidate.type in {"pair_pattern", "assignment_pattern", "object_assignment_pattern"}:
-                        nested = candidate.child_by_field_name(
-                            "value" if candidate.type == "pair_pattern" else "left")
-                        if nested is not None:
-                            descendants.append(nested)
-                    elif candidate.type in {"object_pattern", "array_pattern", "rest_pattern"}:
-                        descendants.extend(candidate.named_children)
+                for candidate in bound_names(binding):
+                    definitions.setdefault(key(target), []).append((
+                        candidate.text.decode("utf-8"), node, "iteration_requires_value_analysis"))
             elif node.type in {"function_declaration", "class_declaration"}:
                 binding = node.child_by_field_name("name")
                 if binding is not None:
@@ -667,12 +667,8 @@ class JavascriptBindings:
             if node.type in functions | {"catch_clause"}:
                 parameters = node.child_by_field_name("parameters") or node.child_by_field_name("parameter")
                 if parameters is not None:
-                    descendants = [parameters]
-                    while descendants:
-                        candidate = descendants.pop()
-                        if candidate.type in {"identifier", "shorthand_property_identifier_pattern"}:
-                            definitions.setdefault(key(node), []).append((candidate.text.decode("utf-8"), candidate, "parameter_requires_caller_analysis"))
-                        descendants.extend(candidate.named_children)
+                    for candidate in bound_names(parameters):
+                        definitions.setdefault(key(node), []).append((candidate.text.decode("utf-8"), candidate, "parameter_requires_caller_analysis"))
         self.definitions, self.key = definitions, key
         self.named_definitions = {}
         for scope_key, entries in definitions.items():
@@ -687,6 +683,10 @@ class JavascriptBindings:
         current = tree.root_node.descendant_for_byte_range(reference_byte, reference_byte)
         while current is not None:
             candidates = self.named_definitions.get(key(current), {}).get(name, [])
+            parameters = current.child_by_field_name("parameters") or current.child_by_field_name("parameter")
+            if parameters is not None and parameters.start_byte <= reference_byte < parameters.end_byte:
+                # Parameter initializers cannot see declarations in the function body.
+                candidates = [item for item in candidates if item[2] == "parameter_requires_caller_analysis"]
             if candidates:
                 if len(candidates) != 1:
                     return {"name": name, "reference_byte": reference_byte, "resolution": "ambiguous_same_scope_declarations",

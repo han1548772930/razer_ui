@@ -4,13 +4,13 @@ Capabilities come from the current official deployment of each product: every
 middleware ``genericFeature`` ``featureKey`` (other ``useFeature`` names are kept
 as injector configuration keys) parsed as complete AST call nodes from the newest verified
 acquisition, plus the mounted UI page kinds recorded by the product structure
-receipt. Stage status is read from published canonical sections mapped in
-``tools/capability-ledger.json``; nothing is inferred from names.
+receipt. Stage status is bound to published scopes through the cross-product
+SQLite identity index; partial source evidence never establishes whole-capability
+closure on a different product.
 """
 import hashlib
 import json
-from concurrent.futures import ThreadPoolExecutor
-from pathlib import Path
+from contextlib import closing
 
 import analysis as a
 
@@ -39,12 +39,12 @@ def _walk(node):
         stack.extend(reversed(current.children))
 
 
-def _registrations(audit, item):
+def _registrations(audit, item, *, tree=None):
     """Return ordered (feature, generic featureKeys) pairs from one original."""
     raw = audit.read(item)
     if b"useFeature" not in raw:
         return []
-    tree = audit.parser.parse(raw)
+    tree = tree if tree is not None else audit.parser.parse(raw)
     found = []
     for node in _walk(tree.root_node):
         if node.type != "call_expression":
@@ -76,102 +76,134 @@ def _registrations(audit, item):
     return found
 
 
-def _product(audit_factory, family, layer_family, pid):
-    import frontend
-    audit = audit_factory()
-    route = "https://apps.razer.com/synapse/products/%d/mw/" % pid
-    candidates = sorted((a.ROOT / ".analysis/inputs/frontend").glob("%s-mw-%d-*/acquisition.json" % (layer_family, pid)))
-    if not candidates:
-        return {"product_id": pid, "family": family, "mw_source": None,
-                "failure": "no_retained_mw_acquisition", "registrations": []}
-    try:
-        selected = frontend.current_source_selection(route, audit, candidates=candidates, verify_capture=False)
-    except Exception as error:  # Selection failures are evidence, not skipped products.
-        return {"product_id": pid, "family": family, "mw_source": None,
-                "failure": "source_selection: " + str(error), "registrations": []}
-    registrations = []
-    for item in selected["originals"]:
-        if item["path"].endswith(".js") and "/products/%d/" % pid in item["path"]:
-            registrations.extend(_registrations(audit, item))
-    return {"product_id": pid, "family": family, "mw_source": selected["acquisition"],
-            "failure": None if registrations else "no_useFeature_registration_found",
-            "registrations": registrations, "changed_during_query": audit.final_snapshot()}
+def _static_state(sections):
+    direct = [row for row in sections if row["basis"] == "explicit_product_scope"]
+    if direct and all(row["state"] == "closed" and row["current_product_sources_bound"] for row in direct):
+        return "closed"
+    if any(row["matched_owner_count"] and row["state"] != "invalid" for row in sections):
+        return "partial"
+    if any(row["state"] == "invalid" for row in sections):
+        return "invalid_evidence"
+    return "evidence_unmatched" if direct else "not_started"
 
 
-def _section_status(documents, section_ref):
-    receipt, name = section_ref["receipt"], section_ref["section"]
-    document = documents.setdefault(receipt, json.loads((a.ROOT / receipt).read_bytes()))
-    section = document.get(name)
-    if not isinstance(section, dict):
-        return {"receipt": receipt, "section": name, "state": "missing"}
-    complete = section.get("source_chain_complete") is True
-    clean = (section.get("target_execution") is False and section.get("failures") == []
-             and section.get("changed_during_query") == [])
-    return {"receipt": receipt, "section": name, "canonical_sha256": _digest(section),
-            "state": "closed" if complete and clean else "partial" if clean else "invalid",
-            "open_static_items": len(section.get("remaining_chains") or [])}
+def _sections(db, pid, capability):
+    sections = []
+    native_present = db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='native_review_matches'").fetchone()
+    for row in db.execute("SELECT * FROM review_sections ORDER BY receipt,pointer"):
+        if capability not in json.loads(row["capabilities"]):
+            continue
+        direct = pid in json.loads(row["product_ids"])
+        js_candidates = db.execute("SELECT COUNT(*) FROM review_matches WHERE section_id=? AND product_id=?",
+                                   (row["id"], pid)).fetchone()[0]
+        js_count = js_candidates if direct else db.execute("""SELECT COUNT(*) FROM review_matches m
+            JOIN capability_roots cr ON cr.product_id=m.product_id AND cr.normalized_sha=m.normalized_sha
+            WHERE m.section_id=? AND m.product_id=? AND cr.capability=?""", (row["id"], pid, capability)).fetchone()[0]
+        non_factory = db.execute("""SELECT COUNT(*) FROM review_owners o WHERE o.section_id=?
+            AND o.status='verified_current_non_factory_scope' AND EXISTS(
+                SELECT 1 FROM sources s JOIN deployment_sources ds USING(path) JOIN deployments d USING(product_id,layer)
+                WHERE s.sha256=o.source_sha AND ds.product_id=? AND d.failure IS NULL)""", (row["id"], pid)).fetchone()[0]
+        if direct:
+            js_count += non_factory
+        native_count = db.execute("""SELECT COUNT(DISTINCT normalized_sha) FROM native_review_matches
+            WHERE section_id=? AND product_id=?""", (row["id"], pid)).fetchone()[0] if native_present else 0
+        count = js_count + native_count
+        if not direct and not count and not js_candidates:
+            continue
+        missing = db.execute("""SELECT COUNT(*) FROM review_owners o WHERE section_id=?
+            AND source_path LIKE ? AND NOT EXISTS(SELECT 1 FROM sources s
+                JOIN deployment_sources ds USING(path) JOIN deployments d USING(product_id,layer)
+                WHERE s.sha256=o.source_sha AND ds.product_id=? AND d.failure IS NULL)""",
+                            (row["id"], f"%/products/{pid}/%", pid)).fetchone()[0]
+        bound = db.execute("""SELECT COUNT(*) FROM review_owners o WHERE o.section_id=?
+            AND o.source_path LIKE ? AND o.status IN ('matched','verified_current_non_factory_scope') AND EXISTS(
+                SELECT 1 FROM sources s JOIN deployment_sources ds USING(path) JOIN deployments d USING(product_id,layer)
+                WHERE s.sha256=o.source_sha AND ds.product_id=? AND d.failure IS NULL)""",
+                           (row["id"], f"%/products/{pid}/%", pid)).fetchone()[0]
+        sections.append({"receipt": row["receipt"], "section": row["pointer"][1:],
+                         "canonical_sha256": row["canonical_sha"], "state": row["state"],
+                         "basis": "explicit_product_scope" if direct else "identical_code_scope" if count else "reusable_code_candidate",
+                         "matched_owner_count": count,
+                         "matched_js_owner_count": js_count, "matched_native_function_count": native_count,
+                         "candidate_js_owner_count": js_candidates,
+                         "current_non_factory_owner_count": non_factory,
+                         "current_product_sources_bound": bool(bound) and not missing,
+                         "scope": row["scope"]})
+    return sections
 
 
-def build(workers=4):
-    import host
-    if workers < 2:
-        raise ValueError("Capability ledger requires at least two workers")
+def build(workers=4, *, db_path=None):
+    import code_identity as ci
+    import code_identity_reviews as reviews
     manifest = json.loads(MANIFEST.read_bytes())
-    product_doc = json.loads((a.ROOT / ".analysis/results/product-documentation.json").read_bytes())
-    pages = {row["product_id"]: row for row in product_doc["products"]}
-    scope = []
-    for family, spec in manifest["families"].items():
-        for pid in spec["product_ids"]:
-            scope.append((family, spec["source_family"], pid))
-    with ThreadPoolExecutor(max_workers=workers) as pool:
-        products = list(pool.map(lambda row: _product(host.HostLocalAudit, *row), scope))
-    documents = {}
-    mapped = {}
-    for entry in manifest["capability_sections"]:
-        status = [_section_status(documents, ref) for ref in entry["sections"]]
-        for pid in entry["product_ids"]:
-            for capability in entry["capabilities"]:
-                mapped.setdefault((pid, capability), []).extend(status)
     stage_notes = {(row["product_id"], row["capability"]): row for row in manifest.get("stage_evidence", [])}
+    prior = json.loads(OUTPUT.read_bytes()) if OUTPUT.is_file() else {"products": []}
+    previous_stages = {(row["product_id"], entry["capability"]): entry["stages"]
+                       for row in prior["products"] for entry in row["capabilities"]}
     rows, totals = [], {}
-    for product in products:
-        pid = product["product_id"]
-        capabilities = []
-        for reg in product["registrations"]:
-            if reg["feature"] == "genericFeature":
-                capabilities.extend("feature:" + key for key in reg["generic_keys"])
-            # Other useFeature names are injector configuration for the registered
-            # features and pages, not separately deliverable capabilities.
-        page_row = pages.get(pid)
-        capabilities.extend("page:" + kind for kind in (page_row or {}).get("current_page_kinds", []))
-        unique = list(dict.fromkeys(capabilities))
-        entries = []
-        for capability in unique:
-            sections = mapped.get((pid, capability), [])
-            states = {row["state"] for row in sections}
-            static = ("closed" if sections and states == {"closed"} else
-                      "partial" if sections and "invalid" not in states and "missing" not in states else
-                      "invalid_evidence" if sections else "not_started")
-            note = stage_notes.get((pid, capability), {})
-            stages = {"static": static}
-            for stage in STAGES[1:]:
-                stages[stage] = note.get(stage, "not_started")
-            entries.append({"capability": capability, "stages": stages, "sections": sections})
-            for stage, value in stages.items():
-                totals.setdefault(product["family"], {}).setdefault(stage, {}).setdefault(value, 0)
-                totals[product["family"]][stage][value] += 1
-        rows.append({**{k: product[k] for k in ("product_id", "family", "mw_source", "failure")},
-                     "page_source": {"receipt": ".analysis/results/product-documentation.json",
-                                     "recorded_at_utc": product_doc.get("recorded_at_utc"),
-                                     "present": page_row is not None},
-                     "registration_owners": [r["owner"] | {"feature": r["feature"]} for r in product["registrations"]],
-                     "configuration_keys": sorted({r["feature"] for r in product["registrations"] if r["feature"] != "genericFeature"}),
-                     "changed_during_query": product.get("changed_during_query", []),
-                     "capabilities": entries})
-    result = {"schema_version": 1, "manifest": {"path": a.rel(MANIFEST), "sha256": hashlib.sha256(MANIFEST.read_bytes()).hexdigest()},
-              "denominator": "first-tier products x (current MW genericFeature featureKeys + mounted UI page kinds); other useFeature names are configuration_keys",
+    with closing(ci.connect(db_path or ci.DATABASE)) as db:
+        metadata = dict(db.execute("SELECT key,value FROM metadata"))
+        if metadata.get("review_source_signature") != reviews.source_signature(db):
+            raise ValueError("Code identities changed or propagation is absent; run code-identity --phase propagate")
+        if json.loads(metadata.get("review_navigation_signature", "null")) != reviews.navigation_signature(db):
+            raise ValueError("Mounted navigation changed; rebuild identity propagation")
+        if metadata.get("review_manifest_sha") != a.sha(MANIFEST):
+            raise ValueError("Capability scope mapping changed; rebuild identity propagation")
+        product_doc = a.ROOT / ".analysis/results/product-documentation.json"
+        if metadata.get("review_product_doc_sha") != a.sha(product_doc):
+            raise ValueError("Mounted product scope changed; rebuild identity propagation")
+        for receipt in json.loads(metadata.get("review_receipts", "[]")):
+            if a.sha(a.resolve(receipt["path"], ".analysis/results")) != receipt["sha256"]:
+                raise ValueError("Formal review changed; rebuild identity propagation: " + receipt["path"])
+        for receipt in json.loads(metadata.get("review_role_evidence", "[]")):
+            if a.sha(a.resolve(receipt["path"], ".analysis/results")) != receipt["sha256"]:
+                raise ValueError("Variant role evidence changed; rebuild identity propagation: " + receipt["path"])
+        for family, spec in manifest["families"].items():
+            for pid in spec["product_ids"]:
+                deployments = {row["layer"]: dict(row) for row in db.execute("SELECT * FROM deployments WHERE product_id=?", (pid,))}
+                registrations = [dict(row) for row in db.execute("""SELECT DISTINCT s.path,r.start_byte,r.end_byte,r.feature
+                    FROM deployment_sources ds JOIN sources s USING(path) JOIN registrations r ON r.source_sha=s.sha256
+                    WHERE ds.product_id=? AND ds.layer='mw' ORDER BY s.path,r.start_byte""", (pid,))]
+                failures = [r["failure"] for r in deployments.values() if r["failure"]]
+                if not registrations:
+                    failures.append("no_current_registration_identity")
+                entries = []
+                for scope in db.execute("SELECT * FROM capability_scope WHERE product_id=? ORDER BY capability", (pid,)):
+                    capability = scope["capability"]
+                    sections = _sections(db, pid, capability)
+                    stages = {"static": _static_state(sections)}
+                    note = stage_notes.get((pid, capability), {})
+                    previous = previous_stages.get((pid, capability), {})
+                    for stage in STAGES[1:]:
+                        stages[stage] = note.get(stage, previous.get(stage, "not_started"))
+                    variants = db.execute("""SELECT COUNT(DISTINCT normalized_sha) FROM capability_candidates
+                        WHERE product_id=? AND capability=?""", (pid, capability)).fetchone()[0]
+                    entries.append({"capability": capability, "stages": stages, "source_state": scope["source_state"],
+                                    "known_candidate_variants": variants, "complete_variant_scope_proven": False,
+                                    "sections": sections, "stage_evidence": note})
+                    for stage, value in stages.items():
+                        totals.setdefault(family, {}).setdefault(stage, {}).setdefault(value, 0)
+                        totals[family][stage][value] += 1
+                rows.append({"product_id": pid, "family": family,
+                             "mw_source": deployments.get("mw", {}).get("acquisition"),
+                             "ui_source": deployments.get("ui", {}).get("acquisition"),
+                             "failure": failures or None, "registration_owners": registrations,
+                             "configuration_keys": sorted({r["feature"] for r in registrations if r["feature"] != "genericFeature"}),
+                             "capabilities": entries})
+        variant_totals = {r[0]: r[1] for r in db.execute("SELECT state,COUNT(*) FROM variant_queue WHERE state<>'verified_data_dependency' GROUP BY state")}
+        data_dependencies = db.execute("SELECT COUNT(*) FROM variant_queue WHERE state='verified_data_dependency'").fetchone()[0]
+        unknown_sources = [dict(r) for r in db.execute("SELECT source_state,COUNT(*) AS capabilities FROM capability_scope GROUP BY source_state")]
+    result = {"schema_version": 2, "manifest": {"path": a.rel(MANIFEST), "sha256": hashlib.sha256(MANIFEST.read_bytes()).hexdigest()},
+              "denominator": "first-tier retained product x capability inventory: current MW genericFeature featureKeys plus retained UI page kinds; unresolved current mount identities are recorded separately",
+              "current_capability_inventory_complete": (not any(r["failure"] for r in rows) and
+                  all(r["source_state"] in {"current_registration", "current_mount_source_identity", "current_navigation_complete"} for r in unknown_sources)),
               "stages": list(STAGES), "target_execution": False,
               "totals": totals, "products": rows,
+              "code_identity": {"database": a.rel(ci.DATABASE), "source_signature": metadata["review_source_signature"],
+                                "known_candidate_variant_states": variant_totals, "full_remaining_variant_count_known": False,
+                                "verified_data_dependencies": data_dependencies,
+                                "source_scope_states": unknown_sources},
               "failures": [{"product_id": r["product_id"], "failure": r["failure"]} for r in rows if r["failure"]]}
     a.save(OUTPUT, result)
-    return {"products": len(rows), "failures": len(result["failures"]), "totals": totals}
+    return {"products": len(rows), "failures": len(result["failures"]), "totals": totals,
+            "known_candidate_variant_states": variant_totals}

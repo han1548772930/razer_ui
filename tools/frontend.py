@@ -1650,6 +1650,23 @@ def unparenthesized(node):
     return node
 
 
+def webpack_module_id(node):
+    """Read an AST numeric property, including minifier exponent spellings."""
+    from decimal import Decimal, InvalidOperation
+    if node is None or node.type not in {"number", "string"}:
+        return None
+    value = node.text.decode("utf-8", "strict")
+    if node.type == "string":
+        value = value[1:-1]
+        return int(value) if value.isascii() and value.isdecimal() else None
+    try:
+        number = (Decimal(int(value, 0)) if value.lower().startswith(("0x", "0o", "0b"))
+                  else Decimal(value.replace("_", "")))
+    except (ValueError, InvalidOperation):
+        return None
+    return int(number) if number.is_finite() and number == number.to_integral_value() and 0 <= number <= 2**53 - 1 else None
+
+
 def module_table(node):
     if node is None or node.type != "object" or not node.named_children:
         return None
@@ -1663,7 +1680,8 @@ def module_table(node):
             key, value = pair.child_by_field_name("name"), pair
         else:
             return None
-        if key is None or not re.fullmatch(rb"\d+|[\"']\d+[\"']", key.text):
+        module_id = webpack_module_id(key)
+        if module_id is None:
             return None
         value = unparenthesized(value)
         if value is None or value.type not in {"function_expression", "arrow_function", "method_definition"}:
@@ -1678,7 +1696,7 @@ def module_table(node):
         else:
             parameter_names = [part.text.decode() for part in parameters.named_children
                                if part.type != "comment"]
-        factories.append({"module_id": int(key.text.strip(b"\"'")),
+        factories.append({"module_id": module_id,
                           "factory_range": [value.start_byte, value.end_byte],
                           "body_range": [body.start_byte + 1, body.end_byte - 1],
                           "parameters": parameter_names, "syntax": value.type})

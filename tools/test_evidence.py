@@ -6479,6 +6479,86 @@ class JavascriptBindingTests(unittest.TestCase):
         result = self.binding(raw, "data", b'children:data')
         self.assertEqual(result["resolution"], "parameter_requires_caller_analysis")
 
+    def test_parameter_patterns_bind_only_targets_and_keep_default_references(self):
+        raw = (b'const fallback="outer",key="selector";function f(value=fallback,'
+               b'{[key]:chosen=fallback,short=fallback}={},[item=fallback,...rest]=[])'
+               b'{inside(value,chosen,short,item,rest,fallback,key)}')
+        for marker in (b'value=fallback', b'chosen=fallback', b'short=fallback',
+                       b'item=fallback', b'inside('):
+            with self.subTest(marker=marker):
+                self.assertEqual(self.binding(raw, "fallback", marker)["body"], 'fallback="outer"')
+        self.assertEqual(self.binding(raw, "key", b'[key]')["body"], 'key="selector"')
+        for name in ("value", "chosen", "short", "item", "rest"):
+            with self.subTest(name=name):
+                bound = self.binding(raw, name, b'inside(')
+                self.assertEqual(bound["resolution"], "parameter_requires_caller_analysis")
+                self.assertEqual(bound["body"], name)
+
+    def test_declaration_patterns_do_not_bind_default_expressions_or_computed_keys(self):
+        raw = (b'const fallback="outer",key="selector";{const {[key]:chosen=fallback,'
+               b'nested:[item=fallback,...rest],short=fallback}=source;'
+               b'inside(chosen,item,rest,short,key,fallback)}')
+        for name in ("chosen", "item", "rest", "short"):
+            with self.subTest(name=name):
+                self.assertEqual(self.binding(raw, name, b'inside(')["resolution"],
+                                 "destructuring_requires_value_analysis")
+        for name in ("key", "fallback"):
+            with self.subTest(name=name):
+                self.assertEqual(self.binding(raw, name, b'inside(')["resolution"], "declaration")
+                self.assertEqual(self.binding(raw, name, b'item=fallback')["scope"]["syntax"], "program")
+
+    def test_default_parameter_references_keep_other_parameters_and_real_shadowing(self):
+        cases = (
+            (b'const first="outer";function f(first,second=first){inside(first)}',
+             "first", b'second=first', b'first,second'),
+            (b'const value="outer";function f(value=value){inside(value)}',
+             "value", b'value=value', b'value=value'),
+            (b'const later="outer";function f(first=later,later=1){inside(later)}',
+             "later", b'first=later', b'later=1'),
+            (b'const key="outer";function f({key},value=key){inside(key)}',
+             "key", b'value=key', b'key},value'),
+        )
+        for raw, name, reference, declaration in cases:
+            with self.subTest(raw=raw):
+                bound = self.binding(raw, name, reference)
+                self.assertEqual(bound["resolution"], "parameter_requires_caller_analysis")
+                self.assertEqual(bound["start_byte"], raw.index(declaration))
+                self.assertEqual(bound["body"], name)
+
+    def test_default_parameter_scope_excludes_function_body_var_bindings(self):
+        for body, resolution in (
+                (b'var fallback="body";', "declaration"),
+                (b'for(var fallback of values){}', "iteration_requires_value_analysis")):
+            raw = (b'const fallback="outer";function f(value=fallback){' + body
+                   + b'inside(fallback)}')
+            with self.subTest(body=body):
+                self.assertEqual(self.binding(raw, "fallback", b'value=fallback')["body"],
+                                 'fallback="outer"')
+                self.assertEqual(self.binding(raw, "fallback", b'inside(')["resolution"], resolution)
+                self.assertEqual(self.binding(raw, "fallback", b'inside(')["scope"]["syntax"],
+                                 "function_declaration")
+
+    def test_nested_functions_in_defaults_keep_their_own_bindings(self):
+        raw = (b'const fallback="outer";function f(value=(arg=fallback)=>arg)'
+               b'{var fallback="body";outside(arg)}')
+        self.assertEqual(self.binding(raw, "fallback", b'arg=fallback')["body"], 'fallback="outer"')
+        self.assertEqual(self.binding(raw, "arg", b'=>arg')["scope"]["syntax"], "arrow_function")
+        self.assertEqual(self.binding(raw, "arg", b'outside(')["resolution"], "unresolved_identifier")
+        raw = (b'const fallback="outer";const {value=(()=>{const hidden=1;'
+               b'return hidden+fallback})()}=source;outside(hidden,fallback)')
+        self.assertEqual(self.binding(raw, "hidden", b'return hidden')["body"], 'hidden=1')
+        self.assertEqual(self.binding(raw, "hidden", b'outside(')["resolution"], "unresolved_identifier")
+        self.assertEqual(self.binding(raw, "fallback", b'outside(')["body"], 'fallback="outer"')
+
+    def test_catch_pattern_defaults_keep_outer_computed_keys_and_values(self):
+        raw = (b'const key="selector",fallback="outer";try{work()}'
+               b'catch({[key]:value=fallback}){inside(value,key,fallback)}')
+        self.assertEqual(self.binding(raw, "value", b'inside(')["resolution"],
+                         "parameter_requires_caller_analysis")
+        for name in ("key", "fallback"):
+            with self.subTest(name=name):
+                self.assertEqual(self.binding(raw, name, b'inside(')["resolution"], "declaration")
+
     def test_var_hoisting_and_inner_lexical_bindings_are_separate(self):
         raw = b'function f(){if(ok){var data="outer"} {const data="inner";inside(data)}outside(data)}'
         self.assertEqual(self.binding(raw, "data", b'inside(data)')["body"], 'data="inner"')
@@ -8010,6 +8090,20 @@ class SelectedGapRefreshTests(unittest.TestCase):
         self.assertFalse(ledger["selected_refresh"]["target_execution"])
         self.assertEqual(set(ledger["derived_owners"]), {"unrelated", self.owner, self.host, self.native})
 
+    def test_explicit_capability_review_owner_uses_existing_gap_contract(self):
+        name = ".analysis/results/frontend/mouse-customize-variants-review.json"
+        analysis.save(self.root / name, {"scope": {"source_chain_complete": False, "failures": []}})
+        before = self.path.read_bytes()
+        with self.assertRaisesRegex(ValueError, "not a semantic"):
+            analysis.refresh_gaps([name])
+        self.assertEqual(self.path.read_bytes(), before)
+        analysis.save(self.root / "tools/capability-ledger.json", {"capability_sections": [
+            {"sections": [{"receipt": name, "section": "scope"}]}]})
+        result = analysis.refresh_gaps([name])
+        self.assertEqual(result["owners"]["unrelated"], self.other)
+        self.assertIn(name, result["derived_owners"])
+        self.assertEqual(result["selected_refresh"]["sources"][0]["sha256"], analysis.sha(self.root / name))
+
     def test_managed_refresh_preserves_actual_diagnostics_failures_and_other_owners(self):
         name = ".analysis/results/host-current/managed/capture.json"
         diagnostic = {"kind": "managed_decompiler_unresolved", "path": "source/Service.cs", "line": 17,
@@ -8099,7 +8193,17 @@ VERIFICATION_INPUT_NAMES = ("tools/evidence.py", "tools/test_evidence.py", "tool
                                        "tools/native_import_forwarders.py", "tools/test_native_import_forwarders.py",
                                        "tools/native_source_correspondence.py", "tools/test_native_source_correspondence.py",
                                        "tools/native_static_reviews.py", "tools/test_native_static_reviews.py",
-                                       "tools/test_frontend.py", "tools/test_scratch_cleanup.py")
+                                       "tools/test_frontend.py", "tools/test_scratch_cleanup.py",
+                                       "tools/code_identity.py", "tools/test_code_identity.py",
+                                       "tools/code_identity_native.py", "tools/test_code_identity_native.py",
+                                       "tools/code_identity_navigation.py", "tools/test_code_identity_navigation.py",
+                                       "tools/code_identity_compare.py", "tools/test_code_identity_compare.py",
+                                       "tools/code_identity_roles.py", "tools/test_code_identity_roles.py",
+                                       "tools/code_identity_reviews.py", "tools/test_code_identity_reviews.py",
+                                       "tools/capability_ledger.py", "tools/capability-ledger.json",
+                                       "tools/workspace_storage.py", "tools/test_workspace_storage.py",
+                                       "tools/native_mcp_cleanup.py", "tools/test_native_mcp_cleanup.py",
+                                       "tools/analyzers/python-static/acquisition.json")
 
 
 def verification_input_snapshot():
@@ -8486,7 +8590,9 @@ VERIFICATION_TEST_MODULES = ("test_evidence", "test_rust_data", "test_typed_tabl
                     "test_native_attempt_history", "test_native_boundaries", "test_native_embedded",
                     "test_native_ia64_contracts", "test_native_import_forwarders",
                     "test_native_source_correspondence", "test_native_static_reviews", "test_frontend",
-                    "test_scratch_cleanup")
+                    "test_scratch_cleanup", "test_code_identity", "test_code_identity_native",
+                    "test_code_identity_navigation", "test_code_identity_compare", "test_code_identity_roles",
+                    "test_code_identity_reviews", "test_workspace_storage", "test_native_mcp_cleanup")
 
 
 def run(selected_tests=None):

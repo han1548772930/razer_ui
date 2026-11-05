@@ -3966,6 +3966,7 @@ def prepare_static_python():
     wheels, files, indexed = [], [], []
     pins = {row["name"]: row for row in previous["wheels"]}
     pins["tree-sitter-rust"] = {"name": "tree-sitter-rust", "version": "0.24.2"}
+    pins["ijson"] = {"name": "ijson", "version": "3.4.0.post0"}
     for pinned in pins.values():
         name, version = pinned["name"], pinned["version"]
         metadata_url = f"https://pypi.org/pypi/{name}/{version}/json"
@@ -7721,7 +7722,7 @@ def _clean_native_batch_candidates(selectors):
     return rows
 
 
-def _clean_candidates(before=None, native_batch_owners=()):
+def _clean_candidates(before=None, native_batch_owners=(), native_mcp_owners=()):
     import configparser
     cutoff = datetime.now(timezone.utc).timestamp() if before is None else before
     queue = ROOT / ".analysis/results/reverse-pending.json"
@@ -7802,6 +7803,14 @@ def _clean_candidates(before=None, native_batch_owners=()):
             session = json.loads((ROOT / row["owner_receipts"][1]).read_bytes())
             if datetime.fromisoformat(session["finished_at_utc"]).timestamp() >= cutoff:
                 retained.append({"path": row["path"], "reason": "current_run_native_batch"})
+            else:
+                candidates.append(row)
+    if native_mcp_owners:
+        import native_mcp_cleanup
+        for row in native_mcp_cleanup.candidates(sys.modules[__name__], native_mcp_owners):
+            sha = row["path"].split("/")[2]
+            if sha in reserved:
+                retained.append({"path": row["path"], "reason": "reserved_analysis_family", "owners": reserved[sha]})
             else:
                 candidates.append(row)
     uploads = ROOT / ".work/asset-releases/uploads"
@@ -8304,8 +8313,8 @@ def _clean_references(candidates, *, exclude=(), bind_history=False):
         for name in matched_names:
             row = names[name]
             scan_document = document
-            if row.get("kind") == "ended_native_batch_private_copy" and isinstance(document, dict):
-                owner_name, section = row["native_batch_owner"].split("#/", 1)
+            if row.get("kind") in {"ended_native_batch_private_copy", "ended_native_mcp_private_copy"} and isinstance(document, dict):
+                owner_name, section = row["native_mcp_owner" if row["kind"] == "ended_native_mcp_private_copy" else "native_batch_owner"].split("#/", 1)
                 if filename == owner_name:
                     scan_document = dict(document)
                     scan_document[section] = {key: value for key, value in document[section].items()
@@ -8520,14 +8529,14 @@ def _clean_create_receipt(path, report):
 
 
 def clean(stale=False, *, before=None, dry_run=False, plan=None, apply=None, plan_sha256=None,
-          verification_recovery=None, native_batch_owners=()):
+          verification_recovery=None, native_batch_owners=(), native_mcp_owners=()):
     """Plan conservative scratch cleanup; deletion requires an unchanged explicit plan."""
     if stale:
-        if dry_run or plan or apply or plan_sha256 or verification_recovery is not None or native_batch_owners:
+        if dry_run or plan or apply or plan_sha256 or verification_recovery is not None or native_batch_owners or native_mcp_owners:
             raise ValueError("--stale cannot be combined with planned cleanup")
         return _clean_stale(before)
     if apply:
-        if dry_run or plan or verification_recovery is not None or native_batch_owners or not re.fullmatch(r"[a-f0-9]{64}", plan_sha256 or ""):
+        if dry_run or plan or verification_recovery is not None or native_batch_owners or native_mcp_owners or not re.fullmatch(r"[a-f0-9]{64}", plan_sha256 or ""):
             raise ValueError("Cleanup apply requires only --apply and --plan-sha256")
         source = _clean_receipt_path(apply)
         raw = source.read_bytes()
@@ -8541,12 +8550,12 @@ def clean(stale=False, *, before=None, dry_run=False, plan=None, apply=None, pla
             rows = report["candidates"]
             current = []
             if rows:
-                current, _ = _clean_candidates(native_batch_owners=report.get("native_batch_owners", ()))
+                current, _ = _clean_candidates(native_batch_owners=report.get("native_batch_owners", ()), native_mcp_owners=report.get("native_mcp_owners", ()))
                 verification_rows, _ = _verification_candidates()
                 current.extend(verification_rows)
             current_names = {row["path"]: row for row in current}
             for row in rows:
-                if row.get("kind") not in {"ended_supplement_private_copy", "ended_native_batch_private_copy", "old_asset_upload_clone", "owned_empty_verification_temp"}:
+                if row.get("kind") not in {"ended_supplement_private_copy", "ended_native_batch_private_copy", "ended_native_mcp_private_copy", "old_asset_upload_clone", "owned_empty_verification_temp"}:
                     raise ValueError("Cleanup plan contains an unowned target")
                 name = row["path"]
                 if row["kind"] == "owned_empty_verification_temp":
@@ -8557,7 +8566,8 @@ def clean(stale=False, *, before=None, dry_run=False, plan=None, apply=None, pla
                 else:
                     allowed = (re.fullmatch(r"\.work/native/[a-f0-9]{64}/supplements/[a-f0-9]{16}(?:-[a-f0-9]{16})?", name)
                            if row["kind"] == "ended_supplement_private_copy" else re.fullmatch(r"\.work/native/[a-f0-9]{64}/batch", name)
-                           if row["kind"] == "ended_native_batch_private_copy" else re.fullmatch(
+                           if row["kind"] == "ended_native_batch_private_copy" else re.fullmatch(r"\.work/native/[a-f0-9]{64}/mcp", name)
+                           if row["kind"] == "ended_native_mcp_private_copy" else re.fullmatch(
                                r"\.work/asset-releases/uploads/assets-[a-f0-9]{20}-[A-Za-z0-9_-]+", name))
                     tree = _clean_tree(name)
                 if not allowed or tree != row["tree"]:
@@ -8568,6 +8578,10 @@ def clean(stale=False, *, before=None, dry_run=False, plan=None, apply=None, pla
                         row.get(key) != current_names[name].get(key) for key in (
                             "basis", "owner_receipts", "native_batch_owner", "retained_capture_failures", "analyzer_pid")):
                     raise ValueError("Native batch cleanup omitted or changed ownership evidence")
+                if row["kind"] == "ended_native_mcp_private_copy" and any(
+                        row.get(key) != current_names[name].get(key) for key in (
+                            "basis", "owner_receipts", "native_mcp_owner", "selected_functions_verified", "retained_query_failures", "analyzer_pid", "observed_exit_code")):
+                    raise ValueError("MCP cleanup omitted or changed ownership evidence")
                 if row["kind"] == "old_asset_upload_clone":
                     owner = current_names[name]
                     if (row.get("rebuild_evidence") != owner.get("rebuild_evidence")
@@ -8631,7 +8645,7 @@ def clean(stale=False, *, before=None, dry_run=False, plan=None, apply=None, pla
     destination = _clean_receipt_path(plan or default_name)
     if destination.exists():
         raise FileExistsError("Cleanup plan already exists; choose a new reserved receipt name")
-    rows, retained = _clean_candidates(before, native_batch_owners)
+    rows, retained = _clean_candidates(before, native_batch_owners, native_mcp_owners)
     verification_rows, verification_retained = _verification_candidates()
     rows.extend(verification_rows)
     retained.extend(verification_retained)
@@ -8660,6 +8674,7 @@ def clean(stale=False, *, before=None, dry_run=False, plan=None, apply=None, pla
                                       "frozen owner-validated released private database inventory",
                                      "validated verification ledger directory ownership field"],
               "native_batch_owners": list(native_batch_owners),
+              "native_mcp_owners": list(native_mcp_owners),
               "guard_failures": errors + process_errors, "candidates": eligible, "retained": retained,
               "candidate_bytes": sum(row["tree"]["bytes"] for row in eligible)}
     _clean_create_receipt(destination, report)
@@ -14459,6 +14474,18 @@ def main():
     capability_ledger_command = commands.add_parser(
         "capability-ledger", help="Rebuild the first-tier product x capability progress ledger")
     capability_ledger_command.add_argument("--workers", type=int, choices=range(2, 9), default=4)
+    identity_command = commands.add_parser("code-identity", help="Index current cross-product AST and native function identities")
+    identity_command.add_argument("--workers", type=int, choices=range(1, 9), default=4)
+    identity_command.add_argument("--phase", choices=("frontend", "shared", "native", "navigation", "propagate", "assign", "all"), default="all")
+    identity_command.add_argument("--shared-source", action="append", help="Index this required retained shared frontend route, such as synapse-macro")
+    identity_command.add_argument("--product", type=int, action="append", help="Limit a navigation repair to these current product routes")
+    identity_command.add_argument("--assignment", action="append", default=[], help="Reserve owner,family,capability; repeat for up to three independent slots")
+    identity_command.add_argument("--resume", action="store_true", help="Resume a byte-bound selected deployment set after interruption")
+    storage_command = commands.add_parser("storage-plan", help="Measure workspace, plan analysis deduplication and explicitly clean Cargo dev outputs")
+    storage_command.add_argument("--plan", default=".analysis/results/workspace-storage-plan.json")
+    storage_command.add_argument("--apply")
+    storage_command.add_argument("--plan-sha256")
+    storage_command.add_argument("--finish", help="Record all workspace sizes after an owned Cargo cleanup receipt")
     revalidate_frontends = commands.add_parser(
         "revalidate-current-deployment",
         help="Read-only two-round HTTP revalidation of retained current frontend deployment owners",
@@ -14496,6 +14523,7 @@ def main():
     scratch_clean.add_argument("--plan-sha256", help="Actual SHA-256 of the reviewed cleanup plan; required with --apply")
     scratch_clean.add_argument("--verification-recovery", help="Register explicit legacy empty-directory recovery JSON, or - for stdin; planning only")
     scratch_clean.add_argument("--native-batch-owner", action="append", default=[], help="Release an explicitly completed semantic owner: .analysis/results/frontend/name-audit.json#/section")
+    scratch_clean.add_argument("--native-mcp-owner", action="append", default=[], help="Release an explicitly ended MCP-only owner with retained selected query evidence")
     runtime_audit = commands.add_parser("audit-runtime-resources", help="Trace Rust/catalog resource references against the fixed installed directory")
     runtime_audit.add_argument("--repair", action="store_true", help="Verify current inline ARGB layers and attach missing aliases; do not restore source media")
     pack_audit = commands.add_parser("audit-asset-pack")
@@ -14575,7 +14603,7 @@ def main():
         recovery = (json.loads(sys.stdin.read() if args.verification_recovery == "-" else args.verification_recovery)
                     if args.verification_recovery is not None else None)
         clean(stale=args.stale, dry_run=args.dry_run, plan=args.plan, apply=args.apply,
-              plan_sha256=args.plan_sha256, verification_recovery=recovery, native_batch_owners=args.native_batch_owner)
+              plan_sha256=args.plan_sha256, verification_recovery=recovery, native_batch_owners=args.native_batch_owner, native_mcp_owners=args.native_mcp_owner)
     elif args.command == "verify":
         verify()
     elif args.command == "audit-inputs":
@@ -14647,6 +14675,12 @@ def main():
         print(json.dumps(rust_data.run(args), ensure_ascii=False), flush=True)
     elif args.command == "prepare-resource-database":
         print(json.dumps(resource_database.run(args), ensure_ascii=False), flush=True)
+    elif args.command == "code-identity":
+        import code_identity
+        print(json.dumps(code_identity.run(args), ensure_ascii=False), flush=True)
+    elif args.command == "storage-plan":
+        import workspace_storage
+        print(json.dumps(workspace_storage.run(args), ensure_ascii=False), flush=True)
     elif args.command == "capability-ledger":
         import capability_ledger
         print(json.dumps(capability_ledger.build(args.workers)), flush=True)

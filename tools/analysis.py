@@ -901,6 +901,13 @@ def refresh_selected_gaps(owners):
         semantic = (path.parent == (ROOT / ".analysis/results/frontend").resolve()
                     and path.name.endswith("-audit.json")
                     and not path.name.endswith("-shared-page-layout-audit.json"))
+        if (not semantic and path.parent == (ROOT / ".analysis/results/frontend").resolve()
+                and not path.name.endswith("-shared-page-layout-audit.json")):
+            manifest = ROOT / "tools/capability-ledger.json"
+            if manifest.is_file():
+                declared = json.loads(manifest.read_bytes())
+                semantic = any(ref["receipt"] == relative for entry in declared["capability_sections"]
+                               for ref in entry["sections"])
         native = bool(re.fullmatch(r"\.analysis/results/native/[0-9a-f]{64}/capture\.json", relative))
         managed = relative == ".analysis/results/host-current/managed/capture.json"
         if not semantic and not native and not managed and relative != ".analysis/results/host-current/local-audit.json":
