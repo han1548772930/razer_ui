@@ -462,3 +462,17 @@ Lighting Engine 与 4115 MW 的当前来源分别由[稳定 LE snapshot](../../.
 显式 `compact-analysis --review-receipt <项目相对路径>` 还可将当前 `.analysis/results/reverse-pending/review-sources/<SHA>.json` 纳入同一压缩计划。路径必须处于该边界、没有链接，实际 JSON 字节 SHA 必须等于文件名及计划身份；默认扫描不扩展到其他结果或工作目录。apply 仅使用核验后的原计划，不另接新范围。该路径保持不变，完整逻辑字节和 SHA 经压缩前后核验后才记录实际节省空间，禁止通过删字段或改写完成事实缩小正式收据。
 
 清理结果保存在各次 `scratch-cleanup-*-plan-applied.json`，压缩结果保存在 `storage-compaction-*-apply.json`；实际删除、失败、保留依据和释放空间直接读取所属收据，不在此累计历史数值。当前批次只计本次实际释放量。所有权账本位于 `.analysis/verification/temporary-directories.json`；仍有 `source_database`、正式引用或未决分析依赖的副本继续保护。`supplements/.reservation.lock` 的普通文件由 `supplement_native` 共享，用于后续补查任务预留，计划以 `supplement_reservation_lock` 单独保留；目录、链接及其他未明项继续按原检查处理，不能按体积或年龄删除。
+
+## 推荐工作方式（适用于本项目）
+
+本项目的输入是约200个产品、同一代码库的多次构建，以及少量原生模块的多个版本。最有效的工具组合是“先去重、再审阅”：
+
+| 对象 | 推荐工具与做法 | 避免 |
+| --- | --- | --- |
+| MW／UI webpack 包 | tree-sitter 解析出每个 factory，按规范化 AST（重命名压缩标识符、去除位置信息）计算哈希，写入 SQLite 身份索引（变体哈希、产品、原件路径、字节区间）；调用图、导入关系与字符串常量在索引上查询 | 对每个 PID 重复全文解析；用正则定位所有者；把同一模块逐产品重新审阅 |
+| 原生 DLL／NODE／SYS | IDA／Hex-Rays 批量捕获一次，函数按字节与规范化指令哈希跨版本去重；具体问题用 IDA MCP 定向查询反编译与交叉引用 | 为单个问题导出整库；每个版本重复捕获相同函数 |
+| 语义审阅 | 一个通用 review 生成器：输入能力名、变体集合与语义描述，输出精简 review（变体哈希、原件身份、字节区间、结论），已审阅变体只引用 | 每次审阅写一次性生成脚本；review 内嵌数十 MB 源码正文 |
+| 结果存储 | 正式收据保持小而按能力拆分；大规模索引用 SQLite；大文本 zstd 无损压缩 | 单个收据数百 MB、每次全量 `json.load` |
+| Rust 实现 | 以变体契约（命令字节、状态机、失败语义）为输入，参数化测试覆盖全部使用该变体的产品 | 按型号复制实现 |
+
+Python 仍是合适的维护语言（tree-sitter、IDA、SQLite 均有成熟绑定）；主要问题不是语言，而是缺少跨产品去重索引、单文件过大（`tools/families.py` 约4.5 MB）、一次性脚本与超大 JSON 收据。改进顺序：身份索引 → 证明传播 → 通用 review 生成器 → 拆分超大模块与收据。
