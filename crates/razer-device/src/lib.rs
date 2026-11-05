@@ -77,6 +77,10 @@ pub mod device_writes;
 pub mod dpi_matcher;
 #[path = "mouse/dpi_matcher_storage.rs"]
 pub mod dpi_matcher_storage;
+#[path = "audio/earbuds_controls.rs"]
+pub mod earbuds_controls;
+#[path = "audio/earbuds_protocol40.rs"]
+pub mod earbuds_protocol40;
 #[path = "transport/ecmascript_number.rs"]
 mod ecmascript_number;
 #[path = "transport/feature_exchange.rs"]

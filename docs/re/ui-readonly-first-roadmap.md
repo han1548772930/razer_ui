@@ -10,16 +10,27 @@
 
 既有共享链、产品结论和验证事实继续复用，详细证据归[产品专题](../products/README.md)及正式收据。此前旧配置52个导入共享模块、26项源产品注册表、当前Host枚举及PID2636退出／重连的所选静态范围已发布；对应两批100项验证仍由正式历史链保留，不重做取证。
 
-2026-11-05（Asia/Shanghai）本批由协调者加三个边界独立的第一梯队槽位完成。先发布已冻结的PID2657 ANC review，并把此前已发布但未接入台账的鼠标Import、键盘输出编译与CPU owner32刷新到[gaps.json](../../.analysis/results/gaps.json)：
+2026-11-05（Asia/Shanghai）第二批继续由协调者加三个第一梯队槽位完成，结果追加为新的正式段，不改写上一批已发布段：
 
 | 功能链 | 正式结果 | 结论与边界 |
 | --- | --- | --- |
-| 耳机PID2657 ANC | [音频收据](../../.analysis/results/frontend/audio-mw-audit.json)的 `headset_2657_anc_chain`；同时按官方DeviceInfo身份把77个保留音频端点分为49个耳机、2个耳机USB适配器和26个非耳机端点。 | ANC／Ambient／Reduce的profile、runtime、get/set、通知与失败静态语义闭合；当前2657不从设备初始化ANC，本地默认值不是设备实测。该分类不等于全部Host SKU准入。 |
-| 耳塞PROTOCOL40五款 | 同一收据的 `headset_earbuds_protocol40_chain`，覆盖2657／2660／2664／2668／2689。 | 固件EQ、电池、手势、点击速度、提示音、省电、勿扰、输入源、THX与麦克风静音已逐款核对；EQ没有可达的设备读取，传输失败仍返回true；连接恢复跳过本地省电；2689为独立旧构建。`source_chain_complete=false`：simple_service音量、默认扬声器／discord读取、2664／2668 Chroma注册与2664 bleId差异仍待证。 |
-| 鼠标PID182配置档增删重置与板载槽 | [鼠标收据](../../.analysis/results/frontend/mouse-mw-audit.json)的 `mouse_182_profile_crud_chain`。 | 实际挂载的Add／Delete／Reset及“重置按键”闭合。Delete按旧活动配置档清理联动游戏；Reset不论是否活动都写slot1及同ID槽，结果消息在当前UI无处理者。板载槽仅在OBM引擎读取清单后按profile ID关联，逐槽写入吞错且无读回。ON_STAGES_INIT的17个调用点已归属。 |
-| 键盘原生映射输出执行器 | [键盘收据](../../.analysis/results/frontend/keyboard-main-audit.json)的 `keyboard_756_native_output_executor_chain`；复用既有捕获中157个完整函数。 | 分派、cascade／modtap／turbo、宏与分段宏、定时、Xbox、服务输出、模拟SnapTap及停止／移除／关闭链闭合，宏执行器对全部产品共用。PID756关闭时的停止调用在 `removeUsbDevice` 之后执行而实际无效；原生停止只取消宏／turbo，不释放按住键、modtap计时器或SnapTap状态。数字SnapTap、宏单事件内部、各服务handler业务链及其他键盘的consumer仍未闭合。 |
+| 鼠标PID182映射与宏增删 | [鼠标收据](../../.analysis/results/frontend/mouse-mw-audit.json)的 `mouse_182_mapping_macro_crud_chain`。 | 挂载编辑器的新建／修改／恢复默认同走整表替换与 `ON_SET_KEYMAPPING`；OBM同步仅在授予 `updateObm` 时写活动槽与slot1。宏帧为存储信息、分配、名称、数据与删除五类；仅分配失败中止，名称／数据失败只记录且无读回，空间不足时原版走 `formatDevice` 后重写全部配置档与宏。各功能Map*子编辑器（chunk 2667未获取）、PID182自身编译器模块32226及独立宏应用／worker仍待证；其他多槽鼠标未开始。 |
+| 键盘输出执行器内部 | [键盘收据](../../.analysis/results/frontend/keyboard-main-audit.json)的 `keyboard_output_executor_internals_chain`。 | 数字SnapTap三种模式、双输出仲裁69728与924D2 analog缓存选择闭合；宏事件解析器接受10类（不含display），分段解析只接受鼠标／键盘，剪贴板、音频、显示与异步鼠标移动含失败路径闭合。72个键盘部署均有unsupported-output consumer，22个原始模块归为6种行为变体；按PID取值与另一个consumer仍待证。新段同时记录上一批两项更正：721／752并非缺少该consumer，1352表仅擦除flag-0项。 |
+| 耳塞本机音频与身份 | [音频收据](../../.analysis/results/frontend/audio-mw-audit.json)的 `headset_earbuds_local_audio_chain`。 | 系统／麦克风音量经simple_service.dll到Core Audio闭合；默认扬声器／discord除两个原生尾段外闭合；2664／2668 Chroma注册在UI中无读取者；2664的BLE身份差异属实并影响BLE连接匹配。语义主要读自2657构建，其余四款按AST分两组，未宣称完全等价。 |
+| 头戴PROTOCOL40（1427、1465） | 同一收据的 `headset_protocol40_chain` 与后续 `headset_protocol40_features_chain`。 | 注册、通知路由、AI降噪、1465 save-effect及124个功能所有者已发布；GET ANC与GET电源模式命令字节尚未经helper解析，只按字面量存在核对，因此ANC与电源相关事项只记为部分静态。THX渲染／采集及原生分派、侧音helper、EQ读取字节、Airoha类差异、1465电池门槛、挂载UI控件与灯光路径仍待证。 |
 
-四项新结果的完整证明段SHA已登记到既有归并表；只接受与原finding完全一致的范围：鼠标2项部分静态、1项转运行验收、1项转实现验收，键盘3项部分静态。`auto_pause_hid_chain` 的混合事项（含其他音频功能）按既有反例保持待办，不以耳塞结果整条关闭。台账归并、发布器与鼠标定向测试共32/32通过，[验证收据](../../.analysis/results/tool-verification.json)输入快照稳定；只刷新三个受影响owner。键盘槽首次发布的review误将收据自身列入固定输入，发布后立即失效，已在文件锁下只撤回本段并重新发布，其余段落哈希不变；首个review作为新段的 `previous_review_source` 被正式引用，按历史事实保留。
+本批归并14项：实现／运行验收阶段4项（键盘2项、耳塞2项），部分静态10项；未审阅或UI阶段的事项保持原状。台账归并、发布器及三个槽位的定向测试共44/44通过，[验证收据](../../.analysis/results/tool-verification.json)输入快照稳定；只刷新三个受影响owner。本批一度有槽位在共享测试文件留下语法错误，由其所有者修复后才执行正式验证。
+
+第三批（2026-11-05）三个槽位均因API连接中断（ECONNRESET）提前终止；中断前已发布的正式段经协调者逐段核对后归并，未完成部分不计为完成。共享维护文件均可解析，没有半写入编辑：
+
+| 功能链 | 正式结果 | 结论与边界 |
+| --- | --- | --- |
+| 鼠标映射子编辑器与编译器 | 鼠标收据的 `mouse_182_mapping_subeditor_compiler_chain`。 | chunk 2667只有样式表，无需获取；36个Map*子编辑器中31个绑定保存函数，3个不产生映射行。PID182编译器32226转出模块4325，与键盘9299按规范化AST有531个函数相同并复用键盘证明；真实差异为鼠标RapidTrigger灵敏度取整。worker 4444宏转换记录两项原版缺陷（`t.flat` 拼写使键查找只按inputID匹配；鼠标释放事件不继承按下Id）。独立宏应用编写与其他多槽鼠标未完成。 |
+| 键盘unsupported-mapping门控 | 键盘收据的 `keyboard_unsupported_mapping_gate_chain`。 | 72个部署均有该consumer，但门控所需配置只有PID742导出且为空对象，其余未定义，因此注册、处理器与长按计时器在全部当前部署中均不可达。 |
+| 键盘输出常量 | 键盘收据的 `keyboard_output_executor_constants_chain`。 | AI窗口名与指派值72款一致；双联主豁免列表在69款为[164,179,207]，721／739／752仅[164]，更正上一批把导出名视为相同的结论。亮度滚轮间隔默认110 ms（PID653为10 ms），长按起始默认800 ms；`brightnessLongPressInterval` 的Host来源及515等六款设备类型默认值仍待证。 |
+| 头戴辅助常量、类层级、侧音与EQ | 音频收据的 `headset_protocol40_helper_constants_chain`、`headset_protocol40_class_battery_basic_chain`、`headset_protocol40_sidetone_eq_chain`。 | 1427／1465的GET ANC `[1,24,134]` 经helper→常量解析成立；`[1,7,136]` 实为Get Auto Sleep Mode，上一批“电源模式”标签有误。省电视图组合自动休眠与休眠时长，读取失败时原版只返回默认对象，Rust须保留未观测状态。类层级、1465电池门槛、basic audio等价、侧音helper、GET EQ字节与1465 EQ通知字段已发布；EQ通知消费者、1465灯光、挂载UI控件、THX激活及THX v4原生分派仍待证。 |
+
+本批归并10项：实现／运行验收阶段3项（鼠标2项、键盘门控1项），部分静态7项。定向验证50/50通过，输入快照稳定；只刷新三个受影响owner。PID756配置档生命周期、其他多槽鼠标与THX原生分派因中断未开始，作为下一批首要任务。
 
 归并只接受逐项审阅且原finding与完整证明段规范SHA均一致的范围；证明缺失、变动、失败或非静态时保持待办，未知／混合事项不按文字猜测分类。三个新结果均已回读，旧字段保留；只刷新四个实际受影响owner，其余3199个owner不变。既有 `Cargo.lock` 改动未覆盖。
 
@@ -44,26 +55,31 @@
 
 产品顺序按[AGENTS.md第1.2节](../../AGENTS.md#12-产品推进优先级)执行：当前第一梯队为**鼠标、键盘、耳机**，同级并行。后续依次为手柄／摄像头、其他音频与独立接收器／底座、系统设备、独立灯光／散热及其余配件；必要共享依赖随第一梯队前置。
 
-鼠标Import／增删重置、键盘输出编译与原生执行器、耳塞ANC及五款设备链已发布；本批只接回第一梯队实际完成证明，不扩展低优先级范围。新的分工为：
+第一梯队进度以[能力台账](../../.analysis/results/capability-ledger.json)为唯一分母，由 `python -B -X utf8 tools/workspace.py capability-ledger` 从各产品当前MW的 `genericFeature` featureKey与挂载页面种类生成，段落映射维护于 `tools/capability-ledger.json`。2026-11-05首次生成：75款鼠标399项、73款键盘320项、51款耳机／耳机适配器456项，共1175项；静态阶段鼠标2项部分、键盘3项部分、耳机70项部分及1项闭合，其余均未开始，Rust、UI／后端与实际对照阶段全部未开始。此前批次集中在少数PID的深层链，今后优先按“同一页面／功能跨全部产品”成批推进，先审共享链再记录真实产品差异。
+
+第一梯队（鼠标、键盘、耳机）的交付要求是逆向与对齐成套完成：每个完整能力在其静态缺口只剩实现／运行验收阶段后，立即进入阶段5—6——按确认语义修正必要架构，实现独立Rust协议／状态／生命周期所有者，按当前官方JS／CSS接通UI页面与全部动作，删除对应官方业务DLL生产依赖，补齐自动化测试，并在已授权边界内完成DLL／设备实际对照；不能执行的项保持未验证。实现与其余能力的逆向可按依赖并行，但不得在语义未闭合前开始该能力的产品代码。
+
+第一梯队前三批结果已发布并接回台账；下一批仍只接续第一梯队真实缺口：
 
 | 槽位 | 功能链 | 输入与完成条件 |
 | --- | --- | --- |
-| 协调者 | 当前状态与批次验收 | 发布冻结结果、登记精确归并、统一验证、刷新受影响owner与清理；每批最多三个子任务，子任务不得再派生代理。 |
-| A | 鼠标完整本地能力 | 复用已闭合的PID182配置档与共享执行器结论，接续映射／宏编辑器的Pt5／tt创建与删除、其他声明OBMSlots>1或挂载OBM菜单的鼠标槽增删改，以及接收器省电任务内存链。 |
-| B | 键盘完整本地能力 | 接续数字SnapTap模式821C2／82608／82CD4与924D2映射选择、宏单事件解析器与剪贴板／音频／显示辅助，再按真实字节差异核对其他键盘的unsupported-output consumer（69个不同捆绑及缺失的721／752）。 |
-| C | 耳机完整本地能力 | 先补耳塞的simple_service音量、默认扬声器／discord读取、2664 bleId及Chroma注册消费者，再开始PROTOCOL40_HEADSET（1427 Airoha、1465）独立批次。 |
+| 协调者 | 当前状态与批次验收 | 发布冻结结果、登记精确归并、统一验证、刷新受影响owner与清理；每批最多三个子任务，子任务不得再派生代理；子任务中断时只归并已发布并核对的段。 |
+| A | 鼠标完整本地能力 | 其他声明OBMSlots>1、profileSwap或挂载OBM菜单的鼠标槽增删改（先按当前源码确定PID），再审阅独立宏应用的宏编写／录制／删除。 |
+| B | 键盘完整本地能力 | PID756配置档生命周期：与鼠标PID182配置档链按规范化AST比较，相同部分复用证明，只审阅真实差异；再补 `brightnessLongPressInterval` 的Host来源与六款设备类型默认值。 |
+| C | 耳机完整本地能力 | 1465 EQ通知消费者、灯光／setChromaEffect、挂载UI控件与THX激活发送方，再完成THX v4 render／capture与THXNativeDLLV4Common／RzAudioUtil原生分派；之后按身份清单推进AudioValkyrie家族。 |
 
 ClientApiProxy来源、其他Intel／CPU provider、系统性能、独立散热及各后续梯队的缺项继续保留；除第一梯队实际必需的依赖外，当前不新开这些研究。已完成片段与仍待证明的实际分支分别判断；缺输入不能判定功能不存在，也不能把待运行验收重复派成静态逆向。
 
 ## 每批收尾与文档维护
 
-正式结果、引用接线和定向验证完成后：
+批次流程按[AGENTS.md第1.3节](../../AGENTS.md#13-批次流程与效率)执行：
 
-1. 运行 `python -X utf8 tools/workspace.py clean --dry-run`，核对计划路径、SHA、候选、保留原因、锁和占用。
-2. 仅对复核后的计划执行 `clean --apply <计划> --plan-sha256 <SHA>`；候选为空也保留实际 apply 收据。
-3. 用 `git diff --check`、Python AST／编译和文档相对链接检查收尾；失败事实写入收据，不删除正式原件或未决证据。
-4. 路线与当前阶段只写入本页，具体语义写入产品专题，机器可读结果写入 `.analysis/results/`；删除重复历史叙述、过期分工和失效链接，不新增平行进度档案。
+1. 开批前读取能力台账，按“完整能力”给每个槽位分配目标及结项条件；逆向与实现槽位合计不超过三个。
+2. 槽位每完成一个目标立即发布；协调者随到随核对段落 canonical SHA、完成字段与 `verified_artifacts` 不含被写收据，随即登记归并、运行受影响定向测试并 `refresh-gaps --owner`，同步更新能力台账阶段。
+3. 某能力静态只剩实现／运行验收时，在下一个空槽位转入Rust实现与UI接线，不等批次结束。
+4. 批末统一执行 `clean --dry-run` 与 `clean --apply <计划> --plan-sha256 <SHA>`（引用扫描需要 `rg`），并用 `git diff --check`、Python AST 和文档相对链接检查收尾；失败事实写入收据。
+5. 路线与当前阶段只写入本页，具体语义写入产品专题，机器可读结果写入 `.analysis/results/`；删除重复历史叙述与过期分工，不新增平行进度档案。
 
-本批[清理计划](../../.analysis/results/scratch-cleanup-20261104T212205894946Z-plan.json)的SHA-256为 `6d1d7ab3efb97000ed8a6fb891911e5f04cbb79e47881dc635b62ccbbee60f00`，[执行收据](../../.analysis/results/scratch-cleanup-20261104T212205894946Z-plan-applied.json)删除0项、释放0字节，175项按真实引用／未决依赖保留。此前一次dry run因PATH中缺少引用扫描器 `rg` 而记录guard失败，[该计划](../../.analysis/results/scratch-cleanup-20261104T212014373835Z-plan.json)未执行；在环境边界补充本机已有的ripgrep 14.1.1后重新生成上述计划。三个槽位自建的 `.work/slot*` 草稿（共15个文件、约578 KB，无正式引用）由创建批次直接释放；槽位此前创建的其他副本已由各自删除。此前各批清理收据保留，不合并计算。
+本批[清理计划](../../.analysis/results/scratch-cleanup-20261105T101100807486Z-plan.json)的SHA-256为 `1c6d1aac09ac29fa2ece5d6440e6215f38afe4666e2f81523cab13bea785a745`，[执行收据](../../.analysis/results/scratch-cleanup-20261105T101100807486Z-plan-applied.json)删除0项、释放0字节，175项按真实引用／未决依赖保留。第二、三批槽位草稿分别为7个文件约124 KB与26个文件约877 KB，由创建批次释放，包括已冻结review的生成脚本；复核以内容寻址的冻结review为准。引用扫描使用本机已有的ripgrep 14.1.1。此前各批清理收据保留，不合并计算。
 
 本批只修改维护归并表／测试、发布器多产品范围检查、既有产品专题与本页，不新增平行进度档案。未执行官方JS、业务DLL、应用、安装器、调试器或设备操作；独立Rust、UI／后端接线、实际DLL／设备对照及窗口验收保持未完成／未验证。

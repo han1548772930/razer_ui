@@ -103,6 +103,8 @@ Electron `finally` 会请求释放 Host mutex；Host 按发送者 URL 释放，�
 
 断连禁用由 `hasDisconnectedEarbud` 控制，默认 false；实际电池状态消费者计算两耳状态，CSS 将容器透明度设为 `.5`、阻止 widget 内 div 的指针事件。开关没有独立加载／错误／取消分支。Widget 退出仅取消提示框 RAF；三款延迟加载组件退出时清空本地组件／错误状态，没有取消 import。页面共用消息消费者在 `beforeunload` 移除已登记的 EventEmitter 监听，未关闭接收通道，hook 也没有页面级退订；发送器仅在每次发送后关闭临时通道，发送异常只记录警告。以上不能证明原生任务取消、读回成功或完整 drain。
 
+**Rust 阶段（仅协议与 feature 逻辑）**：`crates/razer-device/src/audio/earbuds_protocol40.rs` 独立实现本节报文、事务号、ACK／重试分支与恢复“先读比较再写、setter 失败仍发布本地值”；读取失败单列为 `ReadFailed`，不冒充设备关闭。profile 持久化、页面接线、官方 DLL 与真实设备对照均未完成、未验证。
+
 ## PID2657 主动降噪
 
 证据归[统一 MW 分析收据](../../../.analysis/results/frontend/audio-mw-audit.json)的 `headset_2657_anc_chain`。同一收据的 `product_identity_scope` 按当前 DeviceInfo 与硬件身份划分 77 个保留音频端点：49 款实体耳机、1312／1321 两款耳机 USB 适配器，其余不是耳机；该划分不代表全部 Host SKU，也不用 Windows 端点名判断。
@@ -110,6 +112,8 @@ Electron `finally` 会请求释放 Host mutex；Host 按发送者 URL 释放，�
 只有 2657 注册 `activeNoiseCancellation{supportsANCLevel:true}`，其余四款耳塞未注册。读取 `[1,24,134]`、参数 `[1]`；写入 `[3,24,6]`、参数 `[1,状态,等级]`，固件状态 Off 0、ANC 1、Ambient 80，页面 ANC／Ambient 分别用 10／255，Reduce 切换等级 1／10。Reduce 入口受最低固件 `1.4.6.0` 门控，比较函数不是普通四段序数：相同核心版本但第四段不同仍走阻止分支，缺版本时不隐藏。
 
 配置未设 `initFromDevice`，所以连接时不读设备，构造时的 runtimeState 只是本地默认值。setter 与 runtimeState 相等时跳过 I/O，恢复路径传入的强制参数未被消费；返回的失败结果不被检查也会更新 runtimeState，之后相同重试被跳过。通知 `[5,33,状态]` 只含状态：更新 profile 和 UI，保留本地等级，不更新 runtimeState，也不与写请求关联；缺状态字节时变为关闭。这些本地值都不是设备实测。真实应答、通知投递、独立 Rust、UI／后端接线和官方对照保持未验证。
+
+**Rust 阶段（仅协议与 feature 逻辑）**：同一模块实现 ANC 编码、runtimeState 跳过、通知 `[5,33,状态]` 与 Reduce 固件门控；页面、持久化与对照未完成、未验证。
 
 ## 耳塞固件能力（2657、2660、2664、2668、2689）
 
@@ -144,7 +148,61 @@ Electron `finally` 会请求释放 Host mutex；Host 按发送者 URL 释放，�
 
 取消与释放沿用既有结论：取消检查在执行之后，不传入 setter；这些 feature 没有自己的定时器、监听器或 shutdown；未证明队列排空。
 
-本节未闭合范围：`audioBasicFeature` 的系统音量／麦克风音量只追到 MW 的 `callSimpleServiceAction`，未追 `simple_service.dll`；`getDefaultSpeakerDevice` 与 `discordCertified` 未追；2664／2668 页面 DeviceInfo 的 `isChromaDevice:true`、`productIdForChroma:3865` 没有灯光页，其他消费者未审；2664 的 `bleId` 在 MW 与页面不一致（2661／2666），消费者未审；页面布局、资源与弹层内容不在本设备链范围内。真实应答、通知、重连顺序、固件断电后是否保留设置、独立 Rust、UI／后端接线与官方 DLL／设备对照均未验证。
+本节原未闭合范围已由下节[耳塞系统音频与外部标志](#耳塞系统音频与外部标志)接续；页面布局、资源、提示和弹窗内容仍属 UI 阶段。
+
+## 耳塞系统音频与外部标志
+
+证据归同一收据的 `headset_earbuds_local_audio_chain`；[冻结原件](../../../.analysis/results/reverse-pending/review-sources/d23c53764ec1225b3ce1448313b0027b98f76ce9213ea98817039419ba9b517e.json)。本节为静态语义，未运行 DLL、设备或应用。
+
+- **音量路径**：MW `callSimpleServiceAction` → preload → `simpleServiceAction` → 宿主 `FFISimpleService` → 当前 `simple_service.dll`（f8e3886c，1.2.2.10）。音频所有者是 DLL 内的 `AudioServiceWin`，不是独立进程。主虚表 `0x1f2040` 的 +256／+264 为扬声器读写，音频虚表 `0x1f54d0` 的 +128／+136 与麦克风 +72／+80 指向同一函数。
+- **读写语义**：`0x3a856` 返回监听器缓存（+100 音量、+101 静音），不是实时读取。`0x37b34` 只在与缓存不同时写入：先 `SetMasterVolumeLevelScalar(volume/100)`，失败则跳过静音；再 `SetMute`。相同值不调用 Windows 且报成功。
+- **失败形态**：`simpleSetSpeakerVolume` 返回 `{result,reason}` 对象，MW 按真值判断，`result:false` 仍报成功。读取失败发布 `isEnabled:true`、`value` 未定义。线程缺失的 0 值不是实测。Rust 必须建模为失败或未观测。
+- **枚举**：`0x3a170` 输出 `{type,id,containerId,name}`，`type` 为 speaker／microphone／all。端点按 containerId 匹配。
+- **事件**：五款 `isUsingSystemVolume` 均为 yes，所以 setup 运行 `Ls.FR`；`simpleService` 分支不运行。音量事件来自 `mapping_engine.dll`，类型 3 扬声器、2 麦克风、1 默认扬声器。`audioBasicFeature` 与 `Ls.FR` 重复订阅，一次变化可能发布两次。
+- **默认渲染端点**：READY 与默认设备变化时分类为 DEFAULT／THX_SPATIAL／OTHERS。`getDefaultSpeakerDevice` 读 `0xb0b20` 的加锁快照，回调字段顺序与 simple_service 不同。UI 只存入 `defaultEndpointReducer`，没有读取者。2689 的 READY 发 `{ender}`，由 reducer 的 `e.ender` 分支接收。READY 不检查结果，`deviceName` 未定义时抛错。
+- **Discord**：battery 门之前调用 `wOk`，经 `registerDiscord` 向本机 Discord 客户端发 `SET_CERTIFIED_DEVICES`；返回值不检查。
+- **Chroma 标志**：2664／2668 UI 的 `isChromaDevice:true`、`productIdForChroma:3865` 在各自全部保留 UI JS 中没有读取者；MW DeviceInfo 无该字段，`synapse_3865` 镜像不写入。保留的 dashboard 与宿主 JS 也没有该字段文本。
+- **bleId**：MW／UI 为 2657 2658／无、2660 2661／2661、2664 2661／2666、2668 2669／2669、2689 2690／2690。2657 系 MW 用它匹配当前设备，失败即关窗；2689 只按 containerId 匹配。UI 只用于配置档导入过滤，且同类别先通过。2664 的分歧真实存在，不能归一；实际 BLE PID 静态不可证明。
+
+`getSystemMicVolume` 把结果写入 `runtimeCache.renderVolume`：五款均已按各自完整所有者逐字核对。其余本节语义主要读自 2657，其他四款有 AST 所有者但未做归一化等价比较；已知差异见上。
+
+未闭合：`mapping_engine.dll` 快照观察者虚表（`0xb10d0` 等）到 Windows 端点的间接调用点，以及 `SysUtilsNative` 的 `registerDiscord` 本体。
+
+## PROTOCOL40_HEADSET（1427、1465）首轮
+
+证据归 `headset_protocol40_chain`；[冻结原件](../../../.analysis/results/reverse-pending/review-sources/de8ba35e196a0acba46678d252cb215f2a8f2e92cd42f8baccb4a4748580cb12.json)。本节只是有界首轮，**不代表这两款静态语义已闭合**。
+
+- **已审**：两款注册表与标志差异、通知帧（Report 2、校验 10、偏移 6）及路由；1465 另有 EQ 设置与 class 15 灯效路由，1427 丢弃。AI 降噪读 `micNRStatus`，缺字段为 false，写入恒返回 true，恢复时缺值会向设备写 false。1465 save-effect 用 profile 2，8→9、12→10，不存本地，不检查应答。
+- **首轮未审项**：由下节接续。首轮收据中 `thxv4_fw_sync` 没有完整所有者，“保留所有者”的说法对该模块不成立；该模块的所有者在下节收据内。2657 的 ANC 报文不得外推。
+
+
+## PROTOCOL40_HEADSET 功能接续（1427、1465）
+
+证据归 `headset_protocol40_features_chain`；[冻结原件](../../../.analysis/results/reverse-pending/review-sources/46146621333d26661c15e32201d712402a4cdab84d9ad8872c4fb9de9a4c27be.json)。静态语义，未运行 DLL、设备或应用；`source_chain_complete` 仍为 false。
+
+- **命令字节**（两款相同）：ANC 读 `[1,24,134]`、写 `[3,24,6]`；AI 降噪 `[1,24,143]`／`[2,24,15]`；EQ 状态 `[2,24,130]`／`[3,24,2]`；EQ 预设 `[3,24,128]`／`[4,24,0]`；EQ 设置写 `[12,24,1]`；省电模式 `[1,7,136]`／`[2,7,8]`；睡眠时间 `[0,7,131]`／`[2,7,3]`。1427 使用：MFB `[1,24,156]`／`[3,24,28]`，同时输出 `[1,24,139]`／`[2,24,11]`，语音提示 `[2,24,144]`／`[3,24,16]`，出厂重置 `[0,0,62]`。1465 另有带预设写 `[14,24,1]`。
+- **ANC**：连接时先删本地值再读取；读取抛错时写入默认值。设置只看是否抛错，不看应答状态；与初始默认相同时跳过 I/O。
+- **失败写入本地**：MFB 读取失败存 255，省电读取失败存默认值，语音提示失败存 false。这些都不是设备实测，Rust 必须保持未观测。
+- **重置（1427）**：先写本地默认与新配置档，再发固件重置；固件失败时本地已改变。属破坏性操作。
+- **麦克风 EQ**：切预设只写预设，并读回一次该预设；预设不变时才写频段。1427 有固件编码转换，1465 无。
+- **1465 EQ**：非 custom 频段清零，经带预设命令写入；内层失败仍返回 true。
+- **FW 同步（1427）**：空间音效开启时关固件 EQ、开 THX EQ，关闭时相反；`shutdown` 恢复固件 EQ，是这些功能释放路径中唯一的设备写入。
+- **通知**：1427 走 Airoha 路由，处理 ANC、电池、充电、无线、静音、EQ 预设。1465 只处理 ANC、麦克风静音、音频 EQ 设置、灯效；电池、充电、无线、音频静音和预设记录解析后被忽略。
+- **初始化**：`DeviceConnected` 按注册顺序触发 `initFromDevice`，之后走恢复。1465 没有 `isBattery`，不发 `START_CHECKING_BATTERY`。
+
+**1465 通知消费者与灯光（静态，仅 1465 包）**：rzDevice40 分支按 recordId 分派 ANC→`xa`、麦克风静音→`Pa`、音频 EQ 设置→`Va`、灯效→`Ba`；麦克风 EQ 设置记录没有消费者。`Va` 按 eqPreset 或当前选中预设找到预设，缺预设或缺频段即报错返回；否则覆盖 `current` 各频段、写本地存储、发 `MW_UPDATE_AUDIO_EQUALIZER_TO_UI` 并弹 `switch-equalizer` 提示，不写设备、不读回。`Ba` 忽略解析出的灯效字段，在 `QUICK_EFFECTS`=[Breathing, Spectrum, Static] 中循环到下一项，入队 `ON_SET_EFFECTS`（来源设备）并弹提示。`setChromaEffect` 包头 [80,15,2]，负载 [profileId, regionId, effectId, flags, rate, numOfColor, RGB…]，长度 6+颜色字节，回包按同布局解析，不检查状态。证据：`headset_protocol40_ui_lighting_chain`。
+
+**THX v4 派发（静态，仅 1427 包）**：模块 68046 是唯一的 JS→ThxV4Native 通道：`ConfigureFFI` 声明 15 个导出签名（版本≥1.1 才加 `GetThxVersion`），成功后登记退出时 `Terminate`、读版本并 `SetNodeFFIEvent`；`isInit`/通道为类静态，render 与 capture 共用一次加载。render 启动时 addDevice＋最多 3 次 checkStatus（间隔 500 ms），成功后开 upmix 与 EQ；默认扬声器变化强制重绑并回放存储状态；释放时关 EQ、关空间音效、removeDevice。capture 使用 `mic_*` 属性，启用先于电平写入，失败即抛出。原生侧只读了 v1.1.3.0 `SetProperty`（RVA 0x17de80）的参数打包。证据：`headset_protocol40_thx_dispatch_chain`。
+
+未闭合：ThxV4Native 引擎内部、`pU('THXNativeDLLV4Common')` 的实际版本选择、`RzAudioUtil` 原生派发与 `thxv4_fw_sync`；`rzDevice40HeadsetAiroha` 类差异；1465 无电池门；挂载 UI 控件与 THX 激活码 UI 发送者；侧音恢复顺序；AudioValkyrie 家族。
+
+## PROTOCOL40_HEADSET 辅助函数与常量映射（1427、1465）
+
+收据 `audio-mw-audit.json#/headset_protocol40_helper_constants_chain`，只覆盖两款各自 bundle 中下列链路：
+
+- **ANC 读取**：`rzDevice40.getANCStatusAndLevel` → 模块 36790 导出 `WF`（1427 为 `mt`，1465 为 `yt`）→ `sendCommand(o.at,o.GD)`，`o` 为模块 25379；`at` 指向逗号序列，取值为最后一项 `[1,24,134]`，`GD` 为 “Get ANC Status and Level”。应答取 `data[0..2]` 为 profileId、ancState、ancOnLevel。
+- **`[1,7,136]` 实为 “Get Auto Sleep Mode”**：`getAutoSleepMode` → 模块 81519 导出 `cT` → `sendCommand(o.bm,o.Do)`，`o` 为模块 99968，`bm` 序列末项为 `[1,7,136]`；应答 `data[1]` 为 enabled。外观层 `getPowerSaving` 用它取开关、用 `getTimeToSleep` 取秒数并除以 60；任一异常只记录日志并返回默认值对象（原版行为，Rust 实现仍须区分未观测状态）。
+- 未比较 1427 `rzDevice40HeadsetAiroha` 是否覆写这两个方法；其余未闭合项不变。
 
 ## 灯光电源与实际状态
 

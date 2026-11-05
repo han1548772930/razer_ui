@@ -29,6 +29,7 @@ pub mod macro_transfer;
 pub mod notification_preferences;
 mod paths;
 pub use paths::{configuration_directory, panic_log_path, runtime_log_path, store_path};
+pub mod earbuds_profiles;
 #[path = "profile_notification.rs"]
 pub mod profile_notification;
 pub mod profile_transfer;

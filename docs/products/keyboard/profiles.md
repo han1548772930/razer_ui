@@ -344,6 +344,22 @@ TaskMaker `[1398959,1401553)` 串行维护当前事件与队列，按当前条�
 
 `PostSetLocalStorage` 还会生成本地映射元数据，并投影到已安装主机服务的 localStorage；runtime 数据写入 host window storage。两者属于服务/窗口投影，不是 HID 写回证明。准确的设备恢复、恢复失败及断开清理需结合相应产品的 restore runner，不能由本页的本地导入成功提示替代。
 
+## 756 配置档生命周期（新增、复制、重命名、删除、重置、切换、导出）
+
+静态复核发布在 [keyboard-main-audit.json](../../../.analysis/results/frontend/keyboard-main-audit.json) 的 `keyboard_756_profile_lifecycle_chain`，冻结复核为 `review-sources/dca443902683eb3837d56e617807a649f3d3e4cbe3310953d24497e17fbbd4a6.json`。原件为 756 MW `6737.e9cfdfde12b1ade72a64.js` 与 `main.423ea9b0242da188f465.js`（[获取收据](../../../.analysis/inputs/frontend/keyboard-mw-756-current-refresh-ec3db4b29c5a/acquisition.json)）；下列区间均为字节半开区间。
+
+- **复用边界**：PID182 鼠标 profile CRUD／导入／映射宏三份复核的所有者在 756 原件中几乎不存在（逐字节或标识符归一化 AST 均仅匹配公共存储/锁/base64 辅助），不复用。与 679 比较，`stateGuard`、重命名准入 `B` `[2210706,2211262)` 与删除结果回调 `Pt` `[1978340,1978931)` 归一化一致；各 handler 及 OBM runner 均有实际差异，756 单独核对。
+- **分支选择**：`DeviceInfo` `[173271,175003)`（main）为 KEYBOARD、OBM 5 槽、5 个预设槽 2–6、`useLatestProfileRestore`、`reconcileOfflineAnalogSettings`、BLE `activateStoredProfile`。`isKeypadCategory` `[2391019,2391051)` 只认 `KEYPAD`，因此各 handler 内的 keypad 专用函数与 keymaps 分支对 756 不执行；`analogV3 && !keypad` 分支执行。analogV3 注册 `[224754,224866)` 无 `hasNikoEdition`，所以 `ON_RESET_PROFILE` 恒走 `Xf`。
+- **新增** `Jf` `[1749644,1751792)`：默认档 + 菜单身份，追加并选中，版本/serial/栈/保存；有 OBM 引擎时对旧活动档映射做 50 ms 去抖 `Zg` 重置；随后 `Vg(1)`、`Yg(1)` 默认 actuation/RT 与 slot 1 身份任务，再 `loadActiveProfile`。
+- **复制** `ey` `[1765382,1767815)`：与 679 不同，756 复制同样排 slot 1 身份及 `Vg/Yg(1)`。源缺失在深拷贝处抛错。
+- **重命名** `Zf` `[1763631,1765382)`：先发 completed，再按 `updateObm` 为同 GUID 未锁槽排 `qt` `[2012035,2012553)`；`qt` 在 `setProfileName` 无 error 后同时修补 `obmJson.profiles` 与 `obmData` 并 `updateObmStorageInfo`。
+- **删除** `qf` `[1751792,1759252)`（非 keypad 分支）：仍为 >1 档 guard、后继取输入有效值或首项、`Specific` 导航清理、非 BLE 时为同 GUID 非 slot1 未锁槽排 `_t` `[1967504,1968705)`。`_t` 成功后用 `normalizeObmProfiles(profiles, ownerId, emailHash)` 重建槽，不再查询宏内存；非 SUCCESS 也发槽事件并标 completed。
+- **重置** `Xf` `[1759252,1763631)`：保留 name/guid 换默认档；预设 GUID（或可识别的出厂默认）用 `createPreset` 重建映射；`Zg` 覆盖该 GUID 的板载槽；`Vg/Yg` 写 slot 1 及 GUID 等于**当前活动档**的未锁槽（不是被重置档）。
+- **切换** `ny` `[1769262,1774538)`：BLE 且 `activateStoredProfile` 时转 `ty` `[1767815,1769253)`；否则带序号与 `lastActiveProfileGuid` 的 `isCurrent` 守卫排 `Vg/Yg`/slot 1 身份，切换时使在途恢复失效并启动离线 analog journal。
+- **导出** `ry` `[1775087,1776685)`：与 679 导出同样语义（含宏去重失效、保存对话框未 await）。
+
+仍未闭合：引擎 `deleteProfile`/`setProfileName` 与 HID、`Zg/Tt/Vg/Yg` 下游写入器、`loadActiveProfile`、BLE `ty` 内部、756 产品 UI 菜单挂载；Rust、实际 DLL/设备对照与运行验收均未验证。
+
 ## 已定位的具体缺边
 
 - 679 当前连接、板载读取、slot 1/本机活动身份、合并/冲突、保存任务、应答与清理入口已按上文逐函数核对；完整板载观察进入 Rust 后的合并/冲突及必要初始化写入消费者仍未闭合，原生主机移除、设备恢复与实际 DLL/设备对照未验证。

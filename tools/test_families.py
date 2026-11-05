@@ -10572,6 +10572,52 @@ class CapabilityStaticReviewPublicationTests(unittest.TestCase):
                 families.publish_frontend_semantic_review(self.args(**changed))
             publish.assert_not_called()
 
+    def test_keyboard_output_executor_constants_review_keeps_its_own_section_and_products(self):
+        target = families._CAPABILITY_REVIEW_TARGETS["current_keyboard_output_executor_constants_review"]
+        internals = families._CAPABILITY_REVIEW_TARGETS["current_keyboard_output_executor_internals_review"]
+        self.assertEqual(target[:4], internals[:4])
+        self.assertEqual(target[4:], ("keyboard-main-audit.json", "keyboard_output_executor_constants_chain"))
+
+    def test_keyboard_756_profile_lifecycle_review_keeps_its_own_section_and_product(self):
+        target = families._CAPABILITY_REVIEW_TARGETS["current_keyboard_756_profile_lifecycle_review"]
+        self.assertEqual(target, ("keyboard", "mw", None, 756,
+            "keyboard-main-audit.json", "keyboard_756_profile_lifecycle_chain"))
+        self.assertNotIn(target[5], {row[5] for kind, row in families._CAPABILITY_REVIEW_TARGETS.items()
+            if kind != "current_keyboard_756_profile_lifecycle_review"})
+
+    def test_keyboard_756_lighting_page_review_keeps_its_own_section_and_product(self):
+        target = families._CAPABILITY_REVIEW_TARGETS["current_keyboard_756_lighting_page_review"]
+        self.assertEqual(target, ("keyboard", "mw", None, 756,
+            "keyboard-main-audit.json", "keyboard_lighting_page_chain"))
+        self.assertNotIn(target[5], {row[5] for kind, row in families._CAPABILITY_REVIEW_TARGETS.items()
+            if kind != "current_keyboard_756_lighting_page_review"})
+
+    def test_keyboard_unsupported_mapping_gate_review_keeps_its_own_section_and_products(self):
+        target = families._CAPABILITY_REVIEW_TARGETS["current_keyboard_unsupported_mapping_gate_review"]
+        internals = families._CAPABILITY_REVIEW_TARGETS["current_keyboard_output_executor_internals_review"]
+        self.assertEqual(target[:3], ("keyboard", "mw", None))
+        self.assertEqual(target[3], internals[3])
+        self.assertEqual(len(target[3]), 72)
+        self.assertEqual(target[4:], ("keyboard-main-audit.json", "keyboard_unsupported_mapping_gate_chain"))
+
+    def test_headset_followup_reviews_keep_their_own_sections_and_exact_products(self):
+        targets = families._CAPABILITY_REVIEW_TARGETS
+        self.assertEqual(targets["current_headset_earbuds_local_audio_review"], ("audio", "mw", None,
+            (2657, 2660, 2664, 2668, 2689), "audio-mw-audit.json", "headset_earbuds_local_audio_chain"))
+        self.assertEqual(targets["current_headset_protocol40_review"], ("audio", "mw", None,
+            (1427, 1465), "audio-mw-audit.json", "headset_protocol40_chain"))
+        self.assertEqual(targets["current_headset_protocol40_features_review"], ("audio", "mw", None,
+            (1427, 1465), "audio-mw-audit.json", "headset_protocol40_features_chain"))
+        self.assertEqual(targets["current_headset_protocol40_helper_constants_review"], ("audio", "mw", None,
+            (1427, 1465), "audio-mw-audit.json", "headset_protocol40_helper_constants_chain"))
+        self.assertEqual(targets["current_headset_protocol40_class_battery_basic_review"], ("audio", "mw", None,
+            (1427, 1465, 2657, 2660, 2664, 2668, 2689), "audio-mw-audit.json", "headset_protocol40_class_battery_basic_chain"))
+        for kind, section in (("sidetone_eq", "sidetone_eq"), ("ui_lighting", "ui_lighting"), ("thx_dispatch", "thx_dispatch")):
+            self.assertEqual(targets[f"current_headset_protocol40_{kind}_review"], ("audio", "mw", None,
+                (1427, 1465), "audio-mw-audit.json", f"headset_protocol40_{section}_chain"))
+        sections = [row[5] for row in targets.values()]
+        self.assertEqual(len(sections), len(set(sections)))
+
     def test_multi_product_capability_requires_its_exact_declared_product_set(self):
         products = [2657, 2660, 2664, 2668, 2689]
         scope = dict(family="audio", function="mw", query=None)
@@ -10701,6 +10747,95 @@ class CapabilityStaticReviewPublicationTests(unittest.TestCase):
                 lock.assert_not_called()
 
 
+class KeyboardOutputInternalsReviewTests(unittest.TestCase):
+    review_sha = "e17e63b7374f222fc91d9ec6d8bc46247e188a311a5c2e8bbab6cf9348054463"
+
+    @classmethod
+    def setUpClass(cls):
+        path = analysis.ROOT / ".analysis/results/reverse-pending/review-sources" / (cls.review_sha + ".json")
+        raw = path.read_bytes()
+        cls.reference = {"path": analysis.rel(path), "bytes": len(raw), "sha256": cls.review_sha}
+        cls.hash = hashlib.sha256(raw).hexdigest()
+        cls.review = json.loads(raw)
+        cls.functions = {row["capture"]["rva"]: row["capture"] for row in cls.review["native"]["complete_functions"]}
+
+    def pseudo(self, rva):
+        return "\n".join(line["text"] for line in self.functions[rva]["pseudocode"]["lines"])
+
+    def args(self, **changes):
+        import argparse
+        return argparse.Namespace(**(dict(family="keyboard", function="mw", query=None, product=None, prepare=False,
+            semantic_review=self.reference["path"], semantic_review_sha256=self.review_sha) | changes))
+
+    def test_target_is_append_only_and_covers_every_keyboard_consumer(self):
+        self.assertEqual(self.hash, self.review_sha)
+        target = families._CAPABILITY_REVIEW_TARGETS[self.review["kind"]]
+        self.assertEqual(target[:3] + target[4:], ("keyboard", "mw", None, "keyboard-main-audit.json", "keyboard_output_executor_internals_chain"))
+        self.assertEqual(list(target[3]), self.review["product_ids"])
+        rows = self.review["unsupported_consumer_products"]
+        self.assertEqual([row["product_id"] for row in rows], self.review["product_ids"])
+        self.assertEqual(len(rows), 72)
+        self.assertEqual(sum(len(v["products"]) for v in self.review["unsupported_consumer_variants"].values()), 72)
+        self.assertNotIn("keyboard-main-audit", " ".join(a["path"] for a in self.review["verified_artifacts"]))
+
+    def test_every_product_row_reads_the_recorded_complete_module(self):
+        for row in self.review["unsupported_consumer_products"]:
+            with self.subTest(pid=row["product_id"]):
+                raw = (analysis.ROOT / row["original"]).read_bytes()
+                self.assertEqual(hashlib.sha256(raw).hexdigest(), row["original_sha256"])
+                body = raw[row["module_byte_start"]:row["module_byte_end"]]
+                self.assertEqual(hashlib.sha256(body).hexdigest(), row["module_body_sha256"])
+                self.assertIn(b"onunsupportedmapping", body)
+
+    def test_real_consumer_branches_differ_where_recorded(self):
+        def dispatcher(name):
+            return self.review["complete_owners"][self.review["roles"]["dispatcher_" + name]]["body"]
+        self.assertIn("forwardedUnsupportedMapping", dispatcher("A_current_756"))
+        self.assertIn("inputDeviceGroup", dispatcher("B_shared"))
+        for name in ("E_739", "F_752"):
+            self.assertNotIn("forwardedUnsupportedMapping", dispatcher(name))
+            self.assertNotIn("inputDeviceGroup", dispatcher(name))
+        self.assertNotIn("Failed to parse event data", dispatcher("E_739"))
+        self.assertIn("Failed to parse event data", dispatcher("F_752"))
+
+    def test_digital_snaptap_mode_routes_and_wait_range(self):
+        router = self.pseudo("0x68d0c")
+        self.assertRegex(router, r"sub_180082CD4\(a1, v11")
+        self.assertRegex(router, r"sub_180082608\(a1, v11")
+        self.assertRegex(router, r"sub_1800821C2\(a1, v11")
+        self.assertIn("not supported", router)
+        self.assertIn("% 21 + 15", self.pseudo("0x82183"))
+        self.assertNotIn("sub_180082183", self.pseudo("0x82cd4"))
+        self.assertIn("sub_180082183", self.pseudo("0x821c2"))
+        self.assertIn("a1 + 1392", self.pseudo("0x82608"))
+        self.assertNotIn("a1 + 1392", self.pseudo("0x821c2") + self.pseudo("0x82cd4"))
+
+    def test_macro_parser_accepts_only_recorded_types(self):
+        import re
+        cases = {int(value) for value in re.findall(r"case (\d+):", self.pseudo("0xed163"))}
+        self.assertEqual(cases, {6, 8, 12, 21, 22, 23, 24, 27, 28, 32})
+        self.assertRegex(self.pseudo("0xedf66"), r"v7 == 27[\s\S]*v7 != 21")
+        self.assertEqual(self.review["verified_contract"]["tables"]["macro_clipboard_id_names"], ["text", "image"])
+        self.assertEqual(self.review["verified_contract"]["tables"]["audio_volume_divisor"], 100.0)
+        self.assertIn("500000", self.pseudo("0xbd490"))
+        self.assertIn("2290626592LL", self.pseudo("0x135450"))
+        self.assertIn("0x88883020", self.pseudo("0x136050"))
+
+    def test_frozen_review_verifies_through_existing_cli_read_only(self):
+        with patch.object(analysis, "save", side_effect=AssertionError("Read-only verification must not save")),                 patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+            result = families.publish_frontend_semantic_review(self.args())
+        payload, _, _, section = publish.call_args.args
+        self.assertEqual((section, result["section"]), ("keyboard_output_executor_internals_chain",) * 2)
+        self.assertEqual(publish.call_args.kwargs, {"replace_existing": False})
+        self.assertFalse(payload["whole_product_complete"] or payload["target_execution"])
+
+    def test_single_product_or_preparation_rejects_before_publication(self):
+        for changes in (dict(product=[756]), dict(query="keyboard-756-appengine-apply-chain"), dict(prepare=True)):
+            with self.subTest(changes=changes), patch.object(host, "publish_host_static_query") as publish,                     self.assertRaisesRegex(ValueError, "product scope"):
+                families.publish_frontend_semantic_review(self.args(**changes))
+            publish.assert_not_called()
+
+
 class MouseProfileCrudReviewTests(unittest.TestCase):
     review_sha = "fe54e22ad17d923f1cf98af23c8ef1e4700b53c711779f0f450afa79c23ac518"
 
@@ -10778,6 +10913,123 @@ class MouseProfileCrudReviewTests(unittest.TestCase):
             owner = self.review["complete_owners"][row["owner"]]
             self.assertTrue(owner["byte_start"] <= row["call_byte"] < owner["byte_end"])
         self.assertEqual(len(self.review["kn_producers"]), 17)
+
+
+class MouseMappingSubeditorCompilerReviewTests(unittest.TestCase):
+    review_sha = "bcd7305a2813877e6865b31764d8c009a751dced9f1ab63396ad5db9a00ce2e6"
+
+    @classmethod
+    def setUpClass(cls):
+        path = analysis.ROOT / ".analysis/results/reverse-pending/review-sources" / (cls.review_sha + ".json")
+        raw = path.read_bytes()
+        cls.reference = {"path": analysis.rel(path), "bytes": len(raw), "sha256": cls.review_sha}
+        cls.hash = hashlib.sha256(raw).hexdigest()
+        cls.review = json.loads(raw)
+
+    def args(self, **changes):
+        import argparse
+        return argparse.Namespace(**(dict(family="mouse", function="mw", query="mouse-182-profile-slot-chain",
+            product=[182], prepare=False, semantic_review=self.reference["path"],
+            semantic_review_sha256=self.review_sha) | changes))
+
+    def body(self, role):
+        return self.review["complete_owners"][self.review["roles"][role]]["body"]
+
+    def test_target_is_a_new_append_only_section(self):
+        self.assertEqual(self.hash, self.review_sha)
+        target = families._CAPABILITY_REVIEW_TARGETS[self.review["kind"]]
+        self.assertEqual(target, ("mouse", "mw", "mouse-182-profile-slot-chain", 182,
+                                  "mouse-mw-audit.json", "mouse_182_mapping_subeditor_compiler_chain"))
+        sections = [row[5] for kind, row in families._CAPABILITY_REVIEW_TARGETS.items() if kind != self.review["kind"]]
+        self.assertNotIn(target[5], sections)
+        self.assertFalse(any(row["path"].startswith("tools/") or row["path"].endswith("-audit.json")
+                             for row in self.review["verified_artifacts"]))
+
+    def test_frozen_review_verifies_read_only(self):
+        with patch.object(analysis, "save", side_effect=AssertionError("Read-only verification must not save")),                 patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+            result = families.publish_frontend_semantic_review(self.args())
+        payload, _, _, section = publish.call_args.args
+        self.assertEqual((section, result["section"]), ("mouse_182_mapping_subeditor_compiler_chain",) * 2)
+        self.assertEqual(publish.call_args.kwargs, {"replace_existing": False})
+        self.assertNotIn("complete_owners", payload)
+        self.assertEqual(payload["runtime_acceptance"], "unverified")
+
+    def test_other_scope_rejects_before_publication(self):
+        for changes in (dict(product=[190]), dict(function="main"), dict(prepare=True)):
+            with self.subTest(changes=changes), patch.object(host, "publish_host_static_query") as publish,                     self.assertRaisesRegex(ValueError, "product scope"):
+                families.publish_frontend_semantic_review(self.args(**changes))
+            publish.assert_not_called()
+
+    def test_decisive_branches_are_bound_to_complete_owners(self):
+        self.assertIn("a.e(2667)", self.body("ui_lazy_mapping_editor_loader"))
+        self.assertNotIn("2667:", self.body("ui_chunk_js_filename_table"))
+        self.assertIn("2667!=E", self.body("ui_chunk_js_loader_skips_2667"))
+        self.assertIn('2667:"KeyMappingComponent"', self.body("ui_chunk_css_filename_table"))
+        self.assertIn("outputType:E,isHyperShift:a,inputType:e.inputType,inputID:e.inputID", self.body("ui_mapping_row_builder_rq"))
+        self.assertEqual(len(self.review["sub_editor_rows"]), 31)
+        self.assertIn("Math.round", self.body("mw_rapid_trigger_module_20779"))
+        self.assertNotIn("Math.round", self.body("kb_rapid_trigger_module_35004"))
+        self.assertIn("setDefaultMappings(d.DEFAULTMAPPINGS,d.DeviceInfo.category)", self.body("mw_pid182_default_mapping_caller"))
+        self.assertEqual(self.body("mw_pid182_device_category"), 'category:"MOUSE"')
+        self.assertIn("t.A=o.RzAppEngineMapping_default", self.body("mw_compiler_reexport_32226"))
+        self.assertIn("[432,6151]", self.body("worker_4444_entry_87945"))
+        worker = self.body("worker_87945_convert_macro")
+        for needle in ('case"convertToObmMacroData"', "t.flag-t.flat%2", "65536+r", "e.flag=e.flag%2"):
+            self.assertIn(needle, worker)
+        self.assertEqual(self.review["ast_comparison"]["matched_functions"], 531)
+
+
+class MouseMappingMacroCrudReviewTests(MouseProfileCrudReviewTests):
+    review_sha = "9994fe705db0c38a2ba8a8dfa1293f8f52d38e6f93e367f63a665f2aa235b8d6"
+
+    def test_target_keeps_crud_in_its_own_append_only_section(self):
+        self.assertEqual(self.hash, self.review_sha)
+        target = families._CAPABILITY_REVIEW_TARGETS[self.review["kind"]]
+        self.assertEqual(target, ("mouse", "mw", "mouse-182-profile-slot-chain", 182,
+                                  "mouse-mw-audit.json", "mouse_182_mapping_macro_crud_chain"))
+        sections = [row[5] for kind, row in families._CAPABILITY_REVIEW_TARGETS.items() if kind != self.review["kind"]]
+        self.assertNotIn(target[5], sections)
+
+    def test_frozen_review_verifies_through_existing_cli_read_only(self):
+        import re
+        changed = [row["path"] for row in self.review["verified_artifacts"] if row["path"].startswith("tools/")
+                   and hashlib.sha256((analysis.ROOT / row["path"]).read_bytes()).hexdigest() != row["sha256"]]
+        with patch.object(analysis, "save", side_effect=AssertionError("Read-only verification must not save")), \
+                patch.object(host, "publish_host_static_query") as publish, patch("builtins.print"):
+            if changed:
+                with self.assertRaisesRegex(ValueError, "^" + re.escape(
+                        "Local host audit artifact identity differs: " + changed[0]) + "$"):
+                    families.publish_frontend_semantic_review(self.args())
+                publish.assert_not_called()
+                return
+            result = families.publish_frontend_semantic_review(self.args())
+        payload, _, _, section = publish.call_args.args
+        self.assertEqual((section, result["section"]), ("mouse_182_mapping_macro_crud_chain",) * 2)
+        self.assertNotIn("complete_owners", payload)
+        self.assertFalse(payload["source_chain_complete"] or payload["target_execution"])
+        self.assertEqual(payload["runtime_acceptance"], "unverified")
+
+    def test_decisive_branches_are_bound_to_retained_complete_owners(self):
+        self.assertIn("isOBMDevice:!0,OBMSlots:1", self.body("ui_device_info"))
+        self.assertNotIn("isNaga", self.body("ui_device_info"))
+        self.assertIn('postMessage({type:"ON_SET_KEYMAPPING",timerTick:void 0,payload:{mappingList:[...E.payload]}})',
+                      self.body("ui_reducer_set_mapping"))
+        self.assertIn("this.props.setMappingList(i)", self.body("editor_save_changes"))
+        self.assertIn('cond:N("stateGuard","obmReady")', self.body("keymapping_state"))
+        self.assertIn("l&&o.RzTaskManager.enqueueTask(o.RzTaskCategory.NORMAL,u.p5A.obm,u.Pt5.bind(", self.body("set_keymapping"))
+        self.assertIn("c.push(1)", self.body("obm_sync_mappings"))
+        self.assertIn("macrosToBeCreated:a,macrosToBeRemoved:p", self.body("obm_macro_diff"))
+        self.assertIn("yt(e),u.error=t", self.body("obm_macro_runner"))
+        self.assertIn("ERROR_NOT_ENOUGH_STORAGE_SPACE", self.body("obm_macro_add_cleanup"))
+        self.assertIn('catch(e){console.warn(`[${u}] pId:', self.body("engine_add_macro_local"))
+        self.assertIn("formatDevice()", self.body("engine_defrag"))
+        self.assertIn("[2,6,3]", self.body("protocol_const_delete"))
+        self.assertIn("[6,6,8]", self.body("protocol_const_allocate"))
+        self.assertIn("[80,6,9]", self.body("protocol_const_data"))
+        self.assertIn("[80,6,12]", self.body("protocol_const_name"))
+        self.assertIn('"ON_MACRO_CHANGED",v.wI.MW_ACTION_FROM_LOCALSTORAGE', self.body("macro_changed_producer"))
+        self.assertNotIn("updateLocalStorage", self.body("macro_changed_state"))
+        self.assertNotIn("(0,b.Q)", self.body("macro_deleted_task").split("s&&d.DeviceInfo.category")[1])
 
 
 class FrontendSemanticMergeTests(unittest.TestCase):

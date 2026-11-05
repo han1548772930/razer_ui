@@ -267,6 +267,29 @@ PID199、208 声明 `isHidingKeyMapping=true`、`defaultVisibleFunctionsCount=5`
 
 `MouseProfileCrudReviewTests` 4/4 通过，覆盖专属追加段、经现有 CLI 的只读冻结校验（其他槽位修改工具后按设计拒绝旧身份）、错误产品／查询／准备的拒绝，以及关键分支与保留完整所有者的绑定。本段只闭合当前 PID182 上述静态语义；共享映射／宏执行器与其他多槽型号的槽增删改另行接续，独立 Rust、UI／后端接线、实际 DLL／设备对照与运行验收仍为未验证。
 
+## PID182：按键映射编辑与板载宏增删
+
+当前能力见[内容寻址 review](../../../.analysis/results/reverse-pending/review-sources/9994fe705db0c38a2ba8a8dfa1293f8f52d38e6f93e367f63a665f2aa235b8d6.json)（72 个完整所有者），经同一 `mouse-182-profile-slot-chain` 入口接入 [mouse-mw-audit.json](../../../.analysis/results/frontend/mouse-mw-audit.json) 的 `mouse_182_mapping_macro_crud_chain`。复用上节板载槽关联、`_t` 按键写入、DPI 链传输与任务队列，以及 756 原生输出执行器在 MappingEngine 边界的证明；没有重新捕获。
+
+- 挂载与保存：Customize 页 `Lp=Dp→Cp=connect(Sp.A(cp))`，普通按键抽屉懒加载 1977／5107／2667（2667 不在当前捕获中）。PID182 非 Naga，所有编辑走 `setMappingList`。新增、修改、恢复默认共用一条路径：5107 `saveChanges` 取子编辑器 `saveMapRef()` 的行，按 inputID＋isHyperShift 合并进整份列表后 `setMappingList`；没有逐行增删接口。未保存关闭只清本地面板，不发 MW 事件。
+- 发布：reducer `VE0` 乐观替换 `mappingList` 并广播只含 `{mappingList}` 的 `ON_SET_KEYMAPPING`（不带 viewIndex、version、mappingDiff）。`obmReady`（obm 状态非 init）时授予 shared 存储＋appEngine＋updateObm，否则不含 updateObm。
+- 存储：`xt` 先按 BUTTON_LIST 过滤（无命中则保留原列表），重建 appEngine（BossKey 改写、移除 perfect180 行）、推进版本、`Pf`→`qw`，发布 `stD` 与宏行 `fDw`；异常只发 error，不回滚乐观 UI 或半写文档。
+- 板载同步：仅有 updateObm 时完成后排队 `Pt5→ut→tt`。目标槽为 `Qe(活动配置)`＋槽 1；旧有新无的行用 BUTTON_LIST 默认值复位。`j` 决定宏：OBM 配置与活动配置引用、存储中存在且无板载 id 的宏需创建；未被引用、未锁定的板载宏需删除；仅被非 OBM 配置引用的保留为 standby。两表非空时先排 `Jly`，再逐键写入。
+- 宏任务 `Jly=gt`：只在整轮前后检查取消；非 BLE 先按 id 删除，再经 worker 4444 转换并调用 `Dt` 创建；BLE 只改本地 obmData 不写设备。单个宏失败从 obmData 移除并记入 `failedMacros`，其余继续。
+- 设备帧：存储信息 `[14,6,142]`、分配 `[6,6,8]`、名称 `[80,6,12]`（250 字节结构）、数据 `[80,6,9]`（每块≤72 字节）、删除 `[2,6,3]`。只有分配失败中止；名称／数据写入错误仅记录，仍记为成功；没有宏读回。空间不足时 `Dt` 先逐个删除 standby 宏重试；`addMacro` 内部碎片整理会 `formatDevice` 后重写所有非 ID1 配置与宏，属原版破坏性路径。删除未知 id 或失败只返回 FAIL，调用方忽略。
+- 宏编辑边界：宏由独立宏应用写入 MacroStorage。MW 监听其变更：已存在且 hash／名称／播放方式／延迟变化的发 `ON_MACRO_CHANGED`，删除的发 `ON_MACRO_DELETED`，新建宏不触发事件，只在被映射引用时经映射同步写入设备。CHANGED 只在 obmReady 时授予 deviceAccess，但 `Eo` 仍无存储权限地改写各配置宏名并 `Pf`；有设备权限时对变化宏先删后建。DELETED 从所有配置移除引用行并排队板载删除与默认键写入，槽列表始终取活动配置；无完成／错误事件。
+
+`MouseMappingMacroCrudReviewTests`＋`MouseProfileCrudReviewTests` 8/8 通过。仍未闭合：各 Map* 子编辑器行构造与缺失的 chunk 2667、PID182 MW 的 appEngine 编译器副本（模块 32226）、宏应用与 worker 4444 内部、其他多槽型号的槽增删改。独立 Rust、UI／后端接线、实际 DLL／设备对照与运行验收仍为未验证。
+
+### PID182：Map* 子编辑器、MW 编译器副本与宏转换 worker
+
+- 收据：`mouse-mw-audit.json#/mouse_182_mapping_subeditor_compiler_chain`，冻结审阅 `.analysis/results/reverse-pending/review-sources/bcd7305a2813877e6865b31764d8c009a751dced9f1ab63396ad5db9a00ce2e6.json`。
+- chunk 2667 是纯 CSS 懒加载块（`KeyMappingComponent.d955a0dc.chunk.css`，已在当前 UI 获取中）；`a.u` 无 JS 条目，`a.f.j`/`a.F.j` 显式跳过 2667，无需再获取。
+- 31 个挂载 Map* 子编辑器的 saveMapping 均以 `rq(activeButton,outputType,isHyperShiftOn)` 起行并附加单一 group；Hypershift/Default 的第二行、Keyboard 的空键返回 []、Joystick 的 BLE 返回 [] 等分支已逐一绑定原件字节范围。DynamicKeyStroke、Perfect180(GameList) 不注册 setSaveMapRef。
+- MW 编译器 32226 → 4325（chunk 432）与键盘 9299 做归一化 AST 比对：531 个函数相同，复用 `keyboard_756_appengine_output_chain`；真实差异仅 RapidTrigger 鼠标版 Math.round、KEYPAD 默认分支（PID182 类别为 MOUSE，不可达）及 stable-stringify 未使用的 collapseEmpty。
+- worker 4444 → 6151 模块 87945：convertToObmMacroData / convertToSynapseMacro / macroDiff 语义已审阅（含 `t.flat` 拼写导致的仅按 inputID 匹配、鼠标释放不继承 Id）。
+- 仍待：独立宏应用的宏编辑/录制/MacroStorage 写入；其他 OBMSlots>1/profileSwap 鼠标 PID 的槽位增删改。Rust、UI 接线、DLL/设备对照与运行验收均未验证。
+
 ## 旧版文件：共享映射转换
 
 统一入口 `python -B -X utf8 tools/workspace.py audit-family-function --family mouse --function mw --product 182 --query legacy-mapping-conversion-chain`；正式结果归[鼠标中间件收据](../../../.analysis/results/frontend/mouse-mw-audit.json)的 `legacy_mapping_conversion_chain`。本段接续 `mouse_182_legacy_worker_chain` 的 Mappings 缺项，复用同一当前 worker、两轮 HTTP 部署收据及实际 Import 消费者；29 个完整模块覆盖 `8061 → input62/output3405`、21 个实际输出分组、19 个输出 helper 及键表／别名／解析依赖。源产品专属转换调用方仍另行判断，不把目标 PID182 当作源文件范围。

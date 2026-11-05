@@ -285,9 +285,9 @@ class StaticGapContinuationTests(unittest.TestCase):
             cls.documents[owner] = json.loads((analysis.ROOT / owner).read_bytes())
 
     def test_reviewed_current_scopes_separate_stages_and_keep_every_original(self):
-        expected = {"mouse-mw-audit.json": (11, 1, 1), "accessories-main-audit.json": (2, 0, 1),
-                    "keyboard-main-audit.json": (1, 1, 1),
-                    "accessories-camera-local-pages-audit.json": (2, 3, 12), "audio-mw-audit.json": (1, 8, 5)}
+        expected = {"mouse-mw-audit.json": (11, 1, 3), "accessories-main-audit.json": (2, 0, 1),
+                    "keyboard-main-audit.json": (1, 1, 4),
+                    "accessories-camera-local-pages-audit.json": (2, 3, 12), "audio-mw-audit.json": (1, 8, 7)}
         for owner, document in self.documents.items():
             with self.subTest(owner=owner):
                 legacy = {name: (set(document[name]), field, document[name][field])
@@ -452,7 +452,17 @@ class StaticGapContinuationTests(unittest.TestCase):
             ("mouse-mw-audit.json", "/mouse_182_profile_import_complete_chain/remaining_chains/2"),
             ("keyboard-main-audit.json", "/keyboard_756_appengine_output_chain/remaining_chains/0"),
             ("keyboard-main-audit.json", "/keyboard_756_appengine_output_chain/remaining_chains/1"),
-            ("keyboard-main-audit.json", "/keyboard_756_analog_registration_chain/remaining_chains/1")):
+            ("keyboard-main-audit.json", "/keyboard_756_analog_registration_chain/remaining_chains/1"),
+            ("mouse-mw-audit.json", "/mouse_182_profile_crud_chain/remaining_chains/0"),
+            ("keyboard-main-audit.json", "/keyboard_756_native_output_executor_chain/remaining_chains/3"),
+            ("audio-mw-audit.json", "/headset_earbuds_protocol40_chain/remaining_chains/1"),
+            ("audio-mw-audit.json", "/headset_protocol40_chain/remaining_chains/0"),
+            ("audio-mw-audit.json", "/headset_protocol40_chain/remaining_chains/4"),
+            ("mouse-mw-audit.json", "/mouse_182_mapping_macro_crud_chain/remaining_chains/2"),
+            ("keyboard-main-audit.json", "/keyboard_output_executor_internals_chain/remaining_chains/0"),
+            ("audio-mw-audit.json", "/headset_protocol40_chain/remaining_chains/5"),
+            ("audio-mw-audit.json", "/headset_protocol40_features_chain/remaining_chains/1"),
+            ("audio-mw-audit.json", "/headset_protocol40_features_chain/remaining_chains/2")):
             owner = ".analysis/results/frontend/" + name
             rows = analysis.semantic_result_gaps(self.documents[owner], owner)
             row = next(row for row in rows if row.get("current_review", {}).get("source_pointer") == source)

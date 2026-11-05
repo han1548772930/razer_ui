@@ -14456,6 +14456,9 @@ def main():
     commands = parser.add_subparsers(dest="command", required=True)
     for name in ("inventory", "verify", "audit-inputs", "recover-inputs", "prepare-analysis", "prepare-static-python", "prepare-product-names", "prepare-keyboard-identity"):
         commands.add_parser(name)
+    capability_ledger_command = commands.add_parser(
+        "capability-ledger", help="Rebuild the first-tier product x capability progress ledger")
+    capability_ledger_command.add_argument("--workers", type=int, choices=range(2, 9), default=4)
     revalidate_frontends = commands.add_parser(
         "revalidate-current-deployment",
         help="Read-only two-round HTTP revalidation of retained current frontend deployment owners",
@@ -14644,6 +14647,9 @@ def main():
         print(json.dumps(rust_data.run(args), ensure_ascii=False), flush=True)
     elif args.command == "prepare-resource-database":
         print(json.dumps(resource_database.run(args), ensure_ascii=False), flush=True)
+    elif args.command == "capability-ledger":
+        import capability_ledger
+        print(json.dumps(capability_ledger.build(args.workers)), flush=True)
     elif args.command == "prepare-static-python":
         print(json.dumps(prepare_static_python(), ensure_ascii=False), flush=True)
     elif args.command == "prepare-runtime-assets":

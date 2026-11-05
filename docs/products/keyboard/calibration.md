@@ -254,7 +254,53 @@ GameMode先深拷贝文档，按active GUID找到实际profile；状态1直接�
 
 停止链：PID756在硬件非连接事件和cleanUpDevice末尾不等待地调用 `stopRunningTurbosAndMacros`。后者位于已等待的removeUsbDevice之后，同一设备的Host表项通常已删除，因此直接返回“device did not exist”而不调用原生；实际停止来自原生移除。原生停止只取消该设备的队列与manager执行，完成值不表示确有执行被停止；设备侧flag3游标、键盘executor重复与按下集、modtap计时、cascade对、Hypershift计数和SnapTap状态都不在其中。引擎关闭先停止并等待全部执行完成（释放按下键），再关闭executor与键盘线程（不发break）并无限等待join。
 
-其他键盘：上述执行器按USB／BLE／外部设备类共享，产品差异在前端配置及MW unsupported消费者。69个当前键盘MW捕获的消费者模块与PID756不是字节相同，721／752没有该消费者字符串，须在各自产品批次复核。仍待：宏子事件解析与剪贴板／音频／显示／鼠标移动内部、数字SnapTap、924D2映射选择、驱动关闭句柄时的按键处理；独立Rust、UI／后端及实际DLL／设备对照均未执行。
+其他键盘：上述执行器按USB／BLE／外部设备类共享，产品差异在前端配置及MW unsupported消费者，见下节。上段“721／752没有消费者字符串”及“模式状态不被清理”由下节更正。驱动关闭句柄时的按键处理不属mapping_engine，仍未验证；独立Rust、UI／后端及实际DLL／设备对照均未执行。
+
+## 键盘输出执行器内部与全部键盘消费者
+
+正式段为[键盘收据](../../../.analysis/results/frontend/keyboard-main-audit.json)的 `keyboard_output_executor_internals_chain`，冻结审阅 `.analysis/results/reverse-pending/review-sources/e17e63b7374f222fc91d9ec6d8bc46247e188a311a5c2e8bbab6cf9348054463.json`。复用当前Mapping 1.3.17.2完整捕获，新增核对141个完整函数及6个PE数据区，没有新捕获或分析会话；72个键盘MW部署按实际字节和规范化AST归组。
+
+### 数字SnapTap
+
+入口 `68D0C` 只处理映射+28置位且输出类型不是clipboard／dpad／hypershift／modtap的映射；组号取映射+36，模式由 `E67E4` 每次事件从实时DeviceData读取，无数据或未知组为模式0。模式0／1／3分别进入 `821C2`／`82608`／`82CD4`，其余模式（含模式2）记录not supported并返回0，由调用方走普通分派。物理路径为 `69530`：先 `677BA` 更新活动表，再双输出仲裁 `69728`（映射+27置位，先于SnapTap，组键+32，同样有15–35ms等待），最后SnapTap；两者都返回0才直接 `794E8`。
+
+| 模式 | 按下 | 释放 |
+| --- | --- | --- |
+| 0 后按优先 | 列表非空且末尾不是本键：合成末尾break并等待15–35ms；置按下标记、入末尾、转发并发布snaptap:0 | 记下本键是否末尾；清标记、移除、转发、发布；若曾是末尾且仍有键，等待后合成新末尾make |
+| 1 优先键 | 优先键以优先列表末尾（否则普通末尾）为目标；普通键在有优先键按住时标记0、入列、不转发不发布；否则以普通末尾为目标。目标存在且不是本键：合成break并等待 | 非优先末尾的优先键、优先键按住时的普通键、非末尾普通键只移除；其余移除并转发发布，随后取优先列表（否则普通列表）末尾等待后合成make |
+| 3 中立 | 列表空：标记1、入列、转发发布；否则若末尾不同则合成break（不等待）、标记0、入列、不转发 | 原有1键时清标记、转发发布；总移除；剩余恰1键时立即合成其make（不等待）；3→2保持中立 |
+
+`83024` 合成前要求键状态项和down/up映射都存在，make／break都经 `802DC`、`794E8` 并发布snaptap:1。物理松开已被压制（标记0）的键由 `68C96` 删除状态项并以空回调走一次仲裁：更新列表、发布事件但不输出。优先／普通列表只有三个模式及构造、析构引用，映射变更、配置切换、清理和停止都不清空；键状态在 `NotifyActiveMappingDisabled`（`6A5E0`）和 `NotifyHypershiftDisabled`（`6ACB0`）里仅删除标记0项，其他键按up映射直接分派，不碰列表、不等待、不发布。析构只释放不分派；没有代次校验，模式变更对已按住的列表立即生效。
+
+`924D2` 是模拟映射缓存（map1512，键为输入身份）的只读查询。`9071A` 未命中时选择：全局启用（`3821D8`）下依次gm表（设备标志+800）、otfs表（`395765`）、st表、普通表，全局快捷表 `EA546` 最后覆盖并置+25；未启用时gm表＋普通表（均表+72）。键形如 `gm:<输入>:hs:<Hypershift>`。无匹配时 `E5D70` 为真不建条目并返回失败，否则建保留输入的直通对象。数字 `66D10`／`67FF2` 另含表+96（`E6F16`）且全局快捷先于普通表，两条路径选择顺序不同，不能合并。
+
+### 宏单事件与本机动作
+
+`ED163` 只接受audio、clipboard、delay、keyboard、launch、loop、macro（flag只能0／1）、mouse、mouseMove、randomDelay；其他类型使整个宏解析失败，display不在其中。`EDF66` 分阶段宏只接受mouse与keyboard。audio的id为all／mic／micVolumeDown／micVolumeUp／speaker／speakerVolumeDown／speakerVolumeUp，步进id无参数，其余volume≤100、mute<3（2为切换）。clipboard的id接受text／image，但两处消费者都只执行text。randomDelay不校验min≤max。
+
+| 动作 | 内部语义与失败 |
+| --- | --- |
+| 音频 | 经音频线程调用 `IAudioEndpointVolume`（扬声器+136、麦克风+144）：SetMute、SetMasterVolumeLevelScalar（字节/100.0）、VolumeStepUp／Down；单例、线程、端点缺失及HRESULT失败各有错误，但宏不消费结果。 |
+| 粘贴 | `BE7B0` 只是 `BBF70` 的绑定调用。序列为：标记忙→在途为0时快照剪贴板各格式→写文本→端点发送粘贴键→500ms后恢复并唤醒等待者→结束。队列≥3时记录丢弃；宏等待、设备路径不等待；恢复按text／html／rtf／自定义／png首个可用格式，未保存则清空；没有重试。 |
+| 显示 | WMI WmiMonitorBrightness助手懒创建并保留在executor+192，创建失败时调用前没有空检查。id 0设定、1／3减、2／4加、5成功空操作。设备线程 `85832` 把0..2交manager、3..5交鼠标处理。 |
+| 鼠标移动 | 宏文件 mouseMoveType 为none／absolute／foreground／relative。relative首事件只记录并成功，其后发增量，宏开始时清；foreground按前台窗口矩形和虚拟屏度量换算。优先端点异步IOCTL `0x88883020`，否则SendInput。提交失败立即回调false并移除待决项；IO完成回调success=(error==0)并转投到executor线程。 |
+
+宏内音频／剪贴板／显示结果被忽略，而顶层 `127F80` 同类动作记录 audio／clipboard／display fail，两者不能混同。
+
+### 各键盘unsupported消费者
+
+此前统计漏掉了721／752：它们的refresh收据引用基线捕获的chunk，消费者实际存在。现72个部署全部有消费者，setup／cleanup都调用注册与注销；22种字节不同的模块归并为6个行为变体（比较忽略改名、括号、console、模块号、遥测表和跨模块压缩导出名）。
+
+| 变体 | 产品 | 与基线差异 |
+| --- | --- | --- |
+| A | 756 | 基线：解析有try/catch、deviceInfo、转发事件、完整38个case；copyText无启用门控，AI列表在模块初始化时加载 |
+| B | 其余67个 | 同A，但copyText等待aiLauncherEnabled，未启用直接返回；用URL参数替换或删除%s，ChatGPT默认含 `?q=%s` |
+| C | 747 | 同B，ChatGPT默认URL不含%s |
+| D | 721 | 同A，但配置档切换的dual-link辅助函数没有pairedDevice查找 |
+| E | 739 | 较旧：解析无try/catch、无deviceInfo、无forwardedUnsupportedMapping与从机转发、无ScrollModeV2；razerKey与4个分组case缺失；keymap事件无unsupportedMappingEvent；启动器URL为旧形式 |
+| F | 752 | 与E同样缺转发、ScrollModeV2、5个case、pairedDevice和keymap字段，但保留解析try/catch与deviceInfo |
+
+产品差异实现以上表为准，不得把PID756的copyText语义推广到其他键盘。仍待：跨模块常量的逐产品实际值（窗口名、3个dual-link豁免主PID）和亮度参数归各产品批次；`handleUnsupportedMappingEvents`／`unsupportedMappingEventKeyMappings` 这条特性门控消费者未闭合；各handler业务链归其专题；驱动关闭句柄时的按键处理未验证。独立Rust、UI／后端及实际DLL／设备对照均未执行。
 
 ## 756：模拟键事件注册与刷新
 
