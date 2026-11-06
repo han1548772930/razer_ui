@@ -142,6 +142,14 @@ impl ServiceRequest {
     /// Synchronous requests finish their device chain before returning. Retained
     /// operations acquire one lease around their entire start/poll/cleanup path.
     pub(crate) fn synchronous_device_task(&self) -> anyhow::Result<Option<Scope>> {
+        if let Self::HidNodeEarbudsAutoPause { node, product_id, .. } = self {
+            razer_device::earbuds_auto_pause::transport(*product_id)?;
+            return Ok(Some(Scope::collection(*product_id, node)));
+        }
+        if let Self::DeviceEarbudsAutoPause { target, .. } = self {
+            razer_device::earbuds_auto_pause::transport(target.product_id)?;
+            return Scope::target(target).map(Some);
+        }
         if let Self::KeyboardProfileInventoryRead { target }
         | Self::KeyboardOnboardProfilesRead { target, .. } = self
         {

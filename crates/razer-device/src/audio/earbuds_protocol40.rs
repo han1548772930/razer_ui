@@ -9,6 +9,7 @@
 //! A sent byte count is never treated as a device acknowledgement.
 use crate::backend::{ExchangeLease, ExchangeOptions, FeatureTransport};
 use anyhow::{Context as _, Result, anyhow, bail};
+use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 pub const REPORT_ID: u8 = 2;
@@ -69,7 +70,7 @@ pub struct CommandHeader {
 }
 
 impl CommandHeader {
-    const fn new(bytes: [u8; 3]) -> Self {
+    pub const fn new(bytes: [u8; 3]) -> Self {
         Self {
             declared_size: bytes[0],
             class: bytes[1],
@@ -203,6 +204,7 @@ impl Sleeper for ThreadSleeper {
 pub struct Protocol40Session<'a, S: Sleeper = ThreadSleeper> {
     transport: &'a dyn FeatureTransport,
     transactions: TransactionCounter,
+    next_transaction: Option<&'a mut dyn FnMut(TransactionDeviceType) -> Result<u8>>,
     device_type: TransactionDeviceType,
     sleeper: S,
 }
@@ -219,9 +221,21 @@ impl<'a, S: Sleeper> Protocol40Session<'a, S> {
         Self {
             transport,
             transactions: TransactionCounter::default(),
+            next_transaction: None,
             device_type: TransactionDeviceType::AudioHeadsetSpeakerMic,
             sleeper,
         }
+    }
+
+    /// Production retains the source counter across calls on one device owner.
+    pub fn with_transaction_source(
+        transport: &'a dyn FeatureTransport,
+        sleeper: S,
+        next: &'a mut dyn FnMut(TransactionDeviceType) -> Result<u8>,
+    ) -> Self {
+        let mut session = Self::with_sleeper(transport, sleeper);
+        session.next_transaction = Some(next);
+        session
     }
 
     pub fn send_command(
@@ -230,7 +244,21 @@ impl<'a, S: Sleeper> Protocol40Session<'a, S> {
         params: &[u8],
         validate: &dyn Fn() -> Result<()>,
     ) -> Result<Reply> {
-        let request = encode_request(header, params, self.transactions.next(self.device_type))?;
+        self.send_command_as(header, params, self.device_type, validate)
+    }
+
+    pub fn send_command_as(
+        &mut self,
+        header: CommandHeader,
+        params: &[u8],
+        device_type: TransactionDeviceType,
+        validate: &dyn Fn() -> Result<()>,
+    ) -> Result<Reply> {
+        let transaction = match &mut self.next_transaction {
+            Some(next) => next(device_type)?,
+            None => self.transactions.next(device_type),
+        };
+        let request = encode_request(header, params, transaction)?;
         let sleeper = &self.sleeper;
         crate::feature_exchange::with_validated_exchange(
             self.transport,
@@ -326,7 +354,19 @@ fn read_reply<S: Sleeper>(
         };
         match status {
             ReplyStatus::Success => {
-                let length = usize::from(body[5]).min(BODY_LENGTH - 8);
+                let length = usize::from(body[5]);
+                if count > REPORT_LENGTH
+                    || report[0] != REPORT_ID
+                    || length > BODY_LENGTH - 8
+                    || count < 9 + length
+                {
+                    return (
+                        Err(anyhow!(
+                            "PROTOCOL40 success payload is not backed by the received report bytes"
+                        )),
+                        false,
+                    );
+                }
                 return (
                     Ok(Reply {
                         data: body[8..8 + length].to_vec(),
@@ -390,7 +430,7 @@ impl<S: Sleeper> Protocol40Session<'_, S> {
 
 /// Device-observed auto-pause state. The MW getter collapses failure to
 /// `{isEnabled:false}`; here failure stays distinct from an observed `false`.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub enum AutoPauseObservation {
     Unobserved,
     Observed(bool),
@@ -415,7 +455,7 @@ pub struct AutoPauseProfileField {
     pub is_enabled: Option<bool>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub enum WriteOutcome {
     Skipped,
     Confirmed,
@@ -423,7 +463,7 @@ pub enum WriteOutcome {
     Failed(String),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct AutoPauseRestore {
     pub observation: AutoPauseObservation,
     pub write: WriteOutcome,

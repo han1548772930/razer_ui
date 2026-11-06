@@ -92,6 +92,8 @@ pub use stream_mixer::StreamMixerObservation;
 mod audio_leviathan;
 #[path = "audio_volume.rs"]
 mod audio_volume;
+mod earbuds_auto_pause;
+pub use earbuds_auto_pause::EarbudsAutoPauseRequested;
 #[path = "surround/audio_surround.rs"]
 mod surround;
 pub use surround::{SurroundObservation, SurroundOperation, SurroundRequest};
@@ -282,6 +284,7 @@ pub struct AudioProductWorkspace {
     pod_audio_subscription: Option<Subscription>,
     pod_runtime_devices: Vec<RuntimeAudioDevice>,
     volume: audio_volume::State,
+    earbuds: earbuds_auto_pause::State,
     surround: surround::State,
     leviathan: audio_leviathan::State,
     pub(super) mixer_io: AudioMixerState,
@@ -370,6 +373,7 @@ impl AudioProductWorkspace {
             pod_audio_subscription: None,
             pod_runtime_devices: Vec::new(),
             volume: audio_volume::State::default(),
+            earbuds: earbuds_auto_pause::State::default(),
             surround: surround::State::default(),
             leviathan: audio_leviathan::State::new(pid, window, cx),
             mixer_io: AudioMixerState::default(),
@@ -521,6 +525,7 @@ impl AudioProductWorkspace {
         self.mixer_snapshot(&mut snapshot);
         self.effect_preset_snapshot(&mut snapshot);
         self.seiren_eq_snapshot(&mut snapshot);
+        self.earbuds_snapshot(&mut snapshot);
         snapshot
     }
     pub fn restore(&mut self, saved: Option<&Value>, window: &mut Window, cx: &mut Context<Self>) {
@@ -2128,6 +2133,10 @@ impl AudioProductWorkspace {
                     .as_ref()
                     .is_some_and(|c| self.draft.pointer(&c.path) != Some(&c.value))
                 {
+                    continue;
+                }
+                if section.title == "AUTO_PAUSE" && razer_device::earbuds_protocol40::supports_auto_pause(self.spec.product_id) {
+                    sections.push(self.earbuds_auto_pause_panel(cx));
                     continue;
                 }
                 let mut panel =

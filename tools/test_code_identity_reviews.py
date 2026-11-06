@@ -106,6 +106,36 @@ class IdentityReviewTests(unittest.TestCase):
         self.assertEqual(ledger._static_state(ledger._sections(self.db, 2, "feature:example")), "partial")
         self.assertEqual(self.db.execute("SELECT state FROM variant_queue").fetchone()[0], "partial_review_scope")
 
+    def test_compact_closure_keeps_reused_source_owners_in_identity_propagation(self):
+        original = self.owner()
+        section = self.section(closed=True)
+        section["complete_source_owners"] = []
+        section["reused_source_identities"] = [{"original": original["original"]}]
+        section["upstream_sections"] = [{"pointer": "/previous", "canonical_sha256": "b" * 64}]
+        section["reused_owner_verification"] = [{"owner_id": original["id"],
+            "original_sha256": self.sha, "byte_range": [0, len(self.raw)],
+            "body_sha256": self.sha, "proof_sections": ["previous"]}]
+        self.publish(section)
+        self.assertEqual(self.db.execute("SELECT COUNT(*) FROM review_matches").fetchone()[0], 2)
+        self.assertEqual(ledger._static_state(ledger._sections(self.db, 1, "feature:example")), "closed")
+        self.assertEqual(ledger._static_state(ledger._sections(self.db, 2, "feature:example")), "partial")
+
+    def test_compact_closure_without_source_or_upstream_is_invalid(self):
+        section = self.section(closed=True)
+        section["complete_source_owners"] = []
+        section["reused_owner_verification"] = [{"owner_id": "missing",
+            "original_sha256": self.sha, "byte_range": [0, len(self.raw)],
+            "body_sha256": self.sha, "proof_sections": ["previous"]}]
+        self.publish(section)
+        self.assertEqual(self.db.execute("SELECT state FROM review_sections").fetchone()[0], "invalid")
+        self.assertEqual(self.db.execute("SELECT COUNT(*) FROM review_matches").fetchone()[0], 0)
+
+    def test_regular_owners_keep_legacy_upstream_metadata(self):
+        section = self.section()
+        section["upstream_sections"] = ["legacy prose reference"]
+        self.publish(section)
+        self.assertEqual(self.db.execute("SELECT state FROM review_sections").fetchone()[0], "partial")
+
     def test_selected_native_code_evidence_stays_partial_on_target_product(self):
         self.publish(self.section(closed=True))
         self.db.execute("CREATE TABLE native_review_matches(section_id TEXT, product_id INTEGER, normalized_sha TEXT)")

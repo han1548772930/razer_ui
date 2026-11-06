@@ -12,6 +12,141 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use std::path::Path;
 
+mod defaults;
+
+const AUTO_PAUSE_FIELD: &str = "audioAutoPauseControl";
+
+/// Stage the source initial profile after the caller proves its initialization
+/// gate. This only changes the workspace draft; saving and device restore are
+/// separate steps. The source provider supplies a fresh GUID and computer-name
+/// prefix, not the template's empty GUID and plain "Default" name.
+pub fn initialize_auto_pause_profile(
+    device: &mut razer_model::model::Device,
+    stable_guid: &str,
+    source_name: &str,
+) -> Result<()> {
+    if !device.profiles.is_empty() || !device.active_profile.is_empty() {
+        bail!("earbuds initial profile cannot replace an existing selection");
+    }
+    if stable_guid.is_empty() || source_name.is_empty() {
+        bail!("earbuds initial profile requires its generated identity and source name");
+    }
+    let source = defaults::profile(device.product_id, stable_guid, source_name)?;
+    device.profiles.push(razer_model::model::Profile {
+        id: stable_guid.to_owned(),
+        guid: stable_guid.to_owned(),
+        name: source_name.to_owned(),
+        source_settings: Some(serde_json::json!({"profile": source})),
+        settings: None,
+        dpi_stages: None,
+    });
+    device.active_profile = stable_guid.to_owned();
+    Ok(())
+}
+
+fn workspace_profile_index(device: &razer_model::model::Device, profile_id: &str) -> Result<usize> {
+    if !supports_auto_pause(device.product_id) {
+        bail!("product {} does not register auto-pause", device.product_id);
+    }
+    if profile_id.is_empty() {
+        bail!("auto-pause requires a workspace profile identity");
+    }
+    let mut matches = device
+        .profiles
+        .iter()
+        .enumerate()
+        .filter(|(_, profile)| profile.id == profile_id);
+    let (index, _) = matches.next().context("auto-pause profile was removed")?;
+    if matches.next().is_some() {
+        bail!("auto-pause profile identity is duplicated");
+    }
+    Ok(index)
+}
+
+fn workspace_auto_pause(source: Option<&Value>) -> Result<proto::AutoPauseProfileField> {
+    let Some(source) = source else {
+        return Ok(proto::AutoPauseProfileField { is_enabled: None });
+    };
+    let root = source
+        .as_object()
+        .context("audio snapshot must be an object")?;
+    // Mounted audio snapshots wrap the profile; original profile documents
+    // carry the same field directly. Two competing owners are ambiguous.
+    let profile = match root.get("profile") {
+        Some(profile) => {
+            if root.contains_key(AUTO_PAUSE_FIELD) {
+                bail!("auto-pause has both a profile and snapshot-level value");
+            }
+            profile
+                .as_object()
+                .context("audio profile must be an object")?
+        }
+        None => root,
+    };
+    let enabled = match profile.get(AUTO_PAUSE_FIELD) {
+        None => None,
+        Some(control) => {
+            let control = control
+                .as_object()
+                .context("auto-pause control must be an object")?;
+            match control.get("isEnabled") {
+                None => None,
+                Some(value) => Some(
+                    value
+                        .as_bool()
+                        .context("auto-pause isEnabled must be boolean")?,
+                ),
+            }
+        }
+    };
+    Ok(proto::AutoPauseProfileField {
+        is_enabled: enabled,
+    })
+}
+
+/// Read the selected workspace profile's local field without turning missing
+/// data into a default or a device observation. Selection is captured by ID.
+pub fn read_auto_pause(
+    device: &razer_model::model::Device,
+    profile_id: &str,
+) -> Result<proto::AutoPauseProfileField> {
+    let index = workspace_profile_index(device, profile_id)?;
+    workspace_auto_pause(device.profiles[index].source_settings.as_ref())
+}
+
+/// Merge an explicit edit into the existing workspace draft. The caller owns
+/// atomic persistence and may submit device I/O only after that save succeeds.
+/// Validation completes before mutation; unrelated profile fields are retained.
+pub fn merge_auto_pause(
+    device: &mut razer_model::model::Device,
+    profile_id: &str,
+    enabled: bool,
+) -> Result<()> {
+    let index = workspace_profile_index(device, profile_id)?;
+    workspace_auto_pause(device.profiles[index].source_settings.as_ref())?;
+    let source = device.profiles[index]
+        .source_settings
+        .get_or_insert_with(|| Value::Object(Map::new()));
+    let root = source.as_object_mut().expect("validated audio snapshot");
+    let profile = if root.contains_key(AUTO_PAUSE_FIELD)
+        || (!root.contains_key("profile") && root.contains_key("guid"))
+    {
+        root
+    } else {
+        root.entry("profile")
+            .or_insert_with(|| Value::Object(Map::new()))
+            .as_object_mut()
+            .expect("validated audio profile")
+    };
+    profile
+        .entry(AUTO_PAUSE_FIELD)
+        .or_insert_with(|| Value::Object(Map::new()))
+        .as_object_mut()
+        .expect("validated auto-pause control")
+        .insert("isEnabled".into(), Value::Bool(enabled));
+    Ok(())
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AutoPauseControl {

@@ -6393,6 +6393,7 @@ name = "razer-shell"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-channel",
  "gpui-kit",
  "log",
  "raw-window-handle",

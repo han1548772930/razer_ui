@@ -351,6 +351,25 @@ def owner_records(section):
     owners = section.get("complete_source_owners", section.get("complete_owners"))
     if owners is not None:
         yield from owners.values() if isinstance(owners, dict) else owners
+        if not section.get("reused_owner_verification"):
+            return
+        originals = {}
+        for source in section.get("reused_source_identities", []):
+            original = source["original"]
+            previous = originals.setdefault(original["sha256"], original)
+            if previous["bytes"] != original["bytes"]:
+                raise ValueError("Reused source identities disagree on byte length")
+        proofs = {row["pointer"][1:] for row in section.get("upstream_sections", [])
+                  if isinstance(row, dict) and isinstance(row.get("pointer"), str)
+                  and row["pointer"].startswith("/")}
+        for owner in section.get("reused_owner_verification", []):
+            original = originals.get(owner["original_sha256"])
+            if original is None or not owner.get("proof_sections") or not set(owner["proof_sections"]) <= proofs:
+                raise ValueError("Reused owner has no declared source or upstream proof")
+            start, end = owner["byte_range"]
+            yield {"id": owner["owner_id"], "original": original,
+                   "byte_start": start, "byte_end": end,
+                   "body_sha256": owner["body_sha256"]}
         return
     reference = section.get("complete_owner_reference")
     if not isinstance(reference, dict):

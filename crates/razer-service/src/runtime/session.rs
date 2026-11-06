@@ -232,6 +232,7 @@ impl SessionRuntime {
             | ServiceRequest::ControllerLighting { .. }
             | ServiceRequest::MarciLighting { .. }
             | ServiceRequest::ControllerSleep { .. }
+            | ServiceRequest::HidNodeEarbudsAutoPause { .. }
             | ServiceRequest::ControllerSocd { .. }
             | ServiceRequest::ControllerInitialization { .. }
             | ServiceRequest::ControllerTriggerCalibrationStart { .. }
@@ -253,6 +254,9 @@ impl SessionRuntime {
             | ServiceRequest::MousePhilipsCancel { .. }
             | ServiceRequest::HidNodeLeviathan { .. }
             | ServiceRequest::LeviathanEventsStart { .. }
+            | ServiceRequest::EarbudsEventsStart { .. }
+            | ServiceRequest::EarbudsEventsPoll { .. }
+            | ServiceRequest::EarbudsEventsStop { .. }
             | ServiceRequest::LeviathanEventsPoll { .. }
             | ServiceRequest::LeviathanEventsStop { .. }
             | ServiceRequest::HidNodeMouseIndicatorLed { .. }

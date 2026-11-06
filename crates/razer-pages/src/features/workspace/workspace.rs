@@ -22,6 +22,7 @@ use std::collections::BTreeMap;
 
 #[derive(Clone)]
 pub enum WorkspaceEvent {
+    EarbudsAutoPauseRequested(super::audio_products::EarbudsAutoPauseRequested),
     ResourceStateChanged,
     Changed,
     SourceProfileImportRequested(razer_model::profile_transfer::SourceProfileImport),

@@ -176,7 +176,6 @@ impl EarbudsControls {
         }
         let enabled = !self.draft.auto_pause;
         self.draft.auto_pause = enabled;
-        self.auto_pause_persisted = Some(enabled);
         Some(EarbudsTask::SetAutoPause {
             generation: self.generation,
             enabled,
@@ -203,7 +202,6 @@ impl EarbudsControls {
             level: change.level.unwrap_or(current.level),
         };
         self.draft.anc = Some(merged);
-        self.anc_persisted = Some(merged);
         Some(EarbudsTask::SetAnc {
             generation: self.generation,
             setting: merged,
@@ -242,6 +240,21 @@ impl EarbudsControls {
                 self.anc_runtime = Some(runtime);
                 self.last_anc_write = Some(write);
             }
+        }
+        Ok(())
+    }
+
+    /// Called only after the selected profile's atomic save has completed.
+    /// An optimistic control change is not a persistence acknowledgement.
+    pub fn acknowledge_persistence(&mut self, task: EarbudsTask) -> Result<()> {
+        if !self.is_current(task.generation()) {
+            bail!("stale earbuds profile persistence acknowledgement");
+        }
+        match task {
+            EarbudsTask::SetAutoPause { enabled, .. } => {
+                self.auto_pause_persisted = Some(enabled);
+            }
+            EarbudsTask::SetAnc { setting, .. } => self.anc_persisted = Some(setting),
         }
         Ok(())
     }

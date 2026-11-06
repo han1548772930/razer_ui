@@ -287,7 +287,7 @@ class StaticGapContinuationTests(unittest.TestCase):
     def test_reviewed_current_scopes_separate_stages_and_keep_every_original(self):
         expected = {"mouse-mw-audit.json": (11, 1, 3), "accessories-main-audit.json": (2, 0, 1),
                     "keyboard-main-audit.json": (1, 1, 4),
-                    "accessories-camera-local-pages-audit.json": (2, 3, 12), "audio-mw-audit.json": (1, 8, 7)}
+                    "accessories-camera-local-pages-audit.json": (2, 3, 12), "audio-mw-audit.json": (1, 8, 8)}
         for owner, document in self.documents.items():
             with self.subTest(owner=owner):
                 legacy = {name: (set(document[name]), field, document[name][field])
@@ -378,7 +378,7 @@ class StaticGapContinuationTests(unittest.TestCase):
                 "image_properties": (1, 2), "image_host_chain": (1,), "device_lifecycle": (0,),
                 "media_preview_chain": (1,), "camera_3594_exposure_chain": (0,),
                 "camera_3594_profile_replay_chain": (0,), "camera_3594_initial_get_chain": (0,)},
-            "audio-mw-audit.json": {"auto_pause_hid_chain": (1,), "multi_function_1446_chain": (2,)},
+            "audio-mw-audit.json": {"multi_function_1446_chain": (2,)},
         }
         for name, sections in selections.items():
             owner = ".analysis/results/frontend/" + name
@@ -443,6 +443,14 @@ class StaticGapContinuationTests(unittest.TestCase):
         self.assertEqual(stages[prefix + "0"]["kind"], "runtime_acceptance_unverified")
         self.assertEqual(stages[prefix + "2"]["kind"], "implementation_acceptance_pending")
         self.assertFalse(self.documents[owner]["keyboard_756_analog_registration_chain"]["whole_product_complete"])
+        owner = ".analysis/results/frontend/audio-mw-audit.json"
+        stages = {row["current_review"]["source_pointer"]: row
+                  for row in analysis.semantic_result_gaps(self.documents[owner], owner)
+                  if "current_review" in row}
+        row = stages["/auto_pause_hid_chain/unresolved_chains/1"]
+        self.assertEqual(row["kind"], "implementation_acceptance_pending")
+        self.assertEqual(row["current_review"]["proofs"][0]["pointer"],
+                         "/auto_pause_capability_static_closure")
 
     def test_completed_subscope_does_not_close_remaining_native_families_or_providers(self):
         for name, source in (

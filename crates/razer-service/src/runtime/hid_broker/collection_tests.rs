@@ -1782,8 +1782,6 @@ fn hold_expiry_and_owner_cancellation_answer_queued_requests_without_io_or_clock
     stop(&pool);
 }
 
-HOLD_TIMEOUT_TESTS_CONTINUE
-
 #[test]
 fn queued_cancellation_never_issues_native_io() {
     let pool = pool();

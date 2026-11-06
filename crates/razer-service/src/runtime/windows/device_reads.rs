@@ -143,6 +143,16 @@ pub(super) fn mouse_indicator_led_monitor(
 }
 #[path = "audio/leviathan.rs"]
 mod leviathan_adapter;
+#[path = "audio/earbuds_auto_pause.rs"]
+mod earbuds_auto_pause_adapter;
+pub(super) fn earbuds_event_source(
+    target: &razer_device::earbuds_events::Target,
+) -> anyhow::Result<Box<dyn razer_device::receiver_pairing::HardwareEvents>> {
+    earbuds_auto_pause_adapter::event_source(target)
+}
+pub(super) fn earbuds_auto_pause(target: &DeviceReadTarget, operation: razer_device::earbuds_auto_pause::Operation) -> anyhow::Result<Value> {
+    earbuds_auto_pause_adapter::request(target, operation)
+}
 #[path = "audio/seiren_eq.rs"]
 mod seiren_eq_adapter;
 pub(super) fn leviathan_event_source(

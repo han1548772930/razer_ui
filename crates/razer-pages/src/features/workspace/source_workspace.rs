@@ -1275,6 +1275,7 @@ impl SourceProductWorkspace {
     }
     fn sync_audio_volume_activity(&self, cx: &mut Context<Self>) {
         if let FamilyBody::Audio(body) = &self.body {
+            body.update(cx, |body, cx| body.set_earbuds_context(&self.device, self.active, cx));
             let active = self.active
                 && self
                     .current_page()
@@ -2802,6 +2803,9 @@ impl SourceProductWorkspace {
         }
     }
     fn persist_source_profile(&mut self, apply: bool, cx: &mut Context<Self>) {
+        if let FamilyBody::Audio(body) = &self.body {
+            body.update(cx, |body, cx| body.set_earbuds_context(&self.device, self.active, cx));
+        }
         if apply && razer_storage::host_local_profile::supported(self.device.product_id) {
             let result = (|| -> Result<_, String> {
                 let profile = self
@@ -3721,6 +3725,9 @@ impl SourceProductWorkspace {
                     cx.emit(WorkspaceEvent::AudioVolumeRequested { request: *request })
                 },
             ));
+            subscriptions.push(cx.subscribe(&body, |_: &mut Self, _, request: &super::audio_products::EarbudsAutoPauseRequested, cx| {
+                cx.emit(WorkspaceEvent::EarbudsAutoPauseRequested(request.clone()));
+            }));
             subscriptions.push(cx.subscribe(
                 &body,
                 |_: &mut Self, _, request: &super::audio_products::LeviathanRequest, cx| {
@@ -4558,6 +4565,30 @@ impl SourceProductWorkspace {
                 && snapshot.source_device_settings == request.candidate().source_device_settings
         });
         if !pending_import {
+            if razer_device::earbuds_protocol40::supports_auto_pause(self.device.product_id) {
+                if self.saved.profiles.is_empty() && self.saved.active_profile.is_empty()
+                    && self.device.profiles.is_empty() && self.device.active_profile.is_empty()
+                    && snapshot.profiles.len() == 1 && snapshot.active_profile == snapshot.profiles[0].id
+                    && razer_storage::earbuds_profiles::read_auto_pause(&snapshot, &snapshot.active_profile)
+                        .is_ok_and(|field| field.is_enabled.is_some()) {
+                    self.device.profiles = snapshot.profiles.clone();
+                    self.device.active_profile = snapshot.active_profile.clone();
+                }
+                for profile in &snapshot.profiles {
+                    let values = (
+                        razer_storage::earbuds_profiles::read_auto_pause(&self.saved, &profile.id),
+                        razer_storage::earbuds_profiles::read_auto_pause(&self.device, &profile.id),
+                        razer_storage::earbuds_profiles::read_auto_pause(&snapshot, &profile.id),
+                    );
+                    if let (Ok(previous), Ok(current), Ok(saved)) = values {
+                        if previous == current && let Some(enabled) = saved.is_enabled {
+                            if let Err(error) = razer_storage::earbuds_profiles::merge_auto_pause(&mut self.device, &profile.id, enabled) {
+                                eprintln!("[earbud profile acknowledgement] {error:#}");
+                            }
+                        }
+                    }
+                }
+            }
             if let Err(error) = razer_storage::host_local_profile::accept_saved(
                 &mut self.device,
                 &self.saved,

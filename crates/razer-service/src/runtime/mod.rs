@@ -15,6 +15,8 @@ mod controller_socd;
 #[path = "controller_triggers.rs"]
 mod controller_triggers;
 mod feature_submission;
+mod earbuds_auto_pause;
+mod earbuds_events;
 mod hid_broker;
 #[path = "keyboard_submission_controller.rs"]
 mod keyboard_submission_controller;

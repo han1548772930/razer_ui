@@ -21,6 +21,11 @@ pub(super) fn leviathan_event_source(
 ) -> anyhow::Result<Box<dyn razer_device::receiver_pairing::HardwareEvents>> {
     device_reads::leviathan_event_source(target)
 }
+pub(super) fn earbuds_event_source(
+    target: &razer_device::earbuds_events::Target,
+) -> anyhow::Result<Box<dyn razer_device::receiver_pairing::HardwareEvents>> {
+    device_reads::earbuds_event_source(target)
+}
 pub(super) fn keyboard_latest_restore(
     target: &razer_device::keyboard_latest_protocol::Target,
     operation: &razer_device::keyboard_latest_protocol::Operation,
@@ -487,6 +492,9 @@ impl NativeRuntime {
             | ServiceRequest::HidNodeMouseScroll { .. }
             | ServiceRequest::HidNodeLeviathan { .. }
             | ServiceRequest::LeviathanEventsStart { .. }
+            | ServiceRequest::EarbudsEventsStart { .. }
+            | ServiceRequest::EarbudsEventsPoll { .. }
+            | ServiceRequest::EarbudsEventsStop { .. }
             | ServiceRequest::LeviathanEventsPoll { .. }
             | ServiceRequest::LeviathanEventsStop { .. }
             | ServiceRequest::HidNodeMouseIndicatorLed { .. }
@@ -552,6 +560,7 @@ impl NativeRuntime {
             | ServiceRequest::ControllerLighting { .. }
             | ServiceRequest::MarciLighting { .. }
             | ServiceRequest::ControllerSleep { .. }
+            | ServiceRequest::HidNodeEarbudsAutoPause { .. }
             | ServiceRequest::ControllerSocd { .. }
             | ServiceRequest::ControllerInitialization { .. }
             | ServiceRequest::ControllerTriggerCalibrationStart { .. }
@@ -565,6 +574,7 @@ impl NativeRuntime {
             }
             ServiceRequest::UsbDevices => usb::enumerate(),
             ServiceRequest::DeviceRead { target, kind } => device_reads::query(&target, kind),
+            ServiceRequest::DeviceEarbudsAutoPause { target, auto_pause_operation } => device_reads::earbuds_auto_pause(&target, auto_pause_operation),
             ServiceRequest::DeviceWrite { target, setting } => {
                 device_reads::write(&target, &setting)
             }

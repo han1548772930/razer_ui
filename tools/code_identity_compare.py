@@ -142,7 +142,8 @@ def compare(left, right, *, import_substitutions=()):
             node_pairs.append((a, b))
     right_positions = set(positions.values())
     forward, backward, renamed, dependencies, external = {}, {}, {}, [], {}
-    local_resolutions = {"declaration", "parameter_requires_caller_analysis", "destructuring_requires_value_analysis"}
+    local_resolutions = {"declaration", "parameter_requires_caller_analysis", "destructuring_requires_value_analysis",
+                         "iteration_requires_value_analysis"}
     for a, b in node_pairs:
         if a.type == "identifier" and not (_public_name(a) or _public_name(b)):
             x = left.bindings.resolve(a.text.decode(), a.start_byte)

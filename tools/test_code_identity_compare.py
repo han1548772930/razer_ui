@@ -26,6 +26,32 @@ class BindingComparisonTests(unittest.TestCase):
         self.assertFalse(self.check("function f(x){return function(y){return x}}",
                                     "function f(x){return function(x){return x}} ")["structure_corresponds"])
 
+    def test_iteration_binding_renames_keep_lexical_owners(self):
+        for left, right in [
+            ("function f(xs){for(let t of xs) use(t)}",
+             "function g(ys){for(let q of ys) use(q)}"),
+            ("function f(xs){for(var t in xs) use(t); return t}",
+             "function g(ys){for(var q in ys) use(q); return q}"),
+            ("function f(xs){for(let t of xs){for(let t of xs) use(t);use(t)}}",
+             "function g(ys){for(let q of ys){for(let r of ys) use(r);use(q)}}"),
+            ("function f(xs){for(const {key:t} of xs) use(t)}",
+             "function g(ys){for(const {key:q} of ys) use(q)}"),
+        ]:
+            with self.subTest(left=left):
+                self.assertTrue(self.check(left, right)["structure_corresponds"])
+
+    def test_iteration_scope_and_global_changes_are_not_renames(self):
+        for left, right in [
+            ("function f(xs){for(let t of xs) use(t);return t}",
+             "function g(ys){for(let q of ys) use(q);return q}"),
+            ("function f(xs){for(t of xs) use(t)}",
+             "function g(ys){for(q of ys) use(q)}"),
+            ("function f(xs){for(let t of xs){for(let y of xs) use(t)}}",
+             "function g(ys){for(let q of ys){for(let r of ys) use(r)}}"),
+        ]:
+            with self.subTest(left=left):
+                self.assertFalse(self.check(left, right)["structure_corresponds"])
+
     def test_two_locals_cannot_merge(self):
         self.assertFalse(self.check("function f(a,b){return a+b}",
                                     "function g(x,y){return x+x}")["structure_corresponds"])

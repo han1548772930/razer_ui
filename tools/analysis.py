@@ -653,6 +653,8 @@ def semantic_query_gaps(value, evidence, pointer="", product_id=None):
 
 
 _STATIC_GAP_PROOFS = {
+    "auto_pause_capability_static_closure": "ef504d97e7922f320f39e035e8b7025fc5e69ec8dde089db8b3868372aee8297",
+    "all_mouse_macro_mapping_used_helpers": "f449cc662ba6f57dd4459699b17bcb673fa3b3e74acc8dcae7c5428ebc52c35d",
     "mouse_182_profile_import_complete_chain": "fe3b5c58e2dc8d8d331e31dcdf7ec85c2945b1db079f2227b9de2b6701555574",
     "keyboard_756_appengine_output_chain": "af94c12633dcf96724593711307db868bb003d19a8f117a1a9bcd8ce69196a68",
     "hanbo_cpu_owner32_chain": "8c7316cf187cba35ed13c0c9088e21d4b72941c631a1c2afbc5ac89d5c277ccf",
@@ -705,6 +707,9 @@ _STATIC_GAP_COMPLETION_FIELDS = {
 
 # Each entry is a reviewed whole finding, never a substring or product-wide claim.
 _STATIC_GAP_REVIEWS = {
+    ".analysis/results/frontend/mouse-customize-variants-review.json": (
+        ("/all_mouse_macro_mapping_rule_inputs/remaining_chains/1", "f5456ddf55edb3ee8da853972b3a63d60092d59069ef343917c731b83892fbe2", ("all_mouse_macro_mapping_used_helpers",), "resolved"),
+    ),
     ".analysis/results/frontend/mouse-mw-audit.json": (
         ("/mouse_182_profile_import_chain/remaining_chains/0", "29d69dd1e453e66e667cfd4765d488600cedee2923da685c30f49d8c043e4ba5", ("mouse_182_profile_import_complete_chain",), "resolved"),
         ("/legacy_shared_scalar_chain/remaining_chains/1", "b69f1a2122ea98e35a0dd535f8e410697398aa58b40b9fbf4f16d3c1c76be23f", ("mouse_182_profile_import_complete_chain",), "resolved"),
@@ -766,9 +771,10 @@ _STATIC_GAP_REVIEWS = {
         ("/camera_3595_mjpeg_chain/remaining_local_chains/1", "f83363fbc2d686fb7f4470a6ea0d2dc0c71ecf6ad1b75179a1c5f331b602e006", ("camera_3595_mjpeg_chain",), "implementation_and_runtime"),
     ),
     ".analysis/results/frontend/audio-mw-audit.json": (
-        ("/auto_pause_chain/unresolved_chains/0", "922651da0317710929b730aacb9531de3a9e2a385e3239ad478edfb779a5f7a3", ("auto_pause_ui_consumers", "auto_pause_hid_chain"), "runtime"),
-        ("/auto_pause_ui_consumers/unresolved_chains/0", "b3da6b8bf588e6437542811a8564014a74e5b5cf107d0c64694102f975079edd", ("auto_pause_hid_chain",), "runtime"),
-        ("/auto_pause_hid_chain/unresolved_chains/0", "76cd7af0c965b08143c0f63ed9f0d562cee92bfc1f65761730750c97a849a331", ("auto_pause_hid_chain",), "runtime"),
+        ("/auto_pause_chain/unresolved_chains/0", "922651da0317710929b730aacb9531de3a9e2a385e3239ad478edfb779a5f7a3", ("auto_pause_capability_static_closure",), "runtime"),
+        ("/auto_pause_ui_consumers/unresolved_chains/0", "b3da6b8bf588e6437542811a8564014a74e5b5cf107d0c64694102f975079edd", ("auto_pause_capability_static_closure",), "runtime"),
+        ("/auto_pause_hid_chain/unresolved_chains/0", "76cd7af0c965b08143c0f63ed9f0d562cee92bfc1f65761730750c97a849a331", ("auto_pause_capability_static_closure",), "runtime"),
+        ("/auto_pause_hid_chain/unresolved_chains/1", "89c4d6fa5e2ef66418a4977efe3c2162afba7b19ddabaad8e3aab770654c0e23", ("auto_pause_capability_static_closure",), "implementation_and_runtime"),
         ("/headset_earbuds_protocol40_chain/remaining_chains/0", "a7eca1814ce23732b4f5331cfad04e935a12bcee3e62222f0f875cbac5e09e6b", ("headset_earbuds_local_audio_chain",), "implementation_and_runtime"),
         ("/headset_earbuds_protocol40_chain/remaining_chains/1", "537fde5f740a9ce55d0de8c187527d912378d7457de4c72547a2c51da77a28ac", ("headset_earbuds_local_audio_chain",), "partial_static"),
         ("/headset_earbuds_protocol40_chain/remaining_chains/2", "972f41ce040786e3d0cc7dc08780fb89f5d76b7e9b1f7afb0858a88b8a3e8de2", ("headset_earbuds_local_audio_chain",), "implementation_and_runtime"),

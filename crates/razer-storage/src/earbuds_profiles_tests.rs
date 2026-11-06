@@ -147,3 +147,222 @@ fn load_or_create_only_creates_when_missing_and_preserves_extra() {
     assert_eq!(again.profiles[0].auto_pause_field().is_enabled, Some(false));
     assert!(load(&path, 2657, "").is_err());
 }
+
+fn workspace_device() -> razer_model::model::Device {
+    let mut device = razer_model::product_preview::registered_preview(2657).unwrap();
+    device.active_profile = "active".into();
+    device.profiles = ["active", "edited"]
+        .into_iter()
+        .map(|id| razer_model::model::Profile {
+            id: id.into(),
+            guid: format!("guid-{id}"),
+            name: id.into(),
+            source_settings: Some(serde_json::json!({
+                "profile": {"audioAutoPauseControl": {"isEnabled": true, "extension": 7},
+                    "equalizer": {"selected": 3}},
+                "device": {"autoPause": {"isEnabled": false}},
+                "extension": [1, 2]
+            })),
+            settings: None,
+            dpi_stages: None,
+        })
+        .collect();
+    device
+}
+
+#[test]
+fn workspace_edit_targets_captured_profile_and_preserves_adjacent_values() {
+    let mut device = workspace_device();
+    let other = device.profiles[0].clone();
+    let mut expected = device.profiles[1].source_settings.clone().unwrap();
+    expected["profile"]["audioAutoPauseControl"]["isEnabled"] = Value::Bool(false);
+    merge_auto_pause(&mut device, "edited", false).unwrap();
+    assert_eq!(device.profiles[0], other);
+    assert_eq!(device.profiles[1].source_settings, Some(expected));
+    assert_eq!(device.active_profile, "active");
+    assert_eq!(
+        read_auto_pause(&device, "edited").unwrap().is_enabled,
+        Some(false)
+    );
+    assert_eq!(
+        read_auto_pause(&device, "active").unwrap().is_enabled,
+        Some(true)
+    );
+}
+
+#[test]
+fn workspace_missing_fields_remain_absent_until_explicit_edit() {
+    for source in [
+        None,
+        Some(serde_json::json!({})),
+        Some(serde_json::json!({"profile": {}})),
+        Some(serde_json::json!({"profile": {"audioAutoPauseControl": {}}})),
+    ] {
+        let mut device = workspace_device();
+        device.profiles[0].source_settings = source.clone();
+        assert_eq!(read_auto_pause(&device, "active").unwrap().is_enabled, None);
+        assert_eq!(device.profiles[0].source_settings, source);
+        merge_auto_pause(&mut device, "active", false).unwrap();
+        assert_eq!(
+            read_auto_pause(&device, "active").unwrap().is_enabled,
+            Some(false)
+        );
+    }
+}
+
+#[test]
+fn workspace_rejects_malformed_or_ambiguous_values_without_mutation() {
+    for source in [
+        serde_json::json!(null),
+        serde_json::json!([]),
+        serde_json::json!({"profile": null}),
+        serde_json::json!({"profile": {"audioAutoPauseControl": false}}),
+        serde_json::json!({"profile": {"audioAutoPauseControl": {"isEnabled": 1}}}),
+        serde_json::json!({"profile": {"audioAutoPauseControl": {"isEnabled": null}}}),
+        serde_json::json!({"profile": {}, "audioAutoPauseControl": {"isEnabled": false}}),
+    ] {
+        let mut device = workspace_device();
+        device.profiles[0].source_settings = Some(source.clone());
+        assert!(read_auto_pause(&device, "active").is_err());
+        assert!(merge_auto_pause(&mut device, "active", true).is_err());
+        assert_eq!(device.profiles[0].source_settings, Some(source));
+    }
+}
+
+#[test]
+fn workspace_rejects_removed_duplicate_and_wrong_product_identities() {
+    for mode in ["removed", "empty", "duplicate", "wrong-product"] {
+        let mut device = workspace_device();
+        let selected = match mode {
+            "removed" => "removed",
+            "empty" => "",
+            "duplicate" => {
+                device.profiles.push(device.profiles[0].clone());
+                "active"
+            }
+            _ => {
+                device.product_id = 1427;
+                "active"
+            }
+        };
+        let before = device.profiles.clone();
+        assert!(read_auto_pause(&device, selected).is_err());
+        assert!(merge_auto_pause(&mut device, selected, false).is_err());
+        assert_eq!(device.profiles, before);
+    }
+}
+
+#[test]
+fn workspace_original_profile_document_preserves_its_shape() {
+    let mut device = workspace_device();
+    device.profiles[0].source_settings = Some(serde_json::json!({
+        "guid": "guid-active", "audioAutoPauseControl": {"isEnabled": false, "extension": 9}
+    }));
+    assert_eq!(
+        read_auto_pause(&device, "active").unwrap().is_enabled,
+        Some(false)
+    );
+    merge_auto_pause(&mut device, "active", true).unwrap();
+    assert_eq!(
+        device.profiles[0].source_settings,
+        Some(serde_json::json!({
+            "guid": "guid-active", "audioAutoPauseControl": {"isEnabled": true, "extension": 9}
+        }))
+    );
+    device.profiles[0].source_settings = Some(serde_json::json!({"guid": "guid-active"}));
+    assert_eq!(read_auto_pause(&device, "active").unwrap().is_enabled, None);
+    merge_auto_pause(&mut device, "active", false).unwrap();
+    assert_eq!(
+        device.profiles[0].source_settings,
+        Some(serde_json::json!({
+            "guid": "guid-active", "audioAutoPauseControl": {"isEnabled": false}
+        }))
+    );
+}
+
+#[test]
+fn workspace_queued_edit_rebases_without_replacing_an_intervening_save() {
+    let baseline = workspace_device();
+    let mut proposed = baseline.clone();
+    merge_auto_pause(&mut proposed, "edited", false).unwrap();
+    let mut latest = baseline.clone();
+    latest.profiles[1].source_settings.as_mut().unwrap()["profile"]["equalizer"]["selected"] =
+        serde_json::json!(9);
+    latest.active_profile = "edited".into();
+    let queued = crate::workspace::DeviceSaveDraft::new(vec![baseline], vec![proposed]);
+    let saved = queued.rebase(&[latest]).unwrap();
+    assert_eq!(
+        read_auto_pause(&saved[0], "edited").unwrap().is_enabled,
+        Some(false)
+    );
+    assert_eq!(saved[0].active_profile, "edited");
+    assert_eq!(
+        saved[0].profiles[1].source_settings.as_ref().unwrap()["profile"]["equalizer"]["selected"],
+        serde_json::json!(9)
+    );
+}
+
+#[test]
+fn workspace_initial_profile_has_complete_source_template_and_real_identity() {
+    for pid in proto::AUTO_PAUSE_PRODUCTS {
+        let mut device = workspace_device();
+        device.product_id = pid;
+        device.profiles.clear();
+        device.active_profile.clear();
+        initialize_auto_pause_profile(&mut device, "generated-guid", "Desktop-Default").unwrap();
+        assert_eq!(device.active_profile, "generated-guid");
+        assert_eq!(device.profiles[0].guid, "generated-guid");
+        assert_eq!(device.profiles[0].name, "Desktop-Default");
+        let profile = &device.profiles[0].source_settings.as_ref().unwrap()["profile"];
+        assert_eq!(
+            profile["audioEqualizer"]["presets"]["selectedPreset"]["standard"],
+            "game"
+        );
+        let presets = profile["audioEqualizer"]["presets"]["standard"]
+            .as_array()
+            .unwrap();
+        assert_eq!(presets.len(), 4);
+        for (preset, expected) in presets.iter().zip([
+            [2, 2, 3, 4, 1, -1, 2, 3, 3, 3],
+            [3, 3, 3, -4, -4, -2, 2, 3, 3, 3],
+            [2, 2, -1, -1, -1, -1, 1, 3, 3, 3],
+            [0; 10],
+        ]) {
+            assert_eq!(preset["default"], serde_json::json!(expected));
+            assert_eq!(preset["current"], serde_json::json!(expected));
+        }
+        assert_eq!(profile["notDisturb"]["isEnabled"], false);
+        for key in [
+            "audioGestureControl",
+            "audioVoicePromptControl",
+            "audioAutoPauseControl",
+        ] {
+            assert_eq!(profile[key]["isEnabled"], true);
+        }
+        match pid {
+            2657 => assert_eq!(
+                profile["noiseCancellation"],
+                serde_json::json!({"isEnabled":true,"status":10,"level":10})
+            ),
+            2664 | 2668 => assert_eq!(
+                profile["noiseCancellation"],
+                serde_json::json!({"isEnabled":true,"status":10})
+            ),
+            _ => assert!(profile.get("noiseCancellation").is_none()),
+        }
+    }
+}
+
+#[test]
+fn workspace_initial_profile_does_not_repair_or_replace_existing_selection() {
+    for with_profile in [false, true] {
+        let mut device = workspace_device();
+        if !with_profile {
+            device.profiles.clear();
+        }
+        let before = device.profiles.clone();
+        assert!(initialize_auto_pause_profile(&mut device, "new", "Desktop-Default").is_err());
+        assert_eq!(device.active_profile, "active");
+        assert_eq!(device.profiles, before);
+    }
+}

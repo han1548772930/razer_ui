@@ -90,6 +90,20 @@ fn raw_backend() -> anyhow::Result<Box<dyn HidBackend>> {
     Ok(Box::new(razer_hid::NativeBackend::new()?))
 }
 
+pub(super) fn check_current_request() -> anyhow::Result<()> {
+    REQUEST_CONTEXT.with(|slot| {
+        ensure!(!slot.borrow().canceled.load(Ordering::Acquire), "Device request was canceled");
+        Ok(())
+    })
+}
+
+pub(super) fn current_request_context() -> (Uuid, Arc<AtomicBool>) {
+    REQUEST_CONTEXT.with(|slot| {
+        let context = slot.borrow();
+        (context.owner, context.canceled.clone())
+    })
+}
+
 fn backend() -> anyhow::Result<Box<dyn HidBackend>> {
     if !TOPOLOGY_READY.load(Ordering::Acquire) {
         let failure = TOPOLOGY_FAILURE

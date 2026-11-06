@@ -12,6 +12,7 @@ use razer_device::{
 use razer_ipc::{ServiceClient, ServiceRequest};
 use serde_json::Value;
 mod feature_submission;
+pub mod earbuds_auto_pause;
 pub mod keyboard_indicator;
 pub mod keyboard_latest_restore;
 pub mod keyboard_legacy_calibration;

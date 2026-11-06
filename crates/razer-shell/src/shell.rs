@@ -43,6 +43,8 @@ mod audio_mixer;
 mod audio_notifications;
 #[path = "shell/audio/audio_volume.rs"]
 mod audio_volume;
+#[path = "shell/audio/earbuds_auto_pause.rs"]
+mod earbuds_auto_pause;
 #[path = "shell/windows/chroma_studio_window.rs"]
 mod chroma_studio_window;
 #[path = "shell/windows/chroma_window.rs"]
@@ -409,6 +411,7 @@ pub struct AppShell {
     mouse_dpi_stages: mouse_dpi_stages::State,
     mouse_dynamic: mouse_dynamic::State,
     mouse_rotation: mouse_rotation::State,
+    earbuds_auto_pause: earbuds_auto_pause::State,
     mouse_power: mouse_current_power_runtime::State,
     controller_trigger_workers: usize,
     controller_sleep_workers: usize,
@@ -691,6 +694,7 @@ impl AppShell {
             mouse_dpi_stages: mouse_dpi_stages::State::default(),
             mouse_dynamic: mouse_dynamic::State::default(),
             mouse_rotation: mouse_rotation::State::default(),
+            earbuds_auto_pause: earbuds_auto_pause::State::default(),
             mouse_power: mouse_current_power_runtime::State::default(),
             controller_trigger_workers: 0,
             controller_sleep_workers: 0,
@@ -1674,6 +1678,9 @@ impl AppShell {
                 WorkspaceEvent::AudioVolumeRequested { request } => {
                     this.request_audio_volume(entity.clone(), *request, window, cx);
                 }
+                WorkspaceEvent::EarbudsAutoPauseRequested(request) => {
+                    this.request_earbuds_auto_pause(entity.clone(), request.clone(), window, cx);
+                }
                 WorkspaceEvent::LeviathanRequested(request) => {
                     this.request_leviathan(entity.clone(),request.clone(),window,cx);
                 }
@@ -2586,6 +2593,12 @@ impl AppShell {
         }
         if let Err(error) = self.rebase_mouse_rotation_save(&mut request, cx) {
             self.status = format!("旋转设置本地保存失败：{error:#}");
+            self.cancel_prepared_save(request, cx);
+            self.continue_save_queue(false, cx);
+            return false;
+        }
+        if let Err(error) = self.rebase_earbuds_auto_pause_save(&mut request, cx) {
+            self.status = format!("自动暂停配置保存失败：{error:#}");
             self.cancel_prepared_save(request, cx);
             self.continue_save_queue(false, cx);
             return false;

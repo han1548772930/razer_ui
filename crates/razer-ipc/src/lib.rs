@@ -268,6 +268,12 @@ pub enum ServiceRequest {
         target: razer_device::device_reads::DeviceReadTarget,
         command: razer_device::leviathan::Operation,
     },
+    EarbudsEventsStart {
+        session_id: String,
+        target: razer_device::earbuds_events::Target,
+    },
+    EarbudsEventsPoll { session_id: String },
+    EarbudsEventsStop { session_id: String },
     LeviathanEventsStart {
         session_id: String,
         target: razer_device::leviathan::EventTarget,
@@ -490,6 +496,15 @@ pub enum ServiceRequest {
         node: razer_device::backend::HidNode,
         product_id: u32,
         sleep_operation: controller_sleep::SleepOperation,
+    },
+    HidNodeEarbudsAutoPause {
+        node: razer_device::backend::HidNode,
+        product_id: u32,
+        auto_pause_operation: razer_device::earbuds_auto_pause::Operation,
+    },
+    DeviceEarbudsAutoPause {
+        target: razer_device::device_reads::DeviceReadTarget,
+        auto_pause_operation: razer_device::earbuds_auto_pause::Operation,
     },
     ControllerInitialization {
         node: razer_device::backend::HidNode,
@@ -1546,6 +1561,9 @@ impl ServiceClient {
                         ..
                     }
                     | ServiceRequest::LeviathanEventsStart { .. }
+                    | ServiceRequest::EarbudsEventsStart { .. }
+                    | ServiceRequest::EarbudsEventsPoll { .. }
+                    | ServiceRequest::EarbudsEventsStop { .. }
                     | ServiceRequest::LeviathanEventsPoll { .. }
                     | ServiceRequest::LeviathanEventsStop { .. }
                     | ServiceRequest::MouseIndicatorLedStart { .. }

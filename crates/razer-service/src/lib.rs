@@ -3,6 +3,8 @@
 //! in the unified workflow.
 #[path = "audio/audio_notification.rs"]
 pub mod audio_notification;
+#[path = "audio/earbuds_auto_pause.rs"]
+pub mod earbuds_auto_pause;
 #[path = "audio/audio_router.rs"]
 pub mod audio_router;
 #[path = "audio/audio_util.rs"]

@@ -79,6 +79,10 @@ pub mod dpi_matcher;
 pub mod dpi_matcher_storage;
 #[path = "audio/earbuds_controls.rs"]
 pub mod earbuds_controls;
+#[path = "audio/earbuds_auto_pause.rs"]
+pub mod earbuds_auto_pause;
+#[path = "audio/earbuds_events.rs"]
+pub mod earbuds_events;
 #[path = "audio/earbuds_protocol40.rs"]
 pub mod earbuds_protocol40;
 #[path = "transport/ecmascript_number.rs"]

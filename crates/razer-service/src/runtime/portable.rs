@@ -75,6 +75,7 @@ pub(super) struct PortableRuntime {
     mouse_tracking: super::mouse_tracking_controller::Controller,
     mouse_philips: super::mouse_philips_controller::Controller,
     leviathan_events: super::leviathan_events::Controller,
+    earbuds_events: super::earbuds_events::Controller,
     seiren_audio_capture: super::seiren_audio_capture_controller::Controller,
     camera: super::camera_controller::Controller,
     thx: super::thx_controller::Controller,
@@ -123,6 +124,7 @@ impl PortableRuntime {
             self.mouse_runtime_artwork.shutdown(&mut cleanup);
             self.mouse_indicator_led.shutdown(&mut cleanup);
             self.leviathan_events.shutdown(&mut cleanup);
+            self.earbuds_events.shutdown(&mut cleanup);
             self.seiren_audio_capture.shutdown(&mut cleanup);
             cleanup.record("audio_router", self.audio_router.shutdown());
             cleanup
@@ -588,6 +590,8 @@ impl PortableRuntime {
                 self.marci_lighting.execute(&device_container_id, &owner_id, lighting_operation),
             ServiceRequest::ControllerSleep { node, product_id, sleep_operation } =>
                 super::controller_sleep::execute(&node, product_id, &sleep_operation),
+            ServiceRequest::HidNodeEarbudsAutoPause { node, product_id, auto_pause_operation } =>
+                super::earbuds_auto_pause::execute(&node, product_id, auto_pause_operation),
             ServiceRequest::ControllerSocd { node, product_id, socd_operation } =>
                 super::controller_socd::execute(&node, product_id, socd_operation),
             ServiceRequest::ControllerInitialization { node, product_id, plan } =>
@@ -896,6 +900,9 @@ impl PortableRuntime {
             }
             ServiceRequest::HidNodeLeviathan { node, command } => self.leviathan(&node, command),
             ServiceRequest::LeviathanEventsStart{session_id,target}=>self.leviathan_events.start(session_id,target),
+            ServiceRequest::EarbudsEventsStart{session_id,target}=>self.earbuds_events.start(session_id,target),
+            ServiceRequest::EarbudsEventsPoll{session_id}=>self.earbuds_events.poll(&session_id),
+            ServiceRequest::EarbudsEventsStop{session_id}=>self.earbuds_events.stop(&session_id),
             ServiceRequest::LeviathanEventsPoll{session_id}=>self.leviathan_events.poll(&session_id),
             ServiceRequest::LeviathanEventsStop{session_id}=>self.leviathan_events.stop(&session_id),
             ServiceRequest::HidNodeMouseIndicatorLed { node, product_id, change } => {

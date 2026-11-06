@@ -237,6 +237,9 @@ fn toggle_is_optimistic_and_failure_does_not_roll_back() {
     controls.connect();
     let task = controls.toggle_auto_pause().unwrap();
     assert!(controls.draft.auto_pause);
+    assert_eq!(controls.auto_pause_persisted, None);
+    controls.acknowledge_persistence(task).unwrap();
+    assert_eq!(controls.auto_pause_persisted, Some(true));
     let mut session = Protocol40Session::with_sleeper(&mock, NoSleep);
     let result = run_task(&mut session, task, controls.anc_runtime_for_task(), &ok).unwrap();
     controls.complete(task, result).unwrap();
