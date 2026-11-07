@@ -935,6 +935,24 @@ impl SourceProductWorkspace {
     ) -> bool {
         matches!(&self.body, FamilyBody::Keyboard(body) if body.read(cx).brightness_request_matches(generation, percent))
     }
+    pub fn request_keyboard_runtime_brightness(
+        &mut self,
+        submission: Option<razer_device::keyboard_settings::BrightnessSubmission>,
+        cx: &mut Context<Self>,
+    ) {
+        if let FamilyBody::Keyboard(body) = &self.body {
+            body.update(cx, |body, cx| body.request_runtime_brightness(submission, cx));
+        }
+    }
+    pub fn resolve_keyboard_runtime_brightness(
+        &mut self, generation: u64, previous_percent: u8,
+        submission: razer_device::keyboard_settings::BrightnessSubmission, cx: &mut Context<Self>,
+    ) -> bool {
+        if let FamilyBody::Keyboard(body) = &self.body {
+            return body.update(cx, |body, _| body.resolve_runtime_brightness(generation, previous_percent, submission));
+        }
+        false
+    }
     pub fn finish_keyboard_brightness(
         &mut self,
         generation: u64,
@@ -948,6 +966,11 @@ impl SourceProductWorkspace {
             body.update(cx, |body, cx| {
                 body.finish_brightness(generation, percent, observed, error, scope_current, cx)
             });
+        }
+    }
+    pub fn finish_local_keyboard_brightness(&mut self, generation: u64, percent: u8, cx: &mut Context<Self>) {
+        if let FamilyBody::Keyboard(body) = &self.body {
+            body.update(cx, |body, cx| body.finish_local_brightness(generation, percent, cx));
         }
     }
     pub fn keyboard_brightness_request_current(
@@ -3467,7 +3490,8 @@ impl SourceProductWorkspace {
                  cx| {
                     cx.emit(WorkspaceEvent::KeyboardBrightnessRequested {
                         generation: event.generation(),
-                        percent: event.percent(),
+                        submission: event.submission(),
+                        background: event.background(),
                     });
                 },
             ));
@@ -3479,6 +3503,7 @@ impl SourceProductWorkspace {
                  cx| {
                     cx.emit(WorkspaceEvent::KeyboardBrightnessReadRequested {
                         generation: event.generation(),
+                        background: event.background(),
                     });
                 },
             ));
@@ -4559,6 +4584,13 @@ impl SourceProductWorkspace {
                 })
     }
     pub fn mark_saved(&mut self, snapshot: Device, cx: &mut Context<Self>) {
+        if razer_storage::keyboard_lighting::supported(self.device.product_id) {
+            if let Err(error) = razer_storage::keyboard_lighting::accept_saved(
+                &mut self.device, &self.saved, &snapshot,
+            ) {
+                eprintln!("[keyboard lighting profile acknowledgement] {error:#}");
+            }
+        }
         let mapping_current = razer_model::mapping::matches_saved_revision(&self.device, &snapshot);
         let pending_import = self.profile_import.as_ref().is_some_and(|request| {
             snapshot.profiles == request.candidate().profiles
@@ -4584,6 +4616,58 @@ impl SourceProductWorkspace {
                         if previous == current && let Some(enabled) = saved.is_enabled {
                             if let Err(error) = razer_storage::earbuds_profiles::merge_auto_pause(&mut self.device, &profile.id, enabled) {
                                 eprintln!("[earbud profile acknowledgement] {error:#}");
+                            }
+                        }
+                    }
+                    let values = (
+                        razer_storage::earbuds_profiles::read_do_not_disturb(&self.saved, &profile.id),
+                        razer_storage::earbuds_profiles::read_do_not_disturb(&self.device, &profile.id),
+                        razer_storage::earbuds_profiles::read_do_not_disturb(&snapshot, &profile.id),
+                    );
+                    if let (Ok(previous), Ok(current), Ok(Some(saved))) = values {
+                        if previous == current {
+                            if let Err(error) = razer_storage::earbuds_profiles::merge_do_not_disturb(&mut self.device, &profile.id, saved) {
+                                eprintln!("[earbud DND acknowledgement] {error:#}");
+                            }
+                        }
+                    }
+                    let values=(razer_storage::earbuds_profiles::read_voice_prompt(&self.saved,&profile.id),
+                        razer_storage::earbuds_profiles::read_voice_prompt(&self.device,&profile.id),
+                        razer_storage::earbuds_profiles::read_voice_prompt(&snapshot,&profile.id));
+                    if let (Ok(previous),Ok(current),Ok(Some(saved)))=values {
+                        if previous==current {
+                            if let Err(error)=razer_storage::earbuds_profiles::merge_voice_prompt(&mut self.device,&profile.id,saved) {
+                                eprintln!("[earbud voice prompt acknowledgement] {error:#}");
+                            }
+                        }
+                    }
+                    let values=(razer_storage::earbuds_profiles::read_gesture(&self.saved,&profile.id),
+                        razer_storage::earbuds_profiles::read_gesture(&self.device,&profile.id),
+                        razer_storage::earbuds_profiles::read_gesture(&snapshot,&profile.id));
+                    if let (Ok(previous),Ok(current),Ok(Some(saved)))=values {
+                        if previous==current {
+                            if let Err(error)=razer_storage::earbuds_profiles::merge_gesture(&mut self.device,&profile.id,saved) {
+                                eprintln!("[earbud gesture acknowledgement] {error:#}");
+                            }
+                        }
+                    }
+                    let values=(razer_storage::earbuds_profiles::read_tap_speed(&self.saved,&profile.id),
+                        razer_storage::earbuds_profiles::read_tap_speed(&self.device,&profile.id),
+                        razer_storage::earbuds_profiles::read_tap_speed(&snapshot,&profile.id));
+                    if let (Ok(previous),Ok(current),Ok(Some(saved)))=values {
+                        if previous==current {
+                            if let Err(error)=razer_storage::earbuds_profiles::merge_tap_speed(&mut self.device,&profile.id,saved) {
+                                eprintln!("[earbud tap speed acknowledgement] {error:#}");
+                            }
+                        }
+                    }
+                    let values=(razer_storage::earbuds_profiles::read_anc(&self.saved,&profile.id),
+                        razer_storage::earbuds_profiles::read_anc(&self.device,&profile.id),
+                        razer_storage::earbuds_profiles::read_anc(&snapshot,&profile.id));
+                    if let (Ok(previous),Ok(current),Ok(Some(saved)))=values {
+                        if previous==current {
+                            if let Err(error)=razer_storage::earbuds_profiles::merge_anc(&mut self.device,&profile.id,saved) {
+                                eprintln!("[earbud ANC acknowledgement] {error:#}");
                             }
                         }
                     }
@@ -4838,7 +4922,10 @@ impl SourceProductWorkspace {
                 });
             }
             FamilyBody::Audio(e) => {
-                e.update(cx, |v, cx| v.restore(value.as_ref(), window, cx));
+                e.update(cx, |v, cx| {
+                    v.restore(value.as_ref(), window, cx);
+                    v.set_earbuds_context(&self.device, self.active, cx);
+                });
             }
             FamilyBody::System(e) => {
                 e.update(cx, |v, cx| v.restore(value.as_ref(), window, cx));
@@ -4959,6 +5046,7 @@ impl SourceProductWorkspace {
                     .copied(),
             )
             .chain(mouse_profile_source::device_fields(self.device.product_id))
+            .chain(razer_storage::keyboard_lighting::device_fields(self.device.product_id).iter().copied())
             .chain(
                 razer_device::hanbo_settings::device_fields(self.device.product_id)
                     .iter()
@@ -4999,6 +5087,7 @@ impl SourceProductWorkspace {
                     .copied(),
             )
             .chain(mouse_profile_source::device_fields(device.product_id))
+            .chain(razer_storage::keyboard_lighting::device_fields(device.product_id).iter().copied())
             .chain(
                 razer_device::hanbo_settings::device_fields(device.product_id)
                     .iter()

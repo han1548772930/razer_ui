@@ -63,6 +63,12 @@ mod controller_input;
 mod controller_lighting;
 #[path = "shell/gamepad/controller_power.rs"]
 mod controller_power;
+#[path = "shell/devices/power_observation.rs"]
+mod power_observation;
+#[path = "shell/keyboard/keyboard_power.rs"]
+mod keyboard_power;
+#[path = "shell/keyboard/keyboard_lighting_save.rs"]
+mod keyboard_lighting_save;
 #[path = "shell/gamepad/controller_sleep.rs"]
 mod controller_sleep;
 #[path = "shell/gamepad/controller_socd.rs"]
@@ -423,7 +429,8 @@ pub struct AppShell {
     controller_lighting_cleanup: Vec<std::sync::Arc<controller_lighting::RetainedOwner>>,
     controller_software_status: BTreeMap<String, razer_device::controller_lighting::SoftwareStatus>,
     controller_chroma: controller_chroma::State,
-    controller_power: controller_power::State,
+    power_observation: power_observation::State,
+    keyboard_power: keyboard_power::State,
     seiren_audio_operations: seiren_audio_operations::State,
     seiren_microphone_setup: seiren_microphone_setup::State,
     seiren_audio_captures: BTreeMap<u64, seiren_audio_capture::Worker>,
@@ -704,7 +711,8 @@ impl AppShell {
             marci_lighting: marci_lighting::Runtime::default(),
             controller_lighting_owners: BTreeMap::new(),
             controller_chroma: controller_chroma::State::default(),
-            controller_power: controller_power::State::default(),
+            power_observation: power_observation::State::default(),
+            keyboard_power: keyboard_power::State::default(),
             controller_lighting_cleanup: Vec::new(),
             controller_software_status: BTreeMap::new(),
             seiren_audio_operations: seiren_audio_operations::State::default(),
@@ -1320,6 +1328,7 @@ impl AppShell {
         this.install_keyboard_wristrest_cleanup(cx);
         this.install_keyboard_indicator_cleanup(cx);
         this.install_keyboard_brightness_cleanup(cx);
+        this.install_power_observation_cleanup(cx);
         this.install_current_dpi_cleanup(cx);
         this.install_legacy_dpi_cleanup(cx);
         this.install_mouse_scroll_cleanup(cx);
@@ -1567,8 +1576,8 @@ impl AppShell {
                 WorkspaceEvent::MouseMatcherRequested(request) => {
                     this.dispatch_mouse_matcher(entity.clone(), request, window, cx);
                 }
-                WorkspaceEvent::KeyboardBrightnessRequested { generation, percent } => {
-                    this.write_keyboard_brightness(entity.clone(), *generation, *percent, window, cx);
+                WorkspaceEvent::KeyboardBrightnessRequested { generation, submission, background } => {
+                    this.write_keyboard_brightness(entity.clone(), *generation, *submission, *background, window, cx);
                 }
                 WorkspaceEvent::KeyboardActuationRequested(request) => {
                     if !this.submit_keyboard_latest_intent(entity.clone(), request, cx)
@@ -1585,8 +1594,8 @@ impl AppShell {
                 WorkspaceEvent::KeyboardIndicatorLedRequested(request) => {
                     this.submit_keyboard_indicator(entity.clone(), request, cx);
                 }
-                WorkspaceEvent::KeyboardBrightnessReadRequested { generation } => {
-                    this.read_keyboard_brightness(entity.clone(), *generation, window, cx);
+                WorkspaceEvent::KeyboardBrightnessReadRequested { generation, background } => {
+                    this.read_keyboard_brightness(entity.clone(), *generation, *background, window, cx);
                 }
                 WorkspaceEvent::MousePollingRequested { scope, field, hz } => {
                     this.write_mouse_polling(entity.clone(), *scope, *field, *hz, window, cx);
@@ -1715,6 +1724,8 @@ impl AppShell {
                     this.persist_controller_socd(entity.clone(), request.clone(), window, cx);
                 }
                 WorkspaceEvent::Changed => {
+                    this.sync_keyboard_power_owners(cx);
+                    this.ensure_power_observation(cx);
                     this.sync_local_mapping_targets(window,cx);
                     this.sync_gamer_room(cx);
                     this.sync_known_devices(cx);
@@ -2661,6 +2672,12 @@ impl AppShell {
             self.continue_save_queue(false, cx);
             return false;
         }
+        if let Err(error) = self.rebase_keyboard_lighting_save(&mut request, cx) {
+            self.status = format!("键盘灯光本地保存失败：{error:#}");
+            self.cancel_prepared_save(request,cx);
+            self.continue_save_queue(false,cx);
+            return false;
+        }
         if let Err(error) = self.rebase_seiren_eq_save(&mut request, cx) {
             self.status = format!("麦克风设置本地保存失败：{error:#}");
             if let Some(ProductSave::SeirenEq(eq)) = request
@@ -2915,6 +2932,7 @@ impl AppShell {
         let operations_pending = self.studio_save_pending(cx)
             || receiver_pending
             || self.keyboard_brightness.pending()
+            || self.close_requested && self.power_observation.pending()
             || self.keyboard_profile_inventory.pending()
             || self.keyboard_game_exit_pending()
             || self.keyboard_identity_cache_pending > 0

@@ -11,6 +11,7 @@ import catalog_data
 import sqlite3
 from types import SimpleNamespace
 from copy import deepcopy
+import argparse
 
 
 class RustDataTests(unittest.TestCase):
@@ -28,6 +29,27 @@ class RustDataTests(unittest.TestCase):
     def schema(self, text):
         self.module.write_text(text, encoding="utf-8")
         return rust_data.RustData(self.crate)
+
+    def test_keyboard_profiles_route_to_the_complete_generator_without_registry_access(self):
+        parser = argparse.ArgumentParser()
+        rust_data.add_commands(parser.add_subparsers(dest="command"))
+        for flag in ([], ["--check"]):
+            args = parser.parse_args(["prepare-typed-data", "--keyboard-profiles", *flag])
+            with patch("keyboard_profile_templates.prepare", return_value={"products": 73}) as prepare:
+                self.assertEqual(rust_data.run(args), {"products": 73})
+                prepare.assert_called_once_with(check=bool(flag))
+        self.assertFalse((self.root / "tools/typed-data.json").exists())
+
+    def test_keyboard_profiles_do_not_ignore_incompatible_registry_options(self):
+        parser = argparse.ArgumentParser()
+        rust_data.add_commands(parser.add_subparsers(dest="command"))
+        for flags in (["--crate", "razer-device"], ["--symbol", "TABLE"],
+                      ["--recover-maintenance"], ["--record-verification"]):
+            args = parser.parse_args(["prepare-typed-data", "--keyboard-profiles", "--check", *flags])
+            with patch("keyboard_profile_templates.prepare") as prepare:
+                with self.assertRaisesRegex(ValueError, "cannot be combined"):
+                    rust_data.run(args)
+                prepare.assert_not_called()
 
     def test_recorded_maintenance_check_rejects_partial_or_mutating_modes(self):
         registry = self.root / "tools/typed-data.json"

@@ -603,6 +603,15 @@ pub(super) fn write(
 
 #[path = "keyboard/keyboard_metadata_ble.rs"]
 mod keyboard_metadata_ble_adapter;
+#[path = "keyboard/keyboard_brightness_ble.rs"]
+mod keyboard_brightness_ble_adapter;
+
+pub(super) fn keyboard_brightness_ble(
+    target: &razer_device::mouse_runtime_artwork::WindowsBleTarget,
+    submission: Option<razer_device::keyboard_settings::BrightnessSubmission>,
+) -> anyhow::Result<Value> {
+    keyboard_brightness_ble_adapter::request(target, submission)
+}
 
 pub(super) fn keyboard_metadata_ble(
     target: &razer_device::mouse_runtime_artwork::WindowsBleTarget,
@@ -833,20 +842,18 @@ fn receiver_setting(
 
 pub(super) fn keyboard_brightness(
     target: &DeviceReadTarget,
-    percent: Option<u8>,
+    operation: super::super::KeyboardBrightness,
 ) -> anyhow::Result<Value> {
     use razer_device::keyboard_settings;
     if target.peer_product_id.is_some() {
         return receiver_setting(
             target,
-            super::super::receiver_settings::Setting::KeyboardBrightness(percent),
+            operation.receiver(),
         );
     }
     let settings = keyboard_settings::capability(target.product_id)
         .context("此产品没有当前源核实的键盘亮度能力")?;
-    if let Some(percent) = percent {
-        keyboard_settings::encode_percent(percent)?;
-    }
+    operation.validate()?;
     let cap = &settings.transport;
     let before = current_target(target, cap)?;
     verify_routing(target, cap)?;
@@ -876,22 +883,13 @@ pub(super) fn keyboard_brightness(
     validate()?;
     let mut response = json!({"target":target,"source_class":settings.source_class,
         "transport_metadata":device.metadata()});
-    if let Some(percent) = percent {
-        response["result"] = serde_json::to_value(keyboard_settings::apply(
-            &device,
-            settings,
-            percent,
-            || transaction(target, cap),
-            &validate,
-        )?)?;
-    } else {
-        response["reading"] = serde_json::to_value(keyboard_settings::read(
-            &device,
-            settings,
-            || transaction(target, cap),
-            &validate,
-        )?)?;
-    }
+    let (field, result) = operation.execute(
+        &device,
+        settings,
+        &mut || transaction(target, cap),
+        &validate,
+    )?;
+    response[field] = result;
     validate()?;
     response["elapsed_ms"] = json!(started.elapsed().as_millis() as u64);
     Ok(response)

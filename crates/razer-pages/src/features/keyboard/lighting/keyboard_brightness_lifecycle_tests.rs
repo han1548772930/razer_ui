@@ -1,5 +1,138 @@
-use super::{Observation, Request, State};
+use super::{BrightnessIntent, BrightnessSubmission, Observation, Request, State};
 use std::sync::{Arc, atomic::Ordering};
+
+#[test]
+fn queued_oled_switch_preserves_saved_value_and_explicit_enabled_intent() {
+    let mut state = State::default();
+    state.set_active(true);
+    let read = state.begin_read().unwrap();
+    let switch = BrightnessSubmission::new(70, false, BrightnessIntent::Enabled).unwrap();
+    assert!(state.begin_submission(switch).is_none());
+    let Some(Request::Write(write)) = state.finish_read(read.generation(), Some(40), None, true)
+    else {
+        panic!("Queued switch must keep its complete submission");
+    };
+    assert_eq!(write.percent(), 0);
+    assert_eq!(write.submission(), switch);
+    let zero_enabled = BrightnessSubmission::new(0, true, BrightnessIntent::Value).unwrap();
+    assert!(state.begin_submission(zero_enabled).is_none());
+    let Some(Request::Write(next)) =
+        state.finish_write(write.generation(), 0, Some(70), None, true)
+    else {
+        panic!("Newer zero value must retain its explicit enabled state");
+    };
+    assert_eq!(next.percent(), 0);
+    assert_eq!(next.submission(), zero_enabled);
+}
+
+#[test]
+fn background_brightness_survives_page_visibility_and_does_not_replace_user_draft() {
+    let mut state = State::default();
+    state.set_active(true);
+    state.preview_edit(73);
+    let off = BrightnessSubmission::new(73, false, BrightnessIntent::Value).unwrap();
+    let request = state.begin_background(off).unwrap();
+    let guard = state
+        .cancellation_guard(request.generation(), Some(0))
+        .unwrap();
+    assert_eq!(state.preview.unwrap().percent, 73);
+    state.set_active(false);
+    assert!(!guard.load(Ordering::Acquire));
+    assert!(state.write_current(request.generation(), 0));
+    state.finish_write(request.generation(), 0, Some(0), None, true);
+    assert_eq!(state.observation, Observation::Confirmed(0));
+    assert!(state.preview.is_none());
+}
+
+#[test]
+fn background_and_foreground_brightness_share_one_serial_slot() {
+    let mut state = State::default();
+    state.set_active(true);
+    let foreground = state.begin_write(40).unwrap();
+    let off = BrightnessSubmission::new(73, false, BrightnessIntent::Value).unwrap();
+    assert!(state.begin_background(off).is_none());
+    state.set_active(false);
+    let Some(Request::Write(background)) = state.finish_write(
+        foreground.generation(),
+        40,
+        None,
+        Some("foreground canceled".into()),
+        true,
+    ) else {
+        panic!("Background remains queued");
+    };
+    assert!(background.background());
+    assert_eq!(background.submission(), off);
+    state.invalidate();
+    assert!(!state.write_current(background.generation(), 0));
+}
+
+#[test]
+fn newer_background_output_never_erases_the_queued_user_commit() {
+    let mut state = State::default();
+    state.set_active(true);
+    let first = state.begin_write(40).unwrap();
+    assert!(
+        state
+            .begin_background(BrightnessSubmission::new(40, true, BrightnessIntent::Value).unwrap())
+            .is_none()
+    );
+    assert!(state.begin_write(45).is_none());
+    assert!(
+        state
+            .begin_background(
+                BrightnessSubmission::new(40, false, BrightnessIntent::Value).unwrap()
+            )
+            .is_none()
+    );
+    let Some(Request::Write(user)) =
+        state.finish_write(first.generation(), 40, Some(40), None, true)
+    else {
+        panic!("User commit survives");
+    };
+    assert!(!user.background());
+    assert_eq!(user.percent(), 45);
+    let Some(Request::Write(background)) =
+        state.finish_write(user.generation(), 45, Some(45), None, true)
+    else {
+        panic!("Background follows user commit");
+    };
+    assert!(background.background());
+    let refreshed = BrightnessSubmission::new(45, false, BrightnessIntent::Value).unwrap();
+    assert!(state.resolve_background(background.generation(), 0, refreshed));
+    assert_eq!(state.pending.unwrap().submission(), refreshed);
+}
+
+#[test]
+fn background_readback_does_not_confirm_an_unreleased_pointer_preview() {
+    let mut state = State::default();
+    state.set_active(true);
+    state.preview_edit(75);
+    let request = state
+        .begin_background(BrightnessSubmission::new(75, true, BrightnessIntent::Value).unwrap())
+        .unwrap();
+    state.finish_write(request.generation(), 75, Some(75), None, true);
+    assert_eq!(state.preview.unwrap().percent, 75);
+    assert_eq!(state.observation, Observation::Confirmed(75));
+}
+
+#[test]
+fn locally_saved_recorder_edit_waits_for_real_restore_readback() {
+    let mut state = State::default();
+    state.set_active(true);
+    let read = state.begin_read().unwrap();
+    state.finish_read(read.generation(), Some(42), None, true);
+    let edit = state.begin_write(73).unwrap();
+    assert!(state.finish_local(edit.generation(), 73).is_none());
+    assert_eq!(state.observation, Observation::Confirmed(42));
+    assert_eq!(state.preview.unwrap().percent, 73);
+    let restore = state
+        .begin_background(BrightnessSubmission::new(73, true, BrightnessIntent::Value).unwrap())
+        .unwrap();
+    state.finish_write(restore.generation(), 73, Some(73), None, true);
+    assert_eq!(state.observation, Observation::Confirmed(73));
+    assert!(state.preview.is_none());
+}
 
 #[test]
 fn connection_invalidation_cancels_io_but_retains_its_serial_slot() {

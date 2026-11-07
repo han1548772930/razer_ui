@@ -7,6 +7,7 @@ edition.workspace = true
 anyhow.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+uuid.workspace = true
 base64 = "=0.22.1"
 ring = "=0.17.14"
 aes = "=0.8.4"

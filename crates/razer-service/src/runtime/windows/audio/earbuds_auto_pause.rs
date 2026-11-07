@@ -65,17 +65,20 @@ pub(super) fn request(target: &DeviceReadTarget, operation: Operation) -> anyhow
     );
     let before = current_target(target, &cap)?;
     let started = Instant::now();
+    let validate_physical = || {
+        ensure!(
+            current_target(target, &cap)?["device_instance_id"] == before["device_instance_id"],
+            "Earbud device instance changed"
+        );
+        Ok(())
+    };
     let validate = || {
         crate::runtime::hid_broker::check_current_request()?;
         ensure!(
             started.elapsed() < Duration::from_secs(30),
             "Earbud operation deadline expired"
         );
-        ensure!(
-            current_target(target, &cap)?["device_instance_id"] == before["device_instance_id"],
-            "Earbud device instance changed"
-        );
-        Ok(())
+        validate_physical()
     };
     let _lock = receiver::ReceiverLock::acquire(&target.device_container_id, &validate)?;
     let device =
@@ -87,15 +90,23 @@ pub(super) fn request(target: &DeviceReadTarget, operation: Operation) -> anyhow
         validate()?;
         transactions.validate()
     };
-    let report = earbuds_auto_pause::execute(
-        &mut Protocol40Session::with_transaction_source(
-            &device,
-            razer_device::earbuds_protocol40::ThreadSleeper,
-            &mut next,
-        ),
-        target.product_id,
-        operation,
-        &source_validate,
-    )?;
+    let source_physical = || {
+        transactions.validate()?;
+        validate_physical()
+    };
+    let report = transactions.with_anc_cache(&source_validate, |cache| {
+        earbuds_auto_pause::execute(
+            &mut Protocol40Session::with_transaction_source(
+                &device,
+                razer_device::earbuds_protocol40::ThreadSleeper,
+                &mut next,
+            ),
+            target.product_id,
+            operation,
+            cache,
+            &source_validate,
+            &source_physical,
+        )
+    })?;
     serde_json::to_value(report).map_err(Into::into)
 }

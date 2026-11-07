@@ -6,6 +6,8 @@ pub enum Event {
     DisplayOff,
     DisplayOn,
     DisplayDimmed,
+    Resume,
+    ScreenUnlocked,
     Idle { milliseconds: u32 },
     Shutdown,
     Failed(String),

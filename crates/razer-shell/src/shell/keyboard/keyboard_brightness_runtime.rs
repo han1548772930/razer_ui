@@ -12,7 +12,7 @@ use std::{
 
 #[path = "keyboard_brightness_worker.rs"]
 mod worker;
-pub(super) use worker::Completion;
+pub(super) use worker::{Completion, Operation};
 
 #[derive(Clone)]
 pub(super) struct Scope {
@@ -171,7 +171,7 @@ impl AppShell {
     pub(super) fn start_keyboard_brightness_operation(
         &mut self,
         scope: Scope,
-        percent: Option<u8>,
+        operation: Operation,
         canceled: Arc<AtomicBool>,
         complete: impl FnOnce(&mut Self, Completion, &mut Context<Self>) + 'static,
         cx: &mut Context<Self>,
@@ -192,7 +192,7 @@ impl AppShell {
             let completion = cx
                 .background_spawn(async move {
                     let _accepted = accepted;
-                    worker::run(route, percent, work_signal)
+                    worker::run(route, operation, work_signal)
                 })
                 .await;
             let _ = shell.update(cx, |shell, cx| {

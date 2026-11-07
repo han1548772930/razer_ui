@@ -56,10 +56,7 @@ impl AppShell {
             });
             return;
         }
-        if matches!(
-            request.operation(),
-            Operation::Read | Operation::Battery { .. }
-        ) {
+        if !request.needs_persistence() {
             self.submit_earbuds_auto_pause(workspace, request, cx);
             return;
         }
@@ -157,13 +154,6 @@ impl AppShell {
                 .is_some_and(|page| page.read(cx).earbuds_request_current(&local.request)),
             "Earbud profile or connection changed before save"
         );
-        let enabled = match local.request.operation() {
-            Operation::Write { enabled } => enabled,
-            Operation::Restore { enabled } => enabled.unwrap_or(true),
-            Operation::Read | Operation::Battery { .. } => {
-                anyhow::bail!("Read cannot enter the mutation save queue")
-            }
-        };
         save.file.devices = self
             .devices
             .iter()
@@ -179,11 +169,33 @@ impl AppShell {
                             })?,
                         )?;
                     }
-                    razer_storage::earbuds_profiles::merge_auto_pause(
-                        &mut saved,
-                        local.request.profile_id(),
-                        enabled,
-                    )?;
+                    if !local.request.initializes_profile() || !local.request.is_profile_restore() {
+                        use razer_storage::earbuds_profiles as profiles;
+                        let id = local.request.profile_id();
+                        match local.request.operation() {
+                            Operation::Anc { setting, .. } => {
+                                profiles::merge_anc(&mut saved, id, setting)?
+                            }
+                            Operation::Write { enabled } => {
+                                profiles::merge_auto_pause(&mut saved, id, enabled)?
+                            }
+                            Operation::DoNotDisturb { enabled } => {
+                                profiles::merge_do_not_disturb(&mut saved, id, enabled)?
+                            }
+                            Operation::VoicePrompt { enabled } => {
+                                profiles::merge_voice_prompt(&mut saved, id, enabled)?
+                            }
+                            Operation::Gesture { enabled } => {
+                                profiles::merge_gesture(&mut saved, id, enabled)?
+                            }
+                            Operation::TapSpeed { speed } => {
+                                profiles::merge_tap_speed(&mut saved, id, speed)?
+                            }
+                            _ => anyhow::bail!(
+                                "Only an explicit earbud edit may merge an existing profile"
+                            ),
+                        }
+                    }
                 }
                 Ok(saved)
             })
@@ -220,7 +232,13 @@ impl AppShell {
             });
             return;
         }
-        self.submit_earbuds_auto_pause(save.workspace, save.request, cx);
+        if save.request.is_hardware_notification() {
+            page.update(cx, |page, cx| {
+                page.finish_earbuds_notification_save(&save.request, None, cx)
+            });
+        } else {
+            self.submit_earbuds_auto_pause(save.workspace, save.request, cx);
+        }
     }
 
     fn submit_earbuds_auto_pause(
@@ -301,13 +319,31 @@ impl AppShell {
                     (Err(error), Some(cleanup)) => Err(format!("{error}; cleanup: {cleanup}")),
                 };
                 if let Err(error) = &result {
-                    shell.status = format!("自动暂停操作失败：{error}");
+                    shell.status = format!("耳塞设置操作失败：{error}");
                 }
                 if let Ok(report) = &result {
+                    if let Some(razer_device::earbuds_protocol40::ToggleObservation::ReadFailed(
+                        error,
+                    )) = &report.voice_prompt
+                    {
+                        shell.status = format!("语音提示状态读取失败：{error}");
+                    }
+                    if let razer_device::earbuds_protocol40::AutoPauseObservation::ReadFailed(
+                        error,
+                    ) = &report.observation
+                    {
+                        shell.status = format!("自动暂停状态读取失败：{error}");
+                    }
+                    if let Some(razer_device::earbuds_do_not_disturb::Observation::ReadFailed(
+                        error,
+                    )) = &report.do_not_disturb
+                    {
+                        shell.status = format!("请勿打扰状态读取失败：{error}");
+                    }
                     if let razer_device::earbuds_protocol40::WriteOutcome::Failed(error) =
                         &report.write
                     {
-                        shell.status = format!("自动暂停设置未确认：{error}");
+                        shell.status = format!("耳塞设置未确认：{error}");
                     }
                 }
                 page.update(cx, |page, cx| {
@@ -366,9 +402,24 @@ impl AppShell {
                                 .submit_earbuds_auto_pause(workspace.clone(), request.clone(), cx),
                             razer_service::earbuds_auto_pause::MonitorUpdate::Notification(
                                 event,
-                            ) => page.update(cx, |page, cx| {
-                                page.observe_earbuds_notification(&keep, event, cx)
-                            }),
+                            ) => {
+                                if let razer_device::earbuds_events::Notification::Connection {
+                                    status,
+                                    ..
+                                } = &event
+                                {
+                                    if let Err(error) =
+                                        razer_device::earbuds_auto_pause::connection_is_online(
+                                            *status,
+                                        )
+                                    {
+                                        shell.status = format!("耳塞连接状态无效：{error:#}");
+                                    }
+                                }
+                                page.update(cx, |page, cx| {
+                                    page.observe_earbuds_notification(&keep, event, cx)
+                                });
+                            }
                         }
                         true
                     })

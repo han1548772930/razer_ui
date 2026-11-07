@@ -136,6 +136,26 @@ class IdentityReviewTests(unittest.TestCase):
         self.publish(section)
         self.assertEqual(self.db.execute("SELECT state FROM review_sections").fetchone()[0], "partial")
 
+    def test_reused_reference_verifies_and_selects_only_declared_owners(self):
+        owner = self.owner()
+        path = self.root / ".analysis/results/reference.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({"complete_owners": [owner, {**owner, "id": "unselected"}]}), encoding="utf-8")
+        section = self.section(closed=True)
+        section["complete_source_owners"] = []
+        section["reused_owners"] = {
+            "reference": {"path": ".analysis/results/reference.json", "bytes": path.stat().st_size,
+                          "sha256": a.sha(path), "pointer": "/complete_owners"},
+            "owners": [{"owner_id": owner["id"], "original_sha256": self.sha, "body_sha256": self.sha}]}
+        self.assertEqual([item["id"] for item in reviews.owner_records(section)], [owner["id"]])
+        self.publish(section)
+        self.assertEqual(self.db.execute("SELECT state FROM review_sections").fetchone()[0], "closed")
+        del section["reused_owners"]["owners"][0]["original_sha256"]
+        self.assertEqual([item["original"] for item in reviews.owner_records(section)], [owner["original"]])
+        section["reused_owners"]["owners"][0]["body_sha256"] = "0" * 64
+        with self.assertRaisesRegex(ValueError, "differs"):
+            list(reviews.owner_records(section))
+
     def test_selected_native_code_evidence_stays_partial_on_target_product(self):
         self.publish(self.section(closed=True))
         self.db.execute("CREATE TABLE native_review_matches(section_id TEXT, product_id INTEGER, normalized_sha TEXT)")
@@ -162,6 +182,42 @@ class IdentityReviewTests(unittest.TestCase):
         self.assertEqual(sections[0]["current_non_factory_owner_count"], 1)
         self.assertEqual(ledger._static_state(sections), "closed")
         self.assertEqual(ledger._static_state(ledger._sections(self.db, 2, "feature:example")), "not_started")
+
+    def test_shared_entrypoint_requires_current_deployment_and_retains_explicit_scope(self):
+        self.db.execute("DELETE FROM factories WHERE source_sha=?", (self.sha,))
+        self.db.execute("DELETE FROM deployment_sources WHERE path=?", (self.path,))
+        self.db.execute("INSERT INTO shared_deployments VALUES(?,?,?,?,NULL)",
+                        ("shared-app", "https://apps.razer.com/shared/", "shared.json", "e" * 64))
+        self.db.execute("INSERT INTO shared_sources VALUES(?,?,?)",
+                        ("shared-app", self.path, "https://apps.razer.com/shared/main.js"))
+        self.publish(self.section(closed=True))
+        self.assertEqual(self.db.execute("SELECT status FROM review_owners").fetchone()[0],
+                         "verified_current_non_factory_scope")
+        self.assertEqual(ledger._static_state(ledger._sections(self.db, 1, "feature:example")), "evidence_unmatched")
+        self.assertEqual(ledger._static_state(ledger._sections(self.db, 2, "feature:example")), "not_started")
+        signature = reviews.source_signature(self.db)
+        self.db.execute("UPDATE shared_deployments SET failure='source_changed'")
+        self.assertNotEqual(reviews.source_signature(self.db), signature)
+        self.assertEqual(reviews.OwnerVerifier(self.db).verify(self.owner())["status"],
+                         "source_not_in_current_factory_index")
+        self.db.execute("DELETE FROM shared_deployments")
+        self.assertEqual(reviews.OwnerVerifier(self.db).verify(self.owner())["status"],
+                         "source_not_in_current_factory_index")
+
+    def test_source_owners_reference_verifies_exact_frozen_bytes(self):
+        owner = self.owner()
+        path = self.root / ".analysis/results/source-reference.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({"complete_source_owners": [owner]}), encoding="utf-8")
+        reference = {"path": ".analysis/results/source-reference.json", "bytes": path.stat().st_size,
+                     "sha256": a.sha(path), "pointer": "/complete_source_owners"}
+        section = {"complete_source_owners_reference": reference}
+        self.assertEqual(list(reviews.owner_records(section)), [owner])
+        with self.assertRaisesRegex(ValueError, "disagree"):
+            list(reviews.owner_records({**section, "complete_owner_reference": {**reference, "bytes": 0}}))
+        path.write_text("{}", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "byte identity"):
+            list(reviews.owner_records(section))
 
     def test_body_tampering_invalidates_section_and_matches(self):
         owner = self.owner()

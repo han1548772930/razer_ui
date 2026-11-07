@@ -4,6 +4,7 @@ pub mod ble226;
 mod catalog;
 mod initialization;
 mod leveldb;
+pub(crate) mod schema_migration;
 use anyhow::{Context, Result, ensure};
 pub use catalog::{LocalProfiles, Profile, SerialInitialization, SourceSelection};
 pub use initialization::{SerialInitializationContext, SerialInitializationPlan};

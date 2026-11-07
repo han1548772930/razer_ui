@@ -243,12 +243,8 @@ fn restore_writes_local_when_device_differs() {
 }
 
 #[test]
-fn restore_read_failure_stays_unobserved_and_setter_failure_still_publishes() {
-    // Read fails (not supported), source compares false vs local true → write.
-    let mock = Mock::with(vec![
-        reply(5, 0x61, 24, 158, &[]),
-        reply(5, 0x62, 24, 30, &[]),
-    ]);
+fn restore_read_failure_retains_local_intent_without_submitting_a_set() {
+    let mock = Mock::with(vec![reply(5, 0x61, 24, 158, &[])]);
     let mut session = Protocol40Session::with_sleeper(&mock, NoSleep);
     let outcome = restore_auto_pause(
         &mut session,
@@ -264,6 +260,7 @@ fn restore_read_failure_stays_unobserved_and_setter_failure_still_publishes() {
     ));
     assert!(matches!(outcome.write, WriteOutcome::Failed(_)));
     assert!(outcome.published_local);
+    assert_eq!(mock.sends.borrow().len(), 1);
 }
 
 #[test]
@@ -282,8 +279,8 @@ fn disconnect_during_read_is_reported_not_defaulted() {
         outcome.observation,
         AutoPauseObservation::ReadFailed(_)
     ));
-    // Source compare value false == local false → no write.
-    assert_eq!(outcome.write, WriteOutcome::Skipped);
+    assert!(matches!(outcome.write, WriteOutcome::Failed(_)));
+    assert_eq!(mock.sends.borrow().len(), 1);
     let _ = In::Empty;
 }
 
@@ -356,7 +353,8 @@ fn anc_notification_keeps_level() {
             level: AncLevel::Reduced
         }
     );
-    assert!(!apply_anc_notification(profile, &[5, 33]).unwrap().enabled);
+    assert!(apply_anc_notification(profile, &[5, 33]).is_none());
+    assert!(apply_anc_notification(profile, &[5, 33, 2]).is_none());
     assert!(apply_anc_notification(profile, &[5, 49, 1]).is_none());
 }
 

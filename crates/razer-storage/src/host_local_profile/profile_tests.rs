@@ -220,10 +220,44 @@ fn mismatched_product_and_unknown_schema_are_not_missing_profiles() {
     assert!(decode(182, "real", value("real", "selected", false)).is_err());
     let mut source = value("real", "selected", false);
     let mut json: serde_json::Value = serde_json::from_str(&text(&source.bytes).unwrap()).unwrap();
-    json["schemaVersion"] = 14.into();
+    json["schemaVersion"] = 15.into();
     source.bytes = vec![1];
     source.bytes.extend(json.to_string().bytes());
     assert!(decode(190, "real", source).is_err());
+}
+
+#[test]
+fn current_mouse_schema14_is_read_without_changing_profile_or_source_revision() {
+    let mut raw = document("real", "selected", true);
+    raw["schemaVersion"] = 14.into();
+    raw["futureRoot"] = serde_json::json!({"preserved":true});
+    let bytes = encoded(&raw);
+    let expected_sha = ring::digest::digest(&ring::digest::SHA256, &bytes.bytes)
+        .as_ref().iter().map(|byte| format!("{byte:02x}")).collect::<String>();
+    let source = decode(190, "real", bytes).unwrap();
+    let identity = source.identity(source.active_profile().unwrap()).unwrap();
+    assert_eq!(identity.sequence, 19);
+    assert_eq!(identity.sha256, expected_sha);
+    raw["activeProfile"] = "selected".into();
+    assert_eq!(source.source_document().unwrap(), raw);
+}
+
+#[test]
+fn legacy_mouse_schema13_migrates_with_shared_guid_rules_before_typed_projection() {
+    let mut raw = document("real", "selected", false);
+    raw["schemaVersion"] = 13.into();
+    raw["audioHapticIntensity"] = serde_json::json!({"value":42,"guid":"payload-guid"});
+    raw["activeHapticIntensityGuid"] = "selected-guid".into();
+    raw["futureRoot"] = serde_json::json!({"preserved":[1,2]});
+    let source = decode(190, "real", encoded(&raw)).unwrap();
+    let projected = source.source_document().unwrap();
+    assert_eq!(projected["schemaVersion"], 14);
+    assert_eq!(projected["version"], 7);
+    assert_eq!(projected["profiles"], raw["profiles"]);
+    assert_eq!(projected["futureRoot"], raw["futureRoot"]);
+    assert_eq!(projected["audioHapticIntensity"], serde_json::json!([{"value":42,"guid":"payload-guid"}]));
+    assert_eq!(projected["activeHapticIntensityGuid"], "selected-guid");
+    assert!(!stages(&source).enabled);
 }
 
 #[test]

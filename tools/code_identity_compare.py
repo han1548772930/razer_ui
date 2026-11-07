@@ -51,6 +51,11 @@ def _key(node):
     return node.start_byte, node.end_byte
 
 
+def _function_value(node):
+    unwrapped = frontend.unparenthesized(node)
+    return unwrapped if unwrapped.type in {"arrow_function", "function_expression", "generator_function"} else node
+
+
 def _public_name(node):
     """Identifier tokens that also expose a JavaScript property/export name."""
     parent = node.parent
@@ -59,7 +64,7 @@ def _public_name(node):
     if parent.type == "export_specifier":
         alias = parent.child_by_field_name("alias")
         return alias is None or node == alias
-    if parent.type in {"class_declaration", "function_declaration"}:
+    if parent.type in {"class_declaration", "function_declaration", "generator_function_declaration"}:
         return (node == parent.child_by_field_name("name") and parent.parent is not None
                 and parent.parent.type == "export_statement")
     cursor = parent
@@ -127,6 +132,7 @@ def compare(left, right, *, import_substitutions=()):
     pending = [(left.root, right.root)]
     while pending:
         a, b = pending.pop()
+        a, b = _function_value(a), _function_value(b)
         positions[_key(a)] = _key(b)
         if a.type != b.type:
             differences.append({"reason": "syntax", "left": _brief(left, a), "right": _brief(right, b)})

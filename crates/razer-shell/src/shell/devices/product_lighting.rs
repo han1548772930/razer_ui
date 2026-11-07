@@ -30,6 +30,10 @@ impl AppShell {
             self.observe_keyboard_product_lighting(entity, request.clone(), window, cx);
             return;
         }
+        if let KeyboardLightingCommand::SwitchOffLighting(setting) = &request.command {
+            self.persist_keyboard_switch_off(entity, request.clone(), setting.clone(), window, cx);
+            return;
+        }
         let result = match &request.command {
             KeyboardLightingCommand::LaunchStudio => self.try_open_chroma_studio(cx).map(|_| None),
             KeyboardLightingCommand::OpenMappingChromaStudio => {
@@ -64,6 +68,7 @@ impl AppShell {
                 .open_product_settings(*chroma, window, cx)
                 .map(|_| None),
             KeyboardLightingCommand::Observe => unreachable!("Observation has its retained owner"),
+            KeyboardLightingCommand::SwitchOffLighting(_) => unreachable!("Keyboard policy has its retained owner"),
             KeyboardLightingCommand::InstallChroma => {
                 Err("Current local Chroma installation service is not connected".into())
             }

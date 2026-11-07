@@ -129,12 +129,12 @@ fn post_stop(hwnd: HWND) -> Result<(), String> {
     Ok(())
 }
 
-enum MessageCycle {
+pub(super) enum MessageCycle {
     Continue,
     Quit,
 }
 
-fn pump_until_stopped(
+pub(super) fn pump_until_stopped(
     stopped: &AtomicBool,
     mut wait_and_dispatch: impl FnMut(u32) -> Result<MessageCycle, String>,
 ) -> Result<(), String> {
@@ -146,7 +146,7 @@ fn pump_until_stopped(
     Ok(())
 }
 
-fn wait_and_dispatch(milliseconds: u32) -> Result<MessageCycle, String> {
+pub(super) fn wait_and_dispatch(milliseconds: u32) -> Result<MessageCycle, String> {
     // No wait handles are borrowed; native input wakes promptly and timeout
     // gives the owner another stopped check if posting the STOP message failed.
     match unsafe {

@@ -1322,11 +1322,24 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
                 fail(node, "mouse_power_does_not_retain_the_physical_connection", power_runtime)
         if node.type == "function_item" and owner in brightness_callers \
                 and text(node.child_by_field_name("name")) == brightness_callers[owner]:
-            dispatches = [call for call in walk(node) if call.type == "call_expression"
+            implementation = next((parent for parent in ancestors(node) if parent.type == "impl_item"), None)
+            delegated = text(node.child_by_field_name("name")) == "write_keyboard_brightness" and any(
+                call.type == "call_expression" and text(call.child_by_field_name("function")) == "self.submit_keyboard_brightness"
+                for call in walk(node))
+            selected = node
+            if delegated:
+                body = implementation.child_by_field_name("body") if implementation is not None else None
+                targets = [item for item in body.named_children if item.type == "function_item"
+                    and not in_test(item) and text(item.child_by_field_name("name")) == "submit_keyboard_brightness"] if body is not None else []
+                selected = targets[0] if len(targets) == 1 else node
+            dispatches = [call for call in walk(selected) if call.type == "call_expression"
                 and text(call.child_by_field_name("function")) == "self.start_keyboard_brightness_operation"]
-            scopes = [call for parts, call in calls(node)
+            scopes = [call for parts, call in calls(selected)
                 if resolved_call(parts)[-3:] == ("keyboard_brightness_runtime", "Scope", "new")]
-            if not dispatches or not scopes:
+            duplicate = delegated and any(call.type == "call_expression"
+                and text(call.child_by_field_name("function")) == "self.start_keyboard_brightness_operation"
+                for call in walk(node))
+            if not dispatches or not scopes or duplicate:
                 fail(node, "keyboard_brightness_bypasses_retained_operation_owner", brightness_runtime)
         if node.type == "function_item" and owner == brightness_runtime \
                 and text(node.child_by_field_name("name")) == "current_route":
@@ -3966,6 +3979,7 @@ def prepare_static_python():
     wheels, files, indexed = [], [], []
     pins = {row["name"]: row for row in previous["wheels"]}
     pins["tree-sitter-rust"] = {"name": "tree-sitter-rust", "version": "0.24.2"}
+    pins["tree-sitter-css"] = {"name": "tree-sitter-css", "version": "0.25.0"}
     pins["ijson"] = {"name": "ijson", "version": "3.4.0.post0"}
     for pinned in pins.values():
         name, version = pinned["name"], pinned["version"]
@@ -4021,7 +4035,7 @@ def prepare_static_python():
                 files.append({"path": relative(target), "bytes": len(content), "sha256": digest(target),
                               "wheel": relative(wheel_path), "member": member.filename})
     receipt = {"schema_version": 1, "acquired_at_utc": analysis.stamp(), "python_abi": abi + "-" + platform,
-               "target_execution": False, "scope": "Static JavaScript and Rust parsing analyzers; project-local installation",
+               "target_execution": False, "scope": "Static JavaScript, CSS and Rust parsing analyzers; project-local installation",
                "wheels": wheels, "files": files}
     write_json(receipt_path, receipt)
     analysis.index_files(indexed)
@@ -4035,6 +4049,11 @@ def prepare_static_python():
     tree = Parser(Language(tree_sitter_rust.language())).parse(b"pub struct SourceEntry { name: &'static str }")
     if tree.root_node.has_error:
         raise ValueError("Restored Rust parser failed its syntax smoke check")
+    import tree_sitter_css
+    tree = Parser(Language(tree_sitter_css.language())).parse(
+        b'@media (max-width: 900px) { .modal::before { content: "a; { b }"; width: 20px; } }')
+    if tree.root_node.has_error or tree.root_node.named_children[0].type != "media_statement":
+        raise ValueError("Restored CSS parser failed its nested-rule/string syntax smoke check")
     return {"receipt": relative(receipt_path), "sha256": digest(receipt_path),
             "python_abi": receipt["python_abi"], "files_verified": len(files), "static_parse_passed": True}
 
@@ -7356,6 +7375,9 @@ def _clean_file_identity(path):
 
 def _clean_tree(name):
     root = _clean_path(name)
+    if root.is_file():
+        item = _clean_file_identity(root)
+        return {"files": [item], "directories": [], "bytes": item["bytes"]}
     files, directories = [], []
     for folder, children, leaves in os.walk(root, followlinks=False):
         parent = Path(folder)
@@ -8313,6 +8335,9 @@ def _clean_references(candidates, *, exclude=(), bind_history=False):
         for name in matched_names:
             row = names[name]
             scan_document = document
+            if row.get("kind") == "completed_analysis_input_file":
+                import scratch_files
+                scan_document = scratch_files.reference_view(document, filename, row)
             if row.get("kind") in {"ended_native_batch_private_copy", "ended_native_mcp_private_copy"} and isinstance(document, dict):
                 owner_name, section = row["native_mcp_owner" if row["kind"] == "ended_native_mcp_private_copy" else "native_batch_owner"].split("#/", 1)
                 if filename == owner_name:
@@ -8392,6 +8417,8 @@ def _clean_group_final_guard(row, directory_identities):
     """Recheck membership under the held handles; this is not a lock on new child creation."""
     expected_files = {item["path"]: item for item in row["tree"]["files"]}
     directories, files = set(), set()
+    if _clean_path(row["path"]).is_file():
+        files.add(row["path"])
     for parent, children, leaves in os.walk(_clean_path(row["path"]), followlinks=False):
         for path in [Path(parent), *(Path(parent) / name for name in children + leaves)]:
             _clean_path(relative(path))
@@ -8434,6 +8461,8 @@ def _clean_delete_group(row):
     directory_identities = {}
     try:
         ancestors = set()
+        if row.get("kind") == "completed_analysis_input_file":
+            ancestors.add(_clean_path(row["path"]).parent)
         for name in row["tree"]["directories"]:
             path = _clean_path(name)
             ancestors.add(path)
@@ -8529,14 +8558,14 @@ def _clean_create_receipt(path, report):
 
 
 def clean(stale=False, *, before=None, dry_run=False, plan=None, apply=None, plan_sha256=None,
-          verification_recovery=None, native_batch_owners=(), native_mcp_owners=()):
+          verification_recovery=None, native_batch_owners=(), native_mcp_owners=(), completed_file_manifests=()):
     """Plan conservative scratch cleanup; deletion requires an unchanged explicit plan."""
     if stale:
-        if dry_run or plan or apply or plan_sha256 or verification_recovery is not None or native_batch_owners or native_mcp_owners:
+        if dry_run or plan or apply or plan_sha256 or verification_recovery is not None or native_batch_owners or native_mcp_owners or completed_file_manifests:
             raise ValueError("--stale cannot be combined with planned cleanup")
         return _clean_stale(before)
     if apply:
-        if dry_run or plan or verification_recovery is not None or native_batch_owners or native_mcp_owners or not re.fullmatch(r"[a-f0-9]{64}", plan_sha256 or ""):
+        if dry_run or plan or verification_recovery is not None or native_batch_owners or native_mcp_owners or completed_file_manifests or not re.fullmatch(r"[a-f0-9]{64}", plan_sha256 or ""):
             raise ValueError("Cleanup apply requires only --apply and --plan-sha256")
         source = _clean_receipt_path(apply)
         raw = source.read_bytes()
@@ -8553,12 +8582,19 @@ def clean(stale=False, *, before=None, dry_run=False, plan=None, apply=None, pla
                 current, _ = _clean_candidates(native_batch_owners=report.get("native_batch_owners", ()), native_mcp_owners=report.get("native_mcp_owners", ()))
                 verification_rows, _ = _verification_candidates()
                 current.extend(verification_rows)
+                import scratch_files
+                current.extend(scratch_files.candidates(sys.modules[__name__], report.get("completed_file_manifests", ())))
             current_names = {row["path"]: row for row in current}
             for row in rows:
-                if row.get("kind") not in {"ended_supplement_private_copy", "ended_native_batch_private_copy", "ended_native_mcp_private_copy", "old_asset_upload_clone", "owned_empty_verification_temp"}:
+                if row.get("kind") not in {"ended_supplement_private_copy", "ended_native_batch_private_copy", "ended_native_mcp_private_copy", "old_asset_upload_clone", "owned_empty_verification_temp", "completed_analysis_input_file"}:
                     raise ValueError("Cleanup plan contains an unowned target")
                 name = row["path"]
-                if row["kind"] == "owned_empty_verification_temp":
+                if row["kind"] == "completed_analysis_input_file":
+                    owner = current_names.get(name, {})
+                    allowed, tree = True, _clean_tree(name)
+                    if {key: value for key, value in row.items() if key != "tree"} != owner:
+                        raise ValueError("Completed scratch ownership changed after planning")
+                elif row["kind"] == "owned_empty_verification_temp":
                     allowed, tree = True, _verification_tree(name)
                     owner = current_names.get(name, {})
                     if any(row.get(key) != owner.get(key) for key in ("basis", "owner_receipts", "ownership")):
@@ -8646,6 +8682,8 @@ def clean(stale=False, *, before=None, dry_run=False, plan=None, apply=None, pla
     if destination.exists():
         raise FileExistsError("Cleanup plan already exists; choose a new reserved receipt name")
     rows, retained = _clean_candidates(before, native_batch_owners, native_mcp_owners)
+    import scratch_files
+    rows.extend(scratch_files.candidates(sys.modules[__name__], completed_file_manifests))
     verification_rows, verification_retained = _verification_candidates()
     rows.extend(verification_rows)
     retained.extend(verification_retained)
@@ -8675,6 +8713,7 @@ def clean(stale=False, *, before=None, dry_run=False, plan=None, apply=None, pla
                                      "validated verification ledger directory ownership field"],
               "native_batch_owners": list(native_batch_owners),
               "native_mcp_owners": list(native_mcp_owners),
+              "completed_file_manifests": list(completed_file_manifests),
               "guard_failures": errors + process_errors, "candidates": eligible, "retained": retained,
               "candidate_bytes": sum(row["tree"]["bytes"] for row in eligible)}
     _clean_create_receipt(destination, report)
@@ -8987,6 +9026,9 @@ def rust_inputs(*, include_asset_pack=True):
 
 def static_react_svg(original_text, anchor):
     """Convert literal createElement SVG trees; reject executable expressions."""
+    if not anchor.endswith("{"):
+        from svg_source import expression_svg
+        return expression_svg(original_text, anchor, static_react_svg)
     import families
     sys.path.insert(0, str(ROOT / "tools/analyzers/python-static"))
     import json5
@@ -14524,6 +14566,7 @@ def main():
     scratch_clean.add_argument("--verification-recovery", help="Register explicit legacy empty-directory recovery JSON, or - for stdin; planning only")
     scratch_clean.add_argument("--native-batch-owner", action="append", default=[], help="Release an explicitly completed semantic owner: .analysis/results/frontend/name-audit.json#/section")
     scratch_clean.add_argument("--native-mcp-owner", action="append", default=[], help="Release an explicitly ended MCP-only owner with retained selected query evidence")
+    scratch_clean.add_argument("--completed-files", action="append", default=[], help="Analysis-input manifest binding released JSON intermediates to completed review sections")
     runtime_audit = commands.add_parser("audit-runtime-resources", help="Trace Rust/catalog resource references against the fixed installed directory")
     runtime_audit.add_argument("--repair", action="store_true", help="Verify current inline ARGB layers and attach missing aliases; do not restore source media")
     pack_audit = commands.add_parser("audit-asset-pack")
@@ -14603,7 +14646,7 @@ def main():
         recovery = (json.loads(sys.stdin.read() if args.verification_recovery == "-" else args.verification_recovery)
                     if args.verification_recovery is not None else None)
         clean(stale=args.stale, dry_run=args.dry_run, plan=args.plan, apply=args.apply,
-              plan_sha256=args.plan_sha256, verification_recovery=recovery, native_batch_owners=args.native_batch_owner, native_mcp_owners=args.native_mcp_owner)
+              plan_sha256=args.plan_sha256, verification_recovery=recovery, native_batch_owners=args.native_batch_owner, native_mcp_owners=args.native_mcp_owner, completed_file_manifests=args.completed_files)
     elif args.command == "verify":
         verify()
     elif args.command == "audit-inputs":

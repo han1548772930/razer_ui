@@ -625,7 +625,6 @@ impl KeyboardProductWorkspace {
                             let percent = value.start().clamp(min, max).round() as u8;
                             this.draft["brightness"]["value"] = json!(percent);
                             this.draft["brightness"]["isEnabled"] = json!(percent != 0);
-                            cx.emit(KeyboardProductChanged);
                             this.request_brightness(cx);
                             cx.notify();
                         }
@@ -685,6 +684,12 @@ impl KeyboardProductWorkspace {
                 }
                 if path.starts_with("/switchOffLighting/") {
                     self.request_switch_off_lighting(cx);
+                    cx.notify();
+                    return;
+                }
+                if path.starts_with("/brightness/") {
+                    cx.notify();
+                    return;
                 }
                 if self.spec.modern_analog_controls()
                     && (path == "/gamingMode" || path.starts_with("/gamingMode/"))
@@ -711,7 +716,7 @@ impl KeyboardProductWorkspace {
                 if enabled {
                     this.write(&path, json!(value), cx);
                     if path == "/brightness/isEnabled" {
-                        this.request_brightness(cx);
+                        this.request_brightness_toggle(cx);
                         this.sync_brightness_controls(window, cx);
                     }
                 }

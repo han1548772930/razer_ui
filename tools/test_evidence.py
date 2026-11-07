@@ -6438,6 +6438,23 @@ class LocaleChunkExportTests(unittest.TestCase):
 
 
 class JavascriptBindingTests(unittest.TestCase):
+    def test_nested_generator_var_does_not_shadow_the_outer_import(self):
+        raw = b'const l={qf(){}}; const run=()=>wrap(function*(){ l.qf(); yield wrap(function*(){var l;inner(l)}); });'
+        outer = self.binding(raw, "l", b'l.qf()')
+        self.assertEqual(outer["body"], 'l={qf(){}}')
+        self.assertEqual(outer["scope"]["syntax"], "program")
+        inner = self.binding(raw, "l", b'inner(l)')
+        self.assertEqual(inner["body"], "l")
+        self.assertEqual(inner["scope"]["syntax"], "generator_function")
+
+    def test_generator_parameters_and_declarations_keep_their_own_scopes(self):
+        raw = b'const x="outer";function* items(x){var y=x;yield use(x,y,items)}outside(items,x,y)'
+        self.assertEqual(self.binding(raw, "x", b'use(')["resolution"], "parameter_requires_caller_analysis")
+        self.assertEqual(self.binding(raw, "y", b'use(')["scope"]["syntax"], "generator_function_declaration")
+        self.assertEqual(self.binding(raw, "items", b'outside(')["syntax"], "generator_function_declaration")
+        self.assertEqual(self.binding(raw, "x", b'outside(')["body"], 'x="outer"')
+        self.assertEqual(self.binding(raw, "y", b'outside(')["resolution"], "unresolved_identifier")
+
     def test_repeated_index_preserves_shadowing_and_rejects_invalid_references(self):
         sys.path.insert(0, str(analysis.ROOT / "tools/analyzers/python-static"))
         from tree_sitter import Language, Parser
@@ -7423,6 +7440,24 @@ class HostLocalAuditTests(unittest.TestCase):
 
 
 class SourceSvgTests(unittest.TestCase):
+    def test_expression_create_element_svg_keeps_original_ast_identity(self):
+        import workspace
+        import xml.etree.ElementTree as ET
+        source = 'let cached;const before="设备";const Arrow=({title:t,titleId:i,...p},r)=>R.createElement("svg",merge({width:20,height:20,ref:r,"aria-labelledby":i},p),t?R.createElement("title",{id:i},t):null,cached||(cached=R.createElement("path",{d:"M0 0L2 2",strokeWidth:2})));'
+        content, report = workspace.static_react_svg(source, 'Arrow=')
+        svg = ET.fromstring(content)
+        self.assertEqual(svg.find('path').get('d'), 'M0 0L2 2')
+        self.assertEqual(svg.find('path').get('stroke-width'), '2')
+        self.assertIsNone(svg.get('ref'))
+        self.assertIsNone(svg.find('title'))
+        owner = report['source_regions'][0]
+        self.assertEqual(source[owner['character_start']:owner['character_end']], owner['body'])
+        self.assertTrue(owner['body'].startswith('Arrow='))
+        with self.assertRaises(ValueError):
+            workspace.static_react_svg(source.replace('strokeWidth:2', 'strokeWidth:readDevice()'), 'Arrow=')
+        with self.assertRaises(ValueError):
+            workspace.static_react_svg(source.replace('cached||(cached=', 'other||(cached='), 'Arrow=')
+
     def test_react_svg_decimal_gradient_and_group_visibility_keep_geometry(self):
         import workspace
         import xml.etree.ElementTree as ET

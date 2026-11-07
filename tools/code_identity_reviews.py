@@ -116,7 +116,11 @@ def source_signature(db):
         LEFT JOIN parsed_sources p ON p.sha256=s.sha256
         ORDER BY d.product_id,d.layer,ds.path""")]
     extraction = dict(db.execute("SELECT key,value FROM metadata WHERE key IN ('normalization','factory_extraction_version')"))
-    return ci.digest({"sources": sources, "extraction": extraction})
+    shared = [list(r) for r in db.execute("""SELECT d.name,d.entry_url,d.acquisition_sha,
+        d.failure,s.sha256,p.normalization,p.failure FROM shared_deployments d
+        LEFT JOIN shared_sources ds USING(name) LEFT JOIN sources s USING(path)
+        LEFT JOIN parsed_sources p ON p.sha256=s.sha256 ORDER BY d.name,ds.path""")]
+    return ci.digest({"sources": sources, "shared_sources": shared, "extraction": extraction})
 
 
 def navigation_signature(db):
@@ -321,8 +325,10 @@ class OwnerVerifier:
                         wrapped_factory = bool(factories)
         if not factories:
             current = self.db.execute("""SELECT 1 FROM sources s JOIN deployment_sources ds USING(path)
-                JOIN deployments d USING(product_id,layer) WHERE s.sha256=? AND d.failure IS NULL LIMIT 1""",
-                                      (original["sha256"],)).fetchone()
+                JOIN deployments d USING(product_id,layer) WHERE s.sha256=? AND d.failure IS NULL
+                UNION ALL SELECT 1 FROM sources s JOIN shared_sources ds USING(path)
+                JOIN shared_deployments d USING(name) WHERE s.sha256=? AND d.failure IS NULL LIMIT 1""",
+                                      (original["sha256"], original["sha256"])).fetchone()
             return {"status": "verified_current_non_factory_scope" if current else "source_not_in_current_factory_index",
                     "detail": "Original bytes verified; owner lies outside indexed factories" if current else
                               "Verified original owner has no current indexed source or containing factory"}
@@ -351,6 +357,21 @@ def owner_records(section):
     owners = section.get("complete_source_owners", section.get("complete_owners"))
     if owners is not None:
         yield from owners.values() if isinstance(owners, dict) else owners
+        reused = section.get("reused_owners")
+        if isinstance(reused, dict) and "reference" in reused:
+            selected = {item["owner_id"]: item for item in reused["owners"]}
+            seen = set()
+            for owner in owner_records({"complete_owner_reference": reused["reference"]}):
+                expected = selected.get(owner["id"])
+                if expected is None:
+                    continue
+                if ("original_sha256" in expected and owner["original"]["sha256"] != expected["original_sha256"]
+                        or owner["body_sha256"] != expected["body_sha256"]):
+                    raise ValueError("Selected reused owner differs from its retained reference")
+                seen.add(owner["id"])
+                yield owner
+            if seen != set(selected):
+                raise ValueError("Selected reused owner is absent from its retained reference")
         if not section.get("reused_owner_verification"):
             return
         originals = {}
@@ -371,7 +392,10 @@ def owner_records(section):
                    "byte_start": start, "byte_end": end,
                    "body_sha256": owner["body_sha256"]}
         return
-    reference = section.get("complete_owner_reference")
+    reference = section.get("complete_owner_reference", section.get("complete_source_owners_reference"))
+    if ("complete_owner_reference" in section and "complete_source_owners_reference" in section
+            and section["complete_owner_reference"] != section["complete_source_owners_reference"]):
+        raise ValueError("Complete owner references disagree")
     if not isinstance(reference, dict):
         return
     path = a.resolve(reference["path"], ".analysis/results")

@@ -8,14 +8,95 @@ impl AppShell {
         &mut self,
         workspace: Entity<ProductWorkspace>,
         generation: u64,
-        percent: u8,
+        submission: razer_device::keyboard_settings::BrightnessSubmission,
+        background: bool,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if !background {
+            self.persist_keyboard_brightness(workspace, generation, submission, window, cx);
+            return;
+        }
+        let previous_percent = submission.effective_percent();
+        let resolved = (|| -> anyhow::Result<_> {
+            let device = workspace.read(cx).device(cx);
+            let saved = workspace.read(cx).saved_snapshot(cx);
+            let configuration =
+                razer_storage::keyboard_lighting::read(&saved, &device.active_profile)?;
+            razer_device::keyboard_settings::BrightnessSubmission::new(
+                configuration.brightness().value,
+                submission.enabled(),
+                razer_device::keyboard_settings::BrightnessIntent::Value,
+            )
+        })();
+        let submission = match resolved {
+            Ok(submission) => submission,
+            Err(error) => {
+                workspace.update(cx, |workspace, cx| {
+                    workspace.finish_keyboard_brightness(
+                        generation,
+                        previous_percent,
+                        None,
+                        Some(format!("后台亮度配置未读取：{error:#}")),
+                        true,
+                        cx,
+                    )
+                });
+                return;
+            }
+        };
+        if !workspace.update(cx, |workspace, cx| {
+            workspace.resolve_keyboard_runtime_brightness(
+                generation,
+                previous_percent,
+                submission,
+                cx,
+            )
+        }) {
+            workspace.update(cx, |workspace, cx| {
+                workspace.finish_keyboard_brightness(
+                    generation,
+                    previous_percent,
+                    None,
+                    Some("后台亮度作用域已变化".into()),
+                    false,
+                    cx,
+                )
+            });
+            return;
+        }
+        self.submit_keyboard_brightness(
+            workspace,
+            generation,
+            submission,
+            window.window_handle(),
+            cx,
+        );
+    }
+
+    pub(super) fn submit_keyboard_brightness(
+        &mut self,
+        workspace: Entity<ProductWorkspace>,
+        generation: u64,
+        submission: razer_device::keyboard_settings::BrightnessSubmission,
+        window_handle: AnyWindowHandle,
+        cx: &mut Context<Self>,
+    ) {
+        let percent = submission.effective_percent();
         if !workspace
             .read(cx)
             .keyboard_brightness_request_current(generation, percent, cx)
         {
+            workspace.update(cx, |workspace, cx| {
+                workspace.finish_keyboard_brightness(
+                    generation,
+                    percent,
+                    None,
+                    Some("键盘亮度请求已失效".into()),
+                    false,
+                    cx,
+                )
+            });
             return;
         }
         let device = workspace.read(cx).device(cx);
@@ -62,13 +143,12 @@ impl AppShell {
         let scope = Scope::new(&workspace, route, cx);
         let completion_scope = scope.clone();
         let completion_signal = canceled.clone();
-        let window_handle = window.window_handle();
         let workspace = workspace.downgrade();
         self.status = "正在设置键盘亮度并读取设备确认。".into();
         cx.notify();
         self.start_keyboard_brightness_operation(
             scope,
-            Some(percent),
+            super::keyboard_brightness_runtime::Operation::Submit(submission),
             canceled,
             move |this, result, cx| {
                 let Some(workspace) = workspace.upgrade() else {

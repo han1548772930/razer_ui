@@ -8,6 +8,7 @@ impl AppShell {
         &mut self,
         workspace: Entity<ProductWorkspace>,
         generation: u64,
+        background: bool,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
@@ -59,7 +60,11 @@ impl AppShell {
         let workspace = workspace.downgrade();
         self.start_keyboard_brightness_operation(
             scope,
-            None,
+            if background {
+                super::keyboard_brightness_runtime::Operation::Reconcile
+            } else {
+                super::keyboard_brightness_runtime::Operation::Read
+            },
             canceled,
             move |this, result, cx| {
                 let Some(workspace) = workspace.upgrade() else {
@@ -72,6 +77,11 @@ impl AppShell {
                     return;
                 }
                 let scope_current = completion_scope.current(this, &completion_signal, cx);
+                if scope_current && let Some(metadata) = result.metadata() {
+                    workspace.update(cx, |workspace, cx| {
+                        workspace.observe_keyboard_metadata(Some(metadata.clone()), cx)
+                    });
+                }
                 // The feature retains the actual reading independently of any
                 // newer preview and queued write from this connection.
                 let observed = result.observed();

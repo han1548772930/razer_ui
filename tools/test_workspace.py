@@ -1750,6 +1750,27 @@ class ArchitectureBoundaryTests(unittest.TestCase):
                 self.assertFalse(self.inspect(source.replace(f'fn {operation}_keyboard_brightness', 'fn unrelated')
                                               .replace('Scope::new', 'OtherScope::new'), owner))
 
+    def test_keyboard_brightness_write_delegates_to_a_verified_same_impl_submission(self):
+        owner = 'crates/razer-shell/src/shell/keyboard/keyboard_brightness_write.rs'
+        source = ('use super::keyboard_brightness_runtime::Scope; impl AppShell { '
+                  'fn write_keyboard_brightness() { self.persist_keyboard_brightness(); self.submit_keyboard_brightness(); } '
+                  'fn submit_keyboard_brightness() { let scope = Scope::new(workspace, route, cx); '
+                  'self.start_keyboard_brightness_operation(scope, percent, canceled, complete, cx); } }')
+        self.assertFalse(self.inspect(source, owner))
+        self.assertFalse(self.inspect((workspace.ROOT / owner).read_text(encoding='utf-8'), owner))
+        for changed in (
+            source.replace('self.submit_keyboard_brightness()', 'other.submit_keyboard_brightness()'),
+            source.replace('fn submit_keyboard_brightness()', 'fn unrelated()'),
+            source.replace('fn submit_keyboard_brightness()', '#[cfg(test)] fn submit_keyboard_brightness()'),
+            source.replace('fn submit_keyboard_brightness()', '} impl Other { fn submit_keyboard_brightness()'),
+            source.replace('Scope::new', 'OtherScope::new'),
+            source.replace('self.start_keyboard_brightness_operation', 'other.start_keyboard_brightness_operation'),
+            source.replace('self.persist_keyboard_brightness();', 'self.start_keyboard_brightness_operation();'),
+        ):
+            with self.subTest(source=changed):
+                self.assertIn('keyboard_brightness_bypasses_retained_operation_owner',
+                              [row['kind'] for row in self.inspect(changed, owner)])
+
     def test_keyboard_brightness_scope_uses_the_physical_connection_owner(self):
         owner = 'crates/razer-shell/src/shell/keyboard/keyboard_brightness_runtime.rs'
         source = ('fn current_route() { super::device_discovery::retained_connection(previous, observations, device) '

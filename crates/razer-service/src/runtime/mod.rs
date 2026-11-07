@@ -63,6 +63,61 @@ impl KeyboardRead<'_> {
     }
 }
 
+#[derive(Clone, Copy)]
+enum KeyboardBrightness {
+    Read,
+    Value(u8),
+    Submit(razer_device::keyboard_settings::BrightnessSubmission),
+}
+
+impl KeyboardBrightness {
+    fn validate(self) -> anyhow::Result<()> {
+        match self {
+            Self::Read => Ok(()),
+            Self::Value(value) => razer_device::keyboard_settings::encode_percent(value).map(|_| ()),
+            Self::Submit(submission) => submission.validate(),
+        }
+    }
+
+    fn receiver(self) -> receiver_settings::Setting<'static> {
+        match self {
+            Self::Read => receiver_settings::Setting::KeyboardBrightness(None),
+            Self::Value(value) => receiver_settings::Setting::KeyboardBrightness(Some(value)),
+            Self::Submit(submission) => {
+                receiver_settings::Setting::KeyboardBrightnessSubmission(submission)
+            }
+        }
+    }
+
+    fn execute(
+        self,
+        device: &dyn razer_device::backend::FeatureTransport,
+        settings: &razer_device::keyboard_settings::KeyboardSettingsCapability,
+        next: &mut dyn FnMut() -> anyhow::Result<u8>,
+        validate: &dyn Fn() -> anyhow::Result<()>,
+    ) -> anyhow::Result<(&'static str, serde_json::Value)> {
+        use razer_device::keyboard_settings;
+        Ok(match self {
+            Self::Read => (
+                "reading",
+                serde_json::to_value(keyboard_settings::read(device, settings, next, validate)?)?,
+            ),
+            Self::Value(value) => (
+                "result",
+                serde_json::to_value(keyboard_settings::apply(
+                    device, settings, value, next, validate,
+                )?)?,
+            ),
+            Self::Submit(submission) => (
+                "applied",
+                serde_json::to_value(keyboard_settings::apply_brightness(
+                    device, settings, submission, next, validate,
+                )?)?,
+            ),
+        })
+    }
+}
+
 pub(crate) fn mapping_client() -> anyhow::Result<crate::mapping::owner::Client> {
     #[cfg(windows)]
     {

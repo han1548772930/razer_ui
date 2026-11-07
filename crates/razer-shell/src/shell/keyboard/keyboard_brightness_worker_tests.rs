@@ -1,4 +1,5 @@
-use super::{Completion, Transport, run_with};
+use super::{Completion, Operation, Transport, run_with as execute};
+use razer_device::keyboard_settings::{BrightnessIntent, BrightnessSubmission};
 use std::{
     cell::Cell,
     sync::{
@@ -11,6 +12,7 @@ use std::{
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum Event {
+    Metadata,
     Read,
     Set(u8),
     Shutdown,
@@ -64,7 +66,20 @@ impl Mock {
 }
 
 impl Transport for Mock {
-    fn brightness(&mut self, percent: Option<u8>) -> anyhow::Result<u8> {
+    fn metadata(
+        &mut self,
+    ) -> anyhow::Result<razer_device::keyboard_metadata::KeyboardMetadataReading> {
+        self.log.lock().unwrap().push(Event::Metadata);
+        if let Some(error) = self.operation_error {
+            anyhow::bail!(error);
+        }
+        Ok(
+            serde_json::from_str(r#"{"keyboard_layout":2,"edition_id":1,"firmware_id":3}"#)
+                .unwrap(),
+        )
+    }
+    fn brightness(&mut self, submission: Option<BrightnessSubmission>) -> anyhow::Result<u8> {
+        let percent = submission.map(BrightnessSubmission::effective_percent);
         self.log
             .lock()
             .unwrap()
@@ -115,6 +130,63 @@ fn events(log: &Arc<Mutex<Vec<Event>>>) -> Vec<Event> {
     log.lock().unwrap().clone()
 }
 
+fn setting(percent: u8) -> BrightnessSubmission {
+    BrightnessSubmission::new(percent, true, BrightnessIntent::Value).unwrap()
+}
+
+fn run_with<T: Transport>(
+    submission: Option<BrightnessSubmission>,
+    canceled: &AtomicBool,
+    factory: impl FnOnce() -> anyhow::Result<T>,
+) -> Completion {
+    execute(
+        submission.map_or(Operation::Read, Operation::Submit),
+        canceled,
+        factory,
+    )
+}
+
+#[test]
+fn resume_reconciles_real_metadata_before_brightness_and_releases_the_service() {
+    let log = Arc::new(Mutex::new(Vec::new()));
+    let completion = execute(Operation::Reconcile, &AtomicBool::new(false), || {
+        Ok(Mock::new(&log))
+    });
+    assert_eq!(
+        events(&log),
+        [
+            Event::Metadata,
+            Event::Read,
+            Event::Shutdown,
+            Event::Terminate,
+            Event::Release
+        ]
+    );
+    assert_eq!(completion.metadata().unwrap().keyboard_layout, 2);
+    assert_eq!(completion.observed(), Some(42));
+}
+
+#[test]
+fn failed_resume_probe_never_becomes_power_on_or_a_default_brightness() {
+    let log = Arc::new(Mutex::new(Vec::new()));
+    let mut transport = Mock::new(&log);
+    transport.operation_error = Some("actual edition probe failed");
+    let completion = execute(Operation::Reconcile, &AtomicBool::new(false), || {
+        Ok(transport)
+    });
+    assert!(completion.metadata().is_none());
+    assert_eq!(completion.observed(), None);
+    assert_eq!(
+        events(&log),
+        [
+            Event::Metadata,
+            Event::Shutdown,
+            Event::Terminate,
+            Event::Release
+        ]
+    );
+}
+
 #[test]
 fn cancellation_while_queued_does_not_create_a_service() {
     let canceled = AtomicBool::new(true);
@@ -143,7 +215,7 @@ fn cancellation_during_service_creation_stops_the_first_device_request_and_clean
         let entered = entered.clone();
         let release = release.clone();
         thread::spawn(move || {
-            run_with(Some(63), &signal, || {
+            run_with(Some(setting(63)), &signal, || {
                 entered.wait();
                 release.wait();
                 Ok(Mock::new(&log))
@@ -208,7 +280,7 @@ fn accepted_setter_stays_pending_until_shutdown_and_transport_release_finish() {
     let worker = thread::spawn(move || {
         let completion = {
             let _accepted = accepted;
-            run_with(Some(63), &canceled, || Ok(transport))
+            run_with(Some(setting(63)), &canceled, || Ok(transport))
         };
         sender.send(completion).unwrap();
     });
@@ -260,7 +332,7 @@ fn cleanup_failure_preserves_the_real_readback_as_a_separate_fact() {
     let log = Arc::new(Mutex::new(Vec::new()));
     let mut transport = Mock::new(&log);
     transport.shutdown_error = Some("native shutdown failed");
-    let completion = run_with(Some(72), &AtomicBool::new(false), || Ok(transport));
+    let completion = run_with(Some(setting(72)), &AtomicBool::new(false), || Ok(transport));
     assert_eq!(completion.observed(), Some(72));
     assert!(
         completion
@@ -290,7 +362,7 @@ fn cancellation_during_shutdown_waits_for_cleanup_and_rejects_the_retired_readin
     transport.cleanup_gate = Some(gate);
     let worker = {
         let signal = canceled.clone();
-        thread::spawn(move || run_with(Some(63), &signal, || Ok(transport)))
+        thread::spawn(move || run_with(Some(setting(63)), &signal, || Ok(transport)))
     };
     entered.wait();
     canceled.store(true, Ordering::Release);

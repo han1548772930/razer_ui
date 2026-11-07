@@ -1,7 +1,7 @@
 //! Portable worker routes: native nodes and source-proved Razer queries.
 //! Platform-specific audio/driver calls delegate to isolated OS adapters.
 //! No guessed peer routing, downloaded DLL or direct OS API in this layer.
-use super::{KeyboardRead, ServiceRequest};
+use super::{KeyboardBrightness, KeyboardRead, ServiceRequest};
 use anyhow::{Context as _, bail, ensure};
 use razer_device::audio_mixer::{MatrixRoute, MixerRoute, MixerSession, MixerTarget, MixerValue};
 use razer_device::backend::HidNode;
@@ -806,7 +806,15 @@ impl PortableRuntime {
                 )
             }
             ServiceRequest::HidNodeKeyboardBrightnessRead { node, product_id } => {
-                self.keyboard_brightness(&node, product_id, None)
+                self.keyboard_brightness(&node, product_id, KeyboardBrightness::Read)
+            }
+            ServiceRequest::HidNodeKeyboardBrightnessSubmit { node, product_id, peer_product_id, submission } => {
+                if let Some(peer) = peer_product_id {
+                    self.receiver_setting(&node, product_id, peer,
+                        super::receiver_settings::Setting::KeyboardBrightnessSubmission(submission))
+                } else {
+                    self.keyboard_brightness(&node, product_id, KeyboardBrightness::Submit(submission))
+                }
             }
             ServiceRequest::HidNodeKeyboardReceiverBrightness { node, product_id, peer_product_id, percent } => {
                 self.receiver_setting(&node, product_id, peer_product_id, super::receiver_settings::Setting::KeyboardBrightness(percent))
@@ -915,7 +923,7 @@ impl PortableRuntime {
                 node,
                 product_id,
                 percent,
-            } => self.keyboard_brightness(&node, product_id, Some(percent)),
+            } => self.keyboard_brightness(&node, product_id, KeyboardBrightness::Value(percent)),
             ServiceRequest::HidNodeDpiStagesRead { node, product_id } => {
                 self.dpi_stages(&node, product_id, None)
             }
@@ -1276,7 +1284,7 @@ impl PortableRuntime {
         &mut self,
         node: &HidNode,
         product_id: u32,
-        percent: Option<u8>,
+        operation: KeyboardBrightness,
     ) -> anyhow::Result<Value> {
         use razer_device::keyboard_settings;
         let settings =
@@ -1297,9 +1305,7 @@ impl PortableRuntime {
             identity.product_id == product_id && !identity.is_dongle && !identity.is_ble,
             "键盘亮度入口只接受已核实的直接设备"
         );
-        if let Some(percent) = percent {
-            keyboard_settings::encode_percent(percent)?;
-        }
+        operation.validate()?;
         let started = Instant::now();
         let validate = || {
             ensure!(
@@ -1325,22 +1331,8 @@ impl PortableRuntime {
                 cap.transaction_modulus,
             )
         };
-        if let Some(percent) = percent {
-            response["result"] = serde_json::to_value(keyboard_settings::apply(
-                device.as_ref(),
-                settings,
-                percent,
-                &mut next,
-                &validate,
-            )?)?;
-        } else {
-            response["reading"] = serde_json::to_value(keyboard_settings::read(
-                device.as_ref(),
-                settings,
-                &mut next,
-                &validate,
-            )?)?;
-        }
+        let (field, result) = operation.execute(device.as_ref(), settings, &mut next, &validate)?;
+        response[field] = result;
         validate()?;
         response["elapsed_ms"] = json!(started.elapsed().as_millis() as u64);
         Ok(response)

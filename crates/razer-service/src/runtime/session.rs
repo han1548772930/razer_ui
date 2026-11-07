@@ -294,6 +294,7 @@ impl SessionRuntime {
             | ServiceRequest::HidNodeHanboCoolerRead { .. }
             | ServiceRequest::HidNodeHanboStartupRead { .. }
             | ServiceRequest::HidNodeKeyboardBrightnessRead { .. }
+            | ServiceRequest::HidNodeKeyboardBrightnessSubmit { .. }
             | ServiceRequest::HidNodeKeyboardReceiverBrightness { .. }
             | ServiceRequest::HidNodeKeyboardMetadataRead { .. }
             | ServiceRequest::KeyboardProfileInventoryRead { .. }

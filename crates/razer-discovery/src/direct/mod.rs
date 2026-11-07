@@ -608,6 +608,17 @@ fn decode_keyboard_brightness_reply(
 }
 
 pub fn keyboard_brightness_available(observed: &ObservedDevice) -> bool {
+    if matches!(
+        observed.transport(),
+        Some(crate::discovery::ObservedTransport::Ble)
+    ) {
+        return cfg!(windows)
+            && observed.peer_product_id().is_none()
+            && razer_device::keyboard_settings::ble::available(
+                observed.product_id(),
+                observed.physical_product_id(),
+            );
+    }
     let Some(cap) = razer_device::keyboard_settings::capability(observed.product_id()) else {
         return false;
     };
@@ -626,12 +637,29 @@ pub fn keyboard_brightness_available(observed: &ObservedDevice) -> bool {
 pub fn request_keyboard_brightness(
     client: &mut ServiceClient,
     observed: &ObservedDevice,
-    percent: Option<u8>,
+    submission: Option<razer_device::keyboard_settings::BrightnessSubmission>,
 ) -> anyhow::Result<KeyboardBrightness> {
     ensure!(
         keyboard_brightness_available(observed),
         "No current source brightness route for this observation"
     );
+    if let Some(submission) = submission {
+        submission.validate()?;
+    }
+    #[cfg(windows)]
+    if matches!(
+        observed.transport(),
+        Some(crate::discovery::ObservedTransport::Ble)
+    ) {
+        return keyboard_brightness_ble::request(client, observed, submission);
+    }
+    if observed.product_id() == 691
+        && let Some(submission) = submission
+    {
+        return keyboard_brightness_submission::request(client, observed, submission);
+    }
+    let percent =
+        submission.map(razer_device::keyboard_settings::BrightnessSubmission::effective_percent);
     if observed.peer_product_id().is_some() {
         receiver_settings::keyboard(observed, percent, &mut |request| client.request(request))
     } else {
@@ -640,6 +668,10 @@ pub fn request_keyboard_brightness(
         resolve(client, observed, &cap.transport)?.keyboard(client, percent)
     }
 }
+
+#[cfg(windows)]
+mod keyboard_brightness_ble;
+mod keyboard_brightness_submission;
 
 fn decode_dpi_stages_reply(
     reply: &Value,

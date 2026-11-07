@@ -44,7 +44,7 @@ fn profile(guid: &str, name: &str) -> Value {
 
 fn document() -> Value {
     json!({
-        "version":17,"vendorId":5426,"productId":679,"category":"KEYBOARD","schemaVersion":13,
+        "version":17,"vendorId":5426,"productId":679,"category":"KEYBOARD","schemaVersion":14,
         "activeProfile":"first",
         "deviceMetadatas":{
             "real":{"activeProfileGuid":"selected","name":"User keyboard","futureSerial":{"keep":true}},
@@ -59,6 +59,31 @@ fn document() -> Value {
 
 fn decode_value(serial: &str, value: &Value) -> Result<LocalProfiles> {
     decode(679, serial, &value.to_string())
+}
+
+#[test]
+fn keyboard_schema13_migrates_at_the_real_import_boundary_without_changing_original_bytes() {
+    let mut old = document();
+    old["schemaVersion"] = json!(13);
+    old["audioHapticIntensity"] = json!({"value":42,"future":true});
+    old["activeHapticIntensityGuid"] = json!("retained-guid");
+    let original = old.to_string();
+    let loaded = decode(679, "real", &original).unwrap();
+    let migrated = loaded.source_document().unwrap();
+    assert_eq!(migrated["schemaVersion"], 14);
+    assert_eq!(
+        migrated["audioHapticIntensity"],
+        json!([{"guid":"retained-guid","value":42,"future":true}])
+    );
+    assert_eq!(old.to_string(), original);
+    assert_eq!(loaded.active_guid(), Some("selected"));
+    assert_eq!(
+        loaded.project().unwrap().profiles()[1]
+            .source_settings
+            .as_ref()
+            .unwrap()["brightness"]["value"],
+        42
+    );
 }
 
 #[test]
@@ -343,7 +368,7 @@ fn incompatible_source_identity_and_version_are_errors_before_import() {
         ("vendorId", json!(1)),
         ("category", json!("MOUSE")),
         ("schemaVersion", json!(12)),
-        ("schemaVersion", json!(14)),
+        ("schemaVersion", json!(15)),
         ("version", json!(1u64 << 53)),
     ] {
         let mut source = document();

@@ -445,8 +445,6 @@ impl AppShell {
         _cx: &mut Context<Self>,
     ) {
         self.register_exit_cleanup(|this, cx| {
-            this.controller_power.stop.store(true, Ordering::Release);
-            let power = this.controller_power.task.take();
             let mut owners = std::mem::take(&mut this.controller_lighting_owners)
                 .into_values()
                 .map(Session::retire)
@@ -460,16 +458,12 @@ impl AppShell {
                 }
             });
             async move {
-                if let Some(power) = power {
-                    power.await;
-                }
                 cleanup.await
             }
         });
     }
 
     pub(in crate::shell) fn retire_controller_lighting_owners(&mut self, cx: &mut Context<Self>) {
-        self.controller_power.stop.store(true, Ordering::Release);
         for (_, session) in std::mem::take(&mut self.controller_lighting_owners) {
             self.release_controller_lighting_owner(session.retire(), cx);
         }

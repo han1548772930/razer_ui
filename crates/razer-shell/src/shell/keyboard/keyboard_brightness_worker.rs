@@ -1,6 +1,8 @@
 //! One accepted brightness operation owns its service through shutdown,
 //! process/pipe termination and destruction before delivering a result.
 use anyhow::ensure;
+use razer_device::keyboard_metadata::KeyboardMetadataReading;
+use razer_device::keyboard_settings::BrightnessSubmission;
 use razer_discovery::{direct, discovery::ObservedDevice};
 use razer_ipc::{ServiceClient, ServiceRequest};
 use std::sync::{
@@ -13,9 +15,20 @@ pub(in crate::shell) struct Completion {
     shutdown_error: Option<String>,
     termination_error: Option<String>,
     destruction_error: Option<String>,
+    metadata: Option<KeyboardMetadataReading>,
+}
+
+#[derive(Clone, Copy)]
+pub(in crate::shell) enum Operation {
+    Read,
+    Reconcile,
+    Submit(BrightnessSubmission),
 }
 
 impl Completion {
+    pub(in crate::shell) fn metadata(&self) -> Option<&KeyboardMetadataReading> {
+        self.metadata.as_ref()
+    }
     pub(in crate::shell) fn observed(&self) -> Option<u8> {
         self.result.as_ref().ok().copied()
     }
@@ -56,12 +69,14 @@ impl Completion {
             shutdown_error: None,
             termination_error: None,
             destruction_error: None,
+            metadata: None,
         }
     }
 }
 
 trait Transport {
-    fn brightness(&mut self, percent: Option<u8>) -> anyhow::Result<u8>;
+    fn metadata(&mut self) -> anyhow::Result<KeyboardMetadataReading>;
+    fn brightness(&mut self, submission: Option<BrightnessSubmission>) -> anyhow::Result<u8>;
     fn shutdown(&mut self) -> anyhow::Result<()>;
     fn finish_termination(&mut self) -> anyhow::Result<()>;
 }
@@ -72,8 +87,12 @@ struct NativeTransport {
 }
 
 impl Transport for NativeTransport {
-    fn brightness(&mut self, percent: Option<u8>) -> anyhow::Result<u8> {
-        direct::request_keyboard_brightness(&mut self.client, &self.route, percent)
+    fn metadata(&mut self) -> anyhow::Result<KeyboardMetadataReading> {
+        direct::keyboard_metadata::resolve(&mut self.client, &self.route)?
+            .read_metadata(&mut self.client)
+    }
+    fn brightness(&mut self, submission: Option<BrightnessSubmission>) -> anyhow::Result<u8> {
+        direct::request_keyboard_brightness(&mut self.client, &self.route, submission)
             .map(|reading| reading.percent)
     }
 
@@ -106,11 +125,11 @@ fn check(canceled: &AtomicBool) -> anyhow::Result<()> {
 
 pub(super) fn run(
     route: ObservedDevice,
-    percent: Option<u8>,
+    operation: Operation,
     canceled: Arc<AtomicBool>,
 ) -> Completion {
     let signal = canceled.clone();
-    run_with(percent, &canceled, move || {
+    run_with(operation, &canceled, move || {
         let mut client = ServiceClient::spawn()?;
         client.set_cancellation_guard(signal);
         Ok(NativeTransport { client, route })
@@ -118,7 +137,7 @@ pub(super) fn run(
 }
 
 fn run_with<T: Transport>(
-    percent: Option<u8>,
+    operation: Operation,
     canceled: &AtomicBool,
     factory: impl FnOnce() -> anyhow::Result<T>,
 ) -> Completion {
@@ -129,9 +148,18 @@ fn run_with<T: Transport>(
         Ok(transport) => transport,
         Err(error) => return Completion::failed(error),
     };
+    let mut metadata = None;
     let result = guarded(|| {
         check(canceled)?;
-        let observed = transport.brightness(percent)?;
+        if matches!(operation, Operation::Reconcile) {
+            metadata = Some(transport.metadata()?);
+            check(canceled)?;
+        }
+        let submission = match operation {
+            Operation::Submit(submission) => Some(submission),
+            Operation::Read | Operation::Reconcile => None,
+        };
+        let observed = transport.brightness(submission)?;
         check(canceled)?;
         Ok(observed)
     });
@@ -156,6 +184,7 @@ fn run_with<T: Transport>(
         shutdown_error,
         termination_error,
         destruction_error,
+        metadata,
     }
 }
 

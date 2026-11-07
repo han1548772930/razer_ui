@@ -136,6 +136,7 @@ impl AppShell {
         self.sync_controller_sleep_recording(cx);
         self.initialize_controller_roots(cx);
         self.sync_keyboard_latest_restore(window, cx);
+        self.sync_keyboard_power_owners(cx);
     }
 
     pub(super) fn refresh_macro_recorder_storage(&mut self) {
@@ -158,6 +159,7 @@ impl AppShell {
                 .event(&event.payload, aggregate.as_ref().and_then(Value::as_str))
             {
                 Ok(Some(notification)) => {
+                    self.keyboard_power.record(notification);
                     eprintln!("[macro storage source notification] {notification:?}")
                 }
                 Ok(None) => {}

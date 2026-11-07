@@ -16,7 +16,10 @@ pub(crate) fn with_protocol25_scope(
 ) -> ExchangeOptions {
     use crate::backend::{Protocol25Topology, SourceCommandScope};
     let topology = match source_class {
-        "rzDevice25" => Protocol25Topology::Normal,
+        // Legacy constructors preserve the base constructor's lockName.
+        "rzDevice25" | "rzDevice25Legacy" | "rzDevice25LegacyNoBrightness" => {
+            Protocol25Topology::Normal
+        }
         "rzDevice25DualLinkMouse" | "rzDevice25DualLinkKeyboard" => Protocol25Topology::DualLink,
         _ => return options,
     };
@@ -184,7 +187,7 @@ pub(crate) fn with_feature_reply<T: FeatureTransport + ?Sized>(
     finish_feature_reply(lease, result, Ok(()), command, transaction)
 }
 
-fn finish_feature_reply(
+pub(crate) fn finish_feature_reply(
     lease: Box<dyn ExchangeLease + '_>,
     result: anyhow::Result<Vec<u8>>,
     current: anyhow::Result<()>,

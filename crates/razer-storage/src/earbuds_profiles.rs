@@ -15,6 +15,44 @@ use std::path::Path;
 mod defaults;
 
 const AUTO_PAUSE_FIELD: &str = "audioAutoPauseControl";
+const DO_NOT_DISTURB_FIELD: &str = "notDisturb";
+const VOICE_PROMPT_FIELD: &str = "audioVoicePromptControl";
+const GESTURE_FIELD: &str = "audioGestureControl";
+const TAP_FIELD: &str = "audioTapSpeed";
+const ANC_FIELD: &str = "noiseCancellation";
+
+pub fn read_anc(
+    device: &razer_model::model::Device,
+    profile_id: &str,
+) -> Result<Option<AncSetting>> {
+    if !supports_anc(device.product_id) {
+        bail!("Product does not register PID2657 ANC");
+    }
+    let index = workspace_profile_index(device, profile_id)?;
+    let Some(control) =
+        workspace_control(device.profiles[index].source_settings.as_ref(), ANC_FIELD)?
+    else {
+        return Ok(None);
+    };
+    let fields: NoiseCancellation = serde_json::from_value(Value::Object(control.clone()))
+        .context("Invalid local ANC settings")?;
+    fields.to_setting().map(Some)
+}
+
+pub fn merge_anc(
+    device: &mut razer_model::model::Device,
+    profile_id: &str,
+    setting: AncSetting,
+) -> Result<()> {
+    read_anc(device, profile_id)?;
+    let index = workspace_profile_index(device, profile_id)?;
+    let field = workspace_control_mut(&mut device.profiles[index].source_settings, ANC_FIELD);
+    let fields = NoiseCancellation::from_setting(setting);
+    field.insert("isEnabled".into(), Value::Bool(fields.is_enabled));
+    field.insert("status".into(), Value::from(fields.status));
+    field.insert("level".into(), Value::from(fields.level));
+    Ok(())
+}
 
 /// Stage the source initial profile after the caller proves its initialization
 /// gate. This only changes the workspace draft; saving and device restore are
@@ -63,9 +101,12 @@ fn workspace_profile_index(device: &razer_model::model::Device, profile_id: &str
     Ok(index)
 }
 
-fn workspace_auto_pause(source: Option<&Value>) -> Result<proto::AutoPauseProfileField> {
+fn workspace_control<'a>(
+    source: Option<&'a Value>,
+    field: &str,
+) -> Result<Option<&'a Map<String, Value>>> {
     let Some(source) = source else {
-        return Ok(proto::AutoPauseProfileField { is_enabled: None });
+        return Ok(None);
     };
     let root = source
         .as_object()
@@ -74,8 +115,8 @@ fn workspace_auto_pause(source: Option<&Value>) -> Result<proto::AutoPauseProfil
     // carry the same field directly. Two competing owners are ambiguous.
     let profile = match root.get("profile") {
         Some(profile) => {
-            if root.contains_key(AUTO_PAUSE_FIELD) {
-                bail!("auto-pause has both a profile and snapshot-level value");
+            if root.contains_key(field) {
+                bail!("{field} has both a profile and snapshot-level value");
             }
             profile
                 .as_object()
@@ -83,25 +124,25 @@ fn workspace_auto_pause(source: Option<&Value>) -> Result<proto::AutoPauseProfil
         }
         None => root,
     };
-    let enabled = match profile.get(AUTO_PAUSE_FIELD) {
-        None => None,
-        Some(control) => {
-            let control = control
+    profile
+        .get(field)
+        .map(|control| {
+            control
                 .as_object()
-                .context("auto-pause control must be an object")?;
-            match control.get("isEnabled") {
-                None => None,
-                Some(value) => Some(
-                    value
-                        .as_bool()
-                        .context("auto-pause isEnabled must be boolean")?,
-                ),
-            }
-        }
-    };
-    Ok(proto::AutoPauseProfileField {
-        is_enabled: enabled,
-    })
+                .with_context(|| format!("{field} control must be an object"))
+        })
+        .transpose()
+}
+
+fn workspace_boolean_field(source: Option<&Value>, field: &str) -> Result<Option<bool>> {
+    workspace_control(source, field)?
+        .and_then(|control| control.get("isEnabled"))
+        .map(|value| {
+            value
+                .as_bool()
+                .with_context(|| format!("{field} isEnabled must be boolean"))
+        })
+        .transpose()
 }
 
 /// Read the selected workspace profile's local field without turning missing
@@ -111,7 +152,83 @@ pub fn read_auto_pause(
     profile_id: &str,
 ) -> Result<proto::AutoPauseProfileField> {
     let index = workspace_profile_index(device, profile_id)?;
-    workspace_auto_pause(device.profiles[index].source_settings.as_ref())
+    Ok(proto::AutoPauseProfileField {
+        is_enabled: workspace_boolean_field(
+            device.profiles[index].source_settings.as_ref(),
+            AUTO_PAUSE_FIELD,
+        )?,
+    })
+}
+
+/// Read the source notDisturb field. An old profile without it remains absent;
+/// reading local configuration does not initialize or observe device state.
+pub fn read_do_not_disturb(
+    device: &razer_model::model::Device,
+    profile_id: &str,
+) -> Result<Option<bool>> {
+    let index = workspace_profile_index(device, profile_id)?;
+    workspace_boolean_field(
+        device.profiles[index].source_settings.as_ref(),
+        DO_NOT_DISTURB_FIELD,
+    )
+}
+
+/// Read the persisted voice-prompt field without materializing a restore default.
+pub fn read_voice_prompt(
+    device: &razer_model::model::Device,
+    profile_id: &str,
+) -> Result<Option<bool>> {
+    let index = workspace_profile_index(device, profile_id)?;
+    workspace_boolean_field(
+        device.profiles[index].source_settings.as_ref(),
+        VOICE_PROMPT_FIELD,
+    )
+}
+
+pub fn read_gesture(device: &razer_model::model::Device, profile_id: &str) -> Result<Option<bool>> {
+    let index = workspace_profile_index(device, profile_id)?;
+    workspace_boolean_field(
+        device.profiles[index].source_settings.as_ref(),
+        GESTURE_FIELD,
+    )
+}
+
+pub fn read_tap_speed(
+    device: &razer_model::model::Device,
+    profile_id: &str,
+) -> Result<Option<razer_device::earbuds_gesture::TapSpeed>> {
+    let index = workspace_profile_index(device, profile_id)?;
+    let Some(control) =
+        workspace_control(device.profiles[index].source_settings.as_ref(), TAP_FIELD)?
+    else {
+        return Ok(None);
+    };
+    let value = control
+        .get("tapSpeed")
+        .context("audioTapSpeed omits tapSpeed")?;
+    serde_json::from_value(value.clone())
+        .context("Invalid audio tap speed")
+        .map(Some)
+}
+
+pub fn merge_gesture(
+    device: &mut razer_model::model::Device,
+    profile_id: &str,
+    enabled: bool,
+) -> Result<()> {
+    merge_boolean_field(device, profile_id, GESTURE_FIELD, enabled)
+}
+
+pub fn merge_tap_speed(
+    device: &mut razer_model::model::Device,
+    profile_id: &str,
+    speed: razer_device::earbuds_gesture::TapSpeed,
+) -> Result<()> {
+    read_tap_speed(device, profile_id)?;
+    let index = workspace_profile_index(device, profile_id)?;
+    workspace_control_mut(&mut device.profiles[index].source_settings, TAP_FIELD)
+        .insert("tapSpeed".into(), Value::String(speed.key().into()));
+    Ok(())
 }
 
 /// Merge an explicit edit into the existing workspace draft. The caller owns
@@ -122,13 +239,48 @@ pub fn merge_auto_pause(
     profile_id: &str,
     enabled: bool,
 ) -> Result<()> {
+    merge_boolean_field(device, profile_id, AUTO_PAUSE_FIELD, enabled)
+}
+
+/// Stage an explicit DND edit for the existing atomic workspace save queue.
+pub fn merge_do_not_disturb(
+    device: &mut razer_model::model::Device,
+    profile_id: &str,
+    enabled: bool,
+) -> Result<()> {
+    merge_boolean_field(device, profile_id, DO_NOT_DISTURB_FIELD, enabled)
+}
+
+/// Stage an explicit voice-prompt edit; profile restore never calls this writer.
+pub fn merge_voice_prompt(
+    device: &mut razer_model::model::Device,
+    profile_id: &str,
+    enabled: bool,
+) -> Result<()> {
+    merge_boolean_field(device, profile_id, VOICE_PROMPT_FIELD, enabled)
+}
+
+fn merge_boolean_field(
+    device: &mut razer_model::model::Device,
+    profile_id: &str,
+    field: &str,
+    enabled: bool,
+) -> Result<()> {
     let index = workspace_profile_index(device, profile_id)?;
-    workspace_auto_pause(device.profiles[index].source_settings.as_ref())?;
-    let source = device.profiles[index]
-        .source_settings
-        .get_or_insert_with(|| Value::Object(Map::new()));
+    workspace_boolean_field(device.profiles[index].source_settings.as_ref(), field)?;
+    workspace_control_mut(&mut device.profiles[index].source_settings, field)
+        .insert("isEnabled".into(), Value::Bool(enabled));
+    Ok(())
+}
+
+/// Call only after validating the selected profile and control object.
+fn workspace_control_mut<'a>(
+    source: &'a mut Option<Value>,
+    field: &str,
+) -> &'a mut Map<String, Value> {
+    let source = source.get_or_insert_with(|| Value::Object(Map::new()));
     let root = source.as_object_mut().expect("validated audio snapshot");
-    let profile = if root.contains_key(AUTO_PAUSE_FIELD)
+    let profile = if root.contains_key(field)
         || (!root.contains_key("profile") && root.contains_key("guid"))
     {
         root
@@ -139,12 +291,10 @@ pub fn merge_auto_pause(
             .expect("validated audio profile")
     };
     profile
-        .entry(AUTO_PAUSE_FIELD)
+        .entry(field)
         .or_insert_with(|| Value::Object(Map::new()))
         .as_object_mut()
-        .expect("validated auto-pause control")
-        .insert("isEnabled".into(), Value::Bool(enabled));
-    Ok(())
+        .expect("validated audio control")
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]

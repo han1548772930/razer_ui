@@ -39,6 +39,7 @@ impl Target {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Notification {
+    Anc { state: crate::earbuds_anc::State },
     Battery { left: u8, right: u8 },
     Connection { status: u8, status_bt: u8 },
 }
@@ -51,6 +52,8 @@ pub fn notification(bytes: &[u8]) -> Result<Option<Notification>> {
         .get(1)
         .context("Earbud notification header is truncated")?;
     Ok(match event {
+        33 => Some(Notification::Anc { state: crate::earbuds_anc::State::from_raw(
+            *bytes.get(2).context("ANC notification omits state")?) }),
         49 => {
             ensure!(bytes.len() >= 4, "Earbud battery notification is truncated");
             Some(Notification::Battery {
@@ -135,6 +138,15 @@ impl StopReply {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn anc_status_notifications_retain_unknown_and_reject_missing_bytes() {
+        use crate::earbuds_anc::State;
+        for (raw,state) in [(0,State::Off),(1,State::Anc),(80,State::Ambient),(99,State::Unknown(99))] {
+            assert_eq!(notification(&[5,33,raw]).unwrap(),Some(Notification::Anc{state}));
+        }
+        assert!(notification(&[5,33]).is_err());
+    }
 
     #[test]
     fn current_reports_keep_raw_battery_and_connection_states() {

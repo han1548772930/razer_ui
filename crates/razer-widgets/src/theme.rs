@@ -2093,6 +2093,9 @@ pub struct ChromaSettingsColors;
 /// Current AudioSetting / UltraLowLatency / ActiveNoiseCancellation CSS.
 pub struct AudioEnhancementColors;
 impl AudioEnhancementColors {
+    /// Current earbuds .gesture-type-cell/.action-cell and modal backdrop.
+    pub fn gesture_cell() -> Hsla { rgb(0x1f1f1f).into() }
+    pub fn gesture_backdrop() -> Hsla { rgba(0x000000b3).into() }
     // Current six headset main CSS: .actions/.keymap-head, .s3-options,
     // .thx-btn, and .backdrop. Source geometry lives in the audio feature.
     pub fn mapping_panel() -> Hsla {

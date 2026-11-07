@@ -609,6 +609,7 @@ impl AppShell {
         self.sync_mouse_runtime_artwork(window, cx);
         self.sync_controller_inputs(cx);
         self.sync_controller_lighting_owners(self.receiver_devices_complete, cx);
+        self.sync_keyboard_power_owners(cx);
         self.sync_marci_lighting_owners(self.receiver_devices_complete, cx);
         self.sync_receiver_lighting_owners(self.receiver_devices_complete, cx);
         self.sync_hanbo_cooler_connections(cx);

@@ -366,3 +366,125 @@ fn workspace_initial_profile_does_not_repair_or_replace_existing_selection() {
         assert_eq!(device.profiles, before);
     }
 }
+
+#[test]
+fn workspace_do_not_disturb_preserves_auto_pause_and_other_profile_fields() {
+    let mut device = workspace_device();
+    let mut expected = device.profiles[1].source_settings.clone().unwrap();
+    assert_eq!(read_do_not_disturb(&device, "edited").unwrap(), None);
+    merge_do_not_disturb(&mut device, "edited", true).unwrap();
+    expected["profile"]["notDisturb"] = serde_json::json!({"isEnabled": true});
+    assert_eq!(device.profiles[1].source_settings, Some(expected));
+    assert_eq!(
+        read_auto_pause(&device, "edited").unwrap().is_enabled,
+        Some(true)
+    );
+    merge_auto_pause(&mut device, "edited", false).unwrap();
+    assert_eq!(read_do_not_disturb(&device, "edited").unwrap(), Some(true));
+    assert_eq!(read_do_not_disturb(&device, "active").unwrap(), None);
+}
+
+#[test]
+fn workspace_do_not_disturb_keeps_missing_and_rejects_malformed_values() {
+    let mut device = workspace_device();
+    for source in [
+        None,
+        Some(serde_json::json!({"guid":"active"})),
+        Some(serde_json::json!({"profile":{"notDisturb":{}}})),
+    ] {
+        device.profiles[0].source_settings = source.clone();
+        assert_eq!(read_do_not_disturb(&device, "active").unwrap(), None);
+        assert_eq!(device.profiles[0].source_settings, source);
+    }
+    for field in [
+        serde_json::json!(null),
+        serde_json::json!(false),
+        serde_json::json!({"isEnabled":1}),
+    ] {
+        let source = serde_json::json!({"profile":{"notDisturb":field}});
+        device.profiles[0].source_settings = Some(source.clone());
+        assert!(read_do_not_disturb(&device, "active").is_err());
+        assert!(merge_do_not_disturb(&mut device, "active", true).is_err());
+        assert_eq!(device.profiles[0].source_settings, Some(source));
+    }
+}
+
+#[test]
+fn workspace_voice_prompt_is_absent_until_edited_and_keeps_other_controls() {
+    let mut device = workspace_device();
+    let original = device.profiles[1].source_settings.clone();
+    assert_eq!(read_voice_prompt(&device, "edited").unwrap(), None);
+    assert_eq!(device.profiles[1].source_settings, original);
+    merge_do_not_disturb(&mut device, "edited", true).unwrap();
+    merge_voice_prompt(&mut device, "edited", false).unwrap();
+    assert_eq!(read_voice_prompt(&device, "edited").unwrap(), Some(false));
+    assert_eq!(read_do_not_disturb(&device, "edited").unwrap(), Some(true));
+    assert_eq!(
+        read_auto_pause(&device, "edited").unwrap().is_enabled,
+        Some(true)
+    );
+    assert_eq!(read_voice_prompt(&device, "active").unwrap(), None);
+}
+
+#[test]
+fn workspace_voice_prompt_rejects_invalid_shape_without_repairing_it() {
+    let mut device = workspace_device();
+    let source = serde_json::json!({"profile":{"audioVoicePromptControl":{"isEnabled":"false"}}});
+    device.profiles[0].source_settings = Some(source.clone());
+    assert!(read_voice_prompt(&device, "active").is_err());
+    assert!(merge_voice_prompt(&mut device, "active", false).is_err());
+    assert_eq!(device.profiles[0].source_settings, Some(source));
+}
+
+#[test]
+fn workspace_gesture_tap_edits_preserve_extensions_and_do_not_materialize_restore_defaults() {
+    use razer_device::earbuds_gesture::TapSpeed;
+    for pid in proto::AUTO_PAUSE_PRODUCTS {
+        let mut device = workspace_device();
+        device.product_id = pid;
+        let source = device.profiles[1].source_settings.clone();
+        assert_eq!(read_gesture(&device, "edited").unwrap(), None);
+        assert_eq!(read_tap_speed(&device, "edited").unwrap(), None);
+        assert_eq!(device.profiles[1].source_settings, source);
+        merge_gesture(&mut device, "edited", false).unwrap();
+        merge_tap_speed(&mut device, "edited", TapSpeed::Slowest).unwrap();
+        assert_eq!(read_gesture(&device, "edited").unwrap(), Some(false));
+        assert_eq!(
+            read_tap_speed(&device, "edited").unwrap(),
+            Some(TapSpeed::Slowest)
+        );
+        assert_eq!(
+            read_auto_pause(&device, "edited").unwrap().is_enabled,
+            Some(true)
+        );
+    }
+    let mut device = workspace_device();
+    for value in [
+        serde_json::json!(null),
+        serde_json::json!({}),
+        serde_json::json!({"tapSpeed":"turbo"}),
+        serde_json::json!({"tapSpeed":60}),
+    ] {
+        let source = serde_json::json!({"profile":{"audioTapSpeed":value}});
+        device.profiles[0].source_settings = Some(source.clone());
+        assert!(read_tap_speed(&device, "active").is_err());
+        assert!(merge_tap_speed(&mut device, "active", TapSpeed::Normal).is_err());
+        assert_eq!(device.profiles[0].source_settings, Some(source));
+    }
+}
+
+#[test]
+fn workspace_anc_validates_the_registered_triple_and_preserves_extensions() {
+    let mut device=workspace_device();device.product_id=2657;
+    assert_eq!(read_anc(&device,"edited").unwrap(),None);
+    let setting=AncSetting{mode:AncMode::Ambient,level:AncLevel::Reduced,..proto::ANC_PROFILE_DEFAULT};
+    merge_anc(&mut device,"edited",setting).unwrap();
+    assert_eq!(read_anc(&device,"edited").unwrap(),Some(setting));
+    assert_eq!(read_auto_pause(&device,"edited").unwrap().is_enabled,Some(true));
+    for field in [serde_json::json!({"isEnabled":true,"status":10}),serde_json::json!({"isEnabled":true,"status":7,"level":10}),serde_json::json!({"isEnabled":true,"status":10,"level":2})] {
+        let source=serde_json::json!({"profile":{"noiseCancellation":field}});device.profiles[0].source_settings=Some(source.clone());
+        assert!(read_anc(&device,"active").is_err());assert!(merge_anc(&mut device,"active",setting).is_err());
+        assert_eq!(device.profiles[0].source_settings,Some(source));
+    }
+    device.product_id=2664;assert!(read_anc(&device,"edited").is_err());
+}

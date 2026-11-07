@@ -24,9 +24,37 @@ struct CounterOwner {
 struct CounterState {
     counter: TransactionCounter,
     active: bool,
+    anc: Arc<Mutex<razer_device::earbuds_anc::Cache>>,
 }
 pub(super) struct Transactions(Arc<Mutex<CounterState>>);
 impl Transactions {
+    pub(super) fn with_anc_cache<R>(
+        &self,
+        validate: &dyn Fn() -> Result<()>,
+        run: impl FnOnce(&razer_device::earbuds_anc::Cache) -> Result<R>,
+    ) -> Result<R> {
+        let cache = {
+            let state = self
+                .0
+                .lock()
+                .map_err(|_| anyhow::anyhow!("Earbud transaction owner poisoned"))?;
+            ensure!(state.active, "Earbud transaction owner was released");
+            state.anc.clone()
+        };
+        loop {
+            self.validate()?;
+            validate()?;
+            match cache.try_lock() {
+                Ok(cache) => return run(&cache),
+                Err(std::sync::TryLockError::WouldBlock) => {
+                    std::thread::sleep(Duration::from_millis(10))
+                }
+                Err(std::sync::TryLockError::Poisoned(_)) => {
+                    anyhow::bail!("Earbud physical ANC cache poisoned")
+                }
+            }
+        }
+    }
     pub(super) fn validate(&self) -> Result<()> {
         ensure!(
             self.0
@@ -77,6 +105,7 @@ impl Subscription {
             state: Arc::new(Mutex::new(CounterState {
                 counter: TransactionCounter::default(),
                 active: true,
+                anc: Arc::new(Mutex::new(razer_device::earbuds_anc::Cache::default())),
             })),
         });
         owner.subscriptions += 1;
@@ -156,12 +185,7 @@ pub(super) fn execute(
         "Earbud collection identity differs"
     );
     let started = std::time::Instant::now();
-    let validate = || {
-        super::hid_broker::check_current_request()?;
-        ensure!(
-            started.elapsed() < std::time::Duration::from_secs(30),
-            "Earbud operation deadline expired"
-        );
+    let validate_physical = || {
         with_backend(|backend| {
             ensure!(
                 backend
@@ -174,6 +198,14 @@ pub(super) fn execute(
             );
             Ok(())
         })
+    };
+    let validate = || {
+        super::hid_broker::check_current_request()?;
+        ensure!(
+            started.elapsed() < std::time::Duration::from_secs(30),
+            "Earbud operation deadline expired"
+        );
+        validate_physical()
     };
     validate()?;
     let transport =
@@ -189,17 +221,26 @@ pub(super) fn execute(
         validate()?;
         transactions.validate()
     };
-    let report = earbuds_auto_pause::execute(
-        &mut Protocol40Session::with_transaction_source(
-            transport.as_ref(),
-            razer_device::earbuds_protocol40::ThreadSleeper,
-            &mut next,
-        ),
-        product_id,
-        operation,
-        &source_validate,
-    )
-    .context("Earbud auto-pause operation")?;
+    let source_physical = || {
+        transactions.validate()?;
+        validate_physical()
+    };
+    let report = transactions
+        .with_anc_cache(&source_validate, |cache| {
+            earbuds_auto_pause::execute(
+                &mut Protocol40Session::with_transaction_source(
+                    transport.as_ref(),
+                    razer_device::earbuds_protocol40::ThreadSleeper,
+                    &mut next,
+                ),
+                product_id,
+                operation,
+                cache,
+                &source_validate,
+                &source_physical,
+            )
+        })
+        .context("Earbud enhancement operation")?;
     serde_json::to_value(report).map_err(Into::into)
 }
 
@@ -320,5 +361,130 @@ mod tests {
                 execute(&node, 2660, Operation::Read)
             });
         assert!(format!("{:#}", result.unwrap_err()).contains("Device request was canceled"));
+    }
+
+    struct NoSleep;
+    impl razer_device::earbuds_protocol40::Sleeper for NoSleep {
+        fn sleep(&self, _: Duration) {}
+    }
+    struct AncIo<'a> {
+        last: std::cell::RefCell<Vec<u8>>,
+        sent: std::cell::Cell<usize>,
+        read: Box<dyn Fn() + 'a>,
+    }
+    impl razer_device::backend::FeatureTransport for AncIo<'_> {
+        fn send_feature(&self, bytes: &[u8]) -> Result<()> {
+            self.last.replace(bytes.to_vec());
+            self.sent.set(self.sent.get() + 1);
+            Ok(())
+        }
+        fn get_feature(&self, bytes: &mut [u8]) -> Result<usize> {
+            let last = self.last.borrow();
+            bytes.fill(0);
+            bytes[0] = 2;
+            bytes[1] = 2;
+            bytes[2] = last[2];
+            bytes[7] = 24;
+            bytes[8] = 6;
+            (self.read)();
+            Ok(64)
+        }
+        fn metadata(&self) -> serde_json::Value {
+            serde_json::Value::Null
+        }
+    }
+    fn anc_target(path: &str) -> Target {
+        let mut target = target(path);
+        if let Target::Collection(node) = &mut target {
+            node.product_id = 2657;
+            node.interface_number = 3;
+        }
+        target
+    }
+
+    #[test]
+    fn earbuds_anc_cache_survives_independent_request_clients() {
+        use razer_device::earbuds_protocol40::{ANC_PROFILE_DEFAULT, AncSetting, AncWrite};
+        let target = anc_target("earbuds-anc-cache-clients");
+        let owner = Subscription::begin(&target).unwrap();
+        let first = borrow_transactions(&target).unwrap();
+        let second = borrow_transactions(&target).unwrap();
+        let io = AncIo {
+            last: Default::default(),
+            sent: Default::default(),
+            read: Box::new(|| {}),
+        };
+        for (connection, setting) in [
+            (
+                &first,
+                AncSetting {
+                    enabled: false,
+                    ..ANC_PROFILE_DEFAULT
+                },
+            ),
+            (&second, ANC_PROFILE_DEFAULT),
+        ] {
+            connection
+                .with_anc_cache(&|| Ok(()), |cache| {
+                    let mut next = |kind| connection.next(kind);
+                    let report = cache.execute(
+                        &mut Protocol40Session::with_transaction_source(&io, NoSleep, &mut next),
+                        2657,
+                        setting,
+                        &|| Ok(()),
+                        &|| connection.validate(),
+                    )?;
+                    assert_eq!(report.write, AncWrite::Acknowledged);
+                    Ok(())
+                })
+                .unwrap();
+        }
+        assert_eq!(io.sent.get(), 2);
+        assert_eq!(io.last.borrow()[2], 0x62);
+        drop(owner);
+    }
+
+    #[test]
+    fn earbuds_anc_old_ack_cannot_update_a_successor_physical_owner() {
+        use razer_device::earbuds_protocol40::{ANC_PROFILE_DEFAULT, AncRuntimeState, AncSetting};
+        let target = anc_target("earbuds-anc-cache-successor");
+        let owner = std::cell::RefCell::new(Some(Subscription::begin(&target).unwrap()));
+        let successor = std::cell::RefCell::new(None);
+        let old = borrow_transactions(&target).unwrap();
+        let io = AncIo {
+            last: Default::default(),
+            sent: Default::default(),
+            read: Box::new(|| {
+                owner.borrow_mut().take();
+                successor.replace(Some(Subscription::begin(&target).unwrap()));
+            }),
+        };
+        assert!(
+            old.with_anc_cache(&|| Ok(()), |cache| {
+                let result = cache.execute(
+                    &mut Protocol40Session::with_sleeper(&io, NoSleep),
+                    2657,
+                    AncSetting {
+                        enabled: false,
+                        ..ANC_PROFILE_DEFAULT
+                    },
+                    &|| Ok(()),
+                    &|| old.validate(),
+                );
+                assert!(!cache.is_comparable());
+                result.map(|_| ())
+            })
+            .is_err()
+        );
+        let current = borrow_transactions(&target).unwrap();
+        current
+            .with_anc_cache(&|| Ok(()), |cache| {
+                assert!(cache.is_comparable());
+                assert_eq!(cache.runtime(), AncRuntimeState::default());
+                Ok(())
+            })
+            .unwrap();
+        assert!(old.with_anc_cache(&|| Ok(()), |_| Ok(())).is_err());
+        successor.borrow_mut().take();
     }
 }

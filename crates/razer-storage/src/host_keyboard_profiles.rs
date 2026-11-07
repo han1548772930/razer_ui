@@ -2,7 +2,7 @@
 //! settings and serial-specific selection, never confirmed device state.
 pub use crate::workspace::same_local_profiles;
 use anyhow::{Context as _, Result, ensure};
-use razer_device::keyboard_current_profile::{ProfileSettings, validate_profile_settings};
+use razer_device::keyboard_current_profile::{ProfileSettings, local, validate_profile_settings};
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, path::Path};
 
@@ -145,7 +145,7 @@ struct Document {
     version: u64,
     vendor_id: u32,
     product_id: u32,
-    category: String,
+    category: local::Category,
     schema_version: u32,
     profiles: Vec<Profile>,
     #[serde(
@@ -189,19 +189,17 @@ struct Metadata {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Profile {
-    guid: String,
-    name: String,
     #[serde(flatten)]
-    settings: ProfileSettings,
+    settings: local::Profile,
 }
 
 impl Profile {
     pub fn guid(&self) -> &str {
-        &self.guid
+        &self.settings.guid
     }
 
     pub fn name(&self) -> &str {
-        &self.name
+        &self.settings.name
     }
 
     /// External source profile payload for the existing product compiler.
@@ -212,7 +210,7 @@ impl Profile {
 }
 
 pub fn supported(product_id: u32) -> bool {
-    matches!(product_id, 678 | 679 | 688 | 719)
+    local::schema_version(product_id).is_some()
 }
 
 /// Import one checked local revision without touching observations or mapping
@@ -253,17 +251,30 @@ pub fn read(root: &Path, product_id: u32, serial: &str) -> Result<Option<LocalPr
 
 pub fn decode(product_id: u32, serial: &str, text: &str) -> Result<LocalProfiles> {
     validate_identity(product_id, serial)?;
-    let document: Document =
+    let current_schema = razer_device::keyboard_current_profile::local::schema_version(product_id)
+        .context("Keyboard current profile schema is absent")?;
+    let raw: serde_json::Value =
         serde_json::from_str(text).context("invalid current host keyboard profile document")?;
+    let source_schema = raw
+        .get("schemaVersion")
+        .and_then(serde_json::Value::as_u64)
+        .context("Keyboard source schemaVersion is not an unsigned integer")?;
+    let raw = if source_schema == 13 && current_schema == 14 {
+        crate::host_local_profile::schema_migration::migrate_13_to_14(raw)?
+    } else {
+        raw
+    };
+    let document: Document =
+        serde_json::from_value(raw).context("invalid current host keyboard profile document")?;
     ensure!(
         document.product_id == product_id
             && document.vendor_id == 5426
-            && document.category == "KEYBOARD",
+            && Some(document.category) == local::category(product_id),
         "host keyboard profile identity does not match its storage key"
     );
     ensure!(
-        document.schema_version == 13,
-        "host keyboard profiles require current schema version 13"
+        document.schema_version == current_schema,
+        "host keyboard profile schema does not match the current product version"
     );
     ensure!(
         document.version <= (1u64 << 53) - 1,
@@ -272,10 +283,23 @@ pub fn decode(product_id: u32, serial: &str, text: &str) -> Result<LocalProfiles
     let mut guids = std::collections::BTreeSet::new();
     for profile in &document.profiles {
         ensure!(
-            !profile.guid.is_empty() && guids.insert(profile.guid.as_str()),
+            !profile.guid().is_empty() && guids.insert(profile.guid()),
             "host keyboard profile GUID is empty or duplicated"
         );
-        validate_profile_settings(product_id, &profile.settings)?;
+        if matches!(product_id, 678 | 679 | 688 | 719) {
+            let settings: ProfileSettings = serde_json::from_value(profile.source_settings()?)
+                .context("Keyboard analog profile settings are incomplete")?;
+            validate_profile_settings(product_id, &settings)?;
+        }
+        if let Some(brightness) = &profile.settings.brightness {
+            ensure!(brightness.value <= 100, "Keyboard local brightness is outside 0..100");
+        }
+        if let Some(lighting) = &profile.settings.switch_off_lighting {
+            ensure!((1..=15).contains(&lighting.idle_minutes), "Keyboard idle duration is outside 1..15 minutes");
+        }
+        if let Some(gaming) = &profile.settings.gaming_mode { gaming.validate()?; }
+        if let Some(snap) = &profile.settings.snap_tap { snap.validate()?; }
+        for mapping in &profile.settings.mappings { mapping.validate()?; }
     }
     let metadata = document
         .device_metadatas
@@ -289,7 +313,7 @@ pub fn decode(product_id: u32, serial: &str, text: &str) -> Result<LocalProfiles
         let index = document
             .profiles
             .iter()
-            .position(|profile| profile.guid == metadata.active_profile_guid)
+            .position(|profile| profile.guid() == metadata.active_profile_guid)
             .context("host serial selects a missing keyboard profile GUID")?;
         (Some(index), SelectionOrigin::SerialMetadata)
     } else if document.profiles.is_empty() {

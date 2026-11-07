@@ -38,6 +38,11 @@ pub enum FailureDiagnostics {
     MouseScroll(razer_device::mouse_scroll::SubmissionFailure),
     MouseDynamic(razer_device::mouse_dynamic::WriteFailure),
     KeyboardBrightness(razer_device::keyboard_settings::KeyboardBrightnessWriteFailure),
+    KeyboardBrightnessBle(razer_device::keyboard_settings::ble::Failure),
+    KeyboardBrightnessApply(razer_device::keyboard_settings::BrightnessApplyFailure),
+    ReceiverKeyboardBrightnessApply(
+        ReceiverObservationFailure<razer_device::keyboard_settings::AppliedBrightness>,
+    ),
     KeyboardIndicator(razer_device::keyboard_indicator::Report),
     KeyboardChunks(Vec<razer_device::keyboard_latest_protocol::ChunkReceipt>),
     ReceiverDeviceRead(ReceiverObservationFailure<razer_device::device_reads::DeviceReadValue>),
@@ -203,10 +208,19 @@ impl FailureDiagnostics {
         {
             return Some(Self::DeviceWrite(failure.clone()));
         }
+        if let Some(failure) = error.downcast_ref::<ReceiverObservationFailure<razer_device::keyboard_settings::AppliedBrightness>>() {
+            return Some(Self::ReceiverKeyboardBrightnessApply(failure.clone()));
+        }
+        if let Some(failure) = error.downcast_ref::<razer_device::keyboard_settings::BrightnessApplyFailure>() {
+            return Some(Self::KeyboardBrightnessApply(failure.clone()));
+        }
         if let Some(failure) =
             error.downcast_ref::<razer_device::keyboard_settings::KeyboardBrightnessWriteFailure>()
         {
             return Some(Self::KeyboardBrightness(failure.clone()));
+        }
+        if let Some(failure) = error.downcast_ref::<razer_device::keyboard_settings::ble::Failure>() {
+            return Some(Self::KeyboardBrightnessBle(failure.clone()));
         }
         if let Some(report) = razer_device::keyboard_indicator::failed_report(error) {
             return Some(Self::KeyboardIndicator(report.clone()));

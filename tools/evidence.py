@@ -604,9 +604,11 @@ class JavascriptBindings:
             raise ValueError("Binding source has invalid syntax")
         self.raw, self.tree = raw, tree
         scopes = {"program", "statement_block", "arrow_function", "function_expression",
-                  "function_declaration", "method_definition", "catch_clause",
+                  "function_declaration", "generator_function", "generator_function_declaration",
+                  "method_definition", "catch_clause",
                   "for_statement", "for_in_statement", "switch_body"}
-        functions = {"arrow_function", "function_expression", "function_declaration", "method_definition"}
+        functions = {"arrow_function", "function_expression", "function_declaration", "method_definition",
+                     "generator_function", "generator_function_declaration"}
 
         def owner(node, *, function_scoped=False):
             current = node.parent
@@ -660,7 +662,7 @@ class JavascriptBindings:
                 for candidate in bound_names(binding):
                     definitions.setdefault(key(target), []).append((
                         candidate.text.decode("utf-8"), node, "iteration_requires_value_analysis"))
-            elif node.type in {"function_declaration", "class_declaration"}:
+            elif node.type in {"function_declaration", "generator_function_declaration", "class_declaration"}:
                 binding = node.child_by_field_name("name")
                 if binding is not None:
                     definitions.setdefault(key(owner(node)), []).append((binding.text.decode("utf-8"), node, "declaration"))

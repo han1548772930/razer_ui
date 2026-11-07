@@ -93,6 +93,8 @@ mod audio_leviathan;
 #[path = "audio_volume.rs"]
 mod audio_volume;
 mod earbuds_auto_pause;
+mod earbuds_gesture;
+mod earbuds_anc;
 pub use earbuds_auto_pause::EarbudsAutoPauseRequested;
 #[path = "surround/audio_surround.rs"]
 mod surround;
@@ -677,6 +679,7 @@ impl AudioProductWorkspace {
         cx.notify();
     }
     pub fn set_page(&mut self, page: &str, window: &mut Window, cx: &mut Context<Self>) {
+        if page != "TAB_ENHANCEMENT" { self.close_earbuds_gestures(window, cx); }
         if self.page != page {
             if self.page == "SURROUND" {
                 self.leave_surround_page(cx);
@@ -2084,6 +2087,9 @@ impl AudioProductWorkspace {
         if let Some(page) = self.current_sound_page(key, window, cx) {
             return page;
         }
+        if key=="TAB_ENHANCEMENT" && razer_device::earbuds_protocol40::supports_auto_pause(self.spec.product_id) {
+            return self.earbuds_enhancement_page(window,cx);
+        }
         if let Some(page) = self.enhancements_page(key, cx) {
             return page;
         }
@@ -2133,10 +2139,6 @@ impl AudioProductWorkspace {
                     .as_ref()
                     .is_some_and(|c| self.draft.pointer(&c.path) != Some(&c.value))
                 {
-                    continue;
-                }
-                if section.title == "AUTO_PAUSE" && razer_device::earbuds_protocol40::supports_auto_pause(self.spec.product_id) {
-                    sections.push(self.earbuds_auto_pause_panel(cx));
                     continue;
                 }
                 let mut panel =
@@ -2280,6 +2282,7 @@ impl Render for AudioProductWorkspace {
                     .children(self.oled_home_dialog())
                     .children(self.mixer_dialog(window, cx)),
             )
+            .children(self.earbuds_gesture_modal(window, cx))
             .into_any_element()
     }
 }

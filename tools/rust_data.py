@@ -1228,6 +1228,7 @@ def add_commands(commands):
     parser.add_argument("--crate", action="append", help="Restrict to owning crates")
     parser.add_argument("--symbol", action="append", help="Restrict to registered source symbols")
     parser.add_argument("--check", action="store_true", help="Compare without modifying tables")
+    parser.add_argument("--keyboard-profiles", action="store_true", help="Prepare the complete current keyboard profile recipes through their source-owned generator")
     parser.add_argument("--recover-maintenance", action="store_true", help="Recover missing maintained inputs from complete current Rust constructors and verify AST equivalence")
     parser.add_argument("--record-verification", action="store_true", help="With an unfiltered --check, record complete input/output identities and index maintenance bytes without claiming vendor provenance")
     emoji = commands.add_parser("prepare-emoji-search", help="Share identical emoji entries while preserving the complete source order")
@@ -1238,6 +1239,11 @@ def add_commands(commands):
 def run(args):
     if args.command == "prepare-emoji-search":
         return prepare_emoji_search(check=args.check, sources=args.source)
+    if getattr(args, "keyboard_profiles", False):
+        if any(getattr(args, name, None) for name in ("crate", "symbol", "recover_maintenance", "record_verification")):
+            raise ValueError("Keyboard profiles use their complete source scope; registry filters/recovery/recording cannot be combined")
+        import keyboard_profile_templates
+        return keyboard_profile_templates.prepare(check=args.check)
     registry = json.loads((ROOT / "tools/typed-data.json").read_bytes())
     record = getattr(args, "record_verification", False)
     if record and (not args.check or args.crate or args.symbol or args.recover_maintenance):

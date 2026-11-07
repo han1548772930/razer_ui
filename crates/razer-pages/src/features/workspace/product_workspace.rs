@@ -880,6 +880,24 @@ impl ProductWorkspace {
             });
         }
     }
+    pub fn request_keyboard_runtime_brightness(
+        &mut self,
+        submission: Option<razer_device::keyboard_settings::BrightnessSubmission>,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| body.request_keyboard_runtime_brightness(submission, cx));
+        }
+    }
+    pub fn resolve_keyboard_runtime_brightness(
+        &mut self, generation: u64, previous_percent: u8,
+        submission: razer_device::keyboard_settings::BrightnessSubmission, cx: &mut Context<Self>,
+    ) -> bool {
+        if let Body::Source(body) = &self.body {
+            return body.update(cx, |body, cx| body.resolve_keyboard_runtime_brightness(generation, previous_percent, submission, cx));
+        }
+        false
+    }
     pub fn finish_keyboard_brightness_read(
         &mut self,
         generation: u64,
@@ -1745,6 +1763,11 @@ impl ProductWorkspace {
                     cx,
                 )
             });
+        }
+    }
+    pub fn finish_local_keyboard_brightness(&mut self, generation: u64, percent: u8, cx: &mut Context<Self>) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| body.finish_local_keyboard_brightness(generation, percent, cx));
         }
     }
     pub fn keyboard_brightness_request_current(

@@ -305,6 +305,7 @@ pub enum KeyboardLightingCommand {
     Observe,
     /// Original `window.mwBroadcastChannel.postMessage` envelope.
     Middleware(Value),
+    SwitchOffLighting(razer_device::keyboard_current_profile::LightingOff),
     /// Current installer instance `triggerInstall(chromaAppFeatures)`.
     InstallChroma,
     /// Original Qt/Ft helper: activate/focus Studio when present, otherwise
@@ -430,7 +431,7 @@ impl KeyboardProductWorkspace {
     ) {
         let request_id = self.lighting_runtime.next_request.get().wrapping_add(1);
         self.lighting_runtime.next_request.set(request_id);
-        if matches!(command, KeyboardLightingCommand::Middleware(_)) {
+        if matches!(command, KeyboardLightingCommand::Middleware(_) | KeyboardLightingCommand::SwitchOffLighting(_)) {
             self.lighting_runtime.last_mutation.set(request_id);
         }
         self.lighting_runtime
@@ -492,6 +493,18 @@ impl KeyboardProductWorkspace {
             Ok(observation) => {
                 self.lighting_runtime.last_error = None;
                 if request.request_id >= self.lighting_runtime.last_mutation.get() {
+                    if let KeyboardLightingCommand::SwitchOffLighting(setting) = &command {
+                        let value = setting.idle_minutes;
+                        let setting = serde_json::to_value(setting).expect("Typed lighting setting serializes");
+                        self.lighting_observation.get_or_insert_with(Default::default)
+                            .switch_off_lighting = Some(setting.clone());
+                        self.draft["switchOffLighting"] = setting;
+                        if let Some(slider) = self.sliders.get("/switchOffLighting/idleMinutes") {
+                            self.syncing = true;
+                            slider.update(cx, |slider, cx| slider.set_value(value as f32, window, cx));
+                            self.syncing = false;
+                        }
+                    }
                     if let Some(observation) = observation {
                         self.observe_lighting(&request.owner, observation, window, cx);
                     }
@@ -753,22 +766,20 @@ impl KeyboardProductWorkspace {
         self.request_lighting_message("SET_CUSTOM_COLORS", json!({"customColors":colors}), cx);
     }
 
-    pub(super) fn request_switch_off_lighting(&self, cx: &mut Context<Self>) {
+    pub(super) fn request_switch_off_lighting(&mut self, cx: &mut Context<Self>) {
         if self.lighting_controls_disabled() {
             return;
         }
-        // The source event uses window.currentTimerTick || Date.now(). Each
-        // native UI action has a fresh timestamp; transport acknowledgement
-        // must return a reducer observation, never a locally invented success.
-        let tick = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|value| value.as_millis() as u64)
-            .unwrap_or(0);
+        let setting = match serde_json::from_value(self.draft["switchOffLighting"].clone()) {
+            Ok(setting) => setting,
+            Err(error) => {
+                self.lighting_runtime.last_error = Some(format!("{error}"));
+                cx.notify();
+                return;
+            }
+        };
         self.request_lighting_command(
-            KeyboardLightingCommand::Middleware(json!({
-                "type":"ON_SWITCH_OFF_SETTING", "timerTick":tick,
-                "payload":{"switchOffLighting":self.draft["switchOffLighting"]}
-            })),
+            KeyboardLightingCommand::SwitchOffLighting(setting),
             cx,
         );
     }

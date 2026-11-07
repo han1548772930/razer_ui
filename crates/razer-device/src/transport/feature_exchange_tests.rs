@@ -18,6 +18,7 @@ pub(crate) enum LeaseEvent {
 pub(crate) struct ExchangeProbe<'a> {
     inner: &'a dyn FeatureTransport,
     events: RefCell<Vec<LeaseEvent>>,
+    source_scopes: RefCell<Vec<Option<crate::backend::SourceCommandScope>>>,
     fail_finish: bool,
     finish_check: Option<&'a dyn Fn() -> anyhow::Result<()>>,
     admission_check: Option<&'a dyn Fn() -> anyhow::Result<()>>,
@@ -29,6 +30,7 @@ impl<'a> ExchangeProbe<'a> {
         Self {
             inner,
             events: RefCell::new(Vec::new()),
+            source_scopes: RefCell::new(Vec::new()),
             fail_finish: false,
             finish_check: None,
             admission_check: None,
@@ -95,6 +97,7 @@ impl FeatureTransport for ExchangeProbe<'_> {
         self.events
             .borrow_mut()
             .push(LeaseEvent::Begin(options.timing));
+        self.source_scopes.borrow_mut().push(options.source_scope);
         if let Some(check) = self.admission_check {
             check()?;
         }
@@ -1303,5 +1306,71 @@ fn unrelated_factories_do_not_claim_the_audited_protocol25_navigator_scope() {
         let options = with_protocol25_scope(ExchangeOptions::plain(), factory);
         assert_eq!(options.source_scope, None, "factory {factory}");
         assert_eq!(options.timing, ExchangeTiming::Plain);
+    }
+}
+
+#[test]
+fn legacy_source_capabilities_keep_the_base_scope_through_retry_and_failure() {
+    use crate::backend::{Protocol25Topology, SourceCommandScope};
+
+    let capabilities = [
+        crate::mouse_legacy_polling::read_capability(),
+        crate::mouse_current_dpi::capability(80)
+            .unwrap()
+            .transport(),
+        crate::mouse_current_dpi::capability(83)
+            .unwrap()
+            .transport(),
+    ];
+    for capability in capabilities {
+        for final_status in [2, 5] {
+            let mut cap = capability.clone();
+            cap.sleep_between_out_ms = 0;
+            cap.sleep_between_out_in_ms = 0;
+            cap.sleep_between_in_ms = 0;
+            let io = ProtocolIo::new([(2, true), (final_status, false)]);
+            let probe = ExchangeProbe::new(&io);
+            let result = exchange_with_report_data_size_observing_send(
+                &probe,
+                &cap,
+                [80, 2, 140],
+                &[1, 1, 0],
+                7,
+                10,
+                &|| Ok(()),
+                &mut || {},
+            );
+
+            assert_eq!(
+                *probe.source_scopes.borrow(),
+                [Some(SourceCommandScope::Protocol25 {
+                    topology: Protocol25Topology::Normal,
+                })],
+                "{}",
+                cap.source_class,
+            );
+            if final_status == 2 {
+                assert_eq!(result.unwrap(), [23, 42]);
+            } else {
+                let error = result.unwrap_err();
+                assert!(format!("{error:#}").contains("unsupported"));
+                assert!(crate::backend::exchange_release_completed(&error));
+                assert!(CompletedFeatureExchange::from_error(&error).is_none());
+            }
+            assert_eq!(
+                probe.events(),
+                [
+                    LeaseEvent::Begin(ExchangeTiming::MutexOut {
+                        interval: Duration::ZERO,
+                    }),
+                    LeaseEvent::Send,
+                    LeaseEvent::Get,
+                    LeaseEvent::RetryRelease,
+                    LeaseEvent::Send,
+                    LeaseEvent::Get,
+                    LeaseEvent::Finish,
+                ],
+            );
+        }
     }
 }

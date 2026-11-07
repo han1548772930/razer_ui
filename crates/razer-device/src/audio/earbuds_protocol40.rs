@@ -254,18 +254,80 @@ impl<'a, S: Sleeper> Protocol40Session<'a, S> {
         device_type: TransactionDeviceType,
         validate: &dyn Fn() -> Result<()>,
     ) -> Result<Reply> {
+        self.send_command_inner(header, params, device_type, validate, None)
+    }
+
+    pub(crate) fn send_command_observing(
+        &mut self,
+        header: CommandHeader,
+        params: &[u8],
+        validate: &dyn Fn() -> Result<()>,
+        observe_send: &dyn Fn(&[u8]),
+    ) -> Result<Reply> {
+        self.send_command_inner(
+            header,
+            params,
+            self.device_type,
+            validate,
+            Some(observe_send),
+        )
+    }
+
+    fn send_command_inner(
+        &mut self,
+        header: CommandHeader,
+        params: &[u8],
+        device_type: TransactionDeviceType,
+        validate: &dyn Fn() -> Result<()>,
+        observe_send: Option<&dyn Fn(&[u8])>,
+    ) -> Result<Reply> {
         let transaction = match &mut self.next_transaction {
             Some(next) => next(device_type)?,
             None => self.transactions.next(device_type),
         };
         let request = encode_request(header, params, transaction)?;
-        let sleeper = &self.sleeper;
-        crate::feature_exchange::with_validated_exchange(
-            self.transport,
-            ExchangeOptions::plain(),
-            validate,
-            |transport, lease| exchange(transport, lease, sleeper, &request, header),
+        validate().map_err(|error| {
+            crate::backend::interrupt_exchange(
+                error,
+                crate::backend::ExchangeInterruption::Validation,
+            )
+        })?;
+        let lease = self
+            .transport
+            .begin_exchange_validated(ExchangeOptions::plain(), std::rc::Rc::new(validate))
+            .map_err(|error| {
+                crate::backend::interrupt_exchange(
+                    error,
+                    crate::backend::ExchangeInterruption::Admission,
+                )
+            })?;
+        let lease = if let Some(observe) = observe_send {
+            crate::backend::checked_exchange_observing_send(
+                lease,
+                validate,
+                validate,
+                Some(REPORT_LENGTH),
+                observe,
+            )
+        } else {
+            lease
+        };
+        let result = exchange(
+            lease.transport(),
+            lease.as_ref(),
+            &self.sleeper,
+            &request,
+            header,
         )
+        .map(|reply| reply.data);
+        crate::feature_exchange::finish_feature_reply(
+            lease,
+            result,
+            validate(),
+            [header.declared_size, header.class, header.id],
+            transaction,
+        )
+        .map(|data| Reply { data })
     }
 }
 
@@ -327,7 +389,21 @@ fn read_reply<S: Sleeper>(
         report[0] = REPORT_ID;
         let count = match transport.get_feature(&mut report) {
             Ok(count) => count,
-            Err(error) => return (Err(error.context("PROTOCOL40 Feature Report read")), resend),
+            Err(error) => {
+                let accepted = crate::backend::native_read_bytes(&error)
+                    .and_then(|bytes| success_reply(bytes, request));
+                let error = if let Some(reply) = accepted {
+                    crate::feature_exchange::CompletedFeatureExchange::retain(
+                        error,
+                        [header.declared_size, header.class, header.id],
+                        request[2],
+                        reply.data,
+                    )
+                } else {
+                    error
+                };
+                return (Err(error.context("PROTOCOL40 Feature Report read")), resend);
+            }
         };
         // The Host strips the Report ID; an empty read becomes a zero array.
         let mut body = [0u8; BODY_LENGTH];
@@ -354,12 +430,10 @@ fn read_reply<S: Sleeper>(
         };
         match status {
             ReplyStatus::Success => {
-                let length = usize::from(body[5]);
-                if count > REPORT_LENGTH
-                    || report[0] != REPORT_ID
-                    || length > BODY_LENGTH - 8
-                    || count < 9 + length
-                {
+                let accepted = report
+                    .get(..count)
+                    .and_then(|bytes| success_reply(bytes, request));
+                if accepted.is_none() {
                     return (
                         Err(anyhow!(
                             "PROTOCOL40 success payload is not backed by the received report bytes"
@@ -367,12 +441,7 @@ fn read_reply<S: Sleeper>(
                         false,
                     );
                 }
-                return (
-                    Ok(Reply {
-                        data: body[8..8 + length].to_vec(),
-                    }),
-                    false,
-                );
+                return (Ok(accepted.expect("checked successful reply")), false);
             }
             ReplyStatus::Busy => {
                 resend = true;
@@ -385,6 +454,24 @@ fn read_reply<S: Sleeper>(
         }
     }
     (outcome, resend)
+}
+
+fn success_reply(report: &[u8], request: &[u8; REPORT_LENGTH]) -> Option<Reply> {
+    if !(9..=REPORT_LENGTH).contains(&report.len())
+        || report[0] != REPORT_ID
+        || report[1] != 2
+        || report[2] != request[2]
+        || report[7..9] != request[7..9]
+    {
+        return None;
+    }
+    let length = usize::from(report[6]);
+    if length > BODY_LENGTH - 8 || report.len() < 9 + length {
+        return None;
+    }
+    Some(Reply {
+        data: report[9..9 + length].to_vec(),
+    })
 }
 
 // ---------------------------------------------------------------- auto-pause
@@ -409,7 +496,7 @@ impl<S: Sleeper> Protocol40Session<'_, S> {
         let (profile_id, state) = parse_profile_state(&reply)?;
         Ok(AutoPauseReply {
             profile_id,
-            enabled: state != 0,
+            enabled: decode_toggle(state)?,
         })
     }
 
@@ -428,18 +515,58 @@ impl<S: Sleeper> Protocol40Session<'_, S> {
     }
 }
 
-/// Device-observed auto-pause state. The MW getter collapses failure to
-/// `{isEnabled:false}`; here failure stays distinct from an observed `false`.
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
-pub enum AutoPauseObservation {
+/// Device observation for a boolean earbud control. Failure never establishes
+/// an observed off value, regardless of the source facade's boolean fallback.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
+pub enum ToggleObservation {
+    #[default]
     Unobserved,
     Observed(bool),
+    Unknown(u8),
     ReadFailed(String),
 }
 
+#[derive(Debug)]
+struct UnknownToggle(u8);
+impl std::fmt::Display for UnknownToggle {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(formatter, "Unknown earbud boolean state {}", self.0)
+    }
+}
+impl std::error::Error for UnknownToggle {}
+
+pub(crate) fn decode_toggle(value: u8) -> Result<bool> {
+    match value {
+        0 => Ok(false),
+        1 => Ok(true),
+        value => Err(UnknownToggle(value).into()),
+    }
+}
+
+impl ToggleObservation {
+    pub(crate) fn from_read_error(error: &anyhow::Error) -> Self {
+        match error.downcast_ref::<UnknownToggle>() {
+            Some(UnknownToggle(value)) => Self::Unknown(*value),
+            None => Self::ReadFailed(format!("{error:#}")),
+        }
+    }
+
+    /// Diagnostic text accompanies the typed state; unknown bytes remain distinct
+    /// from failed transport and cannot establish an observed boolean value.
+    pub fn diagnostic(&self) -> Option<String> {
+        match self {
+            Self::Unknown(value) => Some(UnknownToggle(*value).to_string()),
+            Self::ReadFailed(error) => Some(error.clone()),
+            Self::Unobserved | Self::Observed(_) => None,
+        }
+    }
+}
+
+pub type AutoPauseObservation = ToggleObservation;
+
 impl AutoPauseObservation {
-    /// Value the source `shouldSkipSet` compares against (failure → false).
-    /// Used only for the restore write decision, never published as state.
+    /// Successful restore reads compare the observed boolean with local intent.
+    /// Failed reads are rejected before reaching this comparison.
     fn source_compare_value(&self) -> bool {
         matches!(self, Self::Observed(true))
     }
@@ -464,12 +591,15 @@ pub enum WriteOutcome {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
-pub struct AutoPauseRestore {
+#[non_exhaustive]
+pub struct ToggleRestore {
     pub observation: AutoPauseObservation,
     pub write: WriteOutcome,
     /// `MW_UPDATE_AUDIO_AUTO_PAUSE_CONTROL_TO_UI` payload: the local value.
     pub published_local: bool,
 }
+
+pub type AutoPauseRestore = ToggleRestore;
 
 /// `restoreDeviceData`: read, compare, write only on difference, then publish
 /// the local profile value regardless of the setter result.
@@ -483,9 +613,18 @@ pub fn restore_auto_pause<S: Sleeper>(
         Ok(reply) => AutoPauseObservation::Observed(reply.enabled),
         Err(error) => {
             reject_if_stale(validate, &error)?;
-            AutoPauseObservation::ReadFailed(format!("{error:#}"))
+            AutoPauseObservation::from_read_error(&error)
         }
     };
+    if let Some(error) = observation.diagnostic() {
+        return Ok(AutoPauseRestore {
+            observation: observation.clone(),
+            write: WriteOutcome::Failed(format!(
+                "Restore was not submitted because the read failed: {error}"
+            )),
+            published_local: local,
+        });
+    }
     let write = if observation.source_compare_value() == local {
         WriteOutcome::Skipped
     } else {
@@ -514,7 +653,7 @@ fn reject_if_stale(validate: &dyn Fn() -> Result<()>, error: &anyhow::Error) -> 
 // ---------------------------------------------------------------------- ANC
 
 /// Page modes `ANC 10` / `Ambient 255` (`ancStatus`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub enum AncMode {
     Anc,
     Ambient,
@@ -530,14 +669,14 @@ impl AncMode {
 }
 
 /// Reduce toggles the level between 1 and 10.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub enum AncLevel {
     Reduced = 1,
     Full = 10,
 }
 
 /// `{isEnabled, status, level}` as held by the feature and profile.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct AncSetting {
     pub enabled: bool,
     pub mode: AncMode,
@@ -590,9 +729,10 @@ pub struct AncChange {
     pub level: Option<AncLevel>,
 }
 
-/// The feature's `runtimeState`. It starts from the local default and is
-/// updated after any non-throwing setter call; it is not device state.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// The feature's local `runtimeState` skip cache starts from its source default.
+/// The independent owner advances it after a confirmed write; it is not a
+/// device observation, especially when the initial default causes a skip.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct AncRuntimeState(pub AncSetting);
 
 impl Default for AncRuntimeState {
@@ -601,15 +741,15 @@ impl Default for AncRuntimeState {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub enum AncWrite {
     /// Equal to runtimeState: the source skips I/O (restore's force flag is
     /// not consumed).
     Skipped,
     /// The device returned SUCCESS for the write.
     Acknowledged,
-    /// The Electron `sendCommand` threw: the setter returns false and
-    /// runtimeState is unchanged, so an identical retry is not skipped.
+    /// Transport or business response failure. Runtime is unchanged so an
+    /// identical retry is not skipped.
     Failed(String),
 }
 
@@ -619,28 +759,23 @@ pub fn set_anc<S: Sleeper>(
     requested: AncSetting,
     validate: &dyn Fn() -> Result<()>,
 ) -> Result<AncWrite> {
-    if runtime.0 == requested {
-        return Ok(AncWrite::Skipped);
-    }
-    match session.send_command(SET_ANC, &requested.set_params(), validate) {
-        Ok(_) => {
-            runtime.0 = requested;
-            Ok(AncWrite::Acknowledged)
-        }
-        Err(error) => {
-            reject_if_stale(validate, &error)?;
-            Ok(AncWrite::Failed(format!("{error:#}")))
-        }
-    }
+    let cache = crate::earbuds_anc::Cache::from_runtime(*runtime);
+    let result = cache.execute(session, ANC_PRODUCT, requested, validate, validate);
+    *runtime = cache.runtime();
+    result.map(|report| report.write)
 }
 
 /// Hardware notification `[5,33,state]`: only the status byte. The profile
-/// keeps its level; runtimeState is not updated. Missing byte → disabled.
+/// keeps its level; runtimeState is not updated. Missing and unknown states
+/// cannot overwrite the local profile or become an observed disabled value.
 pub fn apply_anc_notification(profile: AncSetting, record: &[u8]) -> Option<AncSetting> {
     if record.get(0) != Some(&5) || record.get(1) != Some(&33) {
         return None;
     }
-    let state = record.get(2).copied().unwrap_or(0);
+    let state = *record.get(2)?;
+    if !matches!(state, 0 | 1 | 80) {
+        return None;
+    }
     Some(AncSetting {
         enabled: state != 0,
         mode: if state == 80 {
@@ -660,14 +795,21 @@ pub const REDUCE_MIN_FIRMWARE: &str = "1.4.6.0";
 /// an identical coerced core still blocks (object identity, not equality).
 /// Missing/uncoercible current version → false (Reduce not hidden).
 pub fn reduce_blocked(current: Option<&str>) -> bool {
+    firmware_blocked(REDUCE_MIN_FIRMWARE, current)
+}
+
+/// Shared source U5 comparator used by the current earbuds' UI gates.
+pub fn firmware_blocked(minimum: &str, current: Option<&str>) -> bool {
     let Some(current) = current else { return false };
-    if current == REDUCE_MIN_FIRMWARE {
+    if current == minimum {
         return false;
     }
     let Some(current_core) = coerce_core(current) else {
         return false;
     };
-    let minimum_core = coerce_core(REDUCE_MIN_FIRMWARE).expect("constant version");
+    let Some(minimum_core) = coerce_core(minimum) else {
+        return false;
+    };
     current_core <= minimum_core
 }
 

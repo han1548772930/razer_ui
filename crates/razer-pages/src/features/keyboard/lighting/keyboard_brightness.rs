@@ -6,6 +6,7 @@ use gpui_kit::component::{
     slider::{Slider, SliderState},
 };
 use gpui_kit::*;
+use razer_device::keyboard_settings::{BrightnessIntent, BrightnessSubmission};
 use std::sync::{
     Arc,
     atomic::{AtomicBool, Ordering},
@@ -17,6 +18,9 @@ pub struct KeyboardBrightnessRequested {
     percent: u8,
     epoch: u64,
     edit_revision: u64,
+    submission: BrightnessSubmission,
+    background: bool,
+    visibility: u64,
 }
 impl KeyboardBrightnessRequested {
     pub fn generation(&self) -> u64 {
@@ -25,15 +29,26 @@ impl KeyboardBrightnessRequested {
     pub fn percent(&self) -> u8 {
         self.percent
     }
+    pub fn submission(&self) -> BrightnessSubmission {
+        self.submission
+    }
+    pub fn background(&self) -> bool {
+        self.background
+    }
 }
 #[derive(Clone, Copy)]
 pub struct KeyboardBrightnessReadRequested {
     generation: u64,
     epoch: u64,
+    visibility: u64,
+    background: bool,
 }
 impl KeyboardBrightnessReadRequested {
     pub fn generation(&self) -> u64 {
         self.generation
+    }
+    pub fn background(&self) -> bool {
+        self.background
     }
 }
 
@@ -51,6 +66,9 @@ enum Observation {
 struct Edit {
     percent: u8,
     revision: u64,
+    submission: BrightnessSubmission,
+    background: bool,
+    order: u64,
 }
 
 enum Request {
@@ -62,13 +80,17 @@ enum Request {
 pub(super) struct State {
     generation: u64,
     epoch: u64,
+    visibility: u64,
     pending: Option<KeyboardBrightnessRequested>,
     read_pending: Option<KeyboardBrightnessReadRequested>,
     edit_revision: u64,
     active: bool,
     read_needed: bool,
+    background_read_needed: bool,
     error: Option<String>,
     queued: Option<Edit>,
+    background_queued: Option<Edit>,
+    next_order: u64,
     preview: Option<Edit>,
     observation: Observation,
     operation_cancel: Option<Arc<AtomicBool>>,
@@ -82,20 +104,32 @@ impl State {
         // slot until the owned service has completed cancellation and cleanup.
         self.epoch = self.epoch.wrapping_add(1);
         self.queued = None;
+        self.background_queued = None;
         self.preview = None;
         self.observation = Observation::Unobserved;
         self.error = None;
         self.read_needed = self.active;
+        self.background_read_needed = false;
     }
 
     fn set_active(&mut self, active: bool) {
         if self.active != active {
-            let disconnected = self.observation == Observation::Disconnected;
             self.active = active;
-            self.invalidate();
-            if disconnected && !active {
-                self.observation = Observation::Disconnected;
+            self.visibility = self.visibility.wrapping_add(1);
+            let foreground_operation = self.pending.is_some_and(|request| !request.background)
+                || self.read_pending.is_some_and(|request| !request.background);
+            if foreground_operation && let Some(cancel) = &self.operation_cancel {
+                cancel.store(true, Ordering::Release);
             }
+            if self.queued.is_some_and(|edit| !edit.background) {
+                self.queued = None;
+            }
+            self.preview = None;
+            if active || self.observation != Observation::Disconnected {
+                self.observation = Observation::Unobserved;
+            }
+            self.error = None;
+            self.read_needed = active;
         }
     }
 
@@ -109,18 +143,56 @@ impl State {
         let edit = Edit {
             percent,
             revision: self.edit_revision,
+            submission: BrightnessSubmission::new(percent, percent != 0, BrightnessIntent::Value)
+                .expect("Slider preview has the source 0..100 range"),
+            background: false,
+            order: 0,
         };
         self.preview = Some(edit);
         edit
     }
 
+    #[cfg(test)]
     fn begin_write(&mut self, percent: u8) -> Option<KeyboardBrightnessRequested> {
+        self.begin_submission(
+            BrightnessSubmission::new(percent, percent != 0, BrightnessIntent::Value)
+                .expect("Test brightness range"),
+        )
+    }
+
+    fn begin_submission(
+        &mut self,
+        submission: BrightnessSubmission,
+    ) -> Option<KeyboardBrightnessRequested> {
         // The current skippable task keeps only the newest desired setting.
-        let edit = self.preview_edit(percent);
+        let mut edit = self.preview_edit(submission.effective_percent());
+        edit.submission = submission;
+        self.next_order = self.next_order.wrapping_add(1);
+        edit.order = self.next_order;
+        self.preview = Some(edit);
         self.error = None;
         self.read_needed = false;
         if self.pending.is_some() || self.read_pending.is_some() {
             self.queued = Some(edit);
+            return None;
+        }
+        Some(self.start_write(edit))
+    }
+
+    fn begin_background(
+        &mut self,
+        submission: BrightnessSubmission,
+    ) -> Option<KeyboardBrightnessRequested> {
+        self.next_order = self.next_order.wrapping_add(1);
+        let edit = Edit {
+            percent: submission.effective_percent(),
+            revision: self.edit_revision,
+            submission,
+            background: true,
+            order: self.next_order,
+        };
+        if self.pending.is_some() || self.read_pending.is_some() {
+            self.background_queued = Some(edit);
             return None;
         }
         Some(self.start_write(edit))
@@ -133,6 +205,9 @@ impl State {
             percent: edit.percent,
             epoch: self.epoch,
             edit_revision: edit.revision,
+            submission: edit.submission,
+            background: edit.background,
+            visibility: self.visibility,
         };
         self.pending = Some(request);
         self.operation_cancel = Some(Arc::new(AtomicBool::new(false)));
@@ -140,20 +215,31 @@ impl State {
     }
 
     fn begin_read(&mut self) -> Option<KeyboardBrightnessReadRequested> {
-        if !self.active {
+        self.begin_read_in_scope(false)
+    }
+
+    fn begin_read_in_scope(&mut self, background: bool) -> Option<KeyboardBrightnessReadRequested> {
+        if !background && !self.active {
             return None;
         }
         if self.pending.is_some() || self.read_pending.is_some() {
-            self.read_needed = true;
+            if background {
+                self.background_read_needed = true;
+            } else {
+                self.read_needed = true;
+            }
             return None;
         }
         self.generation = self.generation.wrapping_add(1);
         let request = KeyboardBrightnessReadRequested {
             generation: self.generation,
             epoch: self.epoch,
+            visibility: self.visibility,
+            background,
         };
         self.read_pending = Some(request);
         self.read_needed = false;
+        self.background_read_needed = false;
         self.error = None;
         self.operation_cancel = Some(Arc::new(AtomicBool::new(false)));
         Some(request)
@@ -166,9 +252,10 @@ impl State {
 
     fn write_current(&self, generation: u64, percent: u8) -> bool {
         self.write_matches(generation, percent)
-            && self
-                .pending
-                .is_some_and(|request| request.epoch == self.epoch)
+            && self.pending.is_some_and(|request| {
+                request.epoch == self.epoch
+                    && (request.background || request.visibility == self.visibility)
+            })
     }
 
     fn read_matches(&self, generation: u64) -> bool {
@@ -178,10 +265,10 @@ impl State {
 
     fn read_current(&self, generation: u64) -> bool {
         self.read_matches(generation)
-            && self.active
-            && self
-                .read_pending
-                .is_some_and(|request| request.epoch == self.epoch)
+            && self.read_pending.is_some_and(|request| {
+                request.epoch == self.epoch
+                    && (request.background || self.active && request.visibility == self.visibility)
+            })
     }
 
     fn accept(&mut self, observed: Option<u8>, error: Option<String>) {
@@ -234,9 +321,12 @@ impl State {
                 let request = self.pending.expect("Matched write retains its request");
                 self.accept(observed, error);
                 if matches!(self.observation, Observation::Confirmed(_))
-                    && self
-                        .preview
-                        .is_some_and(|edit| edit.revision == request.edit_revision)
+                    && self.preview.is_some_and(|edit| {
+                        edit.revision == request.edit_revision
+                            && (!request.background
+                                || edit.order > 0
+                                    && self.observation == Observation::Confirmed(edit.percent))
+                    })
                 {
                     self.preview = None;
                 }
@@ -254,8 +344,21 @@ impl State {
     }
 
     fn next_request(&mut self) -> Option<Request> {
+        if self.background_queued.is_some_and(|background| {
+            self.queued
+                .is_none_or(|foreground| background.order < foreground.order)
+        }) {
+            let edit = self
+                .background_queued
+                .take()
+                .expect("Queued background request");
+            return Some(Request::Write(self.start_write(edit)));
+        }
         if let Some(edit) = self.queued.take() {
             return Some(Request::Write(self.start_write(edit)));
+        }
+        if self.background_read_needed {
+            return self.begin_read_in_scope(true).map(Request::Read);
         }
         if self.read_needed {
             return self.begin_read().map(Request::Read);
@@ -278,14 +381,46 @@ impl State {
                 request.generation == generation
                     && request.percent == percent
                     && request.epoch == self.epoch
+                    && (request.background || request.visibility == self.visibility)
             }),
             None => self.read_pending.is_some_and(|request| {
-                request.generation == generation && request.epoch == self.epoch
+                request.generation == generation
+                    && request.epoch == self.epoch
+                    && (request.background || request.visibility == self.visibility)
             }),
         };
         // Preview precedence does not retire the read's serial slot or cancel
         // the newer write waiting for this same device.
         current.then(|| self.operation_cancel.clone()).flatten()
+    }
+
+    fn resolve_background(
+        &mut self,
+        generation: u64,
+        previous_percent: u8,
+        submission: BrightnessSubmission,
+    ) -> bool {
+        if !self.write_current(generation, previous_percent) {
+            return false;
+        }
+        let Some(request) = &mut self.pending else {
+            return false;
+        };
+        if !request.background {
+            return false;
+        }
+        request.percent = submission.effective_percent();
+        request.submission = submission;
+        true
+    }
+
+    fn finish_local(&mut self, generation: u64, percent: u8) -> Option<Request> {
+        if !self.write_matches(generation, percent) {
+            return None;
+        }
+        self.pending = None;
+        self.operation_cancel = None;
+        self.next_request()
     }
 }
 
@@ -299,6 +434,40 @@ impl Drop for State {
 impl EventEmitter<KeyboardBrightnessRequested> for KeyboardProductWorkspace {}
 impl EventEmitter<KeyboardBrightnessReadRequested> for KeyboardProductWorkspace {}
 impl KeyboardProductWorkspace {
+    pub fn finish_local_brightness(
+        &mut self,
+        generation: u64,
+        percent: u8,
+        cx: &mut Context<Self>,
+    ) {
+        let next = self.brightness.finish_local(generation, percent);
+        self.emit_brightness_request(next, cx);
+        cx.notify();
+    }
+    pub fn resolve_runtime_brightness(
+        &mut self,
+        generation: u64,
+        previous_percent: u8,
+        submission: BrightnessSubmission,
+    ) -> bool {
+        self.brightness
+            .resolve_background(generation, previous_percent, submission)
+    }
+    pub fn request_runtime_brightness(
+        &mut self,
+        submission: Option<BrightnessSubmission>,
+        cx: &mut Context<Self>,
+    ) {
+        let request = match submission {
+            Some(submission) => self
+                .brightness
+                .begin_background(submission)
+                .map(Request::Write),
+            None => self.brightness.begin_read_in_scope(true).map(Request::Read),
+        };
+        self.emit_brightness_request(request, cx);
+        cx.notify();
+    }
     pub(super) fn preview_brightness(&mut self, percent: u8, cx: &mut Context<Self>) {
         self.brightness.preview_edit(percent);
         cx.notify();
@@ -360,10 +529,20 @@ impl KeyboardProductWorkspace {
         }
     }
     pub(super) fn request_brightness(&mut self, cx: &mut Context<Self>) {
+        self.request_brightness_intent(BrightnessIntent::Value, cx);
+    }
+
+    pub(super) fn request_brightness_toggle(&mut self, cx: &mut Context<Self>) {
+        self.request_brightness_intent(BrightnessIntent::Enabled, cx);
+    }
+
+    fn request_brightness_intent(&mut self, intent: BrightnessIntent, cx: &mut Context<Self>) {
         if self.lighting_controls_disabled() {
             return;
         }
-        if razer_device::keyboard_settings::capability(self.spec.product_id).is_none() {
+        if razer_device::keyboard_settings::capability(self.spec.product_id).is_none()
+            && razer_device::keyboard_metadata::ble_product_id(self.spec.product_id).is_none()
+        {
             return;
         }
         let Some(value) = self
@@ -373,18 +552,20 @@ impl KeyboardProductWorkspace {
         else {
             return;
         };
-        let enabled = self
+        let Some(enabled) = self
             .draft
             .pointer("/brightness/isEnabled")
             .and_then(serde_json::Value::as_bool)
-            .unwrap_or(false);
-        let Ok(percent) = u8::try_from(if enabled { value } else { 0 }) else {
+        else {
             return;
         };
-        if percent > 100 {
+        let Ok(value) = u8::try_from(value) else {
             return;
-        }
-        if let Some(request) = self.brightness.begin_write(percent) {
+        };
+        let Ok(submission) = BrightnessSubmission::new(value, enabled, intent) else {
+            return;
+        };
+        if let Some(request) = self.brightness.begin_submission(submission) {
             cx.emit(request);
         }
     }
@@ -433,7 +614,9 @@ impl KeyboardProductWorkspace {
         cx.notify();
     }
     pub(super) fn request_brightness_read(&mut self, cx: &mut Context<Self>) {
-        if razer_device::keyboard_settings::capability(self.spec.product_id).is_none() {
+        if razer_device::keyboard_settings::capability(self.spec.product_id).is_none()
+            && razer_device::keyboard_metadata::ble_product_id(self.spec.product_id).is_none()
+        {
             return;
         }
         if let Some(request) = self.brightness.begin_read() {

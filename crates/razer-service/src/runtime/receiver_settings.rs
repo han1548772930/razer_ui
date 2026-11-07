@@ -6,6 +6,7 @@ use serde_json::{Value, json};
 pub(super) enum Setting<'a> {
     MouseBrightness(&'a razer_device::mouse_brightness::Submission),
     KeyboardBrightness(Option<u8>),
+    KeyboardBrightnessSubmission(razer_device::keyboard_settings::BrightnessSubmission),
     DpiStages(Option<&'a razer_device::mouse_dpi_stages::DpiStagesDraft>),
     CurrentDpi(Option<&'a razer_device::mouse_current_dpi::DpiChange>),
     Dynamic(Option<&'a razer_device::mouse_dynamic::Setting>),
@@ -60,6 +61,10 @@ impl Setting<'_> {
                 }
                 ReceiverSession::keyboard(product_id, physical_product_id, peer)
             }
+            Self::KeyboardBrightnessSubmission(submission) => {
+                submission.validate()?;
+                ReceiverSession::keyboard(product_id, physical_product_id, peer)
+            }
             Self::DpiStages(draft) => {
                 let settings = razer_device::mouse_dpi_stages::capability(product_id)
                     .context("DPI stage source is absent")?;
@@ -87,6 +92,17 @@ impl Setting<'_> {
         validate: &dyn Fn() -> anyhow::Result<()>,
     ) -> anyhow::Result<Value> {
         let product_id = session.transport().product_id;
+        if let Self::KeyboardBrightnessSubmission(submission) = self {
+            let mut cap = razer_device::keyboard_settings::capability(product_id)
+                .context("Keyboard brightness source is absent")?.clone();
+            cap.transport = session.transport().clone();
+            let observation = session.observe(device, next, validate, |next, guard| {
+                razer_device::keyboard_settings::apply_brightness(device, &cap, *submission, next, guard)
+            })?;
+            return Ok(json!({"applied":observation.reading,"receiver_before":observation.receiver_before,
+                "receiver_after":observation.receiver_after,"source_class":cap.source_class,
+                "transport_source_class":session.transport().source_class,"method":"applyBrightness"}));
+        }
         if let Self::Rotation(change) = self {
             let observation = session.observe(device, next, validate, |next, guard| {
                 razer_device::mouse_rotation::execute(
@@ -199,6 +215,7 @@ impl Setting<'_> {
             Self::CurrentPower(_) => unreachable!("handled above with its basic power task schema"),
             Self::CurrentDpi(_) => unreachable!("handled above with its distinct report schema"),
             Self::Scroll(_) => unreachable!("handled above with its source scroll task schema"),
+            Self::KeyboardBrightnessSubmission(_) => unreachable!("handled above with its explicit brightness intent"),
             Self::KeyboardBrightness(percent) => {
                 let mut cap = razer_device::keyboard_settings::capability(product_id)
                     .context("Keyboard brightness source is absent")?

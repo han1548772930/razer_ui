@@ -7,6 +7,60 @@ use anyhow::{Context as _, ensure};
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, sync::OnceLock, time::Duration};
 
+#[path = "keyboard_brightness_ble.rs"]
+pub mod ble;
+#[path = "keyboard_lighting_power.rs"]
+pub mod power;
+#[path = "keyboard_brightness_submission.rs"]
+mod submission;
+pub use submission::{AppliedBrightness, BrightnessApplyFailure, apply_brightness};
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
+pub enum BrightnessIntent {
+    Value,
+    Enabled,
+}
+
+/// The saved level and switch are independent. OLED switch changes do not
+/// overwrite the saved hardware brightness value.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct BrightnessSubmission {
+    value: u8,
+    enabled: bool,
+    intent: BrightnessIntent,
+}
+
+impl BrightnessSubmission {
+    pub fn new(value: u8, enabled: bool, intent: BrightnessIntent) -> anyhow::Result<Self> {
+        ensure!(value <= 100, "Keyboard brightness is outside 0..100");
+        Ok(Self {
+            value,
+            enabled,
+            intent,
+        })
+    }
+
+    pub fn value(self) -> u8 {
+        self.value
+    }
+    pub fn enabled(self) -> bool {
+        self.enabled
+    }
+    pub fn intent(self) -> BrightnessIntent {
+        self.intent
+    }
+
+    pub fn effective_percent(self) -> u8 {
+        if self.enabled { self.value } else { 0 }
+    }
+
+    pub fn validate(self) -> anyhow::Result<()> {
+        ensure!(self.value <= 100, "Keyboard brightness is outside 0..100");
+        Ok(())
+    }
+}
+
 #[derive(Clone, Debug, Deserialize)]
 pub struct KeyboardSettingsCapability {
     pub product_id: u32,
@@ -43,6 +97,15 @@ const BLACKWIDOW_CHROMA: KeyboardSettingsDescriptor = KeyboardSettingsDescriptor
     hardware_profile_slots: 0,
 };
 
+// Current691 selects rzDevice25Oled and keeps the brightness enable command
+// independent from its level. The inherited brightness packets are Protocol25.
+const OLED_KEYBOARD: KeyboardSettingsDescriptor = KeyboardSettingsDescriptor {
+    product_id: 691,
+    claim_interface: 3,
+    claim_interfaces_by_pid: &[],
+    hardware_profile_slots: 4,
+};
+
 pub fn capability(product_id: u32) -> Option<&'static KeyboardSettingsCapability> {
     // DeviceReadCapability is also consumed by retained discovery/service
     // adapters. Materialize it once from typed, audited Rust descriptors.
@@ -53,10 +116,13 @@ pub fn capability(product_id: u32) -> Option<&'static KeyboardSettingsCapability
                 .iter()
                 .chain(CURRENT_AUDITED_KEYBOARDS)
                 .chain(std::iter::once(&BLACKWIDOW_CHROMA))
+                .chain(std::iter::once(&OLED_KEYBOARD))
                 .map(|descriptor| KeyboardSettingsCapability {
                     product_id: descriptor.product_id,
                     source_class: if descriptor.product_id == 515 {
                         "rzDevice25LedMatrix"
+                    } else if descriptor.product_id == 691 {
+                        "rzDevice25Oled"
                     } else {
                         "rzDevice25"
                     }
@@ -91,6 +157,8 @@ pub fn capability(product_id: u32) -> Option<&'static KeyboardSettingsCapability
                         product_id: descriptor.product_id,
                         source_class: if descriptor.product_id == 515 {
                             "rzDevice25LedMatrix"
+                        } else if descriptor.product_id == 691 {
+                            "rzDevice25Oled"
                         } else {
                             "rzDevice25"
                         }
@@ -126,9 +194,9 @@ pub fn capability(product_id: u32) -> Option<&'static KeyboardSettingsCapability
                         charging_codes: BTreeMap::new(),
                         max_retry_in: 10,
                         max_retry_out: 20,
-                        sleep_between_out_ms: 5,
-                        sleep_between_out_in_ms: 5,
-                        sleep_between_in_ms: 5,
+                        sleep_between_out_ms: if descriptor.product_id == 691 { 25 } else { 5 },
+                        sleep_between_out_in_ms: if descriptor.product_id == 691 { 25 } else { 5 },
+                        sleep_between_in_ms: if descriptor.product_id == 691 { 25 } else { 5 },
                     },
                 })
                 .collect()
@@ -714,6 +782,81 @@ mod tests {
     }
 
     #[test]
+    fn oled_brightness_toggle_writes_status_without_overwriting_the_level() {
+        let cap = cap_for(691);
+        let device = MockTransport::new([
+            reply(&[1, 0, 0]),
+            reply(&[1, 0, 0, 0, 0]),
+            reply(&[1, 1, 178]),
+        ]);
+        let submission = BrightnessSubmission::new(70, false, BrightnessIntent::Enabled).unwrap();
+        let report =
+            apply_brightness(&device, &cap, submission, transactions(&cap), || Ok(())).unwrap();
+        assert_eq!(report.reading().unwrap().percent, 70);
+        let sent = device.sent();
+        assert_eq!(sent.len(), 3);
+        assert_eq!(&sent[0][6..12], &[3, 23, 24, 1, 0, 0]);
+        assert_eq!(&sent[2][6..12], &[3, 15, 132, 1, 1, 0]);
+        assert!(!sent.iter().any(|frame| frame[7..9] == [15, 4]));
+        report.check_request(691, submission).unwrap();
+    }
+
+    #[test]
+    fn oled_brightness_value_writes_switch_before_level_and_readback() {
+        let cap = cap_for(691);
+        let device = MockTransport::new([
+            reply(&[1, 0, 1]),
+            reply(&[1, 0, 127]),
+            reply(&[1, 0, 0, 0, 0]),
+            reply(&[1, 1, 127]),
+        ]);
+        let submission = BrightnessSubmission::new(50, true, BrightnessIntent::Value).unwrap();
+        let report =
+            apply_brightness(&device, &cap, submission, transactions(&cap), || Ok(())).unwrap();
+        let sent = device.sent();
+        assert_eq!(sent.len(), 4);
+        assert_eq!(&sent[0][6..12], &[3, 23, 24, 1, 0, 1]);
+        assert_eq!(&sent[1][6..12], &[3, 15, 4, 1, 0, 127]);
+        assert_eq!(report.reading().unwrap().percent, 50);
+        assert!(
+            report
+                .check_request(
+                    691,
+                    BrightnessSubmission::new(50, true, BrightnessIntent::Enabled).unwrap()
+                )
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn oled_brightness_rejects_mismatched_switch_ack_before_level_write() {
+        let cap = cap_for(691);
+        let device = MockTransport::new([reply(&[1, 0, 0])]);
+        let submission = BrightnessSubmission::new(50, true, BrightnessIntent::Value).unwrap();
+        let error =
+            apply_brightness(&device, &cap, submission, transactions(&cap), || Ok(())).unwrap_err();
+        assert!(error.downcast_ref::<BrightnessApplyFailure>().is_some());
+        assert_eq!(device.sent().len(), 1);
+    }
+
+    #[test]
+    fn oled_brightness_release_failure_retains_ack_and_stops_before_level_write() {
+        let cap = cap_for(691);
+        let device = MockTransport::new([reply(&[1, 0, 1])]);
+        let probe = crate::feature_exchange::tests::ExchangeProbe::failing_finish(&device);
+        let submission = BrightnessSubmission::new(50, true, BrightnessIntent::Value).unwrap();
+        let error =
+            apply_brightness(&probe, &cap, submission, transactions(&cap), || Ok(())).unwrap_err();
+        let failure = error.downcast_ref::<BrightnessApplyFailure>().unwrap();
+        assert_eq!(
+            failure.progress().switch_acknowledgement(),
+            Some(&[1, 0, 1][..])
+        );
+        assert!(failure.progress().reading().is_none());
+        assert_eq!(device.sent().len(), 1);
+    }
+
+    #[test]
     fn interruptions_stop_all_brightness_factories_before_fallback_or_retry() {
         use crate::backend::NativeIoOutcome;
         use crate::feature_exchange::tests::ExchangeProbe;
@@ -1171,7 +1314,7 @@ mod tests {
         assert_eq!(AUDITED_KEYBOARDS.len(), 12);
         for unsupported in [
             0, 603, 604, 625, 626, 662, 663, 698, 699, 706, 707, 713, 714, 718, 722, 723, 725, 726,
-            730, 691, 632, 635, 656, 657, 757, 758,
+            730, 692, 632, 635, 656, 657, 757, 758,
         ] {
             assert!(
                 capability(unsupported).is_none(),

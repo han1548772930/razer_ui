@@ -113,7 +113,8 @@ pub enum WorkspaceEvent {
     },
     KeyboardBrightnessRequested {
         generation: u64,
-        percent: u8,
+        submission: razer_device::keyboard_settings::BrightnessSubmission,
+        background: bool,
     },
     HanboLocalSettingsChanged(super::accessory_system_products::HanboLocalSettingsChanged),
     HanboTelemetryActivated,
@@ -146,6 +147,7 @@ pub enum WorkspaceEvent {
     KeyboardIndicatorLedRequested(super::keyboard_products::KeyboardIndicatorLedRequested),
     KeyboardBrightnessReadRequested {
         generation: u64,
+        background: bool,
     },
     AudioVolumeRequested {
         request: super::audio_products::AudioVolumeRequest,

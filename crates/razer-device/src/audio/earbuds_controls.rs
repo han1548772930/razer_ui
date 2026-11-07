@@ -3,7 +3,7 @@
 //! Every device task carries the connection generation; results from an
 //! older generation are rejected instead of overwriting the new connection.
 use crate::earbuds_protocol40::{
-    self as proto, AncChange, AncMode, AncRuntimeState, AncSetting, AncWrite, AutoPauseObservation,
+    self as proto, AncChange, AncRuntimeState, AncSetting, AncWrite, AutoPauseObservation,
     AutoPauseProfileField, Protocol40Session, Sleeper, WriteOutcome,
 };
 use anyhow::{Result, bail};
@@ -160,10 +160,14 @@ impl EarbudsControls {
             self.draft.anc = Some(published);
         }
         if let Some(auto_pause) = restore.auto_pause {
+            let read_succeeded =
+                matches!(auto_pause.observation, AutoPauseObservation::Observed(_));
             self.auto_pause_device = auto_pause.observation;
             self.last_auto_pause_write = Some(auto_pause.write);
             // MW_UPDATE_AUDIO_AUTO_PAUSE_CONTROL_TO_UI replaces the field.
-            self.draft.auto_pause = auto_pause.published_local;
+            if read_succeeded {
+                self.draft.auto_pause = auto_pause.published_local;
+            }
         }
         Ok(())
     }
@@ -183,16 +187,14 @@ impl EarbudsControls {
     }
 
     /// `Nm` actions: switch, ANC/Ambient tab and Reduce checkbox. Tab and
-    /// Reduce only act while enabled; Reduce additionally needs ANC mode.
+    /// Reduce only act while enabled. Pointer-only mode gating belongs to the
+    /// page; the source checkbox's keyboard handler can still emit a level.
     pub fn change_anc(&mut self, change: AncChange) -> Option<EarbudsTask> {
         let current = self.draft.anc?;
         if self.earbud_disconnected || !self.connected {
             return None;
         }
         if (change.mode.is_some() || change.level.is_some()) && !current.enabled {
-            return None;
-        }
-        if change.level.is_some() && current.mode != AncMode::Anc {
             return None;
         }
         // The reducer merges into the old state and posts the full triple.
@@ -220,7 +222,6 @@ impl EarbudsControls {
         }
         let base = self.anc_persisted.or(self.draft.anc)?;
         let updated = proto::apply_anc_notification(base, record)?;
-        self.anc_persisted = Some(updated);
         self.draft.anc = Some(updated);
         Some(updated)
     }

@@ -100,9 +100,9 @@ def _sections(db, pid, capability):
             JOIN capability_roots cr ON cr.product_id=m.product_id AND cr.normalized_sha=m.normalized_sha
             WHERE m.section_id=? AND m.product_id=? AND cr.capability=?""", (row["id"], pid, capability)).fetchone()[0]
         non_factory = db.execute("""SELECT COUNT(*) FROM review_owners o WHERE o.section_id=?
-            AND o.status='verified_current_non_factory_scope' AND EXISTS(
-                SELECT 1 FROM sources s JOIN deployment_sources ds USING(path) JOIN deployments d USING(product_id,layer)
-                WHERE s.sha256=o.source_sha AND ds.product_id=? AND d.failure IS NULL)""", (row["id"], pid)).fetchone()[0]
+            AND o.status='verified_current_non_factory_scope' AND o.source_sha IN (
+                SELECT s.sha256 FROM sources s JOIN deployment_sources ds USING(path) JOIN deployments d USING(product_id,layer)
+                WHERE ds.product_id=? AND d.failure IS NULL)""", (row["id"], pid)).fetchone()[0]
         if direct:
             js_count += non_factory
         native_count = db.execute("""SELECT COUNT(DISTINCT normalized_sha) FROM native_review_matches

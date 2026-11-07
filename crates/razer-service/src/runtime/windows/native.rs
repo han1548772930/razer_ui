@@ -529,6 +529,7 @@ impl NativeRuntime {
             | ServiceRequest::SeirenAudioPlaybackPoll { .. }
             | ServiceRequest::SeirenAudioPlaybackStop { .. }
             | ServiceRequest::HidNodeKeyboardBrightnessRead { .. }
+            | ServiceRequest::HidNodeKeyboardBrightnessSubmit { .. }
             | ServiceRequest::HidNodeKeyboardReceiverBrightness { .. }
             | ServiceRequest::HidNodeKeyboardMetadataRead { .. }
             | ServiceRequest::KeyboardProfileInventoryRead { .. }
@@ -579,7 +580,13 @@ impl NativeRuntime {
                 device_reads::write(&target, &setting)
             }
             ServiceRequest::DeviceKeyboardBrightnessRead { target } => {
-                device_reads::keyboard_brightness(&target, None)
+                device_reads::keyboard_brightness(&target, super::KeyboardBrightness::Read)
+            }
+            ServiceRequest::DeviceKeyboardBrightnessSubmit { target, submission } => {
+                device_reads::keyboard_brightness(
+                    &target,
+                    super::KeyboardBrightness::Submit(submission),
+                )
             }
             ServiceRequest::DeviceKeyboardMetadataRead { target } => {
                 device_reads::keyboard_metadata(&target, super::KeyboardRead::Metadata)
@@ -593,8 +600,14 @@ impl NativeRuntime {
             ServiceRequest::BleKeyboardSerialRead { target } => {
                 device_reads::keyboard_metadata_ble(&target, true)
             }
+            ServiceRequest::BleKeyboardBrightness { target, submission } => {
+                device_reads::keyboard_brightness_ble(&target, submission)
+            }
             ServiceRequest::DeviceKeyboardBrightnessWrite { target, percent } => {
-                device_reads::keyboard_brightness(&target, Some(percent))
+                device_reads::keyboard_brightness(
+                    &target,
+                    super::KeyboardBrightness::Value(percent),
+                )
             }
             ServiceRequest::DeviceDpiStagesRead { target } => {
                 device_reads::dpi_stages(&target, None)

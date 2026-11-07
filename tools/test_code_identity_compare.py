@@ -69,6 +69,7 @@ class BindingComparisonTests(unittest.TestCase):
         for left, right in [("class A{go(x){return x}}", "class B{stop(y){return y}}"),
                             ("class A{field=1}", "class B{other=1}"),
                             ("export function f(x){return x}", "export function g(y){return y}"),
+                            ("export function* f(x){yield x}", "export function* g(y){yield y}"),
                             ("const a=1; export {a}", "const b=1; export {b}"),
                             ("const a=1; export {a as publicName}", "const b=1; export {b as changedName}")]:
             with self.subTest(left=left):
@@ -96,6 +97,18 @@ class BindingComparisonTests(unittest.TestCase):
 
     def test_comments_do_not_change_structure(self):
         self.assertTrue(self.check("function f(x){/* memo */return x}", "function g(y){return y}")["structure_corresponds"])
+
+    def test_function_value_parentheses_are_transparent_without_erasing_other_boundaries(self):
+        for left, right in [
+            ("wrap(e=>({value:e}))", "wrap((x=>({value:x})))"),
+            ("wrap(function(e){return e})", "wrap(((function(x){return x})))"),
+            ("wrap(function*(e){yield e})", "wrap((function*(x){yield x}))"),
+        ]:
+            with self.subTest(left=left):
+                self.assertTrue(self.check(left, right)["structure_corresponds"])
+        self.assertFalse(self.check("wrap(e=>({value:1}))", "wrap((e=>({value:2})))")["structure_corresponds"])
+        self.assertFalse(self.check("a?.b.c", "(a?.b).c")["structure_corresponds"])
+        self.assertFalse(self.check("a?.b()", "(a?.b)()")["structure_corresponds"])
 
     def test_incomplete_input_is_rejected(self):
         with self.assertRaises(ValueError):

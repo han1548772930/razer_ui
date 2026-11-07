@@ -1,4 +1,5 @@
 use super::*;
+use crate::earbuds_protocol40::AncMode;
 use crate::backend::FeatureTransport;
 use serde_json::Value;
 use std::cell::RefCell;
@@ -182,7 +183,8 @@ fn disconnect_mid_restore_marks_read_failed_not_off() {
         controls.last_auto_pause_write,
         Some(WriteOutcome::Failed(_))
     ));
-    assert!(controls.draft.auto_pause);
+    assert!(!controls.draft.auto_pause);
+    assert_eq!(mock.sends.borrow().len(), 1);
 }
 
 #[test]
@@ -307,14 +309,14 @@ fn anc_page_gates_follow_source() {
             ..AncChange::default()
         })
         .unwrap();
-    // Reduce is inert in Ambient mode.
+    // The source keyboard callback emits a level even in Ambient mode.
     assert!(
         controls
             .change_anc(AncChange {
                 level: Some(AncLevel::Reduced),
                 ..AncChange::default()
             })
-            .is_none()
+            .is_some()
     );
     controls
         .change_anc(AncChange {

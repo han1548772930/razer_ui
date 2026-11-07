@@ -9,13 +9,16 @@ use std::collections::{BTreeMap, BTreeSet};
 pub const PRODUCT_ID: u32 = 679;
 pub const FACTORY_GUID: &str = "af06d371-861f-4b98-8d78-bfaef5cfdebf";
 pub const FACTORY_NAME: &str = "Factory Default";
-pub const SCHEMA_VERSION: u32 = 13;
+pub const SCHEMA_VERSION: u32 = 14;
 
 pub type Extensions = BTreeMap<String, Value>;
 
 #[path = "keyboard_high_speed_profile.rs"]
 pub mod high_speed;
 pub use high_speed::{HighSpeedSettings, validate_profile_settings};
+
+#[path = "keyboard_local_profile.rs"]
+pub mod local;
 
 fn present<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
 where
@@ -202,6 +205,49 @@ pub struct Brightness {
 #[serde(rename_all = "camelCase")]
 pub struct QuickEffects {
     pub selected_effect_id: u32,
+    #[serde(
+        default,
+        deserialize_with = "present",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub selected_effect_setting: Option<EffectSetting>,
+    #[serde(flatten)]
+    pub extensions: Extensions,
+}
+
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EffectSetting {
+    #[serde(
+        default,
+        deserialize_with = "present",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub effect_id: Option<u32>,
+    #[serde(
+        default,
+        deserialize_with = "present",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub color1: Option<String>,
+    #[serde(
+        default,
+        deserialize_with = "present",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub color2: Option<String>,
+    #[serde(
+        default,
+        deserialize_with = "present",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub is_random: Option<bool>,
+    #[serde(
+        default,
+        deserialize_with = "present",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub direction: Option<u8>,
     #[serde(flatten)]
     pub extensions: Extensions,
 }
@@ -214,6 +260,34 @@ pub struct GamingMode {
     #[serde(rename = "isAltF4Disabled")]
     pub is_alt_f4_disabled: bool,
     pub is_alt_tab_disabled: bool,
+    #[serde(
+        default,
+        deserialize_with = "present",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub is_fn_z_disabled: Option<bool>,
+    #[serde(
+        default,
+        deserialize_with = "present",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub is_alt_space_disabled: Option<bool>,
+    #[serde(
+        default,
+        deserialize_with = "present",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub combos: Option<Vec<GamingCombo>>,
+    #[serde(flatten)]
+    pub extensions: Extensions,
+}
+
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+pub struct GamingCombo {
+    pub id: u8,
+    pub enabled: bool,
+    pub key1: String,
+    pub key2: String,
     #[serde(flatten)]
     pub extensions: Extensions,
 }
@@ -304,6 +378,54 @@ pub struct Mapping {
         skip_serializing_if = "Option::is_none"
     )]
     pub mapping: Option<Vec<MappingStage>>,
+    #[serde(
+        default,
+        deserialize_with = "present",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub is_default: Option<bool>,
+    #[serde(
+        default,
+        deserialize_with = "present",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub keymap_group: Option<local::KeymapAssignment>,
+    #[serde(
+        default,
+        deserialize_with = "present",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub analog_input: Option<local::AnalogIdentity>,
+    #[serde(
+        default,
+        deserialize_with = "present",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub backlight_group: Option<local::BacklightAssignment>,
+    #[serde(
+        default,
+        deserialize_with = "present",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub win8_shortcuts_group: Option<local::WindowsShortcutAssignment>,
+    #[serde(
+        default,
+        deserialize_with = "present",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub multimedia_group: Option<local::MultimediaAssignment>,
+    #[serde(
+        default,
+        deserialize_with = "present",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub mouse_group: Option<local::MouseAssignment>,
+    #[serde(
+        default,
+        deserialize_with = "present",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub oled_light_group: Option<local::OledLightAssignment>,
     #[serde(flatten)]
     pub extensions: Extensions,
 }
@@ -340,6 +462,42 @@ impl Mapping {
 #[serde(rename_all = "camelCase")]
 pub struct MappingStage {
     pub output_type: String,
+    #[serde(
+        default,
+        deserialize_with = "present",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub actuation_point: Option<local::ActuationValue>,
+    #[serde(
+        default,
+        deserialize_with = "present",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub is_hyper_shift: Option<bool>,
+    #[serde(
+        default,
+        deserialize_with = "present",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub controller_group: Option<local::ControllerAssignment>,
+    #[serde(
+        default,
+        deserialize_with = "present",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub joystick_group: Option<local::JoystickAssignment>,
+    #[serde(
+        default,
+        deserialize_with = "present",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub keyboard_group: Option<local::EmptyObject>,
+    #[serde(
+        default,
+        deserialize_with = "present",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub rapid_trigger: Option<local::RapidTrigger>,
     #[serde(flatten)]
     pub extensions: Extensions,
 }
@@ -366,6 +524,7 @@ pub fn initial_settings() -> ProfileSettings {
         },
         quick_effects: QuickEffects {
             selected_effect_id: 3,
+            selected_effect_setting: None,
             extensions: Extensions::new(),
         },
         gaming_mode: GamingMode {
@@ -373,6 +532,9 @@ pub fn initial_settings() -> ProfileSettings {
             is_windows_key_disabled: false,
             is_alt_f4_disabled: false,
             is_alt_tab_disabled: false,
+            is_fn_z_disabled: None,
+            is_alt_space_disabled: None,
+            combos: None,
             extensions: Extensions::new(),
         },
         snap_tap: SnapTap {
@@ -429,6 +591,12 @@ pub enum ReportKind {
     AnalogKeyboardV2,
     #[serde(rename = "razerKeyReportID")]
     RazerKey,
+    #[serde(rename = "hardwareEventReportID")]
+    HardwareEvent,
+    #[serde(rename = "analogKeyboardReportID")]
+    AnalogKeyboard,
+    #[serde(rename = "analogKeypadReportID")]
+    AnalogKeypad,
 }
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]

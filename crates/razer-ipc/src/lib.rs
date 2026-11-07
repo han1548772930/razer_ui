@@ -694,6 +694,12 @@ pub enum ServiceRequest {
         node: razer_device::backend::HidNode,
         product_id: u32,
     },
+    HidNodeKeyboardBrightnessSubmit {
+        node: razer_device::backend::HidNode,
+        product_id: u32,
+        peer_product_id: Option<u32>,
+        submission: razer_device::keyboard_settings::BrightnessSubmission,
+    },
     HidNodeKeyboardReceiverBrightness {
         node: razer_device::backend::HidNode,
         product_id: u32,
@@ -808,6 +814,10 @@ pub enum ServiceRequest {
     DeviceKeyboardBrightnessRead {
         target: razer_device::device_reads::DeviceReadTarget,
     },
+    DeviceKeyboardBrightnessSubmit {
+        target: razer_device::device_reads::DeviceReadTarget,
+        submission: razer_device::keyboard_settings::BrightnessSubmission,
+    },
     DeviceKeyboardMetadataRead {
         target: razer_device::device_reads::DeviceReadTarget,
     },
@@ -819,6 +829,10 @@ pub enum ServiceRequest {
     },
     BleKeyboardSerialRead {
         target: razer_device::mouse_runtime_artwork::WindowsBleTarget,
+    },
+    BleKeyboardBrightness {
+        target: razer_device::mouse_runtime_artwork::WindowsBleTarget,
+        submission: Option<razer_device::keyboard_settings::BrightnessSubmission>,
     },
     DeviceDpiStagesRead {
         target: razer_device::device_reads::DeviceReadTarget,
@@ -1626,6 +1640,7 @@ impl ServiceClient {
                     | ServiceRequest::DeviceKeyboardSerialRead { .. }
                     | ServiceRequest::BleKeyboardMetadataRead { .. }
                     | ServiceRequest::BleKeyboardSerialRead { .. }
+                    | ServiceRequest::BleKeyboardBrightness { submission: None, .. }
                     | ServiceRequest::AudioEndpoints { .. }
                     | ServiceRequest::AudioNotificationsEnable { .. }
                     | ServiceRequest::AudioNotificationsDrain
@@ -1655,7 +1670,9 @@ impl ServiceClient {
                     | ServiceRequest::HidNodeMixerRead { .. }
                     | ServiceRequest::HidNodeMixerRouteRead { .. }
             );
-        let marie_timeout = match &request {
+        let device_budget = match &request {
+            ServiceRequest::HidNodeEarbudsAutoPause { .. }
+            | ServiceRequest::DeviceEarbudsAutoPause { .. } => Some(Duration::from_secs(30)),
             ServiceRequest::SeirenNativeOpen { .. } => {
                 Some(razer_device::seiren_eq::NativeOperation::DeviceInitialize.service_budget())
             }
@@ -1704,7 +1721,7 @@ impl ServiceClient {
             // Recorder/mapping restoration, monitor thread completion and its
             // independent launcher callbacks precede the engine shutdowns.
             Duration::from_secs(45)
-        } else if let Some(budget) = marie_timeout {
+        } else if let Some(budget) = device_budget {
             // Endpoint reconstruction waits 60/30 seconds in the verified
             // mode/sample-rate chain. Retain the session until its own
             // bounded operation and cleanup can report their actual result.

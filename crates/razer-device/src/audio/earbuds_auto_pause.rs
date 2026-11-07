@@ -5,10 +5,49 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub enum Operation {
+    Anc {
+        setting: AncSetting,
+    },
     Read,
-    Battery { levels: Option<[u8; 2]> },
-    Restore { enabled: Option<bool> },
-    Write { enabled: bool },
+    Firmware,
+    Gesture {
+        enabled: bool,
+    },
+    RestoreGesture {
+        enabled: Option<bool>,
+    },
+    TapSpeed {
+        speed: crate::earbuds_gesture::TapSpeed,
+    },
+    RestoreTapSpeed {
+        speed: Option<crate::earbuds_gesture::TapSpeed>,
+    },
+    Battery {
+        levels: Option<[u8; 2]>,
+    },
+    Restore {
+        enabled: Option<bool>,
+    },
+    Write {
+        enabled: bool,
+    },
+    DoNotDisturb {
+        enabled: bool,
+    },
+    VoicePrompt {
+        enabled: bool,
+    },
+    RestoreVoicePrompt {
+        enabled: Option<bool>,
+    },
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
+pub enum FirmwareObservation {
+    #[default]
+    Unobserved,
+    Observed(crate::earbuds_firmware::Reading),
+    ReadFailed(String),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
@@ -21,15 +60,34 @@ pub struct Report {
     pub right_battery: Option<u8>,
     pub observation: AutoPauseObservation,
     pub write: WriteOutcome,
+    #[serde(default)]
+    pub do_not_disturb: Option<crate::earbuds_do_not_disturb::Observation>,
+    #[serde(default)]
+    pub voice_prompt: Option<ToggleObservation>,
+    #[serde(default)]
+    pub firmware: FirmwareObservation,
+    #[serde(default)]
+    pub gesture: Option<ToggleObservation>,
+    #[serde(default)]
+    pub tap_speed: Option<crate::earbuds_gesture::TapObservation>,
+    #[serde(default)]
+    pub anc: Option<crate::earbuds_anc::Report>,
 }
 
 impl Report {
     pub fn has_disconnected_earbud(&self) -> bool {
-        self.connected == Some(true)
-            && [self.left_battery, self.right_battery]
-                .into_iter()
-                .any(|level| level.is_none_or(|level| level == 0 || level == 255))
+        self.connected == Some(false)
+            || (self.connected == Some(true)
+                && [self.left_battery, self.right_battery]
+                    .into_iter()
+                    .any(|level| level.is_none_or(|level| level == 0 || level == 255)))
     }
+}
+
+/// Current rzDevice40 enum: Disconnected 0, LeftOnly 1, RightOnly 2, BothConnected 3.
+pub fn connection_is_online(status: u8) -> Result<bool> {
+    ensure!(status <= 3, "Unknown earbud connection status {status}");
+    Ok(status != 0)
 }
 
 /// DeviceInfo.claimInterface is 3 on 2657 and 0 on the other four products.
@@ -68,9 +126,172 @@ pub fn execute<S: Sleeper>(
     session: &mut Protocol40Session<'_, S>,
     product_id: u32,
     operation: Operation,
+    anc_cache: &crate::earbuds_anc::Cache,
     validate: &dyn Fn() -> Result<()>,
+    validate_connection: &dyn Fn() -> Result<()>,
 ) -> Result<Report> {
     transport(product_id)?;
+    if let Operation::Anc { setting } = operation {
+        let anc = anc_cache.execute(session, product_id, setting, validate, validate_connection)?;
+        return Ok(Report {
+            product_id,
+            operation,
+            connected: None,
+            left_battery: None,
+            right_battery: None,
+            observation: AutoPauseObservation::Unobserved,
+            write: WriteOutcome::Skipped,
+            do_not_disturb: None,
+            voice_prompt: None,
+            firmware: FirmwareObservation::Unobserved,
+            gesture: None,
+            tap_speed: None,
+            anc: Some(anc),
+        });
+    }
+    if matches!(
+        operation,
+        Operation::Gesture { .. }
+            | Operation::RestoreGesture { .. }
+            | Operation::TapSpeed { .. }
+            | Operation::RestoreTapSpeed { .. }
+    ) {
+        use crate::earbuds_gesture as gesture;
+        let (observed_gesture, tap_speed, write) = match operation {
+            Operation::Gesture { enabled } => {
+                gesture::write(session, enabled, validate)?;
+                (
+                    Some(ToggleObservation::Observed(enabled)),
+                    None,
+                    WriteOutcome::Confirmed,
+                )
+            }
+            Operation::RestoreGesture { enabled } => {
+                let result = gesture::restore(session, enabled, validate)?;
+                (Some(result.observation), None, result.write)
+            }
+            Operation::TapSpeed { speed } => {
+                gesture::write_tap(session, speed, validate)?;
+                (
+                    None,
+                    Some(gesture::TapObservation::Observed(speed.ticks())),
+                    WriteOutcome::Confirmed,
+                )
+            }
+            Operation::RestoreTapSpeed { speed } => {
+                let result = gesture::restore_tap(session, speed, validate)?;
+                (None, Some(result.observation), result.write)
+            }
+            _ => unreachable!(),
+        };
+        return Ok(Report {
+            product_id,
+            operation,
+            connected: None,
+            left_battery: None,
+            right_battery: None,
+            observation: AutoPauseObservation::Unobserved,
+            write,
+            do_not_disturb: None,
+            voice_prompt: None,
+            firmware: FirmwareObservation::Unobserved,
+            gesture: observed_gesture,
+            tap_speed,
+            anc: None,
+        });
+    }
+    if operation == Operation::Firmware {
+        let firmware = match crate::earbuds_firmware::read(session, product_id, validate) {
+            Ok(reading) => FirmwareObservation::Observed(reading),
+            Err(error) => {
+                validate()?;
+                FirmwareObservation::ReadFailed(format!("{error:#}"))
+            }
+        };
+        return Ok(Report {
+            product_id,
+            operation,
+            connected: None,
+            left_battery: None,
+            right_battery: None,
+            observation: AutoPauseObservation::Unobserved,
+            write: WriteOutcome::Skipped,
+            do_not_disturb: None,
+            voice_prompt: None,
+            firmware,
+            gesture: None,
+            tap_speed: None,
+            anc: None,
+        });
+    }
+    if let Operation::VoicePrompt { enabled } = operation {
+        crate::earbuds_voice_prompt::write(session, enabled, validate)?;
+        return Ok(Report {
+            product_id,
+            operation,
+            connected: None,
+            left_battery: None,
+            right_battery: None,
+            observation: AutoPauseObservation::Unobserved,
+            write: WriteOutcome::Confirmed,
+            do_not_disturb: None,
+            voice_prompt: Some(ToggleObservation::Observed(enabled)),
+            firmware: FirmwareObservation::Unobserved,
+            gesture: None,
+            tap_speed: None,
+            anc: None,
+        });
+    }
+    if let Operation::RestoreVoicePrompt { enabled } = operation {
+        let result = crate::earbuds_voice_prompt::restore(session, enabled, validate)?;
+        return Ok(Report {
+            product_id,
+            operation,
+            connected: None,
+            left_battery: None,
+            right_battery: None,
+            observation: AutoPauseObservation::Unobserved,
+            write: result.write,
+            do_not_disturb: None,
+            voice_prompt: Some(result.observation),
+            firmware: FirmwareObservation::Unobserved,
+            gesture: None,
+            tap_speed: None,
+            anc: None,
+        });
+    }
+    if let Operation::DoNotDisturb { enabled } = operation {
+        let (observed, write) =
+            match crate::earbuds_do_not_disturb::write(session, enabled, validate) {
+                Ok(result) => (
+                    ToggleObservation::Observed(result.observation),
+                    result.write,
+                ),
+                Err(error) => {
+                    validate()?;
+                    let observed = ToggleObservation::from_read_error(&error);
+                    if !matches!(observed, ToggleObservation::Unknown(_)) {
+                        return Err(error);
+                    }
+                    (observed, WriteOutcome::Failed(format!("{error:#}")))
+                }
+            };
+        return Ok(Report {
+            product_id,
+            operation,
+            connected: None,
+            left_battery: None,
+            right_battery: None,
+            observation: AutoPauseObservation::Unobserved,
+            write,
+            do_not_disturb: Some(observed),
+            voice_prompt: None,
+            firmware: FirmwareObservation::Unobserved,
+            gesture: None,
+            tap_speed: None,
+            anc: None,
+        });
+    }
     // Source user writes and profile restore do not run the battery setup again.
     // Initialization owns that gate; each operation still validates its live route.
     if let Operation::Write { enabled } = operation {
@@ -83,6 +304,12 @@ pub fn execute<S: Sleeper>(
             right_battery: None,
             observation: AutoPauseObservation::Observed(enabled),
             write: WriteOutcome::Confirmed,
+            do_not_disturb: None,
+            voice_prompt: None,
+            firmware: FirmwareObservation::Unobserved,
+            gesture: None,
+            tap_speed: None,
+            anc: None,
         });
     }
     if let Operation::Restore { enabled } = operation {
@@ -106,6 +333,12 @@ pub fn execute<S: Sleeper>(
             right_battery: None,
             observation,
             write: restored.write,
+            do_not_disturb: None,
+            voice_prompt: None,
+            firmware: FirmwareObservation::Unobserved,
+            gesture: None,
+            tap_speed: None,
+            anc: None,
         });
     }
     // Earlier four helpers explicitly supply Mouse; 2689 uses the instance type.
@@ -124,11 +357,12 @@ pub fn execute<S: Sleeper>(
         connection.data.first() == Some(&1),
         "Connection reply belongs to another audio type"
     );
-    let connected = *connection
-        .data
-        .get(1)
-        .context("Earbud connection reply has no status")?
-        != 0;
+    let connected = connection_is_online(
+        *connection
+            .data
+            .get(1)
+            .context("Earbud connection reply has no status")?,
+    )?;
     let mut report = Report {
         product_id,
         operation,
@@ -137,6 +371,12 @@ pub fn execute<S: Sleeper>(
         right_battery: None,
         observation: AutoPauseObservation::Unobserved,
         write: WriteOutcome::Skipped,
+        do_not_disturb: None,
+        voice_prompt: None,
+        firmware: FirmwareObservation::Unobserved,
+        gesture: None,
+        tap_speed: None,
+        anc: None,
     };
     if !connected {
         return Ok(report);
@@ -154,10 +394,6 @@ pub fn execute<S: Sleeper>(
     };
     report.left_battery = Some(levels[0]);
     report.right_battery = Some(levels[1]);
-    if operation == Operation::Read {
-        report.observation =
-            AutoPauseObservation::Observed(session.get_auto_pause(validate)?.enabled);
-    }
     validate()?;
     Ok(report)
 }

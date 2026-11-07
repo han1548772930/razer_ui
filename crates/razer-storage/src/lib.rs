@@ -21,6 +21,7 @@ pub mod hyperpolling_profile;
 pub mod keyboard_analog_restore;
 #[path = "keyboard_calibration.rs"]
 pub mod keyboard_calibration;
+pub mod keyboard_lighting;
 #[path = "linked_profiles.rs"]
 pub mod linked_profiles;
 #[path = "macro_recorder.rs"]
