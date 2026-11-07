@@ -152,6 +152,7 @@ pub enum WorkspaceEvent {
     AudioVolumeRequested {
         request: super::audio_products::AudioVolumeRequest,
     },
+    EarbudsVolumeRequested(super::audio_products::EarbudsVolumeRequested),
     LeviathanRequested(super::audio_products::LeviathanRequest),
     SurroundRequested(super::audio_products::SurroundRequest),
     AudioMixerRequested {

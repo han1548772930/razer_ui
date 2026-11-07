@@ -5,6 +5,8 @@
 pub mod audio_notification;
 #[path = "audio/earbuds_auto_pause.rs"]
 pub mod earbuds_auto_pause;
+#[path = "audio/earbuds_system_volume.rs"]
+pub mod earbuds_system_volume;
 #[path = "audio/audio_router.rs"]
 pub mod audio_router;
 #[path = "audio/audio_util.rs"]

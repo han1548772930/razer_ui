@@ -97,6 +97,10 @@ mod earbuds_gesture;
 mod earbuds_anc;
 mod earbuds_input_source;
 mod earbuds_equalizer;
+mod earbuds_equalizer_graph;
+mod earbuds_equalizer_view;
+mod earbuds_system_volume;
+pub use earbuds_system_volume::EarbudsVolumeRequested;
 pub use earbuds_auto_pause::EarbudsAutoPauseRequested;
 #[path = "surround/audio_surround.rs"]
 mod surround;
@@ -288,8 +292,8 @@ pub struct AudioProductWorkspace {
     pod_audio_subscription: Option<Subscription>,
     pod_runtime_devices: Vec<RuntimeAudioDevice>,
     volume: audio_volume::State,
+    earbuds_volume: earbuds_system_volume::State,
     earbuds: earbuds_auto_pause::State,
-    earbuds_window: AnyWindowHandle,
     surround: surround::State,
     leviathan: audio_leviathan::State,
     pub(super) mixer_io: AudioMixerState,
@@ -378,8 +382,8 @@ impl AudioProductWorkspace {
             pod_audio_subscription: None,
             pod_runtime_devices: Vec::new(),
             volume: audio_volume::State::default(),
+            earbuds_volume: earbuds_system_volume::State::default(),
             earbuds: earbuds_auto_pause::State::default(),
-            earbuds_window: window.window_handle(),
             surround: surround::State::default(),
             leviathan: audio_leviathan::State::new(pid, window, cx),
             mixer_io: AudioMixerState::default(),
@@ -480,6 +484,9 @@ impl AudioProductWorkspace {
             }
         }
         for eq in &spec.equalizers {
+            if razer_device::earbuds_protocol40::supports_auto_pause(spec.product_id) {
+                continue;
+            }
             for index in 0..eq.frequencies.len() {
                 this.add_slider(
                     &format!("/equalizers/{}/bands/{index}", eq.key),
@@ -559,6 +566,7 @@ impl AudioProductWorkspace {
         self.cancel_seiren_eq_profile();
         self.cancel_leviathan(cx);
         self.invalidate_volume();
+        self.cancel_earbuds_volume();
         self.invalidate_mixer();
         self.mixer_profile_routing = None;
         self.restore_mixer(saved, window, cx);
@@ -684,7 +692,12 @@ impl AudioProductWorkspace {
     }
     pub fn set_page(&mut self, page: &str, window: &mut Window, cx: &mut Context<Self>) {
         if page != "TAB_ENHANCEMENT" { self.close_earbuds_gestures(window, cx); }
-        if page != "TAB_SOUND" { self.earbuds.input_popup = false; }
+        if page != "TAB_SOUND" {
+            self.cancel_earbuds_volume();
+            self.earbuds.input_popup = false;
+            self.earbuds.eq_graph = earbuds_equalizer_graph::State::default();
+            self.earbuds.eq_ui = earbuds_equalizer_view::State::default();
+        }
         if self.page != page {
             if self.page == "SURROUND" {
                 self.leave_surround_page(cx);
@@ -806,6 +819,7 @@ impl AudioProductWorkspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if razer_device::earbuds_system_volume::supports(self.spec.product_id) && path == "/device/volume/value" { return; }
         if self.sliders.contains_key(path) {
             return;
         }
@@ -832,16 +846,6 @@ impl AudioProductWorkspace {
                     return;
                 }
                 if this.sound_slider_event(&key, event, window, cx) {
-                    return;
-                }
-                if razer_device::earbuds_protocol40::supports_auto_pause(this.spec.product_id) && key.starts_with("/equalizers/") {
-                    this.earbuds.eq_revision = this.earbuds.eq_revision.wrapping_add(1);
-                    if let SliderEvent::Release(value) = event {
-                        this.edit(&key, normalized(value.start(), min, max, step), window, cx);
-                        if let Some((name, _)) = key.trim_start_matches("/equalizers/").split_once("/bands/") {
-                            this.request_earbuds_equalizer(name, cx);
-                        }
-                    }
                     return;
                 }
                 if this.spec.product_id == 1352 && key == "/device/volume/value" {
@@ -1458,6 +1462,7 @@ impl AudioProductWorkspace {
     }
 
     pub fn prepare_exit(&mut self, cx: &mut Context<Self>) {
+        self.cancel_earbuds_volume();
         self.set_surround_active(false, "", cx);
         self.cancel_oled_editor(cx);
         self.stop_preset_shortcut_capture(cx);
@@ -1695,6 +1700,7 @@ impl AudioProductWorkspace {
         cx: &mut Context<Self>,
     ) {
         if self.earbuds_equalizer_disabled() { return; }
+        self.earbuds.eq_graph = earbuds_equalizer_graph::State::default();
         self.earbuds.eq_revision = self.earbuds.eq_revision.wrapping_add(1);
         if !self
             .spec
@@ -1728,6 +1734,7 @@ impl AudioProductWorkspace {
     }
     fn reset_equalizer(&mut self, key: &str, window: &mut Window, cx: &mut Context<Self>) {
         if self.earbuds_equalizer_disabled() { return; }
+        self.earbuds.eq_graph = earbuds_equalizer_graph::State::default();
         self.earbuds.eq_revision = self.earbuds.eq_revision.wrapping_add(1);
         if razer_device::earbuds_protocol40::supports_auto_pause(self.spec.product_id) {
             let state = &mut self.draft["equalizers"][key];
@@ -2148,6 +2155,9 @@ impl AudioProductWorkspace {
             return self.leviathan_sound_page(window, cx);
         }
         let page = self.spec.pages.iter().find(|p| p.key == key);
+        let earbuds_sound = key == "TAB_SOUND"
+            && razer_device::earbuds_protocol40::supports_auto_pause(self.spec.product_id);
+        let mut full_width_equalizers = Vec::new();
         let mut sections = Vec::new();
         if let Some(page) = page {
             for section in &page.sections {
@@ -2176,6 +2186,14 @@ impl AudioProductWorkspace {
                     .as_ref()
                     .is_some_and(|c| self.draft.pointer(&c.path) != Some(&c.value))
                 {
+                    continue;
+                }
+                if earbuds_sound && section.equalizer.is_some() {
+                    full_width_equalizers.push(self.earbuds_equalizer_card(window, cx));
+                    continue;
+                }
+                if earbuds_sound && section.title == "VOLUME_HEADER" {
+                    sections.push(v_flex().child(self.earbuds_volume_panel(cx)).child(self.earbuds_input_panel(cx)).into_any_element());
                     continue;
                 }
                 let mut panel =
@@ -2237,6 +2255,13 @@ impl AudioProductWorkspace {
                     sections.push(panel.into_any_element());
                 }
             }
+        }
+        if earbuds_sound {
+            return v_flex().w_full().items_center()
+                .children(full_width_equalizers)
+                .child(surface::page_columns()
+                    .children(sections.into_iter().map(surface::page_column)))
+                .into_any_element();
         }
         // Current Nommo wm / kM: the left Il / bl column holds brightness
         // followed by switch-off-lighting; the right column holds effects.

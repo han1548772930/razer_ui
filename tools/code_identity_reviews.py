@@ -354,6 +354,32 @@ def section_state(section):
 
 def owner_records(section):
     """Use the retained full-owner pointer without copying source into new receipts."""
+    if "additional_complete_owner_references" in section:
+        references = section["additional_complete_owner_references"]
+        if not isinstance(references, list) or any(not isinstance(ref, dict) for ref in references):
+            raise ValueError("Additional complete owner references must be a list of references")
+        primary = {key: value for key, value in section.items()
+                   if key != "additional_complete_owner_references"}
+        streams = [owner_records(primary)]
+        streams.extend(owner_records({"complete_owner_reference": ref}) for ref in references)
+        seen = {}
+        for records in streams:
+            for owner in records:
+                if not isinstance(owner, dict) or not isinstance(owner.get("original"), dict):
+                    raise ValueError("Invalid retained owner record")
+                owner_id = owner.get("id") or ci.digest(owner)
+                if not isinstance(owner_id, str):
+                    raise ValueError("Retained owner identity must be a string")
+                original = owner["original"]
+                identity = (original.get("sha256"), original.get("bytes"),
+                            owner.get("byte_start"), owner.get("byte_end"), owner.get("body_sha256"))
+                if owner_id in seen:
+                    if seen[owner_id] != identity:
+                        raise ValueError("Conflicting retained owner identity: " + owner_id)
+                    continue
+                seen[owner_id] = identity
+                yield owner
+        return
     owners = section.get("complete_source_owners", section.get("complete_owners"))
     if owners is not None:
         yield from owners.values() if isinstance(owners, dict) else owners

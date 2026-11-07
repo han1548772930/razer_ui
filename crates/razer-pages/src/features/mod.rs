@@ -194,6 +194,7 @@ pub use audio_products::{
 pub use audio_products::{
     AudioVolumeCompletion, AudioVolumeOperation, AudioVolumeReply, AudioVolumeRequest,
     EarbudsAutoPauseRequested,
+    EarbudsVolumeRequested,
     LeviathanObservation, LeviathanOperation, LeviathanRequest, SurroundObservation,
     SurroundOperation, SurroundRequest,
 };

@@ -1,7 +1,7 @@
 use super::{AudioProductWorkspace, AutoPauseObservation, DndObservation, Operation, Report};
 use gpui_kit::{
-    AnyWindowHandle, AppContext, Entity, TestAppContext, component::Root, px, size,
-    test::TestWindowExt,
+    AnyWindowHandle, AppContext, Entity, InputEvent, MouseButton, MouseDownEvent, MouseMoveEvent,
+    MouseUpEvent, TestAppContext, component::Root, point, px, size, test::TestWindowExt,
 };
 use serde_json::json;
 #[path = "earbuds_anc_tests.rs"]
@@ -12,6 +12,8 @@ mod gesture;
 mod profile_context;
 #[path = "earbuds_voice_prompt_tests.rs"]
 mod voice_prompt;
+#[path = "earbuds_equalizer_view_tests.rs"]
+mod equalizer_view;
 use std::sync::{
     Arc,
     atomic::{AtomicBool, Ordering},
@@ -279,7 +281,7 @@ fn auto_restored(pid: u32, enabled: bool) -> Report {
 }
 
 #[gpui_kit::test]
-fn equalizer_loaded_curve_updates_retained_sliders_without_overwriting_newer_edit(
+fn equalizer_loaded_curve_reads_current_profile_without_overwriting_newer_edit(
     cx: &mut TestAppContext,
 ) {
     let (window, owner, mut device) = mount(2660, cx);
@@ -307,18 +309,16 @@ fn equalizer_loaded_curve_updates_retained_sliders_without_overwriting_newer_edi
     cx.run_until_parked();
     cx.update(|cx| {
         let view = owner.read(cx);
-        for (index, expected) in [2., 2., 3., 4., 1., -1., 2., 3., 3., 3.]
-            .into_iter()
-            .enumerate()
-        {
-            assert_eq!(
-                view.sliders[&format!("/equalizers/{key}/bands/{index}")]
-                    .read(cx)
-                    .value()
-                    .start(),
-                expected
-            );
-        }
+        assert_eq!(
+            view.earbuds_equalizer_setting().unwrap().bands,
+            [2, 2, 3, 4, 1, -1, 2, 3, 3, 3]
+        );
+        assert!(
+            !view
+                .sliders
+                .keys()
+                .any(|key| key.starts_with("/equalizers/"))
+        );
     });
     device.profiles[0].source_settings.as_mut().unwrap()["profile"]["audioEqualizer"]["presets"]
         ["standard"][0]["current"] = json!([5, 5, 5, 5, 5, 5, 5, 5, 5, 5]);
@@ -332,15 +332,223 @@ fn equalizer_loaded_curve_updates_retained_sliders_without_overwriting_newer_edi
     cx.run_until_parked();
     cx.update(|cx| {
         let view = owner.read(cx);
-        assert_eq!(
-            view.sliders[&format!("/equalizers/{key}/bands/0")]
-                .read(cx)
-                .value()
-                .start(),
-            -4.
-        );
+        assert_eq!(view.earbuds_equalizer_setting().unwrap().bands[0], -4);
         assert_eq!(view.draft["equalizers"][&key]["bands"][0], -4);
     });
+}
+
+#[gpui_kit::test]
+fn equalizer_chart_previews_until_global_release_and_zero_uses_the_device_queue(
+    cx: &mut TestAppContext,
+) {
+    use razer_device::earbuds_equalizer::Preset;
+    for pid in [2657, 2660, 2664, 2668, 2689] {
+        let (window, owner, mut device) = mount(pid, cx);
+        device.profiles.clear();
+        device.active_profile.clear();
+        razer_storage::earbuds_profiles::initialize_auto_pause_profile(
+            &mut device,
+            "eq-graph",
+            "TEST-Default",
+        )
+        .unwrap();
+        cx.update_window(window, |_, window, cx| {
+            owner.update(cx, |view, cx| {
+                view.earbuds.cancel();
+                view.earbuds.pending = None;
+                view.set_earbuds_context(&device, true, cx);
+                let request = view.earbuds.pending.clone().unwrap();
+                view.finish_earbuds_request(&request, Ok(reading(pid, false)), cx);
+                finish_pending_firmware(view, cx);
+                finish_initial_restores(view, pid, cx);
+                view.set_page("TAB_SOUND", window, cx);
+            });
+            window.render_frame(cx);
+            let panel = window.find("earbuds-eq-panel").bounds();
+            assert_eq!(panel.size.width, window.rem_size() * (1220. / 16.));
+            assert_eq!(panel.size.height, window.rem_size() * (544. / 16.));
+            let bounds = window.find("earbuds-eq-chart").bounds();
+            assert_eq!(bounds.size.width, window.rem_size() * (1002. / 16.));
+            assert!(panel.contains(&window.find("earbuds-eq-zero").bounds().center()));
+            let scale = f32::from(bounds.size.width) / 1002.;
+            let from = bounds.origin + point(px(4. * scale), px(150. * scale));
+            let outside = bounds.origin + point(px(200. * scale), px(400. * scale));
+            let initial = owner.read(cx).earbuds_equalizer_setting().unwrap();
+            window.click_at(
+                "earbuds-eq-chart",
+                point(px(30. * scale), px(150. * scale)),
+                cx,
+            );
+            assert!(
+                owner.read(cx).earbuds.pending.is_none(),
+                "Column gaps do not start a drag"
+            );
+            assert_eq!(owner.read(cx).earbuds_equalizer_setting().unwrap(), initial);
+            let unchanged_y = 8. + (6. - f32::from(initial.bands[0])) * 276. / 13.;
+            window.click_at(
+                "earbuds-eq-chart",
+                point(px(4. * scale), px(unchanged_y * scale)),
+                cx,
+            );
+            let unchanged = owner
+                .read(cx)
+                .earbuds
+                .pending
+                .clone()
+                .expect("An unchanged-level click still submits custom");
+            assert_eq!(
+                unchanged.operation(),
+                Operation::Equalizer {
+                    setting: razer_device::earbuds_equalizer::Setting {
+                        preset: Preset::Custom,
+                        ..initial
+                    }
+                }
+            );
+            owner.update(cx, |view, cx| {
+                view.finish_earbuds_request(&unchanged, Err("test transport failure".into()), cx)
+            });
+            let initial = owner.read(cx).earbuds_equalizer_setting().unwrap();
+            window.simulate_mouse_move(from, cx);
+            window.render_frame(cx);
+            window.dispatch_event(
+                MouseDownEvent {
+                    button: MouseButton::Left,
+                    position: from,
+                    ..Default::default()
+                }
+                .to_platform_input(),
+                cx,
+            );
+            window.render_frame(cx);
+            window.dispatch_event(
+                MouseMoveEvent {
+                    pressed_button: Some(MouseButton::Left),
+                    position: outside,
+                    ..Default::default()
+                }
+                .to_platform_input(),
+                cx,
+            );
+            window.render_frame(cx);
+            assert!(owner.read(cx).earbuds.pending.is_none());
+            assert_eq!(
+                owner.read(cx).earbuds_equalizer_setting().unwrap(),
+                initial,
+                "Pointer preview must not persist before release"
+            );
+            let release = MouseUpEvent {
+                button: MouseButton::Left,
+                position: outside,
+                ..Default::default()
+            };
+            window.dispatch_event(release.clone().to_platform_input(), cx);
+            window.render_frame(cx);
+            let request = owner
+                .read(cx)
+                .earbuds
+                .pending
+                .clone()
+                .expect("Outside release submits EQ");
+            let mut expected = initial;
+            expected.preset = Preset::Custom;
+            expected.bands[0] = -6;
+            assert_eq!(
+                request.operation(),
+                Operation::Equalizer { setting: expected }
+            );
+            assert!(request.needs_persistence());
+            window.dispatch_event(release.to_platform_input(), cx);
+            assert_eq!(
+                owner.read(cx).earbuds.pending.as_ref().unwrap().id(),
+                request.id()
+            );
+            assert!(
+                owner.read(cx).earbuds.edits.is_empty(),
+                "One drag must submit once"
+            );
+            owner.update(cx, |view, cx| {
+                view.finish_earbuds_request(&request, Err("test transport failure".into()), cx)
+            });
+            window.render_frame(cx);
+            window.click("earbuds-eq-zero", cx);
+            let zero = owner.read(cx).earbuds.pending.clone().unwrap();
+            expected.bands = [0; 10];
+            assert_eq!(zero.operation(), Operation::Equalizer { setting: expected });
+            owner.update(cx, |view, cx| view.set_earbuds_context(&device, false, cx));
+            window.render_frame(cx);
+            let disconnected_draft = owner.read(cx).draft.clone();
+            window.click_at(
+                "earbuds-eq-chart",
+                point(px(4. * scale), px(12. * scale)),
+                cx,
+            );
+            assert_eq!(window.find("earbuds-eq-zero").disabled(), Some(true));
+            window.click("earbuds-eq-zero", cx);
+            assert_eq!(
+                owner.read(cx).earbuds.pending.as_ref().unwrap().id(),
+                zero.id()
+            );
+            assert!(!zero.guard().load(Ordering::Acquire));
+            assert!(owner.read(cx).earbuds.edits.is_empty());
+            assert_eq!(owner.read(cx).draft, disconnected_draft);
+            owner.update(cx, |view, cx| {
+                view.finish_earbuds_request(&zero, Err("cancelled".into()), cx)
+            });
+            assert!(owner.read(cx).earbuds.pending.is_none());
+        })
+        .unwrap();
+    }
+}
+
+#[gpui_kit::test]
+fn equalizer_chart_discards_drag_when_profile_page_or_connection_changes(cx: &mut TestAppContext) {
+    let (window, owner, mut device) = mount(2660, cx);
+    device.profiles.clear();
+    device.active_profile.clear();
+    razer_storage::earbuds_profiles::initialize_auto_pause_profile(
+        &mut device,
+        "eq-graph",
+        "TEST-Default",
+    )
+    .unwrap();
+    cx.update_window(window, |_, window, cx| {
+        owner.update(cx, |view, cx| {
+            view.earbuds.cancel();
+            view.earbuds.pending = None;
+            view.set_earbuds_context(&device, true, cx);
+            let request = view.earbuds.pending.clone().unwrap();
+            view.finish_earbuds_request(&request, Ok(reading(2660, false)), cx);
+            finish_pending_firmware(view, cx);
+            finish_initial_restores(view, 2660, cx);
+            view.set_page("TAB_SOUND", window, cx);
+        });
+        for change in 0..3 {
+            window.render_frame(cx);
+            let bounds = window.find("earbuds-eq-chart").bounds();
+            let from = bounds.origin + point(px(4.), px(150.));
+            window.simulate_mouse_move(from, cx);
+            window.render_frame(cx);
+            window.dispatch_event(MouseDownEvent { button: MouseButton::Left, position: from, ..Default::default() }.to_platform_input(), cx);
+            window.render_frame(cx);
+            owner.update(cx, |view, cx| {
+                match change {
+                    0 => {
+                        device.profiles[0].source_settings.as_mut().unwrap()["profile"]["audioEqualizer"]["presets"]["standard"][0]["current"] = json!([5,5,5,5,5,5,5,5,5,5]);
+                        view.set_earbuds_context(&device, true, cx);
+                        finish_initial_restores(view, 2660, cx);
+                    }
+                    1 => view.set_page("TAB_ENHANCEMENT", window, cx),
+                    _ => view.set_earbuds_context(&device, false, cx),
+                }
+            });
+            window.render_frame(cx);
+            window.dispatch_event(MouseUpEvent { button: MouseButton::Left, position: from, ..Default::default() }.to_platform_input(), cx);
+            assert!(owner.read(cx).earbuds.pending.is_none());
+            assert_eq!(owner.read(cx).earbuds_equalizer_setting().unwrap().bands, [5; 10]);
+            owner.update(cx, |view, cx| view.set_page("TAB_SOUND", window, cx));
+        }
+    }).unwrap();
 }
 
 #[gpui_kit::test]
@@ -436,7 +644,7 @@ fn equalizer_profile_restore_and_preset_click_reach_the_device_queue(cx: &mut Te
             });
             window.render_frame(cx);
             let key=owner.read(cx).spec.equalizers[0].key.clone();
-            window.click(format!("audio-eq-{key}-music"),cx);
+            window.click("earbuds-eq-preset-music",cx);
             owner.update(cx,|view,cx| {
                 let request=view.earbuds.pending.clone().unwrap();
                 assert!(matches!(request.operation(),Operation::Equalizer {setting} if setting.preset==Preset::Music && setting.bands==[2,2,-1,-1,-1,-1,1,3,3,3]));

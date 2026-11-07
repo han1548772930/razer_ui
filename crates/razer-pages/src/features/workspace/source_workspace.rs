@@ -1311,6 +1311,7 @@ impl SourceProductWorkspace {
                     )
                 );
             body.update(cx, |body, cx| {
+                body.set_earbuds_volume_context(&self.device, active && !self.exiting, self.mapping_connection_generation, cx);
                 body.set_volume_active(active, cx);
                 body.set_leviathan_active(active, cx);
                 let surround_active = self.active
@@ -3752,6 +3753,9 @@ impl SourceProductWorkspace {
             ));
             subscriptions.push(cx.subscribe(&body, |_: &mut Self, _, request: &super::audio_products::EarbudsAutoPauseRequested, cx| {
                 cx.emit(WorkspaceEvent::EarbudsAutoPauseRequested(request.clone()));
+            }));
+            subscriptions.push(cx.subscribe(&body, |_: &mut Self, _, request: &super::audio_products::EarbudsVolumeRequested, cx| {
+                cx.emit(WorkspaceEvent::EarbudsVolumeRequested(request.clone()));
             }));
             subscriptions.push(cx.subscribe(
                 &body,

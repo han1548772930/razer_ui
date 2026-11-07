@@ -83,6 +83,8 @@ pub mod earbuds_controls;
 pub mod earbuds_auto_pause;
 #[path = "audio/earbuds_equalizer.rs"]
 pub mod earbuds_equalizer;
+#[path = "audio/earbuds_system_volume.rs"]
+pub mod earbuds_system_volume;
 #[path = "audio/earbuds_do_not_disturb.rs"]
 pub mod earbuds_do_not_disturb;
 #[path = "audio/earbuds_anc.rs"]

@@ -118,6 +118,14 @@ class CompletedScratchFilesTests(unittest.TestCase):
 
     @unittest.skipUnless(os.name == "nt", "Windows exclusive file disposition")
     def test_full_plan_apply_records_actual_file_release(self):
+        self.file = self.root / ".work/batch/candidates.json"
+        self.file.parent.mkdir()
+        self.file.write_text('{"derived":true}', encoding="utf-8")
+        sibling = self.file.parent / "active.json"
+        sibling.write_text("active", encoding="utf-8")
+        self.item.update(path=".work/batch/candidates.json", bytes=self.file.stat().st_size,
+                         sha256=workspace.digest(self.file))
+        self.publish()
         with self.plan_environment():
             name = ".analysis/results/scratch-cleanup-file-plan.json"
             workspace.clean(dry_run=True, completed_file_manifests=[self.manifest], plan=name)
@@ -127,6 +135,7 @@ class CompletedScratchFilesTests(unittest.TestCase):
         self.assertEqual(result["removed"][0]["files"], 1)
         self.assertFalse(self.file.exists())
         self.assertTrue(self.file.parent.exists())
+        self.assertTrue(sibling.exists())
 
     @unittest.skipUnless(os.name == "nt", "Windows exclusive file disposition")
     def test_exclusive_deletion_removes_only_selected_file(self):

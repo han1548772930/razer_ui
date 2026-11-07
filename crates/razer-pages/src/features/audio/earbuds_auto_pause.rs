@@ -81,6 +81,8 @@ pub(super) struct State {
     pub(super) eq_presets: Vec<razer_device::earbuds_equalizer::Setting>,
     pub(super) eq_defaults: Vec<razer_device::earbuds_equalizer::Setting>,
     pub(super) eq_revision: u64,
+    pub(super) eq_graph: super::earbuds_equalizer_graph::State,
+    pub(super) eq_ui: super::earbuds_equalizer_view::State,
     pub(super) eq_profile_error: Option<String>,
     pub(super) eq_result: Option<Result<WriteOutcome, String>>,
     pub(super) input_popup: bool,
@@ -135,6 +137,8 @@ impl State {
     }
     fn cancel(&mut self) {
         self.eq_revision = self.eq_revision.wrapping_add(1);
+        self.eq_graph = super::earbuds_equalizer_graph::State::default();
+        self.eq_ui = super::earbuds_equalizer_view::State::default();
         self.eq_result = None;
         self.input_popup = false;
         self.input_result = None;
@@ -506,7 +510,7 @@ impl AudioProductWorkspace {
                 Ok(setting) => {
                     self.earbuds.eq_persisted = setting;
                     self.earbuds.eq_profile_error = None;
-                    self.load_earbuds_equalizer_profile(device, setting, cx);
+                    self.load_earbuds_equalizer_profile(device, setting);
                 }
                 Err(error) => {
                     self.earbuds.eq_persisted = None;
@@ -620,6 +624,9 @@ impl AudioProductWorkspace {
             }
         }
         if !changed && self.earbuds.active != ready {
+            self.earbuds.eq_revision = self.earbuds.eq_revision.wrapping_add(1);
+            self.earbuds.eq_graph = super::earbuds_equalizer_graph::State::default();
+            self.earbuds.eq_ui = super::earbuds_equalizer_view::State::default();
             if let Some(guard) = self.earbuds.monitor.take() {
                 guard.store(false, Ordering::Release);
             }

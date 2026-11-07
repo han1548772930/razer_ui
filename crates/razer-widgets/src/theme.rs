@@ -1,6 +1,53 @@
 //! Product palette roles that are distinct from GPUI Component's shared surfaces.
 use gpui_kit::{Hsla, rgb, rgba};
 
+/// Current compact earbud EQ canvas, points and frequency-subset CSS palette.
+pub struct AudioEqualizerColors;
+impl AudioEqualizerColors {
+    pub fn surface() -> Hsla {
+        rgb(0x111111).into()
+    }
+    pub fn border() -> Hsla {
+        rgb(0x5d5d5d).into()
+    }
+    pub fn help() -> Hsla {
+        rgb(0x4a4a4a).into()
+    }
+    pub fn help_hover() -> Hsla {
+        rgba(0xffffff4d).into()
+    }
+    pub fn tip_surface() -> Hsla {
+        rgb(0x000000).into()
+    }
+    pub fn required_text() -> Hsla {
+        rgb(0x999999).into()
+    }
+    pub fn selected() -> Hsla {
+        rgb(0x44d62c).into()
+    }
+    pub fn column() -> Hsla {
+        rgb(0x222222).into()
+    }
+    pub fn zero() -> Hsla {
+        rgba(0x44d62c4d).into()
+    }
+    pub fn group_hover() -> Hsla {
+        rgb(0x333333).into()
+    }
+    pub fn text() -> Hsla {
+        rgb(0xcccccc).into()
+    }
+    pub fn hover() -> Hsla {
+        rgb(0x5d5d5d).into()
+    }
+    pub fn pressed() -> Hsla {
+        rgb(0x404040).into()
+    }
+    pub fn bubble_text() -> Hsla {
+        rgb(0x000000).into()
+    }
+}
+
 /// Shared `rz-a11y-guide` CSS, independent of device and OS theme surfaces.
 pub struct KeyboardGuideColors;
 impl KeyboardGuideColors {
@@ -2094,11 +2141,19 @@ pub struct ChromaSettingsColors;
 pub struct AudioEnhancementColors;
 impl AudioEnhancementColors {
     /// Current Sound input-source confirmation border/header and button hover.
-    pub fn input_warning() -> Hsla { rgb(0xfd8611).into() }
-    pub fn input_button_hover() -> Hsla { rgba(0xffffff4d).into() }
+    pub fn input_warning() -> Hsla {
+        rgb(0xfd8611).into()
+    }
+    pub fn input_button_hover() -> Hsla {
+        rgba(0xffffff4d).into()
+    }
     /// Current earbuds .gesture-type-cell/.action-cell and modal backdrop.
-    pub fn gesture_cell() -> Hsla { rgb(0x1f1f1f).into() }
-    pub fn gesture_backdrop() -> Hsla { rgba(0x000000b3).into() }
+    pub fn gesture_cell() -> Hsla {
+        rgb(0x1f1f1f).into()
+    }
+    pub fn gesture_backdrop() -> Hsla {
+        rgba(0x000000b3).into()
+    }
     // Current six headset main CSS: .actions/.keymap-head, .s3-options,
     // .thx-btn, and .backdrop. Source geometry lives in the audio feature.
     pub fn mapping_panel() -> Hsla {

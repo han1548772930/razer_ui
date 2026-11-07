@@ -56,10 +56,10 @@ def candidates(workspace, manifests):
             if set(item) != {"path", "bytes", "sha256", "completion", "historical_references", "release_reason"}:
                 raise ValueError("Owned scratch file requires identity, completion and release scope")
             target = workspace._clean_path(item["path"])
-            if (target.parent != workspace.ROOT / ".work" or target.suffix != ".json"
+            if (target.suffix != ".json"
                     or not target.is_file() or item["path"] in seen
                     or not isinstance(item["release_reason"], str) or not item["release_reason"].strip()):
-                raise ValueError("Owned scratch target must be a distinct root JSON intermediate")
+                raise ValueError("Owned scratch target must be a distinct JSON intermediate")
             identity = workspace._clean_file_identity(target)
             if any(identity[key] != item[key] for key in ("bytes", "sha256")):
                 raise ValueError("Owned scratch input bytes changed")

@@ -1,8 +1,8 @@
 {
   "schema_version": 2,
   "format": "files",
-  "tag": "assets-a949eeb1446f469cecd1",
-  "source_sha256": "a949eeb1446f469cecd1c8c7961f5a0131ece3007b1e95ea974e69fcdce1f524",
+  "tag": "assets-1f149c13bf11b459aafb",
+  "source_sha256": "1f149c13bf11b459aafb7bba6003bba77a0f48e29e1b14a2558179e6214e1d3a",
   "git_files": [
     {
       "path": "assets/synapse/shared/pending-source-audit/33892a0b56b91958-tray-gear-light.rgba",
@@ -35363,6 +35363,11 @@
           "sha256": "52a44fa09dd7827228de4e241e6b3d33367255569bf0d7f5df7525d4d9e35255"
         },
         {
+          "path": "assets/synapse/shared/products/52c0c851680ef81b7f1f493a1ca6cc2ed3ef1e1d46a49ecf4eb5c01a99121c34.svg",
+          "bytes": 442,
+          "sha256": "52c0c851680ef81b7f1f493a1ca6cc2ed3ef1e1d46a49ecf4eb5c01a99121c34"
+        },
+        {
           "path": "assets/synapse/shared/products/530b6c6eb6a3d7c3-keyboard-floating-xbox-leftjoystick-left.bd19a0fe.svg",
           "bytes": 721,
           "sha256": "530b6c6eb6a3d7c3f85a9b3e0ac723139468de2358912cbfe4f581a1519a04e4"
@@ -35441,6 +35446,11 @@
           "path": "assets/synapse/shared/products/568228a0560d28c2-2-1x.bfe84423.png",
           "bytes": 72116,
           "sha256": "568228a0560d28c2b03009c8a846765cd2dbcb279bdb2c67ce4fd00a835b7fdc"
+        },
+        {
+          "path": "assets/synapse/shared/products/568666016f7bb6e891b34cb9ae54ed84b1c2e0cbe3c2e1066aab838950b3c743.svg",
+          "bytes": 442,
+          "sha256": "568666016f7bb6e891b34cb9ae54ed84b1c2e0cbe3c2e1066aab838950b3c743"
         },
         {
           "path": "assets/synapse/shared/products/568b169a7f2deedd-keyboard-product-655.png",
@@ -36548,6 +36558,11 @@
           "sha256": "89428395d8f7f03e069e41abf8699fd41295f21857c8ccdfd9a65d226c0496ef"
         },
         {
+          "path": "assets/synapse/shared/products/8968909aaf53172d172aca221ca5007d4e725cd692573607a1467addd6030f3c.svg",
+          "bytes": 954,
+          "sha256": "8968909aaf53172d172aca221ca5007d4e725cd692573607a1467addd6030f3c"
+        },
+        {
           "path": "assets/synapse/shared/products/89a15fa23e7f7e31-preview-source-1370-0-0-1x.png",
           "bytes": 56501,
           "sha256": "89a15fa23e7f7e315da411961e8b34e7dd78cbc48852a31477ed5c37447999a7"
@@ -36911,6 +36926,11 @@
           "path": "assets/synapse/shared/products/9ee08e1bdc9070cbb6288337ae4167046862e016cbd1667d953373e7e06f8565.svg",
           "bytes": 431,
           "sha256": "9ee08e1bdc9070cbb6288337ae4167046862e016cbd1667d953373e7e06f8565"
+        },
+        {
+          "path": "assets/synapse/shared/products/9efc5bdfde0eea7f3f10cf8ef32ab62c0b0531e791b23b2ca3c0378354852f8d.svg",
+          "bytes": 297,
+          "sha256": "9efc5bdfde0eea7f3f10cf8ef32ab62c0b0531e791b23b2ca3c0378354852f8d"
         },
         {
           "path": "assets/synapse/shared/products/9f2201f863e5702b-gamepad-2676-trigger-steps-1.svg",
@@ -38508,6 +38528,11 @@
           "sha256": "edcf0c345effa16fa1d66487a0670bda403a53b6389526b626b0747f07e290f9"
         },
         {
+          "path": "assets/synapse/shared/products/ee1d38e5d4d246b2112c9f2b9f6eabd993191357ac5ba9f63c7330e59e004f52.svg",
+          "bytes": 588,
+          "sha256": "ee1d38e5d4d246b2112c9f2b9f6eabd993191357ac5ba9f63c7330e59e004f52"
+        },
+        {
           "path": "assets/synapse/shared/products/ee654ebe422d0506-preview-source-1398-129-0-1x.png",
           "bytes": 177861,
           "sha256": "ee654ebe422d05067ebc0c38ee7897c547232bf4b776cb877cd0709039a53cd3"
@@ -38546,6 +38571,11 @@
           "path": "assets/synapse/shared/products/efe1e7d905906ca4-preview-source-695-129-12-3x.png",
           "bytes": 824908,
           "sha256": "efe1e7d905906ca40d359c003a7e5090eec72f72634b21795dbd525d53eaed44"
+        },
+        {
+          "path": "assets/synapse/shared/products/efe866785ea43c2766e4af7e4136a3f0f140f92414f66c5de7edc19b0ae6c92e.svg",
+          "bytes": 760,
+          "sha256": "efe866785ea43c2766e4af7e4136a3f0f140f92414f66c5de7edc19b0ae6c92e"
         },
         {
           "path": "assets/synapse/shared/products/f020e52f8c58d8fb-current-dashboard-660-0-15-product-3x.png",
@@ -38791,6 +38821,11 @@
           "path": "assets/synapse/shared/products/fcc8cc58ef92d2a1-dock-164-icon_mouse_ensure.svg",
           "bytes": 1613,
           "sha256": "fcc8cc58ef92d2a16fdac15ef645a7adaa6b6c54632fe2a3cbd3c8e98aede5ad"
+        },
+        {
+          "path": "assets/synapse/shared/products/fd14003b32be91541a28782e05d367a20b31d791f8913124fd9a04a2302bc049.svg",
+          "bytes": 3677,
+          "sha256": "fd14003b32be91541a28782e05d367a20b31d791f8913124fd9a04a2302bc049"
         },
         {
           "path": "assets/synapse/shared/products/fd3aa16243f9cb0e-16-3x.26809390.png",
@@ -41788,6 +41823,6 @@
   "storage": {
     "provider": "huggingface",
     "repository": "han1548772930/razer-ui-assets",
-    "revision": "d6aaa0f7168be86c560ef0697b95914771a62671"
+    "revision": "b453a88599c1fe1a36ca7a415ee037ce5693f18e"
   }
 }

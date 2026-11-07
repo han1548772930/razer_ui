@@ -226,6 +226,52 @@ class IdentityReviewTests(unittest.TestCase):
         self.assertEqual(self.db.execute("SELECT state FROM review_sections").fetchone()[0], "invalid")
         self.assertEqual(self.db.execute("SELECT COUNT(*) FROM review_matches").fetchone()[0], 0)
 
+    def test_additional_frozen_references_propagate_and_verify_every_input(self):
+        first, second = self.owner(), self.owner(16, 24)
+        references = []
+        for name, owners in (("primary", [first]), ("additional", [first, second])):
+            path = self.root / f".analysis/results/{name}.json"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps({"complete_source_owners": owners}), encoding="utf-8")
+            references.append({"path": f".analysis/results/{name}.json", "bytes": path.stat().st_size,
+                               "sha256": a.sha(path), "pointer": "/complete_source_owners"})
+        section = self.section()
+        del section["complete_source_owners"]
+        section["complete_owner_reference"] = references[0]
+        section["additional_complete_owner_references"] = references[1:]
+        self.assertEqual(list(reviews.owner_records(section)), [first, second])
+        self.publish(section)
+        self.assertEqual(self.db.execute("SELECT owner_count,state FROM review_sections").fetchone()[:],
+                         (2, "partial"))
+        self.assertEqual(self.db.execute("SELECT COUNT(*) FROM review_owners").fetchone()[0], 2)
+        self.assertEqual([r[0] for r in self.db.execute(
+            "SELECT DISTINCT product_id FROM review_matches ORDER BY product_id")], [1, 2])
+        path.write_text(path.read_text(encoding="utf-8") + " ", encoding="utf-8")
+        reviews.review_section(self.db, reviews.OwnerVerifier(self.db),
+            "receipt.json", "chain", section,
+            {"product_ids": {1}, "capabilities": {"feature:example"}})
+        self.assertEqual(self.db.execute("SELECT state FROM review_sections").fetchone()[0], "invalid")
+        self.assertEqual(self.db.execute("SELECT COUNT(*) FROM review_matches").fetchone()[0], 0)
+
+    def test_additional_references_reject_bad_shape_and_conflicting_owner_identities(self):
+        for invalid in (None, {}, [None]):
+            with self.subTest(invalid=invalid), self.assertRaisesRegex(ValueError, "list of references"):
+                list(reviews.owner_records({**self.section(),
+                    "additional_complete_owner_references": invalid}))
+        owner = self.owner()
+        path = self.root / ".analysis/results/conflicting.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({"complete_source_owners": [
+            {**owner, "body_sha256": "0" * 64}]}), encoding="utf-8")
+        section = {**self.section(), "additional_complete_owner_references": [
+            {"path": ".analysis/results/conflicting.json", "bytes": path.stat().st_size,
+             "sha256": a.sha(path), "pointer": "/complete_source_owners"}]}
+        self.publish(section)
+        state, errors = self.db.execute("SELECT state,verification_errors FROM review_sections").fetchone()
+        self.assertEqual(state, "invalid")
+        self.assertIn("Conflicting retained owner identity", errors)
+        self.assertEqual(self.db.execute("SELECT COUNT(*) FROM review_matches").fetchone()[0], 0)
+
     def test_byte_changes_fail_verification(self):
         (self.root / self.path).write_bytes(self.raw.replace(b"+1", b"+2"))
         with self.assertRaisesRegex(ValueError, "byte identity"):

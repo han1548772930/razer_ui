@@ -45,6 +45,8 @@ mod audio_notifications;
 mod audio_volume;
 #[path = "shell/audio/earbuds_auto_pause.rs"]
 mod earbuds_auto_pause;
+#[path = "shell/audio/earbuds_system_volume.rs"]
+mod earbuds_system_volume;
 #[path = "shell/windows/chroma_studio_window.rs"]
 mod chroma_studio_window;
 #[path = "shell/windows/chroma_window.rs"]
@@ -418,6 +420,7 @@ pub struct AppShell {
     mouse_dynamic: mouse_dynamic::State,
     mouse_rotation: mouse_rotation::State,
     earbuds_auto_pause: earbuds_auto_pause::State,
+    earbuds_volume: earbuds_system_volume::State,
     mouse_power: mouse_current_power_runtime::State,
     controller_trigger_workers: usize,
     controller_sleep_workers: usize,
@@ -702,6 +705,7 @@ impl AppShell {
             mouse_dynamic: mouse_dynamic::State::default(),
             mouse_rotation: mouse_rotation::State::default(),
             earbuds_auto_pause: earbuds_auto_pause::State::default(),
+            earbuds_volume: earbuds_system_volume::State::default(),
             mouse_power: mouse_current_power_runtime::State::default(),
             controller_trigger_workers: 0,
             controller_sleep_workers: 0,
@@ -1686,6 +1690,9 @@ impl AppShell {
                 }
                 WorkspaceEvent::AudioVolumeRequested { request } => {
                     this.request_audio_volume(entity.clone(), *request, window, cx);
+                }
+                WorkspaceEvent::EarbudsVolumeRequested(request) => {
+                    this.request_earbuds_volume(entity.clone(), request.clone(), window, cx);
                 }
                 WorkspaceEvent::EarbudsAutoPauseRequested(request) => {
                     this.request_earbuds_auto_pause(entity.clone(), request.clone(), window, cx);

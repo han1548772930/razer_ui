@@ -21,9 +21,10 @@ impl AudioProductWorkspace {
         &mut self,
         device: &razer_model::model::Device,
         selected: Option<Setting>,
-        cx: &mut Context<Self>,
     ) {
         self.earbuds.eq_revision = self.earbuds.eq_revision.wrapping_add(1);
+        self.earbuds.eq_graph = super::earbuds_equalizer_graph::State::default();
+        self.earbuds.eq_ui = super::earbuds_equalizer_view::State::default();
         let Some(selected) = selected else {
             self.earbuds.eq_presets.clear();
             self.earbuds.eq_defaults.clear();
@@ -82,29 +83,6 @@ impl AudioProductWorkspace {
                 }
                 self.earbuds.eq_presets = entries;
                 self.earbuds.eq_defaults = defaults;
-                let revision = self.earbuds.eq_revision;
-                let key = eq.key.clone();
-                let owner = cx.entity().downgrade();
-                let handle = self.earbuds_window;
-                cx.defer(move |cx| {
-                    let _ = handle.update(cx, |_, window, cx| {
-                        let _ = owner.update(cx, |view, cx| {
-                            if view.earbuds.eq_revision != revision {
-                                return;
-                            }
-                            for (index, value) in selected.bands.into_iter().enumerate() {
-                                if let Some(slider) = view
-                                    .sliders
-                                    .get(&format!("/equalizers/{key}/bands/{index}"))
-                                {
-                                    slider.update(cx, |slider, cx| {
-                                        slider.set_value(f32::from(value), window, cx)
-                                    });
-                                }
-                            }
-                        });
-                    });
-                });
             }
             Err(error) => self.earbuds.eq_profile_error = Some(format!("{error:#}")),
         }
@@ -128,38 +106,49 @@ impl AudioProductWorkspace {
         }
     }
 
-    pub(super) fn request_earbuds_equalizer(&mut self, key: &str, cx: &mut Context<Self>) {
-        if !razer_device::earbuds_protocol40::supports_auto_pause(self.spec.product_id) {
-            return;
-        }
-        if self.earbuds_equalizer_disabled() {
-            return;
-        }
+    pub(super) fn earbuds_equalizer_setting(&self) -> anyhow::Result<Setting> {
+        let key = &self
+            .spec
+            .equalizers
+            .first()
+            .ok_or_else(|| anyhow::anyhow!("Earbud EQ definition is absent"))?
+            .key;
         let state = &self.draft["equalizers"][key];
-        let parse = || -> anyhow::Result<Setting> {
-            let preset: Preset = serde_json::from_value(state["selected"].clone())?;
-            let values: [f64; 10] = serde_json::from_value(state["bands"].clone())?;
-            anyhow::ensure!(
-                values.iter().all(|value| value.is_finite()
-                    && value.fract() == 0.
-                    && (-6. ..=6.).contains(value)),
-                "Invalid earbud EQ bands"
-            );
-            let bands = values.map(|value| value as i8);
-            let mode = self
-                .earbuds
-                .eq_persisted
-                .map(|value| value.mode)
-                .ok_or_else(|| anyhow::anyhow!("Earbud EQ profile is absent"))?;
-            let setting = Setting {
-                mode,
-                preset,
-                bands,
-            };
-            setting.validate()?;
-            Ok(setting)
+        let preset: Preset = serde_json::from_value(state["selected"].clone())?;
+        let values: [f64; 10] = serde_json::from_value(state["bands"].clone())?;
+        anyhow::ensure!(
+            values.iter().all(|value| value.is_finite()
+                && value.fract() == 0.
+                && (-6. ..=6.).contains(value)),
+            "Invalid earbud EQ bands"
+        );
+        let bands = values.map(|value| value as i8);
+        let mode = self
+            .earbuds
+            .eq_persisted
+            .map(|value| value.mode)
+            .ok_or_else(|| anyhow::anyhow!("Earbud EQ profile is absent"))?;
+        let setting = Setting {
+            mode,
+            preset,
+            bands,
         };
-        match parse() {
+        setting.validate()?;
+        Ok(setting)
+    }
+
+    pub(super) fn request_earbuds_equalizer(&mut self, key: &str, cx: &mut Context<Self>) {
+        if !razer_device::earbuds_protocol40::supports_auto_pause(self.spec.product_id)
+            || self.earbuds_equalizer_disabled()
+            || !self
+                .spec
+                .equalizers
+                .first()
+                .is_some_and(|equalizer| equalizer.key == key)
+        {
+            return;
+        }
+        match self.earbuds_equalizer_setting() {
             Ok(setting) => {
                 self.earbuds.eq_result = None;
                 self.earbuds.queue_edit(Operation::Equalizer { setting });
@@ -167,5 +156,36 @@ impl AudioProductWorkspace {
             }
             Err(error) => self.earbuds.eq_result = Some(Err(format!("{error:#}"))),
         }
+    }
+
+    pub(super) fn select_earbuds_eq_preset(
+        &mut self,
+        key: &str,
+        preset: Preset,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.earbuds_equalizer_disabled()
+            || !self.spec.equalizers.first().is_some_and(|eq| eq.key == key)
+            || !self
+                .earbuds
+                .eq_presets
+                .iter()
+                .any(|entry| entry.preset == preset)
+        {
+            return;
+        }
+        let Ok(bands) = serde_json::from_value::<[i8; 10]>(
+            self.draft["equalizers"][key]["presets"][preset.key()].clone(),
+        ) else {
+            return;
+        };
+        let Ok(mut setting) = self.earbuds_equalizer_setting() else {
+            return;
+        };
+        setting.preset = preset;
+        setting.bands = bands;
+        self.earbuds.eq_graph = super::earbuds_equalizer_graph::State::default();
+        self.submit_earbuds_eq_curve(setting, window, cx);
     }
 }
