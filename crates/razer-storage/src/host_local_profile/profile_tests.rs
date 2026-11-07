@@ -233,7 +233,10 @@ fn current_mouse_schema14_is_read_without_changing_profile_or_source_revision() 
     raw["futureRoot"] = serde_json::json!({"preserved":true});
     let bytes = encoded(&raw);
     let expected_sha = ring::digest::digest(&ring::digest::SHA256, &bytes.bytes)
-        .as_ref().iter().map(|byte| format!("{byte:02x}")).collect::<String>();
+        .as_ref()
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<String>();
     let source = decode(190, "real", bytes).unwrap();
     let identity = source.identity(source.active_profile().unwrap()).unwrap();
     assert_eq!(identity.sequence, 19);
@@ -255,7 +258,10 @@ fn legacy_mouse_schema13_migrates_with_shared_guid_rules_before_typed_projection
     assert_eq!(projected["version"], 7);
     assert_eq!(projected["profiles"], raw["profiles"]);
     assert_eq!(projected["futureRoot"], raw["futureRoot"]);
-    assert_eq!(projected["audioHapticIntensity"], serde_json::json!([{"value":42,"guid":"payload-guid"}]));
+    assert_eq!(
+        projected["audioHapticIntensity"],
+        serde_json::json!([{"value":42,"guid":"payload-guid"}])
+    );
     assert_eq!(projected["activeHapticIntensityGuid"], "selected-guid");
     assert!(!stages(&source).enabled);
 }
@@ -347,6 +353,7 @@ fn complete_projection_preserves_all_profiles_order_and_nested_extensions() {
     let decoded = decode(190, "real", encoded(&source)).unwrap();
     let projected = decoded.source_document().unwrap();
     source["activeProfile"] = "second".into();
+    source["schemaVersion"] = 14.into();
     assert_eq!(projected, source);
     let mut device = razer_model::product_preview::registered_preview(190).unwrap();
     device.serial_number = "real".into();

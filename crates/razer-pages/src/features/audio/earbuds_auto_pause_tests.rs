@@ -277,6 +277,64 @@ fn auto_restored(pid: u32, enabled: bool) -> Report {
         "connected":null,"left_battery":null,"right_battery":null,"observation":{"Observed":enabled},"write":"Skipped"})).unwrap()
 }
 
+#[gpui_kit::test]
+fn input_source_buttons_open_and_confirm_once_without_saving(cx: &mut TestAppContext) {
+    let (window, owner, _) = mount(2660, cx);
+    cx.update_window(window, |_, window, cx| {
+        owner.update(cx, |view, cx| {
+            let read = view.earbuds.pending.clone().unwrap();
+            view.finish_earbuds_request(&read, Ok(reading(2660, false)), cx);
+            finish_pending_firmware(view, cx);
+            finish_initial_restores(view, 2660, cx);
+            view.set_page("TAB_SOUND", window, cx);
+        });
+        window.render_frame(cx);
+        assert!(window.try_find("earbuds-input-confirmation").is_none());
+        window.click("earbuds-input-open", cx);
+        window.render_frame(cx);
+        assert!(window.try_find("earbuds-input-confirmation").is_some());
+        assert!(owner.read(cx).earbuds.pending.is_none());
+        window.click("earbuds-input-confirm", cx);
+        window.render_frame(cx);
+        assert!(window.try_find("earbuds-input-confirmation").is_none());
+        let view = owner.read(cx);
+        let request = view.earbuds.pending.as_ref().unwrap();
+        assert_eq!(request.operation(), Operation::SwitchInputSource);
+        assert!(!request.needs_persistence());
+        assert!(view.earbuds.edits.is_empty());
+    }).unwrap();
+}
+
+#[gpui_kit::test]
+fn input_source_confirmation_queues_an_unsaved_command_and_preserves_failure(cx: &mut TestAppContext) {
+    let (window, owner, _) = mount(2660, cx);
+    cx.update_window(window, |_, window, cx| {
+        owner.update(cx, |view, cx| {
+            let read = view.earbuds.pending.clone().unwrap();
+            view.finish_earbuds_request(&read, Ok(reading(2660, false)), cx);
+            finish_pending_firmware(view, cx);
+            finish_initial_restores(view, 2660, cx);
+            view.set_page("TAB_SOUND", window, cx);
+            view.confirm_earbuds_input(cx);
+            assert!(view.earbuds.pending.is_none());
+            view.earbuds.input_popup = true;
+            view.confirm_earbuds_input(cx);
+            assert!(!view.earbuds.input_popup);
+            let request = view.earbuds.pending.clone().unwrap();
+            assert_eq!(request.operation(), Operation::SwitchInputSource);
+            assert!(!request.needs_persistence());
+            view.finish_earbuds_request(&request, Err("transport failed".into()), cx);
+            assert!(matches!(&view.earbuds.input_result, Some(Err(error)) if error == "transport failed"));
+            view.earbuds.input_popup = true;
+            view.confirm_earbuds_input(cx);
+            let old = view.earbuds.pending.clone().unwrap();
+            view.earbuds.cancel();
+            view.finish_earbuds_request(&old, Err("late".into()), cx);
+            assert!(view.earbuds.input_result.is_none());
+        });
+    }).unwrap();
+}
+
 fn voice_restored(pid: u32, stored: Option<bool>, observed: bool, failed: bool) -> Report {
     serde_json::from_value(json!({"product_id":pid,"operation":{"RestoreVoicePrompt":{"enabled":stored}},
         "connected":null,"left_battery":null,"right_battery":null,"observation":"Unobserved",

@@ -94,6 +94,26 @@ pub fn hid_capability(
         .find(|cap| cap.product_id == product_id && cap.direct_pids.contains(&physical_product_id))
 }
 
+/// The host publishes each catalog match for shared receivers. The requested
+/// keyboard still needs exactly one matching identity and its own HID factory.
+pub fn validate_physical_identity(product_id: u32, physical_product_id: u32) -> anyhow::Result<()> {
+    ensure!(
+        hid_capability(product_id, physical_product_id).is_some(),
+        "Keyboard physical factory is absent"
+    );
+    let identities = crate::device_identity::lookup(physical_product_id);
+    ensure!(
+        identities
+            .candidates()
+            .iter()
+            .filter(|identity| identity.product_id == product_id && !identity.is_ble)
+            .count()
+            == 1,
+        "Keyboard physical identity is missing or duplicated"
+    );
+    Ok(())
+}
+
 pub fn ble_product_id(product_id: u32) -> Option<u32> {
     AUDITED_BLE_KEYBOARDS
         .iter()

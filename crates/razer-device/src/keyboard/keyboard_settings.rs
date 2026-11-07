@@ -106,6 +106,141 @@ const OLED_KEYBOARD: KeyboardSettingsDescriptor = KeyboardSettingsDescriptor {
     hardware_profile_slots: 4,
 };
 
+fn legacy_led(product_id: u32) -> bool {
+    matches!(product_id, 515 | 521 | 529 | 534 | 545 | 654)
+}
+
+/// A catalog self-dongle alias (including 551 and 585) still uses the current
+/// product's own HID factory. OLED and Mika radios retain their exact physical
+/// branches; DualLink receivers require peer routing.
+pub fn validate_direct_identity(product_id: u32, physical_product_id: u32) -> anyhow::Result<()> {
+    let cap = physical_capability(product_id, physical_product_id)?;
+    crate::keyboard_metadata::validate_physical_identity(product_id, physical_product_id)?;
+    ensure!(
+        cap.transport.direct_pids.contains(&physical_product_id)
+            && (physical_product_id == product_id
+                || matches!(
+                    (product_id, physical_product_id),
+                    (691, 692) | (574, 2308) | (2595, 2593)
+                )),
+        "Keyboard brightness requires its current direct HID identity"
+    );
+    Ok(())
+}
+
+/// Select the directly addressed factory. DualLink peers remain owned by
+/// ReceiverSession; OLED and Mika radios inherit their Protocol25 framing.
+pub fn physical_capability(
+    product_id: u32,
+    physical_product_id: u32,
+) -> anyhow::Result<KeyboardSettingsCapability> {
+    let mut cap = capability(product_id)
+        .context("Keyboard brightness capability is absent")?
+        .clone();
+    if product_id == physical_product_id {
+        return Ok(cap);
+    }
+    ensure!(
+        matches!(
+            (product_id, physical_product_id),
+            (691, 692) | (574, 2308) | (2595, 2593)
+        ),
+        "Keyboard radio requires its qualified peer transport"
+    );
+    cap.transport = crate::keyboard_metadata::hid_capability(product_id, physical_product_id)
+        .context("Keyboard physical factory is absent")?
+        .clone();
+    Ok(cap)
+}
+
+// Current DeviceInfo OBMSlots. Transport identity/timing remain owned by the
+// shared metadata factory table; an absent slot declaration does not expose OBM.
+const ADDITIONAL_ACTIVE_KEYBOARDS: &[(u32, u8)] = &[
+    (521, 0),
+    (529, 0),
+    (534, 0),
+    (542, 0),
+    (545, 0),
+    (550, 4),
+    (551, 4),
+    (552, 4),
+    (554, 0),
+    (555, 0),
+    (556, 0),
+    (565, 0),
+    (567, 0),
+    (574, 0),
+    (575, 0),
+    (577, 4),
+    (579, 4),
+    (580, 0),
+    (585, 0),
+    (590, 4),
+    (591, 0),
+    (592, 0),
+    (593, 0),
+    (599, 4),
+    (605, 0),
+    (606, 0),
+    (614, 4),
+    (617, 4),
+    (619, 4),
+    (620, 4),
+    (642, 4),
+    (647, 4),
+    (653, 4),
+    (654, 0),
+    (655, 0),
+    (659, 0),
+    (660, 0),
+    (661, 4),
+    (673, 0),
+    (674, 0),
+    (675, 0),
+    (677, 4),
+    (689, 0),
+    (719, 5),
+    (720, 5),
+    (721, 5),
+    (728, 5),
+    (739, 0),
+    (740, 5),
+    (741, 5),
+    (742, 5),
+    (746, 5),
+    (747, 3),
+    (752, 4),
+    (2595, 0),
+    (2596, 0),
+];
+
+fn additional_capability(
+    product_id: u32,
+    hardware_profile_slots: u8,
+) -> KeyboardSettingsCapability {
+    let transport = crate::keyboard_metadata::hid_capability(product_id, product_id)
+        .expect("Current keyboard brightness requires its qualified physical factory")
+        .clone();
+    let legacy = legacy_led(product_id);
+    KeyboardSettingsCapability {
+        product_id,
+        source_class: transport.source_class.clone(),
+        get_command: if legacy { [3, 3, 131] } else { [3, 15, 132] },
+        set_command: if legacy { [3, 3, 3] } else { [3, 15, 4] },
+        regions_command: if legacy { [80, 3, 137] } else { [80, 15, 128] },
+        active_profile: 1,
+        all_region: if legacy || matches!(product_id, 585 | 591) {
+            5
+        } else {
+            0
+        },
+        fallback_region: 1,
+        region_record_bytes: if legacy { 1 } else { 5 },
+        hardware_profile_slots,
+        transport,
+    }
+}
+
 pub fn capability(product_id: u32) -> Option<&'static KeyboardSettingsCapability> {
     // DeviceReadCapability is also consumed by retained discovery/service
     // adapters. Materialize it once from typed, audited Rust descriptors.
@@ -199,6 +334,11 @@ pub fn capability(product_id: u32) -> Option<&'static KeyboardSettingsCapability
                         sleep_between_in_ms: if descriptor.product_id == 691 { 25 } else { 5 },
                     },
                 })
+                .chain(
+                    ADDITIONAL_ACTIVE_KEYBOARDS
+                        .iter()
+                        .map(|&(product, slots)| additional_capability(product, slots)),
+                )
                 .collect()
         })
         .iter()
@@ -320,7 +460,7 @@ fn parse_device_brightness(
     region: u8,
 ) -> anyhow::Result<KeyboardBrightness> {
     let mut reading = parse_brightness(data, cap.active_profile, region)?;
-    if cap.product_id == BLACKWIDOW_CHROMA.product_id {
+    if legacy_led(cap.product_id) {
         // MW rzDevice25 module 34546 g: floor(raw / 255 * 100).
         reading.percent = (u16::from(reading.raw_value) * 100 / 255) as u8;
     }
@@ -348,6 +488,22 @@ pub(crate) fn exchange(
         && transport.transaction_prefix == 0
         && transport.transaction_modulus == 31;
     let receiver = crate::receiver_session::is_bound_master(transport, true);
+    let direct_radio = transport.direct_pids.first().is_some_and(|&physical| {
+        matches!(
+            (cap.product_id, physical),
+            (691, 692) | (574, 2308) | (2595, 2593)
+        ) && transport.direct_pids.len() == 1
+            && crate::keyboard_metadata::hid_capability(cap.product_id, physical).is_some_and(
+                |expected| {
+                    transport.source_class == expected.source_class
+                        && transport.claim_interface == expected.claim_interface
+                        && transport.claim_interfaces_by_pid == expected.claim_interfaces_by_pid
+                        && transport.report_id == expected.report_id
+                        && transport.transaction_prefix == expected.transaction_prefix
+                        && transport.transaction_modulus == expected.transaction_modulus
+                },
+            )
+    });
     ensure!(
         cap.source_class == audited.source_class
             && cap.get_command == audited.get_command
@@ -359,7 +515,7 @@ pub(crate) fn exchange(
             && cap.region_record_bytes == audited.region_record_bytes
             && cap.hardware_profile_slots == audited.hardware_profile_slots
             && transport.vendor_id == audited.transport.vendor_id
-            && (wired || receiver)
+            && (wired || receiver || direct_radio)
             && transport.max_retry_in > 0
             && transport.max_retry_out > 0,
         "键盘亮度型号的固定协议或 factory 参数偏离当前审计能力"
@@ -373,8 +529,8 @@ pub(crate) fn exchange(
         "键盘亮度源码传输规格不匹配"
     );
     ensure!(
-        sequence & 0xE0 == transport.transaction_prefix
-            && sequence & 0x1F < transport.transaction_modulus,
+        (0..transport.transaction_modulus)
+            .any(|counter| transport.transaction_prefix | counter == sequence),
         "键盘亮度事务不属于当前源码命名空间"
     );
     let transaction = sequence;
@@ -554,7 +710,7 @@ fn read_at_profile(
         )?;
         validate()?;
         let mut reading = parse_brightness(&data, profile_id, cap.all_region)?;
-        if cap.product_id == BLACKWIDOW_CHROMA.product_id {
+        if legacy_led(cap.product_id) {
             reading.percent = (u16::from(reading.raw_value) * 100 / 255) as u8;
         }
         return Ok(reading);
@@ -589,7 +745,7 @@ fn read_at_profile(
     parse_brightness(&data, profile_id, region)
 }
 
-/// Source active setter targets BacklightLED on 515 and all regions on Chroma.
+/// Source active setter retains the registered BacklightLED or all-region target.
 /// Readback is additional application confirmation, never a claim that the
 /// original task reads back or persists.
 pub fn apply(
@@ -599,7 +755,7 @@ pub fn apply(
     mut next_transaction: impl FnMut() -> anyhow::Result<u8>,
     validate: impl Fn() -> anyhow::Result<()>,
 ) -> anyhow::Result<KeyboardBrightnessWriteResult> {
-    let raw = if cap.product_id == BLACKWIDOW_CHROMA.product_id {
+    let raw = if legacy_led(cap.product_id) {
         encode_percent(percent)?; // The UI range is shared, the wire rounding is not.
         (u16::from(percent) * 255).div_ceil(100) as u8
     } else {
@@ -782,6 +938,119 @@ mod tests {
     }
 
     #[test]
+    fn oled_radio_uses_its_physical_interface_and_preserves_toggle_only_intent() {
+        validate_direct_identity(691, 692).unwrap();
+        let cap = physical_capability(691, 692).unwrap();
+        assert_eq!(cap.transport.direct_pids, [692]);
+        assert_eq!(cap.transport.claim_interface, 2);
+        assert_eq!(cap.transport.transaction_prefix, 0);
+        assert_eq!(cap.transport.sleep_between_out_ms, 25);
+        let device = MockTransport::new([
+            reply(&[1, 0, 0]),
+            reply(&[1, 0, 0, 0, 0]),
+            reply(&[1, 1, 178]),
+        ]);
+        let submission = BrightnessSubmission::new(70, false, BrightnessIntent::Enabled).unwrap();
+        let result =
+            apply_brightness(&device, &cap, submission, transactions(&cap), || Ok(())).unwrap();
+        assert_eq!(result.reading().unwrap().percent, 70);
+        let sent = device.sent();
+        assert_eq!(&sent[0][6..12], &[3, 23, 24, 1, 0, 0]);
+        assert_eq!(
+            sent.iter().map(|frame| frame[2]).collect::<Vec<_>>(),
+            [0, 1, 2]
+        );
+        assert_eq!(*device.get_ids.lock().unwrap(), [2, 2, 2]);
+        assert!(!sent.iter().any(|frame| frame[7..9] == [15, 4]));
+        let device = MockTransport::new([
+            reply(&[1, 0, 1]),
+            reply(&[1, 0, 127]),
+            reply(&[1, 0, 0, 0, 0]),
+            reply(&[1, 1, 127]),
+        ]);
+        let submission = BrightnessSubmission::new(50, true, BrightnessIntent::Value).unwrap();
+        let result =
+            apply_brightness(&device, &cap, submission, transactions(&cap), || Ok(())).unwrap();
+        assert_eq!(result.reading().unwrap().percent, 50);
+        let sent = device.sent();
+        assert_eq!(&sent[0][6..12], &[3, 23, 24, 1, 0, 1]);
+        assert_eq!(&sent[1][6..12], &[3, 15, 4, 1, 0, 127]);
+        assert_eq!(*device.get_ids.lock().unwrap(), [2, 2, 2, 2]);
+        let device = MockTransport::new([reply(&[1, 0, 0])]);
+        assert!(
+            apply_brightness(&device, &cap, submission, transactions(&cap), || Ok(())).is_err()
+        );
+        assert_eq!(
+            device.sent().len(),
+            1,
+            "mismatched switch ACK stops the level SET"
+        );
+        let mut invalid = cap.clone();
+        invalid.transport.claim_interface = 3;
+        let device = MockTransport::new([]);
+        assert!(read(&device, &invalid, transactions(&invalid), || Ok(())).is_err());
+        assert!(device.sent().is_empty());
+    }
+
+    #[test]
+    fn mika_keyboard_uses_shared_physical_endpoint_and_exact_or_counter() {
+        for (product, physical) in [(574, 2308), (2595, 2593)] {
+            validate_direct_identity(product, physical).unwrap();
+            let cap = physical_capability(product, physical).unwrap();
+            assert_eq!(cap.transport.source_class, "rzDevice25MikaWirelessKeyboard");
+            assert_eq!(cap.transport.claim_interface, 0);
+            let device = MockTransport::new((0..32).map(|_| reply(&[1, 7, 127])));
+            let mut counter = 0;
+            for _ in 0..32 {
+                let sequence = 0xf0 | counter;
+                counter = (counter + 1) % 31;
+                let data =
+                    exchange(&device, &cap, [3, 15, 132], &[1, 7], sequence, &|| Ok(())).unwrap();
+                assert_eq!(data, [1, 7, 127]);
+            }
+            let sent = device.sent();
+            assert_eq!(
+                (
+                    sent[0][2],
+                    sent[15][2],
+                    sent[16][2],
+                    sent[30][2],
+                    sent[31][2]
+                ),
+                (0xf0, 0xff, 0xf0, 0xfe, 0xf0)
+            );
+            assert!(
+                sent.iter()
+                    .all(|packet| packet[0] == 0 && packet[6..11] == [3, 15, 132, 1, 7])
+            );
+            let device = MockTransport::new([
+                reply(&[1, 0, 127]),
+                reply(&[7, 1, 0, 0, 0]),
+                reply(&[1, 7, 127]),
+            ]);
+            let mut counter = 0;
+            let reading = apply(
+                &device,
+                &cap,
+                50,
+                || {
+                    let sequence = 0xf0 | counter;
+                    counter += 1;
+                    Ok(sequence)
+                },
+                || Ok(()),
+            )
+            .unwrap();
+            assert_eq!(reading.observed.percent, 50);
+            let device = MockTransport::new([]);
+            assert!(exchange(&device, &cap, [3, 15, 132], &[1, 7], 0x80, &|| Ok(())).is_err());
+            assert!(device.sent().is_empty());
+        }
+        assert!(physical_capability(574, 2593).is_err());
+        assert!(physical_capability(2595, 2308).is_err());
+    }
+
+    #[test]
     fn oled_brightness_toggle_writes_status_without_overwriting_the_level() {
         let cap = cap_for(691);
         let device = MockTransport::new([
@@ -931,6 +1200,86 @@ mod tests {
             assert_eq!(&sent[0][6..12], &[3, 15, 4, 1, 5, raw]);
             assert_eq!(&sent[1][6..12], &[3, 15, 132, 1, 5, 0]);
             assert_eq!(*device.get_ids.lock().unwrap(), [2, 2]);
+        }
+    }
+
+    #[test]
+    fn all_current_active_factories_use_their_registered_brightness_protocol() {
+        let products = (0..5000)
+            .filter(|product| {
+                crate::keyboard_current_profile::local::schema_version(*product).is_some()
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(products.len(), 73);
+        for product in products {
+            let cap = capability(product).unwrap();
+            validate_direct_identity(product, product)
+                .unwrap_or_else(|error| panic!("{product}: {error}"));
+            let physical = crate::keyboard_metadata::hid_capability(product, product).unwrap();
+            assert_eq!(cap.transport.claim_interface, physical.claim_interface);
+            assert_eq!(cap.transport.source_class, physical.source_class);
+            let legacy = matches!(product, 515 | 521 | 529 | 534 | 545 | 654);
+            let fixed = legacy || matches!(product, 585 | 591 | 631);
+            let raw = if legacy { 3 } else { 2 };
+            let region = if fixed { 5 } else { 0 };
+            let replies = if fixed {
+                vec![reply(&[1, region, raw]), reply(&[1, region, raw])]
+            } else {
+                vec![
+                    reply(&[1, 0, raw]),
+                    reply(&[7, 1, 0, 0, 0]),
+                    reply(&[1, 7, raw]),
+                ]
+            };
+            let device = MockTransport::new(replies);
+            let result = apply(&device, cap, 1, transactions(cap), || Ok(())).unwrap();
+            assert_eq!(result.observed.percent, 1, "{product}");
+            let sent = device.sent();
+            let class = if legacy { 3 } else { 15 };
+            let command = if legacy { 3 } else { 4 };
+            assert_eq!(
+                &sent[0][6..12],
+                &[3, class, command, 1, region, raw],
+                "{product}"
+            );
+            assert_eq!(sent.len(), if fixed { 2 } else { 3 }, "{product}");
+            let rejected_write = MockTransport::new([rejected()]);
+            assert!(apply(&rejected_write, cap, 1, transactions(cap), || Ok(())).is_err());
+            assert!(
+                rejected_write
+                    .sent()
+                    .iter()
+                    .all(|packet| packet[6..9] == [3, class, command]),
+                "{product}: rejected SET retries must never become a GET"
+            );
+            let canceled = MockTransport::new([reply(&[1, region, raw])]);
+            let validate = || {
+                ensure!(
+                    !canceled.replies.lock().unwrap().is_empty(),
+                    "connection replaced"
+                );
+                Ok(())
+            };
+            assert!(apply(&canceled, cap, 1, transactions(cap), validate).is_err());
+            assert_eq!(
+                canceled.sent().len(),
+                1,
+                "{product}: no GET after cancellation"
+            );
+        }
+    }
+
+    #[test]
+    fn direct_brightness_identity_does_not_admit_other_receivers_or_ble() {
+        for (product, physical) in [
+            (585, 584),
+            (631, 635),
+            (756, 757),
+            (756, 758),
+            (600, 625),
+            (585, 65535),
+        ] {
+            assert!(validate_direct_identity(product, physical).is_err());
         }
     }
 

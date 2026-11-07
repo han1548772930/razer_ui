@@ -6451,6 +6451,7 @@ dependencies = [
  "serde_ignored",
  "serde_json",
  "snap",
+ "uuid",
 ]
 
 [[package]]

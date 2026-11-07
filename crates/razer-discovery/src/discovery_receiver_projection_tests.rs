@@ -108,12 +108,15 @@ fn offline_and_unknown_statuses_remain_observations_without_telemetry() {
 }
 
 #[test]
-fn unknown_and_ambiguous_catalog_rows_keep_other_real_peers_partial() {
+fn unknown_rows_keep_real_peers_and_receiver_lookup_retains_first_scalar_match() {
     let value = reply(179, &[(183, 1), (60000, 1), (2593, 1)]);
     let projection = project_receiver_query(179, CONTAINER, &value).unwrap();
-    assert_eq!(projection.devices().len(), 1);
+    assert_eq!(projection.devices().len(), 2);
     assert_eq!(projection.devices()[0].product_id(), 182);
-    assert_eq!(projection.errors().len(), 2);
+    assert_eq!(projection.devices()[1].product_id(), 2595);
+    assert_eq!(projection.devices()[1].peer_product_id(), Some(2593));
+    assert_eq!(projection.devices()[1].connection(), DeviceConnectionObservation::ReceiverPeer(1));
+    assert_eq!(projection.errors().len(), 1);
     assert!(projection.pairing_payload().is_err());
 }
 

@@ -240,6 +240,12 @@ impl NativeHidDeviceConfig {
         let engine = crate::mapping_native_lookup::active_profile_engine(document)
             .map_err(|_| NativeHidDescriptorError::InvalidField("activeProfile"))?;
         let mut profile = NativeHidProfileAnalog::default();
+        let Some(engine) = engine else {
+            return Ok(Self {
+                descriptor,
+                profile,
+            });
+        };
         if let Some(rows) = engine.get("actuations") {
             let rows = rows
                 .as_array()

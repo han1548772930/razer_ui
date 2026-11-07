@@ -5,6 +5,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub enum Operation {
+    /// Source audioInputSource command; no persisted value or restore.
+    SwitchInputSource,
     Anc {
         setting: AncSetting,
     },
@@ -131,6 +133,15 @@ pub fn execute<S: Sleeper>(
     validate_connection: &dyn Fn() -> Result<()>,
 ) -> Result<Report> {
     transport(product_id)?;
+    if operation == Operation::SwitchInputSource {
+        session.send_command(CommandHeader::new([0, 24, 29]), &[], validate)?;
+        return Ok(Report {
+            product_id, operation, connected: None, left_battery: None, right_battery: None,
+            observation: AutoPauseObservation::Unobserved, write: WriteOutcome::Confirmed,
+            do_not_disturb: None, voice_prompt: None, firmware: FirmwareObservation::Unobserved,
+            gesture: None, tap_speed: None, anc: None,
+        });
+    }
     if let Operation::Anc { setting } = operation {
         let anc = anc_cache.execute(session, product_id, setting, validate, validate_connection)?;
         return Ok(Report {

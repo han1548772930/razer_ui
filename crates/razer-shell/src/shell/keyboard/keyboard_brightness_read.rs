@@ -81,6 +81,31 @@ impl AppShell {
                     workspace.update(cx, |workspace, cx| {
                         workspace.observe_keyboard_metadata(Some(metadata.clone()), cx)
                     });
+                    let candidate = this
+                        .device_observations
+                        .iter()
+                        .find(|route| route.matches(workspace.read(cx).device(cx)))
+                        .cloned();
+                    if let Some(route) = candidate {
+                        let owner = cx.entity().downgrade();
+                        let workspace = workspace.clone();
+                        let deferred_scope = completion_scope.clone();
+                        let deferred_signal = completion_signal.clone();
+                        cx.defer(move |cx| {
+                            let _ = window_handle.update(cx, |_, window, cx| {
+                                let _ = owner.update(cx, |this, cx| {
+                                    if !deferred_scope.current(this, &deferred_signal, cx) {
+                                        return;
+                                    }
+                                    this.read_keyboard_local_profiles(
+                                        vec![(workspace, route)],
+                                        window,
+                                        cx,
+                                    );
+                                });
+                            });
+                        });
+                    }
                 }
                 // The feature retains the actual reading independently of any
                 // newer preview and queued write from this connection.

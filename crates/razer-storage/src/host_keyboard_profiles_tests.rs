@@ -1,6 +1,81 @@
 use super::*;
 use serde_json::{Value, json};
 
+fn initial_device(pid: u32) -> razer_model::model::Device {
+    let mut device = razer_model::product_preview::registered_preview(pid).unwrap();
+    device.profiles.clear();
+    device.active_profile.clear();
+    device.serial_number = "actual-serial".into();
+    device.dashboard.connection_observation =
+        Some(razer_model::model::DeviceConnectionObservation::UsbPresent);
+    device.dashboard.readonly_keyboard_metadata =
+        Some(razer_device::keyboard_metadata::KeyboardMetadataReading {
+            keyboard_layout: 1,
+            edition_id: 0,
+            firmware_id: None,
+        });
+    device
+}
+
+#[test]
+fn keyboard_initial_document_requires_real_scope_and_preserves_observation() {
+    let device = initial_device(679);
+    let source = initial_local_document(&device, "TEST").unwrap();
+    assert_eq!(source.profiles().len(), 1);
+    assert_eq!(source.profiles()[0].name(), "TEST-Default");
+    assert_eq!(source.selection_origin(), SelectionOrigin::SerialMetadata);
+    assert_eq!(source.source_document().unwrap()["schemaVersion"], 14);
+    assert_eq!(source.source_document().unwrap()["isDefault"], true);
+    assert!(device.profiles.is_empty());
+    for reason in 0..4 {
+        let mut rejected = device.clone();
+        match reason {
+            0 => rejected.dashboard.readonly_keyboard_metadata = None,
+            1 => rejected.dashboard.connection_observation = None,
+            2 => rejected.serial_number = "PREVIEW-679".into(),
+            _ => rejected.active_profile = "existing".into(),
+        }
+        assert!(initial_local_document(&rejected, "TEST").is_err());
+    }
+}
+
+#[test]
+fn keyboard_initial_document_preserves_each_current_recipe_and_multi_profile_branch() {
+    let products = (0..5000)
+        .filter(|product| local::schema_version(*product).is_some())
+        .collect::<Vec<_>>();
+    assert_eq!(products.len(), 73);
+    for pid in products {
+        let source = initial_local_document(&initial_device(pid), "TEST").unwrap();
+        assert_eq!(
+            source.profiles().len(),
+            if pid == 708 { 13 } else { 1 },
+            "{pid}"
+        );
+        let document = source.source_document().unwrap();
+        assert_eq!(
+            document["schemaVersion"],
+            local::schema_version(pid).unwrap()
+        );
+        let decoded = decode(pid, "actual-serial", &document.to_string()).unwrap();
+        assert_eq!(decoded.source_document().unwrap(), document);
+    }
+}
+
+#[test]
+fn keyboard_initial_document_requires_a_connected_receiver_peer() {
+    use razer_model::model::DeviceConnectionObservation;
+    let mut device = initial_device(658);
+    device.dashboard.connection_observation = Some(DeviceConnectionObservation::ReceiverPeer(1));
+    let source = initial_local_document(&device, "TEST").unwrap();
+    assert_eq!(source.product_id(), 658);
+    for status in [0, 2, 255] {
+        device.dashboard.connection_observation =
+            Some(DeviceConnectionObservation::ReceiverPeer(status));
+        assert!(initial_local_document(&device, "TEST").is_err());
+    }
+}
+
 #[test]
 #[ignore = "explicit maintenance-only read of the installed host's exact keyboard key"]
 fn installed_keyboard679_profile_readonly() {
@@ -542,4 +617,39 @@ fn source_key_absence_and_a_corrupt_database_are_distinct() {
     let result = read(&root, 679, "real");
     std::fs::remove_dir(&root).unwrap();
     assert!(result.is_err());
+}
+
+#[test]
+fn keyboard_loader_initializes_only_an_absent_document_with_empty_local_state() {
+    let root =
+        std::env::temp_dir().join(format!("razer-keyboard-initial-{}", uuid::Uuid::new_v4()));
+    let device = initial_device(679);
+    let source = read_or_initialize_local(&root, &device, || Ok("DESKTOP".into()))
+        .unwrap()
+        .unwrap();
+    assert_eq!(source.profiles()[0].name(), "DESKTOP-Default");
+    assert!(!root.exists());
+
+    let mut existing = device.clone();
+    import(&mut existing, &device, &source).unwrap();
+    assert!(
+        read_or_initialize_local(&root, &existing, || {
+            panic!("existing local profiles must not request defaults")
+        })
+        .unwrap()
+        .is_none()
+    );
+    assert!(
+        read_or_initialize_local(&root, &device, || {
+            anyhow::bail!("computer name unavailable")
+        })
+        .is_err()
+    );
+
+    std::fs::create_dir(&root).unwrap();
+    let failed = read_or_initialize_local(&root, &device, || {
+        panic!("a corrupt database must never initialize defaults")
+    });
+    std::fs::remove_dir(&root).unwrap();
+    assert!(failed.is_err());
 }

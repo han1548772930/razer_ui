@@ -572,7 +572,7 @@ pub fn from_device_document<O: Clone>(
 }
 
 /// Shared active-profile boundary for mapping tables and analog profile data.
-pub fn active_profile_engine(document: &Value) -> Result<&Value> {
+pub fn active_profile_engine(document: &Value) -> Result<Option<&Value>> {
     let active = document
         .get("activeProfile")
         .and_then(Value::as_str)
@@ -581,17 +581,21 @@ pub fn active_profile_engine(document: &Value) -> Result<&Value> {
         .get("profiles")
         .and_then(Value::as_array)
         .context("Missing mapping profiles")?;
-    let matching = profiles
-        .iter()
-        .filter(|p| p.get("guid").and_then(Value::as_str) == Some(active))
-        .collect::<Vec<_>>();
-    ensure!(
-        matching.len() == 1,
-        "Active mapping profile is missing or ambiguous"
-    );
-    matching[0]
-        .get("appEngine")
-        .context("Missing active compiled engine")
+    // E7820 validates rows in source order and stops at the first selected GUID.
+    // No matching row or optional engine means an empty active mapping table.
+    for profile in profiles {
+        let profile = profile
+            .as_object()
+            .context("Mapping profile is not an object")?;
+        let guid = profile
+            .get("guid")
+            .and_then(Value::as_str)
+            .context("Missing mapping profile GUID")?;
+        if guid == active {
+            return Ok(profile.get("appEngine").filter(|engine| engine.is_object()));
+        }
+    }
+    Ok(None)
 }
 
 pub(crate) fn from_device_document_filtered<O: Clone>(
@@ -603,8 +607,10 @@ pub(crate) fn from_device_document_filtered<O: Clone>(
     let profile = active_profile_engine(document)?;
     let defaults = document
         .get("defaultMappings")
-        .and_then(|v| v.get("appEngine"))
-        .context("Missing default compiled engine")?;
+        .and_then(Value::as_object)
+        .context("Missing default mappings")?
+        .get("appEngine")
+        .filter(|engine| engine.is_object());
     let filter = |rows: Vec<CompiledMapping<O>>| -> Result<Vec<CompiledMapping<O>>> {
         // Validate the publication before dropping source identity mappings.
         let rows = index(rows, false)?;
@@ -616,8 +622,14 @@ pub(crate) fn from_device_document_filtered<O: Clone>(
             })
             .collect()
     };
-    let defaults = filter(parse_mappings(defaults, &mut parse_output)?)?;
-    let profile = filter(parse_mappings(profile, &mut parse_output)?)?;
+    let defaults = match defaults {
+        Some(engine) => filter(parse_mappings(engine, &mut parse_output)?)?,
+        None => Vec::new(),
+    };
+    let profile = match profile {
+        Some(engine) => filter(parse_mappings(engine, &mut parse_output)?)?,
+        None => Vec::new(),
+    };
     let global = global_engine
         .map(|v| parse_mappings(v, &mut parse_output))
         .transpose()?

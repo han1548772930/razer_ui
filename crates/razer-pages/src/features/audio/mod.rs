@@ -95,6 +95,7 @@ mod audio_volume;
 mod earbuds_auto_pause;
 mod earbuds_gesture;
 mod earbuds_anc;
+mod earbuds_input_source;
 pub use earbuds_auto_pause::EarbudsAutoPauseRequested;
 #[path = "surround/audio_surround.rs"]
 mod surround;
@@ -680,6 +681,7 @@ impl AudioProductWorkspace {
     }
     pub fn set_page(&mut self, page: &str, window: &mut Window, cx: &mut Context<Self>) {
         if page != "TAB_ENHANCEMENT" { self.close_earbuds_gestures(window, cx); }
+        if page != "TAB_SOUND" { self.earbuds.input_popup = false; }
         if self.page != page {
             if self.page == "SURROUND" {
                 self.leave_surround_page(cx);
@@ -2191,7 +2193,14 @@ impl AudioProductWorkspace {
                 if let Some(key) = &section.equalizer {
                     panel = panel.child(self.render_equalizer(key, cx));
                 }
-                sections.push(panel.into_any_element());
+                if key == "TAB_SOUND"
+                    && section.title == "VOLUME_HEADER"
+                    && razer_device::earbuds_protocol40::supports_auto_pause(self.spec.product_id)
+                {
+                    sections.push(v_flex().child(panel).child(self.earbuds_input_panel(cx)).into_any_element());
+                } else {
+                    sections.push(panel.into_any_element());
+                }
             }
         }
         // Current Nommo wm / kM: the left Il / bl column holds brightness

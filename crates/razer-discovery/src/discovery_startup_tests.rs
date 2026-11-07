@@ -2,6 +2,37 @@
 use super::{receiver_peers, startup_receiver_query_with};
 use serde_json::{Value, json};
 
+#[test]
+fn mika_host_discovery_keeps_both_product_owners_without_fabricating_online_state() {
+    for (physical, keyboard, mouse) in [(2308, 574, 117), (2593, 2595, 2594)] {
+        let usb = Ok(
+            json!({"complete":true,"devices":[{"vendor_id":5426,"product_id":physical,"device_container_id":"shared-mika","serial_number":"receiver-usb-string"}]}),
+        );
+        let hid = Ok(json!({"complete":true,"interfaces":[]}));
+        let snapshot = super::discover_with(&usb, &hid, &mut |_| {
+            panic!("Physical detection does not query a fabricated peer")
+        })
+        .unwrap();
+        assert_eq!(snapshot.devices().len(), 2);
+        for product in [keyboard, mouse] {
+            let observed = snapshot
+                .devices()
+                .iter()
+                .find(|row| row.product_id() == product)
+                .unwrap();
+            assert_eq!(observed.physical_product_id(), physical);
+            assert_eq!(observed.peer_product_id(), None);
+            assert_eq!(
+                observed.connection(),
+                super::DeviceConnectionObservation::UsbPresent
+            );
+            assert_eq!(observed.transport(), Some(super::ObservedTransport::Dongle));
+            assert!(observed.keyboard_serial().is_none());
+        }
+        assert!(snapshot.errors().is_empty());
+    }
+}
+
 fn reply(status: u8) -> Value {
     json!({"devices": [
         {"product_id": 65535, "status": 0},

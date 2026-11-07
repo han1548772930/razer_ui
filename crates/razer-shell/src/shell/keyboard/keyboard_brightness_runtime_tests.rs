@@ -1,4 +1,7 @@
+use super::ProductWorkspace;
 use super::State;
+use gpui_kit::component::Root;
+use gpui_kit::{AppContext, TestAppContext, px, size};
 use razer_device::{backend::HidNode, receiver_capabilities};
 use razer_discovery::discovery::{self, ObservedDevice};
 use serde_json::json;
@@ -103,4 +106,36 @@ fn route_replacement_disconnect_ambiguity_and_peer_changes_reject_the_old_reques
         &[route.clone(), route.clone()],
         &device
     ));
+}
+
+#[gpui_kit::test]
+fn same_path_reconnection_rejects_a_completed_reads_deferred_scope(cx: &mut TestAppContext) {
+    cx.update(gpui_kit::init);
+    let route = observation(b"keyboard-same-path", 656, 1);
+    let device = route.clone().into_device().unwrap();
+    let mut workspace = None;
+    let _window = cx.open_window(size(px(1280.), px(900.)), |window, cx| {
+        let view = cx.new(|cx| ProductWorkspace::new(device, false, window, cx));
+        workspace = Some(view.clone());
+        Root::new(view, window, cx)
+    });
+    let workspace = workspace.unwrap();
+    cx.update(|cx| {
+        let scope = super::Scope::new(&workspace, route.clone(), cx);
+        let owners = [workspace.clone()];
+        let routes = [route.clone()];
+        assert!(scope.matches(&owners, &routes, cx));
+        let connected = workspace
+            .read(cx)
+            .device(cx)
+            .dashboard
+            .connection_observation;
+        assert!(connected.is_some());
+        workspace.update(cx, |view, cx| view.observe_connection(None, cx));
+        workspace.update(cx, |view, cx| view.observe_connection(connected, cx));
+        assert!(!scope.matches(&owners, &routes, cx));
+        let successor = super::Scope::new(&workspace, route, cx);
+        assert!(successor.matches(&owners, &routes, cx));
+        assert!(!successor.matches(&[], &routes, cx));
+    });
 }

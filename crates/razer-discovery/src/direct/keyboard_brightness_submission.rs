@@ -20,6 +20,17 @@ pub(super) fn request(
         .transpose()?;
     let route = if let Some(session) = &session {
         receiver_settings::resolve(observed, session, &mut |request| client.request(request))?
+    } else if observed.transport() == Some(crate::discovery::ObservedTransport::Dongle) {
+        keyboard_settings::validate_direct_identity(
+            observed.product_id(),
+            observed.physical_product_id(),
+        )?;
+        let super::keyboard_metadata::Route::Hid(route) =
+            super::keyboard_metadata::resolve(client, observed)?
+        else {
+            anyhow::bail!("Keyboard brightness requires its direct HID endpoint");
+        };
+        route
     } else {
         super::resolve(client, observed, &cap.transport)?
     };

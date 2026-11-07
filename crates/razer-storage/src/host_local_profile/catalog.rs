@@ -313,8 +313,12 @@ pub(super) fn decode(
         !serial.is_empty() && !serial.starts_with("PREVIEW-") && !serial.contains('\0'),
         "host mouse profiles require the actual observed serial"
     );
-    let document: Document = serde_json::from_str(&text(&value.bytes)?)
+    let raw: serde_json::Value = serde_json::from_str(&text(&value.bytes)?)
         .context("invalid current host mouse profile document")?;
+    let migrated = super::schema_migration::migrate_13_to_14(raw)
+        .context("invalid current host mouse profile schema")?;
+    let document: Document =
+        serde_json::from_value(migrated).context("invalid current host mouse profile document")?;
     ensure!(
         document.product_id == product_id
             && document.vendor_id == 5426
@@ -322,8 +326,8 @@ pub(super) fn decode(
         "host mouse profile identity does not match its storage key"
     );
     ensure!(
-        document.schema_version == 13,
-        "host mouse profiles require current schema version 13"
+        document.schema_version == 14,
+        "host mouse profiles require current schema version 14"
     );
     ensure!(
         document.version <= (1u64 << 53) - 1,

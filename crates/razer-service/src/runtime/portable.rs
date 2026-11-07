@@ -1177,15 +1177,7 @@ impl PortableRuntime {
             "Keyboard metadata node differs from source product/interface"
         );
         if peer_product_id.is_none() {
-            let IdentityLookup::Unique(identity) =
-                device_identity::lookup(u32::from(node.product_id))
-            else {
-                bail!("Keyboard metadata target has no unique identity");
-            };
-            ensure!(
-                identity.product_id == product_id && !identity.is_ble,
-                "Keyboard metadata requires its source-verified physical device"
-            );
+            keyboard_metadata::validate_physical_identity(product_id, u32::from(node.product_id))?;
         }
         let started = Instant::now();
         let validate = || {
@@ -1287,8 +1279,7 @@ impl PortableRuntime {
         operation: KeyboardBrightness,
     ) -> anyhow::Result<Value> {
         use razer_device::keyboard_settings;
-        let settings =
-            keyboard_settings::capability(product_id).context("产品没有源核实的键盘亮度能力")?;
+        let settings = keyboard_settings::physical_capability(product_id, u32::from(node.product_id))?;
         let cap = &settings.transport;
         ensure!(
             node.vendor_id == cap.vendor_id
@@ -1297,14 +1288,7 @@ impl PortableRuntime {
                     == i32::from(cap.claim_interface_for(u32::from(node.product_id))?),
             "键盘亮度节点不符合源产品/接口"
         );
-        let IdentityLookup::Unique(identity) = device_identity::lookup(u32::from(node.product_id))
-        else {
-            bail!("键盘亮度目标没有唯一设备身份");
-        };
-        ensure!(
-            identity.product_id == product_id && !identity.is_dongle && !identity.is_ble,
-            "键盘亮度入口只接受已核实的直接设备"
-        );
+        keyboard_settings::validate_direct_identity(product_id, u32::from(node.product_id))?;
         operation.validate()?;
         let started = Instant::now();
         let validate = || {
@@ -1331,7 +1315,7 @@ impl PortableRuntime {
                 cap.transaction_modulus,
             )
         };
-        let (field, result) = operation.execute(device.as_ref(), settings, &mut next, &validate)?;
+        let (field, result) = operation.execute(device.as_ref(), &settings, &mut next, &validate)?;
         response[field] = result;
         validate()?;
         response["elapsed_ms"] = json!(started.elapsed().as_millis() as u64);

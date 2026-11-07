@@ -18,6 +18,7 @@ pub(super) use worker::{Completion, Operation};
 pub(super) struct Scope {
     workspace: WeakEntity<ProductWorkspace>,
     identity: String,
+    connection_revision: u64,
     profile: String,
     route: ObservedDevice,
 }
@@ -31,23 +32,31 @@ impl Scope {
         Self {
             workspace: workspace.downgrade(),
             identity: workspace.read(cx).identity(cx),
+            connection_revision: workspace.read(cx).connection_revision(),
             profile: workspace.read(cx).device(cx).active_profile.clone(),
             route,
         }
     }
 
-    fn matches(&self, shell: &AppShell, observations: &[ObservedDevice], cx: &App) -> bool {
+    fn matches(
+        &self,
+        owners: &[Entity<ProductWorkspace>],
+        observations: &[ObservedDevice],
+        cx: &App,
+    ) -> bool {
         let Some(workspace) = self.workspace.upgrade() else {
             return false;
         };
-        shell.devices.contains(&workspace)
+        owners.contains(&workspace)
             && workspace.read(cx).identity(cx) == self.identity
+            && workspace.read(cx).connection_revision() == self.connection_revision
             && workspace.read(cx).device(cx).active_profile == self.profile
             && current_route(&self.route, observations, workspace.read(cx).device(cx))
     }
 
     pub(super) fn current(&self, shell: &AppShell, canceled: &AtomicBool, cx: &App) -> bool {
-        !canceled.load(Ordering::Acquire) && self.matches(shell, &shell.device_observations, cx)
+        !canceled.load(Ordering::Acquire)
+            && self.matches(&shell.devices, &shell.device_observations, cx)
     }
 }
 
@@ -162,7 +171,7 @@ impl AppShell {
         cx: &App,
     ) {
         for operation in self.keyboard_brightness.operations.values() {
-            if !operation.scope.matches(self, observations, cx) {
+            if !operation.scope.matches(&self.devices, observations, cx) {
                 operation.canceled.store(true, Ordering::Release);
             }
         }

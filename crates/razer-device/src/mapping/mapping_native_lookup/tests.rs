@@ -443,3 +443,51 @@ fn lookup_publication_validates_inputs_and_collects_interrupt_hooks() {
         parse_input(&json!({"type":"keyboard","scancode":30,"flag":0,"modifiers":"2"})).is_err()
     );
 }
+
+#[test]
+fn lookup_profile_selection_preserves_source_order_and_optional_engine() {
+    // Current E7820 selects the first matching GUID, stopping before later rows.
+    let document = json!({"activeProfile":"a","profiles":[
+        {"guid":"other","appEngine":false},
+        {"guid":"a","appEngine":{"mappings":[]}},
+        {"guid":"a","appEngine":{"mappings":"unused"}},
+        null
+    ]});
+    assert_eq!(
+        active_profile_engine(&document).unwrap(),
+        Some(&document["profiles"][1]["appEngine"])
+    );
+    for profiles in [
+        json!([]),
+        json!([{"guid":"other"}]),
+        json!([{"guid":"a"}]),
+        json!([{"guid":"a","appEngine":false}]),
+    ] {
+        let document = json!({"activeProfile":"a","profiles":profiles,"defaultMappings":{}});
+        assert!(active_profile_engine(&document).unwrap().is_none());
+        let table = from_device_document(&document, None, |_| -> Result<Output> {
+            panic!("An empty source table has no output to parse")
+        })
+        .unwrap();
+        assert!(table.hook_inputs().is_empty());
+    }
+}
+
+#[test]
+fn lookup_profile_selection_rejects_malformed_rows_before_match() {
+    for profiles in [
+        json!([null]),
+        json!([{}]),
+        json!([{"guid":2}]),
+        json!([{}, {"guid":"a","appEngine":{"mappings":[]}}]),
+    ] {
+        let document = json!({"activeProfile":"a","profiles":profiles,"defaultMappings":{}});
+        assert!(active_profile_engine(&document).is_err());
+        assert!(from_device_document(&document, None, |_| Ok(Output::Disabled)).is_err());
+    }
+    let document =
+        json!({"activeProfile":"a","profiles":[{"guid":"a","appEngine":{}}],"defaultMappings":{}});
+    assert!(from_device_document(&document, None, |_| Ok(Output::Disabled)).is_err());
+    let document = json!({"activeProfile":"a","profiles":[],"defaultMappings":false});
+    assert!(from_device_document(&document, None, |_| Ok(Output::Disabled)).is_err());
+}

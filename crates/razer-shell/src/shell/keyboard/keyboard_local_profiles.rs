@@ -116,6 +116,13 @@ impl AppShell {
             let device = workspace.read(cx).device(cx);
             if !host_keyboard_profiles::supported(device.product_id)
                 || device.serial_number.is_empty()
+                || device.dashboard.readonly_keyboard_metadata.is_none()
+                || !self.devices.contains(&workspace)
+                || !device_discovery::retained_connection(
+                    std::slice::from_ref(&route),
+                    &self.device_observations,
+                    device,
+                )
             {
                 continue;
             }
@@ -172,10 +179,10 @@ impl AppShell {
                             let result = if scope.valid.load(Ordering::Acquire) {
                                 razer_platform::native_paths::host_local_storage_directory()
                                     .and_then(|root| {
-                                        host_keyboard_profiles::read(
+                                        host_keyboard_profiles::read_or_initialize_local(
                                             &root,
-                                            baseline.product_id,
-                                            &scope.serial,
+                                            &baseline,
+                                            razer_platform::system::computer_name,
                                         )
                                     })
                                     .map_err(|error| format!("{error:#}"))

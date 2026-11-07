@@ -67,6 +67,7 @@ impl EarbudsAutoPauseRequested {
         self.source == RequestSource::HardwareNotification
     }
     pub fn needs_persistence(&self) -> bool {
+        if self.operation == Operation::SwitchInputSource { return false; }
         matches!(
             self.source,
             RequestSource::UserEdit | RequestSource::HardwareNotification
@@ -76,6 +77,8 @@ impl EarbudsAutoPauseRequested {
 
 #[derive(Default)]
 pub(super) struct State {
+    pub(super) input_popup: bool,
+    pub(super) input_result: Option<Result<WriteOutcome, String>>,
     pub(super) controls: Option<EarbudsControls>,
     identity: String,
     profile_id: String,
@@ -125,6 +128,8 @@ impl State {
         self.reread_after_restore = false;
     }
     fn cancel(&mut self) {
+        self.input_popup = false;
+        self.input_result = None;
         if let Some(guard) = self.monitor.take() {
             guard.store(false, Ordering::Release);
         }
@@ -757,7 +762,7 @@ impl AudioProductWorkspace {
             }
             Operation::Write { enabled } => enabled,
             Operation::Restore { enabled } => enabled.unwrap_or(true),
-            Operation::Read | Operation::Battery { .. } | Operation::Firmware => return false,
+            Operation::Read | Operation::Battery { .. } | Operation::Firmware | Operation::SwitchInputSource => return false,
             Operation::DoNotDisturb { enabled } => {
                 self.earbuds.dnd_persisted = Some(enabled);
                 return true;
@@ -841,6 +846,14 @@ impl AudioProductWorkspace {
             }
         });
         self.earbuds.pending = None;
+        if request.operation == Operation::SwitchInputSource {
+            if current {
+                self.earbuds.input_result = Some(result.map(|report| report.write));
+            }
+            self.start_earbuds_request(cx);
+            cx.notify();
+            return;
+        }
         if matches!(request.operation, Operation::Anc { .. }) {
             if current {
                 match result {

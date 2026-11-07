@@ -36,6 +36,52 @@ fn owner() -> ObservedDevice {
 }
 
 #[test]
+fn keyboard_brightness_admits_all_current_direct_products_and_585_radio() {
+    let mut count = 0;
+    for product in 0..5000 {
+        if razer_device::keyboard_current_profile::local::schema_version(product).is_none() {
+            continue;
+        }
+        count += 1;
+        let mut observed = owner();
+        observed.product_id = product;
+        observed.real_product_id = product;
+        observed.physical_product_id = product;
+        let razer_device::device_identity::IdentityLookup::Unique(identity) =
+            razer_device::device_identity::lookup(product)
+        else {
+            panic!("{product}");
+        };
+        observed.transport = Some(if identity.is_dongle {
+            ObservedTransport::Dongle
+        } else {
+            ObservedTransport::Wired
+        });
+        assert!(
+            crate::direct::keyboard_brightness_available(&observed),
+            "{product}"
+        );
+        observed.physical_product_id = 65535;
+        assert!(!crate::direct::keyboard_brightness_available(&observed));
+    }
+    assert_eq!(count, 73);
+    let mut observed = owner();
+    observed.product_id = 585;
+    observed.physical_product_id = 584;
+    observed.transport = Some(ObservedTransport::Dongle);
+    assert!(!crate::direct::keyboard_brightness_available(&observed));
+    observed.physical_product_id = 585;
+    observed.peer_product_id = Some(635);
+    assert!(!crate::direct::keyboard_brightness_available(&observed));
+    observed.product_id = 691;
+    observed.physical_product_id = 692;
+    observed.peer_product_id = None;
+    assert!(crate::direct::keyboard_brightness_available(&observed));
+    observed.physical_product_id = 693;
+    assert!(!crate::direct::keyboard_brightness_available(&observed));
+}
+
+#[test]
 fn retained_receiver_route_rejects_peer_unknown_connection_and_replaced_collection() {
     let mut observed = owner();
     let route = ReceiverRoute::from_observation(&observed).unwrap();

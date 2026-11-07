@@ -1,7 +1,9 @@
 //! Live interface/receiver observations, separate from profile loading and drafts.
 //! Current host identity routing and source-derived shared protocol selection.
 use anyhow::{Context as _, ensure};
-use razer_device::device_identity::{self, IdentityLookup};
+use razer_device::device_identity;
+#[cfg(test)]
+use razer_device::device_identity::IdentityLookup;
 use razer_ipc::{ServiceClient, ServiceRequest};
 use razer_model::model::Device;
 use razer_model::model::DeviceCategory;
@@ -466,6 +468,14 @@ pub fn discover(
     usb: &Result<Value, String>,
     hid: &Result<Value, String>,
 ) -> anyhow::Result<DiscoverySnapshot> {
+    discover_with(usb, hid, &mut |request| client.request(request))
+}
+
+fn discover_with(
+    usb: &Result<Value, String>,
+    hid: &Result<Value, String>,
+    request: &mut impl FnMut(ServiceRequest) -> anyhow::Result<Value>,
+) -> anyhow::Result<DiscoverySnapshot> {
     let mut snapshot = DiscoverySnapshot::default();
     let mut groups: BTreeMap<(String, u32), Vec<(&Value, DeviceConnectionObservation)>> =
         BTreeMap::new();
@@ -534,7 +544,7 @@ pub fn discover(
     }
     for ((container, pid), items) in groups {
         let identity = device_identity::lookup(pid);
-        if let IdentityLookup::Unique(identity) = &identity {
+        for identity in identity.candidates() {
             let serials: BTreeSet<_> = items
                 .iter()
                 .filter_map(|(item, _)| text(item, "serial_number"))
@@ -574,11 +584,6 @@ pub fn discover(
                     DeviceConnectionObservation::HidPresent
                 },
             });
-        } else if let IdentityLookup::Ambiguous { candidates, .. } = &identity {
-            snapshot.errors.push(format!(
-                "USB PID {pid} 对应 {} 个产品，尚需身份读取消除歧义",
-                candidates.len()
-            ));
         }
         if u16::try_from(pid)
             .ok()
@@ -593,7 +598,7 @@ pub fn discover(
             .and_then(|hid| {
                 startup_receiver_query_with(
                     pid,
-                    || query_receiver(client, hid, &container, pid),
+                    || query_receiver_with(hid, &container, pid, &mut *request),
                     std::thread::sleep,
                 )
             })

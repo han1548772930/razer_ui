@@ -619,7 +619,7 @@ pub fn keyboard_brightness_available(observed: &ObservedDevice) -> bool {
                 observed.physical_product_id(),
             );
     }
-    let Some(cap) = razer_device::keyboard_settings::capability(observed.product_id()) else {
+    let Some(_) = razer_device::keyboard_settings::capability(observed.product_id()) else {
         return false;
     };
     if observed.peer_product_id().is_some() {
@@ -627,11 +627,13 @@ pub fn keyboard_brightness_available(observed: &ObservedDevice) -> bool {
     }
     matches!(
         observed.transport(),
-        Some(crate::discovery::ObservedTransport::Wired)
-    ) && cap
-        .transport
-        .direct_pids
-        .contains(&observed.physical_product_id())
+        Some(
+            crate::discovery::ObservedTransport::Wired
+                | crate::discovery::ObservedTransport::Dongle
+        )
+    ) && razer_device::keyboard_settings::validate_direct_identity(
+        observed.product_id(), observed.physical_product_id(),
+    ).is_ok()
 }
 
 pub fn request_keyboard_brightness(
@@ -665,7 +667,19 @@ pub fn request_keyboard_brightness(
     } else {
         let cap = razer_device::keyboard_settings::capability(observed.product_id())
             .context("Keyboard brightness source is absent")?;
-        resolve(client, observed, &cap.transport)?.keyboard(client, percent)
+        if observed.transport() == Some(crate::discovery::ObservedTransport::Dongle) {
+            razer_device::keyboard_settings::validate_direct_identity(
+                observed.product_id(),
+                observed.physical_product_id(),
+            )?;
+            let keyboard_metadata::Route::Hid(route) = keyboard_metadata::resolve(client, observed)?
+            else {
+                anyhow::bail!("Keyboard brightness requires its direct HID endpoint");
+            };
+            route.keyboard(client, percent)
+        } else {
+            resolve(client, observed, &cap.transport)?.keyboard(client, percent)
+        }
     }
 }
 

@@ -71,6 +71,56 @@ fn valid() -> Result<()> {
 }
 
 #[test]
+fn input_source_switch_has_no_payload_restore_or_synthetic_observation() {
+    for pid in AUTO_PAUSE_PRODUCTS {
+        let io = Io::default();
+        io.reply(2, 0x61, 24, 29, &[]);
+        let report = execute(
+            &mut Protocol40Session::with_sleeper(&io, NoSleep),
+            pid,
+            Operation::SwitchInputSource,
+            &valid,
+        )
+        .unwrap();
+        assert_eq!(report.write, WriteOutcome::Confirmed);
+        assert_eq!(report.observation, AutoPauseObservation::Unobserved);
+        assert_eq!(report.connected, None);
+        assert_eq!(report.left_battery, None);
+        let sent = io.sent.borrow();
+        assert_eq!(sent.len(), 1);
+        assert_eq!(&sent[0][6..9], &[0, 24, 29]);
+        assert!(sent[0][9..62].iter().all(|byte| *byte == 0));
+        assert_eq!(sent[0][62], 24 ^ 29);
+        assert_eq!(sent[0][63], 0);
+    }
+}
+
+#[test]
+fn input_source_failure_and_cancel_do_not_confirm_switching() {
+    let io = Io::default();
+    assert!(
+        execute(
+            &mut Protocol40Session::with_sleeper(&io, NoSleep),
+            2657,
+            Operation::SwitchInputSource,
+            &|| anyhow::bail!("canceled")
+        )
+        .is_err()
+    );
+    assert!(io.sent.borrow().is_empty());
+    let io = Io::default();
+    assert!(
+        execute(
+            &mut Protocol40Session::with_sleeper(&io, NoSleep),
+            2657,
+            Operation::SwitchInputSource,
+            &valid
+        )
+        .is_err()
+    );
+}
+
+#[test]
 fn firmware_job_keeps_failures_separate_from_other_device_observations() {
     for pid in AUTO_PAUSE_PRODUCTS {
         let io = Io::default();
@@ -795,9 +845,7 @@ fn anc_jobs_keep_runtime_skips_and_failed_writes_distinct_from_confirmation() {
         execute(
             &mut Protocol40Session::with_sleeper(&io, NoSleep),
             2664,
-            Operation::Anc {
-                setting: requested,
-            },
+            Operation::Anc { setting: requested },
             &valid
         )
         .is_err()

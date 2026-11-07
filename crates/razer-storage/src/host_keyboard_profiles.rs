@@ -249,6 +249,97 @@ pub fn read(root: &Path, product_id: u32, serial: &str) -> Result<Option<LocalPr
         .transpose()
 }
 
+pub fn read_or_initialize_local(
+    root: &Path,
+    device: &razer_model::model::Device,
+    computer_name: impl FnOnce() -> Result<String>,
+) -> Result<Option<LocalProfiles>> {
+    match read(root, device.product_id, &device.serial_number)? {
+        Some(source) => Ok(Some(source)),
+        None if device.profiles.is_empty() && device.active_profile.is_empty() => {
+            initial_local_document(device, &computer_name()?).map(Some)
+        }
+        None => Ok(None),
+    }
+}
+
+/// Build the source local document only after the caller has established that
+/// its exact external key is absent. This operation never observes or writes hardware.
+pub fn initial_local_document(
+    device: &razer_model::model::Device,
+    computer_name: &str,
+) -> Result<LocalProfiles> {
+    validate_identity(device.product_id, &device.serial_number)?;
+    ensure!(
+        device.profiles.is_empty() && device.active_profile.is_empty(),
+        "An initial keyboard document cannot replace an existing local profile"
+    );
+    ensure!(
+        !computer_name.is_empty(),
+        "Keyboard default profile needs the actual computer name"
+    );
+    ensure!(
+        matches!(
+            device.dashboard.connection_observation,
+            Some(
+                razer_model::model::DeviceConnectionObservation::UsbPresent
+                    | razer_model::model::DeviceConnectionObservation::HidPresent
+                    | razer_model::model::DeviceConnectionObservation::ReceiverPeer(1)
+            )
+        ),
+        "Keyboard initial local document requires the current connection"
+    );
+    let metadata = device
+        .dashboard
+        .readonly_keyboard_metadata
+        .as_ref()
+        .context("Keyboard initial local document requires current metadata")?;
+    let (edition, _) = razer_model::source_identity::variant(
+        device.product_id,
+        metadata.edition_id.into(),
+        metadata.keyboard_layout.into(),
+        device.layout_id,
+    );
+    let recipe = local::initial_template(device.product_id, edition.try_into()?, computer_name)?;
+    let guid = recipe
+        .profiles
+        .first()
+        .context("Keyboard recipe has no profiles")?
+        .guid
+        .clone();
+    // External document construction stays at this serialization boundary; all
+    // fixed settings come from the source-qualified typed recipe.
+    let mut root = serde_json::to_value(recipe.device)?;
+    let object = root
+        .as_object_mut()
+        .context("Keyboard recipe is not an object")?;
+    object.insert(
+        "schemaVersion".into(),
+        local::schema_version(device.product_id)
+            .context("Keyboard recipe has no schema version")?
+            .into(),
+    );
+    object.insert("profiles".into(), serde_json::to_value(recipe.profiles)?);
+    object.insert("activeProfile".into(), guid.clone().into());
+    object.insert("isDefault".into(), true.into());
+    object.insert(
+        "deviceMetadatas".into(),
+        serde_json::to_value(BTreeMap::from([(
+            device.serial_number.clone(),
+            Metadata {
+                active_profile_guid: guid,
+                name: None,
+                extensions: Extensions::new(),
+            },
+        )]))?,
+    );
+    decode(
+        device.product_id,
+        &device.serial_number,
+        &serde_json::to_string(&root)?,
+    )
+}
+
 pub fn decode(product_id: u32, serial: &str, text: &str) -> Result<LocalProfiles> {
     validate_identity(product_id, serial)?;
     let current_schema = razer_device::keyboard_current_profile::local::schema_version(product_id)
@@ -292,14 +383,26 @@ pub fn decode(product_id: u32, serial: &str, text: &str) -> Result<LocalProfiles
             validate_profile_settings(product_id, &settings)?;
         }
         if let Some(brightness) = &profile.settings.brightness {
-            ensure!(brightness.value <= 100, "Keyboard local brightness is outside 0..100");
+            ensure!(
+                brightness.value <= 100,
+                "Keyboard local brightness is outside 0..100"
+            );
         }
         if let Some(lighting) = &profile.settings.switch_off_lighting {
-            ensure!((1..=15).contains(&lighting.idle_minutes), "Keyboard idle duration is outside 1..15 minutes");
+            ensure!(
+                (1..=15).contains(&lighting.idle_minutes),
+                "Keyboard idle duration is outside 1..15 minutes"
+            );
         }
-        if let Some(gaming) = &profile.settings.gaming_mode { gaming.validate()?; }
-        if let Some(snap) = &profile.settings.snap_tap { snap.validate()?; }
-        for mapping in &profile.settings.mappings { mapping.validate()?; }
+        if let Some(gaming) = &profile.settings.gaming_mode {
+            gaming.validate()?;
+        }
+        if let Some(snap) = &profile.settings.snap_tap {
+            snap.validate()?;
+        }
+        for mapping in &profile.settings.mappings {
+            mapping.validate()?;
+        }
     }
     let metadata = document
         .device_metadatas

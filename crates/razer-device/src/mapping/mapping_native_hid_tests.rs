@@ -1634,6 +1634,22 @@ fn analog_document() -> Value {
 }
 
 #[test]
+fn config_empty_active_profile_keeps_descriptor_without_profile_overrides() {
+    for profiles in [serde_json::json!([]), serde_json::json!([{"guid":"one"}])] {
+        let mut document = analog_document();
+        document["profiles"] = profiles;
+        let config = NativeHidDeviceConfig::from_document(&document).unwrap();
+        assert!(config.profile.actuations.is_empty());
+        assert!(config.profile.rapid_triggers.is_empty());
+        assert!(config.profile.snaptaps.is_empty());
+        assert_eq!(
+            config.descriptor,
+            NativeHidDescriptor::from_native_json(&document).unwrap()
+        );
+    }
+}
+
+#[test]
 fn config_uses_current_profile_overrides_and_native_key_tables() {
     use crate::mapping_native_lookup::Phase;
     let config = NativeHidDeviceConfig::from_document(&analog_document()).unwrap();

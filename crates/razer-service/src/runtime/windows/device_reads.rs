@@ -688,14 +688,7 @@ pub(super) fn keyboard_metadata(
                     .is_some_and(|radio| radio.direct_pids.contains(&target.physical_product_id)),
             "Keyboard metadata peer requires its own source radio route"
         );
-        let IdentityLookup::Unique(identity) = device_identity::lookup(target.physical_product_id)
-        else {
-            anyhow::bail!("Keyboard metadata physical identity is ambiguous");
-        };
-        ensure!(
-            identity.product_id == target.product_id && !identity.is_ble,
-            "Keyboard metadata physical identity differs from source"
-        );
+        keyboard_metadata::validate_physical_identity(target.product_id, target.physical_product_id)?;
     }
     let physical_target = DeviceReadTarget {
         peer_product_id: None,
@@ -851,12 +844,11 @@ pub(super) fn keyboard_brightness(
             operation.receiver(),
         );
     }
-    let settings = keyboard_settings::capability(target.product_id)
-        .context("此产品没有当前源核实的键盘亮度能力")?;
+    let settings = keyboard_settings::physical_capability(target.product_id, target.physical_product_id)?;
     operation.validate()?;
     let cap = &settings.transport;
     let before = current_target(target, cap)?;
-    verify_routing(target, cap)?;
+    keyboard_settings::validate_direct_identity(target.product_id, target.physical_product_id)?;
     let started = Instant::now();
     let validate = || {
         ensure!(
@@ -885,7 +877,7 @@ pub(super) fn keyboard_brightness(
         "transport_metadata":device.metadata()});
     let (field, result) = operation.execute(
         &device,
-        settings,
+        &settings,
         &mut || transaction(target, cap),
         &validate,
     )?;
