@@ -48,7 +48,8 @@
 3. 键盘已接通73产品typed本地document／首profile与真实metadata代次加载，见`/keyboard_local_profile_initial_document_delivery`（`187a2ebf662ea6dc6176447274c9e5c4ad69507a6c3660c62ead6795bc2e39e9`）。版本12／13／14、edition、keymaps、旋钮和708多档案沿用完整配方；23项存储测试、17项亮度生命周期测试及Shell全目标检查通过，包含同路径断开重连拒绝旧回调。硬件初始化、设备模式及板载档案恢复仍须完成；本地文档建立不证明设备初始化或真实写入成功。
 4. 691／692 OLED无线亮度已接入实际接口2／前缀0的Protocol25路径，见`/keyboard_oled_radio_brightness_delivery`（`2afc340ddfd1218db5c8acef9e50d9e238c3593662269d92567738ae9321c782`）；55项device、3项discovery测试及Shell全目标检查通过，最终扩展的OLED用例另行通过。Mika574／2308与2595／2593仍需补齐共享接收器的真实身份与端点准入，不能以首个目录候选代替。实际DLL／设备对照未验证。
 5. Mika574／2308与2595／2593的主机多产品发现、便携键盘collection、metadata身份准入及亮度传输已接通，见`/keyboard_mika_discovery_brightness_delivery`（`9b77a7e8095aef9b661a4f571669d1edb627a1f3d76f420f4c65aa8e32426ac1`）。键盘56项协议测试、discovery全121项测试与Shell检查通过；使用真实`0xf0 | counter`序列，USB／HID存在不冒充无线在线。完整初始化／通知／Lighting和实机对照继续。鼠标`/mapping_peer_compiler_provider_bindings`已归并17个编译器变体的提供者绑定，剩余实际处理器差异继续复用现有证据推进。
-6. 随完成目标归并最新收据；下一次派工前更新当前映射和台账，同批相邻发布合并传播与缺项刷新。维护代码只修复阻断实际工作的问题，整库体积盘点和重复构建不进入逐片段循环。
+6. 五耳塞EQ的typed配置、先保存后提交、预设／十段固件命令及注册顺序恢复已接现有生产消费者，见`/earbuds_equalizer_production_wiring_progress`（`6aebdd30f2e2d18acaa4e281cd6231dea807f5500f501afa422292ed61e33430`）。2项新增协议测试、20项存储、29项耳机页面测试及Shell检查通过；单段编辑切Custom，MW默认曲线与UI初始回退表分开，写失败不冒充设备观察。原版canvas图表、完整Sound及实机对照仍未完成。
+7. 随完成目标归并最新收据；下一次派工前更新当前映射和台账，同批相邻发布合并传播与缺项刷新。维护代码只修复阻断实际工作的问题，整库体积盘点和重复构建不进入逐片段循环。
 
 ## 每批收尾
 

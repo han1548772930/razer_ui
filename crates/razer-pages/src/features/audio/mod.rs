@@ -96,6 +96,7 @@ mod earbuds_auto_pause;
 mod earbuds_gesture;
 mod earbuds_anc;
 mod earbuds_input_source;
+mod earbuds_equalizer;
 pub use earbuds_auto_pause::EarbudsAutoPauseRequested;
 #[path = "surround/audio_surround.rs"]
 mod surround;
@@ -288,6 +289,7 @@ pub struct AudioProductWorkspace {
     pod_runtime_devices: Vec<RuntimeAudioDevice>,
     volume: audio_volume::State,
     earbuds: earbuds_auto_pause::State,
+    earbuds_window: AnyWindowHandle,
     surround: surround::State,
     leviathan: audio_leviathan::State,
     pub(super) mixer_io: AudioMixerState,
@@ -377,6 +379,7 @@ impl AudioProductWorkspace {
             pod_runtime_devices: Vec::new(),
             volume: audio_volume::State::default(),
             earbuds: earbuds_auto_pause::State::default(),
+            earbuds_window: window.window_handle(),
             surround: surround::State::default(),
             leviathan: audio_leviathan::State::new(pid, window, cx),
             mixer_io: AudioMixerState::default(),
@@ -831,6 +834,16 @@ impl AudioProductWorkspace {
                 if this.sound_slider_event(&key, event, window, cx) {
                     return;
                 }
+                if razer_device::earbuds_protocol40::supports_auto_pause(this.spec.product_id) && key.starts_with("/equalizers/") {
+                    this.earbuds.eq_revision = this.earbuds.eq_revision.wrapping_add(1);
+                    if let SliderEvent::Release(value) = event {
+                        this.edit(&key, normalized(value.start(), min, max, step), window, cx);
+                        if let Some((name, _)) = key.trim_start_matches("/equalizers/").split_once("/bands/") {
+                            this.request_earbuds_equalizer(name, cx);
+                        }
+                    }
+                    return;
+                }
                 if this.spec.product_id == 1352 && key == "/device/volume/value" {
                     match event {
                         SliderEvent::Change(value) => {
@@ -914,6 +927,8 @@ impl AudioProductWorkspace {
         self.sliders.insert(path, state);
     }
     fn edit(&mut self, path: &str, value: Value, window: &mut Window, cx: &mut Context<Self>) {
+        if path.starts_with("/equalizers/") && self.earbuds_equalizer_disabled() { return; }
+        if path.starts_with("/equalizers/") { self.earbuds.eq_revision = self.earbuds.eq_revision.wrapping_add(1); }
         if !self.mixer_dynamics.dispatching && self.control(path).is_some_and(|c| !self.enabled(c))
         {
             return;
@@ -1034,7 +1049,7 @@ impl AudioProductWorkspace {
             if let Some((key, _)) = rest.split_once("/bands/") {
                 if let Some(eq) = self.spec.equalizers.iter().find(|e| e.key == key) {
                     let state = &mut self.draft["equalizers"][key];
-                    if eq.edit_custom && eq.presets.iter().any(|p| p.key == "custom") {
+                    if (eq.edit_custom || razer_device::earbuds_protocol40::supports_auto_pause(self.spec.product_id)) && eq.presets.iter().any(|p| p.key == "custom") {
                         state["selected"] = json!("custom");
                     }
                     if let Some(selected) = state["selected"].as_str().map(str::to_owned) {
@@ -1679,6 +1694,8 @@ impl AudioProductWorkspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if self.earbuds_equalizer_disabled() { return; }
+        self.earbuds.eq_revision = self.earbuds.eq_revision.wrapping_add(1);
         if !self
             .spec
             .equalizers
@@ -1705,10 +1722,24 @@ impl AudioProductWorkspace {
             self.request_mic_eq_write(cx);
         }
         self.sync(window, cx);
+        self.request_earbuds_equalizer(key, cx);
         cx.emit(AudioProductChanged);
         cx.notify();
     }
     fn reset_equalizer(&mut self, key: &str, window: &mut Window, cx: &mut Context<Self>) {
+        if self.earbuds_equalizer_disabled() { return; }
+        self.earbuds.eq_revision = self.earbuds.eq_revision.wrapping_add(1);
+        if razer_device::earbuds_protocol40::supports_auto_pause(self.spec.product_id) {
+            let state = &mut self.draft["equalizers"][key];
+            let Some(selected) = state.get("selected").and_then(Value::as_str).map(str::to_owned) else { return; };
+            let Some(default) = state.get("defaults").and_then(|defaults| defaults.get(&selected)).cloned() else { return; };
+            state["bands"] = default.clone();
+            state["presets"][&selected] = default;
+            self.sync(window, cx);
+            self.request_earbuds_equalizer(key, cx);
+            cx.notify();
+            return;
+        }
         if self.spec.product_id == 1342 && matches!(key, "mic" | "mic_basic") {
             // LM.reset always selects Custom with the Default array, preserving
             // every named preset. The reducer replaces only customBands.
@@ -1746,6 +1777,7 @@ impl AudioProductWorkspace {
             state["bands"] = json!(preset.bands);
             state["presets"][&preset.key] = json!(preset.bands);
             self.sync(window, cx);
+            self.request_earbuds_equalizer(key, cx);
             cx.emit(AudioProductChanged);
             cx.notify();
         }
@@ -1944,6 +1976,7 @@ impl AudioProductWorkspace {
         }
     }
     fn render_equalizer(&self, key: &str, cx: &mut Context<Self>) -> AnyElement {
+        let disabled = self.earbuds_equalizer_disabled();
         let current_mic = self.spec.product_id == 1342 && key == "mic";
         let basic = self
             .draft
@@ -1962,6 +1995,7 @@ impl AudioProductWorkspace {
                 let key = key.to_owned();
                 let name = preset.key.clone();
                 Button::new(SharedString::from(format!("audio-eq-{key}-{name}")))
+                    .disabled(disabled)
                     .small()
                     .outline()
                     .label(t(&preset.label))
@@ -1991,7 +2025,7 @@ impl AudioProductWorkspace {
                         view.child(div().text_sm().child(t(frequency)))
                     })
                     .when_some(self.sliders.get(&path), |d, s| {
-                        d.child(Slider::new(s).vertical().h(surface::css(if current_mic {
+                        d.child(Slider::new(s).disabled(disabled).vertical().h(surface::css(if current_mic {
                             if basic { 140. } else { 300. }
                         } else {
                             180.
@@ -2026,6 +2060,7 @@ impl AudioProductWorkspace {
                         )
                         .child(
                             Button::new(SharedString::from(format!("audio-eq-reset-{key}")))
+                                .disabled(disabled)
                                 .small()
                                 .ghost()
                                 .label(t("RESET"))

@@ -71,6 +71,109 @@ fn valid() -> Result<()> {
 }
 
 #[test]
+fn equalizer_submission_sends_preset_then_sign_magnitude_bands_without_readback() {
+    use crate::earbuds_equalizer::{Mode, Preset, Setting};
+    for pid in AUTO_PAUSE_PRODUCTS {
+        for (preset, index) in [
+            (Preset::Game, 1),
+            (Preset::Music, 2),
+            (Preset::Movie, 3),
+            (Preset::Custom, 31),
+            (Preset::Voice, if pid == 2689 { 0 } else { 4 }),
+        ] {
+            let io = Io::default();
+            io.reply(2, 0x61, 24, 0, &[]);
+            io.reply(2, 0x62, 24, 1, &[]);
+            let setting = Setting {
+                mode: Mode::Standard,
+                preset,
+                bands: [-6, -5, -4, -1, 0, 1, 2, 4, 5, 6],
+            };
+            let report = execute(
+                &mut Protocol40Session::with_sleeper(&io, NoSleep),
+                pid,
+                Operation::Equalizer { setting },
+                &valid,
+            )
+            .unwrap();
+            assert_eq!(report.write, WriteOutcome::Confirmed);
+            assert_eq!(report.observation, AutoPauseObservation::Unobserved);
+            let sent = io.sent.borrow();
+            assert_eq!(sent.len(), 2);
+            assert_eq!(&sent[0][6..13], &[4, 24, 0, 1, 1, 0, index]);
+            assert_eq!(
+                &sent[1][6..21],
+                &[12, 24, 1, 1, 1, 134, 133, 132, 129, 0, 1, 2, 4, 5, 6]
+            );
+        }
+    }
+}
+
+#[test]
+fn equalizer_rejects_range_and_stops_after_failed_or_cancelled_preset() {
+    use crate::earbuds_equalizer::{Mode, Preset, Setting};
+    let mut setting = Setting {
+        mode: Mode::Standard,
+        preset: Preset::Custom,
+        bands: [0; 10],
+    };
+    setting.bands[0] = 7;
+    let io = Io::default();
+    assert!(
+        execute(
+            &mut Protocol40Session::with_sleeper(&io, NoSleep),
+            2657,
+            Operation::Equalizer { setting },
+            &valid
+        )
+        .is_err()
+    );
+    assert!(io.sent.borrow().is_empty());
+    setting.bands[0] = 0;
+    for canceled in [false, true] {
+        let io = Io::default();
+        if canceled {
+            io.reply(2, 0x61, 24, 0, &[]);
+            io.canceled_after_read.set(true);
+        }
+        let result = execute(
+            &mut Protocol40Session::with_sleeper(&io, NoSleep),
+            2657,
+            Operation::Equalizer { setting },
+            &|| {
+                ensure!(!io.canceled.get(), "canceled");
+                Ok(())
+            },
+        );
+        assert!(result.is_err());
+        assert!(io.sent.borrow().iter().all(|packet| packet[8] == 0));
+    }
+}
+
+#[test]
+fn equalizer_second_command_failure_retains_acknowledged_preset_diagnostic() {
+    use crate::earbuds_equalizer::{Mode, Preset, Setting};
+    let io = Io::default();
+    io.reply(2, 0x61, 24, 0, &[]);
+    let error = execute(
+        &mut Protocol40Session::with_sleeper(&io, NoSleep),
+        2657,
+        Operation::Equalizer {
+            setting: Setting {
+                mode: Mode::Standard,
+                preset: Preset::Music,
+                bands: [0; 10],
+            },
+        },
+        &valid,
+    )
+    .unwrap_err();
+    assert!(format!("{error:#}").contains("preset was acknowledged"));
+    assert_eq!(io.sent.borrow()[0][8], 0);
+    assert!(io.sent.borrow()[1..].iter().all(|packet| packet[8] == 1));
+}
+
+#[test]
 fn input_source_switch_has_no_payload_restore_or_synthetic_observation() {
     for pid in AUTO_PAUSE_PRODUCTS {
         let io = Io::default();

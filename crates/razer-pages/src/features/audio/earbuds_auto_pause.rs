@@ -77,6 +77,12 @@ impl EarbudsAutoPauseRequested {
 
 #[derive(Default)]
 pub(super) struct State {
+    pub(super) eq_persisted: Option<razer_device::earbuds_equalizer::Setting>,
+    pub(super) eq_presets: Vec<razer_device::earbuds_equalizer::Setting>,
+    pub(super) eq_defaults: Vec<razer_device::earbuds_equalizer::Setting>,
+    pub(super) eq_revision: u64,
+    pub(super) eq_profile_error: Option<String>,
+    pub(super) eq_result: Option<Result<WriteOutcome, String>>,
     pub(super) input_popup: bool,
     pub(super) input_result: Option<Result<WriteOutcome, String>>,
     pub(super) controls: Option<EarbudsControls>,
@@ -128,6 +134,8 @@ impl State {
         self.reread_after_restore = false;
     }
     fn cancel(&mut self) {
+        self.eq_revision = self.eq_revision.wrapping_add(1);
+        self.eq_result = None;
         self.input_popup = false;
         self.input_result = None;
         if let Some(guard) = self.monitor.take() {
@@ -176,6 +184,13 @@ impl State {
                     .or(controls.anc_persisted)
                     .unwrap_or(razer_device::earbuds_protocol40::ANC_PROFILE_DEFAULT);
                 self.restore_sequence.push_back(Operation::Anc { setting });
+            }
+        }
+        if self.eq_profile_error.is_none() {
+            if let Some(setting) = self.edits.iter().rev().find_map(|edit| match edit.operation {
+                Operation::Equalizer { setting } => Some(setting), _ => None,
+            }).or(self.eq_persisted) {
+                self.restore_sequence.push_back(Operation::Equalizer { setting });
             }
         }
         let dnd = self
@@ -263,6 +278,7 @@ impl State {
         });
         for restore in &mut self.restore_sequence {
             match (&operation, restore) {
+                (Operation::Equalizer { setting }, Operation::Equalizer { setting: saved }) => *saved = *setting,
                 (Operation::Anc { setting, .. }, Operation::Anc { setting: saved, .. }) => {
                     *saved = *setting
                 }
@@ -357,6 +373,12 @@ impl AudioProductWorkspace {
         let Some(controls) = &self.earbuds.controls else {
             return;
         };
+        if let Some(setting) = self.earbuds.eq_persisted {
+            let mut source = Some(snapshot.clone());
+            if razer_storage::earbuds_profiles::merge_equalizer_source(&mut source, setting).is_ok() {
+                *snapshot = source.expect("validated source snapshot");
+            }
+        }
         if let Some(device) = snapshot.get_mut("device").and_then(Value::as_object_mut) {
             device.remove("autoPause");
             device.remove("audioPrompts");
@@ -475,6 +497,24 @@ impl AudioProductWorkspace {
             };
             self.earbuds.active = ready;
             self.earbuds.connected = connected;
+            let eq = if initializes_profile {
+                razer_storage::earbuds_profiles::initial_equalizer(device.product_id).map(Some)
+            } else {
+                razer_storage::earbuds_profiles::read_equalizer(device, &device.active_profile)
+            };
+            match eq {
+                Ok(setting) => {
+                    self.earbuds.eq_persisted = setting;
+                    self.earbuds.eq_profile_error = None;
+                    self.load_earbuds_equalizer_profile(device, setting, cx);
+                }
+                Err(error) => {
+                    self.earbuds.eq_persisted = None;
+                    self.earbuds.eq_presets.clear();
+                    self.earbuds.eq_defaults.clear();
+                    self.earbuds.eq_profile_error = Some(format!("{error:#}"));
+                }
+            }
             match if initializes_profile {
                 Ok(None)
             } else {
@@ -602,7 +642,11 @@ impl AudioProductWorkspace {
         use razer_storage::earbuds_profiles as profiles;
         let profile = &device.active_profile;
         let controls = self.earbuds.controls.as_ref();
-        stored_field_changed(
+        self.earbuds_equalizer_collection_changed(device) || stored_field_changed(
+            profiles::read_equalizer(device, profile),
+            self.earbuds.eq_persisted,
+            self.earbuds.eq_profile_error.as_ref(),
+        ) || stored_field_changed(
             profiles::read_auto_pause(device, profile).map(|field| field.is_enabled),
             controls.and_then(|controls| controls.auto_pause_persisted),
             self.earbuds.profile_error.as_ref(),
@@ -752,6 +796,21 @@ impl AudioProductWorkspace {
             }
         }
         let enabled = match request.operation {
+            Operation::Equalizer { setting } => {
+                let mut source = Some(self.draft.clone());
+                if let Err(error) = razer_storage::earbuds_profiles::merge_equalizer_source(&mut source, setting) {
+                    self.earbuds.eq_profile_error = Some(format!("{error:#}"));
+                    return false;
+                }
+                if let Some(equalizer) = source.as_ref().and_then(|value| value.pointer("/profile/audioEqualizer")) {
+                    self.draft["profile"]["audioEqualizer"] = equalizer.clone();
+                }
+                self.earbuds.eq_persisted = Some(setting);
+                if let Some(preset) = self.earbuds.eq_presets.iter_mut().find(|preset| preset.mode == setting.mode && preset.preset == setting.preset) {
+                    *preset = setting;
+                }
+                return true;
+            }
             Operation::Anc { setting, .. } => {
                 return controls
                     .acknowledge_persistence(EarbudsTask::SetAnc {
@@ -850,6 +909,12 @@ impl AudioProductWorkspace {
             if current {
                 self.earbuds.input_result = Some(result.map(|report| report.write));
             }
+            self.start_earbuds_request(cx);
+            cx.notify();
+            return;
+        }
+        if matches!(request.operation, Operation::Equalizer { .. }) {
+            if current { self.earbuds.eq_result = Some(result.map(|report| report.write)); }
             self.start_earbuds_request(cx);
             cx.notify();
             return;
