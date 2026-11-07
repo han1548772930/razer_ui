@@ -230,6 +230,9 @@ impl SourceHelpOwner {
     }
     pub(super) fn set_active(&mut self, active: bool, cx: &mut Context<Self>) {
         if self.active != active {
+            if !active && razer_device::earbuds_protocol40::supports_auto_pause(self.product_id) {
+                self.generation = self.generation.wrapping_add(1);
+            }
             self.active = active;
             cx.notify();
         }
@@ -266,10 +269,20 @@ impl SourceHelpOwner {
         }));
     }
     pub(super) fn accepts(&self, request: &HelpOwnerRequested) -> bool {
+        let earbuds_system_action =
+            razer_device::earbuds_protocol40::supports_auto_pause(self.product_id)
+                && matches!(
+                    request.command,
+                    HelpOwnerCommand::OpenAudioProperties | HelpOwnerCommand::OpenSoundVolume
+                );
         request.owner == self.owner
             && request.generation == self.generation
             && request.product_id == self.product_id
-            && self.mounted
+            && if earbuds_system_action {
+                self.active
+            } else {
+                self.mounted
+            }
     }
     pub(super) fn accepts_audio_sound(&self, request: &HelpOwnerRequested) -> bool {
         self.accepts(request) && request.audio_revision == self.audio_revision

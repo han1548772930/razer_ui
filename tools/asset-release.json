@@ -1,8 +1,8 @@
 {
   "schema_version": 2,
   "format": "files",
-  "tag": "assets-1f149c13bf11b459aafb",
-  "source_sha256": "1f149c13bf11b459aafb7bba6003bba77a0f48e29e1b14a2558179e6214e1d3a",
+  "tag": "assets-c2c9dda76465da0597aa",
+  "source_sha256": "c2c9dda76465da0597aa29938fa875e8f96d7e808ae3c7ff197e6992704621d2",
   "git_files": [
     {
       "path": "assets/synapse/shared/pending-source-audit/33892a0b56b91958-tray-gear-light.rgba",
@@ -35073,6 +35073,11 @@
           "sha256": "450cf6405f7c5978c6f988dc0ebc1f80c32ae29a88b5c9230f003e4a96bb6555"
         },
         {
+          "path": "assets/synapse/shared/products/45747eab9a99c99b8f0deba9358f6145093775c9b7ed201bf9e254d724f251a8.svg",
+          "bytes": 435,
+          "sha256": "45747eab9a99c99b8f0deba9358f6145093775c9b7ed201bf9e254d724f251a8"
+        },
+        {
           "path": "assets/synapse/shared/products/46095d40c2db470a-current-dashboard-660-0-12-product-3x.png",
           "bytes": 215104,
           "sha256": "46095d40c2db470a5352a78f5c8c7e6b4a82e1bf6f88c7321c5c0e2e1a85cb65"
@@ -37986,6 +37991,11 @@
           "path": "assets/synapse/shared/products/d359c9ea19dc7879-icon_config_keymap.cb5ba1f0.svg",
           "bytes": 377,
           "sha256": "d359c9ea19dc7879436ed5e5144fa338ec79c98c9145eea88cc53536a5bb1c9b"
+        },
+        {
+          "path": "assets/synapse/shared/products/d3a5cbb29c8224935f19a9bf726d04e898f2901ec693d27bc8c72785da05a0c3.svg",
+          "bytes": 622,
+          "sha256": "d3a5cbb29c8224935f19a9bf726d04e898f2901ec693d27bc8c72785da05a0c3"
         },
         {
           "path": "assets/synapse/shared/products/d3d555cdeb172be0-wireless-argb-3884-detecting.svg",
@@ -41823,6 +41833,6 @@
   "storage": {
     "provider": "huggingface",
     "repository": "han1548772930/razer-ui-assets",
-    "revision": "b453a88599c1fe1a36ca7a415ee037ce5693f18e"
+    "revision": "87c16c99b699b38b88a77c8381a8fbefd670e415"
   }
 }

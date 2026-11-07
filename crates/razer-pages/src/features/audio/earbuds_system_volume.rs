@@ -352,13 +352,11 @@ impl AudioProductWorkspace {
                                 }),
                         ),
                 )
-                .on_click(|_, window, cx| {
-                    if let Err(error) =
-                        razer_platform::system::open(razer_platform::system::Properties::Volume)
-                    {
-                        window.push_notification(format!("无法打开系统音量：{error}"), cx);
+                .on_click(cx.listener(|this, _, _, cx| {
+                    if let Some(owner) = &this.source_owner {
+                        owner.update(cx, |owner, cx| owner.request_sound_windows(false, cx));
                     }
-                }),
+                })),
         );
         // Observation diagnostics remain separate from the source setting and
         // draft. No default or saved profile value stands in for a failed read.

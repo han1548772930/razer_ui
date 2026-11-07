@@ -686,6 +686,10 @@ fn input_source_buttons_open_and_confirm_once_without_saving(cx: &mut TestAppCon
             window.click("earbuds-input-open", cx);
             window.render_frame(cx);
             assert!(window.try_find("earbuds-input-confirmation").is_some());
+            assert_eq!(window.find("earbuds-input-open").focused(), Some(true));
+            window.press("space", cx);
+            assert!(owner.read(cx).earbuds.input_popup);
+            assert!(owner.read(cx).earbuds.pending.is_none());
             assert_eq!(
                 window
                     .find("earbuds-input-confirmation")
@@ -694,6 +698,13 @@ fn input_source_buttons_open_and_confirm_once_without_saving(cx: &mut TestAppCon
                     .width,
                 px(360.)
             );
+            // The source is an inline confirmation: interacting inside it
+            // neither dismisses it nor dispatches the device command.
+            window.click("earbuds-input-confirmation", cx);
+            assert!(owner.read(cx).earbuds.input_popup);
+            assert!(owner.read(cx).earbuds.pending.is_none());
+            window.right_click("earbuds-input-description", cx);
+            assert!(owner.read(cx).earbuds.input_popup);
             window.click("earbuds-input-description", cx);
             assert!(!owner.read(cx).earbuds.input_popup);
             assert!(owner.read(cx).earbuds.pending.is_none());

@@ -64,7 +64,10 @@ impl AudioProductWorkspace {
                 .child(t("SWITCH_TO_BLE_DESC_V4")),
         )
         .when(self.earbuds.input_popup, |panel| {
-            panel.child(self.earbuds_input_confirmation(cx))
+            panel.child(
+                razer_assets::deferred_resource(self.earbuds_input_confirmation(cx))
+                    .with_priority(1002),
+            )
         })
         .into_any_element()
     }
@@ -74,6 +77,7 @@ impl AudioProductWorkspace {
             .id("earbuds-input-confirmation")
             .test_support()
             .absolute()
+            .occlude()
             .top(relative(-1.28))
             .w(surface::css(360.))
             .p(surface::css(20.))

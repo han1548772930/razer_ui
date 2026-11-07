@@ -100,6 +100,7 @@ mod earbuds_equalizer;
 mod earbuds_equalizer_graph;
 mod earbuds_equalizer_view;
 mod earbuds_system_volume;
+mod earbuds_system_integration;
 pub use earbuds_system_volume::EarbudsVolumeRequested;
 pub use earbuds_auto_pause::EarbudsAutoPauseRequested;
 #[path = "surround/audio_surround.rs"]
@@ -293,6 +294,7 @@ pub struct AudioProductWorkspace {
     pod_runtime_devices: Vec<RuntimeAudioDevice>,
     volume: audio_volume::State,
     earbuds_volume: earbuds_system_volume::State,
+    earbuds_system: earbuds_system_integration::State,
     earbuds: earbuds_auto_pause::State,
     surround: surround::State,
     leviathan: audio_leviathan::State,
@@ -383,6 +385,7 @@ impl AudioProductWorkspace {
             pod_runtime_devices: Vec::new(),
             volume: audio_volume::State::default(),
             earbuds_volume: earbuds_system_volume::State::default(),
+            earbuds_system: earbuds_system_integration::State::default(),
             earbuds: earbuds_auto_pause::State::default(),
             surround: surround::State::default(),
             leviathan: audio_leviathan::State::new(pid, window, cx),
@@ -508,6 +511,7 @@ impl AudioProductWorkspace {
         this.initialize_seiren_microphone(window, cx);
         this.initialize_seiren_stream_mixer(window, cx);
         this.sync(window, cx);
+        this.sync_earbuds_system_integration(cx);
         this
     }
     fn initialize_equalizers(&mut self) {
@@ -728,6 +732,7 @@ impl AudioProductWorkspace {
                 self.sync_oled_runtime_select(window, cx);
             }
             self.page = page.into();
+            self.sync_earbuds_system_integration(cx);
             if page == "TAB_LIGHTING" {
                 self.refresh_mixer_lighting_previews(cx);
             }
@@ -1462,6 +1467,7 @@ impl AudioProductWorkspace {
     }
 
     pub fn prepare_exit(&mut self, cx: &mut Context<Self>) {
+        self.earbuds_system.cancel();
         self.cancel_earbuds_volume();
         self.set_surround_active(false, "", cx);
         self.cancel_oled_editor(cx);
@@ -2257,6 +2263,7 @@ impl AudioProductWorkspace {
             }
         }
         if earbuds_sound {
+            sections.push(self.earbuds_sound_properties(cx));
             return v_flex().w_full().items_center()
                 .children(full_width_equalizers)
                 .child(surface::page_columns()
