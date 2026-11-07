@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub enum Operation {
+    Equalizer { setting: crate::earbuds_equalizer::Setting },
     /// Source audioInputSource command; no persisted value or restore.
     SwitchInputSource,
     Anc {
@@ -133,8 +134,12 @@ pub fn execute<S: Sleeper>(
     validate_connection: &dyn Fn() -> Result<()>,
 ) -> Result<Report> {
     transport(product_id)?;
-    if operation == Operation::SwitchInputSource {
-        session.send_command(CommandHeader::new([0, 24, 29]), &[], validate)?;
+    if operation == Operation::SwitchInputSource || matches!(operation, Operation::Equalizer { .. }) {
+        if let Operation::Equalizer { setting } = operation {
+            crate::earbuds_equalizer::apply(session, product_id, setting, validate)?;
+        } else {
+            session.send_command(CommandHeader::new([0, 24, 29]), &[], validate)?;
+        }
         return Ok(Report {
             product_id, operation, connected: None, left_battery: None, right_battery: None,
             observation: AutoPauseObservation::Unobserved, write: WriteOutcome::Confirmed,

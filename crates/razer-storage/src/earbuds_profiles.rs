@@ -13,6 +13,8 @@ use serde_json::{Map, Value};
 use std::path::Path;
 
 mod defaults;
+mod equalizer;
+pub use equalizer::{read_equalizer, merge_equalizer};
 
 const AUTO_PAUSE_FIELD: &str = "audioAutoPauseControl";
 const DO_NOT_DISTURB_FIELD: &str = "notDisturb";

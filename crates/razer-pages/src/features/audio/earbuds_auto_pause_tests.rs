@@ -279,34 +279,63 @@ fn auto_restored(pid: u32, enabled: bool) -> Report {
 
 #[gpui_kit::test]
 fn input_source_buttons_open_and_confirm_once_without_saving(cx: &mut TestAppContext) {
-    let (window, owner, _) = mount(2660, cx);
-    cx.update_window(window, |_, window, cx| {
-        owner.update(cx, |view, cx| {
-            let read = view.earbuds.pending.clone().unwrap();
-            view.finish_earbuds_request(&read, Ok(reading(2660, false)), cx);
-            finish_pending_firmware(view, cx);
-            finish_initial_restores(view, 2660, cx);
-            view.set_page("TAB_SOUND", window, cx);
-        });
-        window.render_frame(cx);
-        assert!(window.try_find("earbuds-input-confirmation").is_none());
-        window.click("earbuds-input-open", cx);
-        window.render_frame(cx);
-        assert!(window.try_find("earbuds-input-confirmation").is_some());
-        assert!(owner.read(cx).earbuds.pending.is_none());
-        window.click("earbuds-input-confirm", cx);
-        window.render_frame(cx);
-        assert!(window.try_find("earbuds-input-confirmation").is_none());
-        let view = owner.read(cx);
-        let request = view.earbuds.pending.as_ref().unwrap();
-        assert_eq!(request.operation(), Operation::SwitchInputSource);
-        assert!(!request.needs_persistence());
-        assert!(view.earbuds.edits.is_empty());
-    }).unwrap();
+    for pid in [2657, 2660, 2664, 2668, 2689] {
+        let (window, owner, _) = mount(pid, cx);
+        cx.update_window(window, |_, window, cx| {
+            owner.update(cx, |view, cx| view.set_page("TAB_SOUND", window, cx));
+            window.render_frame(cx);
+            window.click("earbuds-input-open", cx);
+            assert!(!owner.read(cx).earbuds.input_popup);
+            owner.update(cx, |view, cx| {
+                let read = view.earbuds.pending.clone().unwrap();
+                view.finish_earbuds_request(&read, Ok(reading(pid, false)), cx);
+                finish_pending_firmware(view, cx);
+                finish_initial_restores(view, pid, cx);
+                view.set_page("TAB_SOUND", window, cx);
+            });
+            window.render_frame(cx);
+            assert!(window.try_find("earbuds-input-confirmation").is_none());
+            window.click("earbuds-input-open", cx);
+            window.render_frame(cx);
+            assert!(window.try_find("earbuds-input-confirmation").is_some());
+            assert_eq!(
+                window
+                    .find("earbuds-input-confirmation")
+                    .bounds()
+                    .size
+                    .width,
+                px(360.)
+            );
+            window.click("earbuds-input-description", cx);
+            assert!(!owner.read(cx).earbuds.input_popup);
+            assert!(owner.read(cx).earbuds.pending.is_none());
+            window.render_frame(cx);
+            window.click("earbuds-input-open", cx);
+            assert!(owner.read(cx).earbuds.pending.is_none());
+            owner.update(cx, |view, cx| view.set_page("TAB_ENHANCEMENT", window, cx));
+            assert!(!owner.read(cx).earbuds.input_popup);
+            assert!(owner.read(cx).earbuds.pending.is_none());
+            owner.update(cx, |view, cx| view.set_page("TAB_SOUND", window, cx));
+            window.render_frame(cx);
+            window.click("earbuds-input-open", cx);
+            window.render_frame(cx);
+            window.click("earbuds-input-confirm", cx);
+            window.render_frame(cx);
+            assert!(window.try_find("earbuds-input-confirmation").is_none());
+            let view = owner.read(cx);
+            let request = view.earbuds.pending.as_ref().unwrap();
+            assert_eq!(request.operation(), Operation::SwitchInputSource);
+            assert!(!request.needs_persistence());
+            assert!(view.earbuds.edits.is_empty());
+        })
+        .unwrap();
+    }
 }
 
 #[gpui_kit::test]
-fn input_source_confirmation_queues_an_unsaved_command_and_preserves_failure(cx: &mut TestAppContext) {
+fn input_source_confirmation_queues_an_unsaved_command_and_preserves_failure(
+    cx: &mut TestAppContext,
+) {
     let (window, owner, _) = mount(2660, cx);
     cx.update_window(window, |_, window, cx| {
         owner.update(cx, |view, cx| {

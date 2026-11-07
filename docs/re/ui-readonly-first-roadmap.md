@@ -43,7 +43,7 @@
 
 ## 下一步
 
-1. 耳机槽继续完整Sound，复用已闭合Enhancement、协议及profile链，覆盖实际共同注册的EQ／输入源／系统音量变体；只补真实差异。Gesture四项媒体已发布并进入独立安装目录库，硬件／窗口验收仍独立保留。
+1. 耳机继续完整Sound。五耳塞输入源切换已接原版确认层、独立Protocol40命令与既有队列／服务，见`/earbuds_input_source_implementation_progress`（`2b1f2e38839450d1f60f602b344180e834f4370715242cd9d475c0e3e6823cbe`）。2项协议、2项页面测试通过，后者覆盖五产品实际按钮、禁用、外部关闭、页面切换及360px宽度；不保存、不恢复，不把ACK当成输入模式观察。Shell检查通过。完整Sound、资源／焦点／层叠验收和实机对照仍未完成；EQ与系统音量继续复用现有证据。Gesture四项媒体已交付。
 2. 鼠标槽完成输入编码、实际传输分支的设备写读、Mapping本地后处理与释放；已闭合UI、准入、队列及缓存只引用。完整静态门槛通过后立即迁移Rust实际调用方并接通页面，不停在分析报告。
 3. 键盘已接通73产品typed本地document／首profile与真实metadata代次加载，见`/keyboard_local_profile_initial_document_delivery`（`187a2ebf662ea6dc6176447274c9e5c4ad69507a6c3660c62ead6795bc2e39e9`）。版本12／13／14、edition、keymaps、旋钮和708多档案沿用完整配方；23项存储测试、17项亮度生命周期测试及Shell全目标检查通过，包含同路径断开重连拒绝旧回调。硬件初始化、设备模式及板载档案恢复仍须完成；本地文档建立不证明设备初始化或真实写入成功。
 4. 691／692 OLED无线亮度已接入实际接口2／前缀0的Protocol25路径，见`/keyboard_oled_radio_brightness_delivery`（`2afc340ddfd1218db5c8acef9e50d9e238c3593662269d92567738ae9321c782`）；55项device、3项discovery测试及Shell全目标检查通过，最终扩展的OLED用例另行通过。Mika574／2308与2595／2593仍需补齐共享接收器的真实身份与端点准入，不能以首个目录候选代替。实际DLL／设备对照未验证。

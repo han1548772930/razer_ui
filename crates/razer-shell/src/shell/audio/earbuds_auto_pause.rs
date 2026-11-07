@@ -46,7 +46,7 @@ impl AppShell {
         if !page.read(cx).earbuds_request_current(&request) {
             return;
         }
-        if self.close_requested || self.storage_error.is_some() {
+        if self.close_requested || (request.needs_persistence() && self.storage_error.is_some()) {
             page.update(cx, |page, cx| {
                 page.finish_earbuds_request(
                     &request,
@@ -173,6 +173,7 @@ impl AppShell {
                         use razer_storage::earbuds_profiles as profiles;
                         let id = local.request.profile_id();
                         match local.request.operation() {
+                            Operation::Equalizer { setting } => profiles::merge_equalizer(&mut saved, id, setting)?,
                             Operation::Anc { setting, .. } => {
                                 profiles::merge_anc(&mut saved, id, setting)?
                             }

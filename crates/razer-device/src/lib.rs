@@ -81,6 +81,8 @@ pub mod dpi_matcher_storage;
 pub mod earbuds_controls;
 #[path = "audio/earbuds_auto_pause.rs"]
 pub mod earbuds_auto_pause;
+#[path = "audio/earbuds_equalizer.rs"]
+pub mod earbuds_equalizer;
 #[path = "audio/earbuds_do_not_disturb.rs"]
 pub mod earbuds_do_not_disturb;
 #[path = "audio/earbuds_anc.rs"]
