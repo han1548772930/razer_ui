@@ -208,6 +208,7 @@ pub enum BlackSharkFirmwareCommand {
     GetBands { index: u8 },
     SetOrder(BlackSharkEqOrder),
     GetOrder { index: u8 },
+    SetFootsteps { index: u8, bands: [u8; 10] },
 }
 impl BlackSharkFirmwareCommand {
     pub fn command_header(&self) -> [u8; 3] {
@@ -224,6 +225,7 @@ impl BlackSharkFirmwareCommand {
             Self::GetBands { .. } => [0x15, 0, 1],
             Self::SetOrder(_) => [0xe0, 0, 6],
             Self::GetOrder { .. } => [0x60, 0, 1],
+            Self::SetFootsteps { .. } => [0xeb, 0, 11],
         }
     }
     pub fn expected_response(&self) -> [u8; 3] {
@@ -240,6 +242,7 @@ impl BlackSharkFirmwareCommand {
             Self::GetBands { .. } => [0x15, 1, 11],
             Self::SetOrder(_) => [0xe0, 1, 1],
             Self::GetOrder { .. } => [0x60, 1, 6],
+            Self::SetFootsteps { .. } => [0xeb, 1, 1],
         }
     }
     pub fn payload(&self) -> Result<Vec<u8>> {
@@ -267,6 +270,11 @@ impl BlackSharkFirmwareCommand {
                 payload
             }
             Self::GetBands { index } | Self::GetOrder { index } => vec![*index],
+            Self::SetFootsteps { index, bands } => {
+                let mut payload = vec![*index];
+                payload.extend(bands);
+                payload
+            }
             Self::SetOrder(order) => vec![
                 order.index,
                 order.voice_prompt_index,

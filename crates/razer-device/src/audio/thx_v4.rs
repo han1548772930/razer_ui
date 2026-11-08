@@ -512,6 +512,18 @@ impl<T: ThxV4Transport> ThxV4Controller<T> {
         self.state.generation = self.state.generation.wrapping_add(1);
         self.state.ready = false;
     }
+    /// Current hardware preset hook disables only THX EQ, with no firmware restore.
+    pub fn observe_blackshark_preset(&mut self, mut validate: impl FnMut() -> Result<()>) -> Result<()> {
+        validate()?;
+        let device=self.state.device.clone();
+        let result=self.transport.exchange(&device,&ThxOperation::SetProperty(ThxPropertyRequest::boolean("eq_enabled",false)));
+        self.state.valkyrie_spatial_enabled=false;
+        validate()?;
+        match result? {
+            ThxReply::NativeBool(true) | ThxReply::RpcAcknowledged => Ok(()),
+            other => bail!("Hardware EQ THX side effect failed: {other:?}"),
+        }
+    }
     pub fn cancel(&mut self) {
         self.state.generation = self.state.generation.wrapping_add(1);
     }

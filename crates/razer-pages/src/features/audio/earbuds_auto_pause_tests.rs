@@ -772,6 +772,60 @@ fn input_source_buttons_open_and_confirm_once_without_saving(cx: &mut TestAppCon
 }
 
 #[gpui_kit::test]
+fn earbuds_activation_reads_copies_and_rejects_stale_results_without_saving(cx: &mut TestAppContext) {
+    for pid in [2657,2660,2664,2668,2689] {
+        let (window, owner, mut device) = mount(pid, cx);
+        cx.simulate_window_resize(window, size(px(1600.),px(1400.)));
+        cx.update_window(window, |_, window, cx| {
+            owner.update(cx, |view, cx| {
+                let initial = view.earbuds.pending.clone().unwrap();
+                view.finish_earbuds_request(&initial, Ok(reading(pid,false)), cx);
+                finish_pending_firmware(view,cx);
+                finish_initial_restores(view,pid,cx);
+                view.set_page("TAB_SOUND",window,cx);
+            });
+            window.render_frame(cx);
+            let before = owner.read(cx).snapshot();
+            window.click("earbuds-activation-show",cx);
+            window.render_frame(cx);
+            assert_eq!(window.find("earbuds-activation-copy").disabled(),Some(true));
+            owner.update(cx, |view,cx| {
+                let request=view.earbuds.pending.clone().unwrap();
+                assert_eq!(request.operation(),Operation::ActivationCode);
+                assert!(!request.needs_persistence());
+                let report: Report=serde_json::from_value(json!({"product_id":pid,"operation":"ActivationCode",
+                    "connected":null,"left_battery":null,"right_battery":null,"observation":"Unobserved","write":"Skipped",
+                    "activation_code":{"declared_length":3,"value":"ABC-123"}})).unwrap();
+                view.finish_earbuds_request(&request,Ok(report),cx);
+            });
+            window.render_frame(cx);
+            window.click("earbuds-activation-copy",cx);
+            assert_eq!(cx.read_from_clipboard().and_then(|item| item.text()),Some("ABC-123".into()));
+            assert_eq!(owner.read(cx).snapshot(),before);
+            window.click("earbuds-activation-close",cx);
+            window.click("earbuds-activation-show",cx);
+            owner.update(cx,|view,cx| {
+                let request=view.earbuds.pending.clone().unwrap();
+                view.finish_earbuds_request(&request,Err("device read failed".into()),cx);
+            });
+            window.render_frame(cx);
+            assert_eq!(window.find("earbuds-activation-copy").disabled(),Some(true));
+            window.click("earbuds-activation-close",cx);
+            window.click("earbuds-activation-show",cx);
+            owner.update(cx,|view,cx| {
+                let stale=view.earbuds.pending.clone().unwrap();
+                device.dashboard.connection_observation=None;
+                view.set_earbuds_context(&device,true,cx);
+                view.finish_earbuds_request(&stale,Err("stale result".into()),cx);
+                assert!(view.earbuds_activation.code.is_none());
+            });
+            window.render_frame(cx);
+            assert!(window.try_find("earbuds-activation-modal").is_none());
+        }).unwrap();
+    }
+}
+
+#[gpui_kit::test]
 fn input_source_disconnected_hint_follows_observation_and_page_lifetime(cx: &mut TestAppContext) {
     for pid in [2657, 2660, 2664, 2668, 2689] {
         let (window, owner, device) = mount(pid, cx);

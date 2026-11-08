@@ -230,6 +230,14 @@ impl ServiceRequest {
                 Target::WindowsContainer { container, .. } => Scope::container(179, container)?,
             }));
         }
+        if let Self::KeyboardMode { target, .. } = self {
+            use razer_device::keyboard_mode::Target;
+            return Ok(Some(match target {
+                Target::Collection { node, product_id, .. } => Scope::collection(*product_id, node),
+                Target::WindowsContainer(target) => Scope::container(target.product_id, &target.device_container_id)?,
+                Target::WindowsBle(target) => Scope::container(target.product_id, &target.device_container_id)?,
+            }));
+        }
         let collection = match self {
             Self::ControllerSleep {
                 node, product_id, ..
@@ -641,5 +649,21 @@ mod tests {
         drop(exclusive);
         received.recv().unwrap();
         worker.join().unwrap();
+    }
+
+    #[test]
+    fn keyboard_mode_serializes_its_command_and_owns_device_scope() {
+        use razer_device::keyboard_mode::{Operation, Target};
+        let request = ServiceRequest::KeyboardMode {
+            target: Target::WindowsContainer(razer_device::device_reads::DeviceReadTarget {
+                product_id:515, physical_product_id:515, peer_product_id:None,
+                device_container_id:"keyboard-mode".into(), path:"hid-keyboard".into(),
+            }), mode_operation: Operation::Initialize,
+        };
+        let encoded = serde_json::to_value(&request).unwrap();
+        assert_eq!(encoded["operation"], "keyboard_mode");
+        assert_eq!(encoded["mode_operation"], "Initialize");
+        let decoded: ServiceRequest = serde_json::from_value(encoded).unwrap();
+        assert_eq!(decoded.synchronous_device_task().unwrap(), Some(Scope::container(515,"keyboard-mode").unwrap()));
     }
 }

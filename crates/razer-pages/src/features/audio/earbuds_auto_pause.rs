@@ -67,7 +67,7 @@ impl EarbudsAutoPauseRequested {
         self.source == RequestSource::HardwareNotification
     }
     pub fn needs_persistence(&self) -> bool {
-        if self.operation == Operation::SwitchInputSource { return false; }
+        if matches!(self.operation, Operation::SwitchInputSource | Operation::ActivationCode) { return false; }
         matches!(
             self.source,
             RequestSource::UserEdit | RequestSource::HardwareNotification
@@ -486,9 +486,11 @@ impl AudioProductWorkspace {
             || self.earbuds.connected != connected
         {
             self.earbuds_graphic.clear();
+            self.earbuds_activation.clear_device();
         }
         if !ready {
             self.earbuds_graphic.leave();
+            self.earbuds_activation.cancel();
         }
         if changed {
             let continuing_connection = self.earbuds.identity == device.workspace_identity()
@@ -652,6 +654,9 @@ impl AudioProductWorkspace {
         if became_active && !changed {
             self.earbuds.monitor = Some(Arc::new(AtomicBool::new(true)));
             self.earbuds.queued = Some(Operation::Read);
+        }
+        if ready && self.page == "TAB_SOUND" {
+            self.sync_earbuds_activation(cx);
         }
         self.start_earbuds_request(cx);
     }
@@ -839,7 +844,7 @@ impl AudioProductWorkspace {
             }
             Operation::Write { enabled } => enabled,
             Operation::Restore { enabled } => enabled.unwrap_or(true),
-            Operation::Read | Operation::Battery { .. } | Operation::Firmware | Operation::SwitchInputSource => return false,
+            Operation::Read | Operation::Battery { .. } | Operation::Firmware | Operation::SwitchInputSource | Operation::ActivationCode => return false,
             Operation::DoNotDisturb { enabled } => {
                 self.earbuds.dnd_persisted = Some(enabled);
                 return true;
@@ -923,6 +928,17 @@ impl AudioProductWorkspace {
             }
         });
         self.earbuds.pending = None;
+        if request.operation == Operation::ActivationCode {
+            if current {
+                self.earbuds_activation.code = Some(result.and_then(|report| {
+                    report.activation_code.ok_or_else(|| "Activation response omitted the code".into())
+                }));
+                self.earbuds_activation.loading = false;
+            }
+            self.start_earbuds_request(cx);
+            cx.notify();
+            return;
+        }
         if request.operation == Operation::SwitchInputSource {
             if current {
                 self.earbuds.input_result = Some(result.map(|report| report.write));

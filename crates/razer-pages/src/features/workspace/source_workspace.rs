@@ -1397,7 +1397,7 @@ impl SourceProductWorkspace {
         }
     }
     fn sync_mouse_mapping_activity(&self, cx: &mut Context<Self>) {
-        if !matches!(self.device.product_id, 70 | 158) || self.exiting {
+        if !(self.device.product_id == 70 || razer_device::mouse_receiver_mapping::supports_ordinary(self.device.product_id)) || self.exiting {
             return;
         }
         let FamilyBody::Mouse(body) = &self.body else {
@@ -1416,7 +1416,7 @@ impl SourceProductWorkspace {
             None
         };
         body.update(cx, |body, cx| {
-            if self.device.product_id == 158 {
+            if razer_device::mouse_receiver_mapping::supports_ordinary(self.device.product_id) {
                 body.set_receiver_mapping_connection_generation(
                     container.clone(),
                     self.mapping_connection_generation,
@@ -1428,7 +1428,7 @@ impl SourceProductWorkspace {
                 );
             }
             if let (Some(container), Some(document)) = (container, document) {
-                if self.device.product_id == 158 {
+                if razer_device::mouse_receiver_mapping::supports_ordinary(self.device.product_id) {
                     body.publish_receiver_mapping(container, document, cx);
                 } else {
                     body.publish_legacy_mapping(container, document, cx);
@@ -2874,7 +2874,8 @@ impl SourceProductWorkspace {
             return;
         }
         if self.device.product_id == 182
-            || matches!(self.device.product_id, 158 | 190 | 226) && !apply
+            || (razer_device::mouse_receiver_mapping::supports_ordinary(self.device.product_id)
+                || self.device.product_id == 226) && !apply
         {
             if let Some(scope) = self.mouse_polling_scope(cx) {
                 cx.emit(WorkspaceEvent::MouseLegacyProfileRequested { scope, apply });
@@ -4493,7 +4494,7 @@ impl SourceProductWorkspace {
         let container = self.device.device_container_id.clone();
         if let FamilyBody::Mouse(body) = &self.body {
             body.update(cx, |body, cx| {
-                if self.device.product_id == 158 {
+                if razer_device::mouse_receiver_mapping::supports_ordinary(self.device.product_id) {
                     if mapping_reconnect::ordinary_mouse_owner(&self.device).is_some() {
                         body.set_receiver_mapping_connection_generation(
                             Some(container.clone()),

@@ -1,8 +1,8 @@
 {
   "schema_version": 2,
   "format": "files",
-  "tag": "assets-13b0c1edf856981e34cf",
-  "source_sha256": "13b0c1edf856981e34cf5295be01ab589ba4fc474530f35e438d5bf8caeff22e",
+  "tag": "assets-b0e273db79ffd994f67c",
+  "source_sha256": "b0e273db79ffd994f67c45b2a4a9372b0d3e5f06bbb82e46943ea4e5b6c59b41",
   "git_files": [
     {
       "path": "assets/synapse/shared/pending-source-audit/33892a0b56b91958-tray-gear-light.rgba",
@@ -36783,6 +36783,11 @@
           "sha256": "9601d8c30bd897af6c90cfd4d972f8dbe0e743fc7dc22fd51315b068289e9a54"
         },
         {
+          "path": "assets/synapse/shared/products/9606e5546ffe9021ca6812f11281eed5f192d1043530d6a31e97145bf41a91fc.svg",
+          "bytes": 808,
+          "sha256": "9606e5546ffe9021ca6812f11281eed5f192d1043530d6a31e97145bf41a91fc"
+        },
+        {
           "path": "assets/synapse/shared/products/966234ec13749beb-mapping-macro.svg",
           "bytes": 458,
           "sha256": "966234ec13749beb235e0675552b54db52b0caeb42053a13b6cab4020a751e63"
@@ -37536,6 +37541,11 @@
           "path": "assets/synapse/shared/products/be99c963c593d539-preview-source-594-0-3-3x.png",
           "bytes": 679347,
           "sha256": "be99c963c593d539dec3211151958983a734b55df76391bd34b2f0830bc38935"
+        },
+        {
+          "path": "assets/synapse/shared/products/beba798d1c5e724fb34eac2fb09de81772492a1b06171550b61c995f7d5538c8.svg",
+          "bytes": 631,
+          "sha256": "beba798d1c5e724fb34eac2fb09de81772492a1b06171550b61c995f7d5538c8"
         },
         {
           "path": "assets/synapse/shared/products/bf4310f38043bbaedc949bbaa94e8d2db091bc60d06496cb65c44b5d07017dd4.svg",
@@ -38541,6 +38551,11 @@
           "path": "assets/synapse/shared/products/ed82f5244d4a4da44bbe88fdddc85d970335d2fa7704d08953648d2d28c55859.webp",
           "bytes": 23354240,
           "sha256": "ed82f5244d4a4da44bbe88fdddc85d970335d2fa7704d08953648d2d28c55859"
+        },
+        {
+          "path": "assets/synapse/shared/products/ed8fa6c558f7ec0984f33a6dbdffa6b11599e860f53fda1ab6a0184c6199f00f.svg",
+          "bytes": 2845,
+          "sha256": "ed8fa6c558f7ec0984f33a6dbdffa6b11599e860f53fda1ab6a0184c6199f00f"
         },
         {
           "path": "assets/synapse/shared/products/edcf0c345effa16f-current-dashboard-664-0-16-product-1x.png",
@@ -41853,6 +41868,6 @@
   "storage": {
     "provider": "huggingface",
     "repository": "han1548772930/razer-ui-assets",
-    "revision": "d41d9386b1feaa3a27692d111cd3875bb10bb693"
+    "revision": "b7893e2cba655528b45b619c9b7b558ea7e23eb1"
   }
 }

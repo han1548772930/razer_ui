@@ -114,6 +114,60 @@ pub fn resolve(client: &mut ServiceClient, observed: &ObservedDevice) -> anyhow:
 }
 
 impl Route {
+    pub fn mode_target(&self) -> razer_device::keyboard_mode::Target {
+        use razer_device::keyboard_mode::Target;
+        match self {
+            Self::Hid(DirectRoute::Collection { node, product_id }) => Target::Collection {
+                node: node.clone(),
+                product_id: *product_id,
+                peer_product_id: None,
+            },
+            #[cfg(windows)]
+            Self::Hid(DirectRoute::Container(target)) => Target::WindowsContainer(target.clone()),
+            Self::RelayCollection {
+                node,
+                product_id,
+                peer_product_id,
+            } => Target::Collection {
+                node: node.clone(),
+                product_id: *product_id,
+                peer_product_id: Some(*peer_product_id),
+            },
+            #[cfg(windows)]
+            Self::Ble(target) => Target::WindowsBle(target.clone()),
+        }
+    }
+
+    pub fn set_source_mode(
+        &self,
+        client: &mut ServiceClient,
+        operation: razer_device::keyboard_mode::Operation,
+    ) -> anyhow::Result<razer_device::keyboard_mode::Report> {
+        self.set_source_mode_with(operation, |request| client.request(request))
+    }
+
+    fn set_source_mode_with(
+        &self,
+        operation: razer_device::keyboard_mode::Operation,
+        request: impl FnOnce(ServiceRequest) -> anyhow::Result<serde_json::Value>,
+    ) -> anyhow::Result<razer_device::keyboard_mode::Report> {
+        let target = self.mode_target();
+        let reply = request(ServiceRequest::KeyboardMode {
+            target: target.clone(),
+            mode_operation: operation,
+        })?;
+        ensure!(
+            reply["target"] == serde_json::to_value(&target)?,
+            "Keyboard mode response target changed"
+        );
+        let report: razer_device::keyboard_mode::Report =
+            serde_json::from_value(reply["report"].clone())?;
+        ensure!(
+            report.product_id == target.product_id() && report.operation == operation,
+            "Keyboard mode response operation changed"
+        );
+        Ok(report)
+    }
     pub fn read_metadata(
         &self,
         client: &mut ServiceClient,
@@ -392,5 +446,25 @@ mod tests {
             });
             assert_eq!(result.is_ok(), returned_peer == 757);
         }
+    }
+
+    #[test]
+    fn keyboard_mode_requires_matching_target_and_operation() {
+        use razer_device::keyboard_mode::{Operation, Reading, Report};
+        let route = super::Route::Hid(route());
+        for returned_operation in [Operation::Initialize, Operation::Release] {
+            let result = route.set_source_mode_with(Operation::Initialize, |request| {
+                let ServiceRequest::KeyboardMode { target, mode_operation } = request else { panic!("wrong request") };
+                assert_eq!(mode_operation, Operation::Initialize);
+                Ok(json!({"target":target,"report":Report { product_id: target.product_id(),
+                    operation: returned_operation, before: Some(Reading {mode:3,parameter:0}), acknowledgement:None }}))
+            });
+            assert_eq!(result.is_ok(), returned_operation == Operation::Initialize);
+        }
+        assert!(
+            route
+                .set_source_mode_with(Operation::Release, |_| anyhow::bail!("disconnected"))
+                .is_err()
+        );
     }
 }

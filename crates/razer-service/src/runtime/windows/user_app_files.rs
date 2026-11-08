@@ -10,7 +10,7 @@ use std::io::Read;
 #[path = "user_app_files_remove.rs"]
 mod removal;
 #[path = "user_app_signature.rs"]
-mod signature;
+pub(crate) mod signature;
 #[path = "user_app_files_write.rs"]
 mod write;
 

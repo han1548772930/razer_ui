@@ -120,6 +120,13 @@ impl<R: ThxLocalRpc> DirectThxTransport<R> {
                     | BlackSharkFirmwareCommand::GetMicStatus1398
                     | BlackSharkFirmwareCommand::GetRollerFunction
                     | BlackSharkFirmwareCommand::SetRollerFunction(_)
+                    | BlackSharkFirmwareCommand::GetOrder { .. }
+                    | BlackSharkFirmwareCommand::GetBands { .. }
+                    | BlackSharkFirmwareCommand::SetOrder(_)
+                    | BlackSharkFirmwareCommand::SetBands { .. }
+                    | BlackSharkFirmwareCommand::SetFootsteps { .. }
+                    | BlackSharkFirmwareCommand::BatchStart
+                    | BlackSharkFirmwareCommand::BatchStop
             ),
             "Expected a source-audited direct headset command"
         );

@@ -60,7 +60,7 @@ impl ChromaAssignment {
         // The current keyboard task runners pass selectedChromaProfileGuid
         // alone to the storage consumer. Only the audited mouse consumers
         // receive and evaluate chromaEffectAssignment.
-        let assignment = matches!(product_id, 70 | 158)
+        let assignment = (product_id == 70 || razer_device::mouse_receiver_mapping::supports_ordinary(product_id))
             .then_some(self.chroma_effect_assignment.as_deref())
             .flatten();
         match assignment {

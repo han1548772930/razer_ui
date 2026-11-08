@@ -101,6 +101,7 @@ mod earbuds_equalizer_graph;
 mod earbuds_equalizer_view;
 mod earbuds_system_volume;
 mod earbuds_graphic;
+mod earbuds_activation;
 mod earbuds_system_integration;
 pub use earbuds_system_volume::EarbudsVolumeRequested;
 pub use earbuds_auto_pause::EarbudsAutoPauseRequested;
@@ -296,6 +297,7 @@ pub struct AudioProductWorkspace {
     volume: audio_volume::State,
     earbuds_volume: earbuds_system_volume::State,
     earbuds_graphic: earbuds_graphic::State,
+    earbuds_activation: earbuds_activation::State,
     earbuds_system: earbuds_system_integration::State,
     earbuds: earbuds_auto_pause::State,
     surround: surround::State,
@@ -388,6 +390,7 @@ impl AudioProductWorkspace {
             volume: audio_volume::State::default(),
             earbuds_volume: earbuds_system_volume::State::default(),
             earbuds_graphic: earbuds_graphic::State::default(),
+            earbuds_activation: earbuds_activation::State::default(),
             earbuds_system: earbuds_system_integration::State::default(),
             earbuds: earbuds_auto_pause::State::default(),
             surround: surround::State::default(),
@@ -515,6 +518,7 @@ impl AudioProductWorkspace {
         this.initialize_seiren_stream_mixer(window, cx);
         this.sync(window, cx);
         this.sync_earbuds_system_integration(cx);
+        this.sync_earbuds_activation(cx);
         this
     }
     fn initialize_equalizers(&mut self) {
@@ -700,6 +704,12 @@ impl AudioProductWorkspace {
     pub fn set_page(&mut self, page: &str, window: &mut Window, cx: &mut Context<Self>) {
         if page != "TAB_ENHANCEMENT" { self.close_earbuds_gestures(window, cx); }
         if page != "TAB_SOUND" {
+            if self.page == "TAB_SOUND" && sound::product(self.spec.product_id).is_some() {
+                if let Some(owner)=&self.source_owner {
+                    owner.update(cx,|owner,_|owner.invalidate_audio_sound());
+                }
+                self.clear_local_eq_observation();
+            }
             self.cancel_earbuds_volume();
             self.earbuds.input_popup = false;
             self.earbuds_graphic.leave();
@@ -738,6 +748,7 @@ impl AudioProductWorkspace {
             }
             self.page = page.into();
             self.sync_earbuds_system_integration(cx);
+            self.sync_earbuds_activation(cx);
             if page == "TAB_LIGHTING" {
                 self.refresh_mixer_lighting_previews(cx);
             }
@@ -833,13 +844,20 @@ impl AudioProductWorkspace {
         if self.sliders.contains_key(path) {
             return;
         }
-        let Some(value) = self.draft.pointer(path).and_then(Value::as_f64) else {
+        let value = self.draft.pointer(path).and_then(Value::as_f64).or_else(|| {
+            (sound::product(self.spec.product_id).is_some() && path == "/device/volume/value").then_some(0.)
+        });
+        let Some(value) = value else {
             return;
         };
         let state = cx.new(|_| {
-            SliderState::new()
-                .min(min)
-                .max(max)
+            let state = SliderState::new();
+            let state = if min > state.max_value() {
+                state.max(max).min(min)
+            } else {
+                state.min(min).max(max)
+            };
+            state
                 .step(step)
                 .default_value(value as f32)
         });
@@ -1472,6 +1490,13 @@ impl AudioProductWorkspace {
     }
 
     pub fn prepare_exit(&mut self, cx: &mut Context<Self>) {
+        if sound::product(self.spec.product_id).is_some() {
+            if let Some(owner)=&self.source_owner {
+                owner.update(cx,|owner,_|owner.invalidate_audio_sound());
+            }
+            self.clear_local_eq_observation();
+        }
+        self.earbuds_activation.cancel();
         self.earbuds_graphic.clear();
         self.earbuds_system.cancel();
         self.cancel_earbuds_volume();
@@ -2173,6 +2198,9 @@ impl AudioProductWorkspace {
         let mut sections = Vec::new();
         if let Some(page) = page {
             for section in &page.sections {
+                if earbuds_sound && section.title == "THX_SPATIAL_AUDIO" {
+                    continue;
+                }
                 if self.spec.product_id == 1342
                     && matches!(section.title.as_str(), "NOISE_GATE" | "COMPRESSOR")
                 {
@@ -2269,7 +2297,8 @@ impl AudioProductWorkspace {
             }
         }
         if earbuds_sound {
-            sections.push(self.earbuds_sound_properties(cx));
+            sections.push(v_flex().child(self.earbuds_activation_card(cx))
+                .child(self.earbuds_sound_properties(cx)).into_any_element());
             return v_flex().w_full().items_center()
                 .child(self.earbuds_product_graphic(cx))
                 .children(full_width_equalizers)

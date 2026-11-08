@@ -230,7 +230,8 @@ impl SourceHelpOwner {
     }
     pub(super) fn set_active(&mut self, active: bool, cx: &mut Context<Self>) {
         if self.active != active {
-            if !active && razer_device::earbuds_protocol40::supports_auto_pause(self.product_id) {
+            if !active && (razer_device::earbuds_protocol40::supports_auto_pause(self.product_id)
+                || razer_device::thx_v4::capability(self.product_id).is_some()) {
                 self.generation = self.generation.wrapping_add(1);
             }
             self.active = active;
@@ -260,6 +261,9 @@ impl SourceHelpOwner {
         let mut request = self.request(HelpOwnerCommand::SetAudioSound);
         request.audio_messages = messages;
         cx.emit(request);
+    }
+    pub(super) fn invalidate_audio_sound(&mut self) {
+        self.audio_revision = self.audio_revision.wrapping_add(1);
     }
     pub(super) fn request_sound_windows(&self, properties: bool, cx: &mut Context<Self>) {
         cx.emit(self.request(if properties {

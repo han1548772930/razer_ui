@@ -8,6 +8,7 @@ pub enum Operation {
     Equalizer { setting: crate::earbuds_equalizer::Setting },
     /// Source audioInputSource command; no persisted value or restore.
     SwitchInputSource,
+    ActivationCode,
     Anc {
         setting: AncSetting,
     },
@@ -75,6 +76,24 @@ pub struct Report {
     pub tap_speed: Option<crate::earbuds_gesture::TapObservation>,
     #[serde(default)]
     pub anc: Option<crate::earbuds_anc::Report>,
+    #[serde(default)]
+    pub activation_code: Option<ActivationCode>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+pub struct ActivationCode {
+    declared_length: u8,
+    value: String,
+}
+
+impl ActivationCode {
+    pub fn value(&self) -> &str { &self.value }
+    pub fn declared_length(&self) -> u8 { self.declared_length }
+    fn decode(data: &[u8]) -> Result<Self> {
+        let (&declared_length, bytes) = data.split_first().context("Activation reply has no length byte")?;
+        ensure!(!bytes.is_empty(), "Activation code is empty");
+        Ok(Self { declared_length, value: bytes.iter().map(|byte| char::from(*byte)).collect() })
+    }
 }
 
 impl Report {
@@ -134,6 +153,17 @@ pub fn execute<S: Sleeper>(
     validate_connection: &dyn Fn() -> Result<()>,
 ) -> Result<Report> {
     transport(product_id)?;
+    if operation == Operation::ActivationCode {
+        let reply = session.send_command_as(CommandHeader::new([0,24,161]), &[],
+            TransactionDeviceType::DockDongle, validate)?;
+        let activation_code = ActivationCode::decode(&reply.data)?;
+        return Ok(Report {
+            product_id, operation, connected: None, left_battery: None, right_battery: None,
+            observation: AutoPauseObservation::Unobserved, write: WriteOutcome::Skipped,
+            do_not_disturb: None, voice_prompt: None, firmware: FirmwareObservation::Unobserved,
+            gesture: None, tap_speed: None, anc: None, activation_code: Some(activation_code),
+        });
+    }
     if operation == Operation::SwitchInputSource || matches!(operation, Operation::Equalizer { .. }) {
         if let Operation::Equalizer { setting } = operation {
             crate::earbuds_equalizer::apply(session, product_id, setting, validate)?;
@@ -144,7 +174,7 @@ pub fn execute<S: Sleeper>(
             product_id, operation, connected: None, left_battery: None, right_battery: None,
             observation: AutoPauseObservation::Unobserved, write: WriteOutcome::Confirmed,
             do_not_disturb: None, voice_prompt: None, firmware: FirmwareObservation::Unobserved,
-            gesture: None, tap_speed: None, anc: None,
+            gesture: None, tap_speed: None, anc: None, activation_code: None,
         });
     }
     if let Operation::Anc { setting } = operation {
@@ -162,7 +192,7 @@ pub fn execute<S: Sleeper>(
             firmware: FirmwareObservation::Unobserved,
             gesture: None,
             tap_speed: None,
-            anc: Some(anc),
+            anc: Some(anc), activation_code: None,
         });
     }
     if matches!(
@@ -213,7 +243,7 @@ pub fn execute<S: Sleeper>(
             firmware: FirmwareObservation::Unobserved,
             gesture: observed_gesture,
             tap_speed,
-            anc: None,
+            anc: None, activation_code: None,
         });
     }
     if operation == Operation::Firmware {
@@ -237,7 +267,7 @@ pub fn execute<S: Sleeper>(
             firmware,
             gesture: None,
             tap_speed: None,
-            anc: None,
+            anc: None, activation_code: None,
         });
     }
     if let Operation::VoicePrompt { enabled } = operation {
@@ -255,7 +285,7 @@ pub fn execute<S: Sleeper>(
             firmware: FirmwareObservation::Unobserved,
             gesture: None,
             tap_speed: None,
-            anc: None,
+            anc: None, activation_code: None,
         });
     }
     if let Operation::RestoreVoicePrompt { enabled } = operation {
@@ -273,7 +303,7 @@ pub fn execute<S: Sleeper>(
             firmware: FirmwareObservation::Unobserved,
             gesture: None,
             tap_speed: None,
-            anc: None,
+            anc: None, activation_code: None,
         });
     }
     if let Operation::DoNotDisturb { enabled } = operation {
@@ -305,7 +335,7 @@ pub fn execute<S: Sleeper>(
             firmware: FirmwareObservation::Unobserved,
             gesture: None,
             tap_speed: None,
-            anc: None,
+            anc: None, activation_code: None,
         });
     }
     // Source user writes and profile restore do not run the battery setup again.
@@ -325,7 +355,7 @@ pub fn execute<S: Sleeper>(
             firmware: FirmwareObservation::Unobserved,
             gesture: None,
             tap_speed: None,
-            anc: None,
+            anc: None, activation_code: None,
         });
     }
     if let Operation::Restore { enabled } = operation {
@@ -354,7 +384,7 @@ pub fn execute<S: Sleeper>(
             firmware: FirmwareObservation::Unobserved,
             gesture: None,
             tap_speed: None,
-            anc: None,
+            anc: None, activation_code: None,
         });
     }
     // Earlier four helpers explicitly supply Mouse; 2689 uses the instance type.
@@ -392,7 +422,7 @@ pub fn execute<S: Sleeper>(
         firmware: FirmwareObservation::Unobserved,
         gesture: None,
         tap_speed: None,
-        anc: None,
+        anc: None, activation_code: None,
     };
     if !connected {
         return Ok(report);

@@ -2140,6 +2140,11 @@ pub struct ChromaSettingsColors;
 /// Current AudioSetting / UltraLowLatency / ActiveNoiseCancellation CSS.
 pub struct AudioEnhancementColors;
 impl AudioEnhancementColors {
+    /// Current activation modal copy/close CSS states.
+    pub fn activation_copy_hover() -> Hsla { rgb(0x7de36c).into() }
+    pub fn activation_copy_pressed() -> Hsla { rgb(0x30961f).into() }
+    pub fn activation_close_hover() -> Hsla { rgb(0x9b9b9b).into() }
+    pub fn activation_close_pressed() -> Hsla { rgb(0x4e4e4e).into() }
     /// Current Sound input-source confirmation border/header and button hover.
     pub fn input_warning() -> Hsla {
         rgb(0xfd8611).into()

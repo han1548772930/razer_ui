@@ -710,6 +710,10 @@ pub enum ServiceRequest {
         node: razer_device::backend::HidNode,
         product_id: u32,
     },
+    KeyboardMode {
+        target: razer_device::keyboard_mode::Target,
+        mode_operation: razer_device::keyboard_mode::Operation,
+    },
     KeyboardProfileInventoryRead {
         target: keyboard_profile_inventory::Target,
     },
@@ -1512,6 +1516,7 @@ impl ServiceClient {
                     | ServiceRequest::StopMappingKeyCapture
                     | ServiceRequest::StartShortcutCapture
                     | ServiceRequest::HidNodeWrite { .. }
+                    | ServiceRequest::KeyboardMode { .. }
                     | ServiceRequest::HidNodeHanboCooler { .. }
                     | ServiceRequest::HidNodeMixerWrite { .. }
                     | ServiceRequest::HidNodeMixerLocalWrite { .. }

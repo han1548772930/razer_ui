@@ -56,7 +56,7 @@ impl State {
 pub(super) fn ordinary_mouse_owner(device: &Device) -> Option<String> {
     use razer_model::model::DeviceConnectionObservation;
     let serial = device.serial_number.to_ascii_uppercase();
-    (matches!(device.product_id, 70 | 158)
+    ((device.product_id == 70 || razer_device::mouse_receiver_mapping::supports_ordinary(device.product_id))
         && device.real_product_id == device.product_id
         && !device.device_container_id.is_empty()
         && !serial.starts_with("PREVIEW-")
@@ -75,7 +75,12 @@ mod tests {
 
     fn saved_device() -> Device {
         let mut saved = razer_model::product_preview::registered_preview(158).unwrap();
-        saved.profiles[0].source_settings = Some(json!({"mappings":[],"dpi":{"x":1600,"y":1700}}));
+        saved.active_profile = "saved-profile".into();
+        saved.profiles = vec![razer_model::model::Profile {
+            id: saved.active_profile.clone(), guid: saved.active_profile.clone(), name: "Saved".into(),
+            source_settings: Some(json!({"mappings":[],"dpi":{"x":1600,"y":1700}})),
+            settings: None, dpi_stages: None,
+        }];
         saved
     }
 
@@ -143,5 +148,23 @@ mod tests {
         assert!(ordinary_mouse_owner(&device).is_none());
         device.observe_connection(None);
         assert!(ordinary_mouse_owner(&device).is_none());
+    }
+
+    #[::core::prelude::v1::test]
+    fn current_mouse_batch_admits_only_its_own_observed_physical_product() {
+        use razer_model::model::DeviceConnectionObservation;
+        for pid in [190,192,222,229,239] {
+            let mut device=razer_model::product_preview::registered_preview(pid).unwrap();
+            device.serial_number="observed".into();
+            device.device_container_id="current-container".into();
+            device.real_product_id=pid;
+            device.observe_connection(Some(DeviceConnectionObservation::HidPresent));
+            assert_eq!(ordinary_mouse_owner(&device).as_deref(),Some("current-container"));
+            device.real_product_id=pid+1;
+            assert!(ordinary_mouse_owner(&device).is_none());
+            device.real_product_id=pid;
+            device.observe_connection(Some(DeviceConnectionObservation::ReceiverPeer(1)));
+            assert!(ordinary_mouse_owner(&device).is_none());
+        }
     }
 }

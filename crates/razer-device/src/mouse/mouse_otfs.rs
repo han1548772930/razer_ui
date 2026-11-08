@@ -43,7 +43,8 @@ impl Snapshot {
 pub fn project(document: &Value, snapshot: &Snapshot, temporary: bool) -> Result<Option<Value>> {
     let parsed: Document = serde_json::from_value(document.clone())?;
     ensure!(
-        matches!(parsed.product_id, 70 | 158),
+        parsed.product_id == 70
+            || crate::mouse_receiver_mapping::supports_ordinary(parsed.product_id),
         "OTFS compiler is unavailable for this product"
     );
     if !parsed
@@ -59,11 +60,13 @@ pub fn project(document: &Value, snapshot: &Snapshot, temporary: bool) -> Result
             &snapshot.mappings,
             temporary,
         ),
-        158 => crate::mouse_receiver_mapping::project_interdevice_otfs(
-            document,
-            &snapshot.mappings,
-            temporary,
-        ),
+        158 | 190 | 192 | 222 | 229 | 239 => {
+            crate::mouse_receiver_mapping::project_interdevice_otfs(
+                document,
+                &snapshot.mappings,
+                temporary,
+            )
+        }
         _ => unreachable!(),
     }?;
     Ok(Some(result))

@@ -49,6 +49,7 @@ impl FeatureTransport for Hid {
             0xe1 => 0xe1,
             0x95 => 0x95,
             0xe0 => 0xe0,
+            0x60 | 0x15 | 0xeb => report[10],
             0xef => 0xef,
             0x55 => 0x55,
             0x6a => 0x6a,
@@ -80,6 +81,21 @@ impl FeatureTransport for Hid {
         response[10] = command;
         response[11] = 1;
         response[12] = 1;
+        if command == 0x60 {
+            response[12] = 6;
+            response[13..19].copy_from_slice(&[
+                report[13],
+                report[13],
+                1,
+                u8::from(report[13] == 1),
+                report[13],
+                0,
+            ]);
+        }
+        if command == 0x15 {
+            response[12] = 11;
+            response[13..24].copy_from_slice(&[report[13], 129, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+        }
         if command == 2 {
             response[12] = 24;
             response[13..37].copy_from_slice(&state.versions);
@@ -97,6 +113,10 @@ impl FeatureTransport for Hid {
         state.last_read_command = Some(response[10]);
         out[..response.len()].copy_from_slice(&response);
         Ok(response.len())
+    }
+    fn write_output_counted(&self, report: &[u8]) -> Result<usize> {
+        self.write_output(report)?;
+        Ok(report.len())
     }
     fn report_lengths(&self) -> Result<ReportLengths> {
         Ok(ReportLengths {
@@ -229,6 +249,78 @@ fn fixture(initial: bool, final_value: bool) -> Vec<Result<Response>> {
         Ok(Response::SetProperty),
         Ok(property(final_value)),
     ]
+}
+
+#[test]
+fn local_eq_direct_reads_and_edits_all_routes_without_rpc_or_binding() {
+    use razer_device::thx_submission::local_eq::{Edit, Job, Request, prepare};
+    for (pid, connected) in [
+        (1398, 1398),
+        (1398, 1399),
+        (1401, 1401),
+        (1401, 1402),
+        (2638, 2638),
+        (2638, 2645),
+        (2641, 2641),
+        (2641, 2648),
+        (4124, 4124),
+        (4124, 4123),
+        (4126, 4126),
+    ] {
+        let (transport, state) = transport_for(pid, connected, vec![]);
+        let mut controller = razer_device::thx_v4::ThxV4Controller::new(pid, transport).unwrap();
+        let mut scope = scope();
+        scope.product_id = pid;
+        let read = crate::thx::execute_retained(
+            scope.clone(),
+            ThxSubmissionPlan::LocalEq {
+                request: Request::Read,
+                job: Job::Read,
+            },
+            &mut controller,
+            || Ok(()),
+            |_| Ok(()),
+        );
+        assert!(read.error.is_none());
+        let eq = read.local_eq.unwrap();
+        assert!(eq.completed, "{pid}/{connected}: {:?}", eq.error);
+        let slots = eq.observed.unwrap();
+        assert_eq!(slots[0].band_values, [-1, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+        let request = Request::Edit(Edit {
+            index: 3,
+            band_values: Some([-4; 10]),
+            cloud_equalizer_id: None,
+            custom: Some(true),
+            footstep_values: None,
+        });
+        let job = prepare(&request, &slots).unwrap();
+        let result = crate::thx::execute_retained(
+            scope,
+            ThxSubmissionPlan::LocalEq { request, job },
+            &mut controller,
+            || Ok(()),
+            |_| Ok(()),
+        );
+        assert!(result.local_eq.unwrap().completed);
+        assert!(!controller.transport().bound());
+        assert!(controller.transport().rpc().requests.is_empty());
+        let state = state.borrow();
+        assert_eq!(state.outputs.len(), 23);
+        assert_eq!(
+            state
+                .outputs
+                .iter()
+                .skip(18)
+                .map(|p| p[10])
+                .collect::<Vec<_>>(),
+            [0xe1, 0x95, 0xe0, 0xe1, 0xeb]
+        );
+        assert_eq!(
+            &state.outputs[19][13..24],
+            &[3, 132, 132, 132, 132, 132, 132, 132, 132, 132, 132]
+        );
+        assert!(state.inputs.is_empty());
+    }
 }
 
 fn render_setup_fixture() -> Vec<Result<Response>> {

@@ -2136,7 +2136,7 @@ impl MouseProductWorkspace {
         transmit: bool,
         cx: &mut Context<Self>,
     ) {
-        if self.spec.product_id != 158 {
+        if !razer_device::mouse_receiver_mapping::supports_ordinary(self.spec.product_id) {
             return;
         }
         let Some(scope) = self.mouse_polling_scope(cx) else {
@@ -2392,7 +2392,7 @@ impl MouseProductWorkspace {
             return;
         }
         let current = self.current_dpi_request_matches(request, cx);
-        let temporary_clutch = self.spec.product_id == 158
+        let temporary_clutch = razer_device::mouse_receiver_mapping::supports_ordinary(self.spec.product_id)
             && request.profile.is_none()
             && request
                 .change
@@ -2667,10 +2667,10 @@ impl MouseProductWorkspace {
         &mut self,
         cx: &App,
     ) -> Result<Option<MouseCurrentDpiRequested>, String> {
-        if self.spec.product_id == 158 {
+        if razer_device::mouse_receiver_mapping::supports_ordinary(self.spec.product_id) {
             self.receiver_mapping.close_callback_admission();
         }
-        let restore = if self.spec.product_id == 158
+        let restore = if razer_device::mouse_receiver_mapping::supports_ordinary(self.spec.product_id)
             && (self.receiver_mapping.needs_dpi_restore()
                 || self.current_dpi.temporary_restoration.required())
         {

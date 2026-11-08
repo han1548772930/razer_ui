@@ -34,6 +34,31 @@ pub fn container_id(node: &HidNode) -> Result<String> {
         anyhow::bail!("THX OS ContainerId adapter is unavailable on this platform")
     }
 }
+
+pub fn monitor_local_eq(scope: ThxSubmissionScope, active: &std::sync::atomic::AtomicBool,
+    mut publish: impl FnMut(razer_device::thx_submission::local_eq::Notification) -> Result<()>) -> Result<()> {
+    #[cfg(windows)]
+    {
+        use std::sync::atomic::Ordering;
+        let nodes=razer_hid::with_backend(|backend|backend.enumerate())?;
+        let node=resolve_candidates_for(&scope,&nodes,false,container_id)?;
+        let mut events=crate::runtime::native::blackshark_events(node.product_id,&scope.container_id);
+        let result=(|| {
+            events.begin()?;
+            while active.load(Ordering::Acquire) {
+                if let Some(raw)=events.receive(Duration::from_millis(50))? {
+                    if !active.load(Ordering::Acquire) { break; }
+                    if let Some(event)=razer_device::thx_submission::local_eq::parse_notification(&raw)? {publish(event)?;}
+                }
+            }
+            Ok(())
+        })();
+        let cleanup=events.finish();
+        result.and(cleanup)
+    }
+    #[cfg(not(windows))]
+    {let _=(scope,active,publish);anyhow::bail!("BlackShark hardware notifications require Windows")}
+}
 pub fn resolve(scope: &ThxSubmissionScope) -> Result<HidNode> {
     scope.validate()?;
     let nodes = razer_hid::with_backend(|backend| backend.enumerate())?;
@@ -216,6 +241,7 @@ pub fn failed(
         render_setup: None,
         render_shutdown: None,
         roller_mapping: None,
+        local_eq: None,
         initial_observation: None,
         outcome: None,
         firmware: vec![],
@@ -276,6 +302,7 @@ pub fn execute_retained<T: ThxJobTransport>(
         render_setup: None,
         render_shutdown: None,
         roller_mapping: None,
+        local_eq: None,
         initial_observation: None,
         outcome: None,
         firmware: vec![],
@@ -290,6 +317,19 @@ pub fn execute_retained<T: ThxJobTransport>(
             "THX retained owner product differs"
         );
         validate()?;
+        if let ThxSubmissionPlan::LocalEq { job, .. } = &plan {
+            progress.local_eq = Some(razer_device::thx_submission::local_eq::execute(
+                job,
+                |command| controller.transport_mut().exchange_hid(command),
+                &mut validate,
+            ));
+            if matches!(job, razer_device::thx_submission::local_eq::Job::Observe { disable_thx: true, .. }) {
+                if let Err(error)=controller.observe_blackshark_preset(&mut validate) {
+                    progress.error=Some(format!("{error:#}"));
+                }
+            }
+            return Ok(());
+        }
         if plan == ThxSubmissionPlan::FactoryReset1398 {
             ensure!(
                 scope.product_id == razer_device::blackshark_reset::PRODUCT_ID,
@@ -386,6 +426,7 @@ pub fn execute_retained<T: ThxJobTransport>(
             | ThxSubmissionPlan::SetRollerMappings { .. } => {
                 unreachable!("handled above")
             }
+            ThxSubmissionPlan::LocalEq { .. } => unreachable!("handled above"),
             ThxSubmissionPlan::ReadSpatial => {
                 progress.outcome = Some(observation);
             }

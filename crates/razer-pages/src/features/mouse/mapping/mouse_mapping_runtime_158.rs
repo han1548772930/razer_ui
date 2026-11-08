@@ -158,7 +158,7 @@ impl MouseProductWorkspace {
         container: Option<String>,
         generation: u64,
     ) {
-        if self.spec.product_id != 158 {
+        if !razer_device::mouse_receiver_mapping::supports_ordinary(self.spec.product_id) {
             return;
         }
         let next = container.map(|container| Connection {
@@ -173,7 +173,7 @@ impl MouseProductWorkspace {
     }
 
     pub fn set_receiver_mapping_connection(&mut self, container: Option<String>) {
-        if self.spec.product_id != 158
+        if !razer_device::mouse_receiver_mapping::supports_ordinary(self.spec.product_id)
             || self
                 .receiver_mapping
                 .connection
@@ -197,7 +197,7 @@ impl MouseProductWorkspace {
         document: Value,
         cx: &mut Context<Self>,
     ) {
-        if self.spec.product_id != 158 || self.receiver_mapping.stopping {
+        if !razer_device::mouse_receiver_mapping::supports_ordinary(self.spec.product_id) || self.receiver_mapping.stopping {
             return;
         }
         let Some(scope) = self.mouse_polling_scope(cx) else {
@@ -238,7 +238,7 @@ impl MouseProductWorkspace {
             return;
         }
         if self.receiver_mapping.owner.is_none() {
-            let (owner, replies) = match Session::start(158, container) {
+            let (owner, replies) = match Session::start(self.spec.product_id, container) {
                 Ok(value) => value,
                 Err(error) => {
                     self.receiver_mapping_failure(format!("{error:#}"), cx);
@@ -438,7 +438,7 @@ impl MouseProductWorkspace {
         raw: Value,
         cx: &mut Context<Self>,
     ) -> bool {
-        if self.spec.product_id != 158
+        if !razer_device::mouse_receiver_mapping::supports_ordinary(self.spec.product_id)
             || self.receiver_mapping.stopping
             || self.receiver_mapping.callbacks_closed
         {

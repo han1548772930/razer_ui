@@ -297,6 +297,7 @@ impl SessionRuntime {
             | ServiceRequest::HidNodeKeyboardBrightnessSubmit { .. }
             | ServiceRequest::HidNodeKeyboardReceiverBrightness { .. }
             | ServiceRequest::HidNodeKeyboardMetadataRead { .. }
+            | ServiceRequest::KeyboardMode { .. }
             | ServiceRequest::KeyboardProfileInventoryRead { .. }
             | ServiceRequest::KeyboardOnboardProfilesRead { .. }
             | ServiceRequest::HidNodeKeyboardSerialRead { .. }

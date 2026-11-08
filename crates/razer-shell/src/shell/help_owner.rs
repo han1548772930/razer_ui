@@ -159,7 +159,8 @@ impl AppShell {
                     if message.get("transport").is_some_and(|transport| {
                         !matches!(
                             transport["type"].as_str(),
-                            Some("ON_SET_SPATIAL_ENABLE" | "ON_SET_KEYMAPPING")
+                            Some("ON_SET_SPATIAL_ENABLE" | "ON_SET_KEYMAPPING"
+                                | "ON_GET_CLOUD_EQ" | "ON_SET_CLOUD_EQ" | "ON_REORDER_CLOUD_EQ")
                         )
                     }) {
                         eprintln!(

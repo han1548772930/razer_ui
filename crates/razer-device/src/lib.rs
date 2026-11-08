@@ -155,6 +155,8 @@ pub mod keyboard_legacy_mapping;
 pub mod keyboard_magnetic_mapping;
 #[path = "keyboard/keyboard_metadata.rs"]
 pub mod keyboard_metadata;
+#[path = "keyboard/keyboard_mode.rs"]
+pub mod keyboard_mode;
 #[path = "keyboard/keyboard_onboard_inventory.rs"]
 pub mod keyboard_onboard_inventory;
 #[path = "keyboard/keyboard_onboard_profiles.rs"]

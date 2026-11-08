@@ -10,6 +10,9 @@ use anyhow::{Result, ensure};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+#[path = "blackshark_local_eq.rs"]
+pub mod local_eq;
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ThxSubmissionScope {
     pub product_id: u32,
@@ -50,6 +53,10 @@ pub enum ThxSubmissionPlan {
     ReadFirmwareVersion,
     FactoryReset1398,
     ReadRollerMapping,
+    LocalEq {
+        request: local_eq::Request,
+        job: local_eq::Job,
+    },
     SetRollerMappings {
         mappings: Vec<Value>,
     },
@@ -62,7 +69,10 @@ pub enum ThxSubmissionPlan {
 impl ThxSubmissionPlan {
     pub fn is_direct_hid(&self) -> bool {
         self.is_roller_mapping()
-            || matches!(self, Self::ReadFirmwareVersion | Self::FactoryReset1398)
+            || matches!(
+                self,
+                Self::ReadFirmwareVersion | Self::FactoryReset1398 | Self::LocalEq { .. }
+            )
     }
     pub fn is_roller_mapping(&self) -> bool {
         matches!(
@@ -73,6 +83,35 @@ impl ThxSubmissionPlan {
     pub fn validate(&self) -> Result<()> {
         if let Self::SetRollerMappings { mappings } = self {
             crate::blackshark_roller_mapping::validate_mappings(mappings)?;
+        }
+        if let Self::LocalEq { request, job } = self {
+            if let local_eq::Job::ReadSlots { indices } = job {
+                ensure!(
+                    !indices.is_empty()
+                        && indices.len() <= usize::from(local_eq::SLOT_COUNT)
+                        && indices
+                            .iter()
+                            .enumerate()
+                            .all(|(ix, index)| usize::from(*index) == ix),
+                    "Invalid local EQ read slots"
+                );
+            }
+            if let local_eq::Request::Edit(edit) = request {
+                ensure!(edit.index < local_eq::SLOT_COUNT, "Local EQ slot is absent");
+            }
+            if let local_eq::Request::Reorder { presets, .. } = request {
+                local_eq::validate(presets)?;
+            }
+            if let local_eq::Job::Write {
+                presets, selected, ..
+            } = job
+            {
+                local_eq::validate(presets)?;
+                ensure!(
+                    selected.is_none_or(|index| index < local_eq::SLOT_COUNT),
+                    "Local EQ slot is absent"
+                );
+            }
         }
         if let Self::SetSpatial { presets, .. } = self {
             // Rust resource boundary, independent of source preset count.
@@ -103,6 +142,8 @@ pub struct ThxSubmissionProgress {
     pub render_shutdown: Option<ThxRenderShutdownOutcome>,
     #[serde(default)]
     pub roller_mapping: Option<crate::blackshark_roller_mapping::RollerMappingProgress>,
+    #[serde(default)]
+    pub local_eq: Option<local_eq::Progress>,
     pub initial_observation: Option<SpatialOutcome>,
     pub outcome: Option<SpatialOutcome>,
     pub firmware: Vec<ThxFirmwareProgress>,

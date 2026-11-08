@@ -822,6 +822,22 @@ impl PortableRuntime {
             ServiceRequest::HidNodeKeyboardMetadataRead { node, product_id } => {
                 self.keyboard_metadata(&node, product_id, KeyboardRead::Metadata, None)
             }
+            ServiceRequest::KeyboardMode { target, mode_operation: operation } => {
+                ensure!(razer_device::keyboard_mode::supported(target.product_id()),
+                    "Keyboard mode setup is outside the reviewed non-OBM cohort");
+                let response = match &target {
+                    razer_device::keyboard_mode::Target::Collection { node, product_id, peer_product_id } =>
+                        self.keyboard_metadata(node, *product_id, KeyboardRead::Mode(operation), *peer_product_id)?,
+                    _ => {
+                        #[cfg(windows)]
+                        { super::native::keyboard_mode(&target, operation)? }
+                        #[cfg(not(windows))]
+                        { bail!("Windows keyboard mode target requires its platform transport") }
+                    }
+                };
+                let report: razer_device::keyboard_mode::Report = serde_json::from_value(response["mode_report"].clone())?;
+                Ok(json!({"target": target, "report": report}))
+            }
             ServiceRequest::HidNodeKeyboardSerialRead { node, product_id } => {
                 self.keyboard_metadata(&node, product_id, KeyboardRead::Serial, None)
             }
@@ -1250,7 +1266,11 @@ impl PortableRuntime {
         }
         let mut response = json!({"node": node, "product_id": product_id, "peer_product_id": peer_product_id,
             "source_class": cap.source_class, "identity_scope": "hid_collection", "transport_metadata": device.metadata()});
-        if matches!(query, KeyboardRead::Serial) {
+        if let KeyboardRead::Mode(operation) = query {
+            response["mode_report"] = serde_json::to_value(razer_device::keyboard_mode::execute_hid(
+                device.as_ref(), cap, operation, next_transaction, &validate,
+            )?)?;
+        } else if matches!(query, KeyboardRead::Serial) {
             response["method"] = json!("getSerialNumber");
             response["serial_number"] = json!(keyboard_metadata::read_serial(
                 device.as_ref(),

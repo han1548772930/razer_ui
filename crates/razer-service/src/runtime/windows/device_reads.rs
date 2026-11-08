@@ -620,6 +620,13 @@ pub(super) fn keyboard_metadata_ble(
     keyboard_metadata_ble_adapter::request(target, serial)
 }
 
+pub(super) fn keyboard_mode_ble(
+    target: &razer_device::mouse_runtime_artwork::WindowsBleTarget,
+    operation: razer_device::keyboard_mode::Operation,
+) -> anyhow::Result<Value> {
+    keyboard_metadata_ble_adapter::mode(target, operation)
+}
+
 fn keyboard_peer_online(
     device: &dyn razer_device::backend::FeatureTransport,
     target: &DeviceReadTarget,
@@ -764,7 +771,11 @@ pub(super) fn keyboard_metadata(
         )?);
     }
     let mut response = json!({"target": target, "source_class": cap.source_class, "transport_metadata": device.metadata()});
-    if matches!(query, KeyboardRead::Serial) {
+    if let KeyboardRead::Mode(operation) = query {
+        response["mode_report"] = serde_json::to_value(razer_device::keyboard_mode::execute_hid(
+            &device, cap, operation, || transaction(target, cap), &validate,
+        )?)?;
+    } else if matches!(query, KeyboardRead::Serial) {
         response["method"] = json!("getSerialNumber");
         response["serial_number"] = json!(keyboard_metadata::read_serial(
             &device,

@@ -119,6 +119,7 @@ fn receipt() -> (ThxSubmissionProgress, ThxConnectionIdentity) {
             render_setup: None,
             render_shutdown: None,
             roller_mapping: None,
+            local_eq: None,
             initial_observation: None,
             outcome: None,
             firmware: vec![ThxFirmwareProgress::Command(command)],

@@ -71,6 +71,44 @@ fn valid() -> Result<()> {
 }
 
 #[test]
+fn activation_code_uses_dock_transaction_and_entire_source_payload() {
+    for pid in AUTO_PAUSE_PRODUCTS {
+        let io = Io::default();
+        io.reply(2, 0xe1, 24, 161, &[1, b'A', b'B', 0xe9]);
+        let report = execute(&mut Protocol40Session::with_sleeper(&io, NoSleep), pid,
+            Operation::ActivationCode, &valid).unwrap();
+        let code = report.activation_code.unwrap();
+        assert_eq!(code.value(), "ABé");
+        assert_eq!(code.declared_length(), 1);
+        assert_eq!(report.write, WriteOutcome::Skipped);
+        assert_eq!(report.connected, None);
+        let packets = io.sent.borrow();
+        assert_eq!(packets.len(), 1);
+        assert_eq!(&packets[0][6..9], &[0,24,161]);
+        assert_eq!(packets[0][2], 0xe1);
+    }
+}
+
+#[test]
+fn activation_code_rejects_empty_failed_and_cancelled_observations() {
+    for payload in [&[][..], &[0][..]] {
+        let io = Io::default();
+        io.reply(2, 0xe1, 24, 161, payload);
+        assert!(execute(&mut Protocol40Session::with_sleeper(&io, NoSleep),2657,
+            Operation::ActivationCode,&valid).is_err());
+    }
+    let io = Io::default();
+    assert!(execute(&mut Protocol40Session::with_sleeper(&io, NoSleep),2657,
+        Operation::ActivationCode,&|| anyhow::bail!("canceled")).is_err());
+    assert!(io.sent.borrow().is_empty());
+    let io = Io::default();
+    io.reply(2,0xe1,24,161,&[1,b'A']);
+    io.canceled_after_read.set(true);
+    assert!(execute(&mut Protocol40Session::with_sleeper(&io, NoSleep),2657,
+        Operation::ActivationCode,&|| { ensure!(!io.canceled.get(), "canceled"); Ok(()) }).is_err());
+}
+
+#[test]
 fn equalizer_submission_sends_preset_then_sign_magnitude_bands_without_readback() {
     use crate::earbuds_equalizer::{Mode, Preset, Setting};
     for pid in AUTO_PAUSE_PRODUCTS {

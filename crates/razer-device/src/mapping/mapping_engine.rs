@@ -429,10 +429,12 @@ impl MappingEngine {
                 Ok((vec![down], Some(up)))
             }
             "DKMInput" => {
-                let key = context
-                    .dkm_keys
-                    .get(id)
-                    .context("Actual updateDKMKeys state required")?;
+                // The source DKM generator returns no input for a key absent
+                // from the current product table. The output generator still
+                // runs, including its retained turbo state changes.
+                let Some(key) = context.dkm_keys.get(id) else {
+                    return Ok((Vec::new(), None));
+                };
                 let key = key.get("key").context("Missing DKM engine key")?;
                 let mut down = json!({"type":"razerKey","key":key,"flag":0});
                 let mut up = json!({"type":"razerKey","key":key,"flag":1});
@@ -731,10 +733,6 @@ impl MappingEngine {
         let key_down = self.key_event(key, false)?;
         let key_up = self.key_event(key, true)?;
         if let Some(mouse) = group.get("mouseGroup") {
-            ensure!(
-                group.get("turboMode").is_none(),
-                "Keyboard + mouse + turbo compound branch unresolved"
-            );
             let assignment = string(mouse, "mouseAssignment")?;
             let m = mouse_key(assignment)?;
             let mut down = mods_down.clone();

@@ -368,6 +368,7 @@ pub struct AppShell {
     audio_notifications: BTreeMap<String, audio_notifications::Session>,
     audio_global_shortcuts_enabled: bool,
     thx_jobs: BTreeMap<String, thx_sound::Session>,
+    thx_eq_monitors: BTreeMap<String, thx_sound::EqMonitor>,
     surround_owners: BTreeMap<String, surround::Owner>,
     surround_cleanup_installed: bool,
     thx_owners: BTreeMap<String, std::sync::Arc<thx_sound::RetainedOwner>>,
@@ -657,6 +658,7 @@ impl AppShell {
             audio_notifications: BTreeMap::new(),
             audio_global_shortcuts_enabled: true,
             thx_jobs: BTreeMap::new(),
+            thx_eq_monitors: BTreeMap::new(),
             surround_owners: BTreeMap::new(),
             surround_cleanup_installed: false,
             thx_owners: BTreeMap::new(),
@@ -1293,6 +1295,15 @@ impl AppShell {
         this.install_tray(window, cx);
         this.install_service_exit_fallback(cx);
         this.install_hanbo_cooler_cleanup();
+        this.register_exit_cleanup(|this, cx| {
+            let pages: Vec<_> = this.devices.iter()
+                .filter_map(|workspace| workspace.read(cx).audio_mixer_page(cx))
+                .collect();
+            let tasks: Vec<_> = pages.into_iter()
+                .filter_map(|page| page.update(cx, |page, _| page.take_earbuds_activation_cleanup()))
+                .collect();
+            async move { for task in tasks { task.await; } }
+        });
         this.register_exit_cleanup(|_, cx| {
             let cleanup =
                 cx.background_spawn(async { razer_service::camera::lifecycle::shutdown_all() });

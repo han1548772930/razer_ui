@@ -1,6 +1,66 @@
 use super::*;
 
 #[test]
+fn keyboard_mouse_compound_precedes_turbo_in_current_output_handler() {
+    for product_id in [70, 158, 182, 190] {
+        let engine = MappingEngine::new(product_id).unwrap();
+        let mut state = context();
+        let before = state.clone();
+        let source = json!({
+            "inputType":"MouseInput","inputID":"Button4",
+            "outputType":"keyboardGroup",
+            "keyboardGroup":{"key":"KEY_A","modifiers":[],
+                "turboMode":{"keysPerSecond":10},
+                "mouseGroup":{"mouseAssignment":"ScrollUp"}}
+        });
+        let output = engine.record(&source, &mut state).unwrap();
+        assert_eq!(
+            output,
+            vec![
+                json!({"input":{"type":"mouse","id":64},
+                "output":{"type":"multi","outputs":[
+                    {"type":"keyboard","scancode":30,"flag":0},
+                    {"type":"delay","ms":30},
+                    {"type":"mouse","id":1024,"data":120}]}}),
+                json!({"input":{"type":"mouse","id":128},
+                "output":{"type":"multi","outputs":[
+                    {"type":"keyboard","scancode":30,"flag":1}]}}),
+            ]
+        );
+        assert_eq!(state.fresh_guids, before.fresh_guids);
+        assert_eq!(state.synapse_turbos, before.synapse_turbos);
+    }
+}
+
+#[test]
+fn absent_product_dkm_input_skips_mapping_but_retains_output_generation() {
+    for product_id in [70, 158, 182, 190] {
+        let engine = MappingEngine::new(product_id).unwrap();
+        let mut state = context();
+        let source = json!({
+            "inputType":"DKMInput","inputID":"DKM_SB_01",
+            "outputType":"keyboardGroup",
+            "keyboardGroup":{"key":"KEY_A","modifiers":[],"turboMode":{"keysPerSecond":10}}
+        });
+        let output = engine.generate(&[source.clone()], &mut state).unwrap();
+        assert_eq!(output.app_engine["mappings"], json!([]));
+        assert_eq!(state.synapse_turbos.as_ref().unwrap().len(), 1);
+        assert!(state.fresh_guids.is_empty());
+        state.dkm_keys.insert("DKM_SB_01".into(), json!({"key":82}));
+        let output = engine.generate(&[source], &mut state).unwrap();
+        assert_eq!(
+            output.app_engine["mappings"][0]["input"],
+            json!({"type":"razerKey","key":82,"flag":0})
+        );
+        assert_eq!(
+            output.app_engine["mappings"][1]["input"],
+            json!({"type":"razerKey","key":82,"flag":1})
+        );
+        assert_eq!(state.synapse_turbos.as_ref().unwrap().len(), 1);
+    }
+}
+
+#[test]
 fn interdevice_otfs_failed_projection_keeps_available_turbo_identities() {
     for product_id in [70, 158] {
         let engine = MappingEngine::new(product_id).unwrap();

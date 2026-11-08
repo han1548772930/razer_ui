@@ -28,6 +28,43 @@ fn defaults_use_only_current_device_dkm_identifiers() {
 }
 
 #[test]
+fn ordinary_product_batch_uses_actual_dkm_defaults_and_retains_profile_fields() {
+    for pid in [190, 192, 222, 229, 239] {
+        let input = profile(json!([{"inputType":"DKMInput","inputID":"DKM_SB_03",
+            "outputType":"keyboardGroup","keyboardGroup":{"key":"KEY_A","modifiers":[]}}]));
+        let document =
+            prepare_document_for(pid, &[input.clone()], "profile-a", None, None, guids()).unwrap();
+        assert_eq!(document["productId"], pid);
+        assert_eq!(document["profiles"][0]["dpi"], input["dpi"]);
+        let defaults = document["defaultMappings"]["appEngine"]["mappings"]
+            .as_array()
+            .unwrap();
+        // Each source wheel mapping expands into ten report magnitudes.
+        assert_eq!(defaults.len(), if pid == 239 { 24 } else { 4 });
+        assert!(
+            defaults
+                .iter()
+                .filter(|row| row["input"]["type"] == "razerKey")
+                .all(|row| row["input"]["key"] == 82)
+        );
+        assert!(defaults.iter().any(|row| row["input"]["otfs"] == true) == (pid == 239));
+        let next =
+            prepare_document_for(pid, &[input], "profile-a", Some(&document), None, []).unwrap();
+        assert_eq!(next["defaultTurbos"], document["defaultTurbos"]);
+        let temporary = interdevice_otfs_document(&next).unwrap();
+        assert_eq!(temporary["productId"], pid);
+        let snapshot = crate::mouse_otfs::Snapshot::capture(&next).unwrap();
+        let restored = crate::mouse_otfs::project(&temporary, &snapshot, false)
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            restored["profiles"][0]["mappings"],
+            next["profiles"][0]["mappings"]
+        );
+    }
+}
+
+#[test]
 fn saved_records_keep_unregistered_keys_without_inventing_native_inputs() {
     let unknown = json!({"inputType":"DKMInput","inputID":"DKM_SB_01","outputType":"keyboardGroup","keyboardGroup":{"key":"KEY_A","modifiers":[]}});
     let known = json!({"inputType":"MouseInput","inputID":"Button4","outputType":"keyboardGroup","keyboardGroup":{"key":"KEY_B","modifiers":[]}});
@@ -54,6 +91,32 @@ fn saved_records_keep_unregistered_keys_without_inventing_native_inputs() {
             .iter()
             .all(|mapping| mapping["input"]["type"] == "mouse")
     );
+}
+
+#[test]
+fn unregistered_dkm_output_keeps_turbo_identity_in_the_saved_document() {
+    let mapping = json!({
+        "inputType":"DKMInput","inputID":"DKM_SB_01","outputType":"keyboardGroup",
+        "keyboardGroup":{"key":"KEY_A","modifiers":[],"turboMode":{"keysPerSecond":10}}
+    });
+    let document = prepare_document(
+        &[profile(json!([mapping.clone()]))],
+        "profile-a",
+        None,
+        guids(),
+    )
+    .unwrap();
+    assert_eq!(document["profiles"][0]["mappings"], json!([mapping]));
+    assert_eq!(document["profiles"][0]["appEngine"]["mappings"], json!([]));
+    assert_eq!(document["synapseTurbos"].as_array().unwrap().len(), 1);
+    let next = prepare_document(
+        &[document["profiles"][0].clone()],
+        "profile-a",
+        Some(&document),
+        [],
+    )
+    .unwrap();
+    assert_eq!(next["synapseTurbos"], document["synapseTurbos"]);
 }
 
 #[test]

@@ -3,6 +3,7 @@
 //! Extra Rust getters are diagnostics, not MW_UPDATE_THX_SPATIAL_AUDIO events.
 use super::*;
 use anyhow::{Context as _, Result, ensure};
+use razer_device::thx_submission::local_eq;
 use razer_device::{
     thx_lifecycle_discovery::{ThxConnectionEpoch, ThxConnectionIdentity},
     thx_submission::{
@@ -34,7 +35,16 @@ pub(super) struct Session {
 enum SubmissionGuard {
     Sound(HelpOwnerRequested),
     RenderSetup(ThxConnectionEpoch),
+    Hardware(ThxConnectionEpoch),
 }
+
+pub(super) struct EqMonitor {
+    active: Arc<AtomicBool>,
+    worker: Option<JoinHandle<()>>,
+    _pump: Task<()>,
+    connection: ThxConnectionEpoch,
+}
+impl Drop for EqMonitor { fn drop(&mut self) { self.active.store(false, Ordering::Release); } }
 /// One child owns one verified physical connection. It survives ordinary
 /// Sound jobs and is never reused for a different HID path/connection epoch.
 pub(super) struct RetainedOwner {
@@ -45,6 +55,7 @@ pub(super) struct RetainedOwner {
 struct OwnerClient {
     client: Option<ServiceClient>,
     render_started: bool,
+    eq_observed: bool,
     id: String,
     scope: ThxSubmissionScope,
 }
@@ -116,6 +127,65 @@ fn roller_local_key(scope: &ThxSubmissionScope) -> String {
         scope.container_id.to_ascii_lowercase()
     )
 }
+fn eq_local_key(scope: &ThxSubmissionScope) -> String {
+    format!(
+        "blackshark_eq:{}:{}:slots",
+        scope.product_id,
+        scope.container_id.to_ascii_lowercase()
+    )
+}
+fn parse_local_eq_request(transport: &Value, spatial: bool) -> Result<local_eq::Request> {
+    #[derive(serde::Deserialize)]
+    struct Envelope {
+        #[serde(rename = "type")]
+        kind: String,
+        payload: Value,
+    }
+    let envelope: Envelope = serde_json::from_value(transport.clone())?;
+    match envelope.kind.as_str() {
+        "ON_GET_CLOUD_EQ" => Ok(local_eq::Request::Read),
+        "ON_SET_CLOUD_EQ" => Ok(local_eq::Request::Edit(serde_json::from_value(
+            envelope.payload,
+        )?)),
+        "ON_REORDER_CLOUD_EQ" => {
+            #[derive(serde::Deserialize)]
+            #[serde(rename_all = "camelCase")]
+            struct Slot {
+                index: u8,
+                voice_prompt_index: i16,
+                band_values: [i16; 10],
+                enable_state: bool,
+                current_active: bool,
+                cloud_equalizer_id: u8,
+                custom: bool,
+            }
+            let rows: Vec<Slot> = serde_json::from_value(envelope.payload)?;
+            let presets = rows
+                .into_iter()
+                .map(|row| {
+                    ensure!(
+                        (-1..=255).contains(&row.voice_prompt_index),
+                        "Invalid EQ voice prompt"
+                    );
+                    Ok(
+                        razer_device::thx_blackshark_firmware::BlackSharkLocalEqPreset {
+                            index: row.index,
+                            voice_prompt_index: row.voice_prompt_index as u8,
+                            band_values: row.band_values,
+                            enable_state: row.enable_state,
+                            current_active: row.current_active,
+                            cloud_equalizer_id: row.cloud_equalizer_id,
+                            custom: row.custom,
+                        },
+                    )
+                })
+                .collect::<Result<Vec<_>>>()?;
+            local_eq::validate(&presets)?;
+            Ok(local_eq::Request::Reorder { presets, spatial })
+        }
+        _ => anyhow::bail!("Unknown local EQ action"),
+    }
+}
 fn local_presets(scope: &ThxSubmissionScope, device: &Device) -> Result<Vec<Value>> {
     let path = razer_storage::source_local::path()?;
     let key = local_key(scope, "cloudAudioEqualizer");
@@ -126,13 +196,17 @@ fn local_presets(scope: &ThxSubmissionScope, device: &Device) -> Result<Vec<Valu
         .and_then(|profile| profile.source_settings.as_ref())
         .and_then(|settings| settings.get("cloudAudioEqualizer"));
     let saved = razer_storage::source_local::get(&path, &key)?;
-    let value = profile.cloned().or(saved).or_else(|| {
-        device
-            .source_device_settings
-            .as_ref()
-            .and_then(|settings| settings.get("cloudAudioEqualizer"))
-            .cloned()
-    });
+    let observed_local = razer_storage::source_local::get(&path, &eq_local_key(scope))?;
+    let value = observed_local
+        .or_else(|| profile.cloned())
+        .or(saved)
+        .or_else(|| {
+            device
+                .source_device_settings
+                .as_ref()
+                .and_then(|settings| settings.get("cloudAudioEqualizer"))
+                .cloned()
+        });
     let presets = match value {
         Some(Value::Array(presets)) => presets,
         Some(_) => anyhow::bail!("本地 cloudAudioEqualizer 格式无效；原数据已保留"),
@@ -162,6 +236,25 @@ fn run(
         Ok(())
     };
     check()?;
+    let initial_eq = if matches!(
+        plan,
+        ThxSubmissionPlan::SetupRender {
+            trigger: ThxRenderSetupTrigger::InitialDeviceSetup
+        }
+    ) {
+        Some(run(
+            scope.clone(),
+            ThxSubmissionPlan::LocalEq {
+                request: local_eq::Request::Read,
+                job: local_eq::Job::Read,
+            },
+            device.clone(),
+            cancellation,
+            owner_slot,
+        ))
+    } else {
+        None
+    };
     if let ThxSubmissionPlan::SetSpatial {
         enabled,
         presets,
@@ -178,6 +271,53 @@ fn run(
     }
     check()?;
     let mut owner = owner_slot.acquire(cancellation)?;
+    ensure!(
+        owner.scope.product_id == scope.product_id
+            && owner
+                .scope
+                .container_id
+                .eq_ignore_ascii_case(&scope.container_id)
+            && owner.scope.serial_number == scope.serial_number,
+        "THX retained owner identity differs"
+    );
+    if let ThxSubmissionPlan::LocalEq { request, job } = &mut plan {
+        if matches!(request, local_eq::Request::Read) {
+            owner.eq_observed = false;
+            if let Some(saved) = razer_storage::source_local::get(
+                &razer_storage::source_local::path()?,
+                &eq_local_key(&scope),
+            )? {
+                let saved: Vec<razer_device::thx_blackshark_firmware::BlackSharkLocalEqPreset> =
+                    serde_json::from_value(saved)?;
+                local_eq::validate(&saved)?;
+                *job = local_eq::Job::ReadSlots {
+                    indices: saved.into_iter().map(|slot| slot.index).collect(),
+                };
+            }
+        } else {
+            ensure!(
+                owner.eq_observed,
+                "Read current connection EQ slots before editing"
+            );
+            let path = razer_storage::source_local::path()?;
+            let saved = razer_storage::source_local::get(&path, &eq_local_key(&scope))?
+                .context("Read device EQ slots before editing")?;
+            let current: Vec<razer_device::thx_blackshark_firmware::BlackSharkLocalEqPreset> =
+                serde_json::from_value(saved).context("Saved local EQ slots are malformed")?;
+            *job = local_eq::prepare(request, &current)?;
+            if let local_eq::Job::Write { presets, .. } | local_eq::Job::Observe { presets, .. } = job {
+                check()?;
+                razer_storage::source_local::set(
+                    &path,
+                    &eq_local_key(&scope),
+                    &serde_json::to_value(presets)?,
+                )?;
+                if matches!(job,local_eq::Job::Observe { disable_thx:true,.. }) {
+                    razer_storage::source_local::set(&path,&local_key(&scope,"spatialDraft"),&json!({"isEnabled":false}))?;
+                }
+            }
+        }
+    }
     ensure!(
         owner.scope.product_id == scope.product_id
             && owner
@@ -260,6 +400,16 @@ fn run(
                     progress.scope == scope && progress.plan == plan,
                     "THX 结果身份或请求不匹配"
                 );
+                if let Some(eq) = &progress.local_eq {
+                    if let Some(slots) = &eq.observed {
+                        check()?;
+                        razer_storage::source_local::set(
+                            &razer_storage::source_local::path()?,
+                            &eq_local_key(&scope),
+                            &serde_json::to_value(slots)?,
+                        )?;
+                    }
+                }
                 return Ok(progress);
             }
             ensure!(
@@ -271,6 +421,19 @@ fn run(
     })();
     if started && !terminal {
         let _ = client.request(ServiceRequest::ThxCancel { operation_id: id });
+    }
+    if let Ok(progress) = &result {
+        if let Some(eq) = &progress.local_eq {
+            if matches!(
+                progress.plan,
+                ThxSubmissionPlan::LocalEq {
+                    request: local_eq::Request::Read,
+                    ..
+                }
+            ) {
+                owner.eq_observed = eq.observed.is_some();
+            }
+        }
     }
     drop(owner);
     if matches!(
@@ -294,11 +457,15 @@ fn run(
         let mapping = run(
             scope.clone(),
             ThxSubmissionPlan::ReadRollerMapping,
-            device,
+            device.clone(),
             cancellation,
             owner_slot,
         );
         let progress = merge_local_initialization(result, scope.clone(), plan.clone(), firmware);
+        let progress = match initial_eq {
+            Some(eq) => merge_local_initialization(Ok(progress), scope.clone(), plan.clone(), eq),
+            None => progress,
+        };
         result = Ok(merge_local_initialization(
             Ok(progress),
             scope,
@@ -349,6 +516,7 @@ fn merge_local_initialization(
         render_setup: None,
         render_shutdown: None,
         roller_mapping: None,
+        local_eq: None,
         initial_observation: None,
         outcome: None,
         firmware: vec![],
@@ -359,6 +527,9 @@ fn merge_local_initialization(
         Ok(local) => {
             if local.roller_mapping.is_some() {
                 progress.roller_mapping = local.roller_mapping;
+            }
+            if local.local_eq.is_some() {
+                progress.local_eq = local.local_eq;
             }
             progress.firmware.extend(local.firmware);
             if let Some(error) = local.cleanup_error {
@@ -407,6 +578,7 @@ fn release_owner(
             render_setup: None,
             render_shutdown: None,
             roller_mapping: None,
+            local_eq: None,
             initial_observation: None,
             outcome: None,
             firmware: vec![],
@@ -479,6 +651,62 @@ fn release_owner(
     }
 }
 impl AppShell {
+    fn ensure_thx_eq_monitor(&mut self, workspace: &Entity<ProductWorkspace>, scope: &ThxSubmissionScope,
+        connection: ThxConnectionEpoch, window: &mut Window, cx: &mut Context<Self>) {
+        let identity=workspace.read(cx).identity(cx);
+        if self.thx_eq_monitors.get(&identity).is_some_and(|monitor|monitor.connection==connection) {return;}
+        if let Some(mut previous)=self.thx_eq_monitors.remove(&identity) {
+            previous.active.store(false,Ordering::Release);
+            self.thx_cleanup.extend(previous.worker.take());
+        }
+        let active=Arc::new(AtomicBool::new(true));
+        let signal=active.clone();
+        let (sender,receiver)=mpsc::sync_channel(32);
+        let scope=scope.clone();
+        let worker=match thread::Builder::new().name("blackshark-eq-events".into()).spawn(move || {
+            let result=razer_service::thx::monitor_local_eq(scope,&signal,|event| {
+                sender.try_send(Ok(event)).map_err(|error|anyhow::anyhow!("EQ notification delivery: {error}"))
+            });
+            if let Err(error)=result {let _=sender.try_send(Err(format!("{error:#}")));}
+        }) {Ok(worker)=>worker,Err(error)=>{self.status=format!("EQ monitor: {error}");return;}};
+        let owner=identity.clone();let workspace=workspace.clone();let epoch=connection.clone();
+        let pump=cx.spawn_in(window,async move |shell,cx| {
+            loop {
+                cx.background_executor().timer(Duration::from_millis(25)).await;
+                let keep=shell.update_in(cx,|shell,window,cx| {
+                    if !shell.thx_eq_monitors.get(&owner).is_some_and(|monitor|monitor.connection==epoch) {return false;}
+                    let current=shell.devices.contains(&workspace)
+                        && shell.thx_render_discovery.current_epoch(&epoch.identity).as_ref()==Some(&epoch)
+                        && shell.observed_thx_connection(workspace.read(cx).device(cx)).ok().flatten().as_ref()==Some(&epoch.identity);
+                    if !current || shell.close_requested {
+                        if let Some(mut monitor)=shell.thx_eq_monitors.remove(&owner) {
+                            monitor.active.store(false,Ordering::Release);shell.thx_cleanup.extend(monitor.worker.take());
+                        }
+                        return false;
+                    }
+                    if shell.thx_jobs.contains_key(&owner) {return true;}
+                    match receiver.try_recv() {
+                        Ok(Ok(event))=>{
+                            let observed=shell.thx_owners.get(&owner).and_then(|owner|owner.session.lock().ok())
+                                .is_some_and(|session|session.eq_observed);
+                            if observed {shell.submit_thx_job(workspace.clone(),ThxSubmissionPlan::LocalEq {
+                                request:local_eq::Request::Hardware(event),job:local_eq::Job::Read,
+                            },SubmissionGuard::Hardware(epoch.clone()),window,cx);}
+                        }
+                        Ok(Err(error))=>{shell.status=error;cx.notify();}
+                        Err(mpsc::TryRecvError::Empty)=>{}
+                        Err(mpsc::TryRecvError::Disconnected)=>{
+                            if let Some(mut monitor)=shell.thx_eq_monitors.remove(&owner) {shell.thx_cleanup.extend(monitor.worker.take());}
+                            return false;
+                        }
+                    }
+                    true
+                }).unwrap_or(false);
+                if !keep {break;}
+            }
+        });
+        self.thx_eq_monitors.insert(identity,EqMonitor {active,worker:Some(worker),_pump:pump,connection});
+    }
     pub(super) fn help_hardware_reset_owner_current(
         &self,
         identity: &str,
@@ -538,6 +766,7 @@ impl AppShell {
                     session: Mutex::new(OwnerClient {
                         client: None,
                         render_started: false,
+                        eq_observed: false,
                         id: uuid::Uuid::new_v4().to_string(),
                         scope: scope.clone(),
                     }),
@@ -557,6 +786,10 @@ impl AppShell {
 
     pub(super) fn install_thx_cleanup(&mut self, _cx: &mut Context<Self>) {
         self.register_exit_cleanup(|this, cx| {
+            let mut monitors=std::mem::take(&mut this.thx_eq_monitors);
+            for monitor in monitors.values_mut() {monitor.active.store(false,Ordering::Release);}
+            let monitor_workers:Vec<_>=monitors.values_mut().filter_map(|monitor|monitor.worker.take()).collect();
+            this.thx_cleanup.extend(monitor_workers);
             this.cancel_thx_jobs();
             let workers = std::mem::take(&mut this.thx_cleanup);
             let owners = std::mem::take(&mut this.thx_owners);
@@ -582,6 +815,9 @@ impl AppShell {
         }
     }
     fn retire_thx_owner(&mut self, identity: &str, source_close: bool) {
+        if let Some(mut monitor)=self.thx_eq_monitors.remove(identity) {
+            monitor.active.store(false,Ordering::Release);self.thx_cleanup.extend(monitor.worker.take());
+        }
         let Some(owner) = self.thx_owners.remove(identity) else {
             return;
         };
@@ -828,14 +1064,48 @@ impl AppShell {
                 .filter(|transport| {
                     matches!(
                         transport["type"].as_str(),
-                        Some("ON_SET_SPATIAL_ENABLE" | "ON_SET_KEYMAPPING")
+                        Some(
+                            "ON_SET_SPATIAL_ENABLE"
+                                | "ON_SET_KEYMAPPING"
+                                | "ON_GET_CLOUD_EQ"
+                                | "ON_SET_CLOUD_EQ"
+                                | "ON_REORDER_CLOUD_EQ"
+                        )
                     )
                 })
                 .collect::<Vec<_>>();
             let [transport] = messages.as_slice() else {
                 return;
             };
-            if transport["type"] == "ON_SET_KEYMAPPING" {
+            if matches!(
+                transport["type"].as_str(),
+                Some("ON_GET_CLOUD_EQ" | "ON_SET_CLOUD_EQ" | "ON_REORDER_CLOUD_EQ")
+            ) {
+                let parsed = parse_local_eq_request(
+                    transport,
+                    workspace
+                        .read(cx)
+                        .snapshot(cx)
+                        .active_profile_obj()
+                        .and_then(|profile| profile.source_settings.as_ref())
+                        .and_then(|source| source.get("thxSpatialAudio"))
+                        .and_then(|source| source.get("isEnabled"))
+                        .and_then(Value::as_bool)
+                        .unwrap_or(false),
+                );
+                let request = match parsed {
+                    Ok(request) => request,
+                    Err(error) => {
+                        self.status = format!("Local EQ request rejected: {error:#}");
+                        cx.notify();
+                        return;
+                    }
+                };
+                ThxSubmissionPlan::LocalEq {
+                    request,
+                    job: local_eq::Job::Read,
+                }
+            } else if transport["type"] == "ON_SET_KEYMAPPING" {
                 let Some(mappings) = transport["payload"]["mappingList"].as_array() else {
                     return;
                 };
@@ -874,11 +1144,12 @@ impl AppShell {
         let discovery_revision = self.discovery_revision;
         let scope_generation = match &guard {
             SubmissionGuard::Sound(request) => request.audio_revision(),
-            SubmissionGuard::RenderSetup(connection) => connection.epoch,
+            SubmissionGuard::RenderSetup(connection) | SubmissionGuard::Hardware(connection) => connection.epoch,
         };
         let render_connection = match &guard {
             SubmissionGuard::RenderSetup(connection) => Some(connection.identity.clone()),
             SubmissionGuard::Sound(_) => None,
+            SubmissionGuard::Hardware(_) => None,
         };
         let scope = ThxSubmissionScope {
             product_id: device.product_id,
@@ -943,6 +1214,7 @@ impl AppShell {
                 return;
             }
         };
+        self.ensure_thx_eq_monitor(&workspace, &scope, owner_slot.connection().clone(), window, cx);
         let mut pending = vec![];
         for worker in std::mem::take(&mut self.thx_cleanup) {
             if worker.is_finished() {
@@ -1032,6 +1304,7 @@ impl AppShell {
                         render_setup: None,
                         render_shutdown: None,
                         roller_mapping: None,
+                        local_eq: None,
                         initial_observation: None,
                         outcome: None,
                         firmware: vec![],
@@ -1077,7 +1350,7 @@ impl AppShell {
                                 && device.active_profile == profile
                                 && workspace.read(cx).accepts_help_audio_sound(request, cx)
                         }
-                        SubmissionGuard::RenderSetup(epoch) => {
+                        SubmissionGuard::RenderSetup(epoch) | SubmissionGuard::Hardware(epoch) => {
                             this.thx_render_discovery
                                 .current_epoch(&epoch.identity)
                                 .as_ref()
@@ -1168,6 +1441,36 @@ impl AppShell {
                                         }
                                     }
                                 }
+                                if let Some(eq) = &progress.local_eq {
+                                    messages.extend(eq.error.clone());
+                                    let slots = eq.observed.as_ref().or_else(|| {
+                                        if let ThxSubmissionPlan::LocalEq { job: local_eq::Job::Write { presets, .. }, .. } = &progress.plan {
+                                            Some(presets)
+                                        } else { None }
+                                    });
+                                    if let Some(slots) = slots {
+                                        if let Some(observation) = workspace.read(cx).help_owner_observation_request(cx) {
+                                            let device = workspace.read(cx).snapshot(cx);
+                                            workspace.update(cx, |workspace, cx| {
+                                                workspace.observe_help_audio_sound(&device, &observation,
+                                                    "localEqSlots", json!({"slots":slots,"observed":eq.observed.is_some()}), window, cx);
+                                            });
+                                        }
+                                    } else if let Some(observation) = workspace.read(cx).help_owner_observation_request(cx) {
+                                        let device = workspace.read(cx).snapshot(cx);
+                                        workspace.update(cx, |workspace,cx| {
+                                            workspace.observe_help_audio_sound(&device,&observation,
+                                                "localEqUnavailable", Value::Null,window,cx);
+                                        });
+                                    }
+                                }
+                                if matches!(&progress.plan, ThxSubmissionPlan::LocalEq {job:local_eq::Job::Observe {disable_thx:true,..},..}) {
+                                    if let Some(observation)=workspace.read(cx).help_owner_observation_request(cx) {
+                                        let device=workspace.read(cx).snapshot(cx);
+                                        workspace.update(cx,|workspace,cx| { workspace.observe_help_audio_sound(&device,&observation,
+                                            "MW_UPDATE_THX_SPATIAL_AUDIO",json!({"thxEnabled":false}),window,cx); });
+                                    }
+                                }
                                 messages.extend(progress.error.clone());
                                 messages.extend(progress.cleanup_error.clone());
                                 // Source MW refresh uses stored profile/runtimeCache, not
@@ -1231,6 +1534,50 @@ mod tests {
     use super::*;
 
     #[::core::prelude::v1::test]
+    fn local_eq_transport_preserves_selection_and_disabled_voice_sentinel() {
+        let selection = parse_local_eq_request(
+            &json!({"type":"ON_SET_CLOUD_EQ","payload":{"index":2}}),
+            true,
+        )
+        .unwrap();
+        assert!(matches!(
+            selection,
+            local_eq::Request::Edit(local_eq::Edit {
+                index: 2,
+                band_values: None,
+                ..
+            })
+        ));
+        let mut slots =
+            razer_device::thx_blackshark_firmware::default_blackshark_local_eq_presets(1398)
+                .unwrap();
+        slots[5].voice_prompt_index = 255;
+        let mut raw = serde_json::to_value(&slots).unwrap();
+        raw[5]["voicePromptIndex"] = json!(-1);
+        let reordered =
+            parse_local_eq_request(&json!({"type":"ON_REORDER_CLOUD_EQ","payload":raw}), true)
+                .unwrap();
+        assert_eq!(
+            reordered,
+            local_eq::Request::Reorder {
+                presets: slots,
+                spatial: true
+            }
+        );
+        assert!(
+            parse_local_eq_request(
+                &json!({"type":"ON_SET_CLOUD_EQ","payload":{"index":"2"}}),
+                false
+            )
+            .is_err()
+        );
+        assert!(
+            parse_local_eq_request(&json!({"type":"ON_REORDER_CLOUD_EQ","payload":[]}), false)
+                .is_err()
+        );
+    }
+
+    #[::core::prelude::v1::test]
     fn help_hardware_reset_waiting_owner_rejects_release_or_cancel_before_reopening_transport() {
         for cancel in [false, true] {
             let scope = ThxSubmissionScope {
@@ -1256,6 +1603,7 @@ mod tests {
                 session: Mutex::new(OwnerClient {
                     client: None,
                     render_started: false,
+                    eq_observed: false,
                     id: "simulated-owner".into(),
                     scope,
                 }),
@@ -1295,6 +1643,7 @@ mod tests {
             trigger: ThxRenderSetupTrigger::InitialDeviceSetup,
         };
         let mapping = ThxSubmissionProgress {
+            local_eq: None,
             scope: scope.clone(),
             plan: ThxSubmissionPlan::ReadRollerMapping,
             render_setup: None,

@@ -66,6 +66,7 @@ fn thx_cancel_poll_and_partial_failure_round_trip_without_success() {
         render_setup: None,
         render_shutdown: None,
         roller_mapping: None,
+        local_eq: None,
         initial_observation: None,
         outcome: None,
         firmware: vec![],
@@ -223,6 +224,7 @@ fn thx_shutdown_receipt_keeps_ack_and_cancellation_without_claiming_completion()
         plan: ThxSubmissionPlan::ShutdownRender,
         render_setup: None,
         roller_mapping: None,
+        local_eq: None,
         render_shutdown: Some(ThxRenderShutdownOutcome {
             status: ThxRenderShutdownStatus::Canceled,
             transport_kind: ThxTransportKind::Simulated,
@@ -259,6 +261,7 @@ fn thx_older_progress_without_shutdown_field_does_not_invent_a_shutdown() {
         render_setup: None,
         render_shutdown: None,
         roller_mapping: None,
+        local_eq: None,
         initial_observation: None,
         outcome: None,
         firmware: vec![],

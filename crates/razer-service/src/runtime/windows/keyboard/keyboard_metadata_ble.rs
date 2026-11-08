@@ -51,6 +51,21 @@ impl BleTransport for Session {
 }
 
 pub(super) fn request(target: &WindowsBleTarget, serial: bool) -> anyhow::Result<Value> {
+    request_kind(target, serial, None)
+}
+
+pub(super) fn mode(
+    target: &WindowsBleTarget,
+    operation: razer_device::keyboard_mode::Operation,
+) -> anyhow::Result<Value> {
+    request_kind(target, false, Some(operation))
+}
+
+fn request_kind(
+    target: &WindowsBleTarget,
+    serial: bool,
+    mode: Option<razer_device::keyboard_mode::Operation>,
+) -> anyhow::Result<Value> {
     ensure!(
         keyboard_metadata::ble_product_id(target.product_id) == Some(target.physical_product_id),
         "Keyboard BLE metadata physical identity differs from source"
@@ -98,7 +113,22 @@ pub(super) fn request(target: &WindowsBleTarget, serial: bool) -> anyhow::Result
             "Keyboard BLE connection edition response is truncated"
         );
         let mut response = json!({"target": target, "transport": "windows_gatt", "connection_edition": connection_edition});
-        if serial {
+        if let Some(operation) = mode {
+            let report = razer_device::keyboard_mode::execute(
+                target.product_id,
+                operation,
+                |command, payload| {
+                    validate()?;
+                    let frame =
+                        razer_device::keyboard_mode::ble_frame(session.sequence, command, payload)?;
+                    session.sequence = (session.sequence + 1) % 31;
+                    let data = session.connection.exchange_with_retry(&frame, &validate)?;
+                    // Protocol30's setter constructs jsonData from its requested pair after ACK.
+                    Ok(if command[2] == 4 { payload.to_vec() } else { data })
+                },
+            )?;
+            response["mode_report"] = serde_json::to_value(report)?;
+        } else if serial {
             response["method"] = json!("getSerialNumber");
             response["serial_number"] = json!(keyboard_metadata::read_ble_serial(
                 target.product_id,

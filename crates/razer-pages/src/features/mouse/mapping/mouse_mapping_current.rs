@@ -827,7 +827,7 @@ impl MouseProductWorkspace {
         self.set_current_customize_input(None, false);
         self.mapping_current_state.clear();
         cx.emit(MouseProductChanged);
-        if matches!(self.spec.product_id, 70 | 158) {
+        if self.spec.product_id == 70 || razer_device::mouse_receiver_mapping::supports_ordinary(self.spec.product_id) {
             cx.emit(super::dpi_70::MouseLegacyMappingCommitted);
         }
         cx.notify();
@@ -1112,6 +1112,42 @@ fn read_mouse_mapping_actions_current_catalog() -> Vec<Policy> {
 
 #[cfg(test)]
 mod mouse_mapping_actions_current_data_catalog_tests {
+    use gpui_kit::{AppContext, TestAppContext, component::Root, px, size, test::TestWindowExt};
+    use std::{cell::Cell, rc::Rc};
+
+    #[gpui_kit::test]
+    fn ordinary_mouse_batch_save_dispatches_the_persistence_consumer(cx: &mut TestAppContext) {
+        cx.update(gpui_kit::init);
+        for pid in [190,192,222,229,239] {
+            let mut page = None;
+            let window=cx.open_window(size(px(1500.),px(1100.)), |window,cx| {
+                let owner=cx.new(|cx| super::MouseProductWorkspace::new(pid,window,cx));
+                page=Some(owner.clone()); Root::new(owner,window,cx)
+            });
+            let page=page.unwrap();
+            let count=Rc::new(Cell::new(0));let seen=count.clone();
+            let _subscription=cx.update(|cx|cx.subscribe(&page,move|_,_: &super::super::dpi_70::MouseLegacyMappingCommitted,_|seen.set(seen.get()+1)));
+            cx.update_window(window.into(),|_,window,cx| {
+                if pid == 190 {
+                    window.render_frame(cx);
+                    window.click("mouse-190-label-5",cx);
+                    window.click("mouse-190-function-DISABLE",cx);
+                    window.click("mouse-190-mapping-save",cx);
+                } else {
+                    page.update(cx,|page,cx| {
+                        page.set_current_customize_input(Some("Button4".into()),true);
+                        page.change_current_mouse_mapping_function("DISABLE",window,cx);
+                    });
+                    window.render_frame(cx);
+                    window.click("mouse-mapping-save",cx);
+                }
+            }).unwrap();
+            assert_eq!(count.get(),1,"PID{pid} must enqueue its saved mapping");
+            cx.update(|cx|assert!(page.read(cx).draft["mappings"].as_array().unwrap().iter()
+                .any(|row|row["outputType"]=="disableGroup")));
+        }
+    }
+
     #[test]
     fn packaged_catalog_mouse_mapping_actions_current_data_decodes() {
         let _ = super::read_mouse_mapping_actions_current_catalog();

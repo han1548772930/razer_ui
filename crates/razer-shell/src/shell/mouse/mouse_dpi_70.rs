@@ -84,7 +84,7 @@ impl AppShell {
         if !self.devices.contains(&workspace)
             || !matches!(
                 workspace.read(cx).device(cx).product_id,
-                70 | 158 | 182 | 190 | 226
+                70 | 158 | 182 | 190 | 192 | 222 | 226 | 229 | 239
             )
             || workspace.read(cx).device(cx).product_id == 226 && apply
             || workspace.read(cx).mouse_polling_scope(cx) != Some(scope)

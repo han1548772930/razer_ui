@@ -132,6 +132,7 @@ impl AudioProductWorkspace {
         let Some(row) = product(self.spec.product_id) else {
             return;
         };
+        self.add_slider("/device/volume/value", 0., 100., 1., window, cx);
         self.add_slider(
             "/sound/gameChatBalance/balanceMode",
             0.,
@@ -475,6 +476,10 @@ impl AudioProductWorkspace {
                     self.sound.apps_cloud_observed = true;
                 }
             }
+            "localEqSlots" => {
+                if !self.receive_local_eq_slots(payload) { return false; }
+            }
+            "localEqUnavailable" => self.clear_local_eq_observation(),
             "applicationList"
             | "generalApplications"
             | "specificInputSetting"
@@ -626,6 +631,7 @@ impl AudioProductWorkspace {
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let enabled = self.draft["device"]["volume"]["isEnabled"] == json!(true);
+        let observed = self.draft["device"]["volume"]["value"].as_f64().is_some();
         let state = &self.sliders["/device/volume/value"];
         let value = state.read(cx).value().start();
         let owner = cx.entity();
@@ -633,6 +639,7 @@ impl AudioProductWorkspace {
             message(row, "VOLUME_HEADER"),
             surface::SynapseSwitch::new("current-headset-volume-switch")
                 .checked(enabled)
+                .disabled(!observed)
                 .accessibility_label(message(row, "VOLUME_HEADER"))
                 .on_change(move |enabled, window, cx| {
                     owner.update(cx, |this, cx| {
@@ -660,8 +667,8 @@ impl AudioProductWorkspace {
                 })
                 .child(
                     razer_widgets::source_slider::SourceSlider::new(state, value / 100.)
-                        .enabled(enabled)
-                        .tip(Some(format!("{value:.0}"))),
+                        .enabled(enabled && observed)
+                        .tip(observed.then(|| format!("{value:.0}"))),
                 )
                 .child(
                     div()

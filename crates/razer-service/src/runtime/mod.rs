@@ -35,7 +35,7 @@ mod mouse_runtime_artwork_controller;
 mod mouse_tracking_controller;
 #[cfg(windows)]
 #[path = "windows/native.rs"]
-mod native;
+pub(crate) mod native;
 #[path = "portable.rs"]
 mod portable;
 mod receiver_settings;
@@ -50,6 +50,7 @@ mod thx_controller;
 enum KeyboardRead<'a> {
     Metadata,
     Serial,
+    Mode(razer_device::keyboard_mode::Operation),
     ProfileInventory,
     OnboardProfiles(&'a razer_device::keyboard_onboard_profiles::ReadOptions),
 }
@@ -58,7 +59,7 @@ impl KeyboardRead<'_> {
     fn deadline(self) -> std::time::Duration {
         std::time::Duration::from_secs(match self {
             Self::ProfileInventory | Self::OnboardProfiles(_) => 120,
-            Self::Metadata | Self::Serial => 20,
+            Self::Metadata | Self::Serial | Self::Mode(_) => 20,
         })
     }
 }

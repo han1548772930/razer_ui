@@ -12,6 +12,26 @@ use std::collections::BTreeMap;
 
 pub const STORAGE_FIELD: &str = "_mouse158_mapping_document";
 
+/// Current ordinary physical owners with the reviewed lower-case profile compiler.
+/// Receiver/peer projection remains specific to PID158.
+pub const fn supports_ordinary(product_id: u32) -> bool {
+    matches!(product_id, 158 | 190 | 192 | 222 | 229 | 239)
+}
+
+fn compiler(product_id: u32) -> Result<MappingEngine> {
+    ensure!(
+        supports_ordinary(product_id),
+        "Unreviewed ordinary mouse compiler"
+    );
+    // 190/192/222/239 bind factory3328 identity0138cfd7;229 binds
+    // factory4325 identity393f8199, shared with158. Their used tables match.
+    MappingEngine::new(if product_id == 158 || product_id == 229 {
+        158
+    } else {
+        190
+    })
+}
+
 /// These branches come from current runtime feature observations, not product
 /// labels or the number of cached pairing entries.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -87,6 +107,17 @@ pub fn prepare_document_with_device_settings(
     settings: Option<&Value>,
     fresh_guids: impl IntoIterator<Item = String>,
 ) -> Result<Value> {
+    prepare_document_for(158, profiles, active_guid, previous, settings, fresh_guids)
+}
+
+pub fn prepare_document_for(
+    product_id: u32,
+    profiles: &[Value],
+    active_guid: &str,
+    previous: Option<&Value>,
+    settings: Option<&Value>,
+    fresh_guids: impl IntoIterator<Item = String>,
+) -> Result<Value> {
     #[derive(Deserialize)]
     #[serde(rename_all = "camelCase")]
     struct Settings {
@@ -97,7 +128,7 @@ pub fn prepare_document_with_device_settings(
         .map(|value| serde_json::from_value(value.clone()))
         .transpose()
         .context("PID158 device settings are invalid")?;
-    let result = prepare_document(profiles, active_guid, previous, fresh_guids)?;
+    let result = prepare_document_inner(product_id, profiles, active_guid, previous, fresh_guids)?;
     let mut result = Document::parse(&result)?;
     if let Some(metadata) = settings.and_then(|settings| settings.device_metadatas) {
         result.device_metadatas = Some(metadata);
@@ -118,8 +149,8 @@ pub(crate) fn project_interdevice_otfs(
 ) -> Result<Value> {
     let mut document = Document::parse(document)?;
     ensure!(
-        document.product_id == 158 && document.dual_linked.is_none(),
-        "OTFS requires the logical PID158 document"
+        supports_ordinary(document.product_id) && document.dual_linked.is_none(),
+        "OTFS requires a logical ordinary mouse document"
     );
     let profile = document
         .profiles
@@ -131,16 +162,24 @@ pub(crate) fn project_interdevice_otfs(
         synapse_turbos: Some(document.synapse_turbos.clone()),
         ..Default::default()
     };
-    for key in &DKM_KEYS {
+    for key in dkm_keys(document.product_id) {
         context
             .dkm_keys
             .insert(key.input_id.into(), serde_json::to_value(key)?);
     }
-    let engine = MappingEngine::new(158)?;
+    let engine = compiler(document.product_id)?;
     let projection = if temporary {
-        engine.generate_mouse_otfs(records, &default_bindings()?, &mut context)?
+        engine.generate_mouse_otfs(
+            records,
+            &default_bindings_for(document.product_id)?,
+            &mut context,
+        )?
     } else {
-        engine.restore_mouse_otfs(records, &default_bindings()?, &mut context)?
+        engine.restore_mouse_otfs(
+            records,
+            &default_bindings_for(document.product_id)?,
+            &mut context,
+        )?
     };
     profile.app_engine = Some(serde_json::from_value(projection.profile)?);
     profile
@@ -458,7 +497,15 @@ const DKM_KEYS: [DkmKey; 3] = [
     },
 ];
 
-fn default_bindings() -> Result<Vec<Value>> {
+fn dkm_keys(product_id: u32) -> &'static [DkmKey] {
+    if product_id == 158 {
+        &DKM_KEYS
+    } else {
+        &DKM_KEYS[2..]
+    }
+}
+
+fn default_bindings_for(product_id: u32) -> Result<Vec<Value>> {
     // DeviceInfo3298 includes DKM_SB_01 profile navigation in each layer,
     // but its DKMKEYS has no such key. Factory77898 Dt/Tt emits no input
     // for those two rows; it does not synthesize a firmware identifier.
@@ -471,6 +518,7 @@ fn default_bindings() -> Result<Vec<Value>> {
         ("DKM_SB_03", "DPI_CycleUp", true),
     ]
     .into_iter()
+    .filter(|(input_id, _, _)| product_id == 158 || *input_id == "DKM_SB_03")
     .map(|(input_id, sensitivity_assignment, is_hyper_shift)| {
         Ok(serde_json::to_value(DefaultBinding {
             output_type: "sensitivityGroup",
@@ -485,7 +533,23 @@ fn default_bindings() -> Result<Vec<Value>> {
             },
         })?)
     })
-    .collect()
+    .collect::<Result<Vec<_>>>()
+    .map(|mut rows| {
+        if product_id != 158 {
+            for row in &mut rows {
+                row["isDefault"] = false.into();
+            }
+        }
+        if product_id == 239 {
+            rows.extend(["ScrollUp", "ScrollDown"].map(|input| {
+                serde_json::json!({
+                    "outputType":"sensitivityGroup","inputType":"MouseInput","inputID":input,
+                    "sensitivityGroup":{"sensitivityAssignment":"OTFS_Scroll"}
+                })
+            }));
+        }
+        rows
+    })
 }
 
 fn compile(
@@ -528,14 +592,28 @@ pub fn prepare_document(
     previous: Option<&Value>,
     fresh_guids: impl IntoIterator<Item = String>,
 ) -> Result<Value> {
+    prepare_document_inner(158, profiles, active_guid, previous, fresh_guids)
+}
+
+fn prepare_document_inner(
+    product_id: u32,
+    profiles: &[Value],
+    active_guid: &str,
+    previous: Option<&Value>,
+    fresh_guids: impl IntoIterator<Item = String>,
+) -> Result<Value> {
+    ensure!(
+        supports_ordinary(product_id),
+        "Unreviewed ordinary mouse document"
+    );
     let previous = previous.map(Document::parse).transpose()?;
     if let Some(previous) = &previous {
         ensure!(
-            previous.product_id == 158 && previous.dual_linked.is_none(),
+            previous.product_id == product_id && previous.dual_linked.is_none(),
             "A receiver projection cannot replace the local PID158 document"
         );
     }
-    let engine = MappingEngine::new(158)?;
+    let engine = compiler(product_id)?;
     let mut context = EngineContext {
         default_turbos: previous.as_ref().map(|value| value.default_turbos.clone()),
         synapse_turbos: Some(
@@ -547,7 +625,7 @@ pub fn prepare_document(
         fresh_guids: fresh_guids.into_iter().collect(),
         ..Default::default()
     };
-    for key in &DKM_KEYS {
+    for key in dkm_keys(product_id) {
         context
             .dkm_keys
             .insert(key.input_id.into(), serde_json::to_value(key)?);
@@ -557,7 +635,7 @@ pub fn prepare_document(
     }
     let defaults = serde_json::from_value(
         engine
-            .generate(&default_bindings()?, &mut context)?
+            .generate(&default_bindings_for(product_id)?, &mut context)?
             .app_engine,
     )?;
     let mut compiled = Vec::with_capacity(profiles.len());
@@ -569,19 +647,7 @@ pub fn prepare_document(
             !profile.guid.is_empty() && ids.insert(profile.guid.clone()),
             "PID158 profile identity is empty or duplicated"
         );
-        let records = profile
-            .mappings
-            .iter()
-            .filter(|record| {
-                record.get("inputType").and_then(Value::as_str) != Some("DKMInput")
-                    || record
-                        .get("inputID")
-                        .and_then(Value::as_str)
-                        .is_some_and(|id| context.dkm_keys.contains_key(id))
-            })
-            .cloned()
-            .collect::<Vec<_>>();
-        profile.app_engine = Some(compile(&records, &engine, &mut context)?);
+        profile.app_engine = Some(compile(&profile.mappings, &engine, &mut context)?);
         compiled.push(profile);
     }
     ensure!(ids.contains(active_guid), "PID158 active profile is absent");
@@ -618,7 +684,7 @@ pub fn prepare_document(
     let document = Document {
         version: next_source_version(previous.as_ref().map(|value| value.version))?,
         vendor_id: 5426,
-        product_id: 158,
+        product_id,
         category: "MOUSE".into(),
         report_ids: [
             (4, "razerKeyReportID".into()),

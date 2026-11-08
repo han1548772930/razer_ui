@@ -56,6 +56,19 @@ pub(super) fn keyboard_profile_inventory(
 ) -> anyhow::Result<Value> {
     device_reads::keyboard_metadata(target, super::KeyboardRead::ProfileInventory)
 }
+
+pub(super) fn keyboard_mode(
+    target: &razer_device::keyboard_mode::Target,
+    operation: razer_device::keyboard_mode::Operation,
+) -> anyhow::Result<Value> {
+    match target {
+        razer_device::keyboard_mode::Target::WindowsContainer(target) =>
+            device_reads::keyboard_metadata(target, super::KeyboardRead::Mode(operation)),
+        razer_device::keyboard_mode::Target::WindowsBle(target) =>
+            device_reads::keyboard_mode_ble(target, operation),
+        _ => bail!("Collection keyboard mode belongs to the portable owner"),
+    }
+}
 pub(super) fn keyboard_onboard_profiles(
     target: &razer_device::device_reads::DeviceReadTarget,
     options: &razer_device::keyboard_onboard_profiles::ReadOptions,
@@ -199,7 +212,11 @@ mod system_monitor;
 #[path = "hid/usb.rs"]
 mod usb;
 #[path = "user_app_files.rs"]
-mod user_app_files;
+pub(crate) mod user_app_files;
+
+pub(crate) fn blackshark_events(product_id: u16, container: &str) -> Box<dyn razer_device::receiver_pairing::HardwareEvents> {
+    Box::new(receiver_events::Events::new(product_id, container))
+}
 
 pub(super) fn controller_calibration_node_proof(node: &HidNode) -> anyhow::Result<Value> {
     controller_feature_node_proof(node, 1)
@@ -532,6 +549,7 @@ impl NativeRuntime {
             | ServiceRequest::HidNodeKeyboardBrightnessSubmit { .. }
             | ServiceRequest::HidNodeKeyboardReceiverBrightness { .. }
             | ServiceRequest::HidNodeKeyboardMetadataRead { .. }
+            | ServiceRequest::KeyboardMode { .. }
             | ServiceRequest::KeyboardProfileInventoryRead { .. }
             | ServiceRequest::KeyboardOnboardProfilesRead { .. }
             | ServiceRequest::HidNodeKeyboardSerialRead { .. }

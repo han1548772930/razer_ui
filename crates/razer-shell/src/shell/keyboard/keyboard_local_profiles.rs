@@ -1,6 +1,7 @@
 //! Read the local library after the current connection returns its serial.
 use super::*;
 use razer_discovery::discovery::ObservedDevice;
+use razer_ipc::{ServiceClient, ServiceRequest};
 use razer_storage::host_keyboard_profiles;
 use std::sync::{
     Arc,
@@ -16,6 +17,84 @@ struct Scope {
     serial: String,
     route: ObservedDevice,
     valid: Arc<AtomicBool>,
+}
+
+fn mode_operation(
+    route: &ObservedDevice,
+    operation: razer_device::keyboard_mode::Operation,
+    active: Option<Arc<AtomicBool>>,
+) -> anyhow::Result<()> {
+    if operation == razer_device::keyboard_mode::Operation::Initialize {
+        // Ordinary setup waits 500ms before its mode transition. Installer-only
+        // setup is not invoked by this local profile owner.
+        let until = std::time::Instant::now() + std::time::Duration::from_millis(500);
+        while let Some(remaining) = until.checked_duration_since(std::time::Instant::now()) {
+            anyhow::ensure!(
+                active
+                    .as_ref()
+                    .is_none_or(|active| active.load(Ordering::Acquire)),
+                "Keyboard mode initialization canceled during source settle delay"
+            );
+            std::thread::sleep(remaining.min(std::time::Duration::from_millis(10)));
+        }
+    }
+    let mut client = ServiceClient::spawn()?;
+    if let Some(active) = active {
+        client.set_request_guard(active);
+    }
+    finish_mode_session(|step| match step {
+        ModeStep::Execute => {
+            razer_discovery::direct::keyboard_metadata::resolve(&mut client, route)
+                .and_then(|route| route.set_source_mode(&mut client, operation))
+                .map(|_| ())
+        }
+        ModeStep::Shutdown => client.request(ServiceRequest::Shutdown).map(|_| ()),
+        ModeStep::Terminate => client.finish_termination(),
+    })
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ModeStep {
+    Execute,
+    Shutdown,
+    Terminate,
+}
+
+fn finish_mode_session(mut run: impl FnMut(ModeStep) -> anyhow::Result<()>) -> anyhow::Result<()> {
+    let mut errors = Vec::new();
+    for step in [ModeStep::Execute, ModeStep::Shutdown, ModeStep::Terminate] {
+        if let Err(error) = run(step) {
+            errors.push(format!("{step:?}: {error:#}"));
+        }
+    }
+    anyhow::ensure!(errors.is_empty(), "{}", errors.join("; "));
+    Ok(())
+}
+
+#[cfg(test)]
+mod mode_tests {
+    use super::{ModeStep, finish_mode_session};
+    #[test]
+    fn keyboard_mode_failure_still_closes_and_terminates_its_session() {
+        for failed in [
+            None,
+            Some(ModeStep::Execute),
+            Some(ModeStep::Shutdown),
+            Some(ModeStep::Terminate),
+        ] {
+            let mut calls = Vec::new();
+            let result = finish_mode_session(|step| {
+                calls.push(step);
+                anyhow::ensure!(Some(step) != failed, "controlled failure");
+                Ok(())
+            });
+            assert_eq!(
+                calls,
+                [ModeStep::Execute, ModeStep::Shutdown, ModeStep::Terminate]
+            );
+            assert_eq!(result.is_err(), failed.is_some());
+        }
+    }
 }
 
 impl Scope {
@@ -78,15 +157,39 @@ impl LocalSave {
 
 impl AppShell {
     pub(super) fn install_keyboard_local_profiles_cleanup(&mut self) {
-        self.register_exit_cleanup(|shell, _| {
+        self.register_exit_cleanup(|shell, cx| {
+            let mode_routes = shell
+                .keyboard_local_profiles
+                .scopes
+                .values()
+                .filter(|scope| {
+                    scope.current(shell, cx)
+                        && razer_device::keyboard_mode::supported(scope.route.product_id())
+                })
+                .map(|scope| scope.route.clone())
+                .collect::<Vec<_>>();
             for scope in shell.keyboard_local_profiles.scopes.values() {
                 scope.valid.store(false, Ordering::Release);
             }
             let delivery = shell.keyboard_local_profiles.delivery.take();
+            let background = cx.background_executor().clone();
             async move {
                 if let Some(delivery) = delivery {
                     delivery.await;
                 }
+                background
+                    .spawn(async move {
+                        for route in mode_routes {
+                            if let Err(error) = mode_operation(
+                                &route,
+                                razer_device::keyboard_mode::Operation::Release,
+                                None,
+                            ) {
+                                log::warn!("[keyboard mode release] {error:#}");
+                            }
+                        }
+                    })
+                    .await;
             }
         });
         self.register_exit_resume(|shell, _| {
@@ -189,6 +292,19 @@ impl AppShell {
                             } else {
                                 Err("Keyboard local profile read canceled".into())
                             };
+                            if matches!(result, Ok(Some(_)))
+                                && scope.valid.load(Ordering::Acquire)
+                                && razer_device::keyboard_mode::supported(scope.route.product_id())
+                            {
+                                if let Err(error) = mode_operation(
+                                    &scope.route,
+                                    razer_device::keyboard_mode::Operation::Initialize,
+                                    Some(scope.valid.clone()),
+                                ) {
+                                    // The actual source catches mode setup failures and continues.
+                                    log::warn!("[keyboard mode initialization] {error:#}");
+                                }
+                            }
                             (scope, baseline, result)
                         })
                         .collect::<Vec<_>>()
