@@ -1,4 +1,4 @@
-//! Current PID158 profile compiler and single-peer receiver publication.
+//! Current ordinary mouse profile compilation and PID158 receiver publication.
 //! Local documents retain logical identity; receiver projections are ephemeral.
 use crate::{
     mapping_engine::{EngineContext, MappingEngine},
@@ -15,7 +15,26 @@ pub const STORAGE_FIELD: &str = "_mouse158_mapping_document";
 /// Current ordinary physical owners with the reviewed lower-case profile compiler.
 /// Receiver/peer projection remains specific to PID158.
 pub const fn supports_ordinary(product_id: u32) -> bool {
-    matches!(product_id, 158 | 190 | 192 | 222 | 229 | 239)
+    matches!(
+        product_id,
+        89 | 104
+            | 115
+            | 140
+            | 145
+            | 148
+            | 158
+            | 161
+            | 178
+            | 185
+            | 190
+            | 192
+            | 194
+            | 196
+            | 222
+            | 224
+            | 229
+            | 239
+    )
 }
 
 fn compiler(product_id: u32) -> Result<MappingEngine> {
@@ -23,8 +42,8 @@ fn compiler(product_id: u32) -> Result<MappingEngine> {
         supports_ordinary(product_id),
         "Unreviewed ordinary mouse compiler"
     );
-    // 190/192/222/239 bind factory3328 identity0138cfd7;229 binds
-    // factory4325 identity393f8199, shared with158. Their used tables match.
+    // These ordinary configurations bind the reviewed 3328/4325 compiler
+    // identities. Defaults, DKM and report IDs remain selected by actual product.
     MappingEngine::new(if product_id == 158 || product_id == 229 {
         158
     } else {
@@ -127,7 +146,7 @@ pub fn prepare_document_for(
     let settings: Option<Settings> = settings
         .map(|value| serde_json::from_value(value.clone()))
         .transpose()
-        .context("PID158 device settings are invalid")?;
+        .context("Mouse device settings are invalid")?;
     let result = prepare_document_inner(product_id, profiles, active_guid, previous, fresh_guids)?;
     let mut result = Document::parse(&result)?;
     if let Some(metadata) = settings.and_then(|settings| settings.device_metadatas) {
@@ -156,7 +175,7 @@ pub(crate) fn project_interdevice_otfs(
         .profiles
         .iter_mut()
         .find(|profile| profile.guid == document.active_profile)
-        .context("Active PID158 OTFS profile is absent")?;
+        .context("Active mouse OTFS profile is absent")?;
     let mut context = EngineContext {
         default_turbos: Some(document.default_turbos.clone()),
         synapse_turbos: Some(document.synapse_turbos.clone()),
@@ -457,8 +476,27 @@ struct DefaultBinding {
     input_type: &'static str,
     #[serde(rename = "inputID")]
     input_id: &'static str,
-    is_hyper_shift: bool,
-    sensitivity_group: Sensitivity,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    is_hyper_shift: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    is_default: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    sensitivity_group: Option<Sensitivity>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    mouse_group: Option<MouseAssignment>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    profile_navigation_group: Option<ProfileNavigation>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct MouseAssignment {
+    mouse_assignment: &'static str,
+}
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ProfileNavigation {
+    profile_navigation_assignment: &'static str,
 }
 
 #[derive(Serialize)]
@@ -470,86 +508,242 @@ struct Sensitivity {
     y: u16,
 }
 
-#[derive(Serialize)]
+#[derive(Clone, Copy, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct DkmKey {
     #[serde(rename = "inputID")]
     input_id: &'static str,
-    button_key: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    button_key: Option<&'static str>,
     key: u8,
 }
 
 const DKM_KEYS: [DkmKey; 3] = [
     DkmKey {
         input_id: "DKM_M_01",
-        button_key: "SensitivityStageUp",
+        button_key: Some("SensitivityStageUp"),
         key: 32,
     },
     DkmKey {
         input_id: "DKM_M_02",
-        button_key: "SensitivityStageDown",
+        button_key: Some("SensitivityStageDown"),
         key: 33,
     },
     DkmKey {
         input_id: "DKM_SB_03",
-        button_key: "CycleUpSensitivityStages",
+        button_key: Some("CycleUpSensitivityStages"),
         key: 82,
     },
 ];
 
 fn dkm_keys(product_id: u32) -> &'static [DkmKey] {
-    if product_id == 158 {
-        &DKM_KEYS
-    } else {
-        &DKM_KEYS[2..]
+    const SIDE: [DkmKey; 2] = [
+        DkmKey {
+            input_id: "DKM_M_03",
+            button_key: Some("Button4"),
+            key: 34,
+        },
+        DkmKey {
+            input_id: "DKM_M_04",
+            button_key: Some("Button5"),
+            key: 35,
+        },
+    ];
+    const PROFILE: DkmKey = DkmKey {
+        input_id: "DKM_SB_01",
+        button_key: Some("CycleUpProfile"),
+        key: 80,
+    };
+    match product_id {
+        89 => &[SIDE[0], SIDE[1], DKM_KEYS[0], DKM_KEYS[1], PROFILE],
+        104 => &[
+            DkmKey {
+                input_id: "DKM_M_01",
+                button_key: None,
+                key: 32,
+            },
+            DkmKey {
+                input_id: "DKM_M_02",
+                button_key: None,
+                key: 33,
+            },
+            DkmKey {
+                input_id: "DKM_SB_01",
+                button_key: None,
+                key: 80,
+            },
+        ],
+        115 => &[DKM_KEYS[0], DKM_KEYS[1], PROFILE],
+        145 => &[SIDE[0], SIDE[1], DKM_KEYS[2]],
+        148 | 224 => &[DKM_KEYS[2], SIDE[0], SIDE[1]],
+        185 => &[
+            DKM_KEYS[2],
+            DkmKey {
+                input_id: "DKM_FN",
+                button_key: Some("Razer Hypershift"),
+                key: 89,
+            },
+        ],
+        158 | 178 | 194 => &DKM_KEYS,
+        _ => &DKM_KEYS[2..],
     }
 }
 
 fn default_bindings_for(product_id: u32) -> Result<Vec<Value>> {
-    // DeviceInfo3298 includes DKM_SB_01 profile navigation in each layer,
-    // but its DKMKEYS has no such key. Factory77898 Dt/Tt emits no input
-    // for those two rows; it does not synthesize a firmware identifier.
-    [
-        ("DKM_M_01", "DPI_Up", false),
-        ("DKM_M_02", "DPI_Down", false),
-        ("DKM_M_01", "DPI_Up", true),
-        ("DKM_M_02", "DPI_Down", true),
-        ("DKM_SB_03", "DPI_CycleUp", false),
-        ("DKM_SB_03", "DPI_CycleUp", true),
-    ]
-    .into_iter()
-    .filter(|(input_id, _, _)| product_id == 158 || *input_id == "DKM_SB_03")
-    .map(|(input_id, sensitivity_assignment, is_hyper_shift)| {
-        Ok(serde_json::to_value(DefaultBinding {
+    #[derive(Clone, Copy)]
+    enum DefaultAction {
+        Up,
+        Down,
+        Cycle,
+        Next,
+        Previous,
+        Profile,
+        Shift,
+    }
+    use DefaultAction::*;
+    let ordered: &[(&str, DefaultAction, bool)] = match product_id {
+        89 => &[
+            ("DKM_M_01", Up, false),
+            ("DKM_M_02", Down, false),
+            ("DKM_M_04", Next, false),
+            ("DKM_M_03", Previous, false),
+            ("DKM_SB_01", Profile, false),
+            ("DKM_M_01", Up, true),
+            ("DKM_M_02", Down, true),
+            ("DKM_M_04", Next, true),
+            ("DKM_M_03", Previous, true),
+            ("DKM_SB_01", Profile, true),
+        ],
+        104 => &[
+            ("DKM_M_01", Up, false),
+            ("DKM_M_02", Down, false),
+            ("DKM_SB_01", Profile, false),
+            ("DKM_M_01", Up, true),
+            ("DKM_M_02", Down, true),
+            ("DKM_SB_01", Profile, true),
+        ],
+        115 => &[
+            ("DKM_M_01", Up, false),
+            ("DKM_M_02", Down, false),
+            ("DKM_M_01", Up, true),
+            ("DKM_M_02", Down, true),
+        ],
+        145 => &[
+            ("DKM_M_04", Next, false),
+            ("DKM_M_03", Previous, false),
+            ("DKM_SB_03", Cycle, false),
+            ("DKM_M_04", Next, true),
+            ("DKM_M_03", Previous, true),
+            ("DKM_SB_03", Cycle, true),
+        ],
+        148 | 224 => &[
+            ("DKM_M_04", Next, false),
+            ("DKM_M_03", Previous, false),
+            ("DKM_SB_03", Cycle, false),
+            ("DKM_SB_03", Cycle, true),
+            ("DKM_M_04", Next, true),
+            ("DKM_M_03", Previous, true),
+        ],
+        185 => &[
+            ("DKM_M_04", Next, false),
+            ("DKM_M_03", Previous, false),
+            ("DKM_SB_03", Cycle, false),
+            ("DKM_FN", Shift, false),
+            ("DKM_SB_03", Cycle, true),
+            ("DKM_M_04", Next, true),
+            ("DKM_M_03", Previous, true),
+            ("DKM_FN", Shift, true),
+        ],
+        194 => &[
+            ("DKM_M_01", Up, false),
+            ("DKM_M_02", Down, false),
+            ("DKM_SB_01", Profile, false),
+            ("DKM_M_01", Up, true),
+            ("DKM_M_02", Down, true),
+            ("DKM_SB_01", Profile, true),
+            ("DKM_SB_03", Cycle, false),
+            ("DKM_SB_03", Cycle, true),
+        ],
+        158 | 178 => &[
+            ("DKM_M_01", Up, false),
+            ("DKM_M_02", Down, false),
+            ("DKM_M_01", Up, true),
+            ("DKM_M_02", Down, true),
+            ("DKM_SB_03", Cycle, false),
+            ("DKM_SB_03", Cycle, true),
+        ],
+        _ => &[("DKM_SB_03", Cycle, false), ("DKM_SB_03", Cycle, true)],
+    };
+    let mut rows = Vec::new();
+    for &(input_id, action, shift) in ordered {
+        let mut row = DefaultBinding {
             output_type: "sensitivityGroup",
             input_type: "DKMInput",
             input_id,
-            is_hyper_shift,
-            sensitivity_group: Sensitivity {
-                sensitivity_assignment,
-                independent: false,
-                x: 800,
-                y: 800,
-            },
-        })?)
-    })
-    .collect::<Result<Vec<_>>>()
-    .map(|mut rows| {
-        if product_id != 158 {
-            for row in &mut rows {
-                row["isDefault"] = false.into();
-            }
-        }
-        if product_id == 239 {
-            rows.extend(["ScrollUp", "ScrollDown"].map(|input| {
-                serde_json::json!({
-                    "outputType":"sensitivityGroup","inputType":"MouseInput","inputID":input,
-                    "sensitivityGroup":{"sensitivityAssignment":"OTFS_Scroll"}
+            is_hyper_shift: Some(shift),
+            is_default: matches!(product_id, 140 | 161 | 190 | 192 | 196 | 222 | 229 | 239)
+                .then_some(false),
+            sensitivity_group: None,
+            mouse_group: None,
+            profile_navigation_group: None,
+        };
+        match action {
+            Up | Down | Cycle => {
+                row.sensitivity_group = Some(Sensitivity {
+                    sensitivity_assignment: match action {
+                        Up => "DPI_Up",
+                        Down => "DPI_Down",
+                        _ => "DPI_CycleUp",
+                    },
+                    independent: false,
+                    x: 800,
+                    y: 800,
                 })
-            }));
+            }
+            Next | Previous => {
+                row.output_type = "mouseGroup";
+                row.mouse_group = Some(MouseAssignment {
+                    mouse_assignment: if matches!(action, Next) { "Next" } else { "Previous" },
+                });
+            }
+            Profile => {
+                row.output_type = "profileNavigationGroup";
+                row.profile_navigation_group = Some(ProfileNavigation {
+                    profile_navigation_assignment: "CycleUp",
+                });
+            }
+            Shift => row.output_type = "hyperShiftGroup",
         }
-        rows
-    })
+        rows.push(serde_json::to_value(row)?);
+    }
+    if product_id == 104 {
+        for (input_id, mouse_assignment, shift) in [
+            ("RepeatScrollLeft", "RepeatScrollDown", false),
+            ("RepeatScrollRight", "RepeatScrollUp", false),
+            ("RepeatScrollLeft", "RepeatScrollUp", true),
+            ("RepeatScrollRight", "RepeatScrollDown", true),
+        ] {
+            rows.push(serde_json::to_value(DefaultBinding {
+                output_type: "mouseGroup",
+                input_type: "MouseInput",
+                input_id,
+                is_hyper_shift: Some(shift),
+                is_default: (!shift).then_some(false),
+                sensitivity_group: None,
+                mouse_group: Some(MouseAssignment { mouse_assignment }),
+                profile_navigation_group: None,
+            })?);
+        }
+    }
+    if matches!(product_id, 140 | 161 | 224 | 239) {
+        rows.extend(["ScrollUp", "ScrollDown"].map(|input| {
+            serde_json::json!({
+                "outputType":"sensitivityGroup","inputType":"MouseInput","inputID":input,
+                "sensitivityGroup":{"sensitivityAssignment":"OTFS_Scroll"}
+            })
+        }));
+    }
+    Ok(rows)
 }
 
 fn compile(
@@ -642,15 +836,15 @@ fn prepare_document_inner(
     let mut ids = std::collections::BTreeSet::new();
     for source in profiles {
         let mut profile: Profile = serde_json::from_value(source.clone())
-            .context("PID158 profile fields are incomplete")?;
+            .context("Mouse profile fields are incomplete")?;
         ensure!(
             !profile.guid.is_empty() && ids.insert(profile.guid.clone()),
-            "PID158 profile identity is empty or duplicated"
+            "Mouse profile identity is empty or duplicated"
         );
         profile.app_engine = Some(compile(&profile.mappings, &engine, &mut context)?);
         compiled.push(profile);
     }
-    ensure!(ids.contains(active_guid), "PID158 active profile is absent");
+    ensure!(ids.contains(active_guid), "Mouse active profile is absent");
     if let Some(previous) = &previous {
         // Current30525 Ve removes only formerly referenced turbo identities
         // that no compiled profile still uses. Unrelated stored turbos survive.
@@ -690,7 +884,9 @@ fn prepare_document_inner(
             (4, "razerKeyReportID".into()),
             (5, "hardwareEventReportID".into()),
         ]
-        .into(),
+        .into_iter()
+        .filter(|(id, _)| product_id != 145 || *id == 4)
+        .collect(),
         profiles: compiled,
         active_profile: active_guid.into(),
         default_mappings: Defaults {
@@ -698,10 +894,10 @@ fn prepare_document_inner(
         },
         default_turbos: context
             .default_turbos
-            .context("PID158 default turbos are absent")?,
+            .context("Mouse default turbos are absent")?,
         synapse_turbos: context
             .synapse_turbos
-            .context("PID158 profile turbos are absent")?,
+            .context("Mouse profile turbos are absent")?,
         device_metadatas: previous
             .as_ref()
             .and_then(|value| value.device_metadatas.clone()),

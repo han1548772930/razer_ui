@@ -30,9 +30,6 @@ pub(super) fn verify(file: &File, path: &Path, bytes: &[u8], extension: &str) ->
 
 struct TrustState(WINTRUST_DATA);
 
-pub(crate) fn verify_launch(file: &File, path: &Path) -> Result<()> {
-    authenticode(file, path, true)
-}
 impl Drop for TrustState {
     fn drop(&mut self) {
         self.0.dwStateAction = WTD_STATEACTION_CLOSE;

@@ -1,25 +1,13 @@
-//! Local activation-code reading and installed application actions from Sound.
+//! Device activation-code reading and copying from the retained Sound page.
 use super::*;
 use razer_device::earbuds_auto_pause::{ActivationCode, Operation};
 use razer_widgets::{keyboard_navigation::Button, theme::AudioEnhancementColors as C};
-use std::sync::{
-    Arc,
-    atomic::{AtomicBool, Ordering},
-};
-
 #[derive(Default)]
 pub(super) struct State {
     pub(super) code: Option<Result<ActivationCode, String>>,
     pub(super) loading: bool,
     open: bool,
     copied: bool,
-    installed: Option<Result<bool, String>>,
-    generation: u64,
-    probe: Option<Task<()>>,
-    launch: Option<Task<()>>,
-    launch_id: Option<uuid::Uuid>,
-    launch_guard: Option<Arc<AtomicBool>>,
-    launch_error: Option<String>,
 }
 
 impl State {
@@ -30,54 +18,11 @@ impl State {
         self.copied = false;
     }
     pub(super) fn cancel(&mut self) {
-        self.generation = self.generation.wrapping_add(1);
         self.open = false;
         self.copied = false;
-        self.probe = None;
-        self.installed = None;
-        if let Some(active) = self.launch_guard.take() {
-            active.store(false, Ordering::Release);
-        }
     }
 }
-impl Drop for State {
-    fn drop(&mut self) {
-        self.cancel();
-    }
-}
-
 impl AudioProductWorkspace {
-    pub fn take_earbuds_activation_cleanup(&mut self) -> Option<Task<()>> {
-        self.earbuds_activation.cancel();
-        self.earbuds_activation.launch.take()
-    }
-    pub(super) fn sync_earbuds_activation(&mut self, cx: &mut Context<Self>) {
-        if !razer_device::earbuds_protocol40::supports_auto_pause(self.spec.product_id)
-            || self.page != "TAB_SOUND"
-        {
-            self.earbuds_activation.cancel();
-            return;
-        }
-        if self.earbuds_activation.installed.is_some() || self.earbuds_activation.probe.is_some() {
-            return;
-        }
-        let generation = self.earbuds_activation.generation;
-        self.earbuds_activation.probe = Some(cx.spawn(async move |owner, cx| {
-            let result = cx
-                .background_spawn(async {
-                    razer_service::earbuds_activation::installed().map_err(|e| format!("{e:#}"))
-                })
-                .await;
-            let _ = owner.update(cx, |owner, cx| {
-                if generation == owner.earbuds_activation.generation {
-                    owner.earbuds_activation.installed = Some(result);
-                    owner.earbuds_activation.probe = None;
-                    cx.notify();
-                }
-            });
-        }));
-    }
-
     fn open_earbuds_activation(&mut self, cx: &mut Context<Self>) {
         if !self.earbuds.active {
             return;
@@ -90,63 +35,11 @@ impl AudioProductWorkspace {
         cx.notify();
     }
 
-    fn launch_earbuds_thx(&mut self, cx: &mut Context<Self>) {
-        if !self.earbuds.active
-            || self.page != "TAB_SOUND"
-            || self.earbuds_activation.launch_id.is_some()
-            || !matches!(self.earbuds_activation.installed, Some(Ok(true)))
-        {
-            return;
-        }
-        let active = Arc::new(AtomicBool::new(true));
-        let id = uuid::Uuid::new_v4();
-        self.earbuds_activation.launch_id = Some(id);
-        self.earbuds_activation.launch_guard = Some(active.clone());
-        let generation = self.earbuds_activation.generation;
-        self.earbuds_activation.launch = Some(cx.spawn(async move |owner, cx| {
-            let result = cx
-                .background_spawn(async move { razer_service::earbuds_activation::launch(active) })
-                .await;
-            let _ = owner.update(cx, |owner, cx| {
-                if owner.earbuds_activation.launch_id != Some(id) {
-                    return;
-                }
-                owner.earbuds_activation.launch_id = None;
-                owner.earbuds_activation.launch = None;
-                owner.earbuds_activation.launch_guard = None;
-                if generation == owner.earbuds_activation.generation {
-                    owner.earbuds_activation.launch_error = result.err().map(|e| format!("{e:#}"));
-                }
-                cx.notify();
-            });
-        }));
-    }
-
     pub(super) fn earbuds_activation_card(&self, cx: &mut Context<Self>) -> AnyElement {
         let mut actions = h_flex()
             .mt(surface::css(20.))
             .justify_between()
             .items_center();
-        if matches!(self.earbuds_activation.installed, Some(Ok(true))) {
-            actions = actions.child(
-                Button::new("earbuds-thx-launch")
-                    .disabled(!self.earbuds.active || self.earbuds_activation.launch_id.is_some())
-                    .h(surface::css(50.))
-                    .flex()
-                    .items_center()
-                    .gap(surface::css(10.))
-                    .px(surface::css(16.))
-                    .border_1()
-                    .border_color(C::text())
-                    .rounded(surface::css(3.))
-                    .bg(C::background())
-                    .hover(|style| style.bg(C::mapping_black()))
-                    .active(|style| style.bg(C::background()))
-                    .child(img("synapse/earbuds-activation-thx.svg").size(surface::css(30.)))
-                    .child(t("THX_SPATIAL_AUDIO_LAUNCH").to_uppercase())
-                    .on_click(cx.listener(|this, _, _, cx| this.launch_earbuds_thx(cx))),
-            );
-        }
         actions = actions.child(
             Button::new("earbuds-activation-show")
                 .flex()

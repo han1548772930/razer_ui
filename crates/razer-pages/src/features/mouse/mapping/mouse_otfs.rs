@@ -95,7 +95,7 @@ impl MouseProductWorkspace {
         };
         let document = match self.spec.product_id {
             70 => self.legacy_mapping.otfs_document(),
-            158 | 190 | 192 | 222 | 229 | 239 => self.receiver_mapping.otfs_document(),
+            pid if razer_device::mouse_receiver_mapping::supports_ordinary(pid) => self.receiver_mapping.otfs_document(),
             _ => None,
         }
         .cloned();
@@ -151,14 +151,14 @@ impl MouseProductWorkspace {
     fn otfs_failure(&mut self, message: String) {
         match self.spec.product_id {
             70 => self.legacy_mapping.otfs_error(message),
-            158 | 190 | 192 | 222 | 229 | 239 => self.receiver_mapping.otfs_error(message),
+            pid if razer_device::mouse_receiver_mapping::supports_ordinary(pid) => self.receiver_mapping.otfs_error(message),
             _ => {}
         }
     }
     fn finish_otfs_mode(&mut self, enabled: bool) {
         let editable = match self.spec.product_id {
             70 => self.legacy_mapping.otfs_mode(enabled),
-            158 | 190 | 192 | 222 | 229 | 239 => self.receiver_mapping.otfs_mode(enabled),
+            pid if razer_device::mouse_receiver_mapping::supports_ordinary(pid) => self.receiver_mapping.otfs_mode(enabled),
             _ => return,
         };
         self.dpi_editing_observed = Some(editable);
@@ -204,7 +204,7 @@ impl MouseProductWorkspace {
             70 => self
                 .legacy_mapping
                 .replace_otfs_document(request.document.clone()),
-            158 | 190 | 192 | 222 | 229 | 239 => self
+            pid if razer_device::mouse_receiver_mapping::supports_ordinary(pid) => self
                 .receiver_mapping
                 .replace_otfs_document(request.document.clone()),
             _ => {}
@@ -223,7 +223,7 @@ impl MouseProductWorkspace {
         }
         match self.spec.product_id {
             70 => self.publish_legacy_otfs_saved(request, enabled, cx),
-            158 | 190 | 192 | 222 | 229 | 239 => self.publish_receiver_otfs_saved(request, enabled, cx),
+            pid if razer_device::mouse_receiver_mapping::supports_ordinary(pid) => self.publish_receiver_otfs_saved(request, enabled, cx),
             _ => {}
         }
     }
@@ -267,7 +267,7 @@ mod tests {
     #[gpui_kit::test]
     fn repeated_enable_restores_snapshot_and_failed_save_preserves_it(cx: &mut TestAppContext) {
         cx.update(gpui_kit::init);
-        for pid in [70, 158, 190, 192, 222, 229, 239] {
+        for pid in [70,89,104,115,140,145,148,158,161,178,185,190,192,194,196,222,224,229,239] {
             let mut owner = None;
             let handle = cx.open_window(size(px(1600.), px(1000.)), |window, cx| {
                 let page = cx.new(|cx| MouseProductWorkspace::new(pid, window, cx));

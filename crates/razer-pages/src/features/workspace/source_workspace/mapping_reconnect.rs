@@ -153,7 +153,7 @@ mod tests {
     #[::core::prelude::v1::test]
     fn current_mouse_batch_admits_only_its_own_observed_physical_product() {
         use razer_model::model::DeviceConnectionObservation;
-        for pid in [190,192,222,229,239] {
+        for pid in [89,104,115,140,145,148,161,178,185,190,192,194,196,222,224,229,239] {
             let mut device=razer_model::product_preview::registered_preview(pid).unwrap();
             device.serial_number="observed".into();
             device.device_container_id="current-container".into();

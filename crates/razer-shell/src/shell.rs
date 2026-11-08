@@ -1295,15 +1295,6 @@ impl AppShell {
         this.install_tray(window, cx);
         this.install_service_exit_fallback(cx);
         this.install_hanbo_cooler_cleanup();
-        this.register_exit_cleanup(|this, cx| {
-            let pages: Vec<_> = this.devices.iter()
-                .filter_map(|workspace| workspace.read(cx).audio_mixer_page(cx))
-                .collect();
-            let tasks: Vec<_> = pages.into_iter()
-                .filter_map(|page| page.update(cx, |page, _| page.take_earbuds_activation_cleanup()))
-                .collect();
-            async move { for task in tasks { task.await; } }
-        });
         this.register_exit_cleanup(|_, cx| {
             let cleanup =
                 cx.background_spawn(async { razer_service::camera::lifecycle::shutdown_all() });

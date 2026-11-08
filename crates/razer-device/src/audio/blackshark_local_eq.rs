@@ -29,7 +29,10 @@ pub enum Request {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Job {
     Read,
-    Observe { presets: Vec<Preset>, disable_thx: bool },
+    Observe {
+        presets: Vec<Preset>,
+        disable_thx: bool,
+    },
     ReadSlots {
         indices: Vec<u8>,
     },
@@ -42,19 +45,36 @@ pub enum Job {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub enum Notification { Selected { index: u8 }, Bands { index: u8, values: [i16; 10] } }
+pub enum Notification {
+    Selected { index: u8 },
+    Bands { index: u8, values: [i16; 10] },
+}
 
 pub fn parse_notification(raw: &[u8]) -> Result<Option<Notification>> {
-    if raw.first() != Some(&2) || raw.get(11) != Some(&2) { return Ok(None); }
-    let Some(&record) = raw.get(10) else { return Ok(None); };
-    if !matches!(record, 21 | 96) { return Ok(None); }
+    if raw.first() != Some(&2) || raw.get(11) != Some(&2) {
+        return Ok(None);
+    }
+    let Some(&record) = raw.get(10) else {
+        return Ok(None);
+    };
+    if !matches!(record, 21 | 96) {
+        return Ok(None);
+    }
     let index = *raw.get(13).context("EQ notification omits slot")?;
     ensure!(index < SLOT_COUNT, "EQ notification slot is out of range");
-    if record == 96 { return Ok(Some(Notification::Selected { index })); }
-    let data = raw.get(14..24).context("EQ notification bands are truncated")?;
-    let mut values = [0;10];
+    if record == 96 {
+        return Ok(Some(Notification::Selected { index }));
+    }
+    let data = raw
+        .get(14..24)
+        .context("EQ notification bands are truncated")?;
+    let mut values = [0; 10];
     for (value, byte) in values.iter_mut().zip(data) {
-        *value = if *byte > 128 {128 - i16::from(*byte)} else {i16::from(*byte)};
+        *value = if *byte > 128 {
+            128 - i16::from(*byte)
+        } else {
+            i16::from(*byte)
+        };
     }
     Ok(Some(Notification::Bands { index, values }))
 }
@@ -94,16 +114,28 @@ pub fn prepare(request: &Request, current: &[Preset]) -> Result<Job> {
                 Notification::Selected { index } => (*index, None),
                 Notification::Bands { index, values } => (*index, Some(*values)),
             };
-            ensure!(current.iter().any(|preset|preset.index==index), "Hardware EQ slot is absent");
-            let mut presets=current.to_vec();
+            ensure!(
+                current.iter().any(|preset| preset.index == index),
+                "Hardware EQ slot is absent"
+            );
+            let mut presets = current.to_vec();
             for preset in &mut presets {
-                preset.current_active=preset.index==index;
-                if preset.current_active { if let Some(bands)=bands {preset.band_values=bands;} }
+                preset.current_active = preset.index == index;
+                if preset.current_active {
+                    if let Some(bands) = bands {
+                        preset.band_values = bands;
+                    }
+                }
             }
             validate(&presets)?;
-            let disable_thx = matches!(event,Notification::Selected { .. })
-                && presets.iter().any(|preset|preset.current_active && preset.cloud_equalizer_id>3);
-            Ok(Job::Observe { presets, disable_thx })
+            let disable_thx = matches!(event, Notification::Selected { .. })
+                && presets
+                    .iter()
+                    .any(|preset| preset.current_active && preset.cloud_equalizer_id > 3);
+            Ok(Job::Observe {
+                presets,
+                disable_thx,
+            })
         }
         Request::Edit(edit) => {
             ensure!(
@@ -184,7 +216,7 @@ pub fn execute(
         match job {
             Job::Observe { presets, .. } => {
                 validate(presets)?;
-                progress.observed=Some(presets.clone());
+                progress.observed = Some(presets.clone());
             }
             Job::Read | Job::ReadSlots { .. } => {
                 let indices = match job {
@@ -270,6 +302,29 @@ pub fn execute(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn hardware_reports_update_slots_without_firmware_writes() {
+        for pid in [1398,1401,2638,2641,4124,4126] {
+            let current=crate::thx_blackshark_firmware::default_blackshark_local_eq_presets(pid).unwrap();
+            let mut raw=[0u8;64];raw[0]=2;raw[10]=96;raw[11]=2;raw[13]=4;
+            let event=parse_notification(&raw).unwrap().unwrap();
+            let job=prepare(&Request::Hardware(event),&current).unwrap();
+            let Job::Observe{presets,disable_thx}=&job else {panic!()};
+            assert!(presets[4].current_active);
+            assert_eq!(*disable_thx,presets[4].cloud_equalizer_id>3);
+            let progress=execute(&job,|_|panic!("hardware notification must not write firmware"),||Ok(()));
+            assert!(progress.completed && progress.commands.is_empty());
+            raw[10]=21;raw[13]=2;raw[14..24].copy_from_slice(&[134,133,132,131,130,129,0,1,2,6]);
+            let event=parse_notification(&raw).unwrap().unwrap();
+            let Job::Observe{presets,disable_thx}=prepare(&Request::Hardware(event),&current).unwrap() else {panic!()};
+            assert_eq!(presets[2].band_values,[-6,-5,-4,-3,-2,-1,0,1,2,6]);
+            assert!(!disable_thx);
+            assert_eq!(presets[0].band_values,current[0].band_values);
+            assert!(parse_notification(&raw[..20]).is_err());
+            raw[11]=1;assert!(parse_notification(&raw).unwrap().is_none());
+        }
+    }
     use crate::backend::HidNode;
     use crate::thx_blackshark_firmware::{
         BlackSharkFirmwareAttempt, BlackSharkFirmwareIdentity, BlackSharkFirmwareReply,

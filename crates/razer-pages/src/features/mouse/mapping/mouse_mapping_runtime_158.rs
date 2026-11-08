@@ -1,4 +1,4 @@
-//! PID158 software publication and callback lifetime. A native publication
+//! Current ordinary mouse software publication and callback lifetime. A publication
 //! receipt never acknowledges an onboard profile write or supplies device DPI.
 use super::*;
 use razer_device::mouse_dpi_stages::DpiStagesDraft;

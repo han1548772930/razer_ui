@@ -46,7 +46,7 @@ fn preset_name(value: &Value) -> String {
         .to_string()
 }
 fn library_preset(value: &Value) -> Value {
-    json!({"cloudEqualizerId":value["equalizer_id"],"current":value["band_values"],"icon":value["equalizer_icon"],"id":value["equalizer_id"],"isActive":false,"isEnabled":false,"isModified":false,"name":value["equalizer_name"],"position":0,"type":value["equalizer_category"],"bandLabels":value["band_label_ids"],"isAllowSwapping":value["is_allow_swapping"]})
+    json!({"cloudEqualizerId":value["equalizer_id"],"current":value["band_values"],"bandValues":value["band_values"],"default":value["band_values"],"icon":value["equalizer_icon"],"id":value["equalizer_id"],"isActive":false,"isEnabled":false,"isModified":false,"name":value["equalizer_name"],"position":0,"type":value["equalizer_category"],"bandLabels":value["band_label_ids"],"isAllowSwapping":value["is_allow_swapping"]})
 }
 #[derive(Clone)]
 struct EqDrag {
@@ -516,8 +516,11 @@ impl AudioProductWorkspace {
                 id(preset)
             };
             let mut row = json!({"index":index,"enableState":stored,"currentActive":id(preset)==selected,"cloudEqualizerId":id(preset),"custom":preset["custom"].as_bool().unwrap_or(false),"voicePromptIndex":voice});
-            if let Some(current) = preset.get("current") {
-                row["bandValues"] = current.clone();
+            let current = if id(preset) == self.cloud()["selectedPreset"] {
+                self.current_cloud_bands().map(|values|band_json(&values))
+            } else { preset.get("bandValues").or_else(||preset.get("current")).cloned() };
+            if let Some(current) = current {
+                row["bandValues"] = current;
             }
             transport.push(row);
         }

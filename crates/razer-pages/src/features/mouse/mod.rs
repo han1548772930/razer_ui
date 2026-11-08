@@ -1213,8 +1213,8 @@ impl MouseProductWorkspace {
         let value = self.number(&path);
         let slider = cx.new(|_| {
             SliderState::new()
-                .min(min)
                 .max(max)
+                .min(min)
                 .step(step)
                 .default_value(value)
         });

@@ -140,8 +140,6 @@ pub struct KeyBatch<T> {
 pub struct ModeReading {
     pub mode: Mode,
     pub assignments: Vec<AssignmentBatch>,
-    pub rapid_trigger: Vec<KeyBatch<RapidTriggerKey>>,
-    pub actuation: Vec<KeyBatch<ActuationPoint>>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -157,30 +155,27 @@ pub struct ProfileReading {
     pub brightness: Reading<KeyboardBrightness>,
     /// Normal mode precedes Hypershift mode in the actual engine read chain.
     pub passes: Vec<ModeReading>,
+    pub rapid_trigger: Vec<KeyBatch<RapidTriggerKey>>,
+    pub actuation: Vec<KeyBatch<ActuationPoint>>,
     pub kill_switch: Reading<KillSwitch>,
 }
 
 impl ProfileReading {
-    /// Both source passes write the same per-key analog field. A later failed
-    /// batch cannot erase an actual result from this same device snapshot.
+    /// Analog fields are read once after both assignment modes, across all keys.
     pub fn actuation(&self, key_id: u8) -> Option<&ActuationPoint> {
-        self.passes.iter().rev().find_map(|pass| {
-            pass.actuation
+        self.actuation
                 .iter()
                 .filter_map(|batch| batch.reading.observed())
                 .flat_map(|points| points.iter())
                 .find(|point| point.key_id == key_id)
-        })
     }
 
     pub fn rapid_trigger(&self, key_id: u8) -> Option<&RapidTriggerKey> {
-        self.passes.iter().rev().find_map(|pass| {
-            pass.rapid_trigger
+        self.rapid_trigger
                 .iter()
                 .filter_map(|batch| batch.reading.observed())
                 .flat_map(|points| points.iter())
                 .find(|point| point.key_id == key_id)
-        })
     }
 
     pub fn assignment(&self, mode: Mode, key_id: u8) -> Option<&ButtonAssignment> {
@@ -251,9 +246,7 @@ impl Snapshot {
                     .map(|key| key.firmware_key_id)
                     .collect();
                 ensure!(
-                    pass.assignments.len() == keys.chunks(8).len()
-                        && pass.rapid_trigger.len() == keys.chunks(13).len()
-                        && pass.actuation.len() == keys.chunks(15).len(),
+                    pass.assignments.len() == keys.chunks(8).len(),
                     "OBM snapshot batches are missing or exceed source limits"
                 );
                 for (batch, expected) in pass.assignments.iter().zip(keys.chunks(8)) {
@@ -280,7 +273,12 @@ impl Snapshot {
                         }
                     }
                 }
-                for (batch, expected) in pass.rapid_trigger.iter().zip(keys.chunks(13)) {
+            }
+            let keys: Vec<_> = self.key_inventory.iter().map(|key| key.firmware_key_id).collect();
+            ensure!(profile.rapid_trigger.len() == keys.chunks(13).len()
+                && profile.actuation.len() == keys.chunks(15).len(),
+                "OBM analog snapshot batches are missing or exceed source limits");
+                for (batch, expected) in profile.rapid_trigger.iter().zip(keys.chunks(13)) {
                     ensure!(
                         batch.key_ids == expected,
                         "OBM rapid-trigger batch keys differ"
@@ -290,14 +288,13 @@ impl Snapshot {
                         validate_returned_keys(expected, points.iter().map(|point| point.key_id))?;
                     }
                 }
-                for (batch, expected) in pass.actuation.iter().zip(keys.chunks(15)) {
+                for (batch, expected) in profile.actuation.iter().zip(keys.chunks(15)) {
                     ensure!(batch.key_ids == expected, "OBM actuation batch keys differ");
                     batch.reading.validate_attempt()?;
                     if let Some(points) = batch.reading.observed() {
                         validate_returned_keys(expected, points.iter().map(|point| point.key_id))?;
                     }
                 }
-            }
             profile.kill_switch.validate_attempt()?;
         }
         Ok(())
@@ -434,8 +431,6 @@ fn read_mode(
     let mut pass = ModeReading {
         mode,
         assignments: Vec::new(),
-        rapid_trigger: Vec::new(),
-        actuation: Vec::new(),
     };
     for chunk in keys.chunks(8) {
         let mut batch = AssignmentBatch {
@@ -455,6 +450,18 @@ fn read_mode(
         }
         pass.assignments.push(batch);
     }
+    Ok(pass)
+}
+
+fn read_analog(
+    device: &dyn FeatureTransport,
+    cap: &KeyboardSettingsCapability,
+    profile: &mut ProfileReading,
+    keys: &[u8],
+    next: &mut impl FnMut() -> Result<u8>,
+    validate: &impl Fn() -> Result<()>,
+) -> Result<()> {
+    let slot_id = profile.slot_id;
     for chunk in keys.chunks(13) {
         validate()?;
         let result = keyboard_analog::read(
@@ -471,7 +478,7 @@ fn read_mode(
             KeyboardAnalogObservation::RapidTrigger { keys, .. } => Ok(keys),
             _ => anyhow::bail!("OBM rapid-trigger reply has a different observation kind"),
         });
-        pass.rapid_trigger.push(KeyBatch {
+        profile.rapid_trigger.push(KeyBatch {
             key_ids: chunk.to_vec(),
             reading: retain(result, validate)?,
         });
@@ -492,12 +499,12 @@ fn read_mode(
             KeyboardAnalogObservation::Actuation { points, .. } => Ok(points),
             _ => anyhow::bail!("OBM actuation reply has a different observation kind"),
         });
-        pass.actuation.push(KeyBatch {
+        profile.actuation.push(KeyBatch {
             key_ids: chunk.to_vec(),
             reading: retain(result, validate)?,
         });
     }
-    Ok(pass)
+    Ok(())
 }
 
 /// The caller owns the retained transport, transaction counter, cancellation
@@ -535,6 +542,8 @@ fn read_selected(
             slot_id: slot.slot_id,
             brightness: retain(result, validate)?,
             passes: Vec::with_capacity(2),
+            rapid_trigger: Vec::new(),
+            actuation: Vec::new(),
             kill_switch: Reading::Unobserved,
         });
     }
@@ -558,6 +567,8 @@ fn read_selected(
                 validate,
             )?);
         }
+        let key_ids: Vec<_> = keys.iter().map(|key| key.firmware_key_id).collect();
+        read_analog(device, settings, profile, &key_ids, next, validate)?;
     }
     // Kill-switch follows all slot assignment passes, not each slot's pass.
     for profile in &mut profiles {

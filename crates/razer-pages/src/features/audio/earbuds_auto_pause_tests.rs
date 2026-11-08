@@ -814,6 +814,12 @@ fn earbuds_activation_reads_copies_and_rejects_stale_results_without_saving(cx: 
             window.click("earbuds-activation-show",cx);
             owner.update(cx,|view,cx| {
                 let stale=view.earbuds.pending.clone().unwrap();
+                let monitor = view.earbuds.monitor.clone().unwrap();
+                view.observe_earbuds_notification(&monitor,
+                    razer_device::earbuds_events::Notification::Connection { status:0, status_bt:0 },cx);
+                assert!(view.earbuds_activation.code.is_none());
+                view.finish_earbuds_request(&stale,Err("late wireless result".into()),cx);
+                assert!(view.earbuds_activation.code.is_none());
                 device.dashboard.connection_observation=None;
                 view.set_earbuds_context(&device,true,cx);
                 view.finish_earbuds_request(&stale,Err("stale result".into()),cx);

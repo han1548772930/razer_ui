@@ -82,10 +82,8 @@ impl AppShell {
         cx: &mut Context<Self>,
     ) {
         if !self.devices.contains(&workspace)
-            || !matches!(
-                workspace.read(cx).device(cx).product_id,
-                70 | 158 | 182 | 190 | 192 | 222 | 226 | 229 | 239
-            )
+            || !(matches!(workspace.read(cx).device(cx).product_id, 70 | 182 | 226)
+                || razer_device::mouse_receiver_mapping::supports_ordinary(workspace.read(cx).device(cx).product_id))
             || workspace.read(cx).device(cx).product_id == 226 && apply
             || workspace.read(cx).mouse_polling_scope(cx) != Some(scope)
         {

@@ -1,5 +1,16 @@
 use super::*;
 
+#[test]
+fn hardware_extended_preset_disables_only_thx_eq() {
+    for pid in [1398,1401,2638,2641,4124,4126] {
+        let transport=SimulatedThxV4Transport::new([(ThxOperation::SetProperty(ThxPropertyRequest::boolean("eq_enabled",false)),ThxReply::RpcAcknowledged)]);
+        let mut controller=ThxV4Controller::new(pid,transport).unwrap();
+        controller.observe_blackshark_preset(||Ok(())).unwrap();
+        assert!(!controller.state().valkyrie_spatial_enabled);
+        assert_eq!(controller.transport().remaining(),0);
+    }
+}
+
 fn initialization() -> Vec<(ThxOperation, ThxReply)> {
     vec![
         (ThxOperation::AddDevice, ThxReply::NativeBool(true)),

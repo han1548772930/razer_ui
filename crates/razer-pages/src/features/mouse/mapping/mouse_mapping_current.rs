@@ -1118,7 +1118,7 @@ mod mouse_mapping_actions_current_data_catalog_tests {
     #[gpui_kit::test]
     fn ordinary_mouse_batch_save_dispatches_the_persistence_consumer(cx: &mut TestAppContext) {
         cx.update(gpui_kit::init);
-        for pid in [190,192,222,229,239] {
+        for pid in [89,104,115,140,145,148,161,178,185,190,192,194,196,222,224,229,239] {
             let mut page = None;
             let window=cx.open_window(size(px(1500.),px(1100.)), |window,cx| {
                 let owner=cx.new(|cx| super::MouseProductWorkspace::new(pid,window,cx));

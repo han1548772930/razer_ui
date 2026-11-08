@@ -85,6 +85,7 @@ impl ThxSubmissionPlan {
             crate::blackshark_roller_mapping::validate_mappings(mappings)?;
         }
         if let Self::LocalEq { request, job } = self {
+            if let local_eq::Job::Observe {presets,..}=job { local_eq::validate(presets)?; }
             if let local_eq::Job::ReadSlots { indices } = job {
                 ensure!(
                     !indices.is_empty()

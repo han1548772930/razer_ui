@@ -518,7 +518,6 @@ impl AudioProductWorkspace {
         this.initialize_seiren_stream_mixer(window, cx);
         this.sync(window, cx);
         this.sync_earbuds_system_integration(cx);
-        this.sync_earbuds_activation(cx);
         this
     }
     fn initialize_equalizers(&mut self) {
@@ -712,6 +711,7 @@ impl AudioProductWorkspace {
             }
             self.cancel_earbuds_volume();
             self.earbuds.input_popup = false;
+            self.earbuds_activation.cancel();
             self.earbuds_graphic.leave();
             self.earbuds.input_disabled_cursor = None;
             self.earbuds.eq_graph = earbuds_equalizer_graph::State::default();
@@ -748,7 +748,6 @@ impl AudioProductWorkspace {
             }
             self.page = page.into();
             self.sync_earbuds_system_integration(cx);
-            self.sync_earbuds_activation(cx);
             if page == "TAB_LIGHTING" {
                 self.refresh_mixer_lighting_previews(cx);
             }

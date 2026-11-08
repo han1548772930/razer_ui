@@ -6,8 +6,20 @@
 pub struct MappingProduct(u32);
 
 impl MappingProduct {
-    pub const ALL: [Self; 12] = [
+    pub const ALL: [Self; 24] = [
         Self(70),
+        Self(89),
+        Self(104),
+        Self(115),
+        Self(140),
+        Self(145),
+        Self(148),
+        Self(161),
+        Self(178),
+        Self(185),
+        Self(194),
+        Self(196),
+        Self(224),
         Self(158),
         Self(190),
         Self(192),
@@ -23,9 +35,8 @@ impl MappingProduct {
 
     pub const fn for_product_id(product_id: u32) -> Option<Self> {
         match product_id {
-            70 | 158 | 190 | 192 | 222 | 229 | 239 | 515 | 679 | 740 | 746 | 756 => {
-                Some(Self(product_id))
-            }
+            70 | 515 | 679 | 740 | 746 | 756 => Some(Self(product_id)),
+            pid if crate::mouse_receiver_mapping::supports_ordinary(pid) => Some(Self(pid)),
             _ => None,
         }
     }
@@ -38,7 +49,9 @@ impl MappingProduct {
         match self.0 {
             70 => "_mouse70_mapping_document",
             158 => crate::mouse_receiver_mapping::STORAGE_FIELD,
-            190 | 192 | 222 | 229 | 239 => "_mouse_mapping_document",
+            pid if crate::mouse_receiver_mapping::supports_ordinary(pid) => {
+                "_mouse_mapping_document"
+            }
             515 => "_keyboard515_mapping_document",
             679 => crate::keyboard_current_mapping::STORAGE_FIELD,
             740 | 746 => crate::keyboard_magnetic_mapping::STORAGE_FIELD,
@@ -48,7 +61,7 @@ impl MappingProduct {
     }
 
     pub const fn is_keyboard(self) -> bool {
-        !matches!(self.0, 70 | 158 | 190 | 192 | 222 | 229 | 239)
+        self.0 != 70 && !crate::mouse_receiver_mapping::supports_ordinary(self.0)
     }
 
     pub const fn uses_retained_mapping_owner(self) -> bool {

@@ -687,7 +687,7 @@ impl AppShell {
                     if shell.thx_jobs.contains_key(&owner) {return true;}
                     match receiver.try_recv() {
                         Ok(Ok(event))=>{
-                            let observed=shell.thx_owners.get(&owner).and_then(|owner|owner.session.lock().ok())
+                            let observed=shell.thx_owners.get(&owner).and_then(|owner|owner.session.try_lock().ok())
                                 .is_some_and(|session|session.eq_observed);
                             if observed {shell.submit_thx_job(workspace.clone(),ThxSubmissionPlan::LocalEq {
                                 request:local_eq::Request::Hardware(event),job:local_eq::Job::Read,
@@ -1468,7 +1468,7 @@ impl AppShell {
                                     if let Some(observation)=workspace.read(cx).help_owner_observation_request(cx) {
                                         let device=workspace.read(cx).snapshot(cx);
                                         workspace.update(cx,|workspace,cx| { workspace.observe_help_audio_sound(&device,&observation,
-                                            "MW_UPDATE_THX_SPATIAL_AUDIO",json!({"thxEnabled":false}),window,cx); });
+                                            "thxSpatialAudio",json!({"isEnabled":false}),window,cx); });
                                     }
                                 }
                                 messages.extend(progress.error.clone());

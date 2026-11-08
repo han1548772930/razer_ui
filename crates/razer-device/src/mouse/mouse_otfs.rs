@@ -60,7 +60,7 @@ pub fn project(document: &Value, snapshot: &Snapshot, temporary: bool) -> Result
             &snapshot.mappings,
             temporary,
         ),
-        158 | 190 | 192 | 222 | 229 | 239 => {
+        pid if crate::mouse_receiver_mapping::supports_ordinary(pid) => {
             crate::mouse_receiver_mapping::project_interdevice_otfs(
                 document,
                 &snapshot.mappings,

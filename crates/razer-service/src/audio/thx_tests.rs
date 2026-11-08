@@ -1,6 +1,28 @@
 //! Pure enumerator fixtures: no HID, SetupDi, local socket or service calls.
 use super::*;
 
+#[test]
+fn local_eq_monitor_always_finishes_and_preserves_both_failures() {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    struct Events<'a> { active: &'a AtomicBool, calls: Vec<&'static str>, fail_begin: bool, fail_read: bool, fail_close: bool }
+    impl razer_device::receiver_pairing::HardwareEvents for Events<'_> {
+        fn begin(&mut self) -> Result<()> { self.calls.push("begin"); ensure!(!self.fail_begin,"begin failure"); Ok(()) }
+        fn receive(&mut self, _: Duration) -> Result<Option<Vec<u8>>> {
+            self.calls.push("receive"); ensure!(!self.fail_read,"read failure");
+            self.active.store(false,Ordering::Release); Ok(None)
+        }
+        fn finish(&mut self) -> Result<()> { self.calls.push("finish"); ensure!(!self.fail_close,"close failure"); Ok(()) }
+    }
+    for (begin,read,close) in [(false,false,false),(true,false,false),(false,true,false),(false,true,true)] {
+        let active=AtomicBool::new(true);
+        let mut events=Events {active:&active,calls:vec![],fail_begin:begin,fail_read:read,fail_close:close};
+        let result=monitor_eq_events(&mut events,&active,|_|panic!("no report expected"));
+        assert_eq!(events.calls.last(),Some(&"finish"));
+        assert_eq!(result.is_err(),begin||read||close);
+        if read && close { let text=result.unwrap_err().to_string(); assert!(text.contains("read failure")&&text.contains("close failure")); }
+    }
+}
+
 fn scope() -> ThxSubmissionScope {
     ThxSubmissionScope {
         product_id: 1398,

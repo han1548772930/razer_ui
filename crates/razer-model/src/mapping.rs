@@ -82,7 +82,7 @@ pub fn prepare_profile_document(
             previous,
             fresh_guids,
         )?,
-        158 | 190 | 192 | 222 | 229 | 239 => {
+        pid if razer_device::mouse_receiver_mapping::supports_ordinary(pid) => {
             razer_device::mouse_receiver_mapping::prepare_document_for(
                 device.product_id,
                 &profiles,
@@ -380,7 +380,7 @@ mod saved_revision_tests {
                 razer_device::keyboard_latest_mapping::default_profile()
             }
             70 => serde_json::json!({"mappings":[]}),
-            158 | 190 | 192 | 222 | 229 | 239 => serde_json::json!({"mappings":[]}),
+            pid if razer_device::mouse_receiver_mapping::supports_ordinary(pid) => serde_json::json!({"mappings":[]}),
             _ => panic!("Missing audited source fixture for PID{product}"),
         };
         source.profiles[0].source_settings = Some(profile);

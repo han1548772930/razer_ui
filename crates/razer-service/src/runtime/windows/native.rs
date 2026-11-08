@@ -212,7 +212,7 @@ mod system_monitor;
 #[path = "hid/usb.rs"]
 mod usb;
 #[path = "user_app_files.rs"]
-pub(crate) mod user_app_files;
+mod user_app_files;
 
 pub(crate) fn blackshark_events(product_id: u16, container: &str) -> Box<dyn razer_device::receiver_pairing::HardwareEvents> {
     Box::new(receiver_events::Events::new(product_id, container))

@@ -1,4 +1,72 @@
 use super::*;
+
+#[test]
+fn ordinary_shared_compiler_batch_keeps_actual_default_inputs_and_report_ids() {
+    for (pid, defaults, keys) in [
+        (89, 10, 5),
+        (104, 10, 3),
+        (115, 4, 3),
+        (140, 4, 1),
+        (145, 6, 3),
+        (148, 6, 3),
+        (161, 4, 1),
+        (178, 6, 3),
+        (185, 8, 2),
+        (194, 8, 3),
+        (196, 2, 1),
+        (224, 8, 3),
+    ] {
+        assert_eq!(default_bindings_for(pid).unwrap().len(), defaults);
+        assert_eq!(dkm_keys(pid).len(), keys);
+        let doc = prepare_document_for(
+            pid,
+            &[profile(serde_json::json!([]))],
+            "profile-a",
+            None,
+            None,
+            guids(),
+        )
+        .unwrap();
+        assert_eq!(doc["productId"], pid);
+        assert_eq!(
+            doc["reportIDs"].as_object().unwrap().len(),
+            if pid == 145 { 1 } else { 2 }
+        );
+        assert_eq!(doc["reportIDs"]["4"], "razerKeyReportID");
+        let mappings = doc["defaultMappings"]["appEngine"]["mappings"]
+            .as_array()
+            .unwrap();
+        assert!(!mappings.is_empty());
+        if matches!(pid, 140 | 161 | 224) {
+            assert_eq!(
+                mappings
+                    .iter()
+                    .filter(|row| row["input"]["otfs"] == true)
+                    .count(),
+                20
+            );
+        }
+        if pid == 185 {
+            assert!(mappings.iter().all(|row| row["input"]["type"] != "razerKey"
+                || !matches!(row["input"]["key"].as_u64(), Some(34 | 35))));
+        }
+        let snapshot = crate::mouse_otfs::Snapshot::capture(&doc).unwrap();
+        let temporary = crate::mouse_otfs::project(&doc, &snapshot, true)
+            .unwrap()
+            .unwrap();
+        let restored = crate::mouse_otfs::project(&temporary, &snapshot, false)
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            restored["profiles"][0]["appEngine"]["hash"],
+            doc["profiles"][0]["appEngine"]["hash"]
+        );
+    }
+    let rows = default_bindings_for(104).unwrap();
+    assert_eq!(rows[6]["mouseGroup"]["mouseAssignment"], "RepeatScrollDown");
+    assert_eq!(rows[8]["mouseGroup"]["mouseAssignment"], "RepeatScrollUp");
+    assert!(dkm_keys(104).iter().all(|key| key.button_key.is_none()));
+}
 use serde_json::json;
 
 fn guids() -> impl Iterator<Item = String> {

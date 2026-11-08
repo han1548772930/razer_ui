@@ -9,7 +9,6 @@ razer-ipc.workspace = true
 razer-model.workspace = true
 razer-platform.workspace = true
 anyhow.workspace = true
-roxmltree.workspace = true
 async-channel.workspace = true
 serde.workspace = true
 serde_json.workspace = true

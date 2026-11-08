@@ -83,11 +83,16 @@ fn actuation(slot: u8, ids: &[u8], high: u16, low: u16) -> Reply {
     reply(&bytes)
 }
 
-fn mode_replies(slot: u8, mode: Mode, ids: &[u8], threshold: u16) -> Vec<Reply> {
+fn mode_replies(slot: u8, mode: Mode, ids: &[u8], _threshold: u16) -> Vec<Reply> {
     let mut replies = Vec::new();
     for batch in ids.chunks(8) {
         replies.push(assignments(slot, mode, batch, 2, 0x11));
     }
+    replies
+}
+
+fn analog_replies(slot: u8, ids: &[u8], threshold: u16) -> Vec<Reply> {
+    let mut replies = Vec::new();
     for batch in ids.chunks(13) {
         replies.push(rapid(slot, batch, 9, threshold));
     }
@@ -157,6 +162,7 @@ fn keyboard_onboard_profiles_reads_source_order_and_actual_unknown_flags() {
     for slot in [2, 5] {
         replies.extend(mode_replies(slot, Mode::Normal, &[4, 8], 1000));
         replies.extend(mode_replies(slot, Mode::Hypershift, &[4, 8], 2000));
+        replies.extend(analog_replies(slot, &[4, 8], 2000));
     }
     replies.extend([reply(&[2, 7, 4, 8]), reply(&[5, 8, 8, 4])]);
     let device = Mock::new(replies);
@@ -204,7 +210,7 @@ fn keyboard_onboard_profiles_reads_source_order_and_actual_unknown_flags() {
     let mut expected = vec![(6, 142), (6, 128), (5, 138), (5, 128), (5, 129)];
     expected.extend([(5, 136); 8]);
     expected.extend([(15, 128), (15, 132), (15, 128), (15, 132)]);
-    expected.extend([(2, 158), (2, 154), (2, 153)].repeat(4));
+    expected.extend([(2, 158), (2, 158), (2, 154), (2, 153)].repeat(2));
     expected.extend([(2, 161), (2, 161)]);
     assert_eq!(commands, expected);
     assert_eq!(&reports[14][9..11], &[2, 7]);
@@ -215,7 +221,9 @@ fn keyboard_onboard_profiles_reads_source_order_and_actual_unknown_flags() {
 #[test]
 fn keyboard_onboard_profiles_keeps_source_batch_sizes_and_modes() {
     let ids: Vec<_> = (1..=34).collect();
-    let device = Mock::new(mode_replies(3, Mode::Hypershift, &ids, 900));
+    let mut replies = mode_replies(3, Mode::Hypershift, &ids, 900);
+    replies.extend(analog_replies(3, &ids, 900));
+    let device = Mock::new(replies);
     let cap = capability();
     let settings = settings_capability(&cap).unwrap();
     let reading = read_mode(
@@ -229,8 +237,11 @@ fn keyboard_onboard_profiles_keeps_source_batch_sizes_and_modes() {
     )
     .unwrap();
     assert_eq!(reading.assignments.len(), 5);
-    assert_eq!(reading.rapid_trigger.len(), 3);
-    assert_eq!(reading.actuation.len(), 3);
+    let mut profile = ProfileReading { slot_id:3, brightness:Reading::Unobserved,
+        passes:vec![reading],rapid_trigger:Vec::new(),actuation:Vec::new(),kill_switch:Reading::Unobserved };
+    read_analog(&device,&settings,&mut profile,&ids,&mut sequence(),&|| Ok(())).unwrap();
+    assert_eq!(profile.rapid_trigger.len(), 3);
+    assert_eq!(profile.actuation.len(), 3);
     let reports = device.sent();
     assert_eq!(
         reports.iter().map(|report| report[6]).collect::<Vec<_>>(),
@@ -248,12 +259,7 @@ fn keyboard_onboard_profiles_assignment_retries_zero_twice_and_keeps_unknown_fun
     let mut bad = zero.clone();
     bad.status = 3;
     for second in [zero.clone(), bad] {
-        let device = Mock::new([
-            zero.clone(),
-            second,
-            rapid(3, &[4], 0, 420),
-            actuation(3, &[4], 123, 456),
-        ]);
+        let device = Mock::new([zero.clone(),second]);
         let settings = settings_capability(&capability()).unwrap();
         let pass = read_mode(
             &device,
@@ -268,11 +274,7 @@ fn keyboard_onboard_profiles_assignment_retries_zero_twice_and_keeps_unknown_fun
         assert_eq!(pass.assignments[0].attempts.len(), 2);
         assert_eq!(pass.assignments[0].observed().unwrap()[0].function_id, 255);
         assert_eq!(pass.assignments[0].observed().unwrap()[0].data, [0; 5]);
-        assert_eq!(device.sent().len(), 4);
-        assert!(matches!(
-            pass.rapid_trigger[0].reading,
-            Reading::Observed(_)
-        ));
+        assert_eq!(device.sent().len(), 2);
     }
 }
 
@@ -318,7 +320,7 @@ fn keyboard_onboard_profiles_rejects_malformed_records_without_synthetic_success
 }
 
 #[test]
-fn keyboard_onboard_profiles_retains_actual_normal_values_when_later_pass_fails() {
+fn keyboard_onboard_profiles_retains_assignment_when_analog_read_fails() {
     let mut replies = initial_replies(&[3]);
     replies.extend(brightness(3, 63));
     replies.extend(mode_replies(3, Mode::Normal, &[4], 900));
@@ -329,10 +331,11 @@ fn keyboard_onboard_profiles_retains_actual_normal_values_when_later_pass_fails(
     let device = Mock::new(replies);
     let observed = read_small(&device, &[4]).unwrap();
     let profile = &observed.profiles[0];
-    assert_eq!(profile.actuation(4).unwrap().threshold_low, 902);
-    assert_eq!(profile.rapid_trigger(4).unwrap().up_sensitivity, 900);
+    assert!(profile.assignment(Mode::Normal,4).is_some());
+    assert!(profile.actuation(4).is_none());
+    assert!(profile.rapid_trigger(4).is_none());
     assert!(matches!(
-        profile.passes[1].actuation[0].reading,
+        profile.actuation[0].reading,
         Reading::Failed { .. }
     ));
     assert!(profile.assignment(Mode::Hypershift, 4).is_none());
@@ -347,6 +350,7 @@ fn keyboard_onboard_profiles_reports_failed_brightness_and_continues_real_reads(
     replies.push(failure);
     replies.extend(mode_replies(3, Mode::Normal, &[4], 123));
     replies.extend(mode_replies(3, Mode::Hypershift, &[4], 456));
+    replies.extend(analog_replies(3, &[4], 456));
     replies.push(reply(&[3, 1, 4, 8]));
     let device = Mock::new(replies);
     let observed = read_small(&device, &[4]).unwrap();
