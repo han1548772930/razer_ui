@@ -25,6 +25,12 @@ impl AudioProductWorkspace {
     }
 
     pub(super) fn earbuds_input_panel(&self, cx: &mut Context<Self>) -> AnyElement {
+        let disconnected = self.earbuds.active
+            && self
+                .earbuds
+                .controls
+                .as_ref()
+                .is_some_and(|control| control.earbud_disconnected);
         let disabled = !self.earbuds.active
             || !self.earbuds.initialized
             || self
@@ -37,7 +43,10 @@ impl AudioProductWorkspace {
             surface::help_control("earbuds-input-help", t("INPUT_SOURCE_TIP2")),
             cx,
         )
+        .id("earbuds-input-panel")
+        .test_support()
         .relative()
+        .when(disconnected, |panel| panel.opacity(0.5))
         .child(
             Button::new("earbuds-input-open")
                 .disabled(disabled)
@@ -48,7 +57,9 @@ impl AudioProductWorkspace {
                 .bg(Colors::mapping_cancel())
                 .text_color(Colors::mapping_white())
                 .text_size(surface::css(12.))
-                .hover(|s| s.bg(Colors::input_button_hover()))
+                .when(!disabled, |button| {
+                    button.hover(|s| s.bg(Colors::input_button_hover()))
+                })
                 .child(t("SWITCH_TO_BLE").to_uppercase())
                 .on_click(cx.listener(|this, _, _, cx| {
                     cx.stop_propagation();
@@ -68,6 +79,50 @@ impl AudioProductWorkspace {
                 razer_assets::deferred_resource(self.earbuds_input_confirmation(cx))
                     .with_priority(1002),
             )
+        })
+        .when(disconnected, |panel| {
+            panel
+                .child(
+                    div()
+                        .id("earbuds-input-disabled")
+                        .test_support()
+                        .absolute()
+                        .inset_0()
+                        .occlude()
+                        .on_hover(cx.listener(|this, hovered: &bool, _, cx| {
+                            if !*hovered {
+                                this.earbuds.input_disabled_cursor = None;
+                            }
+                            cx.notify();
+                        }))
+                        .on_mouse_move(cx.listener(|this, event: &MouseMoveEvent, _, cx| {
+                            this.earbuds.input_disabled_cursor = Some(event.position);
+                            cx.notify();
+                        })),
+                )
+                .children(self.earbuds.input_disabled_cursor.map(|cursor| {
+                    use razer_widgets::theme::AudioEqualizerColors as C;
+                    razer_assets::deferred_resource(super::earbuds_equalizer_view::CursorTip::new(
+                        cursor,
+                        div()
+                            .id("earbuds-input-disabled-tip")
+                            .test_support()
+                            .max_w(surface::css(320.))
+                            .px(surface::css(10.))
+                            .py(surface::css(8.))
+                            .border_1()
+                            .border_color(C::border())
+                            .bg(C::tip_surface())
+                            .text_color(C::text())
+                            .text_size(surface::css(14.))
+                            .line_height(surface::css(16.))
+                            .child(
+                                gpui_kit::base::Tooltip::new("earbuds-input-disabled-content")
+                                    .child(t("LIMITED_FUNCTIONALITY_EARBUD")),
+                            ),
+                    ))
+                    .with_priority(999999)
+                }))
         })
         .into_any_element()
     }

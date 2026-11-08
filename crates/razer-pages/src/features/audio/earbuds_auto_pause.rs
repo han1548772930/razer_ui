@@ -86,6 +86,7 @@ pub(super) struct State {
     pub(super) eq_profile_error: Option<String>,
     pub(super) eq_result: Option<Result<WriteOutcome, String>>,
     pub(super) input_popup: bool,
+    pub(super) input_disabled_cursor: Option<Point<Pixels>>,
     pub(super) input_result: Option<Result<WriteOutcome, String>>,
     pub(super) controls: Option<EarbudsControls>,
     identity: String,
@@ -141,6 +142,7 @@ impl State {
         self.eq_ui = super::earbuds_equalizer_view::State::default();
         self.eq_result = None;
         self.input_popup = false;
+        self.input_disabled_cursor = None;
         self.input_result = None;
         if let Some(guard) = self.monitor.take() {
             guard.store(false, Ordering::Release);
@@ -480,6 +482,14 @@ impl AudioProductWorkspace {
             || self.earbuds.connected != connected
             || (!initializes_profile && self.earbuds_profile_changed(device));
         let became_active = ready && !self.earbuds.active;
+        if self.earbuds.identity != device.workspace_identity()
+            || self.earbuds.connected != connected
+        {
+            self.earbuds_graphic.clear();
+        }
+        if !ready {
+            self.earbuds_graphic.leave();
+        }
         if changed {
             let continuing_connection = self.earbuds.identity == device.workspace_identity()
                 && self.earbuds.connected == connected
@@ -627,6 +637,7 @@ impl AudioProductWorkspace {
             self.earbuds.eq_revision = self.earbuds.eq_revision.wrapping_add(1);
             self.earbuds.eq_graph = super::earbuds_equalizer_graph::State::default();
             self.earbuds.eq_ui = super::earbuds_equalizer_view::State::default();
+            self.earbuds.input_disabled_cursor = None;
             if let Some(guard) = self.earbuds.monitor.take() {
                 guard.store(false, Ordering::Release);
             }
@@ -1073,6 +1084,7 @@ impl AudioProductWorkspace {
         if current {
             match result {
                 Ok(report) => {
+                    self.earbuds_graphic.observe(&report);
                     self.observe_gesture_report(&report, request.operation);
                     if request.operation == Operation::Read
                         && report.connected == Some(true)
@@ -1137,6 +1149,9 @@ impl AudioProductWorkspace {
                         }
                     }
                     if report.connected.is_some() {
+                        if controls.earbud_disconnected != report.has_disconnected_earbud() {
+                            self.earbuds.input_disabled_cursor = None;
+                        }
                         controls.earbud_disconnected = report.has_disconnected_earbud();
                         if controls.earbud_disconnected {
                             self.earbuds.edits.clear();
@@ -1199,6 +1214,9 @@ impl AudioProductWorkspace {
                     }
                 }
                 Err(error) => {
+                    if matches!(request.operation, Operation::Read | Operation::Battery { .. }) {
+                        self.earbuds_graphic.clear();
+                    }
                     if let Some(controls) = &mut self.earbuds.controls {
                         match request.operation {
                             Operation::Read | Operation::Battery { .. } => {
@@ -1246,6 +1264,7 @@ impl AudioProductWorkspace {
         use razer_device::earbuds_events::Notification;
         if let Notification::Connection { status, .. } = &event {
             if let Err(error) = razer_device::earbuds_auto_pause::connection_is_online(*status) {
+                self.earbuds_graphic.clear();
                 let error = format!("{error:#}");
                 if let Some(request) = &self.earbuds.pending {
                     request.active.store(false, Ordering::Release);
@@ -1269,6 +1288,7 @@ impl AudioProductWorkspace {
         match event {
             Notification::Anc { state } => self.observe_anc_notification(state, cx),
             Notification::Connection { status: 0, .. } => {
+                self.earbuds_graphic.clear();
                 self.earbuds.was_off = true;
                 self.earbuds.initialized = false;
                 self.earbuds.firmware = FirmwareObservation::Unobserved;

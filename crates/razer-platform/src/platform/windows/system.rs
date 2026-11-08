@@ -94,32 +94,32 @@ pub(crate) fn is_windows_11() -> bool {
 }
 
 pub(crate) fn windows_major_version() -> Option<&'static str> {
-    use windows_sys::Win32::System::Registry::{HKEY_LOCAL_MACHINE, RRF_RT_REG_SZ, RegGetValueW};
-    let wide = |text: &str| text.encode_utf16().chain(Some(0)).collect::<Vec<_>>();
-    let key = wide(r"SOFTWARE\Microsoft\Windows NT\CurrentVersion");
-    let build_name = wide("CurrentBuildNumber");
-    let mut build = [0u16; 32];
-    let mut size = std::mem::size_of_val(&build) as u32;
-    // All buffers are live, writable and sized in bytes as required by Win32.
-    if unsafe {
-        RegGetValueW(
-            HKEY_LOCAL_MACHINE,
-            key.as_ptr(),
-            build_name.as_ptr(),
-            RRF_RT_REG_SZ,
-            std::ptr::null_mut(),
-            build.as_mut_ptr().cast(),
-            &mut size,
-        )
-    } != 0
-    {
-        return None;
+    use std::sync::OnceLock;
+    use windows_sys::Win32::System::SystemInformation::OSVERSIONINFOW;
+
+    #[link(name = "ntdll")]
+    unsafe extern "system" {
+        fn RtlGetVersion(version: *mut OSVERSIONINFOW) -> i32;
     }
-    let end = build.iter().position(|c| *c == 0).unwrap_or(build.len());
-    String::from_utf16(&build[..end])
-        .ok()
-        .and_then(|value| value.parse::<u32>().ok())
-        .map(|build| if build >= 22000 { "11" } else { "10" })
+
+    // The current host's os.release() caches uv_os_uname's RtlGetVersion
+    // fields. Its registry ProductName lookup supplies os.version(), not release.
+    static VERSION: OnceLock<Option<&'static str>> = OnceLock::new();
+    *VERSION.get_or_init(|| {
+        let mut version = OSVERSIONINFOW {
+            dwOSVersionInfoSize: std::mem::size_of::<OSVERSIONINFOW>() as u32,
+            ..Default::default()
+        };
+        // The sized structure remains writable for this synchronous system call.
+        // An unavailable observation must not become a fabricated Windows version.
+        if unsafe { RtlGetVersion(&mut version) } < 0 {
+            return None;
+        }
+        crate::system::classify_windows_release(&format!(
+            "{}.{}.{}",
+            version.dwMajorVersion, version.dwMinorVersion, version.dwBuildNumber
+        ))
+    })
 }
 
 pub(crate) fn supports_dynamic_lighting() -> bool {

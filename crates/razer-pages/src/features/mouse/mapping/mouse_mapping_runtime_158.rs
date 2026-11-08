@@ -30,9 +30,24 @@ pub(super) struct State {
     stopping: bool,
     callbacks_closed: bool,
     pub(super) error: Option<String>,
+    otfs_request: Option<uuid::Uuid>,
 }
 
 impl State {
+    pub(super) fn otfs_document(&self) -> Option<&Value> {
+        self.document.as_ref()
+    }
+    pub(super) fn otfs_error(&mut self, error: String) {
+        self.error = Some(error);
+    }
+    pub(super) fn otfs_mode(&mut self, enabled: bool) -> bool {
+        self.dpi.inter_otfs_requested = enabled;
+        self.dpi.inter_otfs_applied = enabled;
+        !self.dpi.otfs() && !self.dpi.clutched()
+    }
+    pub(super) fn replace_otfs_document(&mut self, document: Value) {
+        self.document = Some(document);
+    }
     pub(super) fn stop(&mut self) {
         // Session cancellation is nonblocking. The worker keeps its target
         // lifecycle lock until restoration, removal and transport release end.
@@ -47,6 +62,7 @@ impl State {
         self.dpi = DpiRuntime::default();
         self.stopping = false;
         self.callbacks_closed = false;
+        self.otfs_request = None;
     }
 
     fn install_connection(&mut self, next: Option<Connection>) -> bool {
@@ -151,6 +167,7 @@ impl MouseProductWorkspace {
         });
         self.current_dpi.observe_mapping_connection(next.clone());
         if self.receiver_mapping.install_connection(next) {
+            self.mouse_otfs.reset();
             self.dpi_editing_observed = None;
         }
     }
@@ -217,6 +234,9 @@ impl MouseProductWorkspace {
         }
         self.receiver_mapping.document = Some(document);
         self.receiver_mapping.profile_guid = Some(profile);
+        if self.mouse_otfs.is_pending() && self.receiver_mapping.owner.is_some() {
+            return;
+        }
         if self.receiver_mapping.owner.is_none() {
             let (owner, replies) = match Session::start(158, container) {
                 Ok(value) => value,
@@ -245,9 +265,16 @@ impl MouseProductWorkspace {
                             match reply {
                                 Reply::Ready => {}
                                 Reply::Published { revision, result, .. } => {
+                                    let otfs_result = result.clone();
+                                    let otfs_id = (revision == this.receiver_mapping.revision)
+                                        .then(|| this.receiver_mapping.otfs_request.take()).flatten();
                                     let scope = this.mouse_polling_scope(cx);
                                     let previous_mode = this.receiver_mapping.dpi.inter_otfs_applied;
                                     this.receiver_mapping.acknowledge(revision, result, scope);
+                                    if let Some(id) = otfs_id {
+                                        let current = this.receiver_mapping.published.is_some_and(|publication| Some(publication.scope) == scope);
+                                        this.finish_mouse_otfs_publication(id, if current { otfs_result } else { Err("OTFS publication scope changed".into()) }, cx);
+                                    }
                                     if previous_mode != this.receiver_mapping.dpi.inter_otfs_applied {
                                         this.receiver_mapping_editing();
                                     }
@@ -264,10 +291,12 @@ impl MouseProductWorkspace {
                                     }
                                 }
                                 Reply::Failed(error) => {
+                                    this.mouse_otfs.stop_pending();
                                     this.receiver_mapping.owner = None;
                                     this.receiver_mapping_failure(error, cx);
                                 }
                                 Reply::Stopped(result) => {
+                                    this.mouse_otfs.stop_pending();
                                     this.receiver_mapping.owner = None;
                                     this.receiver_mapping.requested = None;
                                     this.receiver_mapping.published = None;
@@ -278,6 +307,7 @@ impl MouseProductWorkspace {
                             }
                         }
                         if disconnected {
+                            this.mouse_otfs.stop_pending();
                             this.receiver_mapping.owner = None;
                             this.receiver_mapping_failure("Mapping reply channel disconnected before cleanup confirmation".into(), cx);
                             false
@@ -285,6 +315,12 @@ impl MouseProductWorkspace {
                     }).unwrap_or(false) { break; }
                 }
             }));
+        }
+        if let Some(document) = self.receiver_mapping.document.as_ref() {
+            if let Err(error) = self.mouse_otfs.record_publication(document) {
+                self.receiver_mapping_failure(error, cx);
+                return;
+            }
         }
         self.publish_receiver_mapping_current(scope, cx);
     }
@@ -298,18 +334,7 @@ impl MouseProductWorkspace {
             return;
         };
         let temporary = self.receiver_mapping.dpi.inter_otfs_requested;
-        let document = if temporary {
-            match razer_device::mouse_receiver_mapping::interdevice_otfs_document(ordinary) {
-                Ok(document) => document,
-                Err(error) => {
-                    self.receiver_mapping_failure(format!("{error:#}"), cx);
-                    return;
-                }
-            }
-        } else {
-            ordinary.clone()
-        };
-        let restore = temporary.then(|| ordinary.clone());
+        let document = ordinary.clone();
         self.receiver_mapping.revision = self.receiver_mapping.revision.wrapping_add(1);
         let revision = self.receiver_mapping.revision;
         self.receiver_mapping.requested = Some(Publication {
@@ -318,7 +343,7 @@ impl MouseProductWorkspace {
             inter_otfs: temporary,
         });
         if let Some(owner) = &self.receiver_mapping.owner {
-            if let Err(error) = owner.publish_with_restore(revision, document, None, restore) {
+            if let Err(error) = owner.publish(revision, document, None) {
                 self.receiver_mapping_failure(error, cx);
             }
         }
@@ -328,6 +353,34 @@ impl MouseProductWorkspace {
         eprintln!("[mouse158-mapping] {error}");
         self.receiver_mapping.fail(error);
         cx.notify();
+    }
+
+    pub(super) fn publish_receiver_otfs_saved(
+        &mut self,
+        request: &super::mouse_otfs::MouseOtfsRequested,
+        enabled: bool,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(scope) = self.mouse_polling_scope(cx) else {
+            self.finish_mouse_otfs_publication(
+                request.id(),
+                Err("OTFS profile scope unavailable".into()),
+                cx,
+            );
+            return;
+        };
+        self.receiver_mapping.document = Some(request.document().clone());
+        self.receiver_mapping.dpi.inter_otfs_requested = enabled;
+        self.receiver_mapping.otfs_request = Some(request.id());
+        self.publish_receiver_mapping_current(scope, cx);
+        if self.receiver_mapping.requested.is_none() || self.receiver_mapping.owner.is_none() {
+            self.receiver_mapping.otfs_request = None;
+            self.finish_mouse_otfs_publication(
+                request.id(),
+                Err("OTFS mapping owner unavailable".into()),
+                cx,
+            );
+        }
     }
 
     fn receiver_mapping_editing(&mut self) {
@@ -426,12 +479,7 @@ impl MouseProductWorkspace {
                 interdevice,
             } => {
                 if interdevice {
-                    self.receiver_mapping.dpi.inter_otfs_requested = enabled;
-                    if self.receiver_mapping.owner.is_some() {
-                        if let Some(scope) = self.mouse_polling_scope(cx) {
-                            self.publish_receiver_mapping_current(scope, cx);
-                        }
-                    }
+                    self.request_interdevice_otfs(enabled, cx);
                 } else {
                     self.receiver_mapping.dpi.native_otfs = Some(enabled);
                     self.receiver_mapping_editing();

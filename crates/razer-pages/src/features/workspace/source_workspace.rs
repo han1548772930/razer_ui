@@ -3152,6 +3152,9 @@ impl SourceProductWorkspace {
                     this.persist_source_profile(false, cx);
                 },
             ));
+            subscriptions.push(cx.subscribe(&body, |_: &mut Self, _, request: &super::mouse_products::MouseOtfsRequested, cx| {
+                cx.emit(WorkspaceEvent::MouseOtfsRequested(request.clone()));
+            }));
             subscriptions.push(cx.subscribe(
                 &body,
                 |_: &mut Self, _, event: &super::mouse_products::MouseLegacyProfileNavigate, cx| {

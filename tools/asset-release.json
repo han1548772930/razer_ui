@@ -1,8 +1,8 @@
 {
   "schema_version": 2,
   "format": "files",
-  "tag": "assets-c2c9dda76465da0597aa",
-  "source_sha256": "c2c9dda76465da0597aa29938fa875e8f96d7e808ae3c7ff197e6992704621d2",
+  "tag": "assets-13b0c1edf856981e34cf",
+  "source_sha256": "13b0c1edf856981e34cf5295be01ab589ba4fc474530f35e438d5bf8caeff22e",
   "git_files": [
     {
       "path": "assets/synapse/shared/pending-source-audit/33892a0b56b91958-tray-gear-light.rgba",
@@ -34393,6 +34393,11 @@
           "sha256": "264a8e883deccab8f85b8bd6874d0510fb0b0cd25dc009c6309f7dd41bb88210"
         },
         {
+          "path": "assets/synapse/shared/products/26a8a8e20ed45c7966ff300ffe18d53828ac5cc14cccc8041d47fcfe9b9f1db0.svg",
+          "bytes": 13302,
+          "sha256": "26a8a8e20ed45c7966ff300ffe18d53828ac5cc14cccc8041d47fcfe9b9f1db0"
+        },
+        {
           "path": "assets/synapse/shared/products/26c724435bfac571-preview-source-695-129-7-3x.png",
           "bytes": 824735,
           "sha256": "26c724435bfac571dcb640324711f84b361176339832d73a2d04b536267eee1a"
@@ -37898,6 +37903,11 @@
           "sha256": "ccad2d50fd6f22a9273b49c32afc559084c93d5bb357c109d717eebd086e7d95"
         },
         {
+          "path": "assets/synapse/shared/products/cd03d7173c95c4f75e043eeeb160458c9124f3efe06ed7fa45710d89893eefc6.svg",
+          "bytes": 13338,
+          "sha256": "cd03d7173c95c4f75e043eeeb160458c9124f3efe06ed7fa45710d89893eefc6"
+        },
+        {
           "path": "assets/synapse/shared/products/cd2310e042f4cec2-wired-argb-778-warning.svg",
           "bytes": 293,
           "sha256": "cd2310e042f4cec22cb11b4a644eb8c331b5bc7ede14e233f5ecee43d1b02720"
@@ -38668,6 +38678,11 @@
           "sha256": "f3353b99e73f009e47633cec600ba68809796f47e5c383bfcba28ab6769de094"
         },
         {
+          "path": "assets/synapse/shared/products/f3b5e2803429dea8c7dac561804120317df3057549e3b740be2b5081564f0d55.svg",
+          "bytes": 13445,
+          "sha256": "f3b5e2803429dea8c7dac561804120317df3057549e3b740be2b5081564f0d55"
+        },
+        {
           "path": "assets/synapse/shared/products/f4437709fd054069-current-dashboard-89-0-0-product-1x.png",
           "bytes": 9054,
           "sha256": "f4437709fd054069f586504e5a490398a931fd1bfab21aeeb3001d6d73e6e69c"
@@ -38761,6 +38776,11 @@
           "path": "assets/synapse/shared/products/f9aea1f45b004631-preview-source-569-0-12-1x.png",
           "bytes": 56241,
           "sha256": "f9aea1f45b004631656ca3968887c033567f491829069f333f47ed7b3d14e39f"
+        },
+        {
+          "path": "assets/synapse/shared/products/f9c5e4a0826d827cde399ece18ae94880483772660b732dae66f96efd87b0f3d.svg",
+          "bytes": 13493,
+          "sha256": "f9c5e4a0826d827cde399ece18ae94880483772660b732dae66f96efd87b0f3d"
         },
         {
           "path": "assets/synapse/shared/products/f9dd5a63df082ca4-4-1x.edf90ae9.png",
@@ -41833,6 +41853,6 @@
   "storage": {
     "provider": "huggingface",
     "repository": "han1548772930/razer-ui-assets",
-    "revision": "87c16c99b699b38b88a77c8381a8fbefd670e415"
+    "revision": "d41d9386b1feaa3a27692d111cd3875bb10bb693"
   }
 }

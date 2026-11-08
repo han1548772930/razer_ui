@@ -105,10 +105,17 @@ pub fn prepare_document_with_device_settings(
     Ok(serde_json::to_value(result)?)
 }
 
-/// Current30525 It/_t installs an ephemeral inter-device OTFS engine and
-/// restores the ordinary document on release. Saved bindings and version stay
-/// intact; receiver routing is applied separately from this logical document.
+/// Compile the active profile's temporary engine without changing its bindings.
 pub fn interdevice_otfs_document(document: &Value) -> Result<Value> {
+    let snapshot = crate::mouse_otfs::Snapshot::capture(document)?;
+    project_interdevice_otfs(document, snapshot.mappings(), true)
+}
+
+pub(crate) fn project_interdevice_otfs(
+    document: &Value,
+    records: &[Value],
+    temporary: bool,
+) -> Result<Value> {
     let mut document = Document::parse(document)?;
     ensure!(
         document.product_id == 158 && document.dual_linked.is_none(),
@@ -129,16 +136,16 @@ pub fn interdevice_otfs_document(document: &Value) -> Result<Value> {
             .dkm_keys
             .insert(key.input_id.into(), serde_json::to_value(key)?);
     }
-    let projection = MappingEngine::new(158)?.generate_mouse_otfs(
-        &profile.mappings,
-        &default_bindings()?,
-        &mut context,
-    )?;
+    let engine = MappingEngine::new(158)?;
+    let projection = if temporary {
+        engine.generate_mouse_otfs(records, &default_bindings()?, &mut context)?
+    } else {
+        engine.restore_mouse_otfs(records, &default_bindings()?, &mut context)?
+    };
     profile.app_engine = Some(serde_json::from_value(projection.profile)?);
     profile
         .extensions
         .insert("defaultMappings".into(), projection.defaults.clone());
-    document.default_mappings.app_engine = serde_json::from_value(projection.defaults)?;
     Ok(serde_json::to_value(document)?)
 }
 

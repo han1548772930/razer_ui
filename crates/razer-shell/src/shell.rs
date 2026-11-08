@@ -141,6 +141,8 @@ mod mouse_current_power;
 mod mouse_current_power_runtime;
 #[path = "shell/mouse/mouse_dpi_70.rs"]
 mod mouse_dpi_70;
+#[path = "shell/mouse/mouse_otfs.rs"]
+mod mouse_otfs;
 #[path = "shell/mouse/mouse_dpi_stages.rs"]
 mod mouse_dpi_stages;
 #[path = "shell/mouse/mouse_dynamic.rs"]
@@ -1551,6 +1553,9 @@ impl AppShell {
                 WorkspaceEvent::MouseMappingTargetRequested(request) => {
                     this.configure_mouse_mapping_target(&entity,request,window,cx);
                 }
+                WorkspaceEvent::MouseOtfsRequested(request) => {
+                    this.persist_mouse_otfs(entity.clone(), request.clone(), window, cx);
+                }
                 WorkspaceEvent::MappingCallbackRequested(request) => {
                     this.route_mapping_callback(&entity,request,window,cx);
                 }
@@ -2764,6 +2769,9 @@ impl AppShell {
                 .collect();
         }
         for device in &mut request.file.devices {
+            if matches!(&request.product, Some(ProductSave::MouseOtfs(_))) {
+                continue;
+            }
             if !keyboard_actuation_write::should_publish_mapping(
                 request.product.as_ref(),
                 &device.workspace_identity(),
@@ -2775,6 +2783,20 @@ impl AppShell {
                 self.status = format!("Profile preparation failed: {error:#}");
                 self.cancel_prepared_save(request, cx);
                 cx.notify();
+                self.continue_save_queue(false, cx);
+                return false;
+            }
+        }
+        match mouse_otfs::prepare(&mut request) {
+            Ok(true) => {}
+            Ok(false) => {
+                self.finish_product_save(request.product, true, request.window, cx);
+                self.continue_save_queue(true, cx);
+                return false;
+            }
+            Err(error) => {
+                self.status = format!("OTFS persistence failed: {error:#}");
+                self.cancel_prepared_save(request, cx);
                 self.continue_save_queue(false, cx);
                 return false;
             }
@@ -2830,7 +2852,8 @@ impl AppShell {
                                 continue;
                             };
                             let product_id = snapshot.product_id;
-                            let publish_mapping = razer_model::mapping::matches_saved_revision(
+                            let publish_mapping = !matches!(&product, Some(ProductSave::MouseOtfs(_)))
+                                && razer_model::mapping::matches_saved_revision(
                                 entity.read(cx).device(cx),
                                 &snapshot,
                             )

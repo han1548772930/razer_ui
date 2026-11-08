@@ -15,6 +15,12 @@ fn source_guid(profile: &Profile) -> Option<&str> {
 }
 
 impl SourceProductWorkspace {
+    pub fn accepts_mouse_otfs(&self, request: &crate::features::mouse_products::MouseOtfsRequested, cx: &App) -> bool {
+        matches!(&self.body, FamilyBody::Mouse(body) if body.read(cx).accepts_mouse_otfs(request))
+    }
+    pub fn finish_mouse_otfs_save(&mut self, request: &crate::features::mouse_products::MouseOtfsRequested, saved: bool, cx: &mut Context<Self>) {
+        if let FamilyBody::Mouse(body) = &self.body { body.update(cx, |body,cx| body.finish_mouse_otfs_save(request, saved, cx)); }
+    }
     pub fn accepts_mapping_callback(
         &self,
         request: &crate::features::MappingCallbackRequested,

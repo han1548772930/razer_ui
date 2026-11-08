@@ -342,9 +342,18 @@ fn tip(
 
 // Ou's fixed cursor portal reserves 320x40 for edge decisions, then centers
 // the measured text box. It does not use the ordinary anchor/flip policy.
-struct CursorTip {
+pub(super) struct CursorTip {
     cursor: Point<Pixels>,
     content: AnyElement,
+}
+
+impl CursorTip {
+    pub(super) fn new(cursor: Point<Pixels>, content: impl IntoElement) -> Self {
+        Self {
+            cursor,
+            content: content.into_any_element(),
+        }
+    }
 }
 
 impl IntoElement for CursorTip {
@@ -370,7 +379,18 @@ impl Element for CursorTip {
         window: &mut Window,
         cx: &mut App,
     ) -> (LayoutId, ()) {
-        (self.content.request_layout(window, cx), ())
+        let child = self.content.request_layout(window, cx);
+        (
+            window.request_layout(
+                Style {
+                    position: Position::Absolute,
+                    ..Style::default()
+                },
+                [child],
+                cx,
+            ),
+            (),
+        )
     }
     fn prepaint(
         &mut self,
@@ -393,8 +413,10 @@ impl Element for CursorTip {
         } else {
             (self.cursor.y - unit * 64.).max(unit * 8.)
         };
-        self.content
-            .prepaint_at(point(center - bounds.size.width / 2., top), window, cx);
+        let position = point(center - bounds.size.width / 2., top);
+        window.with_element_offset(position - bounds.origin, |window| {
+            self.content.prepaint(window, cx);
+        });
     }
     fn paint(
         &mut self,

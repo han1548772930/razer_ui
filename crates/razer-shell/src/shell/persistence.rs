@@ -26,6 +26,7 @@ impl SavedRevisionOwner {
     }
 }
 pub(super) enum ProductSave {
+    MouseOtfs(mouse_otfs::LocalSave),
     Leviathan(leviathan::LeviathanSave),
     MousePolling(MousePollingSave),
     MouseInGamePolling(mouse_polling_write::InGameSave),
@@ -62,6 +63,7 @@ pub(super) enum ProductSave {
 impl ProductSave {
     fn owner(&self) -> (&str, WeakEntity<ProductWorkspace>) {
         match self {
+            Self::MouseOtfs(save) => save.owner(),
             Self::Leviathan(save) => save.owner(),
             Self::MousePolling(save) => (&save.identity, save.workspace.downgrade()),
             Self::MouseInGamePolling(save) => save.owner(),
@@ -392,6 +394,7 @@ impl AppShell {
             return;
         };
         match product {
+            ProductSave::MouseOtfs(save) => self.finish_mouse_otfs_save(save, succeeded, cx),
             ProductSave::KeyboardLocalProfiles(_) => {}
             ProductSave::SourceProfileImport(save) => {
                 self.finish_source_profile_import(save, succeeded, window, cx)

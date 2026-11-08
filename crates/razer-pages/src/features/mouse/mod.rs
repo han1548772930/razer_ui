@@ -45,6 +45,9 @@ mod mapping_callbacks_current;
 mod mapping_runtime_158;
 #[path = "mapping/mouse_mapping_runtime_70.rs"]
 mod mapping_runtime_70;
+#[path = "mapping/mouse_otfs.rs"]
+mod mouse_otfs;
+pub use mouse_otfs::MouseOtfsRequested;
 #[path = "scrolling/mouse_scroll_task.rs"]
 mod scroll_task;
 #[path = "scrolling/mouse_scroll_wheel.rs"]
@@ -346,6 +349,7 @@ pub struct MouseProductWorkspace {
     current_power: current_power::State,
     legacy_mapping: mapping_runtime_70::State,
     receiver_mapping: mapping_runtime_158::State,
+    mouse_otfs: mouse_otfs::State,
     polling_owner: Option<EntityId>,
     properties_icon: Option<&'static str>,
     matcher: Option<Entity<super::mouse_dpi_matcher::MouseDpiMatcher>>,
@@ -482,6 +486,7 @@ impl MouseProductWorkspace {
             current_power: current_power::State::default(),
             legacy_mapping: mapping_runtime_70::State::default(),
             receiver_mapping: mapping_runtime_158::State::default(),
+            mouse_otfs: mouse_otfs::State::default(),
             polling_owner: (product_id == 70
                 || razer_device::mouse_current_dpi::capability(product_id).is_some()
                 || razer_device::mouse_current_power::capability(product_id).is_some()

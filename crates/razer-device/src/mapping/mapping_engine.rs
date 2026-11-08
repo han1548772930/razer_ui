@@ -603,6 +603,68 @@ impl MappingEngine {
         Ok(MouseOtfsEngines { profile, defaults })
     }
 
+    pub(crate) fn restore_mouse_otfs(
+        &self,
+        records: &[Value],
+        defaults: &[Value],
+        context: &mut EngineContext,
+    ) -> Result<MouseOtfsEngines> {
+        #[derive(serde::Deserialize)]
+        struct Row {
+            input: Input,
+        }
+        #[derive(serde::Deserialize)]
+        struct Input {
+            #[serde(default)]
+            otfs: bool,
+        }
+        #[derive(serde::Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct Binding {
+            sensitivity_group: Option<Sensitivity>,
+        }
+        #[derive(serde::Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct Sensitivity {
+            sensitivity_assignment: String,
+        }
+        let mut profile = self.generate(records, context)?.app_engine;
+        let mappings = profile
+            .get_mut("mappings")
+            .and_then(Value::as_array_mut)
+            .context("Generated OTFS mapping list is absent")?;
+        let mut restored = Vec::with_capacity(mappings.len());
+        for mapping in mappings.drain(..) {
+            if !serde_json::from_value::<Row>(mapping.clone())?.input.otfs {
+                restored.push(mapping);
+            }
+        }
+        let has_otfs = records
+            .iter()
+            .map(|record| serde_json::from_value::<Binding>(record.clone()))
+            .collect::<std::result::Result<Vec<_>, _>>()?
+            .iter()
+            .any(|record| {
+                record
+                    .sensitivity_group
+                    .as_ref()
+                    .is_some_and(|group| group.sensitivity_assignment == "DPI_OnTheFly")
+            });
+        if has_otfs {
+            for input in ["ScrollUp", "ScrollDown"] {
+                restored.extend(self.record(
+                    &json!({"outputType":"sensitivityGroup","inputType":"MouseInput",
+                    "inputID":input,"sensitivityGroup":{"sensitivityAssignment":"OTFS_Scroll"}}),
+                    context,
+                )?);
+            }
+        }
+        profile["mappings"] = restored.into();
+        profile["hash"] = source_hash(&profile)?.into();
+        let defaults = self.generate(defaults, context)?.app_engine;
+        Ok(MouseOtfsEngines { profile, defaults })
+    }
+
     pub fn record(&self, record: &Value, context: &mut EngineContext) -> Result<Vec<Value>> {
         ensure!(
             record.get("mapping").is_none(),

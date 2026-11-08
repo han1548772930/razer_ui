@@ -100,6 +100,7 @@ mod earbuds_equalizer;
 mod earbuds_equalizer_graph;
 mod earbuds_equalizer_view;
 mod earbuds_system_volume;
+mod earbuds_graphic;
 mod earbuds_system_integration;
 pub use earbuds_system_volume::EarbudsVolumeRequested;
 pub use earbuds_auto_pause::EarbudsAutoPauseRequested;
@@ -294,6 +295,7 @@ pub struct AudioProductWorkspace {
     pod_runtime_devices: Vec<RuntimeAudioDevice>,
     volume: audio_volume::State,
     earbuds_volume: earbuds_system_volume::State,
+    earbuds_graphic: earbuds_graphic::State,
     earbuds_system: earbuds_system_integration::State,
     earbuds: earbuds_auto_pause::State,
     surround: surround::State,
@@ -385,6 +387,7 @@ impl AudioProductWorkspace {
             pod_runtime_devices: Vec::new(),
             volume: audio_volume::State::default(),
             earbuds_volume: earbuds_system_volume::State::default(),
+            earbuds_graphic: earbuds_graphic::State::default(),
             earbuds_system: earbuds_system_integration::State::default(),
             earbuds: earbuds_auto_pause::State::default(),
             surround: surround::State::default(),
@@ -699,6 +702,8 @@ impl AudioProductWorkspace {
         if page != "TAB_SOUND" {
             self.cancel_earbuds_volume();
             self.earbuds.input_popup = false;
+            self.earbuds_graphic.leave();
+            self.earbuds.input_disabled_cursor = None;
             self.earbuds.eq_graph = earbuds_equalizer_graph::State::default();
             self.earbuds.eq_ui = earbuds_equalizer_view::State::default();
         }
@@ -1467,6 +1472,7 @@ impl AudioProductWorkspace {
     }
 
     pub fn prepare_exit(&mut self, cx: &mut Context<Self>) {
+        self.earbuds_graphic.clear();
         self.earbuds_system.cancel();
         self.cancel_earbuds_volume();
         self.set_surround_active(false, "", cx);
@@ -2265,6 +2271,7 @@ impl AudioProductWorkspace {
         if earbuds_sound {
             sections.push(self.earbuds_sound_properties(cx));
             return v_flex().w_full().items_center()
+                .child(self.earbuds_product_graphic(cx))
                 .children(full_width_equalizers)
                 .child(surface::page_columns()
                     .children(sections.into_iter().map(surface::page_column)))

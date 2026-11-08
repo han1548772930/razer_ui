@@ -27,8 +27,24 @@ pub(super) struct State {
     inter_otfs_applied: bool,
     pending_mode: Option<bool>,
     document: Option<Value>,
+    otfs_request: Option<uuid::Uuid>,
 }
 impl State {
+    pub(super) fn otfs_document(&self) -> Option<&Value> {
+        self.document.as_ref()
+    }
+    pub(super) fn replace_otfs_document(&mut self, document: Value) {
+        self.document = Some(document);
+    }
+    pub(super) fn otfs_error(&mut self, error: String) {
+        self.diagnostic = Some(error);
+    }
+    pub(super) fn otfs_mode(&mut self, enabled: bool) -> bool {
+        self.inter_otfs = enabled;
+        self.inter_otfs_applied = enabled;
+        self.otfs = self.native_otfs == Some(true) || enabled;
+        !self.otfs && self.clutches.is_empty()
+    }
     pub(super) fn stop(&mut self) {
         self.owner = None;
         self.stopping = false;
@@ -45,6 +61,7 @@ impl State {
         self.inter_otfs_applied = false;
         self.pending_mode = None;
         self.document = None;
+        self.otfs_request = None;
     }
 
     fn accepts_events(&self, epoch: u64, scope: Option<MousePollingScope>) -> bool {
@@ -86,6 +103,7 @@ impl MouseProductWorkspace {
             || self.legacy_mapping.connection_generation != generation
         {
             self.legacy_mapping.stop();
+            self.mouse_otfs.reset();
             self.legacy_mapping.container = container.unwrap_or_default();
             self.legacy_mapping.connection_generation = generation;
             self.dpi_editing_observed = None;
@@ -93,6 +111,7 @@ impl MouseProductWorkspace {
     }
 
     pub fn cancel_mapping_service_exit(&mut self) {
+        self.mouse_otfs.reset();
         self.legacy_mapping.stop();
         self.receiver_mapping.stop();
     }
@@ -165,6 +184,9 @@ impl MouseProductWorkspace {
                                     Reply::Published {
                                         revision, result, ..
                                     } => {
+                                        let otfs_result = result.clone();
+                                        let otfs_id = (revision == this.legacy_mapping.revision)
+                                            .then(|| this.legacy_mapping.otfs_request.take()).flatten();
                                         if revision == this.legacy_mapping.revision
                                             && this.legacy_mapping.requested == this.mouse_polling_scope(cx) {
                                             match result {
@@ -196,6 +218,10 @@ impl MouseProductWorkspace {
                                                 }
                                             }
                                         }
+                                        if let Some(id) = otfs_id {
+                                            let current = this.legacy_mapping.published == this.mouse_polling_scope(cx);
+                                            this.finish_mouse_otfs_publication(id, if current { otfs_result } else { Err("OTFS publication scope changed".into()) }, cx);
+                                        }
                                     }
                                     Reply::Events(events) => {
                                         for event in events {
@@ -205,6 +231,7 @@ impl MouseProductWorkspace {
                                         }
                                     }
                                     Reply::Failed(error) => {
+                                        this.mouse_otfs.stop_pending();
                                         eprintln!("[mouse70-mapping] {error}");
                                         this.legacy_mapping.diagnostic = Some(error);
                                         this.legacy_mapping.owner = None;
@@ -212,6 +239,7 @@ impl MouseProductWorkspace {
                                         stopped = true;
                                     }
                                     Reply::Stopped(result) => {
+                                        this.mouse_otfs.stop_pending();
                                         if let Err(error) = result {
                                             this.legacy_mapping.diagnostic = Some(error);
                                         }
@@ -222,6 +250,7 @@ impl MouseProductWorkspace {
                                 }
                             }
                             if disconnected && !stopped {
+                                this.mouse_otfs.stop_pending();
                                 this.legacy_mapping.owner = None;
                                 this.legacy_mapping.published = None;
                                 this.legacy_mapping.diagnostic = Some("Mapping reply channel disconnected before cleanup confirmation".into());
@@ -237,7 +266,16 @@ impl MouseProductWorkspace {
                 }
             }));
         }
-        self.legacy_mapping.document = Some(document);
+        self.legacy_mapping.replace_otfs_document(document);
+        if self.mouse_otfs.is_pending() {
+            return;
+        }
+        if let Some(document) = self.legacy_mapping.document.as_ref() {
+            if let Err(error) = self.mouse_otfs.record_publication(document) {
+                self.legacy_mapping.diagnostic = Some(error);
+                return;
+            }
+        }
         self.publish_legacy_mapping_current(scope);
     }
 
@@ -245,30 +283,12 @@ impl MouseProductWorkspace {
         let Some(document) = self.legacy_mapping.document.as_ref() else {
             return;
         };
-        let document = if self.legacy_mapping.inter_otfs {
-            match razer_device::mouse_legacy_mapping::interdevice_otfs_document(document) {
-                Ok(document) => document,
-                Err(error) => {
-                    self.legacy_mapping.diagnostic = Some(format!("{error:#}"));
-                    return;
-                }
-            }
-        } else {
-            document.clone()
-        };
+        let document = document.clone();
         self.legacy_mapping.revision = self.legacy_mapping.revision.wrapping_add(1);
         self.legacy_mapping.requested = Some(scope);
         self.legacy_mapping.pending_mode = Some(self.legacy_mapping.inter_otfs);
         if let Some(owner) = &self.legacy_mapping.owner {
-            if let Err(error) = owner.publish_with_restore(
-                self.legacy_mapping.revision,
-                document,
-                None,
-                self.legacy_mapping
-                    .inter_otfs
-                    .then(|| self.legacy_mapping.document.clone())
-                    .flatten(),
-            ) {
+            if let Err(error) = owner.publish(self.legacy_mapping.revision, document, None) {
                 self.legacy_mapping.diagnostic = Some(error);
                 self.legacy_mapping.pending_mode = None;
             }
@@ -367,17 +387,34 @@ impl MouseProductWorkspace {
     }
 
     fn set_interdevice_otfs(&mut self, enabled: bool, cx: &mut Context<Self>) {
-        if self.legacy_mapping.inter_otfs == enabled
-            && (self.legacy_mapping.pending_mode.is_some()
-                || self.legacy_mapping.inter_otfs_applied == enabled)
-        {
+        self.request_interdevice_otfs(enabled, cx);
+    }
+
+    pub(super) fn publish_legacy_otfs_saved(
+        &mut self,
+        request: &super::mouse_otfs::MouseOtfsRequested,
+        enabled: bool,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(scope) = self.mouse_polling_scope(cx) else {
+            self.finish_mouse_otfs_publication(
+                request.id(),
+                Err("OTFS profile scope unavailable".into()),
+                cx,
+            );
             return;
-        }
+        };
+        self.legacy_mapping.document = Some(request.document().clone());
         self.legacy_mapping.inter_otfs = enabled;
-        if self.legacy_mapping.owner.is_some() {
-            if let Some(scope) = self.mouse_polling_scope(cx) {
-                self.publish_legacy_mapping_current(scope);
-            }
+        self.legacy_mapping.otfs_request = Some(request.id());
+        self.publish_legacy_mapping_current(scope);
+        if self.legacy_mapping.pending_mode.is_none() || self.legacy_mapping.owner.is_none() {
+            self.legacy_mapping.otfs_request = None;
+            self.finish_mouse_otfs_publication(
+                request.id(),
+                Err("OTFS mapping owner unavailable".into()),
+                cx,
+            );
         }
     }
 

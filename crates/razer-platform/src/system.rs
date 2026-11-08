@@ -34,10 +34,7 @@ pub fn copyright_year() -> String {
         String::new()
     }
 }
-/// The monitor pages branch their HDR tip on
-/// `osName === windows && osVersion === "11"`; Windows 11 starts at build 22000.
-/// This reads the same registry value the settings check uses and changes
-/// nothing else.
+/// The monitor pages branch their HDR tip on the host Windows version string.
 pub fn is_windows_11() -> bool {
     #[cfg(target_os = "windows")]
     {
@@ -59,6 +56,66 @@ pub fn windows_major_version() -> Option<&'static str> {
     #[cfg(not(target_os = "windows"))]
     {
         None
+    }
+}
+
+/// Host common.getWindowVersion classifies the cached os.release() string.
+/// The first four characters and first five ASCII digits are intentional source
+/// boundaries, including their behavior for future and legacy release strings.
+#[cfg(any(target_os = "windows", test))]
+pub(crate) fn classify_windows_release(release: &str) -> Option<&'static str> {
+    let prefix = release.chars().take(4).collect::<String>();
+    match prefix.as_str() {
+        "10.0" => {
+            let build = release
+                .as_bytes()
+                .windows(5)
+                .find(|digits| digits.iter().all(u8::is_ascii_digit))
+                .map(|digits| {
+                    digits
+                        .iter()
+                        .fold(0u32, |value, digit| value * 10 + u32::from(digit - b'0'))
+                })
+                .unwrap_or(0);
+            Some(if release.starts_with("10.") && build >= 22000 {
+                "11"
+            } else {
+                "10"
+            })
+        }
+        "6.3" => Some("8.1"),
+        "6.2" => Some("8"),
+        "6.1" => Some("7"),
+        "6.0" => Some("Vista"),
+        "5.2" => Some("XP"),
+        _ => Some(""),
+    }
+}
+
+#[cfg(test)]
+mod windows_release_tests {
+    use super::classify_windows_release;
+
+    #[test]
+    fn current_host_release_classification_preserves_source_boundaries() {
+        for (release, expected) in [
+            ("10.0.21999", Some("10")),
+            ("10.0.22000", Some("11")),
+            ("10.0.26100", Some("11")),
+            ("10.0.9999", Some("10")),
+            ("10.0.100000", Some("10")),
+            ("10.0.21999.22000", Some("10")),
+            ("11.0.22000", Some("")),
+            ("6.3.9600", Some("")),
+            ("6.3", Some("8.1")),
+            ("6.2", Some("8")),
+            ("6.1", Some("7")),
+            ("6.0", Some("Vista")),
+            ("5.2", Some("XP")),
+            ("", Some("")),
+        ] {
+            assert_eq!(classify_windows_release(release), expected, "{release}");
+        }
     }
 }
 

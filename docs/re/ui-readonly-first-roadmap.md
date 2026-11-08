@@ -6,7 +6,7 @@
 
 **第一阶段指第一梯队产品的完整交付。** 下文的源码、静态、Rust、接线和对照是每项能力内部的验收环节，不是可以代替产品交付的阶段目标；逆向报告、身份索引或没有生产调用方的模块均不能结束第一阶段。
 
-## 当前状态（2026-11-07）
+## 当前状态（2026-11-08）
 
 - **代码身份已建库**：[前端索引收据](../../.analysis/results/code-identity.json)与 `.analysis/results/code-identity.sqlite3` 覆盖第一梯队199产品的398个保留部署；32149份不同字节的产品JS产生269194次factory出现、56860个规范化factory身份。原生含已接回共享依赖共131341函数、126189个保守代码身份，缺原件／捕获与未确立加载的容器候选单列。必要共享宏应用已按独立命名空间接入：[宏索引](../../.analysis/results/code-identity-synapse-macro.json)含30个源文件、359代码身份，不默认绑定全部产品。
 - **当前挂载已接回**：[导航收据](../../.analysis/results/code-identity-navigation.json)覆盖199产品、1077个完整occurrence。此前12项缺口已按真实源码修正：580／747的ASCII名称转换，以及10款鼠标构造器中带BLE条件的导航push；没有按漏解析删除功能。当前全部934项页面能力有当前实现根依据，843种实现根身份保留了真实条件、props、同名遮蔽和选择消费者。完整页面交互及依赖仍未闭合。
@@ -27,7 +27,13 @@
 - **媒体发布收尾**：四个远端SVG正文共54003字节已实际获取并逐项核对长度／SHA，安装目录库已回读四个别名。Shell全目标检查通过；[发布清理收据](../../.analysis/results/scratch-cleanup-earbuds-media-published-plan-applied.json)实际删除已验证上传仓库，释放146260731字节。历史凭据失败与后续校验事实保留，窗口及设备验收不由资源交付推断。
 - **本批体积与时点**：[体积收尾收据](../../.analysis/results/workspace-storage-earbuds-system-volume-plan-applied-summary.json)记录2026-11-07 12:28:23 UTC盘点，实占`.analysis`353.410537→353.413369 GB、`target`19.223126→0.000603 GB、`.work`43.210846→43.218565 GB，三目录均无扫描失败或重解析点；并发分析变化不计作本次清理释放。前值盘点后继续完成了输入确认层定向验证，因此Cargo执行前值与计划快照不同。本批超过5 GB的构建占用来自此前清理后的定向测试和Shell重建，现已清除。
 - **本批清理已执行**：[Cargo执行收据](../../.analysis/results/workspace-storage-earbuds-system-volume-plan-applied.json)记录实际释放19623618268字节；[恢复后的临时文件清理收据](../../.analysis/results/scratch-cleanup-earbuds-system-volume-resumed-plan-applied.json)删除已正式归并的system-volume审阅JSON，释放234989字节，失败0。共享媒体上传副本已由[鼠标清理收据](../../.analysis/results/scratch-cleanup-mouse-customize-20261107-plan-applied.json)删除，本轮不重复计算。旧耳塞计划因包含已删除共享副本保留为未执行；原件与正式收据保留，未发布OTFS recursive／transition证据与helper仍有后续依赖。
-- **输入确认层增量**：[冻结验收](../../.analysis/results/reverse-pending/review-sources/2b6dd9b844b351fea60686ce51d32e12abbcf386fea3dd6e15ef4df6c077317d.json)核对五产品同字节警告图标与CSS，接入资源作用域延迟绘制及命中遮挡；2项定向测试包含内部点击、外部右键、触发焦点和空格，最终Shell检查通过。该增量等待与同批后续Sound发布统一接回台账；真实窗口视觉／焦点顺序和设备对照未验证。
+- **输入确认层增量**：[冻结验收](../../.analysis/results/reverse-pending/review-sources/2b6dd9b844b351fea60686ce51d32e12abbcf386fea3dd6e15ef4df6c077317d.json)核对五产品同字节警告图标与CSS，接入资源作用域延迟绘制及命中遮挡；2项定向测试包含内部点击、外部右键、触发焦点和空格，最终Shell检查通过。正式音频段`/earbuds_input_confirmation_layer_acceptance`（`648016cbf3fd43d91257fff09709b99af4acd59b382a62ca038a2f926ffcc41b`）已接入五产品Sound阶段映射，生成台账待同批后续发布合并刷新；真实窗口视觉／焦点顺序和设备对照未验证。
+- **输入源断开提示已接线**：音频段`/earbuds_input_disconnected_state_acceptance`（`4dfc6ca54b3723f2bc4131454fdc740ccbb12933656ac13d9455a599c76d452d`）接回五产品同源断开包装层、指针提示及页面／连接清理；共享EQ／输入提示修正了窗口坐标与父元素坐标重复叠加。43项耳塞测试通过，最终新增五产品坐标断言的定向测试另行通过；Shell检查与本批稳定实现合并执行，真实窗口／设备对照未验证。
+- **Sound本地系统集成已发布增量**：`/earbuds_system_integration_ui_backend_progress`（`2e2096d09cca647dae7303eb0f3d5c8e50ee8b6733333df4e09194cb4569016e`）接通五产品系统声音属性／音量窗口的真实按钮和独立Rust系统调用；2项定向测试以及上述43项耳塞测试通过，原版资源已交付。`/earbuds_system_version_source_closure`（`ee43f0e33b98bf55338414f13c65cc5a8b25c30850518635f211eca272391e4e`）已核对当前Electron／Node／libuv来源并将共享版本适配改为系统RtlGetVersion；14个纯分类案例通过，未知release与读取不可用分离。完整Sound、实际OS／DLL与窗口对照仍未闭合。
+- **鼠标OTFS本地转换已发布**：`/mapping_ordinary_otfs_temporary_mapping_restore`（`5d91e7d542964ec36c7264b5c4fa537c9d4bd2799f42cbfb8364c62499eeed47`）已归并75产品快照、重复启用恢复、持久化／发布顺序与真实取消边界；新增1304个所有者和复用1837个所有者验证通过。当前Rust临时文档与恢复语义仍需连同生产消费者修正；完整Customize保持partial。
+- **键盘模式初始化绑定已发布**：`/keyboard_setup_device_mode_current_bindings`（`e8e02e7d0ff5f35bf3851043f598745d54a594a5476d671800a3f4db83010680`）覆盖73产品285个实际调用点与1140个源码所有者；先GET、必要时SET(3,0)，72产品等待、739不等待。756 BLE758继承的getter读取本地标志而非硬件，真实协议提供者和关闭／OBM恢复链继续核对；不以该绑定证明硬件初始化已交付。
+
+- **耳塞顶部图已接生产页**：音频段 `/earbuds_sound_graphic_delivery`（`844e642b524a79aa5b1aa35822fca1368cc54cb72dbf089f23c163e2deec8616`）接通五产品顶部双耳图、真实左右耳电量、断开提示与连接／页面清理。四项SVG共53578字节已发布到`d41d9386b1feaa3a27692d111cd3875bb10bb693`，安装SQLite四别名及SHA回读通过；45项耳塞测试及Shell全目标检查通过，真实窗口／设备／安装对照未验证。
 
 ## 能力内验收环节
 

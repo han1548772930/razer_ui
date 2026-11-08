@@ -255,6 +255,8 @@ pub mod mouse_profile_polling;
 pub mod mouse_receiver_legacy;
 #[path = "mouse/mouse_receiver_mapping.rs"]
 pub mod mouse_receiver_mapping;
+#[path = "mouse/mouse_otfs.rs"]
+pub mod mouse_otfs;
 #[path = "mouse/mouse_receiver_polling.rs"]
 pub mod mouse_receiver_polling;
 #[path = "mouse/mouse_rotation.rs"]

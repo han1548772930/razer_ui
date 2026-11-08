@@ -92,6 +92,45 @@ fn reading(pid: u32, _enabled: bool) -> Report {
     .unwrap()
 }
 
+#[gpui_kit::test]
+fn earbuds_graphic_consumes_current_report_and_clears_on_disconnect(cx: &mut TestAppContext) {
+    for pid in [2657, 2660, 2664, 2668, 2689] {
+        let (window, owner, mut device) = mount(pid, cx);
+        cx.update_window(window, |_, window, cx| {
+            owner.update(cx, |view, cx| view.set_page("TAB_SOUND", window, cx));
+            window.render_frame(cx);
+            let left = window.find("earbuds-graphic-left").bounds();
+            let right = window.find("earbuds-graphic-right").bounds();
+            assert_eq!(left.size.height, window.rem_size() * 10.);
+            assert_eq!(right.left() - left.right(), window.rem_size() * 0.5);
+            window.hover("earbuds-graphic-left", cx);
+            assert!(window.try_find("earbuds-graphic-disconnected-tip").is_none());
+            owner.update(cx, |view, cx| {
+                let request = view.earbuds.pending.clone().unwrap();
+                let mut report = reading(pid, false);
+                report.left_battery = Some(255);
+                view.finish_earbuds_request(&request, Ok(report), cx);
+            });
+            window.render_frame(cx);
+            window.hover("earbuds-graphic-left", cx);
+            assert!(window.find("earbuds-graphic-disconnected-tip").visible());
+            window.hover("earbuds-graphic-right", cx);
+            assert!(window.try_find("earbuds-graphic-disconnected-tip").is_none());
+            owner.update(cx, |view, cx| view.set_page("TAB_ENHANCEMENT", window, cx));
+            window.render_frame(cx);
+            assert!(window.try_find("earbuds-product-graphic").is_none());
+            owner.update(cx, |view, cx| {
+                device.dashboard.connection_observation = None;
+                view.set_earbuds_context(&device, true, cx);
+                view.set_page("TAB_SOUND", window, cx);
+            });
+            window.render_frame(cx);
+            window.hover("earbuds-graphic-left", cx);
+            assert!(window.try_find("earbuds-graphic-disconnected-tip").is_none());
+        }).unwrap();
+    }
+}
+
 fn finish_initial_restores(
     view: &mut AudioProductWorkspace,
     pid: u32,
@@ -669,6 +708,7 @@ fn equalizer_profile_restore_and_preset_click_reach_the_device_queue(cx: &mut Te
 fn input_source_buttons_open_and_confirm_once_without_saving(cx: &mut TestAppContext) {
     for pid in [2657, 2660, 2664, 2668, 2689] {
         let (window, owner, _) = mount(pid, cx);
+        cx.simulate_window_resize(window, size(px(1600.), px(1400.)));
         cx.update_window(window, |_, window, cx| {
             owner.update(cx, |view, cx| view.set_page("TAB_SOUND", window, cx));
             window.render_frame(cx);
@@ -728,6 +768,67 @@ fn input_source_buttons_open_and_confirm_once_without_saving(cx: &mut TestAppCon
             assert!(view.earbuds.edits.is_empty());
         })
         .unwrap();
+    }
+}
+
+#[gpui_kit::test]
+fn input_source_disconnected_hint_follows_observation_and_page_lifetime(cx: &mut TestAppContext) {
+    for pid in [2657, 2660, 2664, 2668, 2689] {
+        let (window, owner, device) = mount(pid, cx);
+        cx.simulate_window_resize(window, size(px(1600.), px(1400.)));
+        cx.update_window(window, |_, window, cx| {
+            owner.update(cx, |view, cx| view.set_page("TAB_SOUND", window, cx));
+            window.render_frame(cx);
+            assert!(window.try_find("earbuds-input-disabled-tip").is_none());
+            owner.update(cx, |view, cx| {
+                let request = view.earbuds.pending.clone().unwrap();
+                let mut report = reading(pid, false);
+                report.left_battery = Some(255);
+                view.finish_earbuds_request(&request, Ok(report), cx);
+            });
+            window.render_frame(cx);
+            let panel_before_tip = window.find("earbuds-input-panel").bounds();
+            window.hover("earbuds-input-disabled", cx);
+            window.render_frame(cx);
+            assert_eq!(window.find("earbuds-input-panel").bounds(), panel_before_tip);
+            assert!(window.find("earbuds-input-disabled-tip").visible(),
+                "tip {:?}, panel {:?}, cursor {:?}",
+                window.find("earbuds-input-disabled-tip").bounds(),
+                window.find("earbuds-input-panel").bounds(),
+                owner.read(cx).earbuds.input_disabled_cursor);
+            let tip = window.find("earbuds-input-disabled-tip").bounds();
+            let cursor = owner.read(cx).earbuds.input_disabled_cursor.unwrap();
+            let unit = window.rem_size() / 16.;
+            assert_eq!(tip.center().x, cursor.x.max(unit * 168.)
+                .min(window.viewport_size().width - unit * 168.));
+            let top = if cursor.y + unit * 64. < window.viewport_size().height - unit * 8. {
+                cursor.y + unit * 24.
+            } else {
+                (cursor.y - unit * 64.).max(unit * 8.)
+            };
+            assert_eq!(tip.top(), top);
+            let before = owner.read(cx).snapshot();
+            window.click("earbuds-input-open", cx);
+            assert!(!owner.read(cx).earbuds.input_popup);
+            assert_eq!(owner.read(cx).snapshot(), before);
+            assert!(!owner.read(cx).earbuds.edits.iter()
+                .any(|edit| edit.operation == Operation::SwitchInputSource));
+            owner.update(cx, |view, cx| view.set_page("TAB_ENHANCEMENT", window, cx));
+            window.render_frame(cx);
+            assert!(owner.read(cx).earbuds.input_disabled_cursor.is_none());
+            assert!(window.try_find("earbuds-input-disabled-tip").is_none());
+            owner.update(cx, |view, cx| view.set_page("TAB_SOUND", window, cx));
+            window.render_frame(cx);
+            window.hover("earbuds-input-disabled", cx);
+            window.render_frame(cx);
+            assert!(window.find("earbuds-input-disabled-tip").visible());
+            owner.update(cx, |view, cx| view.set_earbuds_context(&device, false, cx));
+            assert!(owner.read(cx).earbuds.input_disabled_cursor.is_none());
+            window.render_frame(cx);
+            window.hover("earbuds-input-panel", cx);
+            window.render_frame(cx);
+            assert!(window.try_find("earbuds-input-disabled-tip").is_none());
+        }).unwrap();
     }
 }
 

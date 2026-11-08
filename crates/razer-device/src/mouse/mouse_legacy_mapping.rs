@@ -316,11 +316,13 @@ pub fn prepare_document(
     assemble_document(normalized, Some(active_guid), previous, defaults, &context)
 }
 
-/// Current MW 91105 It/Tt: Inter-Device OTFS temporarily publishes only
-/// sensitivity assignments plus ordinary-layer scroll DPI controls. The saved
-/// profile mappings and source version remain unchanged; release republishes
-/// the latest ordinary document, including its OTFS_Scroll interception/hash.
+/// Compile the active profile's temporary engine without changing its bindings.
 pub fn interdevice_otfs_document(document: &Value) -> Result<Value> {
+    let snapshot = crate::mouse_otfs::Snapshot::capture(document)?;
+    project_interdevice_otfs(document, snapshot.mappings(), true)
+}
+
+pub(crate) fn project_interdevice_otfs(document: &Value, records: &[Value], temporary: bool) -> Result<Value> {
     ensure!(document["productId"] == 70, "OTFS target is not PID70");
     let profiles = document["profiles"]
         .as_array()
@@ -329,9 +331,6 @@ pub fn interdevice_otfs_document(document: &Value) -> Result<Value> {
         .iter()
         .position(|profile| profile["guid"] == document["activeProfile"])
         .context("Missing active OTFS profile")?;
-    let source = profiles[active]["mappings"]
-        .as_array()
-        .context("Missing active mappings")?;
     let mut context = EngineContext {
         default_turbos: document["defaultTurbos"].as_array().cloned(),
         synapse_turbos: document["synapseTurbos"].as_array().cloned(),
@@ -348,11 +347,14 @@ pub fn interdevice_otfs_document(document: &Value) -> Result<Value> {
         .iter()
         .map(serde_json::to_value)
         .collect::<Result<Vec<_>, _>>()?;
-    let projection = engine.generate_mouse_otfs(source, &defaults, &mut context)?;
+    let projection = if temporary {
+        engine.generate_mouse_otfs(records, &defaults, &mut context)?
+    } else {
+        engine.restore_mouse_otfs(records, &defaults, &mut context)?
+    };
     let mut result = document.clone();
     result["profiles"][active]["appEngine"] = projection.profile;
     result["profiles"][active]["defaultMappings"] = projection.defaults.clone();
-    result["defaultMappings"]["appEngine"] = projection.defaults;
     Ok(result)
 }
 
