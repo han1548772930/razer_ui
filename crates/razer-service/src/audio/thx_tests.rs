@@ -4,22 +4,134 @@ use super::*;
 #[test]
 fn local_eq_monitor_always_finishes_and_preserves_both_failures() {
     use std::sync::atomic::{AtomicBool, Ordering};
-    struct Events<'a> { active: &'a AtomicBool, calls: Vec<&'static str>, fail_begin: bool, fail_read: bool, fail_close: bool }
-    impl razer_device::receiver_pairing::HardwareEvents for Events<'_> {
-        fn begin(&mut self) -> Result<()> { self.calls.push("begin"); ensure!(!self.fail_begin,"begin failure"); Ok(()) }
-        fn receive(&mut self, _: Duration) -> Result<Option<Vec<u8>>> {
-            self.calls.push("receive"); ensure!(!self.fail_read,"read failure");
-            self.active.store(false,Ordering::Release); Ok(None)
-        }
-        fn finish(&mut self) -> Result<()> { self.calls.push("finish"); ensure!(!self.fail_close,"close failure"); Ok(()) }
+    struct Events<'a> {
+        active: &'a AtomicBool,
+        calls: Vec<&'static str>,
+        fail_begin: bool,
+        fail_read: bool,
+        fail_close: bool,
     }
-    for (begin,read,close) in [(false,false,false),(true,false,false),(false,true,false),(false,true,true)] {
-        let active=AtomicBool::new(true);
-        let mut events=Events {active:&active,calls:vec![],fail_begin:begin,fail_read:read,fail_close:close};
-        let result=monitor_eq_events(&mut events,&active,|_|panic!("no report expected"));
-        assert_eq!(events.calls.last(),Some(&"finish"));
-        assert_eq!(result.is_err(),begin||read||close);
-        if read && close { let text=result.unwrap_err().to_string(); assert!(text.contains("read failure")&&text.contains("close failure")); }
+    impl razer_device::receiver_pairing::HardwareEvents for Events<'_> {
+        fn begin(&mut self) -> Result<()> {
+            self.calls.push("begin");
+            ensure!(!self.fail_begin, "begin failure");
+            Ok(())
+        }
+        fn receive(&mut self, _: Duration) -> Result<Option<Vec<u8>>> {
+            self.calls.push("receive");
+            ensure!(!self.fail_read, "read failure");
+            self.active.store(false, Ordering::Release);
+            Ok(None)
+        }
+        fn finish(&mut self) -> Result<()> {
+            self.calls.push("finish");
+            ensure!(!self.fail_close, "close failure");
+            Ok(())
+        }
+    }
+    for (begin, read, close) in [
+        (false, false, false),
+        (true, false, false),
+        (false, true, false),
+        (false, true, true),
+    ] {
+        let active = AtomicBool::new(true);
+        let mut events = Events {
+            active: &active,
+            calls: vec![],
+            fail_begin: begin,
+            fail_read: read,
+            fail_close: close,
+        };
+        let result = monitor_eq_events(&mut events, &active, |_| panic!("no report expected"));
+        assert_eq!(events.calls.last(), Some(&"finish"));
+        assert_eq!(result.is_err(), begin || read || close);
+        if read && close {
+            let text = result.unwrap_err().to_string();
+            assert!(text.contains("read failure") && text.contains("close failure"));
+        }
+    }
+}
+
+#[test]
+fn local_eq_monitor_report_failure_and_cancellation_release_the_subscription() {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    struct Events<'a> {
+        active: &'a AtomicBool,
+        calls: Vec<&'static str>,
+        cancel_on_receive: bool,
+        fail_close: bool,
+        malformed: bool,
+    }
+    impl razer_device::receiver_pairing::HardwareEvents for Events<'_> {
+        fn begin(&mut self) -> Result<()> {
+            self.calls.push("begin");
+            Ok(())
+        }
+        fn receive(&mut self, _: Duration) -> Result<Option<Vec<u8>>> {
+            self.calls.push("receive");
+            assert_eq!(self.calls.len(), 2, "failed delivery must stop listening");
+            if self.cancel_on_receive {
+                self.active.store(false, Ordering::Release);
+            }
+            let mut raw = vec![0; 64];
+            raw[0] = 2;
+            raw[10] = 96;
+            raw[11] = 2;
+            raw[13] = if self.malformed { 9 } else { 4 };
+            Ok(Some(raw))
+        }
+        fn finish(&mut self) -> Result<()> {
+            self.calls.push("finish");
+            ensure!(!self.fail_close, "close failure");
+            Ok(())
+        }
+    }
+    for (initially_active, cancel_on_receive, malformed, fail_close) in [
+        (true, false, false, false),
+        (true, false, false, true),
+        (true, false, true, true),
+        (true, true, false, false),
+        (false, false, false, false),
+    ] {
+        let active = AtomicBool::new(initially_active);
+        let mut events = Events {
+            active: &active,
+            calls: vec![],
+            cancel_on_receive,
+            fail_close,
+            malformed,
+        };
+        let mut publications = 0;
+        let result = monitor_eq_events(&mut events, &active, |event| {
+            publications += 1;
+            assert_eq!(
+                event,
+                razer_device::thx_submission::local_eq::Notification::Selected { index: 4 }
+            );
+            anyhow::bail!("publication failure")
+        });
+        assert_eq!(events.calls.last(), Some(&"finish"));
+        if !initially_active {
+            assert_eq!(events.calls, ["finish"]);
+        } else {
+            assert_eq!(events.calls, ["begin", "receive", "finish"]);
+        }
+        if initially_active && !cancel_on_receive {
+            let error = format!("{:#}", result.unwrap_err());
+            assert_eq!(publications, usize::from(!malformed));
+            assert!(error.contains(if malformed {
+                "slot is out of range"
+            } else {
+                "publication failure"
+            }));
+            if fail_close {
+                assert!(error.contains("close failure"));
+            }
+        } else {
+            assert_eq!(publications, 0);
+            assert!(result.is_ok());
+        }
     }
 }
 

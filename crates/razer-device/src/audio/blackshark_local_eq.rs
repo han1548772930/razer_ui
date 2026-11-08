@@ -216,6 +216,7 @@ pub fn execute(
         match job {
             Job::Observe { presets, .. } => {
                 validate(presets)?;
+                validate_scope()?;
                 progress.observed = Some(presets.clone());
             }
             Job::Read | Job::ReadSlots { .. } => {
@@ -305,24 +306,48 @@ mod tests {
 
     #[test]
     fn hardware_reports_update_slots_without_firmware_writes() {
-        for pid in [1398,1401,2638,2641,4124,4126] {
-            let current=crate::thx_blackshark_firmware::default_blackshark_local_eq_presets(pid).unwrap();
-            let mut raw=[0u8;64];raw[0]=2;raw[10]=96;raw[11]=2;raw[13]=4;
-            let event=parse_notification(&raw).unwrap().unwrap();
-            let job=prepare(&Request::Hardware(event),&current).unwrap();
-            let Job::Observe{presets,disable_thx}=&job else {panic!()};
+        for pid in [1398, 1401, 2638, 2641, 4124, 4126] {
+            let current =
+                crate::thx_blackshark_firmware::default_blackshark_local_eq_presets(pid).unwrap();
+            let mut raw = [0u8; 64];
+            raw[0] = 2;
+            raw[10] = 96;
+            raw[11] = 2;
+            raw[13] = 4;
+            let event = parse_notification(&raw).unwrap().unwrap();
+            let job = prepare(&Request::Hardware(event), &current).unwrap();
+            let Job::Observe {
+                presets,
+                disable_thx,
+            } = &job
+            else {
+                panic!()
+            };
             assert!(presets[4].current_active);
-            assert_eq!(*disable_thx,presets[4].cloud_equalizer_id>3);
-            let progress=execute(&job,|_|panic!("hardware notification must not write firmware"),||Ok(()));
+            assert_eq!(*disable_thx, presets[4].cloud_equalizer_id > 3);
+            let progress = execute(
+                &job,
+                |_| panic!("hardware notification must not write firmware"),
+                || Ok(()),
+            );
             assert!(progress.completed && progress.commands.is_empty());
-            raw[10]=21;raw[13]=2;raw[14..24].copy_from_slice(&[134,133,132,131,130,129,0,1,2,6]);
-            let event=parse_notification(&raw).unwrap().unwrap();
-            let Job::Observe{presets,disable_thx}=prepare(&Request::Hardware(event),&current).unwrap() else {panic!()};
-            assert_eq!(presets[2].band_values,[-6,-5,-4,-3,-2,-1,0,1,2,6]);
+            raw[10] = 21;
+            raw[13] = 2;
+            raw[14..24].copy_from_slice(&[134, 133, 132, 131, 130, 129, 0, 1, 2, 6]);
+            let event = parse_notification(&raw).unwrap().unwrap();
+            let Job::Observe {
+                presets,
+                disable_thx,
+            } = prepare(&Request::Hardware(event), &current).unwrap()
+            else {
+                panic!()
+            };
+            assert_eq!(presets[2].band_values, [-6, -5, -4, -3, -2, -1, 0, 1, 2, 6]);
             assert!(!disable_thx);
-            assert_eq!(presets[0].band_values,current[0].band_values);
+            assert_eq!(presets[0].band_values, current[0].band_values);
             assert!(parse_notification(&raw[..20]).is_err());
-            raw[11]=1;assert!(parse_notification(&raw).unwrap().is_none());
+            raw[11] = 1;
+            assert!(parse_notification(&raw).unwrap().is_none());
         }
     }
     use crate::backend::HidNode;
@@ -330,6 +355,36 @@ mod tests {
         BlackSharkFirmwareAttempt, BlackSharkFirmwareIdentity, BlackSharkFirmwareReply,
         default_blackshark_local_eq_presets,
     };
+
+    #[test]
+    fn local_eq_cancelled_notification_never_publishes_an_observation() {
+        for pid in [1398, 1401, 2638, 2641, 4124, 4126] {
+            let current = default_blackshark_local_eq_presets(pid).unwrap();
+            for event in [
+                Notification::Selected { index: 4 },
+                Notification::Bands {
+                    index: 2,
+                    values: [-3; 10],
+                },
+            ] {
+                let job = prepare(&Request::Hardware(event), &current).unwrap();
+                let progress = execute(
+                    &job,
+                    |_| panic!("notification must not write firmware"),
+                    || anyhow::bail!("connection generation changed"),
+                );
+                assert!(!progress.completed);
+                assert!(progress.observed.is_none());
+                assert!(progress.commands.is_empty());
+                assert!(
+                    progress
+                        .error
+                        .unwrap()
+                        .contains("connection generation changed")
+                );
+            }
+        }
+    }
 
     fn response(pid: u32, command: Command, data: Vec<u8>) -> BlackSharkFirmwareCommandProgress {
         BlackSharkFirmwareCommandProgress {

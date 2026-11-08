@@ -136,6 +136,15 @@ impl AudioProductWorkspace {
         cloud["enabledPresets"] = json!([]);
         cloud["disabledPresets"] = json!([]);
         cloud["selectedPreset"] = Value::Null;
+        cloud["bandValues"] = Value::Null;
+        cloud["tempEnabledPresets"] = json!([]);
+        cloud["tempDisabledPresets"] = json!([]);
+        cloud["tempActivePreset"] = Value::Null;
+        self.sound.edit_eq_shown = false;
+        self.sound.edit_eq_changed = false;
+        self.sound.eq_remove = None;
+        self.sound.eq_reset = false;
+        self.sound.eq_drag = None;
         self.sound.eq_preview = None;
         self.sound.eq_local_enabled = None;
         self.sound.eq_band_data = None;
@@ -494,9 +503,47 @@ impl AudioProductWorkspace {
         if !self.sound.edit_eq_changed {
             return;
         }
-        let enabled = list(self.cloud(), "tempEnabledPresets");
-        let disabled = list(self.cloud(), "tempDisabledPresets");
+        let mut enabled = list(self.cloud(), "tempEnabledPresets");
+        let mut disabled = list(self.cloud(), "tempDisabledPresets");
         let selected = self.cloud()["tempActivePreset"].clone();
+        let current_selected = self.cloud()["selectedPreset"].clone();
+        let current_bands = self.current_cloud_bands().map(|values| band_json(&values));
+        let retained = list(self.cloud(), "enabledPresets")
+            .into_iter()
+            .chain(list(self.cloud(), "disabledPresets"))
+            .collect::<Vec<_>>();
+        let selected_bands = if selected == current_selected {
+            current_bands.clone().unwrap_or(Value::Null)
+        } else {
+            enabled
+                .iter()
+                .chain(disabled.iter())
+                .find(|preset| id(preset) == selected)
+                .and_then(|preset| preset.get("bandValues"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        };
+        for (preset, is_enabled) in enabled.iter_mut().map(|preset| (preset, true))
+            .chain(disabled.iter_mut().map(|preset| (preset, false))) {
+            let values = if id(preset) == current_selected {
+                current_bands.clone()
+            } else if is_enabled && id(preset) == selected {
+                preset
+                    .get("bandValues")
+                    .or_else(|| preset.get("current"))
+                    .cloned()
+            } else {
+                retained
+                    .iter()
+                    .find(|row| id(row) == id(preset))
+                    .and_then(|row| row.get("bandValues").or_else(|| row.get("current")))
+                    .or_else(|| preset.get("bandValues").or_else(|| preset.get("current")))
+                    .cloned()
+            };
+            if let Some(values) = values {
+                preset["bandValues"] = values;
+            }
+        }
         let mut voice_prompt = 4;
         let mut transport = Vec::new();
         for (index, (preset, stored)) in enabled
@@ -516,18 +563,21 @@ impl AudioProductWorkspace {
                 id(preset)
             };
             let mut row = json!({"index":index,"enableState":stored,"currentActive":id(preset)==selected,"cloudEqualizerId":id(preset),"custom":preset["custom"].as_bool().unwrap_or(false),"voicePromptIndex":voice});
-            let current = if id(preset) == self.cloud()["selectedPreset"] {
-                self.current_cloud_bands().map(|values|band_json(&values))
-            } else { preset.get("bandValues").or_else(||preset.get("current")).cloned() };
-            if let Some(current) = current {
-                row["bandValues"] = current;
+            // The source slot serializer consumes `current`, independently of
+            // the reducer's `bandValues` field and its optimistic curve draft.
+            if let Some(current) = preset.get("current") {
+                row["bandValues"] = current.clone();
             }
             transport.push(row);
         }
         let cloud = &mut self.draft["sound"]["cloudEQ"];
         cloud["enabledPresets"] = json!(enabled);
         cloud["disabledPresets"] = json!(disabled);
-        cloud["selectedPreset"] = selected;
+        cloud["selectedPreset"] = selected.clone();
+        cloud["bandValues"] = selected_bands;
+        cloud["tempEnabledPresets"] = cloud["enabledPresets"].clone();
+        cloud["tempDisabledPresets"] = cloud["disabledPresets"].clone();
+        cloud["tempActivePreset"] = selected;
         self.emit_sound_action("savePresets", Value::Null, cx);
         // Original o.timerTick is undefined (object key is `timertick`).
         self.emit_sound(
@@ -1363,10 +1413,146 @@ impl AudioProductWorkspace {
 #[cfg(test)]
 mod local_eq_tests {
     use super::super::AudioProductWorkspace;
-    use crate::features::source_help_owner::{HelpOwnerCommand, HelpOwnerRequested, SourceHelpOwner};
+    use crate::features::source_help_owner::{
+        HelpOwnerCommand, HelpOwnerRequested, SourceHelpOwner,
+    };
     use gpui_kit::{AppContext, TestAppContext, component::Root, px, size, test::TestWindowExt};
     use serde_json::json;
     use std::{cell::RefCell, rc::Rc};
+
+    #[gpui_kit::test]
+    fn local_eq_editor_save_cancel_and_disconnect_keep_the_selected_curve(cx: &mut TestAppContext) {
+        cx.update(gpui_kit::init);
+        for pid in [1398, 1401, 2638, 2641, 4124, 4126] {
+            let mut owners = None;
+            let handle = cx.open_window(size(px(1600.), px(1800.)), |window, cx| {
+                let source = cx.new(|cx| SourceHelpOwner::new(pid, cx));
+                let view = cx.new(|cx| {
+                    let mut view = AudioProductWorkspace::new(pid, window, cx);
+                    view.set_source_owner(source.clone(), cx);
+                    view.set_page("TAB_SOUND", window, cx);
+                    view
+                });
+                owners = Some((view.clone(), source));
+                Root::new(view, window, cx)
+            });
+            let (view, source) = owners.unwrap();
+            cx.update(|cx| source.update(cx, |source, cx| source.mount(cx)));
+            let requests = Rc::new(RefCell::new(Vec::new()));
+            let observed = requests.clone();
+            let _subscription = cx.update(|cx| {
+                cx.subscribe(&source, move |_, event: &HelpOwnerRequested, _| {
+                    observed
+                        .borrow_mut()
+                        .extend(event.audio_sound_messages().iter().cloned());
+                })
+            });
+            cx.update_window(handle.into(), |_, window, cx| {
+                let mut slots =
+                    razer_device::thx_blackshark_firmware::default_blackshark_local_eq_presets(pid)
+                        .unwrap();
+                for slot in &mut slots {
+                    slot.current_active = slot.index == 1;
+                    slot.band_values = [i16::from(slot.index) - 5; 10];
+                }
+                view.update(cx, |view, cx| {
+                    assert!(view.observe_sound(
+                        "localEqSlots",
+                        json!({"slots":slots,"observed":true}),
+                        window,
+                        cx
+                    ));
+                });
+                window.render_frame(cx);
+                window.click("current-edit-eq-list", cx);
+                window.click("current-eq-store-true-1", cx);
+                window.click("current-eq-cancel", cx);
+                assert_eq!(view.read(cx).cloud()["selectedPreset"], json!(1));
+                assert_eq!(view.read(cx).current_cloud_bands(), Some(vec![-4.; 10]));
+                window.click("current-edit-eq-list", cx);
+                assert_eq!(view.read(cx).cloud()["tempActivePreset"], json!(1));
+                window.click("current-eq-store-true-1", cx);
+                window.click("current-eq-save", cx);
+                assert_eq!(view.read(cx).cloud()["selectedPreset"], json!(0));
+                assert_eq!(view.read(cx).cloud()["bandValues"], json!(vec![-5; 10]));
+                assert_eq!(view.read(cx).current_cloud_bands(), Some(vec![-5.; 10]));
+                assert_eq!(view.read(cx).cloud()["tempActivePreset"], json!(0));
+                window.click("current-edit-eq-list", cx);
+                window.click("current-eq-reset-all", cx);
+                window.click("current-eq-reset-cancel", cx);
+                assert!(!view.read(cx).sound.eq_reset);
+                window.click("current-eq-reset-all", cx);
+                window.click("current-eq-reset-confirm", cx);
+                assert!(!view.read(cx).sound.edit_eq_shown);
+                let library = view.read(cx).cloud()["availableEsportsPresets"]
+                    .as_array()
+                    .unwrap();
+                let default = library
+                    .iter()
+                    .find(|preset| preset["equalizer_id"] == json!(0))
+                    .unwrap();
+                assert_eq!(
+                    view.read(cx).current_cloud_bands(),
+                    super::bands(&default["band_values"])
+                );
+                window.click("current-edit-eq-list", cx);
+                view.update(cx, |view, cx| {
+                    assert!(view.observe_sound(
+                        "localEqUnavailable",
+                        serde_json::Value::Null,
+                        window,
+                        cx
+                    ));
+                    assert!(!view.sound.edit_eq_shown);
+                    assert!(
+                        view.cloud()["tempEnabledPresets"]
+                            .as_array()
+                            .unwrap()
+                            .is_empty()
+                    );
+                    assert!(view.cloud()["bandValues"].is_null());
+                });
+            })
+            .unwrap();
+            let sent = requests.borrow();
+            let writes: Vec<_> = sent
+                .iter()
+                .filter(|m| m["transport"]["type"] == "ON_REORDER_CLOUD_EQ")
+                .collect();
+            assert_eq!(writes.len(), 2, "Only Save and confirmed Reset submit");
+            let slots: Vec<razer_device::thx_blackshark_firmware::BlackSharkLocalEqPreset> = writes
+                [0]["transport"]["payload"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|slot| {
+                    let mut slot = slot.clone();
+                    if slot["voicePromptIndex"] == json!(-1) {
+                        slot["voicePromptIndex"] = json!(255);
+                    }
+                    serde_json::from_value(slot).unwrap()
+                })
+                .collect();
+            assert!(slots[0].current_active);
+            assert_eq!(slots[0].band_values, [-5; 10]);
+            assert!(!slots.last().unwrap().enable_state);
+            cx.update(|cx| {
+                let library = view.read(cx).cloud()["availableEsportsPresets"]
+                    .as_array()
+                    .unwrap();
+                for slot in writes[1]["transport"]["payload"].as_array().unwrap() {
+                    let preset = library
+                        .iter()
+                        .find(|preset| preset["equalizer_id"] == slot["cloudEqualizerId"])
+                        .unwrap();
+                    assert_eq!(
+                        slot["bandValues"], preset["band_values"],
+                        "Reset writes original preset current values"
+                    );
+                }
+            });
+        }
+    }
 
     #[gpui_kit::test]
     fn local_eq_device_slots_reach_real_preset_actions_without_default_observation(
@@ -1387,7 +1573,7 @@ mod local_eq_tests {
                 Root::new(view, window, cx)
             });
             let (view, source) = owners.unwrap();
-            cx.update(|cx|source.update(cx,|source,cx|source.mount(cx)));
+            cx.update(|cx| source.update(cx, |source, cx| source.mount(cx)));
             let requests = Rc::new(RefCell::new(Vec::new()));
             let observed = requests.clone();
             let _subscription = cx.update(|cx| {
@@ -1426,9 +1612,9 @@ mod local_eq_tests {
                 window.render_frame(cx);
                 assert!(window.try_find("current-eq-preset-1").is_none());
                 assert_eq!(view.read(cx).cloud()["enabledPresets"], json!([]));
-                let old=source.read(cx).request(HelpOwnerCommand::SetAudioSound);
+                let old = source.read(cx).request(HelpOwnerCommand::SetAudioSound);
                 assert!(source.read(cx).accepts_audio_sound(&old));
-                view.update(cx,|view,cx|view.set_page("TAB_ENHANCEMENT",window,cx));
+                view.update(cx, |view, cx| view.set_page("TAB_ENHANCEMENT", window, cx));
                 assert!(!source.read(cx).accepts_audio_sound(&old));
             })
             .unwrap();

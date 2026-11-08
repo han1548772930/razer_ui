@@ -35,17 +35,24 @@ pub fn container_id(node: &HidNode) -> Result<String> {
     }
 }
 
-pub fn monitor_local_eq(scope: ThxSubmissionScope, active: &std::sync::atomic::AtomicBool,
-    mut publish: impl FnMut(razer_device::thx_submission::local_eq::Notification) -> Result<()>) -> Result<()> {
+pub fn monitor_local_eq(
+    scope: ThxSubmissionScope,
+    active: &std::sync::atomic::AtomicBool,
+    mut publish: impl FnMut(razer_device::thx_submission::local_eq::Notification) -> Result<()>,
+) -> Result<()> {
     #[cfg(windows)]
     {
-        let nodes=razer_hid::with_backend(|backend|backend.enumerate())?;
-        let node=resolve_candidates_for(&scope,&nodes,false,container_id)?;
-        let mut events=crate::runtime::native::blackshark_events(node.product_id,&scope.container_id);
+        let nodes = razer_hid::with_backend(|backend| backend.enumerate())?;
+        let node = resolve_candidates_for(&scope, &nodes, false, container_id)?;
+        let mut events =
+            crate::runtime::native::blackshark_events(node.product_id, &scope.container_id);
         monitor_eq_events(events.as_mut(), active, &mut publish)
     }
     #[cfg(not(windows))]
-    {let _=(scope,active,publish);anyhow::bail!("BlackShark hardware notifications require Windows")}
+    {
+        let _ = (scope, active, publish);
+        anyhow::bail!("BlackShark hardware notifications require Windows")
+    }
 }
 
 fn monitor_eq_events(
@@ -55,12 +62,18 @@ fn monitor_eq_events(
 ) -> Result<()> {
     use std::sync::atomic::Ordering;
     let result = (|| {
-        if !active.load(Ordering::Acquire) { return Ok(()); }
+        if !active.load(Ordering::Acquire) {
+            return Ok(());
+        }
         events.begin()?;
         while active.load(Ordering::Acquire) {
             if let Some(raw) = events.receive(Duration::from_millis(50))? {
-                if !active.load(Ordering::Acquire) { break; }
-                if let Some(event) = razer_device::thx_submission::local_eq::parse_notification(&raw)? {
+                if !active.load(Ordering::Acquire) {
+                    break;
+                }
+                if let Some(event) =
+                    razer_device::thx_submission::local_eq::parse_notification(&raw)?
+                {
                     publish(event)?;
                 }
             }
@@ -334,14 +347,25 @@ pub fn execute_retained<T: ThxJobTransport>(
         );
         validate()?;
         if let ThxSubmissionPlan::LocalEq { job, .. } = &plan {
-            progress.local_eq = Some(razer_device::thx_submission::local_eq::execute(
+            let eq = razer_device::thx_submission::local_eq::execute(
                 job,
                 |command| controller.transport_mut().exchange_hid(command),
                 &mut validate,
-            ));
-            if matches!(job, razer_device::thx_submission::local_eq::Job::Observe { disable_thx: true, .. }) {
-                if let Err(error)=controller.observe_blackshark_preset(&mut validate) {
-                    progress.error=Some(format!("{error:#}"));
+            );
+            let completed = eq.completed;
+            progress.local_eq = Some(eq);
+            if !completed {
+                return Ok(());
+            }
+            if matches!(
+                job,
+                razer_device::thx_submission::local_eq::Job::Observe {
+                    disable_thx: true,
+                    ..
+                }
+            ) {
+                if let Err(error) = controller.observe_blackshark_preset(&mut validate) {
+                    progress.error = Some(format!("{error:#}"));
                 }
             }
             return Ok(());

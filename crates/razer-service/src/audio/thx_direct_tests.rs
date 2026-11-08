@@ -252,6 +252,49 @@ fn fixture(initial: bool, final_value: bool) -> Vec<Result<Response>> {
 }
 
 #[test]
+fn local_eq_cancelled_notification_does_not_enter_thx_side_effects() {
+    use razer_device::thx_submission::local_eq::{Job, Notification, Request};
+    for pid in [1398, 1401, 2638, 2641, 4124, 4126] {
+        let (transport, state) = transport_for(pid, pid as u16, vec![]);
+        let mut controller = razer_device::thx_v4::ThxV4Controller::new(pid, transport).unwrap();
+        let mut scope = scope();
+        scope.product_id = pid;
+        let mut validations = 0;
+        let result = crate::thx::execute_retained(
+            scope,
+            ThxSubmissionPlan::LocalEq {
+                request: Request::Hardware(Notification::Selected { index: 4 }),
+                job: Job::Observe {
+                    presets:
+                        razer_device::thx_blackshark_firmware::default_blackshark_local_eq_presets(
+                            pid,
+                        )
+                        .unwrap(),
+                    disable_thx: true,
+                },
+            },
+            &mut controller,
+            || {
+                validations += 1;
+                ensure!(validations == 1, "connection generation changed");
+                Ok(())
+            },
+            |_| panic!("notification must not retry"),
+        );
+        let eq = result.local_eq.unwrap();
+        assert!(!eq.completed);
+        assert!(eq.observed.is_none());
+        assert!(eq.error.unwrap().contains("connection generation changed"));
+        assert_eq!(
+            validations, 2,
+            "failed notification must not begin a THX effect"
+        );
+        assert!(controller.transport().rpc().requests.is_empty());
+        assert!(state.borrow().outputs.is_empty());
+    }
+}
+
+#[test]
 fn local_eq_direct_reads_and_edits_all_routes_without_rpc_or_binding() {
     use razer_device::thx_submission::local_eq::{Edit, Job, Request, prepare};
     for (pid, connected) in [

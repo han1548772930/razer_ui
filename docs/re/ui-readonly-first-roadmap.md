@@ -8,6 +8,7 @@
 
 ## 当前状态（2026-11-08）
 
+- **音频独立性更正与通知取消**：音频收据 `/earbuds_activation_independence_correction`（`d842bdf79588892db736763d61796869317b6b56934cfc98b3348d80c7804369`）替换五耳塞当前台账中的旧启动器验收引用；历史原件和收据保持不变。当前只验收设备激活码读取／复制，原版 THX／空间效果仍须独立实现，删除官方启动入口不代表该能力完成。`/blackshark_local_eq_notification_cancellation_acceptance`（`88fb7acc889ee504ba071544d22c1ade9efc6a0d9d997e291a2072ff41239a58`）修正六款 BlackShark 旧代次通知仍被标为成功观察及失败后继续触发 THX 副作用的问题；5项设备、4项服务与1项五耳塞页面回归通过，Shell全目标检查通过。`thx_direct::LocalRpc` 仍访问官方 THX property service，完整空间效果／DSP独立性不通过；本地预设库编辑链与真实 DLL／设备／窗口对照继续保持未完成。本轮鼠标、键盘子任务因服务端429未执行，未登记新增交付。
 - **代码身份已建库**：[前端索引收据](../../.analysis/results/code-identity.json)与 `.analysis/results/code-identity.sqlite3` 覆盖第一梯队199产品的398个保留部署；32149份不同字节的产品JS产生269194次factory出现、56860个规范化factory身份。原生含已接回共享依赖共131341函数、126189个保守代码身份，缺原件／捕获与未确立加载的容器候选单列。必要共享宏应用已按独立命名空间接入：[宏索引](../../.analysis/results/code-identity-synapse-macro.json)含30个源文件、359代码身份，不默认绑定全部产品。
 - **当前挂载已接回**：[导航收据](../../.analysis/results/code-identity-navigation.json)覆盖199产品、1077个完整occurrence。此前12项缺口已按真实源码修正：580／747的ASCII名称转换，以及10款鼠标构造器中带BLE条件的导航push；没有按漏解析删除功能。当前全部934项页面能力有当前实现根依据，843种实现根身份保留了真实条件、props、同名遮蔽和选择消费者。完整页面交互及依赖仍未闭合。
 - **能力阶段**：[台账](../../.analysis/results/capability-ledger.json)为75款鼠标399项、73款键盘320项、51款耳机／适配器456项，共1175项；静态闭合26项、部分281项、未开始868项。Rust有26项implemented（当前Windows范围）和78项partial；UI／后端104项partial，实际对照104项unverified，其余尚未登记交付证据。键盘登记只证明已列明的亮度与档案路径，耳塞EQ增量仍属于Sound的partial证据；第一阶段尚未完成。
