@@ -383,6 +383,7 @@ impl NativeRuntime {
             | ServiceRequest::MappingRotationPoll { .. }
             | ServiceRequest::MappingRotationStop { .. }
             | ServiceRequest::MappingDeviceStart { .. }
+            | ServiceRequest::MappingReceiverStart { .. }
             | ServiceRequest::MappingDevicePublish { .. }
             | ServiceRequest::MappingDeviceEvents { .. }
             | ServiceRequest::MappingGamepadObservationStart { .. }

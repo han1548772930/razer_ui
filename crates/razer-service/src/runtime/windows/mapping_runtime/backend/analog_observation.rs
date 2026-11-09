@@ -35,7 +35,7 @@ impl<E: device::Executor> Core<E> {
             .devices
             .values()
             .filter(|row| {
-                row.target.logical_product.product_id() == target.product_id()
+                row.target.contains_product(target.product_id())
                     && row
                         .target
                         .info

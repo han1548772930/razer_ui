@@ -1,8 +1,8 @@
 {
   "schema_version": 2,
   "format": "files",
-  "tag": "assets-b0e273db79ffd994f67c",
-  "source_sha256": "b0e273db79ffd994f67c45b2a4a9372b0d3e5f06bbb82e46943ea4e5b6c59b41",
+  "tag": "assets-5aae9b8f096e87d6237a",
+  "source_sha256": "5aae9b8f096e87d6237a8676e0cd7d6ac046e9139b5c146297e670cdb5fffcd9",
   "git_files": [
     {
       "path": "assets/synapse/shared/pending-source-audit/33892a0b56b91958-tray-gear-light.rgba",
@@ -36973,6 +36973,11 @@
           "sha256": "a0124819b3a3281c94478069b7b58912a20b1942c4162ae034e9ed450913bcd1"
         },
         {
+          "path": "assets/synapse/shared/products/a07982ad39e687de-blackshark-eq-search-clear.svg",
+          "bytes": 2154,
+          "sha256": "a07982ad39e687de3e66116dc7e39305876bee70afe7959a78946e98ad0674d9"
+        },
+        {
           "path": "assets/synapse/shared/products/a0cea9571c722e3f-preview-source-595-0-8-1x.png",
           "bytes": 50014,
           "sha256": "a0cea9571c722e3fa3266e2dc7f786905ea40b2cf64a55203d841c24e393e387"
@@ -41868,6 +41873,6 @@
   "storage": {
     "provider": "huggingface",
     "repository": "han1548772930/razer-ui-assets",
-    "revision": "b7893e2cba655528b45b619c9b7b558ea7e23eb1"
+    "revision": "125a317cc4afa0d12c959a191ce5a2562b195d97"
   }
 }

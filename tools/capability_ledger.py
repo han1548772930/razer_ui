@@ -142,19 +142,22 @@ def build(workers=4, *, db_path=None):
                        for row in prior["products"] for entry in row["capabilities"]}
     rows, totals = [], {}
     with closing(ci.connect(db_path or ci.DATABASE)) as db:
+        reviews.schema(db)
         metadata = dict(db.execute("SELECT key,value FROM metadata"))
         if metadata.get("review_source_signature") != reviews.source_signature(db):
             raise ValueError("Code identities changed or propagation is absent; run code-identity --phase propagate")
         if json.loads(metadata.get("review_navigation_signature", "null")) != reviews.navigation_signature(db):
             raise ValueError("Mounted navigation changed; rebuild identity propagation")
-        if metadata.get("review_manifest_sha") != a.sha(MANIFEST):
+        if (metadata.get("review_manifest_sha") != a.sha(MANIFEST)
+                and metadata.get("review_static_manifest_sha") != reviews.static_manifest_signature(manifest)):
             raise ValueError("Capability scope mapping changed; rebuild identity propagation")
         product_doc = a.ROOT / ".analysis/results/product-documentation.json"
         if metadata.get("review_product_doc_sha") != a.sha(product_doc):
             raise ValueError("Mounted product scope changed; rebuild identity propagation")
+        publication_revalidations = []
         for receipt in json.loads(metadata.get("review_receipts", "[]")):
             if a.sha(a.resolve(receipt["path"], ".analysis/results")) != receipt["sha256"]:
-                raise ValueError("Formal review changed; rebuild identity propagation: " + receipt["path"])
+                publication_revalidations.append(reviews.verify_section_publication(db, receipt["path"]))
         for receipt in json.loads(metadata.get("review_role_evidence", "[]")):
             if a.sha(a.resolve(receipt["path"], ".analysis/results")) != receipt["sha256"]:
                 raise ValueError("Variant role evidence changed; rebuild identity propagation: " + receipt["path"])
@@ -200,6 +203,7 @@ def build(workers=4, *, db_path=None):
               "stages": list(STAGES), "target_execution": False,
               "totals": totals, "products": rows,
               "code_identity": {"database": a.rel(ci.DATABASE), "source_signature": metadata["review_source_signature"],
+                                "publication_revalidations": publication_revalidations,
                                 "known_candidate_variant_states": variant_totals, "full_remaining_variant_count_known": False,
                                 "verified_data_dependencies": data_dependencies,
                                 "source_scope_states": unknown_sources},

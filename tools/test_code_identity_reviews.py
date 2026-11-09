@@ -448,9 +448,63 @@ class IdentityReviewTests(unittest.TestCase):
         result = ledger.build(db_path=ci.DATABASE)
         self.assertEqual(result["totals"]["mouse"]["static"], {"closed": 1, "partial": 1, "not_started": 1})
         self.assertEqual(result["totals"]["mouse"]["rust"], {"partial": 1, "not_started": 2})
+        manifest = json.loads(manifest_path.read_bytes())
+        manifest["stage_evidence"] = [{"product_id": 1, "capability": "feature:example",
+            "rust": "partial", "ui_backend": "partial", "official_comparison": "unverified"}]
+        manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+        receipt_path.write_text(json.dumps({"chain": self.section(closed=True),
+            "delivery": {"rust": "partial", "ui_backend": "partial"}}), encoding="utf-8")
+        indexed = [tuple(row) for row in self.db.execute("SELECT * FROM review_sections ORDER BY id")]
+        result = ledger.build(db_path=ci.DATABASE)
+        self.assertEqual(result["totals"]["mouse"]["ui_backend"], {"partial": 1, "not_started": 2})
+        self.assertEqual(indexed, [tuple(row) for row in self.db.execute("SELECT * FROM review_sections ORDER BY id")])
+        refreshed = json.loads(output.read_bytes())["code_identity"]["publication_revalidations"]
+        self.assertEqual(refreshed, [{"path": ".analysis/results/frontend/current.json",
+            "sha256": a.sha(receipt_path), "mapped_scopes": 1,
+            "basis": "all_indexed_canonical_sections_unchanged"}])
+        signature = dict(self.db.execute("SELECT key,value FROM metadata"))["review_static_manifest_sha"]
+        self.db.execute("DELETE FROM metadata WHERE key='review_static_manifest_sha'")
+        self.db.commit()
+        with self.assertRaisesRegex(ValueError, "Capability scope mapping changed"):
+            ledger.build(db_path=ci.DATABASE)
+        self.db.execute("INSERT INTO metadata VALUES('review_static_manifest_sha',?)", (signature,))
+        self.db.commit()
+        altered = json.loads(json.dumps(manifest))
+        altered["capability_sections"][0]["product_ids"].append(2)
+        manifest_path.write_text(json.dumps(altered), encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "Capability scope mapping changed"):
+            ledger.build(db_path=ci.DATABASE)
+        manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+        receipt_path.write_text('{}', encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "Formal review changed"):
+            ledger.build(db_path=ci.DATABASE)
+        chain = json.dumps(self.section(closed=True))
+        receipt_path.write_text('{"chain":' + chain + ',"chain":' + chain + '}', encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "Formal review repeats"):
+            ledger.build(db_path=ci.DATABASE)
         receipt_path.write_text(json.dumps({"chain": self.section(closed=False)}), encoding="utf-8")
         with self.assertRaisesRegex(ValueError, "Formal review changed"):
             ledger.build(db_path=ci.DATABASE)
+
+    def test_publication_revalidation_rejects_concurrent_unmapped_append(self):
+        receipt = ".analysis/results/frontend/current.json"
+        path = self.root / receipt
+        path.parent.mkdir(parents=True)
+        section = self.section(closed=True)
+        path.write_text(json.dumps({"chain": section}), encoding="utf-8")
+        reviews.review_section(self.db, reviews.OwnerVerifier(self.db), receipt, "chain", section,
+            {"product_ids": {1}, "capabilities": {"feature:example"}})
+        original_stream = ci.stream_sections
+
+        def changing_publication(source):
+            yield from original_stream(source)
+            source.write_text(json.dumps({"chain": section, "delivery": {"rust": "partial"}}),
+                              encoding="utf-8")
+
+        with patch.object(ci, "stream_sections", side_effect=changing_publication):
+            with self.assertRaisesRegex(ValueError, "publication changed during verification"):
+                reviews.verify_section_publication(self.db, receipt)
+        self.assertEqual(reviews.verify_section_publication(self.db, receipt)["sha256"], a.sha(path))
 
 
 if __name__ == "__main__":

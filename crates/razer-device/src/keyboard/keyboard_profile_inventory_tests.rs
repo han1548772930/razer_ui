@@ -58,7 +58,7 @@ fn one_shot_admission_failure_stops_metadata_restarts_for_every_obm_product() {
         };
         let probe = ExchangeProbe::with_admission_check(&device, &admit);
         let error =
-            read_raw_metadata_hid(&probe, &cap, 7, &mut sequence(), &|| Ok(())).unwrap_err();
+            read_raw_metadata_hid(&probe, &cap, 7, false, &mut sequence(), &|| Ok(())).unwrap_err();
         assert!(crate::backend::exchange_interrupted(&error));
         assert_eq!(admissions.get(), 1, "PID{product_id}");
         assert!(device.sent().is_empty());
@@ -157,7 +157,10 @@ fn keyboard_profile_inventory_reads_actual_679_first_slot_in_source_order() {
     assert_eq!(identity.guid_status, GuidStatus::Recognized);
     assert_eq!(identity.name, "设备 当前值");
     assert_eq!(identity.owner, "owner");
-    assert_eq!(mapping_hash, &MappingHashObservation::Unobserved);
+    assert_eq!(
+        mapping_hash,
+        &MappingHashObservation::Observed([1, 2, 3, 4, 5, 6])
+    );
     let reports = device.sent();
     assert_eq!(reports.len(), 7);
     assert_eq!(&reports[0][6..9], &[1, 5, 138]);
@@ -179,7 +182,7 @@ fn keyboard_profile_inventory_skips_first_list_entry_without_inventing_its_ident
     let mut replies = inventory_replies(5, &[4, 1]);
     replies.extend(metadata_replies(1, &metadata("实际槽位一")));
     let device = Mock::new(replies);
-    let observed = read_hid(&device, &capability(550), sequence(), &|| Ok(())).unwrap();
+    let observed = read_hid(&device, &capability(691), sequence(), &|| Ok(())).unwrap();
     assert_eq!(observed.slots[0].slot_id, 4);
     assert_eq!(
         observed.slots[0].metadata,
@@ -195,18 +198,39 @@ fn keyboard_profile_inventory_skips_first_list_entry_without_inventing_its_ident
 
 #[test]
 fn keyboard_profile_inventory_reads_hash_only_for_the_current_metadata_schema() {
-    for product in [747, 756] {
-        let mut replies = inventory_replies(6, &[2]);
+    for product in OBM_PRODUCTS {
+        let old = [691, 721, 739, 752].contains(product);
+        let skips_first = [691, 739, 752].contains(product);
+        let mut replies = inventory_replies(6, &[7, 2]);
+        if !skips_first {
+            replies.extend(metadata_replies(7, &metadata("首槽设备值")));
+        }
         replies.extend(metadata_replies(2, &metadata("设备命名")));
         let device = Mock::new(replies);
-        let observed = read_hid(&device, &capability(product), sequence(), &|| Ok(())).unwrap();
-        assert!(matches!(
-            &observed.slots[0].metadata,
-            ProfileMetadataObservation::Observed {
-                mapping_hash: MappingHashObservation::Observed([1, 2, 3, 4, 5, 6]),
-                ..
-            }
-        ));
+        let observed = read_hid(&device, &capability(*product), sequence(), &|| Ok(())).unwrap();
+        assert_eq!(
+            matches!(
+                observed.slots[0].metadata,
+                ProfileMetadataObservation::SourceSkippedFirstSlot
+            ),
+            skips_first,
+            "PID{product}"
+        );
+        for slot in observed.slots.iter().skip(usize::from(skips_first)) {
+            let ProfileMetadataObservation::Observed { mapping_hash, .. } = &slot.metadata else {
+                panic!("PID{product} metadata was not observed");
+            };
+            assert_eq!(
+                *mapping_hash,
+                if old {
+                    MappingHashObservation::Unobserved
+                } else {
+                    MappingHashObservation::Observed([1, 2, 3, 4, 5, 6])
+                },
+                "PID{product}"
+            );
+        }
+        assert_eq!(device.sent().len(), if skips_first { 7 } else { 11 });
     }
 }
 
@@ -278,6 +302,89 @@ fn keyboard_profile_inventory_preserves_unknown_final_guid_after_ten_source_atte
 }
 
 #[test]
+fn keyboard_profile_inventory_current_first_slot_reads_unknown_metadata_once() {
+    for product in [550, 552, 658] {
+        let mut unknown = metadata("首槽原值");
+        unknown[..16].fill(0xff);
+        let mut replies = inventory_replies(5, &[4, 1]);
+        replies.extend(metadata_replies(4, &unknown));
+        replies.extend(metadata_replies(1, &metadata("第二槽原值")));
+        let device = Mock::new(replies);
+        let observed = read_hid(&device, &capability(product), sequence(), &|| Ok(())).unwrap();
+        let ProfileMetadataObservation::Observed {
+            identity,
+            mapping_hash,
+        } = &observed.slots[0].metadata
+        else {
+            panic!("current first slot was skipped");
+        };
+        assert_eq!(identity.name, "首槽原值");
+        assert_eq!(identity.guid_status, GuidStatus::Unrecognized);
+        assert_eq!(
+            *mapping_hash,
+            MappingHashObservation::Observed([1, 2, 3, 4, 5, 6])
+        );
+        assert_eq!(device.sent().len(), 11);
+        assert!(device.sent()[3..7].iter().all(|report| report[9] == 4));
+        assert!(device.sent()[7..].iter().all(|report| report[9] == 1));
+    }
+}
+
+#[test]
+fn keyboard_profile_inventory_failed_slot_preserves_later_reads_without_default_identity() {
+    let mut failed = reply(&[]);
+    failed.status = 5;
+    let mut replies = inventory_replies(5, &[4, 1]);
+    replies.push(failed);
+    replies.extend(metadata_replies(1, &metadata("later device slot")));
+    let device = Mock::new(replies);
+    let observed = read_hid(&device, &capability(550), sequence(), &|| Ok(())).unwrap();
+    assert!(matches!(&observed.slots[0].metadata,
+        ProfileMetadataObservation::Failed { message } if !message.is_empty()));
+    let ProfileMetadataObservation::Observed { identity, .. } = &observed.slots[1].metadata else {
+        panic!("later observed metadata was discarded");
+    };
+    assert_eq!(identity.name, "later device slot");
+    assert_eq!(device.sent().len(), 8);
+}
+
+#[test]
+fn keyboard_profile_inventory_unknown_observation_survives_later_failed_attempts() {
+    let mut unknown = metadata("device returned before later failures");
+    unknown[..16].fill(0xff);
+    let mut replies = inventory_replies(6, &[3]);
+    replies.extend(metadata_replies(3, &unknown));
+    for _ in 1..10 {
+        let mut failed = reply(&[]);
+        failed.status = 5;
+        replies.push(failed);
+    }
+    let device = Mock::new(replies);
+    let observed = read_hid(&device, &capability(679), sequence(), &|| Ok(())).unwrap();
+    let ProfileMetadataObservation::Observed { identity, .. } = &observed.slots[0].metadata else {
+        panic!("real earlier observation was discarded");
+    };
+    assert_eq!(identity.guid_status, GuidStatus::Unrecognized);
+    assert_eq!(identity.name, "device returned before later failures");
+    assert_eq!(device.sent().len(), 16);
+}
+
+#[test]
+fn keyboard_profile_inventory_one_shot_cancellation_is_not_a_slot_failure() {
+    use std::cell::Cell;
+    let device = Mock::new(inventory_replies(5, &[4, 1]));
+    let interrupted = Cell::new(false);
+    let result = read_hid(&device, &capability(550), sequence(), &|| {
+        if device.sent().len() == 3 && !interrupted.replace(true) {
+            anyhow::bail!("one-shot canceled request");
+        }
+        Ok(())
+    });
+    assert!(result.is_err());
+    assert_eq!(device.sent().len(), 3);
+}
+
+#[test]
 fn keyboard_profile_inventory_accepts_only_a_real_empty_inventory() {
     let device = Mock::new(inventory_replies(0, &[]));
     let observed = read_hid(&device, &capability(679), sequence(), &|| Ok(())).unwrap();
@@ -310,7 +417,11 @@ fn keyboard_profile_inventory_rejects_foreign_or_incomplete_metadata_without_def
         let mut replies = inventory_replies(6, &[1]);
         replies.push(bad);
         let device = Mock::new(replies);
-        assert!(read_hid(&device, &capability(679), sequence(), &|| Ok(())).is_err());
+        let reading = read_hid(&device, &capability(679), sequence(), &|| Ok(())).unwrap();
+        assert!(matches!(
+            reading.slots[0].metadata,
+            ProfileMetadataObservation::Failed { .. }
+        ));
         assert_eq!(device.sent().len(), 4);
     }
 }
@@ -324,7 +435,11 @@ fn keyboard_profile_inventory_transport_failure_keeps_read_failed_after_bounded_
         replies.push(failed);
     }
     let device = Mock::new(replies);
-    assert!(read_hid(&device, &capability(679), sequence(), &|| Ok(())).is_err());
+    let reading = read_hid(&device, &capability(679), sequence(), &|| Ok(())).unwrap();
+    assert!(matches!(
+        reading.slots[0].metadata,
+        ProfileMetadataObservation::Failed { .. }
+    ));
     assert_eq!(device.sent().len(), 13);
 }
 

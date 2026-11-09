@@ -23,6 +23,7 @@ use std::collections::BTreeMap;
 #[derive(Clone)]
 pub enum WorkspaceEvent {
     MouseOtfsRequested(super::mouse_products::MouseOtfsRequested),
+    ReceiverMappingPublication(super::ReceiverMappingPublication),
     EarbudsAutoPauseRequested(super::audio_products::EarbudsAutoPauseRequested),
     ResourceStateChanged,
     Changed,

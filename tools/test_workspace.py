@@ -4388,6 +4388,60 @@ class ConnectedDeviceVerificationTests(unittest.TestCase):
                 self.assertEqual(receipt['source_trace_unchanged'], not replace)
                 self.assertEqual(receipt['passed'], not replace)
 
+    def test_native_comparison_preserves_foreign_responses_without_replaying_them(self):
+        import native_runtime
+        baseline = [{'path':'fixture.rs', 'bytes':10, 'sha256':'current'}]
+        request, reply = [0] * 91, [0] * 91
+        request[7:9] = reply[7:9] = [15, 128]
+        reply[1] = 2
+        foreign = reply.copy()
+        foreign[2], foreign[7:9] = 131, [15, 3]
+
+        def device(product, response):
+            return {'product_id':product, 'error':None, 'result':{
+                'path':'source-collection', 'transfers':[
+                    {'operation':'send_feature', 'bytes':request, 'error':None, 'count':91},
+                    {'operation':'get_feature', 'bytes':response, 'error':None, 'count':91}]}}
+
+        for has_valid in (False, True):
+            with self.subTest(has_valid=has_valid), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                source = root / '.analysis/results/connected-device-verification.json'
+                source.parent.mkdir(parents=True)
+                devices = [device(679, foreign)]
+                if has_valid:
+                    devices.append(device(190, reply))
+                source.write_text(json.dumps({'mode':'read-only', 'inputs':baseline,
+                    'inputs_unchanged':True, 'result':{'backend_released':True, 'devices':devices}}),
+                    encoding='utf-8')
+                native_result = {'status':'completed', 'worker_waited':True, 'result':{
+                    'init_return':0, 'queries':[{'trace_index':'190:0', 'send_return':91,
+                        'get_return':91, 'received_bytes':reply}],
+                    'cleanup':[{'operation':'hid_exit', 'return_value':0, 'returned':True},
+                               {'operation':'release_library', 'returned':True}]}}
+                with mock.patch.object(workspace, 'ROOT', root), \
+                        mock.patch.object(workspace, 'rust_inputs', return_value=baseline), \
+                        mock.patch.object(native_runtime, 'validate_get_trace'), \
+                        mock.patch.object(native_runtime, 'replay_get_trace', return_value=native_result) as replay, \
+                        mock.patch.object(workspace, 'write_json') as save, \
+                        mock.patch('sys.stdout', new=io.StringIO()):
+                    self.assertEqual(workspace.compare_connected_hid('verified-library'), 1)
+                receipt = save.call_args.args[1]
+                self.assertFalse(receipt['passed'])
+                self.assertEqual(receipt['skipped'][0]['trace_index'], '679:0')
+                self.assertEqual(receipt['failures'][0]['error'], 'source_response_invalid')
+                self.assertIn('transaction or command', receipt['failures'][0]['detail'])
+                self.assertEqual(receipt['source_trace_sha256'], workspace.digest(source))
+                if has_valid:
+                    self.assertEqual([row['trace_index'] for row in replay.call_args.args[0]], ['190:0'])
+                    self.assertEqual(len(receipt['comparisons']), 1)
+                    self.assertTrue(receipt['comparisons'][0]['bytes_equal'])
+                else:
+                    replay.assert_not_called()
+                    self.assertEqual(receipt['runtime']['status'], 'not_executed')
+                    self.assertFalse(receipt['runtime']['target_execution'])
+                    self.assertEqual(receipt['comparisons'], [])
+
     def test_connected_result_validation_suite_never_selects_ignored_hardware_tests(self):
         def completed(command, **kwargs):
             kwargs['stdout'].write(b'test result: ok. 2 passed; 0 failed; 0 ignored\n')

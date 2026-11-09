@@ -27,7 +27,7 @@ fn device_inventory(target: &Target) -> serde_json::Value {
         "slots":[{"slot_id":4,"metadata":{"Observed":{
             "identity":{"guid":"12345678-1234-5678-1234-567812345678",
             "guid_status":"Recognized","name":"Read from device","owner":"local-owner"},
-            "mapping_hash":"Unobserved"
+            "mapping_hash":{"Observed":[1,2,3,4,5,6]}
         }}}]
     }})
 }

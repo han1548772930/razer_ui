@@ -851,7 +851,7 @@ pub fn execute_hid(
         let mut metadata = Vec::new();
         for &slot_id in ids {
             let bytes = crate::keyboard_profile_inventory::read_raw_metadata_hid(
-                device, cap, slot_id, &mut next, validate,
+                device, cap, slot_id, false, &mut next, validate,
             )?;
             slots.push(Slot {
                 slot_id,

@@ -8,7 +8,7 @@ mod controls;
 mod mapping_callback;
 #[path = "workspace/source_catalog.rs"]
 mod source_catalog;
-pub use mapping_callback::MappingCallbackRequested;
+pub use mapping_callback::{MappingCallbackRequested, ReceiverMappingPublication};
 #[path = "mapping/mapping_text_editor.rs"]
 mod mapping_text_editor;
 #[path = "mapping/source_key.rs"]

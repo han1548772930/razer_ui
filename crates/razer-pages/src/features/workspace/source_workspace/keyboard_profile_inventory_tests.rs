@@ -49,7 +49,9 @@ fn observation() -> inventory::Observation {
             slots: vec![
                 ProfileSlot {
                     slot_id: 9,
-                    metadata: ProfileMetadataObservation::SourceSkippedFirstSlot,
+                    metadata: ProfileMetadataObservation::Failed {
+                        message: "first slot metadata not returned".into(),
+                    },
                 },
                 ProfileSlot {
                     slot_id: 4,
@@ -60,7 +62,7 @@ fn observation() -> inventory::Observation {
                             name: "Actual device name".into(),
                             owner: "actual owner".into(),
                         },
-                        mapping_hash: MappingHashObservation::Unobserved,
+                        mapping_hash: MappingHashObservation::Observed([1, 2, 3, 4, 5, 6]),
                     },
                 },
             ],
@@ -90,6 +92,11 @@ fn keyboard_inventory_owner_publishes_actual_device_values_and_returned_slot_ord
     };
     assert_eq!(identity.name, "Actual device name");
     assert_eq!(identity.owner, "actual owner");
+    assert_eq!(owner.error(), Some("first slot metadata not returned"));
+    assert!(matches!(
+        &observed.slots[0].metadata,
+        ProfileMetadataObservation::Failed { .. }
+    ));
 }
 
 #[::core::prelude::v1::test]

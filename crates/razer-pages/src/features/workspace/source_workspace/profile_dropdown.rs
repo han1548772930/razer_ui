@@ -18,7 +18,8 @@ fn observed_slots(slots: Option<&[ProfileSlot]>) -> BTreeMap<&str, u8> {
             ProfileMetadataObservation::Observed { identity, .. } => {
                 Some((identity.guid.as_str(), slot.slot_id))
             }
-            ProfileMetadataObservation::SourceSkippedFirstSlot => None,
+            ProfileMetadataObservation::SourceSkippedFirstSlot
+            | ProfileMetadataObservation::Failed { .. } => None,
         })
         .collect()
 }

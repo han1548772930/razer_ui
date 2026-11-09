@@ -17,7 +17,9 @@ pub const STORAGE_FIELD: &str = "_mouse158_mapping_document";
 pub const fn supports_ordinary(product_id: u32) -> bool {
     matches!(
         product_id,
-        89 | 104
+        89 | 96
+            | 104
+            | 112
             | 115
             | 140
             | 145
@@ -44,7 +46,7 @@ fn compiler(product_id: u32) -> Result<MappingEngine> {
     );
     // These ordinary configurations bind the reviewed 3328/4325 compiler
     // identities. Defaults, DKM and report IDs remain selected by actual product.
-    MappingEngine::new(if product_id == 158 || product_id == 229 {
+    MappingEngine::new(if matches!(product_id, 96 | 112 | 158 | 229) {
         158
     } else {
         190
@@ -65,6 +67,266 @@ pub enum ReceiverRoute {
 pub struct SlaveSnapshot<'a> {
     pub document: &'a Value,
     pub serial: &'a str,
+}
+
+/// The concrete peer identity from an ordered, successfully read pairing record.
+/// It is independent of the receiver's physical registration identity.
+#[derive(Clone, Copy, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PeerIdentity {
+    product_id: u32,
+    dongle_id: u32,
+}
+
+impl PeerIdentity {
+    pub fn new(product_id: u32, dongle_id: u32) -> Result<Self> {
+        ensure!(
+            product_id != 0 && dongle_id != 0,
+            "Receiver peer identity is absent"
+        );
+        Ok(Self {
+            product_id,
+            dongle_id,
+        })
+    }
+
+    pub fn product_id(self) -> u32 {
+        self.product_id
+    }
+    pub fn dongle_id(self) -> u32 {
+        self.dongle_id
+    }
+}
+
+/// One source-selected peer. A missing document or runtime serial is a skipped
+/// peer, not an observed empty mapping. Keyboard and side-panel transforms must
+/// have completed before supplying the retained document.
+pub struct ReceiverPeer<'a> {
+    identity: Option<PeerIdentity>,
+    document: Option<&'a Value>,
+    serial: Option<&'a str>,
+}
+
+impl<'a> ReceiverPeer<'a> {
+    pub fn new(
+        identity: PeerIdentity,
+        document: Option<&'a Value>,
+        serial: Option<&'a str>,
+    ) -> Self {
+        Self {
+            identity: Some(identity),
+            document,
+            serial,
+        }
+    }
+}
+
+/// Current single-peer and multiple-peer merger selection. Construction does
+/// not establish registration, connectivity, pairing, or publication success.
+pub struct ReceiverProjection {
+    physical_product: u32,
+    route: ReceiverRoute,
+    multiple: bool,
+}
+
+impl ReceiverProjection {
+    pub fn new(physical_product: u32, route: ReceiverRoute, multiple: bool) -> Result<Self> {
+        ensure!(
+            physical_product != 0 && physical_product <= u32::from(u16::MAX),
+            "Receiver physical PID is invalid"
+        );
+        Ok(Self {
+            physical_product,
+            route,
+            multiple,
+        })
+    }
+
+    /// Project an ordered source pairing selection into the current physical
+    /// descriptor. The local master and peer documents are never mutated.
+    pub fn project(
+        &self,
+        master: &Value,
+        master_serial: Option<&str>,
+        peers: &[ReceiverPeer<'_>],
+    ) -> Result<Value> {
+        let mut result = Document::parse(master)?;
+        ensure!(
+            result.dual_linked.is_none(),
+            "A receiver projection cannot be projected twice"
+        );
+        let selected = master_serial
+            .filter(|serial| !serial.is_empty())
+            .and_then(|serial| result.profile_for_serial(serial))
+            .unwrap_or(0);
+        result.product_id = self.physical_product;
+        result.dual_linked = Some(true);
+        result.default_mappings.app_engine.route(0, 4, false);
+        let profile = &mut result.profiles[selected];
+        if let Some(engine) = &mut profile.app_engine {
+            engine.route(0, 4, !self.multiple);
+            if self.multiple {
+                let owner = RoutingOwner::from_profile(&profile.extensions);
+                engine.route_multiple(0, 4, self.peer_route("MOUSE"), &owner);
+            }
+        }
+        if !self.multiple && profile.app_engine.is_none() {
+            profile.app_engine = Some(Engine {
+                mappings: Vec::new(),
+                hash: String::new(),
+                extensions: Map::new(),
+            });
+        }
+        let selected_peers = if self.multiple {
+            peers
+        } else {
+            &peers[..peers.len().min(1)]
+        };
+        for peer in selected_peers {
+            let Some(document) = peer.document else { continue };
+            let Some(serial) = peer.serial.filter(|serial| !serial.is_empty()) else {
+                continue;
+            };
+            let mut slave = Document::parse(document)?;
+            if let Some(identity) = peer.identity {
+                ensure!(
+                    slave.product_id == identity.product_id,
+                    "Receiver peer document identity changed"
+                );
+            }
+            ensure!(
+                slave.dual_linked.is_none(),
+                "Receiver peer document is already projected"
+            );
+            let selected_slave = slave.profile_for_serial(serial);
+            let (unit, report) = self.peer_route(&slave.category);
+            result.report_ids.extend(slave.report_ids);
+            let owner = if self.multiple {
+                Some(RoutingOwner::from_peer(
+                    peer.identity
+                        .context("Multiple-peer routing identity is absent")?,
+                ))
+            } else {
+                None
+            };
+            slave.default_mappings.app_engine.route(unit, report, false);
+            if self.multiple {
+                for mapping in &mut slave.default_mappings.app_engine.mappings {
+                    mapping.output.multi_devices_info = Some(owner.clone());
+                }
+            }
+            result
+                .default_mappings
+                .app_engine
+                .mappings
+                .extend(slave.default_mappings.app_engine.mappings);
+            if let Some(index) = selected_slave {
+                let slave_profile = &mut slave.profiles[index];
+                profile.mappings.append(&mut slave_profile.mappings);
+                if let Some(slave_engine) = &mut slave_profile.app_engine {
+                    if self.multiple {
+                        slave_engine.route_multiple(
+                            unit,
+                            report,
+                            (unit, report),
+                            owner.as_ref().expect("multiple-peer owner was checked"),
+                        );
+                    } else {
+                        slave_engine.route(unit, report, true);
+                    }
+                    let engine = profile.app_engine.get_or_insert_with(|| Engine {
+                        mappings: Vec::new(),
+                        hash: String::new(),
+                        extensions: Map::new(),
+                    });
+                    engine.mappings.append(&mut slave_engine.mappings);
+                    if let Some(mode) = slave_engine
+                        .extensions
+                        .get("gamemode")
+                        .filter(|value| source_truthy(value))
+                    {
+                        engine.extensions.insert("gamemode".into(), mode.clone());
+                    }
+                }
+            }
+        }
+        result
+            .report_ids
+            .insert(self.slave_route().1, "razerKeyReportID".into());
+        result.default_mappings.app_engine.rehash()?;
+        if let Some(engine) = &mut profile.app_engine {
+            engine.rehash()?;
+        }
+        Ok(serde_json::to_value(result)?)
+    }
+
+    fn slave_route(&self) -> (u16, u8) {
+        match self.route {
+            ReceiverRoute::Normal => (43981, 8),
+            ReceiverRoute::Linker | ReceiverRoute::Mika => (0, 4),
+        }
+    }
+
+    fn peer_route(&self, category: &str) -> (u16, u8) {
+        if self.multiple && (category.is_empty() || category.eq_ignore_ascii_case("MOUSE")) {
+            (0, 4)
+        } else {
+            self.slave_route()
+        }
+    }
+}
+
+fn source_truthy(value: &Value) -> bool {
+    match value {
+        Value::Null => false,
+        Value::Bool(value) => *value,
+        Value::Number(value) => value.as_f64().is_some_and(|value| value != 0.0),
+        Value::String(value) => !value.is_empty(),
+        Value::Array(_) | Value::Object(_) => true,
+    }
+}
+
+#[derive(Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RoutingOwner {
+    #[serde(
+        default,
+        deserialize_with = "present_identity",
+        skip_serializing_if = "Option::is_none"
+    )]
+    product_id: Option<Value>,
+    #[serde(
+        default,
+        deserialize_with = "present_identity",
+        skip_serializing_if = "Option::is_none"
+    )]
+    dongle_id: Option<Value>,
+    #[serde(flatten)]
+    extensions: Map<String, Value>,
+}
+
+fn present_identity<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> std::result::Result<Option<Value>, D::Error> {
+    Value::deserialize(deserializer).map(Some)
+}
+
+impl RoutingOwner {
+    fn from_profile(fields: &Map<String, Value>) -> Self {
+        Self {
+            product_id: fields.get("productId").cloned(),
+            dongle_id: fields.get("dongleId").cloned(),
+            extensions: Map::new(),
+        }
+    }
+
+    fn from_peer(peer: PeerIdentity) -> Self {
+        Self {
+            product_id: Some(peer.product_id.into()),
+            dongle_id: Some(peer.dongle_id.into()),
+            extensions: Map::new(),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -245,6 +507,27 @@ impl Engine {
             }
         }
     }
+
+    fn route_multiple(
+        &mut self,
+        unit: u16,
+        report: u8,
+        cascade_route: (u16, u8),
+        owner: &RoutingOwner,
+    ) {
+        for mapping in &mut self.mappings {
+            mapping.input.route(unit, report);
+            mapping.output.multi_devices_info = Some(Some(owner.clone()));
+            if mapping.output.kind == "cascade"
+                && let Some(children) = &mut mapping.output.cascade
+            {
+                for child in children {
+                    child.input.route(cascade_route.0, cascade_route.1);
+                    child.output.multi_devices_info = Some(Some(owner.clone()));
+                }
+            }
+        }
+    }
 }
 
 #[derive(Clone, Deserialize, Serialize)]
@@ -284,8 +567,21 @@ struct Output {
     kind: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     cascade: Option<Vec<Mapping>>,
+    #[serde(
+        rename = "multiDevicesInfo",
+        default,
+        deserialize_with = "present_routing_owner",
+        skip_serializing_if = "Option::is_none"
+    )]
+    multi_devices_info: Option<Option<RoutingOwner>>,
     #[serde(flatten)]
     extensions: Map<String, Value>,
+}
+
+fn present_routing_owner<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> std::result::Result<Option<Option<RoutingOwner>>, D::Error> {
+    Option::<RoutingOwner>::deserialize(deserializer).map(Some)
 }
 
 #[derive(Clone, Deserialize, Serialize)]
@@ -372,73 +668,29 @@ pub fn compose_receiver(
         !master_serial.is_empty(),
         "Master serial has not been observed"
     );
-    let mut result = Document::parse(master)?;
+    let master_identity = Document::parse(master)?;
     ensure!(
-        result.product_id == 158 && result.dual_linked.is_none(),
+        master_identity.product_id == 158 && master_identity.dual_linked.is_none(),
         "Receiver projection requires the logical saved master document"
     );
-    let selected = result.profile_for_serial(master_serial).unwrap_or(0);
-    result.product_id = physical_product;
-    result.dual_linked = Some(true);
-    result.default_mappings.app_engine.route(0, 4, false);
-    let profile = &mut result.profiles[selected];
-    let engine = profile.app_engine.get_or_insert_with(|| Engine {
-        mappings: Vec::new(),
-        hash: String::new(),
-        extensions: Map::new(),
-    });
-    engine.route(0, 4, true);
-    let (unit, report) = match route {
-        ReceiverRoute::Normal => (43981, 8),
-        ReceiverRoute::Linker | ReceiverRoute::Mika => (0, 4),
-    };
-    if let Some(slave) = slave {
-        ensure!(
-            !slave.serial.is_empty(),
-            "Slave serial has not been observed"
-        );
-        let mut slave_document = Document::parse(slave.document)?;
-        ensure!(
-            slave_document.dual_linked.is_none(),
-            "A slave projection cannot be merged twice"
-        );
-        let selected_slave = slave_document.profile_for_serial(slave.serial);
-        result.report_ids.extend(slave_document.report_ids);
-        slave_document
-            .default_mappings
-            .app_engine
-            .route(unit, report, false);
-        result
-            .default_mappings
-            .app_engine
-            .mappings
-            .extend(slave_document.default_mappings.app_engine.mappings);
-        if let Some(index) = selected_slave {
-            let slave_profile = &mut slave_document.profiles[index];
-            profile.mappings.append(&mut slave_profile.mappings);
-            if let Some(slave_engine) = &mut slave_profile.app_engine {
-                slave_engine.route(unit, report, true);
-                engine.mappings.append(&mut slave_engine.mappings);
-                if let Some(gamemode) = slave_engine.extensions.get("gamemode") {
-                    if match gamemode {
-                        Value::Null => false,
-                        Value::Bool(value) => *value,
-                        Value::Number(value) => value.as_f64() != Some(0.0),
-                        Value::String(value) => !value.is_empty(),
-                        Value::Array(_) | Value::Object(_) => true,
-                    } {
-                        engine
-                            .extensions
-                            .insert("gamemode".into(), gamemode.clone());
-                    }
-                }
-            }
-        }
-    }
-    result.report_ids.insert(report, "razerKeyReportID".into());
-    result.default_mappings.app_engine.rehash()?;
-    engine.rehash()?;
-    Ok(serde_json::to_value(result)?)
+    let peer = slave
+        .map(|slave| {
+            ensure!(
+                !slave.serial.is_empty(),
+                "Slave serial has not been observed"
+            );
+            Ok::<_, anyhow::Error>(ReceiverPeer {
+                identity: None,
+                document: Some(slave.document),
+                serial: Some(slave.serial),
+            })
+        })
+        .transpose()?;
+    ReceiverProjection::new(physical_product, route, false)?.project(
+        master,
+        Some(master_serial),
+        peer.as_slice(),
+    )
 }
 
 /// Update only the metadata owned by this observed serial after the profile
@@ -494,9 +746,16 @@ struct MouseAssignment {
     mouse_assignment: &'static str,
 }
 #[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct ProfileNavigation {
-    profile_navigation_assignment: &'static str,
+#[serde(untagged)]
+enum ProfileNavigation {
+    Ordinary {
+        #[serde(rename = "profileNavigationAssignment")]
+        assignment: &'static str,
+    },
+    Capitalized {
+        #[serde(rename = "ProfileNavigationAssignment")]
+        assignment: &'static str,
+    },
 }
 
 #[derive(Serialize)]
@@ -555,7 +814,29 @@ fn dkm_keys(product_id: u32) -> &'static [DkmKey] {
         key: 80,
     };
     match product_id {
-        89 => &[SIDE[0], SIDE[1], DKM_KEYS[0], DKM_KEYS[1], PROFILE],
+        89 | 112 => &[SIDE[0], SIDE[1], DKM_KEYS[0], DKM_KEYS[1], PROFILE],
+        96 => &[
+            DkmKey {
+                button_key: None,
+                ..SIDE[0]
+            },
+            DkmKey {
+                button_key: None,
+                ..SIDE[1]
+            },
+            DkmKey {
+                button_key: None,
+                ..DKM_KEYS[0]
+            },
+            DkmKey {
+                button_key: None,
+                ..DKM_KEYS[1]
+            },
+            DkmKey {
+                button_key: None,
+                ..PROFILE
+            },
+        ],
         104 => &[
             DkmKey {
                 input_id: "DKM_M_01",
@@ -602,13 +883,25 @@ fn default_bindings_for(product_id: u32) -> Result<Vec<Value>> {
     }
     use DefaultAction::*;
     let ordered: &[(&str, DefaultAction, bool)] = match product_id {
-        89 => &[
+        89 | 96 => &[
             ("DKM_M_01", Up, false),
             ("DKM_M_02", Down, false),
             ("DKM_M_04", Next, false),
             ("DKM_M_03", Previous, false),
             ("DKM_SB_01", Profile, false),
             ("DKM_M_01", Up, true),
+            ("DKM_M_02", Down, true),
+            ("DKM_M_04", Next, true),
+            ("DKM_M_03", Previous, true),
+            ("DKM_SB_01", Profile, true),
+        ],
+        112 => &[
+            ("DKM_M_01", Up, false),
+            ("DKM_M_02", Down, false),
+            ("DKM_M_04", Next, false),
+            ("DKM_M_03", Previous, false),
+            ("DKM_M_01", Up, true),
+            ("DKM_SB_01", Profile, false),
             ("DKM_M_02", Down, true),
             ("DKM_M_04", Next, true),
             ("DKM_M_03", Previous, true),
@@ -708,8 +1001,14 @@ fn default_bindings_for(product_id: u32) -> Result<Vec<Value>> {
             }
             Profile => {
                 row.output_type = "profileNavigationGroup";
-                row.profile_navigation_group = Some(ProfileNavigation {
-                    profile_navigation_assignment: "CycleUp",
+                row.profile_navigation_group = Some(if product_id == 112 {
+                    ProfileNavigation::Capitalized {
+                        assignment: "CycleUp",
+                    }
+                } else {
+                    ProfileNavigation::Ordinary {
+                        assignment: "CycleUp",
+                    }
                 });
             }
             Shift => row.output_type = "hyperShiftGroup",

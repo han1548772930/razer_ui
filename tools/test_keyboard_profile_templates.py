@@ -76,6 +76,30 @@ class RecipeParsing(unittest.TestCase):
             with self.assertRaises(ValueError):
                 module.value(module.bindings["profile"])
 
+    def test_direct_default_export_keeps_its_actual_top_level_owner(self):
+        module = self.module('function(e,t,r){const v={brightness:30},other={};other.default=0;function hidden(t){t.default=9;}t.default=v;}')
+        self.assertEqual(module.value(module.exports["default"]), {"brightness": 30})
+        hidden = self.module('function(e,t,r){function hidden(t){t.default=9;}if(enabled){t.default=7;}}')
+        self.assertNotIn("default", hidden.exports)
+        with self.assertRaisesRegex(ValueError, "assigned more than once"):
+            self.module('function(e,t,r){t.default=0;t.default=1;}')
+
+    def test_nested_fields_do_not_evaluate_unrelated_source_calls(self):
+        module = self.module('function(e,t,r){const info={stamp:readClock(),obm:{brightness:!0}},profile=info.obm.brightness;}')
+        self.assertTrue(module.value(module.bindings["profile"]))
+        with self.assertRaises(ValueError):
+            module.value(module.bindings["info"])
+
+    def test_namespace_copy_and_spread_keep_last_property_precedence(self):
+        source = self.module('function(e,t,r){r.d(t,{TABLE:()=>v,unused:()=>unknown});const v={value:30};}')
+        module = self.module('function(e,t,r){const dep=r(9),copy=Object.assign({},dep),base={value:1},profile={copied:copy.TABLE.value,first:({value:2,...base}).value,last:({...base,value:3}).value};}',
+                             modules={(515, "9"): source})
+        self.assertEqual(module.value(module.bindings["profile"]), {"copied": 30, "first": 1, "last": 3})
+        for expression in ['Object.assign(target,{value:1}).value', '({value:1,...unknown}).value']:
+            module = self.module('function(e,t,r){const profile=' + expression + ';}')
+            with self.assertRaises(ValueError):
+                module.value(module.bindings["profile"])
+
     def test_owner_boundary_and_normalized_factory_changes_are_not_accepted(self):
         module = self.module('function(e,t,r){const profile={value:30};}')
         node = module.bindings["profile"]

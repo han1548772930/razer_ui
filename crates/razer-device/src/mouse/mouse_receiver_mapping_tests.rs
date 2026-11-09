@@ -67,6 +67,63 @@ fn ordinary_shared_compiler_batch_keeps_actual_default_inputs_and_report_ids() {
     assert_eq!(rows[8]["mouseGroup"]["mouseAssignment"], "RepeatScrollUp");
     assert!(dkm_keys(104).iter().all(|key| key.button_key.is_none()));
 }
+
+#[test]
+fn ordinary_defaults_keep_initialized_reports_and_capitalized_navigation() {
+    for pid in [96, 112] {
+        let doc =
+            prepare_document_for(pid, &[profile(json!([]))], "profile-a", None, None, guids())
+                .unwrap();
+        assert_eq!(default_bindings_for(pid).unwrap().len(), 10);
+        assert_eq!(dkm_keys(pid).len(), 5);
+        assert_eq!(
+            doc["reportIDs"],
+            json!({"4":"razerKeyReportID","5":"hardwareEventReportID"})
+        );
+        let mappings = doc["defaultMappings"]["appEngine"]["mappings"]
+            .as_array()
+            .unwrap();
+        let navigations: Vec<_> = mappings
+            .iter()
+            .filter(|row| row["output"]["type"] == "navigateProfile")
+            .collect();
+        assert_eq!(navigations.len(), 2);
+        for row in navigations {
+            assert_eq!(row["input"]["key"], 80);
+            if pid == 112 {
+                assert!(row["output"].get("name").is_none());
+            } else {
+                assert_eq!(row["output"]["name"], "CycleUp");
+            }
+        }
+        let snapshot = crate::mouse_otfs::Snapshot::capture(&doc).unwrap();
+        let temporary = crate::mouse_otfs::project(&doc, &snapshot, true)
+            .unwrap()
+            .unwrap();
+        let restored = crate::mouse_otfs::project(&temporary, &snapshot, false)
+            .unwrap()
+            .unwrap();
+        assert_eq!(restored.get("reportIDs"), doc.get("reportIDs"));
+        assert_eq!(
+            restored["profiles"][0]["appEngine"]["hash"],
+            doc["profiles"][0]["appEngine"]["hash"]
+        );
+        let mut malformed = doc;
+        malformed["reportIDs"] = Value::Null;
+        assert!(Document::parse(&malformed).is_err());
+    }
+    assert!(dkm_keys(96).iter().all(|key| key.button_key.is_none()));
+    let defaults = default_bindings_for(112).unwrap();
+    assert_eq!(defaults[4]["inputID"], "DKM_M_01");
+    assert_eq!(
+        defaults[5]["profileNavigationGroup"],
+        json!({"ProfileNavigationAssignment":"CycleUp"})
+    );
+    assert_eq!(
+        defaults[9]["profileNavigationGroup"],
+        json!({"ProfileNavigationAssignment":"CycleUp"})
+    );
+}
 use serde_json::json;
 
 fn guids() -> impl Iterator<Item = String> {
@@ -280,6 +337,132 @@ fn linker_projection_overrides_slave_report_identity_last() {
             .iter()
             .all(|mapping| mapping["input"]["reportId"] == 4)
     );
+}
+
+#[test]
+fn multiple_peer_projection_keeps_category_channels_and_exact_output_owners() {
+    let mut master = prepare_document(&[profile(json!([]))], "profile-a", None, guids()).unwrap();
+    master["profiles"][0]["appEngine"]["mappings"] = json!([{
+        "input":{"type":"mouse","id":1},
+        "output":{"type":"cascade","cascade":[{
+            "input":{"type":"keyboard","scancode":30},
+            "output":{"type":"mouse","id":4}
+        }]}
+    }]);
+    let mut keyboard = master.clone();
+    keyboard["productId"] = json!(679);
+    keyboard["category"] = json!("KEYBOARD");
+    keyboard["profiles"][0]["appEngine"]["gamemode"] = json!(true);
+    let mut mouse = master.clone();
+    mouse["productId"] = json!(190);
+    mouse["profiles"][0]["appEngine"]["gamemode"] = json!(false);
+    let original = master.clone();
+    let peers = [
+        ReceiverPeer::new(
+            PeerIdentity::new(679, 680).unwrap(),
+            Some(&keyboard),
+            Some("keyboard-serial"),
+        ),
+        ReceiverPeer::new(
+            PeerIdentity::new(190, 191).unwrap(),
+            Some(&mouse),
+            Some("mouse-serial"),
+        ),
+    ];
+    let merged = ReceiverProjection::new(159, ReceiverRoute::Normal, true)
+        .unwrap()
+        .project(&master, None, &peers)
+        .unwrap();
+    let rows = merged["profiles"][0]["appEngine"]["mappings"]
+        .as_array()
+        .unwrap();
+    assert_eq!(rows.len(), 3);
+    assert_eq!(rows[0]["input"]["unitId"], 0);
+    assert_eq!(rows[0]["output"]["multiDevicesInfo"], json!({}));
+    assert_eq!(rows[0]["output"]["cascade"][0]["input"]["unitId"], 0);
+    assert_eq!(rows[1]["input"]["unitId"], 43981);
+    assert_eq!(
+        rows[1]["output"]["multiDevicesInfo"],
+        json!({"productId":679,"dongleId":680})
+    );
+    assert_eq!(
+        rows[1]["output"]["cascade"][0]["output"]["multiDevicesInfo"],
+        json!({"productId":679,"dongleId":680})
+    );
+    assert_eq!(rows[2]["input"]["unitId"], 0);
+    assert_eq!(
+        rows[2]["output"]["multiDevicesInfo"],
+        json!({"productId":190,"dongleId":191})
+    );
+    assert_eq!(merged["profiles"][0]["appEngine"]["gamemode"], true);
+    assert_eq!(master, original);
+    let defaults = merged["defaultMappings"]["appEngine"]["mappings"]
+        .as_array()
+        .unwrap();
+    assert!(
+        defaults[..12]
+            .iter()
+            .all(|row| row["output"].get("multiDevicesInfo").is_none())
+    );
+    assert!(
+        defaults[12..24]
+            .iter()
+            .all(|row| row["input"]["reportId"] == 8)
+    );
+    assert!(
+        defaults[24..]
+            .iter()
+            .all(|row| row["input"]["reportId"] == 4)
+    );
+    assert_eq!(
+        merged["profiles"][0]["appEngine"]["hash"],
+        source_hash(&merged["profiles"][0]["appEngine"]).unwrap()
+    );
+}
+
+#[test]
+fn receiver_projection_keeps_unobserved_serial_separate_from_an_empty_peer_list() {
+    let master = prepare_document(&[profile(json!([]))], "profile-a", None, guids()).unwrap();
+    let peer = PeerIdentity::new(158, 159).unwrap();
+    let peers = [
+        ReceiverPeer::new(peer, Some(&master), None),
+        ReceiverPeer::new(peer, Some(&master), Some("serial")),
+    ];
+    let single = ReceiverProjection::new(179, ReceiverRoute::Normal, false)
+        .unwrap()
+        .project(&master, Some("master"), &peers)
+        .unwrap();
+    let multiple = ReceiverProjection::new(179, ReceiverRoute::Normal, true)
+        .unwrap()
+        .project(&master, Some("master"), &peers)
+        .unwrap();
+    assert_eq!(
+        single["defaultMappings"]["appEngine"]["mappings"]
+            .as_array()
+            .unwrap()
+            .len(),
+        12
+    );
+    assert_eq!(
+        multiple["defaultMappings"]["appEngine"]["mappings"]
+            .as_array()
+            .unwrap()
+            .len(),
+        24
+    );
+    for route in [ReceiverRoute::Linker, ReceiverRoute::Mika] {
+        let merged = ReceiverProjection::new(179, route, true)
+            .unwrap()
+            .project(&master, None, &peers)
+            .unwrap();
+        assert!(
+            merged["defaultMappings"]["appEngine"]["mappings"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .all(|row| row["input"]["reportId"] == 4)
+        );
+    }
 }
 
 #[test]

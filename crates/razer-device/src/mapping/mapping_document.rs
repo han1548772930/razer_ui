@@ -6,10 +6,12 @@
 pub struct MappingProduct(u32);
 
 impl MappingProduct {
-    pub const ALL: [Self; 24] = [
+    pub const ALL: [Self; 26] = [
         Self(70),
         Self(89),
+        Self(96),
         Self(104),
+        Self(112),
         Self(115),
         Self(140),
         Self(145),

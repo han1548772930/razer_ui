@@ -17,6 +17,33 @@ REPORT = a.ROOT / ".analysis/results/code-identity-propagation.json"
 QUEUE = a.ROOT / ".analysis/results/variant-work-queue.json"
 
 
+def static_manifest_signature(manifest):
+    """Delivery-stage evidence does not change the indexed static scope."""
+    return ci.digest({key: value for key, value in manifest.items() if key != "stage_evidence"})
+
+
+def verify_section_publication(db, receipt):
+    """Recheck mapped canonical scopes after append-only publication."""
+    expected = {row["pointer"][1:]: row["canonical_sha"] for row in db.execute(
+        "SELECT pointer,canonical_sha FROM review_sections WHERE receipt=?", (receipt,))}
+    if not expected:
+        raise ValueError("Formal review has no indexed canonical scopes: " + receipt)
+    path = a.resolve(receipt, ".analysis/results")
+    before = a.sha(path)
+    found = {}
+    for name, section in ci.stream_sections(path):
+        if name in expected:
+            if name in found:
+                raise ValueError("Formal review repeats a mapped scope: " + receipt)
+            found[name] = ci.digest(section)
+    if a.sha(path) != before:
+        raise ValueError("Formal review publication changed during verification; retry after publication: " + receipt)
+    if found != expected:
+        raise ValueError("Formal review changed; rebuild identity propagation: " + receipt)
+    return {"path": receipt, "sha256": before, "mapped_scopes": len(found),
+            "basis": "all_indexed_canonical_sections_unchanged"}
+
+
 def assign_capabilities(db_path, requests):
     """Claim complete capability candidate sets, with one owner per shared variant."""
     claims = [request.split(",", 2) for request in requests]
@@ -90,6 +117,7 @@ def schema(db):
             section_id TEXT, owner_id TEXT, product_id INTEGER, normalized_sha TEXT,
             PRIMARY KEY(section_id,owner_id,product_id,normalized_sha));
         CREATE INDEX IF NOT EXISTS review_match_product ON review_matches(product_id,section_id);
+        CREATE INDEX IF NOT EXISTS review_match_variant ON review_matches(normalized_sha);
         CREATE TABLE IF NOT EXISTS capability_scope(
             product_id INTEGER, family TEXT, capability TEXT, source_state TEXT,
             PRIMARY KEY(product_id,capability));
@@ -664,6 +692,8 @@ def build(db_path=ci.DATABASE):
             populate_queue(db)
             db.execute("INSERT OR REPLACE INTO metadata VALUES('review_source_signature',?)", (signature,))
             db.execute("INSERT OR REPLACE INTO metadata VALUES('review_manifest_sha',?)", (manifest_sha,))
+            db.execute("INSERT OR REPLACE INTO metadata VALUES('review_static_manifest_sha',?)",
+                       (static_manifest_signature(manifest),))
             db.execute("INSERT OR REPLACE INTO metadata VALUES('review_product_doc_sha',?)", (product_doc_sha,))
             db.execute("INSERT OR REPLACE INTO metadata VALUES('review_receipts',?)", (json.dumps(receipt_identities),))
             db.execute("INSERT OR REPLACE INTO metadata VALUES('review_navigation_signature',?)", (json.dumps(nav_signature),))

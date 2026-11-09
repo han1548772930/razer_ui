@@ -231,11 +231,20 @@ impl<E: device::Executor> Core<E> {
         container: &str,
         owner: String,
     ) -> Result<Value> {
+        let target = identity::Target::observe(product, container, &owner)?;
+        self.start_target(scope, target, owner)
+    }
+
+    fn start_receiver(&mut self, scope: Uuid, target: razer_ipc::mapping_receiver::Target, owner: String) -> Result<Value> {
+        let target = identity::Target::observe_receiver(target, &owner)?;
+        self.start_target(scope, target, owner)
+    }
+
+    fn start_target(&mut self, scope: Uuid, target: identity::Target, owner: String) -> Result<Value> {
         ensure!(
             !self.devices.contains_key(&owner),
             "Mapping device owner is already registered"
         );
-        let target = identity::Target::observe(product, container, &owner)?;
         let caller = Uuid::new_v4();
         let route = self.connections.device(scope, caller, &target)?;
         let result = (|| -> Result<(device::Owner, hardware::Owner)> {
@@ -345,16 +354,12 @@ impl<E: device::Executor> Core<E> {
     fn publish(&mut self, scope: Uuid, owner: &str, document: Value) -> Result<Value> {
         let registration = self.registration(scope, owner)?;
         registration.ensure_active()?;
-        registration.target.revalidate()?;
-        let expected_product = if registration.target.logical_product.product_id() == 158
-            && document.get("dualLinked") == Some(&Value::Bool(true))
-        {
-            registration.target.info.product_id
-        } else {
-            registration.target.logical_product.product_id()
-        };
+        registration.target.revalidate_publication()?;
+        let document_product = document.get("productId").and_then(Value::as_u64)
+            .and_then(|product| u32::try_from(product).ok())
+            .context("Mapping document product identity is absent")?;
         ensure!(
-            document.get("productId").and_then(Value::as_u64) == Some(u64::from(expected_product)),
+            registration.target.admits_document(document_product, document.get("dualLinked") == Some(&Value::Bool(true))),
             "Mapping document belongs to another product"
         );
         ensure!(
@@ -388,7 +393,7 @@ impl<E: device::Executor> Core<E> {
             .context("Mapping active profile missing")?
             .to_owned();
         row.document = Some(document);
-        row.target.revalidate()?;
+        row.target.revalidate_publication()?;
         Ok(json!({"published":true,"owner_guid":owner,"active_profile":active}))
     }
     fn publish_storage_value(&mut self, key: &str, value: &Value) -> Result<()> {
@@ -823,6 +828,7 @@ impl<E: device::Executor> crate::mapping::owner::Backend for Backend<E> {
             },
             MappingObservationStop{observer_guid}=>self.core.stop_observation(scope,&observer_guid),
             MappingDeviceStart{product_id,device_container_id,owner_guid}=>self.core.start_device(scope,product_id,&device_container_id,owner_guid),
+            MappingReceiverStart{target,owner_guid}=>self.core.start_receiver(scope,target,owner_guid),
             MappingDevicePublish{owner_guid,document}=>self.core.publish(scope,&owner_guid,document),
             MappingDeviceStop{owner_guid}=>self.core.stop_device(scope,&owner_guid),
             MappingDeviceEvents{owner_guid}=>{

@@ -45,6 +45,40 @@ fn registration_requires_matching_owner_and_complete_ready_receipt() {
 }
 
 #[test]
+fn receiver_actor_registers_the_physical_target_and_keeps_the_logical_document() {
+    let target = razer_ipc::mapping_receiver::Target::new(
+        191, "physical-container".into(), vec![razer_ipc::mapping_receiver::Member::direct(190)],
+    ).unwrap();
+    let (mock, trace, cleanup) = Mock::new(|request| match request {
+        ServiceRequest::MappingReceiverStart { target, owner_guid } => {
+            assert_eq!(target.physical_product_id(), 191);
+            assert_eq!(target.device_container_id(), "physical-container");
+            assert_eq!(target.members(), &[razer_ipc::mapping_receiver::Member::direct(190)]);
+            Ok(json!({"registered":true,"driver_ready":true,"owner_guid":owner_guid}))
+        }
+        ServiceRequest::MappingDevicePublish { owner_guid, document } => {
+            assert_eq!(document, json!({"productId":190,"profile":"retained-logical"}));
+            Ok(json!({"published":true,"owner_guid":owner_guid}))
+        }
+        ServiceRequest::MappingDeviceEvents { owner_guid } => Ok(json!({"events":[],"owner_guid":owner_guid})),
+        ServiceRequest::Shutdown => Ok(json!({"stopped":true})),
+        request => panic!("unexpected request: {request:?}"),
+    });
+    let (session, replies) = Session::start_actor(191, "physical-container".into(), Some(target), || Ok(mock), Registry::default()).unwrap();
+    ready(&replies);
+    session.publish(7, json!({"productId":190,"profile":"retained-logical"}), None).unwrap();
+    assert!(matches!(replies.recv_timeout(TIMEOUT).unwrap(), Reply::Published { revision:7, result:Ok(()), .. }));
+    session.request_stop_after_pending().unwrap();
+    let (errors, result) = stopped(&replies);
+    assert!(errors.is_empty());
+    result.unwrap();
+    cleanup.recv_timeout(TIMEOUT).unwrap();
+    let trace = trace.lock().unwrap();
+    assert_eq!(trace.iter().filter(|request| matches!(request, ServiceRequest::MappingReceiverStart { .. })).count(), 1);
+    assert!(matches!(trace.last(), Some(ServiceRequest::Shutdown)));
+}
+
+#[test]
 fn publication_and_events_reject_missing_fields_and_stale_owner() {
     for value in [
         json!({"published":true}),
@@ -305,6 +339,10 @@ fn queued_publications_keep_latest_revision() {
     ready(&replies);
     assert!(matches!(
         replies.recv_timeout(TIMEOUT).unwrap(),
+        Reply::Published { revision: 1, result: Err(_), indicator: None }
+    ));
+    assert!(matches!(
+        replies.recv_timeout(TIMEOUT).unwrap(),
         Reply::Published {
             revision: 2,
             result: Ok(()),
@@ -372,6 +410,10 @@ fn graceful_stop_acknowledges_the_latest_document_before_native_removal_and_rele
     start.send(()).unwrap();
     ready(&replies);
     publication_entered.recv_timeout(TIMEOUT).unwrap();
+    assert!(matches!(
+        replies.try_recv().unwrap(),
+        Reply::Published { revision: 1, result: Err(_), indicator: None }
+    ));
     assert!(matches!(replies.try_recv(), Err(mpsc::TryRecvError::Empty)));
     assert!(matches!(
         removal_entered.try_recv(),

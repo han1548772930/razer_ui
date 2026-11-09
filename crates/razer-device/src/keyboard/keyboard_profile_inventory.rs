@@ -26,6 +26,14 @@ fn analog_v3(product_id: u32) -> bool {
     )
 }
 
+fn has_mapping_hash(product_id: u32) -> bool {
+    !matches!(product_id, 691 | 721 | 739 | 752)
+}
+
+fn skips_first_metadata(product_id: u32) -> bool {
+    !has_mapping_hash(product_id) && !analog_v3(product_id)
+}
+
 fn validate_capability(cap: &DeviceReadCapability) -> anyhow::Result<()> {
     ensure!(
         supports(cap.product_id) && keyboard_metadata::capability(cap.product_id).is_some(),
@@ -63,9 +71,11 @@ pub enum MappingHashObservation {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ProfileMetadataObservation {
-    /// The ordinary engine skips metadata for its first returned list entry.
-    /// Its ID is observed; its name, owner and GUID remain unobserved.
+    /// The older non-AnalogV3 engine skips its first returned list entry.
     SourceSkippedFirstSlot,
+    Failed {
+        message: String,
+    },
     Observed {
         identity: ProfileIdentity,
         mapping_hash: MappingHashObservation,
@@ -112,15 +122,25 @@ pub fn validate_slots(product_id: u32, slots: &[ProfileSlot]) -> anyhow::Result<
         );
         match &slot.metadata {
             ProfileMetadataObservation::SourceSkippedFirstSlot => ensure!(
-                index == 0 && !analog_v3(product_id),
+                index == 0 && skips_first_metadata(product_id),
                 "Keyboard profile metadata was skipped outside its source branch"
             ),
+            ProfileMetadataObservation::Failed { message } => {
+                ensure!(
+                    !message.is_empty(),
+                    "Keyboard metadata failure has no diagnostic"
+                );
+                ensure!(
+                    index != 0 || !skips_first_metadata(product_id),
+                    "Keyboard skipped metadata cannot have a read failure"
+                );
+            }
             ProfileMetadataObservation::Observed {
                 identity,
                 mapping_hash,
             } => {
                 ensure!(
-                    index != 0 || analog_v3(product_id),
+                    index != 0 || !skips_first_metadata(product_id),
                     "Keyboard first-slot metadata is not observed by this source"
                 );
                 ensure!(
@@ -137,7 +157,7 @@ pub fn validate_slots(product_id: u32, slots: &[ProfileSlot]) -> anyhow::Result<
                 );
                 ensure!(
                     matches!(mapping_hash, MappingHashObservation::Observed(_))
-                        == matches!(product_id, 747 | 756),
+                        == has_mapping_hash(product_id),
                     "Keyboard mapping hash observation differs from its metadata schema"
                 );
             }
@@ -234,17 +254,26 @@ pub fn decode_identity(bytes: &[u8]) -> anyhow::Result<ProfileIdentity> {
     })
 }
 
-/// Shared with the latest keyboard restore inventory. The ten attempts and
-/// doubled IN timing belong to `getProfileNameStructure`, not a generic retry
-/// policy. Cancellation never enters another attempt.
+/// Shared with the latest keyboard restore inventory. The retry and extended
+/// IN timing belong to `getProfileNameStructure`. Its newer non-AnalogV3 first
+/// slot breaks after one attempt, including an unrecognized GUID.
 pub(crate) fn read_raw_metadata_hid(
     device: &dyn FeatureTransport,
     cap: &DeviceReadCapability,
     slot_id: u8,
+    first_slot_once: bool,
     next: &mut impl FnMut() -> anyhow::Result<u8>,
     validate: &impl Fn() -> anyhow::Result<()>,
 ) -> anyhow::Result<[u8; 250]> {
     ensure!(slot_id > 0, "Keyboard metadata slot ID is zero");
+    let validate = &|| {
+        validate().map_err(|error| {
+            crate::backend::interrupt_exchange(
+                error,
+                crate::backend::ExchangeInterruption::Validation,
+            )
+        })
+    };
     let mut extended = cap.clone();
     extended.sleep_between_out_in_ms = extended
         .sleep_between_out_in_ms
@@ -254,7 +283,9 @@ pub(crate) fn read_raw_metadata_hid(
         .sleep_between_in_ms
         .max(extended.sleep_between_out_in_ms);
     let mut last_error = None;
-    for attempt in 0..10 {
+    let mut last_observed = None;
+    let attempts = if first_slot_once { 1 } else { 10 };
+    for attempt in 0..attempts {
         validate()?;
         let mut bytes = Vec::with_capacity(250);
         for offset in (0u16..250).step_by(64) {
@@ -293,14 +324,18 @@ pub(crate) fn read_raw_metadata_hid(
         if bytes.len() == 250 {
             let bytes: [u8; 250] = bytes.try_into().expect("Complete metadata length");
             let guid = guid_text(bytes[..16].try_into()?);
-            if guid_status(&guid) == GuidStatus::Recognized || attempt == 9 {
+            if guid_status(&guid) == GuidStatus::Recognized || attempt + 1 == attempts {
                 validate()?;
                 return Ok(bytes);
             }
             // The source returns its final actual result even when the GUID
             // remains unknown. It must not turn into a local/default profile.
-            last_error = None;
+            last_observed = Some(bytes);
         }
+    }
+    if let Some(bytes) = last_observed {
+        validate()?;
+        return Ok(bytes);
     }
     Err(last_error.unwrap_or_else(|| anyhow::anyhow!("Keyboard metadata was not observed")))
         .context("Keyboard profile metadata reads exhausted")
@@ -338,17 +373,30 @@ pub fn read_hid(
     );
     let mut slots = Vec::with_capacity(ids.len());
     for (index, &slot_id) in ids.iter().enumerate() {
-        let metadata = if index == 0 && !analog_v3(cap.product_id) {
+        let metadata = if index == 0 && skips_first_metadata(cap.product_id) {
             ProfileMetadataObservation::SourceSkippedFirstSlot
         } else {
-            let bytes = read_raw_metadata_hid(device, cap, slot_id, &mut next, validate)?;
-            ProfileMetadataObservation::Observed {
-                identity: decode_identity(&bytes)?,
-                mapping_hash: if matches!(cap.product_id, 747 | 756) {
-                    MappingHashObservation::Observed(bytes[244..250].try_into()?)
-                } else {
-                    MappingHashObservation::Unobserved
+            let first_slot_once =
+                index == 0 && has_mapping_hash(cap.product_id) && !analog_v3(cap.product_id);
+            match read_raw_metadata_hid(device, cap, slot_id, first_slot_once, &mut next, validate)
+            {
+                Ok(bytes) => ProfileMetadataObservation::Observed {
+                    identity: decode_identity(&bytes)?,
+                    mapping_hash: if has_mapping_hash(cap.product_id) {
+                        MappingHashObservation::Observed(bytes[244..250].try_into()?)
+                    } else {
+                        MappingHashObservation::Unobserved
+                    },
                 },
+                Err(error) => {
+                    if crate::backend::exchange_interrupted(&error) {
+                        return Err(error);
+                    }
+                    validate()?;
+                    ProfileMetadataObservation::Failed {
+                        message: format!("{error:#}"),
+                    }
+                }
             }
         };
         slots.push(ProfileSlot { slot_id, metadata });

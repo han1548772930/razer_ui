@@ -15,6 +15,9 @@ use std::{
     time::{Duration, Instant},
 };
 
+#[path = "connected_devices/keyboard_onboard.rs"]
+mod keyboard_onboard;
+
 // Current PID679 BUTTON_LIST -> NormalMode firmware IDs for observed layout 1.
 // The complete current-source inventory is retained by the frontend read audit.
 const KEYBOARD_679_LAYOUT_1_KEYS: &[u8] = &[
@@ -788,6 +791,7 @@ fn query_product(
     let mut readings = Vec::new();
     let mut device_online = true;
     let mut unperformed = Vec::new();
+    let mut keyboard_layout = None;
     if product_id == dpi::PRODUCT_ID {
         let online = if u32::from(node.product_id) != product_id {
             let online = dpi::verify_wireless_online_for(product_id, &device, next()?, &deadline);
@@ -825,6 +829,7 @@ fn query_product(
             .context("Current keyboard metadata capability is absent")?;
         let actual = keyboard_metadata::read(&device, metadata_cap, &mut next, &deadline);
         let layout = actual.as_ref().ok().map(|value| value.keyboard_layout);
+        keyboard_layout = layout;
         readings.push(json!({"query":"keyboard_metadata", "value":actual.as_ref().ok(), "error":actual.as_ref().err().map(|error| format!("{error:#}"))}));
         let actual = keyboard_gaming_mode::read(&device, product_id, next()?, &deadline);
         readings.push(json!({"query":"keyboard_gaming_indicator", "value":actual.as_ref().ok(), "error":actual.as_ref().err().map(|error| format!("{error:#}"))}));
@@ -905,6 +910,14 @@ fn query_product(
             &deadline,
         );
         readings.push(json!({"query":command.name.name(), "value":actual.as_ref().ok(), "error":actual.as_ref().err().map(|error| format!("{error:#}"))}));
+    }
+    if product_id == razer_device::keyboard_onboard_profiles::PRODUCT_ID {
+        readings.push(keyboard_onboard::read(
+            &device,
+            &cap,
+            keyboard_layout,
+            &mut next,
+        ));
     }
     let events = device.events.take();
     let metadata = device.metadata();

@@ -7,6 +7,7 @@ use std::time::Duration;
 
 use super::mapping_callbacks_current as callbacks;
 use callbacks::{Callback, ClutchRelease, Connection, DpiRuntime};
+use crate::features::ReceiverMappingPublication;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct Publication {
@@ -15,9 +16,18 @@ struct Publication {
     inter_otfs: bool,
 }
 
+impl EventEmitter<ReceiverMappingPublication> for MouseProductWorkspace {}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+struct SharedOwner {
+    id: uuid::Uuid,
+    physical_product: u32,
+}
+
 #[derive(Default)]
 pub(super) struct State {
     owner: Option<Session>,
+    shared_owner: Option<SharedOwner>,
     pump: Option<Task<()>>,
     connection: Option<Connection>,
     epoch: u64,
@@ -52,6 +62,7 @@ impl State {
         // Session cancellation is nonblocking. The worker keeps its target
         // lifecycle lock until restoration, removal and transport release end.
         self.owner = None;
+        self.shared_owner = None;
         self.pump = None;
         self.epoch = self.epoch.wrapping_add(1);
         self.connection = None;
@@ -153,6 +164,73 @@ impl State {
 }
 
 impl MouseProductWorkspace {
+    pub fn shared_mapping_matches(&self, physical_product: u32, container: &str, generation: u64) -> bool {
+        self.receiver_mapping.shared_owner.is_some_and(|owner| owner.physical_product == physical_product)
+            && self.receiver_mapping.connection.as_ref().is_some_and(|connection| {
+                connection.container == container && connection.generation == generation
+            })
+    }
+
+    pub fn shared_mapping_connection_matches(&self, container: &str, generation: u64) -> bool {
+        self.receiver_mapping.shared_owner.is_some()
+            && self.receiver_mapping.connection.as_ref().is_some_and(|connection| {
+                connection.container == container && connection.generation == generation
+            })
+    }
+
+    pub fn configure_shared_mapping(&mut self, owner: uuid::Uuid, physical_product: u32, container: String, generation: u64) {
+        let shared = SharedOwner { id: owner, physical_product };
+        if self.receiver_mapping.shared_owner != Some(shared)
+            || !self.shared_mapping_matches(physical_product, &container, generation)
+        {
+            self.receiver_mapping.stop();
+            self.mouse_otfs.reset();
+            let connection = Connection { container, generation };
+            self.current_dpi.observe_mapping_connection(Some(connection.clone()));
+            self.receiver_mapping.connection = Some(connection);
+            self.receiver_mapping.shared_owner = Some(shared);
+            self.receiver_mapping.error = None;
+        }
+    }
+
+    pub fn observe_shared_mapping_publication(&mut self, owner: uuid::Uuid, revision: u64, result: Result<(), String>, cx: &mut Context<Self>) -> bool {
+        if !self.receiver_mapping.shared_owner.is_some_and(|shared| shared.id == owner) {
+            return false;
+        }
+        let otfs = (revision == self.receiver_mapping.revision).then(|| self.receiver_mapping.otfs_request.take()).flatten();
+        let scope = self.mouse_polling_scope(cx);
+        let otfs_result = result.clone();
+        self.receiver_mapping.acknowledge(revision, result, scope);
+        if let Some(id) = otfs {
+            let current = self.receiver_mapping.published.is_some_and(|publication| publication.revision == revision && Some(publication.scope) == scope);
+            self.finish_mouse_otfs_publication(id, otfs_result.and_then(|()| {
+                if current { Ok(()) } else { Err("OTFS publication scope changed".into()) }
+            }), cx);
+        }
+        self.receiver_mapping_editing();
+        cx.notify();
+        true
+    }
+
+    pub fn observe_shared_mapping_event(&mut self, owner: uuid::Uuid, event: Value, cx: &mut Context<Self>) -> bool {
+        if !self.receiver_mapping.shared_owner.is_some_and(|shared| shared.id == owner)
+            || !self.receiver_mapping.accepts_events(self.receiver_mapping.epoch, self.receiver_mapping.published, self.mouse_polling_scope(cx))
+            || !self.receiver_mapping_matches_profile()
+        { return false; }
+        self.receiver_mapping_event(event, cx);
+        true
+    }
+
+    pub fn release_shared_mapping(&mut self, owner: uuid::Uuid, error: Option<String>, cx: &mut Context<Self>) {
+        if self.receiver_mapping.shared_owner.is_some_and(|shared| shared.id == owner) {
+            self.receiver_mapping.stop();
+            self.mouse_otfs.stop_pending();
+            self.receiver_mapping.error = error;
+            self.dpi_editing_observed = None;
+            cx.notify();
+        }
+    }
+
     pub fn set_receiver_mapping_connection_generation(
         &mut self,
         container: Option<String>,
@@ -234,6 +312,10 @@ impl MouseProductWorkspace {
         }
         self.receiver_mapping.document = Some(document);
         self.receiver_mapping.profile_guid = Some(profile);
+        if self.receiver_mapping.shared_owner.is_some() {
+            self.publish_receiver_mapping_current(scope, cx);
+            return;
+        }
         if self.mouse_otfs.is_pending() && self.receiver_mapping.owner.is_some() {
             return;
         }
@@ -342,6 +424,10 @@ impl MouseProductWorkspace {
             scope,
             inter_otfs: temporary,
         });
+        if let Some(owner) = self.receiver_mapping.shared_owner {
+            cx.emit(ReceiverMappingPublication::new(owner.id, self.spec.product_id, revision, document));
+            return;
+        }
         if let Some(owner) = &self.receiver_mapping.owner {
             if let Err(error) = owner.publish(revision, document, None) {
                 self.receiver_mapping_failure(error, cx);
@@ -373,7 +459,9 @@ impl MouseProductWorkspace {
         self.receiver_mapping.dpi.inter_otfs_requested = enabled;
         self.receiver_mapping.otfs_request = Some(request.id());
         self.publish_receiver_mapping_current(scope, cx);
-        if self.receiver_mapping.requested.is_none() || self.receiver_mapping.owner.is_none() {
+        if self.receiver_mapping.requested.is_none()
+            || self.receiver_mapping.owner.is_none() && self.receiver_mapping.shared_owner.is_none()
+        {
             self.receiver_mapping.otfs_request = None;
             self.finish_mouse_otfs_publication(
                 request.id(),
@@ -448,6 +536,7 @@ impl MouseProductWorkspace {
             Ok(callback) => {
                 // MW60168 R retains held interdevice OTFS until the target is ready.
                 if self.receiver_mapping.owner.is_none()
+                    && self.receiver_mapping.shared_owner.is_none()
                     && !matches!(callback, Callback::Otfs { .. })
                 {
                     return false;

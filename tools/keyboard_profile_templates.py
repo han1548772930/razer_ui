@@ -96,6 +96,25 @@ class Module:
                             raise ValueError("Keyboard profile export getter has non-return behavior")
                         body = statements[0].named_children[0]
                     exports[self.key(key)] = body
+        for statement in self.body.named_children:
+            if statement.type != "expression_statement":
+                continue
+            pending = list(statement.named_children)
+            while pending:
+                node = pending.pop(0)
+                if node.type in {"sequence_expression", "parenthesized_expression"}:
+                    pending[0:0] = node.named_children
+                    continue
+                if node.type != "assignment_expression":
+                    continue
+                target = node.child_by_field_name("left")
+                if (target.type != "member_expression"
+                        or target.child_by_field_name("object").text != self.export_object):
+                    continue
+                key = self.key(target.child_by_field_name("property"))
+                if key in self.exports:
+                    raise ValueError("Keyboard profile export is assigned more than once: " + key)
+                self.exports[key] = node.child_by_field_name("right")
 
     def key(self, node):
         if node.type == "string":
@@ -143,6 +162,55 @@ class Module:
         if len(matches) != 1:
             raise ValueError("Unresolved keyboard profile enum: " + name)
         return matches[0]
+
+    def member_value(self, node, path, seen=()):
+        """Select source fields without evaluating unrelated sibling expressions."""
+        if not path:
+            return self.value(node, seen)
+        if node.type == "identifier":
+            name = node.text.decode()
+            if name in seen or name not in self.bindings:
+                raise ValueError("Unresolved/cyclic keyboard profile binding: " + name)
+            target = self.bindings[name]
+            if target is not None and name not in self.namespaces:
+                return self.member_value(target, path, (*seen, name))
+        if node.type in {"member_expression", "subscript_expression"}:
+            key = (self.key(node.child_by_field_name("property")) if node.type == "member_expression"
+                   else self.value(node.child_by_field_name("index"), seen))
+            return self.member_value(node.child_by_field_name("object"), [key, *path], seen)
+        if node.type == "object":
+            for child in reversed(node.named_children):
+                if child.type == "comment":
+                    continue
+                if child.type == "pair":
+                    if self.key(child.child_by_field_name("key")) == path[0]:
+                        return self.member_value(child.child_by_field_name("value"), path[1:], seen)
+                elif child.type == "spread_element":
+                    try:
+                        return self.member_value(child.named_children[0], path, seen)
+                    except KeyError:
+                        pass
+                else:
+                    raise ValueError("Keyboard profile object has an unresolved member")
+            raise KeyError(path[0])
+        if node.type == "call_expression" and node.child_by_field_name("function").text == b"Object.assign":
+            args = node.child_by_field_name("arguments").named_children
+            if not args or args[0].type != "object" or args[0].named_children:
+                raise ValueError("Keyboard profile Object.assign mutates an unresolved target")
+            for argument in reversed(args[1:]):
+                try:
+                    return self.member_value(argument, path, seen)
+                except KeyError:
+                    pass
+            raise KeyError(path[0])
+        value = self.value(node, seen)
+        if isinstance(value, Module):
+            return value.member_value(value.exports[path[0]], path[1:])
+        if isinstance(value, Namespace):
+            return value.module.member_value(value.exports[path[0]], path[1:])
+        for key in path:
+            value = value[key]
+        return value
 
     def value(self, node, seen=(), *, profile=False):
         if node is None:
@@ -221,16 +289,9 @@ class Module:
                 values[key] = "" if profile and key in {"guid", "name"} else self.value(child.child_by_field_name("value"), seen)
             return values
         if kind in {"member_expression", "subscript_expression"}:
-            value = self.value(node.child_by_field_name("object"), seen)
             key = (self.key(node.child_by_field_name("property")) if kind == "member_expression"
                    else self.value(node.child_by_field_name("index"), seen))
-            if isinstance(value, Module):
-                if key not in value.exports:
-                    raise ValueError("Keyboard profile export is absent: " + str(key))
-                return value.value(value.exports[key])
-            if isinstance(value, Namespace):
-                return value.module.value(value.exports[key])
-            return value[key]
+            return self.member_value(node.child_by_field_name("object"), [key], seen)
         if kind == "call_expression":
             function = node.child_by_field_name("function")
             args = node.child_by_field_name("arguments").named_children

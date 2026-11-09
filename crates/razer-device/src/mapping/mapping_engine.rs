@@ -1273,9 +1273,15 @@ impl MappingEngine {
                 Ok((down, up))
             }
             "profileNavigationGroup" => {
-                let g = r.get(output).context("Missing profile navigation group")?;
-                let assignment = string(g, "profileNavigationAssignment")?;
-                let up = if assignment == "Specific" {
+                let g = r
+                    .get(output)
+                    .filter(|group| group.is_object())
+                    .context("Missing profile navigation group")?;
+                // The current handler reads this property directly. In the
+                // PID112 defaults only the differently-cased property exists;
+                // JSON publication therefore omits name rather than repairing it.
+                let assignment = g.get("profileNavigationAssignment");
+                let up = if assignment == Some(&json!("Specific")) {
                     let mut up = json!({"type":"switchProfile"});
                     copy_field(&mut up, "guid", g, "guid");
                     if truthy(g.get("lightpacId")) {
@@ -1283,7 +1289,9 @@ impl MappingEngine {
                     }
                     up
                 } else {
-                    json!({"type":"navigateProfile","name":assignment})
+                    let mut up = json!({"type":"navigateProfile"});
+                    copy_field(&mut up, "name", g, "profileNavigationAssignment");
+                    up
                 };
                 Ok((json!({"type":"disable"}), up))
             }

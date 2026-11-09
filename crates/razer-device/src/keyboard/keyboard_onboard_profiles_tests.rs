@@ -449,7 +449,7 @@ fn keyboard_onboard_profiles_detail_consumer_skips_known_guids_and_reads_size_co
                     name: "device profile".into(),
                     owner: "owner".into(),
                 },
-                mapping_hash: crate::keyboard_profile_inventory::MappingHashObservation::Unobserved,
+                mapping_hash: crate::keyboard_profile_inventory::MappingHashObservation::Observed([0; 6]),
             },
         }],
     };

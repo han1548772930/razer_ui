@@ -223,16 +223,16 @@ fn compile(product: u32, document: MacroDocument) -> anyhow::Result<MacroWriteRe
                 if ms == 0. {
                     continue;
                 }
-                let ms = ms.trunc().rem_euclid(4294967296.) as u32;
-                let count = if ms < 256 {
+                let count = if ms < 256. {
                     1
-                } else if ms < 65536 {
+                } else if ms < 65536. {
                     2
-                } else if ms < 16777216 {
+                } else if ms < 16777216. {
                     3
                 } else {
                     4
                 };
+                let ms = ms.trunc().rem_euclid(4294967296.) as u32;
                 data.push(16 + count as u8);
                 data.extend_from_slice(&ms.to_be_bytes()[4 - count..]);
             }
@@ -315,5 +315,32 @@ mod tests {
         assert!(prepare_synchronization(746, &[], &[document], vec![]).is_err());
         let context = prepare_synchronization(746, &[], &[json!({"guid":"text","name":"text","macroEvents":[{"Type":4}],"appEngine":{"mouseMoveType":"none","events":[{"type":"clipboard"}]}})], vec![]).unwrap();
         assert!(context.macros.is_empty());
+    }
+
+    #[test]
+    fn worker_delay_width_uses_the_source_number_before_wire_truncation() {
+        for product in [740, 746] {
+            let document = json!({
+                "guid":"11223344-5566-7788-99aa-bbccddeeff12", "name":"delay boundaries",
+                "macroEvents":[], "appEngine":{"mouseMoveType":"none","events":[
+                    {"type":"delay","ms":255.5},
+                    {"type":"delay","ms":256.0},
+                    {"type":"delay","ms":16777215.5},
+                    {"type":"delay","ms":4294967295.0},
+                    {"type":"delay","ms":4294967296.0},
+                    {"type":"delay","ms":4294967552.0}
+                ]}
+            });
+            let result = prepare_synchronization(product, &[], &[document], vec![7]).unwrap();
+            assert_eq!(result.macros[0].num_items, 6);
+            assert_eq!(
+                result.macros[0].data,
+                [
+                    17, 255, 18, 1, 0, 19, 255, 255, 255, 20, 255, 255, 255, 255, 20, 0, 0, 0, 0,
+                    20, 0, 0, 1, 0
+                ],
+                "PID{product}"
+            );
+        }
     }
 }

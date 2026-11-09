@@ -2,6 +2,26 @@
 
 use serde_json::Value;
 
+/// A saved logical document offered to its retained physical receiver owner.
+/// The owner reports the corresponding publication result before UI acceptance.
+#[derive(Clone)]
+pub struct ReceiverMappingPublication {
+    owner: uuid::Uuid,
+    product_id: u32,
+    revision: u64,
+    document: Value,
+}
+
+impl ReceiverMappingPublication {
+    pub(crate) fn new(owner: uuid::Uuid, product_id: u32, revision: u64, document: Value) -> Self {
+        Self { owner, product_id, revision, document }
+    }
+    pub fn owner(&self) -> uuid::Uuid { self.owner }
+    pub fn product_id(&self) -> u32 { self.product_id }
+    pub fn revision(&self) -> u64 { self.revision }
+    pub fn document(&self) -> &Value { &self.document }
+}
+
 #[derive(Clone)]
 pub struct MappingCallbackRequested {
     raw: Value,

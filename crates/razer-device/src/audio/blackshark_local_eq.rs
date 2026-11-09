@@ -32,6 +32,7 @@ pub enum Job {
     Observe {
         presets: Vec<Preset>,
         disable_thx: bool,
+        notification: Notification,
     },
     ReadSlots {
         indices: Vec<u8>,
@@ -48,6 +49,33 @@ pub enum Job {
 pub enum Notification {
     Selected { index: u8 },
     Bands { index: u8, values: [i16; 10] },
+}
+
+/// Apply only fields carried by the hardware report to an earlier reading.
+/// The source's saved slot document may contain unconfirmed user edits.
+pub fn observe_notification(presets: &mut [Preset], event: &Notification) -> Result<()> {
+    validate(presets)?;
+    let index = match event {
+        Notification::Selected { index } | Notification::Bands { index, .. } => *index,
+    };
+    ensure!(
+        presets.iter().any(|slot| slot.index == index),
+        "Hardware EQ slot is absent"
+    );
+    if let Notification::Bands { values, .. } = event {
+        for &value in values {
+            crate::thx_blackshark_firmware::encode_blackshark_band(value)?;
+        }
+    }
+    for preset in presets {
+        preset.current_active = preset.index == index;
+        if preset.current_active {
+            if let Notification::Bands { values, .. } = event {
+                preset.band_values = *values;
+            }
+        }
+    }
+    Ok(())
 }
 
 pub fn parse_notification(raw: &[u8]) -> Result<Option<Notification>> {
@@ -82,9 +110,49 @@ pub fn parse_notification(raw: &[u8]) -> Result<Option<Notification>> {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Progress {
     pub observed: Option<Vec<Preset>>,
+    #[serde(default)]
+    pub notification: Option<Notification>,
     pub commands: Vec<BlackSharkFirmwareCommandProgress>,
     pub completed: bool,
     pub error: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub enum Publication {
+    Read(Vec<Preset>),
+    Draft(Vec<Preset>),
+    Notification {
+        slots: Vec<Preset>,
+        event: Notification,
+    },
+}
+
+impl Publication {
+    pub fn slots(&self) -> &[Preset] {
+        match self {
+            Self::Read(slots) | Self::Draft(slots) | Self::Notification { slots, .. } => slots,
+        }
+    }
+}
+
+impl Progress {
+    pub fn publication(&self, job: Option<&Job>) -> Option<Publication> {
+        if let Some(slots) = &self.observed {
+            return Some(Publication::Read(slots.clone()));
+        }
+        match job? {
+            Job::Write { presets, .. } => Some(Publication::Draft(presets.clone())),
+            Job::Observe { presets, .. } if self.completed => {
+                self.notification
+                    .as_ref()
+                    .map(|event| Publication::Notification {
+                        slots: presets.clone(),
+                        event: event.clone(),
+                    })
+            }
+            _ => None,
+        }
+    }
 }
 
 pub fn validate(presets: &[Preset]) -> Result<()> {
@@ -110,24 +178,8 @@ pub fn prepare(request: &Request, current: &[Preset]) -> Result<Job> {
     match request {
         Request::Read => unreachable!(),
         Request::Hardware(event) => {
-            let (index, bands) = match event {
-                Notification::Selected { index } => (*index, None),
-                Notification::Bands { index, values } => (*index, Some(*values)),
-            };
-            ensure!(
-                current.iter().any(|preset| preset.index == index),
-                "Hardware EQ slot is absent"
-            );
             let mut presets = current.to_vec();
-            for preset in &mut presets {
-                preset.current_active = preset.index == index;
-                if preset.current_active {
-                    if let Some(bands) = bands {
-                        preset.band_values = bands;
-                    }
-                }
-            }
-            validate(&presets)?;
+            observe_notification(&mut presets, event)?;
             let disable_thx = matches!(event, Notification::Selected { .. })
                 && presets
                     .iter()
@@ -135,6 +187,7 @@ pub fn prepare(request: &Request, current: &[Preset]) -> Result<Job> {
             Ok(Job::Observe {
                 presets,
                 disable_thx,
+                notification: event.clone(),
             })
         }
         Request::Edit(edit) => {
@@ -197,6 +250,7 @@ pub fn execute(
 ) -> Progress {
     let mut progress = Progress {
         observed: None,
+        notification: None,
         commands: vec![],
         completed: false,
         error: None,
@@ -214,10 +268,14 @@ pub fn execute(
             data.context("Local EQ command has no response")
         };
         match job {
-            Job::Observe { presets, .. } => {
+            Job::Observe {
+                presets,
+                notification,
+                ..
+            } => {
                 validate(presets)?;
                 validate_scope()?;
-                progress.observed = Some(presets.clone());
+                progress.notification = Some(notification.clone());
             }
             Job::Read | Job::ReadSlots { .. } => {
                 let indices = match job {
@@ -319,6 +377,7 @@ mod tests {
             let Job::Observe {
                 presets,
                 disable_thx,
+                ..
             } = &job
             else {
                 panic!()
@@ -331,6 +390,15 @@ mod tests {
                 || Ok(()),
             );
             assert!(progress.completed && progress.commands.is_empty());
+            assert!(progress.observed.is_none());
+            assert_eq!(
+                progress.notification,
+                Some(Notification::Selected { index: 4 })
+            );
+            assert!(matches!(
+                progress.publication(Some(&job)),
+                Some(Publication::Notification { .. })
+            ));
             raw[10] = 21;
             raw[13] = 2;
             raw[14..24].copy_from_slice(&[134, 133, 132, 131, 130, 129, 0, 1, 2, 6]);
@@ -338,6 +406,7 @@ mod tests {
             let Job::Observe {
                 presets,
                 disable_thx,
+                ..
             } = prepare(&Request::Hardware(event), &current).unwrap()
             else {
                 panic!()
@@ -375,6 +444,8 @@ mod tests {
                 );
                 assert!(!progress.completed);
                 assert!(progress.observed.is_none());
+                assert!(progress.notification.is_none());
+                assert!(progress.publication(Some(&job)).is_none());
                 assert!(progress.commands.is_empty());
                 assert!(
                     progress
@@ -383,6 +454,47 @@ mod tests {
                         .contains("connection generation changed")
                 );
             }
+        }
+    }
+
+    #[test]
+    fn local_eq_notification_never_promotes_saved_edits_to_measurements() {
+        for pid in [1398, 1401, 2638, 2641, 4124, 4126] {
+            let mut observed = default_blackshark_local_eq_presets(pid).unwrap();
+            for slot in &mut observed {
+                slot.band_values = [-5; 10];
+            }
+            let mut saved = observed.clone();
+            saved[2].band_values = [6; 10];
+            saved[2].cloud_equalizer_id = 250;
+            let event = Notification::Selected { index: 2 };
+            let job = prepare(&Request::Hardware(event.clone()), &saved).unwrap();
+            let progress = execute(
+                &job,
+                |_| panic!("notification writes no firmware"),
+                || Ok(()),
+            );
+            assert!(progress.observed.is_none());
+            assert_eq!(progress.notification, Some(event.clone()));
+            observe_notification(&mut observed, &event).unwrap();
+            assert_eq!(observed[2].band_values, [-5; 10]);
+            assert_ne!(observed[2].cloud_equalizer_id, 250);
+            assert!(observed[2].current_active);
+            observe_notification(
+                &mut observed,
+                &Notification::Bands {
+                    index: 2,
+                    values: [-3; 10],
+                },
+            )
+            .unwrap();
+            assert_eq!(observed[2].band_values, [-3; 10]);
+            assert_eq!(observed[1].band_values, [-5; 10]);
+            let before = observed.clone();
+            assert!(
+                observe_notification(&mut observed, &Notification::Selected { index: 9 }).is_err()
+            );
+            assert_eq!(observed, before);
         }
     }
 

@@ -267,7 +267,7 @@ mod tests {
     #[gpui_kit::test]
     fn repeated_enable_restores_snapshot_and_failed_save_preserves_it(cx: &mut TestAppContext) {
         cx.update(gpui_kit::init);
-        for pid in [70,89,104,115,140,145,148,158,161,178,185,190,192,194,196,222,224,229,239] {
+        for pid in [70,89,96,104,112,115,140,145,148,158,161,178,185,190,192,194,196,222,224,229,239] {
             let mut owner = None;
             let handle = cx.open_window(size(px(1600.), px(1000.)), |window, cx| {
                 let page = cx.new(|cx| MouseProductWorkspace::new(pid, window, cx));

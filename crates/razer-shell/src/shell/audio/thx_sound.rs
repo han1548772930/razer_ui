@@ -1443,17 +1443,16 @@ impl AppShell {
                                 }
                                 if let Some(eq) = &progress.local_eq {
                                     messages.extend(eq.error.clone());
-                                    let slots = eq.observed.as_ref().or_else(|| {
-                                        if let ThxSubmissionPlan::LocalEq { job: local_eq::Job::Write { presets, .. }, .. } = &progress.plan {
-                                            Some(presets)
-                                        } else { None }
-                                    });
-                                    if let Some(slots) = slots {
+                                    let job = match &progress.plan {
+                                        ThxSubmissionPlan::LocalEq { job, .. } => Some(job),
+                                        _ => None,
+                                    };
+                                    if let Some(publication) = eq.publication(job) {
                                         if let Some(observation) = workspace.read(cx).help_owner_observation_request(cx) {
                                             let device = workspace.read(cx).snapshot(cx);
                                             workspace.update(cx, |workspace, cx| {
                                                 workspace.observe_help_audio_sound(&device, &observation,
-                                                    "localEqSlots", json!({"slots":slots,"observed":eq.observed.is_some()}), window, cx);
+                                                    "localEqSlots", json!(publication), window, cx);
                                             });
                                         }
                                     } else if let Some(observation) = workspace.read(cx).help_owner_observation_request(cx) {
@@ -1464,7 +1463,8 @@ impl AppShell {
                                         });
                                     }
                                 }
-                                if matches!(&progress.plan, ThxSubmissionPlan::LocalEq {job:local_eq::Job::Observe {disable_thx:true,..},..}) {
+                                if progress.local_eq.as_ref().is_some_and(|eq|eq.completed && eq.notification.is_some())
+                                    && matches!(&progress.plan, ThxSubmissionPlan::LocalEq {job:local_eq::Job::Observe {disable_thx:true,..},..}) {
                                     if let Some(observation)=workspace.read(cx).help_owner_observation_request(cx) {
                                         let device=workspace.read(cx).snapshot(cx);
                                         workspace.update(cx,|workspace,cx| { workspace.observe_help_audio_sound(&device,&observation,

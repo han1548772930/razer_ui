@@ -68,6 +68,51 @@ pub(super) fn ordinary_mouse_owner(device: &Device) -> Option<String> {
     .then(|| device.device_container_id.clone())
 }
 
+impl SourceProductWorkspace {
+    pub fn receiver_mapping_serial(&self) -> Option<&str> {
+        (self.mapping_serial_generation == Some(self.mapping_connection_generation))
+            .then(|| self.mouse_profile_observed_serial.as_deref()).flatten()
+    }
+    pub fn configure_shared_mouse_mapping(&mut self, owner: uuid::Uuid, physical_product: u32, cx: &mut Context<Self>) {
+        if let FamilyBody::Mouse(body) = &self.body {
+            let body = body.clone();
+            let container = self.device.device_container_id.clone();
+            let generation = self.mapping_connection_generation;
+            body.update(cx, |body, _| body.configure_shared_mapping(owner, physical_product, container, generation));
+            match self.mapping_reconnect.document(&self.saved) {
+                Ok(Some(document)) => self.publish_saved_mapping(document, cx),
+                Ok(None) => {},
+                Err(error) => body.update(cx, |body, cx| body.release_shared_mapping(owner, Some(format!("{error:#}")), cx)),
+            }
+        }
+    }
+
+    pub(super) fn shared_mouse_mapping_current(&self, cx: &App) -> bool {
+        matches!(&self.body, FamilyBody::Mouse(body) if body.read(cx).shared_mapping_connection_matches(
+            &self.device.device_container_id, self.mapping_connection_generation))
+    }
+
+    pub fn observe_shared_mouse_mapping_publication(&mut self, owner: uuid::Uuid, revision: u64, result: Result<(), String>, cx: &mut Context<Self>) -> bool {
+        match &self.body {
+            FamilyBody::Mouse(body) => body.update(cx, |body, cx| body.observe_shared_mapping_publication(owner, revision, result, cx)),
+            _ => false,
+        }
+    }
+
+    pub fn observe_shared_mouse_mapping_event(&mut self, owner: uuid::Uuid, event: Value, cx: &mut Context<Self>) -> bool {
+        match &self.body {
+            FamilyBody::Mouse(body) => body.update(cx, |body, cx| body.observe_shared_mapping_event(owner, event, cx)),
+            _ => false,
+        }
+    }
+
+    pub fn release_shared_mouse_mapping(&mut self, owner: uuid::Uuid, error: Option<String>, cx: &mut Context<Self>) {
+        if let FamilyBody::Mouse(body) = &self.body {
+            body.update(cx, |body, cx| body.release_shared_mapping(owner, error, cx));
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -153,7 +198,7 @@ mod tests {
     #[::core::prelude::v1::test]
     fn current_mouse_batch_admits_only_its_own_observed_physical_product() {
         use razer_model::model::DeviceConnectionObservation;
-        for pid in [89,104,115,140,145,148,161,178,185,190,192,194,196,222,224,229,239] {
+        for pid in [89,96,104,112,115,140,145,148,161,178,185,190,192,194,196,222,224,229,239] {
             let mut device=razer_model::product_preview::registered_preview(pid).unwrap();
             device.serial_number="observed".into();
             device.device_container_id="current-container".into();

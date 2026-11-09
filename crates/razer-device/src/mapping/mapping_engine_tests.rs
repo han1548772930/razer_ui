@@ -451,6 +451,17 @@ fn macro_options_profile_release_and_source_disable_spelling_are_retained() {
         entries[1]["output"],
         json!({"type":"switchProfile","guid":"profile","lightpacId":"light"})
     );
+    r["profileNavigationGroup"] = json!({"ProfileNavigationAssignment":"CycleUp"});
+    let entries = engine.record(&r, &mut c).unwrap();
+    assert_eq!(entries[1]["output"], json!({"type":"navigateProfile"}));
+    r["profileNavigationGroup"] = json!({"profileNavigationAssignment":null});
+    let entries = engine.record(&r, &mut c).unwrap();
+    assert_eq!(
+        entries[1]["output"],
+        json!({"type":"navigateProfile","name":null})
+    );
+    r["profileNavigationGroup"] = Value::Null;
+    assert!(engine.record(&r, &mut c).is_err());
 }
 
 #[test]

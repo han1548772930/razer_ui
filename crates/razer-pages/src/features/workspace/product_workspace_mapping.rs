@@ -6,6 +6,24 @@ use crate::features::keyboard_products::{
 };
 
 impl ProductWorkspace {
+    pub fn receiver_mapping_serial(&self, cx: &App) -> Option<String> {
+        match &self.body {
+            Body::Source(body) => body.read(cx).receiver_mapping_serial().map(str::to_owned),
+            _ => None,
+        }
+    }
+    pub fn configure_shared_mouse_mapping(&mut self, owner: uuid::Uuid, physical_product: u32, cx: &mut Context<Self>) {
+        if let Body::Source(body) = &self.body { body.update(cx, |body,cx| body.configure_shared_mouse_mapping(owner, physical_product, cx)); }
+    }
+    pub fn observe_shared_mouse_mapping_publication(&mut self, owner: uuid::Uuid, revision: u64, result: Result<(), String>, cx: &mut Context<Self>) -> bool {
+        matches!(&self.body, Body::Source(body) if body.update(cx, |body,cx| body.observe_shared_mouse_mapping_publication(owner, revision, result, cx)))
+    }
+    pub fn observe_shared_mouse_mapping_event(&mut self, owner: uuid::Uuid, event: serde_json::Value, cx: &mut Context<Self>) -> bool {
+        matches!(&self.body, Body::Source(body) if body.update(cx, |body,cx| body.observe_shared_mouse_mapping_event(owner, event, cx)))
+    }
+    pub fn release_shared_mouse_mapping(&mut self, owner: uuid::Uuid, error: Option<String>, cx: &mut Context<Self>) {
+        if let Body::Source(body) = &self.body { body.update(cx, |body,cx| body.release_shared_mouse_mapping(owner, error, cx)); }
+    }
     pub fn accepts_mouse_otfs(&self, request: &crate::features::mouse_products::MouseOtfsRequested, cx: &App) -> bool {
         matches!(&self.body, Body::Source(body) if body.read(cx).accepts_mouse_otfs(request, cx))
     }

@@ -184,6 +184,10 @@ impl Owner {
     fn error(&self) -> Option<&str> {
         match &self.observation {
             Observation::Failed(message) => Some(message),
+            Observation::Ready { slots, .. } => slots.iter().find_map(|slot| match &slot.metadata {
+                razer_device::keyboard_profile_inventory::ProfileMetadataObservation::Failed { message } => Some(message.as_str()),
+                _ => None,
+            }),
             _ => None,
         }
     }

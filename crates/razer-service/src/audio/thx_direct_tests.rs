@@ -271,6 +271,7 @@ fn local_eq_cancelled_notification_does_not_enter_thx_side_effects() {
                         )
                         .unwrap(),
                     disable_thx: true,
+                    notification: Notification::Selected { index: 4 },
                 },
             },
             &mut controller,

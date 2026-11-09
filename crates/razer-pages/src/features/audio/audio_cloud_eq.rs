@@ -40,7 +40,6 @@ fn band_json(values: &[f32]) -> Value {
 fn preset_name(value: &Value) -> String {
     let name = &value["name"];
     name.get(razer_i18n::locale())
-        .or_else(|| name.get("en"))
         .and_then(Value::as_str)
         .unwrap_or_default()
         .to_string()
@@ -66,22 +65,32 @@ impl Render for EqDragPreview {
 }
 impl AudioProductWorkspace {
     pub(super) fn receive_local_eq_slots(&mut self, payload: Value) -> bool {
-        #[derive(Deserialize)]
-        struct Publication {
-            slots: Vec<razer_device::thx_blackshark_firmware::BlackSharkLocalEqPreset>,
-            observed: bool,
-        }
+        use razer_device::thx_submission::local_eq::Publication;
         let Ok(publication) = serde_json::from_value::<Publication>(payload) else {
             return false;
         };
-        if razer_device::thx_submission::local_eq::validate(&publication.slots).is_err() {
+        if razer_device::thx_submission::local_eq::validate(publication.slots()).is_err() {
             return false;
+        }
+        match &publication {
+            Publication::Read(slots) => self.sound.eq_observed_slots = Some(slots.clone()),
+            Publication::Notification { event, .. } => {
+                let Some(observed) = self.sound.eq_observed_slots.as_mut() else {
+                    return false;
+                };
+                if razer_device::thx_submission::local_eq::observe_notification(observed, event)
+                    .is_err()
+                {
+                    return false;
+                }
+            }
+            Publication::Draft(_) => {}
         }
         let library = list(self.cloud(), "availableEsportsPresets");
         let mut enabled = Vec::new();
         let mut disabled = Vec::new();
         let mut selected = Value::Null;
-        for slot in &publication.slots {
+        for slot in publication.slots() {
             let source = library
                 .iter()
                 .find(|row| row["equalizer_id"] == json!(slot.cloud_equalizer_id));
@@ -105,7 +114,7 @@ impl AudioProductWorkspace {
             entry["position"] = json!(slot.index);
             entry["isEnabled"] = json!(slot.enable_state);
             entry["isActive"] = json!(slot.current_active);
-            if slot.current_active {
+            if slot.current_active && selected.is_null() {
                 selected = json!(slot.cloud_equalizer_id);
             }
             if slot.enable_state {
@@ -119,7 +128,7 @@ impl AudioProductWorkspace {
         cloud["disabledPresets"] = json!(disabled);
         cloud["selectedPreset"] = selected;
         cloud["bandValues"] = publication
-            .slots
+            .slots()
             .iter()
             .find(|slot| slot.current_active)
             .map(|slot| json!(slot.band_values))
@@ -128,7 +137,7 @@ impl AudioProductWorkspace {
         self.sound.eq_local_enabled = None;
         self.sound.eq_band_data = None;
         self.sound.eq_disable_reset = None;
-        self.sound.apps_cloud_observed |= publication.observed;
+        self.sound.apps_cloud_observed |= matches!(publication, Publication::Read(_));
         true
     }
     pub(super) fn clear_local_eq_observation(&mut self) {
@@ -144,12 +153,17 @@ impl AudioProductWorkspace {
         self.sound.edit_eq_changed = false;
         self.sound.eq_remove = None;
         self.sound.eq_reset = false;
+        self.sound.eq_reset_available = None;
+        self.sound.eq_search_open = false;
+        self.sound.eq_search_subscription = None;
+        self.sound.eq_search = None;
         self.sound.eq_drag = None;
         self.sound.eq_preview = None;
         self.sound.eq_local_enabled = None;
         self.sound.eq_band_data = None;
         self.sound.eq_disable_reset = None;
         self.sound.apps_cloud_observed = false;
+        self.sound.eq_observed_slots = None;
     }
     fn cloud(&self) -> &Value {
         &self.draft["sound"]["cloudEQ"]
@@ -367,17 +381,111 @@ impl AudioProductWorkspace {
         self.sound.edit_eq_changed = false;
         self.sound.eq_remove = None;
         self.sound.eq_reset = false;
+        self.sound.eq_reset_available = self.cloud_reset_available();
         if self.sound.eq_search.is_none() {
             let input = cx.new(|cx| InputState::new(window, cx));
-            self.subscriptions
-                .push(cx.subscribe(&input, |_, _, event, cx| {
-                    if matches!(event, InputEvent::Change) {
-                        cx.notify();
-                    }
-                }));
+            self.sound.eq_search_subscription = Some(cx.subscribe(&input, |_, _, event, cx| {
+                if matches!(event, InputEvent::Change) {
+                    cx.notify();
+                }
+            }));
             self.sound.eq_search = Some(input);
         }
         cx.notify();
+    }
+    fn close_cloud_search(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let changed = self.sound.eq_search_open
+            || self
+                .sound
+                .eq_search
+                .as_ref()
+                .is_some_and(|input| !input.read(cx).value().is_empty());
+        self.sound.eq_search_open = false;
+        if changed {
+            if let Some(input) = &self.sound.eq_search {
+                input.update(cx, |input, cx| input.set_value("", window, cx));
+            }
+            cx.notify();
+        }
+    }
+    fn close_cloud_editor(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.sound.edit_eq_shown = false;
+        self.sound.edit_eq_changed = false;
+        self.sound.eq_remove = None;
+        self.sound.eq_reset = false;
+        self.sound.eq_reset_available = None;
+        self.close_cloud_search(window, cx);
+        cx.notify();
+    }
+    fn cloud_reset_available(&self) -> Option<bool> {
+        #[derive(Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct Preset {
+            cloud_equalizer_id: u8,
+            current: Vec<f32>,
+        }
+        #[derive(Deserialize)]
+        struct Metadata {
+            equalizer_id: u8,
+            is_oobe: bool,
+            is_oobe_enabled: Option<bool>,
+            is_default: Option<bool>,
+            band_values: Vec<f32>,
+        }
+        let enabled: Vec<Preset> =
+            serde_json::from_value(self.cloud()["tempEnabledPresets"].clone()).ok()?;
+        let disabled: Vec<Preset> =
+            serde_json::from_value(self.cloud()["tempDisabledPresets"].clone()).ok()?;
+        let library: Vec<Metadata> =
+            serde_json::from_value(self.cloud()["availableEsportsPresets"].clone()).ok()?;
+        let selected: u8 = serde_json::from_value(self.cloud()["selectedPreset"].clone()).ok()?;
+        let oobe: Vec<_> = library.iter().filter(|preset| preset.is_oobe).collect();
+        let default = oobe.iter().find(|preset| preset.is_default == Some(true));
+        let mut off: Vec<_> = oobe
+            .iter()
+            .copied()
+            .filter(|preset| preset.is_oobe_enabled != Some(true))
+            .collect();
+        off.sort_by_key(|preset| preset.equalizer_id);
+        let ordered: Vec<_> = oobe
+            .iter()
+            .copied()
+            .filter(|preset| preset.is_oobe_enabled == Some(true))
+            .chain(off)
+            .collect();
+        let mut available = false;
+        let mut changed = false;
+        for (index, preset) in enabled.iter().chain(&disabled).enumerate() {
+            let Some(original) = ordered.get(index) else {
+                return Some(available);
+            };
+            for candidate in &ordered {
+                if preset.cloud_equalizer_id != original.equalizer_id {
+                    available = true;
+                    changed = true;
+                    break;
+                }
+                if let Some(current) = enabled
+                    .get(index)
+                    .filter(|entry| entry.cloud_equalizer_id == candidate.equalizer_id)
+                {
+                    if default.is_none()
+                        && (current.current != candidate.band_values || selected != 0)
+                    {
+                        available = true;
+                        changed = true;
+                        break;
+                    }
+                    available = default.is_some_and(|preset| {
+                        preset.equalizer_id != 0 && preset.equalizer_id != selected
+                    });
+                }
+                if changed {
+                    break;
+                }
+            }
+        }
+        Some(available)
     }
     fn publish_temp_cloud(
         &mut self,
@@ -479,11 +587,44 @@ impl AudioProductWorkspace {
         &mut self,
         drag: &EqDrag,
         target: Value,
+        stored: bool,
         after: bool,
         cx: &mut Context<Self>,
     ) {
         let mut enabled = list(self.cloud(), "tempEnabledPresets");
         let mut disabled = list(self.cloud(), "tempDisabledPresets");
+        if !stored {
+            if !drag.stored {
+                return;
+            }
+            let Some(index) = enabled.iter().position(|p| id(p) == id(&drag.preset)) else {
+                return;
+            };
+            if enabled[index]["isAllowSwapping"] != json!(true)
+                && enabled
+                    .iter()
+                    .filter(|p| p["isAllowSwapping"] != json!(true))
+                    .count()
+                    <= 1
+            {
+                return;
+            }
+            let preset = enabled.remove(index);
+            // Source F splices at -1 when the drop target is a library row
+            // that has not yet occupied a device slot.
+            let position = disabled
+                .iter()
+                .position(|p| id(p) == target)
+                .unwrap_or_else(|| disabled.len().saturating_sub(1));
+            disabled.insert(position, preset.clone());
+            let active = if self.cloud()["tempActivePreset"] == id(&preset) {
+                self.next_cloud_active(&preset, &enabled)
+            } else {
+                self.cloud()["tempActivePreset"].clone()
+            };
+            self.publish_temp_cloud(enabled, disabled, active, cx);
+            return;
+        }
         if !drag.stored && enabled.len() >= 9 {
             return;
         }
@@ -499,7 +640,7 @@ impl AudioProductWorkspace {
         let active = self.cloud()["tempActivePreset"].clone();
         self.publish_temp_cloud(enabled, disabled, active, cx);
     }
-    fn save_cloud_editor(&mut self, cx: &mut Context<Self>) {
+    fn save_cloud_editor(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if !self.sound.edit_eq_changed {
             return;
         }
@@ -523,8 +664,11 @@ impl AudioProductWorkspace {
                 .cloned()
                 .unwrap_or(Value::Null)
         };
-        for (preset, is_enabled) in enabled.iter_mut().map(|preset| (preset, true))
-            .chain(disabled.iter_mut().map(|preset| (preset, false))) {
+        for (preset, is_enabled) in enabled
+            .iter_mut()
+            .map(|preset| (preset, true))
+            .chain(disabled.iter_mut().map(|preset| (preset, false)))
+        {
             let values = if id(preset) == current_selected {
                 current_bands.clone()
             } else if is_enabled && id(preset) == selected {
@@ -590,11 +734,12 @@ impl AudioProductWorkspace {
         self.sound.eq_local_enabled = None;
         self.sound.eq_band_data = None;
         self.sound.eq_disable_reset = None;
+        self.close_cloud_editor(window, cx);
         self.capture_sound_device();
         cx.emit(AudioProductChanged);
         cx.notify();
     }
-    fn reset_cloud_oobe(&mut self, cx: &mut Context<Self>) {
+    fn reset_cloud_oobe(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let mut available = list(self.cloud(), "availableEsportsPresets")
             .into_iter()
             .filter(|p| p["is_oobe"] == json!(true))
@@ -620,7 +765,7 @@ impl AudioProductWorkspace {
             cx,
         );
         self.sound.eq_reset = false;
-        self.save_cloud_editor(cx);
+        self.save_cloud_editor(window, cx);
     }
     fn cloud_band_labels(&self, cx: &Context<Self>) -> AnyElement {
         let labels = self
@@ -1110,6 +1255,7 @@ impl AudioProductWorkspace {
             .id(SharedString::from(format!(
                 "current-edit-eq-{stored}-{target}"
             )))
+            .test_support()
             .relative()
             .w(surface::css(150.))
             .h(surface::css(115.))
@@ -1148,11 +1294,115 @@ impl AudioProductWorkspace {
                     cx.new(|_| EqDragPreview(preset_name(&drag.preset)))
                 })
             })
-            .when(stored, |body| {
-                body.on_drop(cx.listener(move |this, drag: &EqDrag, window, cx| {
-                    let after = window.mouse_position().x > card_bounds.get().center().x;
-                    this.reorder_cloud_storage(drag, target.clone(), after, cx);
-                }))
+            .on_drop(cx.listener(move |this, drag: &EqDrag, window, cx| {
+                let after = window.mouse_position().x > card_bounds.get().center().x;
+                this.reorder_cloud_storage(drag, target.clone(), stored, after, cx);
+            }))
+            .into_any_element()
+    }
+    fn cloud_editor_search(
+        &self,
+        row: &Product,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        use gpui_kit::base::motion::{self, Easing, Transition};
+        let open = self.sound.eq_search_open;
+        let progress = motion::transition(
+            "current-eq-search-expansion",
+            if open { 1_f32 } else { 0_f32 },
+            Transition::new(std::time::Duration::from_millis(200)).easing(Easing::Ease),
+            window,
+            cx,
+        );
+        let query = self
+            .sound
+            .eq_search
+            .as_ref()
+            .map(|input| input.read(cx).value())
+            .unwrap_or_default();
+        h_flex()
+            .id("current-eq-search-wrapper")
+            .test_support()
+            .w(surface::css(28. + 172. * progress))
+            .h(surface::css(28.))
+            .overflow_hidden()
+            .px(surface::css(8. * progress))
+            .rounded(surface::css(4.))
+            .when(open, |body| {
+                body.border_1().border_color(Colors::selected())
+            })
+            .on_mouse_down_out(
+                cx.listener(|this, _, window, cx| this.close_cloud_search(window, cx)),
+            )
+            .child(
+                razer_widgets::keyboard_navigation::Button::new("current-eq-search-open")
+                    .size(surface::css(20.))
+                    .p_0()
+                    .flex_shrink_0()
+                    .accessibility_label("Search EQ library")
+                    .child(
+                        img(row
+                            .media
+                            .css
+                            .get("icon_search")
+                            .cloned()
+                            .unwrap_or_default())
+                        .size_full(),
+                    )
+                    .on_click(cx.listener(|this, _, window, cx| {
+                        this.sound.eq_search_open = true;
+                        if let Some(input) = &this.sound.eq_search {
+                            input.update(cx, |state, cx| state.focus(window, cx));
+                        }
+                        cx.notify();
+                    })),
+            )
+            .when(open || progress > 0., |body| {
+                body.child(
+                    h_flex()
+                        .flex_1()
+                        .min_w_0()
+                        .ml(surface::css(6. * progress))
+                        .opacity(progress)
+                        .when_some(self.sound.eq_search.as_ref(), |body, input| {
+                            body.child(razer_widgets::keyboard_navigation::focus_input(
+                                Input::new(input)
+                                    .id("current-eq-search-input")
+                                    .appearance(false)
+                                    .flex_1()
+                                    .min_w_0()
+                                    .w_full()
+                                    .h(surface::css(26.))
+                                    .p_0()
+                                    .text_color(Colors::mapping_white()),
+                                input,
+                                cx,
+                            ))
+                        })
+                        .when(!query.is_empty(), |body| {
+                            body.child(
+                                razer_widgets::keyboard_navigation::Button::new(
+                                    "current-eq-search-clear",
+                                )
+                                .size(surface::css(16.))
+                                .p_0()
+                                .flex_shrink_0()
+                                .accessibility_label("Clear EQ search")
+                                .child(img("synapse/blackshark-eq-search-clear.svg").size_full())
+                                .on_click(cx.listener(
+                                    |this, _, window, cx| {
+                                        if let Some(input) = &this.sound.eq_search {
+                                            input.update(cx, |state, cx| {
+                                                state.set_value("", window, cx)
+                                            });
+                                        }
+                                        cx.notify();
+                                    },
+                                )),
+                            )
+                        }),
+                )
             })
             .into_any_element()
     }
@@ -1160,7 +1410,7 @@ impl AudioProductWorkspace {
         &self,
         row: &Product,
         window: &mut Window,
-        cx: &Context<Self>,
+        cx: &mut Context<Self>,
     ) -> AnyElement {
         let enabled = list(self.cloud(), "tempEnabledPresets");
         let disabled = list(self.cloud(), "tempDisabledPresets");
@@ -1187,7 +1437,9 @@ impl AudioProductWorkspace {
             .as_ref()
             .map(|input| input.read(cx).value().to_lowercase())
             .unwrap_or_default();
-        library.retain(|preset| preset_name(preset).to_lowercase().contains(&search));
+        library.retain(|preset| preset["name"].get(razer_i18n::locale())
+            .and_then(Value::as_str)
+            .is_some_and(|name| name.to_lowercase().contains(&search)));
         let card = v_flex()
             .id("current-cloud-eq-editor")
             .w(surface::css(950.))
@@ -1203,9 +1455,8 @@ impl AudioProductWorkspace {
                     .child(
                         razer_widgets::keyboard_navigation::Button::new("current-eq-editor-close")
                             .child("×")
-                            .on_click(cx.listener(|this, _, _, cx| {
-                                this.sound.edit_eq_shown = false;
-                                cx.notify();
+                            .on_click(cx.listener(|this, _, window, cx| {
+                                this.close_cloud_editor(window, cx)
                             })),
                     ),
             )
@@ -1236,19 +1487,13 @@ impl AudioProductWorkspace {
                             .justify_between()
                             .child(message(
                                 row,
-                                if search.is_empty() {
-                                    "EQ_LIBRARY"
-                                } else {
+                                if self.sound.eq_search_open {
                                     "EQ_LIBRARY_SEARCH_RESULTS"
+                                } else {
+                                    "EQ_LIBRARY"
                                 },
                             ))
-                            .when_some(self.sound.eq_search.as_ref(), |body, input| {
-                                body.child(razer_widgets::keyboard_navigation::focus_input(
-                                    Input::new(input).w(surface::css(180.)),
-                                    input,
-                                    cx,
-                                ))
-                            }),
+                            .child(self.cloud_editor_search(row, window, cx)),
                     )
                     .child(
                         h_flex()
@@ -1288,23 +1533,21 @@ impl AudioProductWorkspace {
                                 )
                                 .child(message(row, "CANCEL"))
                                 .on_click(cx.listener(
-                                    |this, _, _, cx| {
-                                        this.sound.edit_eq_shown = false;
-                                        cx.notify();
-                                    },
+                                    |this, _, window, cx| this.close_cloud_editor(window, cx),
                                 )),
                             )
                             .child(
                                 razer_widgets::keyboard_navigation::Button::new("current-eq-save")
                                     .disabled(!self.sound.edit_eq_changed)
                                     .child(message(row, "SAVE"))
-                                    .on_click(
-                                        cx.listener(|this, _, _, cx| this.save_cloud_editor(cx)),
-                                    ),
+                                    .on_click(cx.listener(|this, _, window, cx| {
+                                        this.save_cloud_editor(window, cx)
+                                    })),
                             ),
                     )
                     .child(
                         razer_widgets::keyboard_navigation::Button::new("current-eq-reset-all")
+                            .disabled(self.sound.eq_reset_available != Some(true))
                             .child(message(row, "RESET_ALL"))
                             .on_click(cx.listener(|this, _, _, cx| {
                                 this.sound.eq_reset = true;
@@ -1339,9 +1582,9 @@ impl AudioProductWorkspace {
                                         "current-eq-reset-confirm",
                                     )
                                     .child(message(row, "CONFIRM"))
-                                    .on_click(
-                                        cx.listener(|this, _, _, cx| this.reset_cloud_oobe(cx)),
-                                    ),
+                                    .on_click(cx.listener(
+                                        |this, _, window, cx| this.reset_cloud_oobe(window, cx),
+                                    )),
                                 ),
                         ),
                 )
@@ -1416,9 +1659,313 @@ mod local_eq_tests {
     use crate::features::source_help_owner::{
         HelpOwnerCommand, HelpOwnerRequested, SourceHelpOwner,
     };
-    use gpui_kit::{AppContext, TestAppContext, component::Root, px, size, test::TestWindowExt};
+    use gpui_kit::{
+        AppContext, Focusable, TestAppContext, component::Root, px, size, test::TestWindowExt,
+    };
     use serde_json::json;
     use std::{cell::RefCell, rc::Rc};
+
+    #[gpui_kit::test]
+    fn local_eq_search_focus_clear_and_reset_availability_follow_current_presets(
+        cx: &mut TestAppContext,
+    ) {
+        use razer_device::thx_submission::local_eq::Publication;
+        cx.update(gpui_kit::init);
+        for pid in [1398, 1401, 2638, 2641, 4124, 4126] {
+            let mut owner = None;
+            let handle = cx.open_window(size(px(1600.), px(1800.)), |window, cx| {
+                let view = cx.new(|cx| {
+                    let mut view = AudioProductWorkspace::new(pid, window, cx);
+                    view.set_page("TAB_SOUND", window, cx);
+                    view
+                });
+                owner = Some(view.clone());
+                Root::new(view, window, cx)
+            });
+            let view = owner.unwrap();
+            let mut slots =
+                razer_device::thx_blackshark_firmware::default_blackshark_local_eq_presets(pid)
+                    .unwrap();
+            cx.update_window(handle.into(), |_, window, cx| {
+                view.update(cx, |view, cx| {
+                    assert!(view.observe_sound(
+                        "localEqSlots",
+                        json!(Publication::Read(slots.clone())),
+                        window,
+                        cx
+                    ));
+                });
+                window.render_frame(cx);
+                window.click("current-edit-eq-list", cx);
+                assert_eq!(view.read(cx).sound.eq_reset_available, Some(false));
+                assert_eq!(window.find("current-eq-reset-all").disabled(), Some(true));
+                window.click("current-eq-reset-all", cx);
+                assert!(!view.read(cx).sound.eq_reset);
+                window.click("current-eq-search-open", cx);
+                assert!(view.read(cx).sound.eq_search_open);
+            })
+            .unwrap();
+            cx.executor()
+                .advance_clock(std::time::Duration::from_millis(200));
+            cx.update_window(handle.into(), |_, window, cx| {
+                window.render_frame(cx);
+                let input = view.read(cx).sound.eq_search.as_ref().unwrap().clone();
+                assert!(input.read(cx).focus_handle(cx).is_focused(window));
+                window.input("unlikely preset name", cx);
+                assert_eq!(input.read(cx).value().as_ref(), "unlikely preset name");
+                window.click("current-eq-search-clear", cx);
+                assert!(input.read(cx).value().is_empty());
+                assert!(view.read(cx).sound.eq_search_open);
+                window.click("current-eq-cancel", cx);
+                assert!(!view.read(cx).sound.eq_search_open);
+                slots[0].band_values[0] = -4;
+                view.update(cx, |view, cx| {
+                    assert!(view.observe_sound(
+                        "localEqSlots",
+                        json!(Publication::Read(slots)),
+                        window,
+                        cx
+                    ));
+                });
+                window.render_frame(cx);
+                window.click("current-edit-eq-list", cx);
+                assert_eq!(view.read(cx).sound.eq_reset_available, Some(true));
+                assert_ne!(window.find("current-eq-reset-all").disabled(), Some(true));
+                window.click("current-eq-search-open", cx);
+            })
+            .unwrap();
+            cx.executor()
+                .advance_clock(std::time::Duration::from_millis(200));
+            cx.update_window(handle.into(), |_, window, cx| {
+                let input = view.read(cx).sound.eq_search.as_ref().unwrap().clone();
+                window.render_frame(cx);
+                window.input("missing", cx);
+                window.click("current-eq-reset-all", cx);
+                assert!(!view.read(cx).sound.eq_search_open);
+                assert!(input.read(cx).value().is_empty());
+                assert!(view.read(cx).sound.eq_reset);
+                window.click("current-eq-reset-cancel", cx);
+                view.update(cx, |view, cx| {
+                    assert!(view.observe_sound(
+                        "localEqUnavailable",
+                        serde_json::Value::Null,
+                        window,
+                        cx
+                    ));
+                    assert!(view.sound.eq_search.is_none());
+                    assert!(view.sound.eq_search_subscription.is_none());
+                    assert!(!view.sound.edit_eq_shown);
+                });
+            })
+            .unwrap();
+        }
+    }
+
+    #[gpui_kit::test]
+    fn local_eq_library_drop_and_unknown_removal_only_write_on_save(cx: &mut TestAppContext) {
+        use razer_device::thx_submission::local_eq::Publication;
+        cx.update(gpui_kit::init);
+        for pid in [1398, 1401, 2638, 2641, 4124, 4126] {
+            let mut owners = None;
+            let handle = cx.open_window(size(px(1600.), px(1800.)), |window, cx| {
+                let source = cx.new(|cx| SourceHelpOwner::new(pid, cx));
+                let view = cx.new(|cx| {
+                    let mut view = AudioProductWorkspace::new(pid, window, cx);
+                    view.set_source_owner(source.clone(), cx);
+                    view.set_page("TAB_SOUND", window, cx);
+                    view
+                });
+                owners = Some((view.clone(), source));
+                Root::new(view, window, cx)
+            });
+            let (view, source) = owners.unwrap();
+            cx.update(|cx| source.update(cx, |source, cx| source.mount(cx)));
+            let requests = Rc::new(RefCell::new(Vec::new()));
+            let received = requests.clone();
+            let _subscription = cx.update(|cx| {
+                cx.subscribe(&source, move |_, event: &HelpOwnerRequested, _| {
+                    received
+                        .borrow_mut()
+                        .extend(event.audio_sound_messages().iter().cloned());
+                })
+            });
+            cx.update_window(handle.into(), |_, window, cx| {
+                let mut slots =
+                    razer_device::thx_blackshark_firmware::default_blackshark_local_eq_presets(pid)
+                        .unwrap();
+                for slot in &mut slots {
+                    slot.current_active = slot.index == 1;
+                    slot.band_values = [-4; 10];
+                }
+                view.update(cx, |view, cx| {
+                    assert!(view.observe_sound(
+                        "localEqSlots",
+                        json!(Publication::Read(slots.clone())),
+                        window,
+                        cx
+                    ));
+                });
+                window.render_frame(cx);
+                window.click("current-edit-eq-list", cx);
+                window.drag_to("current-edit-eq-true-1", "current-edit-eq-false-11", cx);
+                assert_eq!(
+                    view.read(cx).cloud()["tempDisabledPresets"][0]["cloudEqualizerId"],
+                    json!(1)
+                );
+                assert_eq!(view.read(cx).cloud()["tempActivePreset"], json!(0));
+                assert!(
+                    requests
+                        .borrow()
+                        .iter()
+                        .all(|m| m["transport"]["type"] != "ON_REORDER_CLOUD_EQ")
+                );
+                window.click("current-eq-cancel", cx);
+                assert_eq!(view.read(cx).cloud()["selectedPreset"], json!(1));
+                window.click("current-edit-eq-list", cx);
+                assert_eq!(
+                    view.read(cx).cloud()["tempEnabledPresets"][1]["cloudEqualizerId"],
+                    json!(1)
+                );
+                window.click("current-eq-cancel", cx);
+                slots[4].cloud_equalizer_id = 250;
+                slots[5].cloud_equalizer_id = 251;
+                for slot in &mut slots {
+                    slot.current_active = slot.index == 4;
+                }
+                view.update(cx, |view, cx| {
+                    assert!(view.observe_sound(
+                        "localEqSlots",
+                        json!(Publication::Read(slots)),
+                        window,
+                        cx
+                    ));
+                });
+                window.render_frame(cx);
+                window.click("current-edit-eq-list", cx);
+                assert!(window.try_find("current-edit-eq-false-251").is_none());
+                window.click("current-eq-store-true-250", cx);
+                assert!(view.read(cx).sound.eq_remove.is_some());
+                window.click("current-eq-remove-cancel", cx);
+                assert_eq!(view.read(cx).cloud()["tempActivePreset"], json!(250));
+                window.click("current-eq-store-true-250", cx);
+                window.click("current-eq-remove-confirm", cx);
+                assert_eq!(view.read(cx).cloud()["tempActivePreset"], json!(3));
+                assert!(
+                    view.read(cx).cloud()["tempDisabledPresets"]
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .all(|p| p["cloudEqualizerId"] != json!(250))
+                );
+                assert!(
+                    requests
+                        .borrow()
+                        .iter()
+                        .all(|m| m["transport"]["type"] != "ON_REORDER_CLOUD_EQ")
+                );
+                window.click("current-eq-save", cx);
+            })
+            .unwrap();
+            let requests = requests.borrow();
+            let writes: Vec<_> = requests
+                .iter()
+                .filter(|m| m["transport"]["type"] == "ON_REORDER_CLOUD_EQ")
+                .collect();
+            assert_eq!(writes.len(), 1);
+            let rows = writes[0]["transport"]["payload"].as_array().unwrap();
+            assert_eq!(rows.len(), 8);
+            assert!(rows.iter().all(|p| p["cloudEqualizerId"] != json!(250)));
+            assert!(rows.iter().any(|p| p["cloudEqualizerId"] == json!(251)));
+            assert_eq!(
+                rows.iter()
+                    .find(|p| p["currentActive"] == json!(true))
+                    .unwrap()["cloudEqualizerId"],
+                json!(3)
+            );
+        }
+    }
+
+    #[gpui_kit::test]
+    fn local_eq_notification_keeps_device_fields_separate_from_saved_drafts(
+        cx: &mut TestAppContext,
+    ) {
+        use razer_device::thx_submission::local_eq::{Notification, Publication};
+        cx.update(gpui_kit::init);
+        for pid in [1398, 1401, 2638, 2641, 4124, 4126] {
+            let mut owner = None;
+            cx.open_window(size(px(1600.), px(1800.)), |window, cx| {
+                let view = cx.new(|cx| AudioProductWorkspace::new(pid, window, cx));
+                owner = Some(view.clone());
+                Root::new(view, window, cx)
+            });
+            let view = owner.unwrap();
+            cx.update(|cx| {
+                view.update(cx, |view, cx| {
+                    let mut reading =
+                        razer_device::thx_blackshark_firmware::default_blackshark_local_eq_presets(
+                            pid,
+                        )
+                        .unwrap();
+                    for slot in &mut reading {
+                        slot.band_values = [-5; 10];
+                    }
+                    reading[2].current_active = true;
+                    assert!(view.receive_local_eq_slots(json!(Publication::Read(reading.clone()))));
+                    assert_eq!(view.cloud()["selectedPreset"], json!(reading[0].cloud_equalizer_id));
+                    let mut saved = reading.clone();
+                    saved[2].band_values = [6; 10];
+                    saved[2].cloud_equalizer_id = 250;
+                    assert!(view.receive_local_eq_slots(json!(Publication::Draft(saved.clone()))));
+                    assert_eq!(view.sound.eq_observed_slots.as_ref().unwrap(), &reading);
+                    let event = Notification::Selected { index: 2 };
+                    razer_device::thx_submission::local_eq::observe_notification(
+                        &mut saved, &event,
+                    )
+                    .unwrap();
+                    assert!(
+                        view.receive_local_eq_slots(json!(Publication::Notification {
+                            slots: saved.clone(),
+                            event
+                        }))
+                    );
+                    let observed = view.sound.eq_observed_slots.as_ref().unwrap();
+                    assert!(observed[2].current_active);
+                    assert_eq!(observed[2].band_values, [-5; 10]);
+                    assert_ne!(observed[2].cloud_equalizer_id, 250);
+                    assert_eq!(view.current_cloud_bands(), Some(vec![6.; 10]));
+                    let event = Notification::Bands {
+                        index: 2,
+                        values: [-3; 10],
+                    };
+                    razer_device::thx_submission::local_eq::observe_notification(
+                        &mut saved, &event,
+                    )
+                    .unwrap();
+                    assert!(
+                        view.receive_local_eq_slots(json!(Publication::Notification {
+                            slots: saved.clone(),
+                            event
+                        }))
+                    );
+                    assert_eq!(
+                        view.sound.eq_observed_slots.as_ref().unwrap()[2].band_values,
+                        [-3; 10]
+                    );
+                    assert_eq!(view.current_cloud_bands(), Some(vec![-3.; 10]));
+                    view.clear_local_eq_observation();
+                    assert!(view.sound.eq_observed_slots.is_none());
+                    assert!(
+                        !view.receive_local_eq_slots(json!(Publication::Notification {
+                            slots: saved,
+                            event: Notification::Selected { index: 2 }
+                        }))
+                    );
+                    assert!(view.cloud()["bandValues"].is_null());
+                    cx.notify();
+                })
+            });
+        }
+    }
 
     #[gpui_kit::test]
     fn local_eq_editor_save_cancel_and_disconnect_keep_the_selected_curve(cx: &mut TestAppContext) {
@@ -1458,7 +2005,9 @@ mod local_eq_tests {
                 view.update(cx, |view, cx| {
                     assert!(view.observe_sound(
                         "localEqSlots",
-                        json!({"slots":slots,"observed":true}),
+                        json!(razer_device::thx_submission::local_eq::Publication::Read(
+                            slots
+                        )),
                         window,
                         cx
                     ));
@@ -1592,7 +2141,9 @@ mod local_eq_tests {
                 view.update(cx, |view, cx| {
                     assert!(view.observe_sound(
                         "localEqSlots",
-                        json!({"slots":slots,"observed":true}),
+                        json!(razer_device::thx_submission::local_eq::Publication::Read(
+                            slots
+                        )),
                         window,
                         cx
                     ));

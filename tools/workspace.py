@@ -13418,6 +13418,7 @@ def compare_connected_hid(library):
     if source["result"].get("backend_released") is not True:
         raise ValueError("Connected-device trace has no confirmed backend release")
     requests, expected, skipped, rust_get_attempts = [], [], [], []
+    failures = []
     for device in source["result"]["devices"]:
         actual = device.get("result")
         if actual is None:
@@ -13434,22 +13435,31 @@ def compare_connected_hid(library):
             except ValueError as error:
                 skipped.append({"trace_index":correlation, "command":transfer["bytes"][6:9], "error":str(error)})
                 continue
-            reply, attempts = connected_get_response(transfers, index)
+            try:
+                reply, attempts = connected_get_response(transfers, index)
+            except ValueError as error:
+                rejected = {"trace_index":correlation, "command":transfer["bytes"][6:9],
+                            "error":"source_response_invalid", "detail":str(error)}
+                skipped.append(rejected)
+                failures.append(rejected)
+                continue
             requests.append(request)
             expected.append(reply)
             rust_get_attempts.append(attempts)
-    if not requests:
-        raise ValueError("No audited complete GET transfers are available for native comparison")
-    runtime = native_runtime.replay_get_trace(requests, library, timeout_seconds=30)
-    failures = []
-    if runtime["status"] != "completed" or not runtime.get("worker_waited"):
+    if requests:
+        runtime = native_runtime.replay_get_trace(requests, library, timeout_seconds=30)
+    else:
+        failures.append("no_correlated_source_responses")
+        runtime = {"status":"not_executed", "target_execution":False,
+                   "reason":"No audited complete GET transfers are available for native comparison"}
+    if requests and (runtime["status"] != "completed" or not runtime.get("worker_waited")):
         failures.append("native_worker_did_not_complete")
     result = runtime.get("result") or {}
     queries = result.get("queries", [])
-    if result.get("error") or result.get("init_return") != 0 or len(queries) != len(requests):
+    if requests and (result.get("error") or result.get("init_return") != 0 or len(queries) != len(requests)):
         failures.append("native_queries_incomplete")
     cleanup = result.get("cleanup", [])
-    if (not cleanup or any(not row.get("returned") for row in cleanup)
+    if requests and (not cleanup or any(not row.get("returned") for row in cleanup)
             or not any(row["operation"] == "hid_exit" and row.get("return_value") == 0 for row in cleanup)
             or cleanup[-1].get("operation") != "release_library"):
         failures.append("native_cleanup_unconfirmed")

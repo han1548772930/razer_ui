@@ -141,6 +141,7 @@ pub struct SourceProductWorkspace {
     device: Device,
     saved: Device,
     mouse_profile_observed_serial: Option<String>,
+    mapping_serial_generation: Option<u64>,
     mouse_profile_connection_key: Option<String>,
     mouse_scroll_connection_key: Option<String>,
     mapping_connection_generation: u64,
@@ -1067,6 +1068,8 @@ impl SourceProductWorkspace {
         let legacy_connection_changed = self.device.product_id == 70 && connection_changed;
         if connection_changed {
             self.mapping_connection_generation = self.mapping_connection_generation.wrapping_add(1);
+            self.mapping_serial_generation = None;
+            self.mouse_profile_observed_serial = None;
             self.invalidate_keyboard_profile_inventory(observation.is_some());
             self.invalidate_controller_initialization(cx);
             self.camera_identity.invalidate();
@@ -1403,6 +1406,7 @@ impl SourceProductWorkspace {
         let FamilyBody::Mouse(body) = &self.body else {
             return;
         };
+        if self.shared_mouse_mapping_current(cx) { return; }
         let container = mapping_reconnect::ordinary_mouse_owner(&self.device);
         let document = if container.is_some() {
             match self.mapping_reconnect.document(&self.saved) {
@@ -2198,13 +2202,12 @@ impl SourceProductWorkspace {
             // Identity telemetry survives profile Cancel/restore. It is not a
             // profile edit and must not be reverted to the pre-query serial.
             self.saved.serial_number = serial.clone();
-            if razer_storage::host_local_profile::supported(self.device.product_id)
-                && !serial.is_empty()
-                && self.mouse_profile_observed_serial.as_ref() != Some(serial)
-            {
+            if self.mouse_profile_observed_serial.as_ref() != Some(serial)
+                || self.mapping_serial_generation != Some(self.mapping_connection_generation) {
                 self.mouse_profile_observed_serial = Some(serial.clone());
                 source_serial_changed = error.is_none();
             }
+            self.mapping_serial_generation = error.is_none().then_some(self.mapping_connection_generation);
         }
         if let FamilyBody::Mouse(body) = &self.body {
             body.update(cx, |body, cx| {
@@ -3155,6 +3158,9 @@ impl SourceProductWorkspace {
             ));
             subscriptions.push(cx.subscribe(&body, |_: &mut Self, _, request: &super::mouse_products::MouseOtfsRequested, cx| {
                 cx.emit(WorkspaceEvent::MouseOtfsRequested(request.clone()));
+            }));
+            subscriptions.push(cx.subscribe(&body, |_: &mut Self, _, request: &super::ReceiverMappingPublication, cx| {
+                cx.emit(WorkspaceEvent::ReceiverMappingPublication(request.clone()));
             }));
             subscriptions.push(cx.subscribe(
                 &body,
@@ -4178,6 +4184,7 @@ impl SourceProductWorkspace {
         let mut this = Self {
             saved: device.clone(),
             mouse_profile_observed_serial: None,
+            mapping_serial_generation: None,
             mouse_profile_connection_key: None,
             mouse_scroll_connection_key: None,
             mapping_connection_generation: 0,
@@ -4479,9 +4486,10 @@ impl SourceProductWorkspace {
     /// A captured Save remains admitted while its file write drains at exit.
     pub fn publish_saved_mapping(&mut self, document: Value, cx: &mut Context<Self>) {
         use razer_model::model::DeviceConnectionObservation;
+        let shared_mapping = self.shared_mouse_mapping_current(cx);
         if !razer_device::mapping_document::MappingProduct::for_product_id(self.device.product_id)
             .is_some_and(|product| product.uses_retained_mapping_owner())
-            || !matches!(
+            || !shared_mapping && !matches!(
                 self.device.dashboard.connection_observation,
                 Some(
                     DeviceConnectionObservation::UsbPresent
@@ -4495,7 +4503,7 @@ impl SourceProductWorkspace {
         if let FamilyBody::Mouse(body) = &self.body {
             body.update(cx, |body, cx| {
                 if razer_device::mouse_receiver_mapping::supports_ordinary(self.device.product_id) {
-                    if mapping_reconnect::ordinary_mouse_owner(&self.device).is_some() {
+                    if shared_mapping || mapping_reconnect::ordinary_mouse_owner(&self.device).is_some() {
                         body.set_receiver_mapping_connection_generation(
                             Some(container.clone()),
                             self.mapping_connection_generation,

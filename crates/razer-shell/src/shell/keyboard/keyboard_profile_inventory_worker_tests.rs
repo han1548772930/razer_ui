@@ -122,7 +122,7 @@ impl Transport for Mock {
             declared_profile_count: 1,
             slots: vec![ProfileSlot {
                 slot_id: 9,
-                metadata: ProfileMetadataObservation::SourceSkippedFirstSlot,
+                metadata: ProfileMetadataObservation::Failed { message: "metadata read failed".into() },
             }],
         })
     }

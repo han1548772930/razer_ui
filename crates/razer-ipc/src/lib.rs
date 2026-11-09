@@ -33,6 +33,7 @@ pub mod keyboard_profile_inventory;
 pub mod keypad_observation;
 pub mod macro_recording;
 pub mod mapping_control;
+pub mod mapping_receiver;
 pub mod mapping_observation;
 pub mod mouse_current_dpi_ble;
 pub mod mouse_input_monitoring;
@@ -876,6 +877,10 @@ pub enum ServiceRequest {
         device_container_id: String,
         owner_guid: String,
     },
+    MappingReceiverStart {
+        target: mapping_receiver::Target,
+        owner_guid: String,
+    },
     MappingDevicePublish {
         owner_guid: String,
         document: Value,
@@ -1500,6 +1505,7 @@ impl ServiceClient {
                     | ServiceRequest::KeyboardLegacyCalibration { .. }
                     | ServiceRequest::MouseReceiverLegacy { .. }
                     | ServiceRequest::MappingDeviceStart { .. }
+                    | ServiceRequest::MappingReceiverStart { .. }
                     | ServiceRequest::MappingDevicePublish { .. }
                     | ServiceRequest::MappingRotationStart { .. }
                     | ServiceRequest::MappingRotationRequest { .. }

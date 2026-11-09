@@ -177,6 +177,11 @@ impl Session {
         Self::start_with_registry(product_id, container, Client::spawn, Registry::global())
     }
 
+    pub fn start_receiver(target: razer_ipc::mapping_receiver::Target) -> anyhow::Result<(Self, mpsc::Receiver<Reply>)> {
+        target.validate()?;
+        Self::start_actor(target.physical_product_id(), target.device_container_id().to_owned(), Some(target), Client::spawn, Registry::global())
+    }
+
     #[cfg(test)]
     fn start_with<T: Transport + 'static>(
         product_id: u32,
@@ -189,6 +194,16 @@ impl Session {
     pub(super) fn start_with_registry<T: Transport + 'static>(
         product_id: u32,
         container: String,
+        factory: impl FnOnce() -> anyhow::Result<T> + Send + 'static,
+        registry: Registry,
+    ) -> anyhow::Result<(Self, mpsc::Receiver<Reply>)> {
+        Self::start_actor(product_id, container, None, factory, registry)
+    }
+
+    fn start_actor<T: Transport + 'static>(
+        product_id: u32,
+        container: String,
+        receiver_target: Option<razer_ipc::mapping_receiver::Target>,
         factory: impl FnOnce() -> anyhow::Result<T> + Send + 'static,
         registry: Registry,
     ) -> anyhow::Result<(Self, mpsc::Receiver<Reply>)> {
@@ -240,11 +255,13 @@ impl Session {
                 let mut restore_on_stop = None;
                 let result = guarded(|| -> anyhow::Result<()> {
                     anyhow::ensure!(!signal.load(Ordering::Acquire), "Mapping start canceled");
-                    let response = client.request(ServiceRequest::MappingDeviceStart {
-                        product_id,
-                        device_container_id: container,
-                        owner_guid: owner_guid.clone(),
-                    })?;
+                    let start = match receiver_target {
+                        Some(target) => ServiceRequest::MappingReceiverStart { target, owner_guid: owner_guid.clone() },
+                        None => ServiceRequest::MappingDeviceStart {
+                            product_id, device_container_id: container, owner_guid: owner_guid.clone(),
+                        },
+                    };
+                    let response = client.request(start)?;
                     registration(response, &owner_guid)?;
                     super::control::apply(&mut client, &control)?;
                     let _ = sender.send(Reply::Ready);
@@ -255,7 +272,16 @@ impl Session {
                             Ok(Command::Publish(mut next)) => {
                                 while let Ok(command) = receiver.try_recv() {
                                     match command {
-                                        Command::Publish(newer) => next = newer,
+                                        Command::Publish(newer) => {
+                                            // Every retained logical request needs a terminal
+                                            // result, including a publication never started.
+                                            let _ = sender.send(Reply::Published {
+                                                revision: next.revision,
+                                                result: Err("Mapping publication was superseded before execution".into()),
+                                                indicator: None,
+                                            });
+                                            next = newer;
+                                        }
                                         Command::Finish => {
                                             draining = true;
                                             break;

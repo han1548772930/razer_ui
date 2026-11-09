@@ -79,6 +79,7 @@ pub(super) struct State {
     pub(super) edit_eq_changed: bool,
     pub(super) eq_remove: Option<Value>,
     pub(super) eq_reset: bool,
+    pub(super) eq_reset_available: Option<bool>,
     pub(super) eq_drag: Option<usize>,
     pub(super) eq_hover: Option<usize>,
     pub(super) eq_hover_range: Option<Value>,
@@ -88,7 +89,10 @@ pub(super) struct State {
     pub(super) eq_preview: Option<Vec<f32>>,
     pub(super) eq_band_data: Option<Vec<f32>>,
     pub(super) eq_local_enabled: Option<Vec<Value>>,
+    pub(super) eq_observed_slots: Option<Vec<razer_device::thx_blackshark_firmware::BlackSharkLocalEqPreset>>,
     pub(super) eq_search: Option<Entity<gpui_kit::component::input::InputState>>,
+    pub(super) eq_search_open: bool,
+    pub(super) eq_search_subscription: Option<Subscription>,
     pub(super) apps_shown: bool,
     pub(super) apps_refresh: bool,
     pub(super) apps_searching: bool,
@@ -180,6 +184,12 @@ impl AudioProductWorkspace {
         self.sound.customizer_hover = None;
         self.sound.mapping = super::sound_mapping::MappingState::default();
         self.sound.edit_eq_shown = false;
+        self.sound.eq_reset_available = None;
+        self.sound.eq_reset = false;
+        self.sound.eq_remove = None;
+        self.sound.eq_search_open = false;
+        self.sound.eq_search_subscription = None;
+        self.sound.eq_search = None;
         self.sound.eq_drag = None;
         self.sound.eq_hover = None;
         self.sound.eq_hover_range = None;
@@ -189,6 +199,7 @@ impl AudioProductWorkspace {
         self.sound.eq_band_data = None;
         self.sound.eq_disable_reset = None;
         self.sound.eq_local_enabled = None;
+        self.sound.eq_observed_slots = None;
         self.sound.apps_shown = false;
         self.sound.apps_searching = false;
         self.sound.apps_refresh_hovered = false;
