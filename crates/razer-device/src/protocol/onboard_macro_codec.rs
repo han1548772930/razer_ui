@@ -240,15 +240,21 @@ fn compile(product: u32, document: MacroDocument) -> anyhow::Result<MacroWriteRe
                 let (x, y) = if relative {
                     let previous = position.context("Relative macro origin is absent")?;
                     position = Some((x, y));
-                    (x - previous.0, y - previous.1)
+                    let relative_value = |before, after| {
+                        let delta = after - before;
+                        if delta < 0. { 65536. + delta } else { delta }
+                    };
+                    (relative_value(previous.0, x), relative_value(previous.1, y))
                 } else {
                     (x, y)
                 };
+                // The worker removes zero moves after getRelativeValue, before
+                // the firmware encoder truncates each coordinate to 16 bits.
                 if x == 0. && y == 0. {
                     continue;
                 }
                 if relative {
-                    worker_item = json!({"type":"mouseMove","x":if x<0. {65536.+x}else{x},"y":if y<0. {65536.+y}else{y}});
+                    worker_item = json!({"type":"mouseMove","x":x,"y":y});
                 }
                 data.push(21);
                 data.extend_from_slice(&wrapped_u16(x)?.to_be_bytes());
@@ -340,6 +346,36 @@ mod tests {
                     20, 0, 0, 1, 0
                 ],
                 "PID{product}"
+            );
+        }
+    }
+
+    #[test]
+    fn worker_filters_relative_moves_after_source_conversion_and_keeps_origin() {
+        for product in [740, 746] {
+            let document = json!({
+                "guid":"11223344-5566-7788-99aa-bbccddeeff12", "name":"relative boundaries",
+                "macroEvents":[], "appEngine":{"mouseMoveType":"relative","events":[
+                    {"type":"mouseMove","x":65536,"y":0},
+                    {"type":"mouseMove","x":0,"y":0},
+                    {"type":"mouseMove","x":-65536,"y":0},
+                    {"type":"mouseMove","x":-65537,"y":1},
+                    {"type":"mouseMove","x":-1,"y":1}
+                ]}
+            });
+            let result = prepare_synchronization(product, &[], &[document], vec![]).unwrap();
+            let request = &result.macros[0];
+            assert_eq!(request.num_items, 2, "PID{product}");
+            assert_eq!(request.data, [21, 255, 255, 0, 1, 21, 0, 0, 0, 0]);
+            // Positive 65536 survives the source zero filter even though its
+            // later wire representation is zero. The worker hash keeps it.
+            let expected_worker_items = json!([
+                {"type":"mouseMove","x":65535,"y":1},
+                {"type":"mouseMove","x":65536,"y":0}
+            ]);
+            assert_eq!(
+                request.hash,
+                crate::mapping_engine_hash::source_hash(&expected_worker_items).unwrap()
             );
         }
     }

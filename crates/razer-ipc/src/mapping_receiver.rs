@@ -28,12 +28,32 @@ pub enum Route {
 }
 
 impl Member {
-    pub fn direct(product_id: u32) -> Self { Self { product_id, route: Route::Direct } }
-    pub fn peer(product_id: u32, peer_product_id: u32) -> Self {
-        Self { product_id, route: Route::Peer { product_id: peer_product_id } }
+    pub fn direct(product_id: u32) -> Self {
+        Self {
+            product_id,
+            route: Route::Direct,
+        }
     }
-    pub fn product_id(&self) -> u32 { self.product_id }
-    pub fn route(&self) -> Route { self.route }
+    pub fn peer(product_id: u32, peer_product_id: u32) -> Self {
+        Self {
+            product_id,
+            route: Route::Peer {
+                product_id: peer_product_id,
+            },
+        }
+    }
+    pub fn product_id(&self) -> u32 {
+        self.product_id
+    }
+    pub fn source_product_id(&self) -> u32 {
+        match razer_device::mapping_document::MappingProduct::for_product_id(self.product_id) {
+            Some(product) => product.source_product_id(),
+            None => self.product_id,
+        }
+    }
+    pub fn route(&self) -> Route {
+        self.route
+    }
 }
 
 impl Target {
@@ -42,7 +62,11 @@ impl Target {
         device_container_id: String,
         members: Vec<Member>,
     ) -> anyhow::Result<Self> {
-        let target = Self { physical_product_id, device_container_id, members };
+        let target = Self {
+            physical_product_id,
+            device_container_id,
+            members,
+        };
         target.validate()?;
         Ok(target)
     }
@@ -58,20 +82,40 @@ impl Target {
         );
         let mut products = BTreeSet::new();
         anyhow::ensure!(
-            !self.members.is_empty() && self.members.iter().all(|member| {
-                let valid = |product| (1..=u32::from(u16::MAX)).contains(&product);
-                valid(member.product_id) && products.insert(member.product_id)
-                    && match member.route { Route::Direct => true, Route::Peer { product_id } => valid(product_id) }
-            }),
+            !self.members.is_empty()
+                && self.members.iter().all(|member| {
+                    let valid = |product| (1..=u32::from(u16::MAX)).contains(&product);
+                    valid(member.product_id)
+                        && products.insert(member.product_id)
+                        && match member.route {
+                            Route::Direct => true,
+                            Route::Peer { product_id } => valid(product_id),
+                        }
+                }),
             "Mapping receiver members are absent, duplicated, or invalid"
         );
         Ok(())
     }
 
-    pub fn physical_product_id(&self) -> u32 { self.physical_product_id }
-    pub fn device_container_id(&self) -> &str { &self.device_container_id }
-    pub fn members(&self) -> &[Member] { &self.members }
-    pub fn contains_product(&self, product_id: u32) -> bool { self.members.iter().any(|member| member.product_id == product_id) }
+    pub fn physical_product_id(&self) -> u32 {
+        self.physical_product_id
+    }
+    pub fn device_container_id(&self) -> &str {
+        &self.device_container_id
+    }
+    pub fn members(&self) -> &[Member] {
+        &self.members
+    }
+    pub fn contains_product(&self, product_id: u32) -> bool {
+        self.members
+            .iter()
+            .any(|member| member.product_id == product_id)
+    }
+    pub fn contains_source_product(&self, product_id: u32) -> bool {
+        self.members
+            .iter()
+            .any(|member| member.source_product_id() == product_id)
+    }
 }
 
 #[cfg(test)]
@@ -85,15 +129,26 @@ mod tests {
             "physical_product_id":191,
             "device_container_id":"receiver",
             "members":[{"product_id":190,"route":{"kind":"direct"}}]
-        })).unwrap();
+        }))
+        .unwrap();
         valid.validate().unwrap();
         assert_eq!(valid.physical_product_id(), 191);
         assert!(valid.contains_product(190));
         assert!(!valid.contains_product(191));
-        for members in [vec![], vec![Member::direct(190),Member::direct(190)], vec![Member::direct(0)], vec![Member::peer(190,65536)]] {
+        for members in [
+            vec![],
+            vec![Member::direct(190), Member::direct(190)],
+            vec![Member::direct(0)],
+            vec![Member::peer(190, 65536)],
+        ] {
             assert!(Target::new(191, "receiver".into(), members).is_err());
         }
         assert!(Target::new(191, String::new(), vec![Member::direct(190)]).is_err());
-        assert!(serde_json::from_value::<Target>(json!({"physical_product_id":191,"members":[{"product_id":190}]})).is_err());
+        assert!(
+            serde_json::from_value::<Target>(
+                json!({"physical_product_id":191,"members":[{"product_id":190}]})
+            )
+            .is_err()
+        );
     }
 }

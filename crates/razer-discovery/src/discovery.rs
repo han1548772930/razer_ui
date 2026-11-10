@@ -471,7 +471,7 @@ pub fn discover(
     discover_with(usb, hid, &mut |request| client.request(request))
 }
 
-fn discover_with(
+pub(crate) fn discover_with(
     usb: &Result<Value, String>,
     hid: &Result<Value, String>,
     request: &mut impl FnMut(ServiceRequest) -> anyhow::Result<Value>,

@@ -93,7 +93,7 @@ impl MouseProductWorkspace {
         let Some(enabled) = self.mouse_otfs.queued.pop_front() else {
             return;
         };
-        let document = match self.spec.product_id {
+        let document = match self.mapping_source_product_id() {
             70 => self.legacy_mapping.otfs_document(),
             pid if razer_device::mouse_receiver_mapping::supports_ordinary(pid) => self.receiver_mapping.otfs_document(),
             _ => None,
@@ -149,14 +149,14 @@ impl MouseProductWorkspace {
         }
     }
     fn otfs_failure(&mut self, message: String) {
-        match self.spec.product_id {
+        match self.mapping_source_product_id() {
             70 => self.legacy_mapping.otfs_error(message),
             pid if razer_device::mouse_receiver_mapping::supports_ordinary(pid) => self.receiver_mapping.otfs_error(message),
             _ => {}
         }
     }
     fn finish_otfs_mode(&mut self, enabled: bool) {
-        let editable = match self.spec.product_id {
+        let editable = match self.mapping_source_product_id() {
             70 => self.legacy_mapping.otfs_mode(enabled),
             pid if razer_device::mouse_receiver_mapping::supports_ordinary(pid) => self.receiver_mapping.otfs_mode(enabled),
             _ => return,
@@ -200,7 +200,7 @@ impl MouseProductWorkspace {
         }
         self.mouse_otfs.pending.as_mut().unwrap().request = request.clone();
         self.mouse_otfs.pending.as_mut().unwrap().publishing = true;
-        match self.spec.product_id {
+        match self.mapping_source_product_id() {
             70 => self
                 .legacy_mapping
                 .replace_otfs_document(request.document.clone()),
@@ -221,7 +221,7 @@ impl MouseProductWorkspace {
                 return;
             }
         }
-        match self.spec.product_id {
+        match self.mapping_source_product_id() {
             70 => self.publish_legacy_otfs_saved(request, enabled, cx),
             pid if razer_device::mouse_receiver_mapping::supports_ordinary(pid) => self.publish_receiver_otfs_saved(request, enabled, cx),
             _ => {}

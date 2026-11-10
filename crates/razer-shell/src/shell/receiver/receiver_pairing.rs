@@ -704,7 +704,10 @@ impl AppShell {
         if reload_cache {
             if let Some(cache) = shutdown_cache {
                 match cache {
-                    Ok(cache) => self.local_pairing_records = Some(cache),
+                    Ok(cache) => {
+                        self.local_pairing_records = Some(cache);
+                        self.sync_receiver_mapping(cx);
+                    },
                     Err(error) => {
                         self.status = format!("配对缓存已写入，清理后的本地重读失败：{error}");
                     }

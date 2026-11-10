@@ -75,7 +75,7 @@ pub fn prepare_profile_document(
         .context("Active mapping profile is missing")?;
     let settings = device.source_device_settings.as_ref();
     let previous = settings.and_then(|settings| settings.get(product.storage_field()));
-    let document = match device.product_id {
+    let document = match product.source_product_id() {
         70 => razer_device::mouse_legacy_mapping::prepare_document(
             &profiles,
             &active.guid,
@@ -84,7 +84,7 @@ pub fn prepare_profile_document(
         )?,
         pid if razer_device::mouse_receiver_mapping::supports_ordinary(pid) => {
             razer_device::mouse_receiver_mapping::prepare_document_for(
-                device.product_id,
+                product.source_product_id(),
                 &profiles,
                 &active.guid,
                 previous,
@@ -380,7 +380,11 @@ mod saved_revision_tests {
                 razer_device::keyboard_latest_mapping::default_profile()
             }
             70 => serde_json::json!({"mappings":[]}),
-            pid if razer_device::mouse_receiver_mapping::supports_ordinary(pid) => serde_json::json!({"mappings":[]}),
+            pid if razer_device::mapping_document::MappingProduct::for_product_id(pid)
+                .is_some_and(|product| product.is_ordinary_mouse()) =>
+            {
+                serde_json::json!({"mappings":[]})
+            }
             _ => panic!("Missing audited source fixture for PID{product}"),
         };
         source.profiles[0].source_settings = Some(profile);
@@ -401,7 +405,7 @@ mod saved_revision_tests {
             )
             .unwrap_or_else(|error| panic!("PID{}: {error:#}", product.product_id()))
             .unwrap();
-            assert_eq!(document["productId"], product.product_id());
+            assert_eq!(document["productId"], product.source_product_id());
             assert_eq!(document["activeProfile"], source.profiles[0].guid);
             assert_eq!(document["profiles"][0]["name"], source.profiles[0].name);
             assert_eq!(

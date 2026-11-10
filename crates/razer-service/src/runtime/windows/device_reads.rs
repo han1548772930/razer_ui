@@ -44,6 +44,9 @@ pub(super) fn keyboard_indicator(
 mod mouse_brightness_adapter;
 #[path = "mouse/mouse_current_dpi.rs"]
 mod mouse_current_dpi_adapter;
+pub(super) fn mouse_wireless_online(target: &DeviceReadTarget) -> anyhow::Result<()> {
+    mouse_current_dpi_adapter::wireless_online(target)
+}
 pub(super) fn mouse_brightness(
     target: &DeviceReadTarget,
     submission: &razer_device::mouse_brightness::Submission,

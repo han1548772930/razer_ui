@@ -236,7 +236,7 @@ impl MouseProductWorkspace {
         container: Option<String>,
         generation: u64,
     ) {
-        if !razer_device::mouse_receiver_mapping::supports_ordinary(self.spec.product_id) {
+        if !razer_device::mouse_receiver_mapping::supports_ordinary(self.mapping_source_product_id()) {
             return;
         }
         let next = container.map(|container| Connection {
@@ -251,7 +251,7 @@ impl MouseProductWorkspace {
     }
 
     pub fn set_receiver_mapping_connection(&mut self, container: Option<String>) {
-        if !razer_device::mouse_receiver_mapping::supports_ordinary(self.spec.product_id)
+        if !razer_device::mouse_receiver_mapping::supports_ordinary(self.mapping_source_product_id())
             || self
                 .receiver_mapping
                 .connection
@@ -275,7 +275,7 @@ impl MouseProductWorkspace {
         document: Value,
         cx: &mut Context<Self>,
     ) {
-        if !razer_device::mouse_receiver_mapping::supports_ordinary(self.spec.product_id) || self.receiver_mapping.stopping {
+        if !razer_device::mouse_receiver_mapping::supports_ordinary(self.mapping_source_product_id()) || self.receiver_mapping.stopping {
             return;
         }
         let Some(scope) = self.mouse_polling_scope(cx) else {
@@ -425,7 +425,7 @@ impl MouseProductWorkspace {
             inter_otfs: temporary,
         });
         if let Some(owner) = self.receiver_mapping.shared_owner {
-            cx.emit(ReceiverMappingPublication::new(owner.id, self.spec.product_id, revision, document));
+            cx.emit(ReceiverMappingPublication::new(owner.id, self.mapping_source_product_id(), revision, document));
             return;
         }
         if let Some(owner) = &self.receiver_mapping.owner {
@@ -526,7 +526,7 @@ impl MouseProductWorkspace {
         raw: Value,
         cx: &mut Context<Self>,
     ) -> bool {
-        if !razer_device::mouse_receiver_mapping::supports_ordinary(self.spec.product_id)
+        if !razer_device::mouse_receiver_mapping::supports_ordinary(self.mapping_source_product_id())
             || self.receiver_mapping.stopping
             || self.receiver_mapping.callbacks_closed
         {

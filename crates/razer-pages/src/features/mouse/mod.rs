@@ -400,6 +400,12 @@ pub struct MouseProductWorkspace {
 impl EventEmitter<MouseProductChanged> for MouseProductWorkspace {}
 
 impl MouseProductWorkspace {
+    pub(super) fn mapping_source_product_id(&self) -> u32 {
+        match razer_device::mapping_document::MappingProduct::for_product_id(self.spec.product_id) {
+            Some(product) => product.source_product_id(),
+            None => self.spec.product_id,
+        }
+    }
     fn customize_source_buttons(&self) -> Vec<Value> {
         let mut buttons: Vec<&Value> = self
             .spec
@@ -466,6 +472,7 @@ impl MouseProductWorkspace {
 
     pub fn new(product_id: u32, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let spec = source_product(product_id).expect("registered mouse product");
+        let mapping_product = razer_device::mapping_document::MappingProduct::for_product_id(product_id);
         let mut this = Self {
             spec,
             page: "TAB_CUSTOMIZE".into(),
@@ -487,10 +494,11 @@ impl MouseProductWorkspace {
             legacy_mapping: mapping_runtime_70::State::default(),
             receiver_mapping: mapping_runtime_158::State::default(),
             mouse_otfs: mouse_otfs::State::default(),
-            polling_owner: (product_id == 70
-                || razer_device::mouse_current_dpi::capability(product_id).is_some()
-                || razer_device::mouse_current_power::capability(product_id).is_some()
-                || super::mouse_polling::source_spec(product_id).is_some())
+            polling_owner: (spec.product_id == 70
+                || mapping_product.is_some_and(|product| product.is_ordinary_mouse())
+                || razer_device::mouse_current_dpi::capability(spec.product_id).is_some()
+                || razer_device::mouse_current_power::capability(spec.product_id).is_some()
+                || super::mouse_polling::source_spec(spec.product_id).is_some())
             .then(|| cx.entity_id()),
             properties_icon: properties::source_spec(product_id)
                 .map(|spec| spec.icon(razer_platform::system::is_windows_11())),

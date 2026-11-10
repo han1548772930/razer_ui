@@ -55,9 +55,15 @@ impl State {
 
 pub(super) fn ordinary_mouse_owner(device: &Device) -> Option<String> {
     use razer_model::model::DeviceConnectionObservation;
+    let razer_device::device_identity::IdentityLookup::Unique(identity) =
+        razer_device::device_identity::lookup(device.real_product_id)
+    else { return None; };
+    let source_identity = razer_device::device_identity::middleware_product_identity(device.product_id)?;
     let serial = device.serial_number.to_ascii_uppercase();
     ((device.product_id == 70 || razer_device::mouse_receiver_mapping::supports_ordinary(device.product_id))
         && device.real_product_id == device.product_id
+        && !identity.is_dongle && !identity.is_ble
+        && source_identity.dongle_id != Some(device.real_product_id)
         && !device.device_container_id.is_empty()
         && !serial.starts_with("PREVIEW-")
         && !serial.starts_with("DEMO-")
@@ -204,7 +210,8 @@ mod tests {
             device.device_container_id="current-container".into();
             device.real_product_id=pid;
             device.observe_connection(Some(DeviceConnectionObservation::HidPresent));
-            assert_eq!(ordinary_mouse_owner(&device).as_deref(),Some("current-container"));
+            assert_eq!(ordinary_mouse_owner(&device).as_deref(),
+                (!matches!(pid,148|185|224)).then_some("current-container"));
             device.real_product_id=pid+1;
             assert!(ordinary_mouse_owner(&device).is_none());
             device.real_product_id=pid;

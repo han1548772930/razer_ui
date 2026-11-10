@@ -192,6 +192,93 @@ fn connection_replacement_cancels_retained_callback_pump_without_a_window(cx: &m
     );
 }
 
+fn shared_saved_publication(cx: &mut TestAppContext, mounted: u32, source: u32) {
+    use super::{MouseProductWorkspace, ReceiverMappingPublication};
+    use gpui_kit::{component::Root, px, size};
+    cx.update(gpui_kit::init);
+    let mut page = None;
+    let window = cx.open_window(size(px(1000.), px(700.)), |window, cx| {
+        let view = cx.new(|cx| MouseProductWorkspace::new(mounted, window, cx));
+        page = Some(view.clone());
+        Root::new(view, window, cx)
+    });
+    let page = page.unwrap();
+    let events = cx.new(|_| Vec::<ReceiverMappingPublication>::new());
+    let _subscription = events.update(cx, |_, cx| {
+        cx.subscribe(&page, |events, _, event: &ReceiverMappingPublication, _| {
+            events.push(event.clone())
+        })
+    });
+    let first = uuid::Uuid::new_v4();
+    let second = uuid::Uuid::new_v4();
+    let document = json!({"productId":source,"activeProfile":"saved-profile","version":27});
+    cx.update_window(window.into(), |_, window, cx| {
+        page.update(cx, |page, cx| {
+            let mut profile = page.snapshot();
+            profile["guid"] = json!("saved-profile");
+            page.restore(Some(&profile), window, cx);
+            page.configure_shared_mapping(first, 191, "receiver".into(), 4);
+            page.publish_receiver_mapping("receiver".into(), document.clone(), cx);
+            assert!(page.receiver_mapping.owner.is_none());
+            assert!(page.receiver_mapping.pump.is_none());
+            assert!(page.receiver_mapping.published.is_none());
+        });
+    })
+    .unwrap();
+    cx.run_until_parked();
+    let request = events.read_with(cx, |events, _| {
+        assert_eq!(events.len(), 1);
+        events[0].clone()
+    });
+    assert_eq!(request.owner(), first);
+    assert_eq!(request.product_id(), source);
+    let delivery = request.for_mounted_product(mounted).unwrap();
+    assert_eq!(delivery.product_id(), mounted);
+    assert_eq!(delivery.document(), &document);
+    assert_eq!(request.document(), &document);
+    page.update(cx, |page, cx| {
+        assert!(!page.observe_shared_mapping_publication(second, request.revision(), Ok(()), cx));
+        assert!(page.receiver_mapping.published.is_none());
+        assert!(page.observe_shared_mapping_publication(first, request.revision(), Ok(()), cx));
+        assert_eq!(
+            page.receiver_mapping.published.unwrap().revision,
+            request.revision()
+        );
+        assert!(page.observe_shared_mapping_event(
+            first,
+            json!({"source":"devicemodechanged","eventType":4,"event":{"isEnabled":true}}),
+            cx
+        ));
+        assert_eq!(page.receiver_mapping.dpi.native_otfs, Some(true));
+        page.configure_shared_mapping(second, 191, "receiver".into(), 5);
+        assert!(!page.observe_shared_mapping_publication(first, request.revision(), Ok(()), cx));
+        assert!(!page.observe_shared_mapping_event(
+            first,
+            json!({"source":"devicemodechanged","eventType":4,"event":{"isEnabled":false}}),
+            cx
+        ));
+        page.release_shared_mapping(first, Some("old cleanup".into()), cx);
+        assert!(page.shared_mapping_matches(191, "receiver", 5));
+        page.release_shared_mapping(second, None, cx);
+        assert!(!page.shared_mapping_connection_matches("receiver", 5));
+        assert!(page.receiver_mapping.published.is_none());
+    });
+}
+
+#[gpui_kit::test]
+fn shared_receiver_saved_publication_keeps_page_owner_and_rejects_stale_completion(
+    cx: &mut TestAppContext,
+) {
+    shared_saved_publication(cx, 190, 190);
+}
+
+#[gpui_kit::test]
+fn shared_receiver_mounted105_uses_source104_without_changing_page_identity(
+    cx: &mut TestAppContext,
+) {
+    shared_saved_publication(cx, 105, 104);
+}
+
 #[test]
 fn nested_clutch_release_restores_last_held_value_then_profile() {
     let mut state = DpiRuntime::default();

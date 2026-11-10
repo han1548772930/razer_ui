@@ -8,6 +8,7 @@ use razer_model::model::DeviceConnectionObservation;
 
 #[path = "receiver/hyperpolling.rs"]
 pub mod hyperpolling;
+pub mod mapping;
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum ReceiverRoute {

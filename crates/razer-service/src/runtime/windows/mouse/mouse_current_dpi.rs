@@ -5,6 +5,19 @@ pub(super) fn request(
     target: &DeviceReadTarget,
     change: Option<&DpiChange>,
 ) -> anyhow::Result<Value> {
+    run(target, Operation::Dpi(change))
+}
+
+pub(super) fn wireless_online(target: &DeviceReadTarget) -> anyhow::Result<()> {
+    run(target, Operation::Online).map(|_| ())
+}
+
+enum Operation<'a> {
+    Online,
+    Dpi(Option<&'a DpiChange>),
+}
+
+fn run(target: &DeviceReadTarget, operation: Operation<'_>) -> anyhow::Result<Value> {
     let source = dpi::capability(target.product_id)
         .context("Mouse DPI target has no current source factory capability")?;
     let cap = source
@@ -18,14 +31,24 @@ pub(super) fn request(
     else {
         anyhow::bail!("Current mouse DPI target has no unique physical identity");
     };
+    let source_identity = device_identity::middleware_product_identity(identity.product_id)
+        .context("Current mouse DPI middleware identity is absent")?;
+    let is_dongle =
+        identity.is_dongle || source_identity.dongle_id == Some(target.physical_product_id);
     ensure!(
-        identity.product_id == target.product_id
+        source_identity.product_id == target.product_id
             && !identity.is_ble
-            && source.is_physical_branch(target.physical_product_id, identity.is_dongle),
+            && source.is_physical_branch(target.physical_product_id, is_dongle),
         "Current mouse DPI physical branch differs"
     );
-    if let Some(change) = change {
+    if let Operation::Dpi(Some(change)) = operation {
         dpi::validate_change_for(target.product_id, change)?;
+    }
+    if matches!(operation, Operation::Online) {
+        ensure!(
+            is_dongle,
+            "Wireless qualification requires an observed dongle"
+        );
     }
     let before = current_target(target, &cap)?;
     let started = Instant::now();
@@ -52,11 +75,15 @@ pub(super) fn request(
     let device =
         hid_transport::open_validated(&target.path, feature_bytes, std::rc::Rc::new(&validate))?;
     let mut next = || transaction(target, &cap);
-    if identity.is_dongle {
+    if is_dongle {
         dpi::verify_wireless_online_for(target.product_id, &device, next()?, &validate)?;
     }
+    let Operation::Dpi(change) = operation else {
+        validate()?;
+        return Ok(json!({"target":target,"wireless_online":true}));
+    };
     let report = dpi::execute_for(target.product_id, &device, change, &mut next, &validate)?;
-    if identity.is_dongle {
+    if is_dongle {
         dpi::verify_wireless_online_for(target.product_id, &device, next()?, &validate)?;
     }
     validate()?;

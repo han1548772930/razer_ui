@@ -46,6 +46,7 @@ impl AppShell {
                     Err(error) => eprintln!("[local pairing cache] {error:#}"),
                 }
                 this.sync_known_devices(cx);
+                this.sync_receiver_mapping(cx);
             });
         })
         .detach();

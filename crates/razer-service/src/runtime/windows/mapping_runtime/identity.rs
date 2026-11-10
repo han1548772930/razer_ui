@@ -133,49 +133,83 @@ impl Target {
         })
     }
 
-    pub fn observe_receiver(target: razer_ipc::mapping_receiver::Target, owner: &str) -> anyhow::Result<Self> {
+    pub fn observe_receiver(
+        target: razer_ipc::mapping_receiver::Target,
+        owner: &str,
+    ) -> anyhow::Result<Self> {
         target.validate()?;
-        ensure!(!owner.is_empty() && !owner.contains('\0'), "Invalid mapping owner identity");
-        let (product_id, physical) = native_target(target.device_container_id(), Some(target.physical_product_id()))?;
+        ensure!(
+            !owner.is_empty() && !owner.contains('\0'),
+            "Invalid mapping owner identity"
+        );
+        let (product_id, physical) = native_target(
+            target.device_container_id(),
+            Some(target.physical_product_id()),
+        )?;
         validate_receiver_members(&target)?;
         let info = DeviceInfo {
             vendor_id: 5426,
             product_id,
-            container_id: physical.get("device_container_id").and_then(Value::as_str)
-                .context("Missing observed receiver container")?.into(),
-            usb_instance_id: physical.get("device_instance_id").and_then(Value::as_str)
-                .context("Missing observed receiver instance")?.into(),
+            container_id: physical
+                .get("device_container_id")
+                .and_then(Value::as_str)
+                .context("Missing observed receiver container")?
+                .into(),
+            usb_instance_id: physical
+                .get("device_instance_id")
+                .and_then(Value::as_str)
+                .context("Missing observed receiver instance")?
+                .into(),
             guid: owner.into(),
         };
-        let (_, after) = native_target(target.device_container_id(), Some(target.physical_product_id()))?;
-        ensure!(after == physical, "Receiver changed during mapping member qualification");
-        Ok(Self { identity: Identity::Receiver(target), info, physical })
+        let (_, after) = native_target(
+            target.device_container_id(),
+            Some(target.physical_product_id()),
+        )?;
+        ensure!(
+            after == physical,
+            "Receiver changed during mapping member qualification"
+        );
+        Ok(Self {
+            identity: Identity::Receiver(target),
+            info,
+            physical,
+        })
     }
 
     pub fn contains_product(&self, product: u32) -> bool {
         match &self.identity {
-            Identity::Receiver(receiver) => receiver.contains_product(product),
-            Identity::Single(logical) => logical.product_id() == product,
+            Identity::Receiver(receiver) => receiver.contains_source_product(product),
+            Identity::Single(logical) => logical.source_product_id() == product,
         }
     }
 
     pub fn admits_document(&self, product: u32, dual_linked: bool) -> bool {
         match &self.identity {
-            Identity::Receiver(receiver) => product == receiver.physical_product_id() || receiver.contains_product(product),
+            Identity::Receiver(receiver) => {
+                product == receiver.physical_product_id()
+                    || receiver.contains_source_product(product)
+            }
             Identity::Single(logical) => {
-                product == if logical.product_id() == 158 && dual_linked {
-                    self.info.product_id
-                } else { logical.product_id() }
-            },
+                product
+                    == if logical.product_id() == 158 && dual_linked {
+                        self.info.product_id
+                    } else {
+                        logical.source_product_id()
+                    }
+            }
         }
     }
 
     pub fn revalidate(&self) -> anyhow::Result<()> {
         let (_, physical) = match &self.identity {
-            Identity::Receiver(receiver) => {
-                native_target(&self.info.container_id, Some(receiver.physical_product_id()))?
-            },
-            Identity::Single(logical) => mapping_target(logical.product_id(), &self.info.container_id)?,
+            Identity::Receiver(receiver) => native_target(
+                &self.info.container_id,
+                Some(receiver.physical_product_id()),
+            )?,
+            Identity::Single(logical) => {
+                mapping_target(logical.product_id(), &self.info.container_id)?
+            }
         };
         ensure!(physical == self.physical, "Physical mapping device changed");
         Ok(())
@@ -206,50 +240,147 @@ fn validate_receiver_members(target: &razer_ipc::mapping_receiver::Target) -> an
                 let IdentityLookup::Unique(identity) = device_identity::lookup(physical) else {
                     anyhow::bail!("Mapping physical product attribution is ambiguous")
                 };
-                ensure!(identity.product_id == member.product_id() && !identity.is_ble,
-                    "Mapping direct member belongs to another physical product");
-                if identity.is_dongle { radio_members.push((member.product_id(), physical)); }
+                ensure!(
+                    identity.product_id == member.product_id() && !identity.is_ble,
+                    "Mapping direct member belongs to another physical product"
+                );
+                let source_identity =
+                    device_identity::middleware_product_identity(member.product_id())
+                        .context("Mapping direct middleware identity is absent")?;
+                ensure!(
+                    source_identity.product_id == member.source_product_id(),
+                    "Mapping direct source identity changed"
+                );
+                if identity.is_dongle || source_identity.dongle_id == Some(physical) {
+                    if razer_device::mouse_current_dpi::capability(member.source_product_id())
+                        .is_some_and(|cap| cap.is_physical_branch(physical, true))
+                    {
+                        validate_ordinary_mouse_member(target, member.source_product_id())?;
+                    } else {
+                        radio_members.push((member.product_id(), physical));
+                    }
+                }
             }
             Route::Peer { product_id } => {
-                let cap = receiver.context("Mapping receiver query has no current source capability")?;
-                let IdentityLookup::Unique(identity) = device_identity::lookup_receiver_peer(product_id, cap.peer_match_product_id) else {
+                let cap =
+                    receiver.context("Mapping receiver query has no current source capability")?;
+                let IdentityLookup::Unique(identity) =
+                    device_identity::lookup_receiver_peer(product_id, cap.peer_match_product_id)
+                else {
                     anyhow::bail!("Mapping peer attribution is ambiguous")
                 };
-                ensure!(identity.product_id == member.product_id(), "Mapping peer belongs to another logical product");
+                ensure!(
+                    identity.product_id == member.product_id(),
+                    "Mapping peer belongs to another logical product"
+                );
                 radio_members.push((member.product_id(), product_id));
             }
         }
     }
-    if radio_members.is_empty() { return Ok(()); }
+    if radio_members.is_empty() {
+        return Ok(());
+    }
     let cap = receiver.context("Mapping radio member has no current receiver query")?;
     let observation = super::super::hid::enumerate_metadata()?;
-    ensure!(observation["complete"] == true, "Mapping receiver HID enumeration is incomplete");
-    let interfaces = observation["interfaces"].as_array().context("Mapping receiver interfaces are absent")?;
+    ensure!(
+        observation["complete"] == true,
+        "Mapping receiver HID enumeration is incomplete"
+    );
+    let interfaces = observation["interfaces"]
+        .as_array()
+        .context("Mapping receiver interfaces are absent")?;
     let mut errors = Vec::new();
     for row in interfaces.iter().filter(|row| {
-        row["vendor_id"] == 5426 && row["product_id"] == physical
+        row["vendor_id"] == 5426
+            && row["product_id"] == physical
             && row["claim_interface"] == cap.claim_interface
             && row["feature_report_bytes"] == cap.report_bytes
-            && row["device_container_id"].as_str().is_some_and(|container| container.eq_ignore_ascii_case(target.device_container_id()))
+            && row["device_container_id"]
+                .as_str()
+                .is_some_and(|container| {
+                    container.eq_ignore_ascii_case(target.device_container_id())
+                })
     }) {
-        let Some(path) = row["path"].as_str().filter(|path| !path.is_empty()) else { continue };
-        let queried = super::super::receiver::query(path, target.device_container_id(), Some(cap.source_product_id))
-            .and_then(|response| razer_device::receiver_protocol::receiver_peers(&response));
+        let Some(path) = row["path"].as_str().filter(|path| !path.is_empty()) else {
+            continue;
+        };
+        let queried = super::super::receiver::query(
+            path,
+            target.device_container_id(),
+            Some(cap.source_product_id),
+        )
+        .and_then(|response| razer_device::receiver_protocol::receiver_peers(&response));
         match queried {
             Ok(peers) => {
                 for (logical, raw) in &radio_members {
-                    ensure!(peers.iter().filter(|(pid, _)| pid == raw).count() == 1
-                        && peers.iter().any(|(pid, status)| pid == raw && *status == 1),
-                        "Receiver has not confirmed mapping member {logical} / raw peer {raw} online");
+                    ensure!(
+                        peers.iter().filter(|(pid, _)| pid == raw).count() == 1
+                            && peers.iter().any(|(pid, status)| pid == raw && *status == 1),
+                        "Receiver has not confirmed mapping member {logical} / raw peer {raw} online"
+                    );
                 }
                 return Ok(());
             }
             Err(error) => errors.push(format!("{error:#}")),
         }
     }
-    anyhow::bail!("Mapping receiver member query failed: {}", if errors.is_empty() {
-        "no current HID collection".into()
-    } else { errors.join("; ") })
+    anyhow::bail!(
+        "Mapping receiver member query failed: {}",
+        if errors.is_empty() {
+            "no current HID collection".into()
+        } else {
+            errors.join("; ")
+        }
+    )
+}
+
+fn validate_ordinary_mouse_member(
+    target: &razer_ipc::mapping_receiver::Target,
+    logical: u32,
+) -> anyhow::Result<()> {
+    let physical = target.physical_product_id();
+    let source = razer_device::mouse_current_dpi::capability(logical)
+        .context("Mapping ordinary radio source is absent")?;
+    let cap = source.transport().for_physical_product(physical)?;
+    let interfaces = super::super::hid::enumerate_metadata()?;
+    ensure!(
+        interfaces["complete"] == true,
+        "Mapping ordinary radio enumeration is incomplete"
+    );
+    let claim = cap.claim_interface_for(physical)?;
+    let rows = interfaces["interfaces"]
+        .as_array()
+        .context("Mapping ordinary radio interfaces are absent")?;
+    let candidates = rows
+        .iter()
+        .filter(|row| {
+            row["vendor_id"] == cap.vendor_id
+                && row["product_id"] == physical
+                && row["claim_interface"] == claim
+                && row["feature_report_bytes"] == cap.report_bytes
+                && row["device_container_id"]
+                    .as_str()
+                    .is_some_and(|container| {
+                        container.eq_ignore_ascii_case(target.device_container_id())
+                    })
+        })
+        .collect::<Vec<_>>();
+    let [row] = candidates.as_slice() else {
+        anyhow::bail!("Mapping ordinary radio interface is absent or ambiguous")
+    };
+    super::super::device_reads::mouse_wireless_online(
+        &razer_device::device_reads::DeviceReadTarget {
+            product_id: logical,
+            physical_product_id: physical,
+            peer_product_id: None,
+            device_container_id: target.device_container_id().into(),
+            path: row["path"]
+                .as_str()
+                .filter(|path| !path.is_empty())
+                .context("Mapping ordinary radio path is absent")?
+                .into(),
+        },
+    )
 }
 
 pub(super) fn gaming_indicator(target: &Target, enabled: bool) -> anyhow::Result<Value> {

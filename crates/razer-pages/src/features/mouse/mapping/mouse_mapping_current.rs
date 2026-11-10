@@ -827,7 +827,7 @@ impl MouseProductWorkspace {
         self.set_current_customize_input(None, false);
         self.mapping_current_state.clear();
         cx.emit(MouseProductChanged);
-        if self.spec.product_id == 70 || razer_device::mouse_receiver_mapping::supports_ordinary(self.spec.product_id) {
+        if self.spec.product_id == 70 || razer_device::mouse_receiver_mapping::supports_ordinary(self.mapping_source_product_id()) {
             cx.emit(super::dpi_70::MouseLegacyMappingCommitted);
         }
         cx.notify();

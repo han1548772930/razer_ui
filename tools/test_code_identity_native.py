@@ -1,5 +1,6 @@
 """Counterexamples for native byte identity and reference scope."""
 import copy
+from contextlib import closing
 import hashlib
 import json
 from pathlib import Path
@@ -25,6 +26,61 @@ def fixture(base=0x180000000):
 
 
 class NativeIdentityTests(unittest.TestCase):
+    def test_selected_native_product_scope_is_inherited_and_only_narrows(self):
+        owner = {"original": {"sha256": "source"}, "capture": {},
+                 "complete_selected_functions": [{"rva": "0x1000", "artifact": {},
+                                                   "input_chunks_verified": True}]}
+        rows = list(native._selected_native({"product_ids": [1, 2], "products": [
+            {"product_id": 1, **owner}, {"product_id": 2, "nested": owner},
+            {"product_id": 3, **owner}, {"product_id": True, **owner},
+            {"product_ids": [], "nested": {"product_id": 1, **owner}},
+        ]}))
+        self.assertEqual([row["product_ids"] for row in rows], [{1}, {2}, set(), set(), set()])
+        self.assertEqual(rows[1]["pointer"], "/products/1/nested/complete_selected_functions/0")
+        self.assertEqual(list(native._selected_native([owner], "/shared", {1, 2}))[0]["product_ids"], {1, 2})
+        self.assertEqual(list(native._selected_native({"verified_artifacts": [owner]}, products={1})), [])
+
+    def test_review_product_array_binds_each_module_only_to_its_actual_product(self):
+        sys.path.insert(0, str(Path(__file__).resolve().parent / "analyzers/python-static"))
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+
+            def retain(path, raw):
+                destination = root / path
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                destination.write_bytes(raw)
+                return {"path": path, "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()}
+
+            clean = {"target_execution": False, "failures": [], "changed_during_query": [],
+                     "source_slice_complete": True, "semantics": {"execution": "reviewed"}}
+            products, sources = [], []
+            for product in (1, 2):
+                source = retain(f".analysis/inputs/{product}.dll", str(product).encode())
+                sources.append(source)
+                base = ".analysis/results/native/" + source["sha256"] + "/"
+                products.append({"product_id": product, "original": source,
+                    "capture": retain(base + "capture.json", b"{}"),
+                    "complete_selected_functions": [{"rva": "0x1000", "input_chunks_verified": True,
+                        "artifact": retain(base + "functions/1000.json", b"{}")}]})
+            review = retain(".analysis/results/review.json", json.dumps({**clean, "products": products}).encode())
+            receipt = ".analysis/results/frontend/audit.json"
+            retain(receipt, json.dumps({"execution": {**clean, "product_ids": [1, 2], "review_source": review}}).encode())
+            retain("tools/capability-ledger.json", json.dumps({"capability_sections": [{
+                "product_ids": [1, 2], "capabilities": ["page:TAB_SOUND"],
+                "sections": [{"receipt": receipt, "section": "execution"}]}]}).encode())
+            database = root / "identity.sqlite3"
+            with closing(sqlite3.connect(database)) as db, db:
+                db.execute("CREATE TABLE deployments(product_id INTEGER, failure TEXT)")
+                db.executemany("INSERT INTO deployments VALUES(?,NULL)", [(1,), (2,)])
+            with patch.object(native.a, "ROOT", root), patch.object(native, "_module") as module:
+                module.side_effect = lambda db, source: {"sha256": source, "status": "indexed"}
+                native.prepare_review_dependencies(database)
+            with closing(sqlite3.connect(database)) as db:
+                self.assertEqual(db.execute("SELECT product_id,source_sha FROM native_review_dependencies ORDER BY product_id").fetchall(),
+                                 [(product, source["sha256"]) for product, source in zip((1, 2), sources)])
+                self.assertEqual(db.execute("SELECT COUNT(*) FROM native_review_owners").fetchone()[0], 2)
+                self.assertEqual(db.execute("SELECT COUNT(*) FROM native_review_matches").fetchone()[0], 0)
+
     def test_capture_inventory_without_explicit_selection_is_not_reviewed(self):
         entry = {"artifact": {"path": "owner", "sha256": "a" * 64},
                  "capture": {"rva": "0x1000"}, "input_chunks_verified": True}

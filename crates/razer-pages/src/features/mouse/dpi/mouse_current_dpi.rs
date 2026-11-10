@@ -1987,7 +1987,7 @@ impl MouseProductWorkspace {
         );
         self.current_dpi.record_edit();
         self.current_dpi.sequence = self.current_dpi.sequence.wrapping_add(1);
-        let selection = Selection::capture_source(self.spec.product_id, &stages);
+        let selection = Selection::capture_source(self.mapping_source_product_id(), &stages);
         let request = MouseCurrentDpiRequested {
             scope,
             sequence: self.current_dpi.sequence,
@@ -1996,7 +1996,7 @@ impl MouseProductWorkspace {
             change: (!self.current_dpi.macro_recording).then_some(DpiChange {
                 stages: Some(stages),
                 active: None,
-                profile_guid: matches!(self.spec.product_id, 182 | 190)
+                profile_guid: matches!(self.mapping_source_product_id(), 182 | 190)
                     .then(|| self.draft["guid"].as_str().unwrap_or("").to_owned()),
                 initialize: false,
             }),
@@ -2043,7 +2043,7 @@ impl MouseProductWorkspace {
         result: Result<Option<DpiStagesDraft>, String>,
         cx: &mut Context<Self>,
     ) {
-        if !razer_storage::host_local_profile::supported(self.spec.product_id) {
+        if !razer_storage::host_local_profile::supported(self.mapping_source_product_id()) {
             return;
         }
         self.current_dpi.local_profile_known = false;
@@ -2059,11 +2059,11 @@ impl MouseProductWorkspace {
         cx.notify();
     }
     pub(super) fn current_dpi_profile_known(&self) -> bool {
-        !razer_storage::host_local_profile::supported(self.spec.product_id)
+        !razer_storage::host_local_profile::supported(self.mapping_source_product_id())
             || self.current_dpi.local_profile_known
     }
     pub fn observe_current_dpi_macro_recording(&mut self, recording: bool) {
-        if self.spec.product_id != 182 {
+        if self.mapping_source_product_id() != 182 {
             return;
         }
         if recording && !self.current_dpi.macro_recording {
@@ -2104,7 +2104,7 @@ impl MouseProductWorkspace {
         macro_recording: bool,
         cx: &mut Context<Self>,
     ) {
-        if self.spec.product_id != 182 {
+        if self.mapping_source_product_id() != 182 {
             return;
         }
         let initialization = ProfileInitialization {
@@ -2136,7 +2136,7 @@ impl MouseProductWorkspace {
         transmit: bool,
         cx: &mut Context<Self>,
     ) {
-        if !razer_device::mouse_receiver_mapping::supports_ordinary(self.spec.product_id) {
+        if !razer_device::mouse_receiver_mapping::supports_ordinary(self.mapping_source_product_id()) {
             return;
         }
         let Some(scope) = self.mouse_polling_scope(cx) else {
@@ -2210,11 +2210,11 @@ impl MouseProductWorkspace {
     }
 
     fn current_dpi_selection(&self) -> Option<Selection> {
-        Selection::capture(self.spec.product_id, &self.current_dpi_draft()?)
+        Selection::capture(self.mapping_source_product_id(), &self.current_dpi_draft()?)
     }
 
     pub(super) fn submit_current_dpi_field(&mut self, path: &str, cx: &mut Context<Self>) {
-        if razer_device::mouse_current_dpi::capability(self.spec.product_id).is_none()
+        if razer_device::mouse_current_dpi::capability(self.mapping_source_product_id()).is_none()
             || !(path.starts_with(self.spec.stages_path())
                 || path == self.spec.active_path()
                 || path == self.spec.stage_enable_path())
@@ -2231,8 +2231,8 @@ impl MouseProductWorkspace {
     }
 
     pub(super) fn submit_current_dpi(&mut self, edit: Edit, cx: &mut Context<Self>) {
-        let Tasks { stages, active } = edit.tasks(self.spec.product_id);
-        if razer_device::mouse_current_dpi::capability(self.spec.product_id).is_none() {
+        let Tasks { stages, active } = edit.tasks(self.mapping_source_product_id());
+        if razer_device::mouse_current_dpi::capability(self.mapping_source_product_id()).is_none() {
             return;
         }
         let Some(scope) = self.mouse_polling_scope(cx) else {
@@ -2276,7 +2276,7 @@ impl MouseProductWorkspace {
                 DpiChange {
                     stages: stage_change.then(|| draft.into()),
                     active: active_change.then_some(selected).flatten(),
-                    profile_guid: matches!(self.spec.product_id, 182 | 190).then(|| {
+                    profile_guid: matches!(self.mapping_source_product_id(), 182 | 190).then(|| {
                         self.draft
                             .get("guid")
                             .and_then(Value::as_str)
@@ -2305,7 +2305,7 @@ impl MouseProductWorkspace {
     }
 
     pub fn request_current_dpi_read(&mut self, cx: &mut Context<Self>) {
-        if razer_device::mouse_current_dpi::capability(self.spec.product_id).is_none() {
+        if razer_device::mouse_current_dpi::capability(self.mapping_source_product_id()).is_none() {
             return;
         }
         self.current_dpi.request_refresh();
@@ -2344,7 +2344,7 @@ impl MouseProductWorkspace {
     /// serial-indexed profile cache. This request contains no setting or
     /// profile, so the transport must perform only the identity getter.
     pub fn request_current_dpi_identity(&mut self, cx: &mut Context<Self>) {
-        if !razer_storage::host_local_profile::supported(self.spec.product_id) {
+        if !razer_storage::host_local_profile::supported(self.mapping_source_product_id()) {
             return;
         }
         let Some(scope) = self.mouse_polling_scope(cx) else {
@@ -2392,7 +2392,7 @@ impl MouseProductWorkspace {
             return;
         }
         let current = self.current_dpi_request_matches(request, cx);
-        let temporary_clutch = razer_device::mouse_receiver_mapping::supports_ordinary(self.spec.product_id)
+        let temporary_clutch = razer_device::mouse_receiver_mapping::supports_ordinary(self.mapping_source_product_id())
             && request.profile.is_none()
             && request
                 .change
@@ -2412,7 +2412,7 @@ impl MouseProductWorkspace {
             if !temporary_clutch
                 && (projection.selection.is_none()
                     || projection.is_read()
-                        && razer_storage::host_local_profile::supported(self.spec.product_id))
+                        && razer_storage::host_local_profile::supported(self.mapping_source_product_id()))
                 && self.current_dpi.projection_current(request)
             {
                 projection.selection = self.current_dpi_selection();
@@ -2570,7 +2570,7 @@ impl MouseProductWorkspace {
     }
 
     pub(super) fn current_dpi_row_available(&self, index: usize) -> bool {
-        razer_device::mouse_current_dpi::capability(self.spec.product_id).is_none()
+        razer_device::mouse_current_dpi::capability(self.mapping_source_product_id()).is_none()
             || self
                 .current_dpi
                 .row_values
@@ -2608,7 +2608,7 @@ impl MouseProductWorkspace {
     }
 
     pub(super) fn current_dpi_status(&self, cx: &Context<Self>) -> Option<AnyElement> {
-        razer_device::mouse_current_dpi::capability(self.spec.product_id)?;
+        razer_device::mouse_current_dpi::capability(self.mapping_source_product_id())?;
         let error = self
             .current_dpi
             .read_error
@@ -2667,10 +2667,10 @@ impl MouseProductWorkspace {
         &mut self,
         cx: &App,
     ) -> Result<Option<MouseCurrentDpiRequested>, String> {
-        if razer_device::mouse_receiver_mapping::supports_ordinary(self.spec.product_id) {
+        if razer_device::mouse_receiver_mapping::supports_ordinary(self.mapping_source_product_id()) {
             self.receiver_mapping.close_callback_admission();
         }
-        let restore = if razer_device::mouse_receiver_mapping::supports_ordinary(self.spec.product_id)
+        let restore = if razer_device::mouse_receiver_mapping::supports_ordinary(self.mapping_source_product_id())
             && (self.receiver_mapping.needs_dpi_restore()
                 || self.current_dpi.temporary_restoration.required())
         {

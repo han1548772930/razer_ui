@@ -138,14 +138,14 @@ fn dispatch_to_target(owner: &MappingTargetOwner, raw: serde_json::Value, cx: &m
 }
 
 fn connected(workspace: &Entity<ProductWorkspace>, cx: &App) -> bool {
-    use razer_model::model::DeviceConnectionObservation;
+    mapping_connection_available(workspace.read(cx).device(cx).dashboard.connection_observation)
+}
+
+fn mapping_connection_available(observation: Option<razer_model::model::DeviceConnectionObservation>) -> bool {
+    use razer_model::model::DeviceConnectionObservation::{UsbPresent, HidPresent, ReceiverPeer};
     matches!(
-        workspace
-            .read(cx)
-            .device(cx)
-            .dashboard
-            .connection_observation,
-        Some(DeviceConnectionObservation::UsbPresent | DeviceConnectionObservation::HidPresent)
+        observation,
+        Some(UsbPresent | HidPresent | ReceiverPeer(1))
     )
 }
 
@@ -324,6 +324,7 @@ impl AppShell {
             });
         }
         self.sync_interdevice_holds(cx);
+        self.sync_receiver_mapping(cx);
     }
 
     fn sync_interdevice_holds(&mut self, cx: &mut Context<Self>) {
@@ -367,6 +368,7 @@ impl AppShell {
     ) {
         self.retain_mapping_chroma_connections(retained, cx);
         self.retain_mapping_observation_connections(retained, cx);
+        self.retain_receiver_mapping_connections(retained, cx);
         for (origin, mut hold) in std::mem::take(&mut self.mapping_interdevice_holds) {
             if !retained
                 .iter()
@@ -484,6 +486,18 @@ impl AppShell {
 mod callback_tests {
     use super::{CallbackOutput, ChromaChange, ProfileDirection, Value};
     use serde_json::json;
+
+    #[test]
+    fn interdevice_target_accepts_only_an_observed_live_connection() {
+        use razer_model::model::DeviceConnectionObservation::{UsbPresent, HidPresent, ReceiverPeer};
+        for observed in [UsbPresent, HidPresent, ReceiverPeer(1)] {
+            assert!(super::mapping_connection_available(Some(observed)));
+        }
+        for status in [0, 2, 255] {
+            assert!(!super::mapping_connection_available(Some(ReceiverPeer(status))));
+        }
+        assert!(!super::mapping_connection_available(None));
+    }
 
     fn changes(value: Value, interdevice: bool) -> Vec<ChromaChange> {
         serde_json::from_value::<CallbackOutput>(value)

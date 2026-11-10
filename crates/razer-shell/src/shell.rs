@@ -181,6 +181,8 @@ mod product_chroma;
 mod product_lighting;
 #[path = "shell/devices/product_mapping.rs"]
 mod product_mapping;
+#[path = "shell/devices/receiver_mapping.rs"]
+mod receiver_mapping;
 #[path = "shell/devices/product_settings_navigation.rs"]
 mod product_settings_navigation;
 #[path = "shell/receiver/receiver_brightness_page.rs"]
@@ -319,6 +321,7 @@ pub struct AppShell {
     tray_ignore_release: bool,
     devices: Vec<Entity<ProductWorkspace>>,
     mapping_interdevice_holds: BTreeMap<EntityId, product_mapping::InterdeviceHold>,
+    receiver_mapping: receiver_mapping::State,
     receiver_queries: BTreeMap<String, (u64, u64)>,
     hyperpolling_receivers: BTreeMap<String, hyperpolling_runtime::Session>,
     hyperpolling_cleanup: Vec<hyperpolling_runtime::Retired>,
@@ -606,6 +609,7 @@ impl AppShell {
         let mut this = Self {
             devices: vec![],
             mapping_interdevice_holds: BTreeMap::new(),
+            receiver_mapping: receiver_mapping::State::default(),
             receiver_queries: BTreeMap::new(),
             hyperpolling_receivers: BTreeMap::new(),
             hyperpolling_cleanup: Vec::new(),
@@ -1330,6 +1334,7 @@ impl AppShell {
         this.install_keyboard_local_profiles_cleanup();
         this.install_keyboard_profile_inventory_cleanup();
         this.install_mapping_observation_cleanup(cx);
+        this.install_receiver_mapping_cleanup();
         this.install_game_monitor(cx);
         this.install_global_shortcuts(cx);
         this.install_keyboard_actuation_cleanup(cx);
@@ -1561,6 +1566,9 @@ impl AppShell {
                 WorkspaceEvent::MappingCallbackRequested(request) => {
                     this.route_mapping_callback(&entity,request,window,cx);
                 }
+                WorkspaceEvent::ReceiverMappingPublication(request) => {
+                    this.publish_receiver_mapping(&entity, request, cx);
+                }
                 WorkspaceEvent::KeyboardMappingInterDeviceConfigureRequested(request) => {
                     if let Err(error) = this.configure_mapping_target(&entity, request, window, cx) {
                         log::warn!("[inter-device-mapping] {error}");
@@ -1620,6 +1628,7 @@ impl AppShell {
                 WorkspaceEvent::MouseProfileSerialObserved => {
                     entity.update(cx, |workspace, cx| workspace.restore_mouse_profile_after_serial(window, cx));
                     this.initialize_current_mouse_profiles(cx);
+                    this.sync_receiver_mapping(cx);
                 }
                 WorkspaceEvent::ResourceStateChanged => cx.notify(),
                 WorkspaceEvent::MouseReceiverMonitorRequested(request) => {
@@ -3007,6 +3016,9 @@ impl AppShell {
                 }
                 for workspace in &self.devices {
                     workspace.update(cx, |workspace, cx| workspace.finish_exit(cx));
+                }
+                if self.finish_receiver_mapping_exit() {
+                    return;
                 }
                 self.stop_global_shortcuts();
                 self.stop_mouse_rotation_native();

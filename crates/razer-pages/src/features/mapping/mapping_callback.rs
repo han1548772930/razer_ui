@@ -14,12 +14,32 @@ pub struct ReceiverMappingPublication {
 
 impl ReceiverMappingPublication {
     pub(crate) fn new(owner: uuid::Uuid, product_id: u32, revision: u64, document: Value) -> Self {
-        Self { owner, product_id, revision, document }
+        Self {
+            owner,
+            product_id,
+            revision,
+            document,
+        }
     }
-    pub fn owner(&self) -> uuid::Uuid { self.owner }
-    pub fn product_id(&self) -> u32 { self.product_id }
-    pub fn revision(&self) -> u64 { self.revision }
-    pub fn document(&self) -> &Value { &self.document }
+    pub fn owner(&self) -> uuid::Uuid {
+        self.owner
+    }
+    pub fn product_id(&self) -> u32 {
+        self.product_id
+    }
+    pub fn revision(&self) -> u64 {
+        self.revision
+    }
+    pub fn document(&self) -> &Value {
+        &self.document
+    }
+    pub(crate) fn for_mounted_product(&self, product_id: u32) -> Option<Self> {
+        let product = razer_device::mapping_document::MappingProduct::for_product_id(product_id)?;
+        (product.source_product_id() == self.product_id).then(|| Self {
+            product_id,
+            ..self.clone()
+        })
+    }
 }
 
 #[derive(Clone)]
@@ -56,5 +76,18 @@ mod tests {
         assert!(queued.matches_generation(41));
         assert!(!queued.matches_generation(42));
         assert_eq!(queued.raw(), &raw);
+    }
+
+    #[test]
+    fn shared_publication_retains_source_document_and_mounted_recipient() {
+        let owner = uuid::Uuid::new_v4();
+        let document = serde_json::json!({"productId":104,"activeProfile":"saved"});
+        let request = ReceiverMappingPublication::new(owner, 104, 8, document.clone());
+        let mounted = request.for_mounted_product(105).unwrap();
+        assert_eq!(mounted.product_id(), 105);
+        assert_eq!(mounted.owner(), owner);
+        assert_eq!(mounted.revision(), 8);
+        assert_eq!(mounted.document(), &document);
+        assert!(request.for_mounted_product(190).is_none());
     }
 }

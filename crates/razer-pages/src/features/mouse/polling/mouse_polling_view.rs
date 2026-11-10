@@ -545,7 +545,7 @@ impl MouseProductWorkspace {
     pub fn mouse_polling_scope(&self, _cx: &App) -> Option<MousePollingScope> {
         let owner = self.polling_owner?;
         if self.spec.product_id != 70
-            && razer_device::mouse_current_dpi::capability(self.spec.product_id).is_none()
+            && razer_device::mouse_current_dpi::capability(self.mapping_source_product_id()).is_none()
             && razer_device::mouse_current_power::capability(self.spec.product_id).is_none()
         {
             source_spec(self.spec.product_id)?;
@@ -586,7 +586,7 @@ impl MouseProductWorkspace {
     pub(super) fn restore_polling(&mut self, saved: Option<&Value>) {
         self.restore_in_game_polling(saved);
         let dpi_supported = self.spec.product_id == 70
-            || razer_device::mouse_current_dpi::capability(self.spec.product_id).is_some();
+            || razer_device::mouse_current_dpi::capability(self.mapping_source_product_id()).is_some();
         let polling_supported = source_spec(self.spec.product_id).is_some();
         let power_supported =
             razer_device::mouse_current_power::capability(self.spec.product_id).is_some();

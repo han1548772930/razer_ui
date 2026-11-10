@@ -233,6 +233,7 @@ impl AppShell {
                         });
                     }
                     shell.initialize_controller_roots(cx);
+                    shell.resume_receiver_mapping(cx);
                     #[cfg(target_os = "windows")]
                     razer_tray::native::show(window);
                 });

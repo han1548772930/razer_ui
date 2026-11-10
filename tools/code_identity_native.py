@@ -10,6 +10,7 @@ from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 import hashlib
+from contextlib import closing
 import json
 from pathlib import Path
 import sqlite3
@@ -462,10 +463,25 @@ def publish(db_path):
             "normalized_code_variants": variants, "modules": report["modules"], "failures": len(report["failures"])}
 
 
-def _selected_native(value, pointer=""):
+def _selected_native(value, pointer="", products=None):
     """Select explicit reviewed input lists, never artifact or capture inventories."""
+    if isinstance(value, list):
+        for index, entry in enumerate(value):
+            yield from _selected_native(entry, pointer + "/" + str(index), products)
+        return
     if not isinstance(value, dict):
         return
+    declared = None
+    if "product_ids" in value:
+        declared = value["product_ids"]
+        declared = (set(declared) if isinstance(declared, list)
+                    and all(type(pid) is int and pid > 0 for pid in declared) else set())
+    if "product_id" in value:
+        pid = value["product_id"]
+        selected = {pid} if type(pid) is int and pid > 0 else set()
+        declared = selected if declared is None else declared & selected
+    if declared is not None:
+        products = declared if products is None else products & declared
     source = value.get("original") or value.get("input")
     capture = value.get("capture_receipt") or value.get("capture")
     seeds = {hex(int(rva, 0)) for rva in value.get("explicit_seed_rvas", [])}
@@ -480,19 +496,16 @@ def _selected_native(value, pointer=""):
                     or key == "complete_functions" and hex(int(rva, 0)) not in seeds):
                 continue
             yield {"source": source, "capture": capture, "artifact": artifact,
-                   "rva": hex(int(rva, 0)), "pointer": pointer + "/" + key + "/" + str(index)}
+                   "rva": hex(int(rva, 0)), "pointer": pointer + "/" + key + "/" + str(index),
+                   "product_ids": products}
     ignored = {"complete_selected_functions", "complete_functions", "assembly", "pseudocode",
                "verified_artifacts", "complete_source_owners", "complete_owners", "source_selection", "host_release"}
     for key, child in value.items():
         if key in ignored:
             continue
         path = pointer + "/" + key.replace("~", "~0").replace("/", "~1")
-        if isinstance(child, dict):
-            yield from _selected_native(child, path)
-        elif isinstance(child, list):
-            for index, entry in enumerate(child):
-                if isinstance(entry, dict):
-                    yield from _selected_native(entry, path + "/" + str(index))
+        if isinstance(child, (dict, list)):
+            yield from _selected_native(child, path, products)
 
 
 def _review_identity(reference, verified):
@@ -527,7 +540,7 @@ def prepare_review_dependencies(db_path):
         for ref in entry["sections"]:
             mapped.setdefault(ref["receipt"], {}).setdefault(ref["section"], set()).update(entry["capabilities"])
     verified, selections, module_references = {}, [], {}
-    with sqlite3.connect(db_path, timeout=60) as db:
+    with closing(sqlite3.connect(db_path, timeout=60)) as db:
         _schema(db)
         pids = {row[0] for row in db.execute("SELECT DISTINCT product_id FROM deployments WHERE failure IS NULL")}
         with db:
@@ -554,7 +567,7 @@ def prepare_review_dependencies(db_path):
                         json.dumps(sorted(names[name])), status, None))
                 if status != "selection_pending":
                     continue
-                owned = [(identity, row) for row in _selected_native(section, pointer)]
+                owned = [(identity, row) for row in _selected_native(section, pointer, products)]
                 review = section.get("review_source")
                 if review is not None:
                     try:
@@ -566,8 +579,8 @@ def prepare_review_dependencies(db_path):
                                 flags[key] = value
                             if key == "semantics":
                                 flags[key] = bool(value)
-                            if isinstance(value, dict) and key not in {"verified_artifacts", "complete_owners"}:
-                                review_selected.extend(_selected_native(value, "/" + key))
+                            if isinstance(value, (dict, list)) and key not in {"verified_artifacts", "complete_owners"}:
+                                review_selected.extend(_selected_native(value, "/" + key, products))
                         if review_selected and not _clean_review(flags):
                             raise ValueError("Referenced native review has no clean selected semantic scope")
                         owned.extend((review, row) for row in review_selected)
@@ -591,12 +604,13 @@ def prepare_review_dependencies(db_path):
                         if (capture["path"] != base + "capture.json"
                                 or artifact["path"] != base + "functions/" + row["rva"][2:] + ".json"):
                             raise ValueError("Selected function is not the exact indexed base owner")
-                        if not products:
+                        owner_products = row["product_ids"]
+                        if not owner_products:
                             raise ValueError("Selected native owner has no explicit current product scope")
                         module_references[source_sha] = source
                         with db:
                             db.executemany("INSERT OR IGNORE INTO native_review_dependencies VALUES(?,?,?,?,?)", [
-                                (section_id, pid, source_sha, source["path"], source["bytes"]) for pid in products])
+                                (section_id, pid, source_sha, source["path"], source["bytes"]) for pid in owner_products])
                     except (OSError, ValueError, KeyError, TypeError) as error:
                         failure = str(error)
                     selections.append((section_id, evidence["path"], evidence["sha256"], row["pointer"],
