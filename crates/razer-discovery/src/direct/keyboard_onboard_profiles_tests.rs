@@ -22,7 +22,7 @@ fn options() -> ReadOptions {
 }
 
 fn device_reply() -> serde_json::Value {
-    let keys = razer_device::keyboard_onboard_inventory::current_679_inventory(1);
+    let keys = razer_device::keyboard_onboard_inventory::inventory(679, 1).unwrap();
     let key_inventory = keys
         .iter()
         .map(|key| {

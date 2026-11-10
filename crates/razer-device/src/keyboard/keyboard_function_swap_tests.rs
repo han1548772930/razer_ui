@@ -38,6 +38,32 @@ fn cap() -> KeyboardSettingsCapability {
 }
 
 #[test]
+fn source_hid_function_swap_keeps_wired_and_receiver_transactions_and_only_acknowledges_set() {
+    let cases=[
+        (crate::keyboard_metadata::hid_capability(717,717).unwrap().clone(),30),
+        (crate::keyboard_metadata::hid_capability(717,730).unwrap().clone(),128),
+        (crate::keyboard_metadata::relay_capability(717,197).unwrap(),129),
+    ];
+    for (mut cap,transaction) in cases {
+        cap.max_retry_in=1;cap.max_retry_out=1;
+        cap.sleep_between_in_ms=0;cap.sleep_between_out_ms=0;cap.sleep_between_out_in_ms=0;
+        let device=Mock::new([reply(&[0xd3])]);
+        let report=apply_hid(&device,&cap,FunctionKeyPrimary::Function,||Ok(transaction),&||Ok(())).unwrap();
+        report.validate_write_ack(FunctionKeyPrimary::Function).unwrap();
+        assert!(report.observed.is_none());
+        assert!(!report.verified());
+        let sent=device.sent();
+        assert_eq!(sent.len(),1);
+        assert_eq!(sent[0][2],transaction);
+        assert_eq!(&sent[0][6..10],&[1,2,40,1]);
+        let cancelled=Mock::new([]);
+        let error=apply_hid(&cancelled,&cap,FunctionKeyPrimary::Multimedia,||Ok(transaction),&||anyhow::bail!("cancelled")).unwrap_err();
+        assert_eq!(error.phase,SwapFailurePhase::Prepare);
+        assert!(cancelled.sent().is_empty());
+    }
+}
+
+#[test]
 fn audited_joro_set_and_get_use_multimedia_zero_and_function_one() {
     assert_eq!(AUDITED_WIRED_PRODUCTS, [717]);
     for primary in [FunctionKeyPrimary::Multimedia, FunctionKeyPrimary::Function] {

@@ -18,6 +18,11 @@ use anyhow::{Context as _, Result, ensure};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
+#[path = "onboard_macro_decode.rs"]
+pub mod decode;
+#[path = "onboard_macro_import.rs"]
+pub mod import;
+
 pub const AUDITED_MOUSE_PRODUCTS: &[u32] = &[170, 204, 226, 45066];
 pub const AUDITED_KEYBOARD_PRODUCTS: &[u32] = &[740, 746];
 const STORAGE: [u8; 3] = [14, 6, 142];
@@ -90,6 +95,63 @@ pub struct MacroReading {
     pub data: Vec<u8>,
     pub data_size: u32,
     pub data_blocks: Vec<MacroReadBlock>,
+}
+
+impl MacroReading {
+    pub fn keyboard_projection(&self, product_id: u32) -> Result<decode::Decoded> {
+        decode::keyboard_items(product_id, &self.data, self.data_size)
+    }
+
+    pub(crate) fn validate_keyboard_content(&self, product_id: u32) -> Result<()> {
+        let size = usize::try_from(self.data_size)?;
+        if self.data.len() == size {
+            return Ok(());
+        }
+        ensure!(
+            self.data.len().checked_add(2) == Some(size),
+            "Keyboard macro content is truncated"
+        );
+        let last = self
+            .data_blocks
+            .last()
+            .context("Short keyboard macro has no returned block")?;
+        let offset = usize::try_from(last.offset)?;
+        ensure!(
+            offset < size
+                && size - offset <= DATA_CHUNK
+                && usize::from(last.returned_size) + 2 == size - offset,
+            "Short keyboard macro does not end in the source final block"
+        );
+        let mut bytes = Vec::new();
+        let mut requested_offset = 0usize;
+        for block in &self.data_blocks {
+            ensure!(
+                requested_offset < size,
+                "Short keyboard macro has excess returned blocks"
+            );
+            let count = (size - requested_offset).min(DATA_CHUNK);
+            ensure!(
+                usize::try_from(block.offset)? == requested_offset
+                    && usize::from(block.returned_size) <= count
+                    && block.data.len() >= usize::from(block.returned_size),
+                "Short keyboard macro block differs from its requested range"
+            );
+            bytes.extend_from_slice(&block.data[..usize::from(block.returned_size)]);
+            requested_offset += count;
+        }
+        ensure!(
+            requested_offset == size && bytes == self.data,
+            "Short keyboard macro bytes differ from returned block data"
+        );
+        let projection = self.keyboard_projection(product_id)?;
+        ensure!(
+            projection.stopped.is_none()
+                && projection.repaired_key_up.is_some()
+                && projection.consumed_bytes == self.data.len(),
+            "Short keyboard macro is not the source missing-final-key-up case"
+        );
+        Ok(())
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -306,7 +368,7 @@ fn be32(value: u32) -> [u8; 4] {
     value.to_be_bytes()
 }
 
-fn guid_bytes(value: &str) -> Result<[u8; 16]> {
+pub(crate) fn guid_bytes(value: &str) -> Result<[u8; 16]> {
     let bytes = value.as_bytes();
     ensure!(
         bytes.len() == 36 && [8, 13, 18, 23].iter().all(|i| bytes[*i] == b'-'),
@@ -333,7 +395,7 @@ fn guid_bytes(value: &str) -> Result<[u8; 16]> {
     Ok(result)
 }
 
-fn guid_text(bytes: &[u8]) -> Result<String> {
+pub(crate) fn guid_text(bytes: &[u8]) -> Result<String> {
     let mut guid: [u8; 16] = bytes.try_into().context("macro GUID is not 16 bytes")?;
     guid[..4].reverse();
     guid[4..6].reverse();
@@ -349,7 +411,7 @@ fn guid_text(bytes: &[u8]) -> Result<String> {
     Ok(text)
 }
 
-fn source_text(field: &[u8], drop_last_without_nul: bool) -> String {
+pub(crate) fn source_text(field: &[u8], drop_last_without_nul: bool) -> String {
     let end = field.iter().position(|byte| *byte == 0).unwrap_or_else(|| {
         if drop_last_without_nul {
             field.len().saturating_sub(1)
@@ -447,8 +509,14 @@ pub struct OnboardMacro<'a> {
     metadata_write_transport: DeviceReadCapability,
 }
 
-/// The current 679 loader shares the captured macro read protocol. Its write
-/// branch is deliberately outside this capability's public surface.
+#[derive(Clone, Copy)]
+enum DataReadPolicy {
+    Exact,
+    KeyboardFinalKeyUp,
+}
+
+/// Source-qualified keyboard loaders share the macro read protocol. The
+/// caller supplies the actual direct, OLED or routed keyboard transport.
 pub(crate) struct CurrentKeyboardMacroReader<'a> {
     inner: OnboardMacro<'a>,
 }
@@ -458,17 +526,7 @@ impl<'a> CurrentKeyboardMacroReader<'a> {
         device: &'a dyn FeatureTransport,
         cap: &DeviceReadCapability,
     ) -> Result<Self> {
-        let audited = crate::keyboard_metadata::capability(679)
-            .context("Current keyboard macro factory is absent")?;
-        ensure!(
-            cap.product_id == 679
-                && cap.source_class == audited.source_class
-                && cap.vendor_id == audited.vendor_id
-                && cap.claim_interface == audited.claim_interface
-                && cap.claim_interfaces_by_pid == audited.claim_interfaces_by_pid
-                && cap.direct_pids == audited.direct_pids,
-            "Current keyboard macro reader differs from its captured HID factory"
-        );
+        crate::keyboard_profile_inventory::validate_capability(cap)?;
         Ok(Self {
             inner: OnboardMacro::from_transport(device, cap)?,
         })
@@ -506,13 +564,16 @@ impl<'a> CurrentKeyboardMacroReader<'a> {
             transactions,
             validate,
             &mut data_blocks,
+            DataReadPolicy::KeyboardFinalKeyUp,
         )?;
-        Ok(MacroReading {
+        let reading = MacroReading {
             metadata: summary.metadata.clone(),
             data_size,
             data,
             data_blocks,
-        })
+        };
+        reading.validate_keyboard_content(self.inner.product_id())?;
+        Ok(reading)
     }
 }
 
@@ -543,8 +604,10 @@ impl<'a> OnboardMacro<'a> {
     ) -> Result<Self> {
         ensure!(
             cap.report_bytes == 91
-                && cap.report_id == 0
-                && cap.transaction_prefix == 0
+                && (cap.report_id == 0 || cap.source_class == "rzDevice25DualLinkKeyboard")
+                && (cap.transaction_prefix == 0
+                    || (cap.transaction_prefix == 0x80
+                        && cap.source_class == "rzDevice25DualLinkKeyboard"))
                 && cap.transaction_modulus == 31
                 && cap.max_retry_out > 0
                 && cap.max_retry_in > 0,
@@ -898,6 +961,7 @@ impl<'a> OnboardMacro<'a> {
         transactions: &mut impl FnMut() -> Result<u8>,
         validate: &impl Fn() -> Result<()>,
         blocks: &mut Vec<MacroReadBlock>,
+        policy: DataReadPolicy,
     ) -> Result<Vec<u8>> {
         let size_usize = usize::try_from(size).context("macro data size cannot fit usize")?;
         let mut data = Vec::with_capacity(size_usize);
@@ -931,9 +995,18 @@ impl<'a> OnboardMacro<'a> {
                 returned_offset == offset as u32,
                 "macro memory reply offset differs"
             );
-            ensure!(returned_size == count, "macro memory block size differs");
-            ensure!(response.len() >= 7 + count, "truncated macro memory block");
-            data.extend_from_slice(&response[7..7 + count]);
+            let final_key_up = matches!(policy, DataReadPolicy::KeyboardFinalKeyUp)
+                && offset + count == size_usize
+                && returned_size.checked_add(2) == Some(count);
+            ensure!(
+                returned_size == count || final_key_up,
+                "macro memory block size differs"
+            );
+            ensure!(
+                response.len() >= 7 + returned_size,
+                "truncated macro memory block"
+            );
+            data.extend_from_slice(&response[7..7 + returned_size]);
             offset += count;
         }
         Ok(data)
@@ -959,6 +1032,7 @@ impl<'a> OnboardMacro<'a> {
             transactions,
             validate,
             &mut data_blocks,
+            DataReadPolicy::Exact,
         )?;
         Ok(MacroReading {
             metadata,
@@ -1410,6 +1484,7 @@ impl<'a> OnboardMacro<'a> {
                 transactions,
                 validate,
                 &mut report.data_readback_blocks,
+                DataReadPolicy::Exact,
             )?;
             let data_matches = data_readback == data;
             report.data_readback = Some(data_readback);

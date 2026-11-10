@@ -58,6 +58,82 @@ fn default_store_matches_source_default_profile() {
 }
 
 #[test]
+fn workspace_power_is_global_without_a_profile_and_preserves_other_device_fields() {
+    use razer_device::earbuds_power::Setting;
+    for pid in [2657, 2660, 2664, 2668, 2689] {
+        let mut device = workspace_device();
+        device.product_id = pid;
+        device.profiles.clear();
+        device.active_profile.clear();
+        device.source_device_settings = Some(serde_json::json!({
+            "extension": {"name":"retained"},
+            "powerSaving": {"isEnabled":false,"value":15,"onShutdown":false,"vendorExtra":7}
+        }));
+        merge_power(&mut device, Setting::new(true, 300)).unwrap();
+        assert!(device.profiles.is_empty());
+        assert!(device.active_profile.is_empty());
+        assert_eq!(read_power(&device).unwrap(), Some(Setting::new(true, 300)));
+        assert_eq!(device.source_device_settings.unwrap(), serde_json::json!({
+            "extension":{"name":"retained"},
+            "powerSaving":{"isEnabled":true,"value":5.0,"onShutdown":false,"vendorExtra":7}
+        }));
+    }
+}
+
+#[test]
+fn workspace_power_never_materializes_defaults_or_repairs_invalid_storage() {
+    use razer_device::earbuds_power::Setting;
+    let mut device = workspace_device();
+    device.source_device_settings = None;
+    assert_eq!(read_power(&device).unwrap(), None);
+    assert!(device.source_device_settings.is_none());
+    for value in [Value::Null, serde_json::json!({"value":5}),
+        serde_json::json!({"isEnabled":1,"value":15}),
+        serde_json::json!({"isEnabled":true,"value":-1}),
+        serde_json::json!({"isEnabled":true,"value":5.001})] {
+        device.source_device_settings = Some(serde_json::json!({"powerSaving":value}));
+        let before = device.source_device_settings.clone();
+        assert!(read_power(&device).is_err());
+        assert!(merge_power(&mut device, Setting::new(true, 300)).is_err());
+        assert_eq!(device.source_device_settings, before);
+    }
+}
+
+#[test]
+fn workspace_power_save_acknowledgement_does_not_replace_a_newer_global_draft() {
+    use razer_device::earbuds_power::Setting;
+    let mut previous = workspace_device();
+    merge_power(&mut previous, Setting::new(true, 900)).unwrap();
+    let mut saved = previous.clone();
+    merge_power(&mut saved, Setting::new(false, 1800)).unwrap();
+    let mut current = previous.clone();
+    accept_power_saved(&mut current, &previous, &saved).unwrap();
+    assert_eq!(read_power(&current).unwrap(), Some(Setting::new(false, 1800)));
+    merge_power(&mut current, Setting::new(true, 3600)).unwrap();
+    accept_power_saved(&mut current, &previous, &saved).unwrap();
+    assert_eq!(read_power(&current).unwrap(), Some(Setting::new(true, 3600)));
+    assert_eq!(current.profiles, previous.profiles);
+}
+
+#[test]
+fn workspace_power_restore_reads_only_an_explicit_selected_profile_field() {
+    use razer_device::earbuds_power::Setting;
+    let mut device = workspace_device();
+    merge_power(&mut device, Setting::new(false, 3600)).unwrap();
+    assert_eq!(read_power_profile(&device).unwrap(), None);
+    let id = device.profiles[0].id.clone();
+    device.active_profile = id.clone();
+    device.profiles[0].source_settings = Some(serde_json::json!({
+        "profile":{"powerSaving":{"isEnabled":true,"value":15},"retained":7}
+    }));
+    assert_eq!(read_power_profile(&device).unwrap(), Some((id, Setting::new(true, 900))));
+    assert_eq!(read_power(&device).unwrap(), Some(Setting::new(false, 3600)));
+    device.profiles[0].source_settings = Some(serde_json::json!({"profile":{"powerSaving":null}}));
+    assert!(read_power_profile(&device).is_err());
+    assert_eq!(read_power(&device).unwrap(), Some(Setting::new(false, 3600)));
+}
+
+#[test]
 fn selection_active_guid_first_profile_and_unmatched() {
     let mut store = EarbudsProfileStore {
         schema_version: 1,

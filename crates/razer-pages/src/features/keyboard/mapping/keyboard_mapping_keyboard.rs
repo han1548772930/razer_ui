@@ -126,12 +126,14 @@ fn recording_source(pid: u32) -> &'static RecordingSource {
 
 impl KeyboardProductWorkspace {
     pub(super) fn recording_key_name(&self, input_id: &str) -> String {
+        self.mapping_key_name_for_layout(input_id, self.observed_mapping_system_layout())
+    }
+    pub(super) fn observed_mapping_system_layout(&self) -> Option<u32> {
+        self.analog_gamepad.mapping.keyboard.system_keyboard_layout
+    }
+    pub(super) fn mapping_key_name_for_layout(&self, input_id: &str, layout: Option<u32>) -> String {
         let names = &recording_source(self.spec.product_id).key_names;
-        let table = self
-            .analog_gamepad
-            .mapping
-            .keyboard
-            .system_keyboard_layout
+        let table = layout
             .and_then(|layout| names.get(&layout.to_string()))
             .or_else(|| names.get("default"));
         let value = table.and_then(|table| table.get(input_id));

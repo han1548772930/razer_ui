@@ -122,6 +122,7 @@ impl AppShell {
             });
         }
         let requested = !self.game_observer.profiles.is_empty();
+        self.sync_receiver_mapping_runtime(cx);
         if let Some(worker) = &self.game_observer.linked_worker {
             match worker.send(linked::Command::Foreground(requested)) {
                 Ok(()) => self.game_observer.foreground_requested = requested,
@@ -170,6 +171,7 @@ impl AppShell {
                 workspace.observe_running_games(None, cx)
             });
         }
+        self.sync_receiver_mapping_runtime(cx);
         self.host_storage.register_view(HostStorageView {
             id: OBSERVER_VIEW,
             url: OBSERVER_URL.into(),
@@ -401,6 +403,7 @@ impl AppShell {
                 workspace.observe_running_games(count, cx)
             });
         }
+        self.sync_receiver_mapping_runtime(cx);
     }
 
     fn fail_game_observation(&mut self, error: String, cx: &mut Context<Self>) {

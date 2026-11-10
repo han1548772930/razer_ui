@@ -13,7 +13,7 @@ use uuid::Uuid;
 
 #[cfg(windows)]
 #[path = "../platform/windows/earbuds_system_volume.rs"]
-mod windows;
+pub(crate) mod windows;
 
 pub struct Command {
     scope_id: Uuid,

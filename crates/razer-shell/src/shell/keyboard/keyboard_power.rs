@@ -46,6 +46,7 @@ impl State {
 impl AppShell {
     pub(super) fn sync_keyboard_power_owners(&mut self, cx: &mut Context<Self>) {
         self.refresh_macro_recorder_storage();
+        self.sync_function_primary_recorder(cx);
         let recorder = if self.receiver_macro_exclusive(cx) {
             Recorder::Unknown
         } else {

@@ -27,20 +27,7 @@ fn run(target: &DeviceReadTarget, operation: Operation<'_>) -> anyhow::Result<Va
         cap.direct_pids.contains(&target.physical_product_id) && target.peer_product_id.is_none(),
         "Current mouse DPI target differs from the source's single-device adapter"
     );
-    let IdentityLookup::Unique(identity) = device_identity::lookup(target.physical_product_id)
-    else {
-        anyhow::bail!("Current mouse DPI target has no unique physical identity");
-    };
-    let source_identity = device_identity::middleware_product_identity(identity.product_id)
-        .context("Current mouse DPI middleware identity is absent")?;
-    let is_dongle =
-        identity.is_dongle || source_identity.dongle_id == Some(target.physical_product_id);
-    ensure!(
-        source_identity.product_id == target.product_id
-            && !identity.is_ble
-            && source.is_physical_branch(target.physical_product_id, is_dongle),
-        "Current mouse DPI physical branch differs"
-    );
+    let is_dongle = source.is_dongle(target.physical_product_id)?;
     if let Operation::Dpi(Some(change)) = operation {
         dpi::validate_change_for(target.product_id, change)?;
     }

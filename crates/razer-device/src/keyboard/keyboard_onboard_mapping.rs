@@ -107,6 +107,22 @@ pub struct ProfileNavigation {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Perfect180Direction {
+    Right,
+    Left,
+}
+
+/// The keyboard UI converter takes its default-mapping branch for this value.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Perfect180Output {
+    pub raw_direction: u8,
+    pub direction: Option<Perfect180Direction>,
+    pub report_count: u16,
+    pub raw_enabled: u8,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ActionFamily {
     Dpi,
     Profile,
@@ -126,6 +142,7 @@ pub enum UnknownReason {
     Action { family: ActionFamily, code: u16 },
     ControllerCatalogAbsent,
     ScrollWheelModeDisabled,
+    IncompleteFunctionData { required: u8, returned: u8 },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -141,6 +158,7 @@ pub enum Output {
     Razer(RazerAction),
     WindowsShortcut(ShortcutAction),
     Hypershift,
+    Perfect180(Perfect180Output),
     Unknown {
         function: Option<FunctionId>,
         reason: UnknownReason,
@@ -265,107 +283,141 @@ pub fn decode(raw: &ButtonAssignment, macros: &MacroCatalog) -> Result<Assignmen
     let function = source::function_id(u16::from(raw.function_id));
     let data = &raw.data;
     let unknown_action = |family, code| UnknownReason::Action { family, code };
-    let output = match function {
-        None => Err(UnknownReason::Function),
-        Some(FunctionId::Off) => Ok(Output::Disabled),
-        Some(FunctionId::ButtonCode) => mouse_output(data[0], mode, None),
-        Some(FunctionId::KeyCode) => keyboard_output(data, mode, false),
-        Some(FunctionId::MacroTypeI | FunctionId::MacroTypeII | FunctionId::MacroTypeIII) => {
-            let macro_id = u16::from_be_bytes([data[0], data[1]]);
-            let guid = macros
-                .macros
-                .iter()
-                .find(|row| row.metadata.macro_id == macro_id)
-                .map(|row| row.metadata.guid.clone());
-            let playback = match function {
-                Some(FunctionId::MacroTypeI) if data[2] == 1 => MacroPlayback::Once,
-                Some(FunctionId::MacroTypeI) => MacroPlayback::NTimes(data[2]),
-                Some(FunctionId::MacroTypeII) => MacroPlayback::Held,
-                Some(FunctionId::MacroTypeIII) => MacroPlayback::Toggle,
-                _ => unreachable!(),
-            };
-            Ok(Output::Macro(MacroOutput {
-                macro_id,
-                guid,
-                playback,
-            }))
-        }
-        Some(FunctionId::DPI) => {
-            let action = match data[0] {
-                1 => Some(DpiAction::Up),
-                2 => Some(DpiAction::Down),
-                5 => Some(DpiAction::Clutch),
-                6 => Some(DpiAction::CycleUp),
-                7 => Some(DpiAction::CycleDown),
-                _ => None,
-            };
-            action
-                .map(|action| {
-                    let (x, y) = if action == DpiAction::Clutch {
-                        (
-                            u16::from_be_bytes([data[1], data[2]]),
-                            u16::from_be_bytes([data[3], data[4]]),
-                        )
-                    } else {
-                        (0, 0)
-                    };
-                    Output::Dpi(DpiOutput {
-                        action,
-                        x: (x != 0).then_some(x),
-                        y: (y != 0).then_some(y),
+    let required = match function {
+        Some(FunctionId::KeyCode | FunctionId::MediaKeys) => 2,
+        Some(FunctionId::MacroTypeI | FunctionId::TurboModeButton) => 3,
+        Some(FunctionId::MacroTypeII | FunctionId::MacroTypeIII) => 2,
+        Some(FunctionId::TurboModeKey | FunctionId::Perfect180) => 4,
+        Some(FunctionId::DPI) if data[0] == 5 => 5,
+        Some(FunctionId::Profile) if data[0] == 3 => 2,
+        Some(
+            FunctionId::ButtonCode
+            | FunctionId::DPI
+            | FunctionId::Profile
+            | FunctionId::PowerKeys
+            | FunctionId::RazerKey
+            | FunctionId::Win8ShortcutsKey,
+        ) => 1,
+        _ => 0,
+    };
+    let output = if raw.data_size < required {
+        Err(UnknownReason::IncompleteFunctionData {
+            required,
+            returned: raw.data_size,
+        })
+    } else {
+        match function {
+            None => Err(UnknownReason::Function),
+            Some(FunctionId::Off) => Ok(Output::Disabled),
+            Some(FunctionId::ButtonCode) => mouse_output(data[0], mode, None),
+            Some(FunctionId::KeyCode) => keyboard_output(data, mode, false),
+            Some(FunctionId::MacroTypeI | FunctionId::MacroTypeII | FunctionId::MacroTypeIII) => {
+                let macro_id = u16::from_be_bytes([data[0], data[1]]);
+                let guid = macros
+                    .macros
+                    .iter()
+                    .find(|row| row.metadata.macro_id == macro_id)
+                    .map(|row| row.metadata.guid.clone());
+                let playback = match function {
+                    Some(FunctionId::MacroTypeI) if data[2] == 1 => MacroPlayback::Once,
+                    Some(FunctionId::MacroTypeI) => MacroPlayback::NTimes(data[2]),
+                    Some(FunctionId::MacroTypeII) => MacroPlayback::Held,
+                    Some(FunctionId::MacroTypeIII) => MacroPlayback::Toggle,
+                    _ => unreachable!(),
+                };
+                Ok(Output::Macro(MacroOutput {
+                    macro_id,
+                    guid,
+                    playback,
+                }))
+            }
+            Some(FunctionId::DPI) => {
+                let action = match data[0] {
+                    1 => Some(DpiAction::Up),
+                    2 => Some(DpiAction::Down),
+                    5 => Some(DpiAction::Clutch),
+                    6 => Some(DpiAction::CycleUp),
+                    7 => Some(DpiAction::CycleDown),
+                    _ => None,
+                };
+                action
+                    .map(|action| {
+                        let (x, y) = if action == DpiAction::Clutch {
+                            (
+                                u16::from_be_bytes([data[1], data[2]]),
+                                u16::from_be_bytes([data[3], data[4]]),
+                            )
+                        } else {
+                            (0, 0)
+                        };
+                        Output::Dpi(DpiOutput {
+                            action,
+                            x: (x != 0).then_some(x),
+                            y: (y != 0).then_some(y),
+                        })
                     })
-                })
-                .ok_or_else(|| unknown_action(ActionFamily::Dpi, u16::from(data[0])))
-        }
-        Some(FunctionId::Profile) => {
-            let action = match data[0] {
-                1 => Some(ProfileAction::Up),
-                2 => Some(ProfileAction::Down),
-                3 => Some(ProfileAction::Specific),
-                4 => Some(ProfileAction::CycleUp),
-                5 => Some(ProfileAction::CycleDown),
-                _ => None,
-            };
-            action
-                .map(|action| {
-                    Output::Profile(ProfileNavigation {
-                        action,
-                        slot_id: (action == ProfileAction::Specific && data[1] != 0)
-                            .then_some(data[1]),
+                    .ok_or_else(|| unknown_action(ActionFamily::Dpi, u16::from(data[0])))
+            }
+            Some(FunctionId::Profile) => {
+                let action = match data[0] {
+                    1 => Some(ProfileAction::Up),
+                    2 => Some(ProfileAction::Down),
+                    3 => Some(ProfileAction::Specific),
+                    4 => Some(ProfileAction::CycleUp),
+                    5 => Some(ProfileAction::CycleDown),
+                    _ => None,
+                };
+                action
+                    .map(|action| {
+                        Output::Profile(ProfileNavigation {
+                            action,
+                            slot_id: (action == ProfileAction::Specific && data[1] != 0)
+                                .then_some(data[1]),
+                        })
                     })
-                })
-                .ok_or_else(|| unknown_action(ActionFamily::Profile, u16::from(data[0])))
-        }
-        Some(FunctionId::PowerKeys) => source::power_action(u16::from(data[0]))
-            .map(Output::Power)
-            .ok_or_else(|| unknown_action(ActionFamily::Power, u16::from(data[0]))),
-        Some(FunctionId::MediaKeys) => {
-            let code = u16::from_be_bytes([data[0], data[1]]);
-            source::media_action(code)
-                .map(Output::Media)
-                .ok_or_else(|| unknown_action(ActionFamily::Media, code))
-        }
-        Some(FunctionId::DoubleClick) => Ok(Output::Mouse(MouseOutput {
-            action: MouseAction::DoubleClick,
-            turbo: None,
-        })),
-        Some(FunctionId::ModeButtonkey) => Ok(Output::Hypershift),
-        Some(FunctionId::TurboModeKey) => keyboard_output(data, mode, true),
-        Some(FunctionId::TurboModeButton) => mouse_output(
-            data[0],
-            mode,
-            Some(Turbo::from_period(u16::from_be_bytes([data[1], data[2]]))),
-        ),
-        Some(FunctionId::RazerKey) => source::razer_action(u16::from(data[0]))
-            .map(Output::Razer)
-            .ok_or_else(|| unknown_action(ActionFamily::Razer, u16::from(data[0]))),
-        Some(FunctionId::Win8ShortcutsKey) => source::shortcut_action(u16::from(data[0]))
-            .map(Output::WindowsShortcut)
-            .ok_or_else(|| unknown_action(ActionFamily::WindowsShortcut, u16::from(data[0]))),
-        Some(FunctionId::Controller) => Err(UnknownReason::ControllerCatalogAbsent),
-        Some(FunctionId::ScrollWheelMode) => Err(UnknownReason::ScrollWheelModeDisabled),
-        Some(FunctionId::Lighting | FunctionId::MacroTypeIV) => {
-            Err(UnknownReason::SourceHasNoDecoder)
+                    .ok_or_else(|| unknown_action(ActionFamily::Profile, u16::from(data[0])))
+            }
+            Some(FunctionId::PowerKeys) => source::power_action(u16::from(data[0]))
+                .map(Output::Power)
+                .ok_or_else(|| unknown_action(ActionFamily::Power, u16::from(data[0]))),
+            Some(FunctionId::MediaKeys) => {
+                let code = u16::from_be_bytes([data[0], data[1]]);
+                source::media_action(code)
+                    .map(Output::Media)
+                    .ok_or_else(|| unknown_action(ActionFamily::Media, code))
+            }
+            Some(FunctionId::DoubleClick) => Ok(Output::Mouse(MouseOutput {
+                action: MouseAction::DoubleClick,
+                turbo: None,
+            })),
+            Some(FunctionId::ModeButtonkey) => Ok(Output::Hypershift),
+            Some(FunctionId::TurboModeKey) => keyboard_output(data, mode, true),
+            Some(FunctionId::TurboModeButton) => mouse_output(
+                data[0],
+                mode,
+                Some(Turbo::from_period(u16::from_be_bytes([data[1], data[2]]))),
+            ),
+            Some(FunctionId::RazerKey) => source::razer_action(u16::from(data[0]))
+                .map(Output::Razer)
+                .ok_or_else(|| unknown_action(ActionFamily::Razer, u16::from(data[0]))),
+            Some(FunctionId::Win8ShortcutsKey) => source::shortcut_action(u16::from(data[0]))
+                .map(Output::WindowsShortcut)
+                .ok_or_else(|| unknown_action(ActionFamily::WindowsShortcut, u16::from(data[0]))),
+            Some(FunctionId::Controller) => Err(UnknownReason::ControllerCatalogAbsent),
+            Some(FunctionId::ScrollWheelMode) => Err(UnknownReason::ScrollWheelModeDisabled),
+            Some(FunctionId::Lighting | FunctionId::MacroTypeIV) => {
+                Err(UnknownReason::SourceHasNoDecoder)
+            }
+            Some(FunctionId::Perfect180) => Ok(Output::Perfect180(Perfect180Output {
+                raw_direction: data[0],
+                direction: match data[0] {
+                    0 => Some(Perfect180Direction::Right),
+                    1 => Some(Perfect180Direction::Left),
+                    _ => None,
+                },
+                report_count: u16::from_be_bytes([data[1], data[2]]),
+                raw_enabled: data[3],
+            })),
         }
     };
     Ok(Assignment {

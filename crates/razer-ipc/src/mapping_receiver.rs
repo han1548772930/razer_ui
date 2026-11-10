@@ -151,4 +151,22 @@ mod tests {
             .is_err()
         );
     }
+
+    #[test]
+    fn mounted_mouse_member_keeps_ui_identity_on_the_wire_and_admits_source_document() {
+        let wire = json!({
+            "physical_product_id":105,
+            "device_container_id":"receiver",
+            "members":[{"product_id":105,"route":{"kind":"direct"}}]
+        });
+        let target: Target = serde_json::from_value(wire.clone()).unwrap();
+        target.validate().unwrap();
+        assert_eq!(serde_json::to_value(&target).unwrap(), wire);
+        assert!(target.contains_product(105));
+        assert!(!target.contains_product(104));
+        assert!(target.contains_source_product(104));
+        assert!(!target.contains_source_product(105));
+        assert_eq!(target.members()[0].route(), Route::Direct);
+        assert_eq!(target.physical_product_id(), 105);
+    }
 }

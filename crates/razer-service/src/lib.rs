@@ -7,6 +7,8 @@ pub mod audio_notification;
 pub mod earbuds_auto_pause;
 #[path = "audio/earbuds_system_volume.rs"]
 pub mod earbuds_system_volume;
+#[path = "audio/earbuds_microphone.rs"]
+pub mod earbuds_microphone;
 #[path = "audio/audio_router.rs"]
 pub mod audio_router;
 #[path = "audio/audio_util.rs"]
@@ -27,6 +29,8 @@ pub mod mouse_rotation;
 pub mod mouse_scroll;
 #[path = "mouse/worker.rs"]
 mod mouse_worker;
+#[path = "keyboard/function_swap.rs"]
+pub mod keyboard_function_swap;
 #[path = "runtime/mod.rs"]
 pub mod runtime;
 #[path = "audio/seiren/mod.rs"]

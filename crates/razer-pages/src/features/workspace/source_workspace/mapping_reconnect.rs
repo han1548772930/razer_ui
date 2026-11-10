@@ -7,9 +7,16 @@ use anyhow::Context as _;
 pub(super) struct State {
     initial_macros: Option<razer_model::macro_library::MacroLibraryFile>,
     compiled: std::cell::RefCell<Option<(Device, Value)>>,
+    keyboard_serial: Option<(u64, String)>,
 }
 
 impl State {
+    pub(super) fn observe_keyboard_serial(&mut self, generation:u64, serial:&str) {
+        self.keyboard_serial=(!serial.is_empty()).then(||(generation,serial.to_owned()));
+    }
+    pub(super) fn keyboard_serial(&self,generation:u64)->Option<&str> {
+        self.keyboard_serial.as_ref().filter(|(observed,_)|*observed==generation).map(|(_,serial)|serial.as_str())
+    }
     pub(super) fn initialize_macros(
         &mut self,
         file: &razer_model::macro_library::MacroLibraryFile,
@@ -75,11 +82,35 @@ pub(super) fn ordinary_mouse_owner(device: &Device) -> Option<String> {
 }
 
 impl SourceProductWorkspace {
+    pub(super) fn update_keyboard_selection_for_save(&mut self)->Result<(),String> {
+        if !razer_device::keyboard_receiver_mapping::supports(self.device.product_id) { return Ok(()); }
+        let serial=self.mapping_reconnect.keyboard_serial(self.mapping_connection_generation)
+            .ok_or("Keyboard serial has not been observed for this connection")?;
+        let profile=self.device.active_profile_obj().ok_or("Keyboard active profile is missing")?;
+        let settings=self.device.source_device_settings.as_ref().ok_or("Keyboard source settings are absent")?;
+        self.device.source_device_settings=Some(razer_device::keyboard_receiver_mapping::select_profile_for_serial(settings,serial,&profile.guid).map_err(|error|format!("{error:#}"))?);
+        Ok(())
+    }
+
     pub fn receiver_mapping_serial(&self) -> Option<&str> {
+        if razer_device::keyboard_receiver_mapping::supports(self.device.product_id) {
+            return self.mapping_reconnect.keyboard_serial(self.mapping_connection_generation);
+        }
         (self.mapping_serial_generation == Some(self.mapping_connection_generation))
             .then(|| self.mouse_profile_observed_serial.as_deref()).flatten()
     }
     pub fn configure_shared_mouse_mapping(&mut self, owner: uuid::Uuid, physical_product: u32, cx: &mut Context<Self>) {
+        if let FamilyBody::Keyboard(body)=&self.body {
+            if !razer_device::keyboard_receiver_mapping::supports(self.device.product_id) { return; }
+            let body=body.clone();
+            body.update(cx,|body,cx|body.configure_shared_keyboard_mapping(owner,physical_product,self.device.device_container_id.clone(),self.mapping_connection_generation,cx));
+            match self.mapping_reconnect.document(&self.saved) {
+                Ok(Some(document))=>self.publish_saved_mapping(document,cx),
+                Ok(None)=>{},
+                Err(error)=>body.update(cx,|body,cx|body.release_shared_keyboard_mapping(owner,Some(format!("{error:#}")),cx)),
+            }
+            return;
+        }
         if let FamilyBody::Mouse(body) = &self.body {
             let body = body.clone();
             let container = self.device.device_container_id.clone();
@@ -94,6 +125,9 @@ impl SourceProductWorkspace {
     }
 
     pub(super) fn shared_mouse_mapping_current(&self, cx: &App) -> bool {
+        if let FamilyBody::Keyboard(body)=&self.body {
+            return body.read(cx).shared_keyboard_mapping_matches(&self.device.device_container_id,self.mapping_connection_generation);
+        }
         matches!(&self.body, FamilyBody::Mouse(body) if body.read(cx).shared_mapping_connection_matches(
             &self.device.device_container_id, self.mapping_connection_generation))
     }
@@ -101,6 +135,7 @@ impl SourceProductWorkspace {
     pub fn observe_shared_mouse_mapping_publication(&mut self, owner: uuid::Uuid, revision: u64, result: Result<(), String>, cx: &mut Context<Self>) -> bool {
         match &self.body {
             FamilyBody::Mouse(body) => body.update(cx, |body, cx| body.observe_shared_mapping_publication(owner, revision, result, cx)),
+            FamilyBody::Keyboard(body) => body.update(cx, |body,cx|body.observe_shared_keyboard_publication(owner,revision,result,cx)),
             _ => false,
         }
     }
@@ -108,11 +143,16 @@ impl SourceProductWorkspace {
     pub fn observe_shared_mouse_mapping_event(&mut self, owner: uuid::Uuid, event: Value, cx: &mut Context<Self>) -> bool {
         match &self.body {
             FamilyBody::Mouse(body) => body.update(cx, |body, cx| body.observe_shared_mapping_event(owner, event, cx)),
+            FamilyBody::Keyboard(body) => body.update(cx,|body,cx|body.observe_shared_keyboard_event(owner,event,cx)),
             _ => false,
         }
     }
 
     pub fn release_shared_mouse_mapping(&mut self, owner: uuid::Uuid, error: Option<String>, cx: &mut Context<Self>) {
+        if let FamilyBody::Keyboard(body)=&self.body {
+            body.update(cx,|body,cx|body.release_shared_keyboard_mapping(owner,error,cx));
+            return;
+        }
         if let FamilyBody::Mouse(body) = &self.body {
             body.update(cx, |body, cx| body.release_shared_mapping(owner, error, cx));
         }
@@ -121,8 +161,71 @@ impl SourceProductWorkspace {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{State, SourceProductWorkspace, FamilyBody, WorkspaceEvent, ordinary_mouse_owner};
+    use razer_model::model::Device;
+    use gpui_kit::{AppContext, TestAppContext, px, size};
+    use gpui_kit::component::Root;
     use serde_json::json;
+
+    #[gpui_kit::test]
+    fn keyboard_peer_changes_wait_for_saved_publication_and_serial_is_connection_scoped(cx:&mut TestAppContext) {
+        use gpui_kit::test::TestWindowExt;
+        cx.update(gpui_kit::init);
+        let mut page=None;
+        let window=cx.open_window(size(px(1200.),px(900.)),|window,cx|{
+            let recipe=razer_device::keyboard_current_profile::local::initial_template(600,0,"Desktop").unwrap();
+            let mut profile=serde_json::to_value(&recipe.profiles[0]).unwrap();
+            profile["guid"]="saved-profile".into();
+            let mut device=razer_model::product_preview::registered_preview(600).unwrap();
+            device.real_product_id=625;
+            device.device_container_id="{11111111-2222-3333-4444-555555555555}".into();
+            device.serial_number="ACTUAL-SERIAL".into();
+            device.dashboard.connection_observation=Some(razer_model::model::DeviceConnectionObservation::ReceiverPeer(1));
+            device.active_profile="saved-profile".into();
+            device.profiles=vec![razer_model::model::Profile{id:"saved-profile".into(),guid:"saved-profile".into(),name:"Saved".into(),source_settings:Some(profile),settings:None,dpi_stages:None}];
+            device.source_device_settings=Some(serde_json::to_value(recipe.device).unwrap());
+            let view=cx.new(|cx|SourceProductWorkspace::new(device,window,cx));
+            page=Some(view.clone());
+            Root::new(view,window,cx)
+        });
+        let page=page.unwrap();
+        let requests=cx.new(|_|(Vec::<crate::features::ReceiverMappingPublication>::new(),0usize));
+        let _subscription=requests.update(cx,|_,cx|cx.subscribe(&page,|requests,_,event:&WorkspaceEvent,_|match event {
+            WorkspaceEvent::ReceiverMappingPublication(request)=>requests.0.push(request.clone()),
+            WorkspaceEvent::KeyboardLegacyProfileRequested=>requests.1+=1,
+            _=>{},
+        }));
+        let owner=uuid::Uuid::new_v4();
+        page.update(cx,|page,cx|{
+            page.mapping_reconnect.initialize_macros(&Default::default());
+            assert!(page.receiver_mapping_serial().is_none());
+            page.observe_keyboard_serial("ACTUAL-SERIAL",cx);
+            assert_eq!(page.receiver_mapping_serial(),Some("ACTUAL-SERIAL"));
+            page.configure_shared_mouse_mapping(owner,197,cx);
+        });
+        cx.run_until_parked();
+        let initial=requests.update(cx,|requests,_|{assert_eq!(requests.0.len(),1);requests.0.remove(0)});
+        page.update(cx,|page,cx|{assert!(page.observe_shared_mouse_mapping_publication(owner,initial.revision(),Ok(()),cx));});
+        cx.update_window(window.into(),|_,window,cx|{
+            page.update(cx,|page,cx|{
+                let FamilyBody::Keyboard(body)=&page.body else {panic!("real keyboard body required")};
+                body.update(cx,|body,cx|{
+                    let mut draft=body.snapshot();
+                    draft["mappings"]=json!([{"inputID":"KEY_A","inputType":"KeyInput","outputType":"keyboardGroup","keyboardGroup":{"key":"KEY_B"}}]);
+                    body.restore(Some(&draft),window,cx);
+                    cx.emit(crate::features::keyboard_products::KeyboardProductChanged);
+                });
+            });
+        }).unwrap();
+        cx.run_until_parked();
+        requests.read_with(cx,|requests,_|{assert_eq!(requests.1,1);assert!(requests.0.is_empty(),"a draft/save request is not an accepted software publication");});
+        page.update(cx,|page,cx|{
+            page.observe_connection(None,cx);
+            assert!(page.receiver_mapping_serial().is_none());
+            assert!(!page.observe_shared_mouse_mapping_publication(owner,initial.revision(),Ok(()),cx));
+            assert!(!page.observe_shared_mouse_mapping_event(owner,json!({"jsonEvent":{"type":"ignored"}}),cx));
+        });
+    }
 
     fn saved_device() -> Device {
         let mut saved = razer_model::product_preview::registered_preview(158).unwrap();

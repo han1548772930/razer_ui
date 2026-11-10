@@ -20,16 +20,7 @@ impl PortableRuntime {
                     == i32::from(cap.claim_interface_for(u32::from(node.product_id))?),
             "Current mouse DPI collection differs from its current source interface"
         );
-        let IdentityLookup::Unique(identity) = device_identity::lookup(u32::from(node.product_id))
-        else {
-            bail!("Current mouse DPI target has no unique current physical identity");
-        };
-        ensure!(
-            identity.product_id == product_id
-                && !identity.is_ble
-                && source.is_physical_branch(u32::from(node.product_id), identity.is_dongle),
-            "Current mouse DPI physical branch differs"
-        );
+        let is_dongle = source.is_dongle(u32::from(node.product_id))?;
         if let Some(change) = change {
             dpi::validate_change_for(product_id, change)?;
         }
@@ -56,11 +47,11 @@ impl PortableRuntime {
                 cap.transaction_modulus,
             )
         };
-        if identity.is_dongle {
+        if is_dongle {
             dpi::verify_wireless_online_for(product_id, device.as_ref(), next()?, &validate)?;
         }
         let report = dpi::execute_for(product_id, device.as_ref(), change, &mut next, &validate)?;
-        if identity.is_dongle {
+        if is_dongle {
             dpi::verify_wireless_online_for(product_id, device.as_ref(), next()?, &validate)?;
         }
         validate()?;

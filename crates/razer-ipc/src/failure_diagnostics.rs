@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 )]
 #[non_exhaustive]
 pub enum FailureDiagnostics {
+    EarbudsEqualizer(razer_device::earbuds_equalizer::Failure),
     SeirenEq(razer_device::seiren_eq::Report),
     Leviathan(razer_device::leviathan::Report),
     MixerObservation(razer_device::audio_mixer::MixerObservationFailure),
@@ -86,6 +87,9 @@ impl FailureDiagnostics {
     pub fn from_error(error: &anyhow::Error) -> Option<Self> {
         if let Some(failure) = error.downcast_ref::<ServiceFailure>() {
             return Some(failure.diagnostics.clone());
+        }
+        if let Some(failure) = error.downcast_ref::<razer_device::earbuds_equalizer::Failure>() {
+            return Some(Self::EarbudsEqualizer(failure.clone()));
         }
         if let Some(failure) = error.downcast_ref::<
             ReceiverObservationFailure<razer_device::device_reads::DeviceReadValue>,
@@ -396,6 +400,21 @@ mod tests {
         invalid_success.data = Some(serde_json::json!({"accepted":true}));
         assert!(invalid_success.validate_outcome().is_err());
         response
+    }
+
+    #[test]
+    fn earbuds_equalizer_fixed_failure_frame_preserves_ack_without_success_data() {
+        let bytes = br#"{"id":31,"data":null,"error":"EQ interrupted","fatal":false,"diagnostics":{"domain":"earbuds_equalizer","progress":{"product_id":2657,"submission":{"setting":{"mode":"standard","preset":"music","bands":[1,1,1,1,1,1,1,1,1,1]},"preset":"Confirmed","bands":{"Cancelled":{"message":"band cancelled","acknowledged":false}}},"message":"EQ interrupted"}}}"#;
+        let response = failed_wire(bytes);
+        let Some(FailureDiagnostics::EarbudsEqualizer(failure)) = response.diagnostics else {
+            panic!("Earbud EQ failure lost its domain")
+        };
+        failure.submission.validate().unwrap();
+        assert_eq!(failure.product_id, 2657);
+        assert!(failure.submission.preset.acknowledged());
+        assert!(!failure.submission.bands.acknowledged());
+        let error = anyhow::Error::new(failure);
+        assert!(matches!(FailureDiagnostics::from_error(&error), Some(FailureDiagnostics::EarbudsEqualizer(_))));
     }
 
     #[test]

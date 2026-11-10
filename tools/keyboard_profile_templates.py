@@ -302,6 +302,27 @@ class Module:
                 return {"runtime_guid": self.dynamic_guids[key]}
             if function.type == "identifier" and function.text == self.require and len(args) == 1 and args[0].type == "number":
                 return self.index.module(self.product_id, str(self.scalar(args[0])))
+            if not args and function.type == "identifier":
+                name = function.text.decode()
+                target = self.bindings.get(name)
+                if target is not None and target.type == "arrow_function":
+                    parameters = target.child_by_field_name("parameters")
+                    body = target.child_by_field_name("body")
+                    if (name in seen or parameters is None or parameters.named_children
+                            or body.type == "statement_block"
+                            or any(child.type == "async" for child in target.children)):
+                        raise ValueError("Keyboard constant constructor is not a pure nullary expression")
+                    return self.value(body, (*seen, name), profile=profile)
+            if function.text == b"Object.assign":
+                if not args or args[0].type != "object" or args[0].named_children:
+                    raise ValueError("Keyboard profile Object.assign mutates an unresolved target")
+                value = {}
+                for argument in args[1:]:
+                    fields = self.value(argument, seen)
+                    if not isinstance(fields, dict):
+                        raise ValueError("Keyboard profile Object.assign source is not a constant object")
+                    value.update(fields)
+                return value
             if function.text == b"Array.from" and len(args) == 2:
                 size = self.value(args[0], seen)
                 callback = args[1]
@@ -359,12 +380,15 @@ class Namespace:
 
 
 class Index:
-    def __init__(self, database):
+    def __init__(self, database, *, layer="mw"):
+        if layer not in {"mw", "ui"}:
+            raise ValueError("Keyboard source layer must be mw or ui")
         sys.path.insert(0, str(ROOT / "tools/analyzers/python-static"))
         from tree_sitter import Parser, Language
         import tree_sitter_javascript
         self.parser = Parser(Language(tree_sitter_javascript.language()))
         self.database = database
+        self.layer = layer
         self.modules, self.sources, self.syntax = {}, {}, {}
 
     def original(self, original):
@@ -379,8 +403,8 @@ class Index:
     def module(self, product_id, module_id):
         rows = self.database.execute("""SELECT DISTINCT f.*,s.path,s.bytes FROM deployment_sources ds
             JOIN sources s ON s.path=ds.path JOIN factories f ON f.source_sha=s.sha256
-            WHERE ds.product_id=? AND ds.layer='mw' AND f.module_id=? AND f.kind='webpack_factory'""",
-            (product_id, module_id)).fetchall()
+            WHERE ds.product_id=? AND ds.layer=? AND f.module_id=? AND f.kind='webpack_factory'""",
+            (product_id, self.layer, module_id)).fetchall()
         if len({row["normalized_sha"] for row in rows}) != 1:
             raise ValueError(f"Keyboard template module {product_id}/{module_id} is absent or ambiguous")
         row = dict(rows[0])

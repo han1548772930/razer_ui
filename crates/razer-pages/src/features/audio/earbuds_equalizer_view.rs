@@ -158,6 +158,19 @@ impl AudioProductWorkspace {
             .child(presets)
             .child(self.earbuds_eq_chart(window, cx))
             .child(self.earbuds_eq_help(disabled, window, cx))
+            .children(self.earbuds_equalizer_error().map(|error| {
+                div()
+                    .id("earbuds-eq-submission-error")
+                    .test_support()
+                    .absolute()
+                    .left(surface::css(30.))
+                    .right(surface::css(30.))
+                    .bottom(surface::css(10.))
+                    .text_size(surface::css(12.))
+                    .line_height(surface::css(16.))
+                    .text_color(cx.theme().danger)
+                    .child(error)
+            }))
             .when(disabled, |card| {
                 card.child(
                     div()
@@ -182,6 +195,7 @@ impl AudioProductWorkspace {
                 card.children(self.earbuds.eq_ui.disabled_cursor.map(|cursor| {
                     razer_assets::deferred_resource(CursorTip {
                         cursor,
+                        source_corner: false,
                         content: div()
                             .id("earbuds-eq-disabled-tip")
                             .test_support()
@@ -345,6 +359,7 @@ fn tip(
 pub(super) struct CursorTip {
     cursor: Point<Pixels>,
     content: AnyElement,
+    source_corner: bool,
 }
 
 impl CursorTip {
@@ -352,7 +367,12 @@ impl CursorTip {
         Self {
             cursor,
             content: content.into_any_element(),
+            source_corner: false,
         }
+    }
+    /// MicrophoneBasic uses pageX/pageY+25 without the shared edge-clamping hook.
+    pub(super) fn at_source_corner(cursor: Point<Pixels>, content: impl IntoElement) -> Self {
+        Self { cursor, content: content.into_any_element(), source_corner: true }
     }
 }
 
@@ -413,7 +433,9 @@ impl Element for CursorTip {
         } else {
             (self.cursor.y - unit * 64.).max(unit * 8.)
         };
-        let position = point(center - bounds.size.width / 2., top);
+        let position = if self.source_corner {
+            point(self.cursor.x, self.cursor.y + unit * 25.)
+        } else { point(center - bounds.size.width / 2., top) };
         window.with_element_offset(position - bounds.origin, |window| {
             self.content.prepaint(window, cx);
         });

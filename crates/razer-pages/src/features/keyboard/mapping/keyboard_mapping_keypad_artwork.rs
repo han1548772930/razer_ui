@@ -1164,6 +1164,7 @@ impl KeyboardProductWorkspace {
                 regions.borrow_mut().insert(input.clone(), bounds);
             })
             .on_hover(cx.listener(move |this, entered: &bool, _, cx| {
+                this.hover_keypad_key_tip(&hover_input, *entered, cx);
                 if *entered {
                     this.hovered_key = Some(hover_input.clone());
                 } else if this.hovered_key.as_ref() == Some(&hover_input) {
@@ -1171,6 +1172,7 @@ impl KeyboardProductWorkspace {
                 }
                 cx.notify();
             }))
+            .hover_listener_mode(HoverListenerMode::InputModalityIndependent)
             .on_click(cx.listener(move |this, _, window, cx| {
                 this.analog_mapping_next(Next::Key(key.into(), false), window, cx)
             }))

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from contextlib import closing
 from pathlib import Path
 import re
 
@@ -1527,134 +1528,216 @@ def current_read_decoder_contract(method, body, *, decoder_only=False):
     return {"payload": payload, "observed_fields": observed}
 
 
-def current_read_key_inventory(buttons, mapping):
-    """Project the mounted normal-mode UI keys into their firmware identities."""
-    def fields(node):
-        if node.type != "object":
-            raise ValueError("Current keyboard inventory requires literal objects")
-        result = {}
-        for pair in node.named_children:
-            key, value = pair.child_by_field_name("key"), pair.child_by_field_name("value")
-            if pair.type != "pair" or key is None or key.type != "property_identifier" or key.text in result:
-                raise ValueError("Current keyboard inventory has dynamic or repeated fields")
-            result[key.text] = value
-        return result
-
-    if buttons.type != "array":
-        raise ValueError("Current keyboard UI inventory is not a fixed array")
-    defaults = fields(mapping)
-    rows = {}
-    for button in buttons.named_children:
-        row = fields(button)
-        shift = row.get(b"isHyperShift")
-        if shift is not None:
-            if shift.text not in (b"!0", b"!1", b"true", b"false"):
-                raise ValueError("Current keyboard UI inventory has a dynamic mode")
-            if shift.text in (b"!0", b"true"):
-                continue
-        key = row.get(b"inputID")
-        if key is None or key.type != "string":
-            raise ValueError("Current keyboard UI key has no literal identity")
-        key_name = json.loads(key.text)
-        if key_name.encode() not in defaults:
-            raise ValueError("Current keyboard UI key has no firmware mapping: " + key_name)
-        default = fields(defaults[key_name.encode()])
-        firmware = default.get(b"fwID")
-        identity = default.get(b"inputID")
-        if (firmware is None or firmware.type != "number" or identity is None or identity.type != "string"
-                or json.loads(identity.text) != key_name):
-            raise ValueError("Current keyboard firmware identity is absent, dynamic or mismatched")
-        firmware_id = bounded(int(firmware.text), 254, "keyboard firmware key ID", 1)
-        ignored = default.get(b"ignoreInObm")
-        if ignored is not None and ignored.text not in (b"!1", b"false"):
-            raise ValueError("Current keyboard normal-mode ignore branch requires an explicit audit")
-        previous = rows.get(firmware_id)
-        if previous is not None and previous != key_name:
-            raise ValueError("Current keyboard firmware key ID is ambiguous")
-        rows[firmware_id] = key_name
-    if not rows:
-        raise ValueError("Current keyboard firmware inventory is empty")
-    return [{"firmware_key_id": key, "input_id": rows[key]} for key in sorted(rows)]
+def current_onboard_input_review():
+    """Read the immutable complete source input selection for the OBM generators."""
+    digest = "f707139f9a6cfbe4b13954869ec1931e73ef8bcc6e289887f4340613c051d02d"
+    path = ROOT / ".analysis/results/reverse-pending/review-sources" / (digest + ".json")
+    raw = path.read_bytes()
+    if hashlib.sha256(raw).hexdigest() != digest:
+        raise ValueError("Keyboard onboard input review identity differs")
+    review = json.loads(raw)
+    if (review.get("source_slice_complete") is not True or review.get("snapshot_stable") is not True
+            or review.get("failures") or review.get("changed_during_query")):
+        raise ValueError("Keyboard onboard input review is not a stable complete selection")
+    bindings = review["obm_input_model_bindings"]
+    if sorted(row["product_id"] for row in bindings) != sorted(review["product_ids"]):
+        raise ValueError("Keyboard onboard input product coverage differs")
+    return review
 
 
-def current_onboard_key_inventory(buttons, generic, overrides, mouse):
-    """Apply the source's per-mode shallow overrides and shared ignore lists."""
-    def fields(node):
-        if node.type != "object":
-            raise ValueError("Current onboard key inventory requires literal objects")
-        result = {}
-        for pair in node.named_children:
-            key, value = pair.child_by_field_name("key"), pair.child_by_field_name("value")
-            if pair.type != "pair" or key is None or key.type != "property_identifier" or key.text in result:
-                raise ValueError("Current onboard key inventory has dynamic or repeated fields")
-            result[key.text] = value
-        return result
-
-    def boolean(node):
-        if node is None:
-            return False
-        if node.text not in (b"!0", b"!1", b"true", b"false"):
-            raise ValueError("Current onboard key inventory has a dynamic boolean")
-        return node.text in (b"!0", b"true")
-
-    def identity(name, node):
-        row = fields(node)
-        key = row.get(b"inputID")
-        if key is None or key.type != "string" or json.loads(key.text).encode() != name:
-            raise ValueError("Current onboard key inventory has a mismatched identity")
-        firmware = row.get(b"fwID")
-        if firmware is not None:
-            if firmware.type != "number":
-                raise ValueError("Current onboard key inventory has a dynamic firmware ID")
-            firmware = bounded(int(firmware.text), 254, "onboard firmware key ID", 1)
-        return firmware, boolean(row.get(b"ignoreInObm"))
-
-    generic_modes, override_modes, mouse_modes = fields(generic), fields(overrides), fields(mouse)
-    if set(generic_modes) != {b"NormalMode", b"HypershiftMode"} or set(mouse_modes) != set(generic_modes):
-        raise ValueError("Current onboard key inventory has unknown modes")
-    if set(override_modes) - set(generic_modes):
-        raise ValueError("Current onboard key inventory has an unknown override mode")
-    modes, ignored = {}, {}
-    for mode in generic_modes:
-        merged = fields(generic_modes[mode])
-        if mode in override_modes:
-            merged.update(fields(override_modes[mode]))
-        modes[mode] = {name: identity(name, node) for name, node in merged.items()}
-        mouse_rows = [identity(name, node) for name, node in fields(mouse_modes[mode]).items()]
-        ignored[mode] = {firmware for firmware, skip in [*modes[mode].values(), *mouse_rows] if skip}
-        if None in ignored[mode]:
-            raise ValueError("Current onboard ignore list contains an absent firmware ID")
-
-    if buttons.type != "array":
-        raise ValueError("Current onboard UI inventory is not a fixed array")
-    rows = {}
-    for button in buttons.named_children:
-        row = fields(button)
-        if boolean(row.get(b"isHyperShift")):
-            continue
-        key = row.get(b"inputID")
-        if key is None or key.type != "string":
-            raise ValueError("Current onboard UI key has no literal identity")
-        name = json.loads(key.text)
-        normal = modes[b"NormalMode"].get(name.encode())
-        if normal is None or normal[0] is None:
-            raise ValueError("Current onboard UI key has no firmware mapping: " + name)
-        firmware = normal[0]
-        hyper_matches = [key for key, value in modes[b"HypershiftMode"].items() if value[0] == firmware]
-        if hyper_matches != [name.encode()]:
-            raise ValueError("Current onboard key has an ambiguous or mismatched Hypershift identity")
-        projected = {"input_id": name, "firmware_key_id": firmware,
-                     "ignore_normal": firmware in ignored[b"NormalMode"],
-                     "ignore_hypershift": firmware in ignored[b"HypershiftMode"]}
-        if firmware in rows and rows[firmware] != projected:
-            raise ValueError("Current onboard physical firmware key ID is ambiguous")
-        rows[firmware] = projected
-    if not rows:
-        raise ValueError("Current onboard physical key inventory is empty")
-    return [rows[key] for key in sorted(rows)]
+def current_onboard_input_variants(review=None):
+    """Use the reviewed complete input models, without a runtime evidence dependency."""
+    review = current_onboard_input_review() if review is None else review
+    return {"models": review["obm_input_key_models"], "products": review["obm_input_model_bindings"],
+            "features": review["obm_selected_feature_options"]}
 
 
-def render_current_onboard_inventory(inventory):
+def current_onboard_mapping_variants(review=None):
+    """Recover complete per-layout defaults through the reviewed current owners."""
+    import sqlite3
+    import keyboard_profile_templates as recipes
+    review = current_onboard_input_review() if review is None else review
+    owners = {row["id"]: row for row in review["complete_source_owners"]}
+    models, products, mouse = {}, [], None
+    with closing(sqlite3.connect("file:" + (ROOT / ".analysis/results/code-identity.sqlite3").as_posix() + "?mode=ro", uri=True)) as db:
+        db.row_factory = sqlite3.Row
+        index = recipes.Index(db, layer="mw")
+
+        def selected(product, owner_id):
+            owner = owners[owner_id]
+            original = owner["original"]
+            if db.execute("SELECT 1 FROM deployment_sources ds JOIN sources s ON s.path=ds.path "
+                          "WHERE ds.product_id=? AND ds.layer='mw' AND s.sha256=? LIMIT 1",
+                          (product, original["sha256"])).fetchone() is None:
+                raise ValueError("Reviewed onboard default is no longer a current product source")
+            raw = index.original(original)
+            if hashlib.sha256(raw[owner["byte_start"]:owner["byte_end"]]).hexdigest() != owner["body_sha256"]:
+                raise ValueError("Reviewed onboard default owner bytes differ")
+            record = db.execute("SELECT * FROM factories WHERE source_sha=? AND start_byte<=? AND end_byte>=? "
+                                "AND kind='webpack_factory' ORDER BY end_byte-start_byte LIMIT 1",
+                                (original["sha256"], owner["byte_start"], owner["byte_end"])).fetchone()
+            if record is not None:
+                module = recipes.Module(index, product, dict(record), original)
+                return module, module.owner_node(owner)
+            root = index.parser.parse(raw).root_node
+            node = root.descendant_for_byte_range(owner["byte_start"], owner["byte_end"] - 1)
+            if root.has_error or node.start_byte != owner["byte_start"] or node.end_byte != owner["byte_end"]:
+                raise ValueError("Onboard script entry does not retain its reviewed owner")
+            return None, node
+
+        for selection in review["obm_input_model_bindings"]:
+            product = selection["product_id"]
+            base_module, base_node = selected(product, selection["source_owners"][-1])
+            base = base_module.value(base_node)
+            exact_fields(base, {"NormalMode", "HypershiftMode"}, "current onboard default modes")
+            actual_mouse = base_module.value(base_module.exports["InputIDToMapping_Mouse_Generic"])
+            if mouse is None:
+                mouse = actual_mouse
+            elif json.dumps(mouse, ensure_ascii=False, separators=(",", ":")) != json.dumps(actual_mouse, ensure_ascii=False, separators=(",", ":")):
+                raise ValueError("Current keyboard OBM mouse-default provider differs")
+            module, registration = selected(product, selection["registration_owner"])
+            arguments = registration.child_by_field_name("arguments").named_children
+            if len(arguments) != 3:
+                raise ValueError("Onboard default registration arguments differ")
+            params = arguments[2]
+            if params.type == "call_expression" and params.child_by_field_name("function").text == b"Object.assign":
+                params = params.child_by_field_name("arguments").named_children[-1]
+            if params.type != "object":
+                raise ValueError("Onboard override is not the actual final registration object")
+            overrides = {}
+            for name in sorted({row["mapping_override"] for row in selection["models"] if row["mapping_override"]}):
+                found = [row.child_by_field_name("value") for row in params.named_children if row.type == "pair"
+                         and row.child_by_field_name("key").text.decode() == name]
+                if len(found) != 1 or module is None and any(node.type == "identifier" for node in recipes.walk(found[0])):
+                    raise ValueError("Onboard override requires another lexical source binding")
+                overrides[name] = (module or base_module).value(found[0])
+            choices = []
+            for choice in selection["models"]:
+                patch = overrides.get(choice["mapping_override"], {}).get("keyboard", {})
+                if set(patch) - set(base):
+                    raise ValueError("Onboard override adds another mode")
+                result = {mode: {**rows, **patch.get(mode, {})} for mode, rows in base.items()}
+                identity = hashlib.sha256(json.dumps(result, ensure_ascii=False, separators=(",", ":")).encode()).hexdigest()
+                models.setdefault(identity, result)
+                choices.append({"layout_id": choice["layout_id"], "model": identity})
+            products.append({"product_id": product, "choices": choices})
+    return {"models": models, "products": products, "mouse": mouse}
+
+
+def current_keyboard_namespace(product_id):
+    """Select the indexed current acquisition; an absent index never selects an older alias."""
+    import sqlite3
+    database = ROOT / ".analysis/results/code-identity.sqlite3"
+    with closing(sqlite3.connect("file:" + database.as_posix() + "?mode=ro", uri=True)) as db:
+        row = db.execute("SELECT acquisition,acquisition_sha,failure FROM deployments "
+                         "WHERE product_id=? AND family='keyboard' AND layer='mw'", (product_id,)).fetchone()
+    if row is None or row[2]:
+        raise ValueError("Keyboard current deployment index is absent or unresolved")
+    path = ROOT / row[0]
+    namespace = path.parent.name
+    if (path.name != "acquisition.json"
+            or path.parent.parent.resolve() != (ROOT / ".analysis/inputs/frontend").resolve()
+            or not re.fullmatch(rf"keyboard-mw-{product_id}-current(?:-[A-Za-z0-9_-]+)?", namespace)
+            or hashlib.sha256(path.read_bytes()).hexdigest() != row[1]):
+        raise ValueError("Keyboard indexed acquisition identity or namespace differs")
+    return namespace
+
+
+def current_keyboard_obm_read_sources(audit):
+    """Use current indexed factories and the already reviewed complete input selection."""
+    import sqlite3
+    import keyboard_profile_templates as recipes
+    review = current_onboard_input_review()
+    owners = {row["id"]: row for row in review["complete_source_owners"]}
+    selection = next(row for row in review["obm_input_model_bindings"] if row["product_id"] == 679)
+    database = ROOT / ".analysis/results/code-identity.sqlite3"
+    with closing(sqlite3.connect("file:" + database.as_posix() + "?mode=ro", uri=True)) as db:
+        db.row_factory = sqlite3.Row
+        index = recipes.Index(db, layer="mw")
+        engine_binding = next(row for row in review["obm_macro_lifecycle_bindings"]
+                              if row["product_id"] == 679 and row["method"] == "getGuidFromDevice")
+        engine_owner = owners[engine_binding["owner"]]
+        engine_original = engine_owner["original"]
+        if db.execute("SELECT 1 FROM deployment_sources ds JOIN sources s ON s.path=ds.path "
+                      "WHERE ds.product_id=679 AND ds.layer='mw' AND s.sha256=? LIMIT 1",
+                      (engine_original["sha256"],)).fetchone() is None:
+            raise ValueError("Reviewed keyboard OBM engine is not in the current deployment")
+
+        def source_module(module_id):
+            # The selected engine embeds its own codec constants. Other
+            # packaged chunks can define the same numeric module differently.
+            records = db.execute("SELECT * FROM factories WHERE source_sha=? AND module_id=? "
+                                 "AND kind='webpack_factory'", (engine_original["sha256"], str(module_id))).fetchall()
+            if records:
+                if len(records) != 1:
+                    raise ValueError("Current OBM codec has ambiguous co-resident providers")
+                return recipes.Module(index, 679, dict(records[0]), engine_original)
+            return index.module(679, str(module_id))
+
+        def retain(module, node, role):
+            return audit.retain_range(role, module.original, node.start_byte + module.offset,
+                                      node.end_byte + module.offset, node.type)
+
+        def literal_export(module_id, export, role):
+            module = source_module(module_id)
+            node = module.exports[export]
+            value = module.value(node)
+            if node.type == "identifier":
+                node = module.bindings[node.text.decode()]
+            return value, {"module_id": module_id, "export": export, "original": module.original,
+                           "factory_normalized_sha256": module.record["normalized_sha"],
+                           "owner": retain(module, node, role)}
+
+        generic, generic_owner = literal_export(32906, "Bx", "current_obm_keyboard_defaults")
+        registration = owners[selection["registration_owner"]]
+        module, adjusted = index.owner(679, registration)
+        node = module.owner_node(adjusted)
+        arguments = node.child_by_field_name("arguments").named_children
+        if len(arguments) != 3:
+            raise ValueError("Current OBM registration argument shape differs")
+        overrides = module.member_value(arguments[2], ["inputMapping", "keyboard"])
+        defaults = {mode: {**rows, **overrides.get(mode, {})} for mode, rows in generic.items()}
+        registration_owner = retain(module, node, "current_obm_keyboard_registration")
+        mouse, mouse_owner = literal_export(32906, "InputIDToMapping_Mouse_Generic", "current_obm_mouse_defaults")
+        encoding, encoding_owners = {}, {}
+        for field, module_id, export in (
+                ("function_ids", 36475, "rA"), ("modifier_bits", 39674, "rw"),
+                ("modifier_names", 68214, "_A"), ("media_codes", 39674, "w0"),
+                ("media_names", 68214, "tC"), ("power_codes", 39674, "ox"),
+                ("razer_codes", 68214, "ZI"), ("shortcut_codes", 39674, "V7"),
+                ("shortcut_names", 68214, "wo"), ("mouse_names", 68214, "AX"),
+                ("profile_names", 68214, "E7")):
+            encoding[field], encoding_owners[field] = literal_export(module_id, export, "current_obm_" + field)
+        directions, direction_owner = literal_export(36475, "s4", "current_obm_perfect180_direction")
+        if directions != {"right": 0, "left": 1}:
+            raise ValueError("Current raw Perfect180 direction contract differs")
+        encoding_owners["perfect180_direction"] = direction_owner
+        engine = source_module(2050)
+        decoders = [node for node in recipes.walk(engine.factory)
+                    if node.type == "assignment_expression"
+                    and node.child_by_field_name("left").text == b"this.createButtonMappingFromFnDataByte"]
+        if len(decoders) != 1:
+            raise ValueError("Current OBM assignment decoder owner is ambiguous")
+        decoder = retain(engine, decoders[0], "current_obm_assignment_decoder")
+    choices = {row["layout_id"]: row["key_model_sha256"] for row in selection["models"]}
+    inventories = {"BUTTON_LIST": review["obm_input_key_models"][choices[None]],
+                   "BUTTON_LIST_UK": review["obm_input_key_models"][choices[selection["uk_layout_ids"][0]]]}
+    return {
+        "onboard_mapping": {"projection": {"keyboard": defaults, "mouse": mouse, "encoding": encoding},
+                            "encoding_owners": encoding_owners, "decoder": decoder,
+                            "raw_observation_preserved": True, "unknown_output_preserved": True},
+        "analog_key_inventory": {
+            "inventories": {name: {"keys": [{"firmware_key_id": key["firmware_key_id"], "input_id": key["input_id"]}
+                                              for key in rows]} for name, rows in inventories.items()},
+            "onboard_physical_keys": {"inventories": inventories, "uk_layout_ids": selection["uk_layout_ids"]},
+            "normal_firmware_mapping": generic_owner, "shared_mouse_mapping": mouse_owner,
+            "feature_registration": registration_owner, "selection_owners": selection["source_owners"],
+            "input_review": "f707139f9a6cfbe4b13954869ec1931e73ef8bcc6e289887f4340613c051d02d",
+            "actuation_batch_limit": 15, "rapid_trigger_batch_limit": 13,
+            "key_identity": "Current selected NormalMode firmware ID; distinct from analogKeyID and HID"}}
+
+
+def render_current_onboard_inventory(inventory, variants=None):
     """Render every source-selected physical key and its two independent filters."""
     exact_fields(inventory, {"inventories", "uk_layout_ids"}, "current onboard inventory")
     exact_fields(inventory["inventories"], {"BUTTON_LIST", "BUTTON_LIST_UK"}, "current onboard layouts")
@@ -1663,6 +1746,52 @@ def render_current_onboard_inventory(inventory):
         raise ValueError("Current onboard UK layout identities are empty or repeated")
     for layout in layouts:
         bounded(layout, 0xffffffff, "onboard layout ID")
+    models = {"KEYS": inventory["inventories"]["BUTTON_LIST"],
+              "UK_KEYS": inventory["inventories"]["BUTTON_LIST_UK"]}
+    selections = [(679, [(layout, "UK_KEYS") for layout in layouts], "KEYS")]
+    if variants is not None:
+        exact_fields(variants, {"models", "products", "features"}, "keyboard onboard variants")
+        if not isinstance(variants["models"], dict) or not variants["models"]:
+            raise ValueError("Keyboard onboard variants have no models")
+        names = {key: "KEYS_" + str(ix) for ix, key in enumerate(sorted(variants["models"]))}
+        models = {names[key]: rows for key, rows in variants["models"].items()}
+        selections, products, referenced = [], set(), set()
+        for product in variants["products"]:
+            pid = bounded(product["product_id"], 0xffffffff, "onboard product ID", 1)
+            if pid in products:
+                raise ValueError("Keyboard onboard product identity repeats")
+            products.add(pid)
+            uk = product["uk_layout_ids"]
+            if not isinstance(uk, list) or not uk or len(uk) != len(set(uk)):
+                raise ValueError("Keyboard onboard UK layout branches are empty or repeated")
+            for layout in [product["japanese_layout_id"], *uk]:
+                bounded(layout, 0xffffffff, "onboard layout branch")
+            choices, default, selected_layouts = [], None, set()
+            for choice in product["models"]:
+                key, layout = choice["key_model_sha256"], choice["layout_id"]
+                if key not in names or layout in selected_layouts:
+                    raise ValueError("Keyboard onboard layout is repeated or its model is absent")
+                selected_layouts.add(layout)
+                referenced.add(key)
+                if layout is None:
+                    default = names[key]
+                else:
+                    bounded(layout, 0xffffffff, "onboard layout ID")
+                    choices.append((layout, names[key]))
+            if default is None:
+                raise ValueError("Keyboard onboard product has no source default layout")
+            if selected_layouts != {None, product["japanese_layout_id"], *product["uk_layout_ids"]}:
+                raise ValueError("Keyboard onboard layout branches are incomplete")
+            selections.append((pid, choices, default))
+        if referenced != names.keys():
+            raise ValueError("Keyboard onboard input contains unreferenced models")
+        selected = next((row for row in selections if row[0] == 679), None)
+        if selected is None or models[selected[2]] != inventory["inventories"]["BUTTON_LIST"]:
+            raise ValueError("679 input model differs from the current independently extracted base")
+        selected_choices = dict(selected[1])
+        if any(models[selected_choices[layout]] != inventory["inventories"]["BUTTON_LIST_UK"]
+               for layout in layouts):
+            raise ValueError("679 UK input model differs from the current independently extracted keys")
     lines = ["//! Source-selected physical keys and onboard mode filters.",
         "//! Generated by tools/workspace.py prepare-local-protocol-tables --current-reads.", "",
         "#[derive(Clone, Copy, Debug, PartialEq, Eq)]", "#[non_exhaustive]", "pub struct Key {",
@@ -1670,8 +1799,7 @@ def render_current_onboard_inventory(inventory):
         "    pub ignore_normal: bool,", "    pub ignore_hypershift: bool,", "}", "",
         "impl Key {", "    const fn new(input_id: &'static str, firmware_key_id: u8, ignore_normal: bool, ignore_hypershift: bool) -> Self {",
         "        Self { input_id, firmware_key_id, ignore_normal, ignore_hypershift }", "    }", "}", ""]
-    for source, target in (("BUTTON_LIST", "KEYS"), ("BUTTON_LIST_UK", "UK_KEYS")):
-        rows = inventory["inventories"][source]
+    for target, rows in sorted(models.items()):
         if not isinstance(rows, list) or not rows:
             raise ValueError("Current onboard key table is empty")
         firmware_ids, input_ids = [], []
@@ -1690,63 +1818,81 @@ def render_current_onboard_inventory(inventory):
             raise ValueError("Current onboard physical key identities repeat or are out of order")
         lines.extend([" ];", ""])
     lines.extend(["/// Selects the mounted source inventory for the device's observed layout.",
-        "pub fn current_679_inventory(layout_id: u32) -> &'static [Key] {",
-        "    if [" + ", ".join(map(str, layouts)) + "].contains(&layout_id) {", "        UK_KEYS", "    } else {",
-        "        KEYS", "    }", "}", ""])
+        "pub fn inventory(product_id: u32, layout_id: u32) -> Option<&'static [Key]> {",
+        "    Some(match product_id {"])
+    for pid, choices, default in sorted(selections):
+        grouped = {}
+        for layout, model in choices:
+            if model != default:
+                grouped.setdefault(model, []).append(layout)
+        if not grouped:
+            lines.append("        " + str(pid) + " => " + default + ",")
+            continue
+        lines.append("        " + str(pid) + " => match layout_id {")
+        for model, ids in sorted(grouped.items()):
+            lines.append("            " + " | ".join(map(str, sorted(ids))) + " => " + model + ",")
+        lines.extend(["            _ => " + default + ",", "        },"])
+    lines.extend(["        _ => return None,", "    })", "}", ""])
+    if variants is not None:
+        lines.extend(render_current_onboard_features(variants["features"], {pid for pid, _, _ in selections}))
     return "\n".join(lines).encode()
 
 
-def current_onboard_literal(node):
-    """Decode closed AST literals without executing a vendor expression."""
-    if node.has_error:
-        raise ValueError("Onboard mapping contains a JavaScript AST error")
-    if node.type == "object":
-        result = {}
-        for pair in node.named_children:
-            if pair.type == "comment":
-                continue
-            key, value = pair.child_by_field_name("key"), pair.child_by_field_name("value")
-            if pair.type != "pair" or key is None or value is None:
-                raise ValueError("Onboard mapping contains a dynamic object member")
-            if key.type == "property_identifier":
-                name = key.text.decode()
-            elif key.type == "string":
-                name = json.loads(key.text)
-            elif key.type == "number" and re.fullmatch(rb"0|[1-9][0-9]*", key.text):
-                name = key.text.decode()
-            else:
-                raise ValueError("Onboard mapping contains a dynamic object key")
-            if name in result:
-                raise ValueError("Onboard mapping repeats a literal field: " + name)
-            result[name] = current_onboard_literal(value)
-        return result
-    if node.type == "array":
-        result, expects_value = [], True
-        for child in node.children:
-            if child.type in {"[", "]", "comment"}:
-                continue
-            if child.type == ",":
-                if expects_value:
-                    raise ValueError("Onboard mapping contains an array hole")
-                expects_value = True
-            else:
-                if not expects_value or child.type == "spread_element":
-                    raise ValueError("Onboard mapping contains a dynamic array")
-                result.append(current_onboard_literal(child))
-                expects_value = False
-        return result
-    if node.type == "string":
-        return json.loads(node.text)
-    if node.type == "number" and re.fullmatch(rb"0|[1-9][0-9]*", node.text):
-        return int(node.text)
-    if node.text in (b"!0", b"true"):
-        return True
-    if node.text in (b"!1", b"false"):
-        return False
-    raise ValueError("Onboard mapping is not a closed typed literal: " + node.type)
+def render_current_onboard_features(rows, products):
+    """Preserve actual mounted OBM gates separately from page-control descriptors."""
+    fields = {
+        "macros": "macros", "brightness": "brightness", "dpi": "dpi",
+        "analogKeyboard": "analog_keyboard", "analogKeyboardV3": "analog_keyboard_v3",
+        "isNKeyRollOver": "n_key_rollover", "resetProfile": "reset_profile",
+        "pollingRate": "polling_rate", "highSpeedPollingRate": "high_speed_polling_rate",
+        "bottomDeadZone": "bottom_dead_zone", "debounceTime": "debounce_time",
+        "modTap": "mod_tap", "killSwitch": "kill_switch", "snapTap": "snap_tap",
+        "singleKeySnapTap": "single_key_snap_tap", "interruptibleMacro": "interruptible_macro",
+        "interruptibleDynamicKeystroke": "interruptible_dynamic_keystroke",
+        "dualKeypressPriority": "dual_keypress_priority", "customGameMode": "custom_game_mode",
+        "gameModeSelection": "game_mode_selection", "gameModeSelectionExt": "game_mode_selection_ext",
+    }
+    if type(rows) is not list or not rows:
+        raise ValueError("Onboard feature registrations are absent")
+    seen, variants = set(), {}
+    for row in rows:
+        pid = bounded(row["product_id"], 0xffffffff, "onboard feature product", 1)
+        if pid in seen:
+            raise ValueError("Onboard feature product repeats")
+        seen.add(pid)
+        options = row["options"]
+        if type(options) is not dict or set(options) - set(fields) - {"knobId"}:
+            raise ValueError("Onboard feature options contain an unreviewed branch")
+        if options.get("macros") is not True or options.get("brightness") is not True:
+            raise ValueError("Current OBM macro/brightness scope changed")
+        for name in fields:
+            if name in options and type(options[name]) is not bool:
+                raise ValueError("Onboard feature option is not boolean: " + name)
+        values = {field: options.get(name, False) for name, field in fields.items()}
+        # init explicitly disables the older analog branch when V3 is enabled.
+        if values["analog_keyboard_v3"]:
+            values["analog_keyboard"] = False
+        knob = options.get("knobId")
+        if "knobId" in options:
+            bounded(knob, 255, "onboard knob ID", 1)
+        body = "Features {" + ",".join(name + ":" + str(value).lower() for name, value in values.items())
+        body += ",knob_id:" + ("None" if knob is None else "Some(" + str(knob) + ")") + "}"
+        variants.setdefault(body, []).append(pid)
+    if seen != products:
+        raise ValueError("Onboard features and physical input products differ")
+    lines = ["/// Effective options passed to the current mounted OBM engine's init.",
+             "/// They are source capabilities, never observations of device state.",
+             "#[derive(Clone, Copy, Debug, PartialEq, Eq)]", "pub struct Features {"]
+    lines.extend("pub " + field + ": bool," for field in fields.values())
+    lines.extend(["pub knob_id: Option<u8>,", "}", "", "pub fn features(product_id: u32) -> Option<Features> {",
+                  "Some(match product_id {"])
+    for body, ids in variants.items():
+        lines.append(" | ".join(map(str, sorted(ids))) + " => " + body + ",")
+    lines.extend(["_ => return None,", "})", "}", ""])
+    return lines
 
 
-def render_current_onboard_mapping(projection):
+def render_current_onboard_mapping(projection, variants=None):
     """Generate source enums and complete firmware/HID default lookup rows."""
     exact_fields(projection, {"keyboard", "mouse", "encoding"}, "onboard mapping projection")
     encoding = projection["encoding"]
@@ -1781,9 +1927,9 @@ def render_current_onboard_mapping(projection):
         if set(encoding[codes]) != set(encoding[names]):
             raise ValueError("Onboard mapping wire codes and source names differ: " + codes)
 
-    lines = ["//! Current 679 onboard output and default mapping tables.",
+    lines = ["//! Current keyboard onboard output and source default mapping tables.",
              "//! Generated by tools/workspace.py prepare-local-protocol-tables --current-reads.",
-             "use super::{DefaultMapping, ExtendedKey, HidKey, KeyboardOutput, Mode, Output, ProfileNavigation};",
+             "use super::{DefaultMapping, DefaultMappings, ExtendedKey, HidKey, InputKind, KeyboardOutput, Mode, Output, ProfileNavigation};",
              "use serde::{Deserialize, Serialize};", ""]
 
     def enum(name, values):
@@ -1870,17 +2016,23 @@ def render_current_onboard_mapping(projection):
                 + " }, modifiers: " + str(mask) + ", extended_modifier: " + str(extended).lower()
                 + ", extended_key: " + ("Some(ExtendedKey::Extended00)" if extension else "None") + ", turbo: None })")
         if kind in {"multimediaGroup", "powerKeyGroup", "razerKeyGroup", "win8ShortcutsGroup"}:
+            if kind == "razerKeyGroup" and group == {}:
+                return "Output::EmptyRazerGroup"
             field, family, values, result = {
                 "multimediaGroup": ("multimediaAssignment", "MediaAction", encoding["media_names"].values(), "Media"),
                 "powerKeyGroup": ("powerKeyAssignment", "PowerAction", encoding["power_codes"], "Power"),
                 "razerKeyGroup": ("razerKeyAssignment", "RazerAction", encoding["razer_codes"], "Razer"),
                 "win8ShortcutsGroup": ("windowsShortcutAssignment", "ShortcutAction", encoding["shortcut_names"].values(), "WindowsShortcut"),
             }[kind]
-            exact_fields(group, {field}, "onboard " + kind)
+            allowed = {field} | ({"useTurbo"} if kind == "multimediaGroup" and "useTurbo" in group else set())
+            exact_fields(group, allowed, "onboard " + kind)
+            if "useTurbo" in group and type(group["useTurbo"]) is not bool:
+                raise ValueError("Onboard default useTurbo is not boolean")
             return "Output::" + result + "(" + action(family, group[field], values) + ")"
         if kind == "profileNavigationGroup":
-            exact_fields(group, {"profileNavigationAssignment"}, "onboard profile default")
-            return "Output::Profile(ProfileNavigation { action: " + action("ProfileAction", group["profileNavigationAssignment"], encoding["profile_names"].values()) + ", slot_id: None })"
+            exact_fields(group, {"profileNavigationAssignment"} | ({"profileId"} if "profileId" in group else set()), "onboard profile default")
+            slot = "None" if "profileId" not in group else "Some(" + str(number(group["profileId"])) + ")"
+            return "Output::Profile(ProfileNavigation { action: " + action("ProfileAction", group["profileNavigationAssignment"], encoding["profile_names"].values()) + ", slot_id: " + slot + " })"
         raise ValueError("Onboard keyboard default output requires a typed implementation: " + kind)
 
     exact_fields(projection["keyboard"], {"NormalMode", "HypershiftMode"}, "onboard keyboard modes")
@@ -1899,6 +2051,8 @@ def render_current_onboard_mapping(projection):
             raise ValueError("Onboard default input type changed")
         base.add(input_field)
         optional = {"fwID", "isHyperShift", "ignoreInObm"}
+        if kind == "disableGroup" and row.get("razerKeyGroup") == {}:
+            optional.add("razerKeyGroup")
         if not isinstance(kind, str):
             raise ValueError("Onboard default output type is absent")
         if kind not in {"disableGroup", "hyperShiftGroup"}:
@@ -1920,25 +2074,89 @@ def render_current_onboard_mapping(projection):
             raise ValueError("Onboard default mode or filter is not boolean")
         return firmware_id, input_hid
 
-    lines.append("pub(super) const KEYBOARD: &[DefaultMapping] = &[")
-    for mode, rows in projection["keyboard"].items():
-        ids = set()
-        if not isinstance(rows, dict) or not rows:
-            raise ValueError("Onboard keyboard mapping rows are empty")
-        for name, row in rows.items():
-            firmware_id, input_hid = input_row(name, row)
-            if firmware_id is not None:
-                number(firmware_id)
-                if firmware_id in ids:
-                    raise ValueError("Onboard default firmware identity repeats")
-                ids.add(firmware_id)
-            hid = "None" if input_hid is None else "Some(" + str(input_hid) + ")"
-            lines.append("    DefaultMapping { input_id: " + json.dumps(name) + ", mode: Mode::"
-                + ("Normal" if mode == "NormalMode" else "Hypershift") + ", firmware_key_id: "
-                + ("None" if firmware_id is None else "Some(" + str(firmware_id) + ")")
-                + ", input_hid: " + hid + ", output: " + output(row) + " },")
-    lines.extend([
-        "];", "", "pub(super) const MOUSE: &[(Mode, u8, MouseAction)] = &["])
+    def rendered_rows(model, duplicate_firmware=False):
+        result = {}
+        exact_fields(model, {"NormalMode", "HypershiftMode"}, "onboard default modes")
+        for mode, rows in model.items():
+            ids = set()
+            if not isinstance(rows, dict) or not rows:
+                raise ValueError("Onboard keyboard mapping rows are empty")
+            for name, row in rows.items():
+                firmware_id, input_hid = input_row(name, row)
+                if firmware_id is not None:
+                    if firmware_id in ids and not duplicate_firmware:
+                        raise ValueError("Onboard default firmware identity repeats")
+                    ids.add(firmware_id)
+                hid = "None" if input_hid is None else "Some(" + str(input_hid) + ")"
+                group = row.get(row["outputType"], {})
+                use_turbo = group.get("useTurbo")
+                turbo = "None" if use_turbo is None else "Some(" + str(use_turbo).lower() + ")"
+                result[mode, name] = ("DefaultMapping { input_id: " + json.dumps(name) + ", mode: Mode::"
+                    + ("Normal" if mode == "NormalMode" else "Hypershift") + ", input_kind: InputKind::"
+                    + ("Key" if row["inputType"] == "KeyInput" else "Dkm") + ", firmware_key_id: "
+                    + ("None" if firmware_id is None else "Some(" + str(firmware_id) + ")")
+                    + ", input_hid: " + hid + ", use_turbo: " + turbo + ", output: " + output(row) + " }")
+        return result
+
+    base_rows = rendered_rows(projection["keyboard"])
+    lines.extend(["pub(super) const KEYBOARD: &[DefaultMapping] = &[", *[row + "," for row in base_rows.values()], "];"])
+    selections = [(679, [(None, "&[]")])]
+    if variants is not None:
+        exact_fields(variants, {"models", "products", "mouse"}, "onboard default variants")
+        if json.dumps(projection["mouse"], separators=(",", ":")) != json.dumps(variants["mouse"], separators=(",", ":")):
+            raise ValueError("Onboard mouse defaults differ from the actual shared provider")
+        patches, model_names = {}, {}
+        for identity, model in sorted(variants["models"].items()):
+            rows = rendered_rows(model, duplicate_firmware=True)
+            if not base_rows.keys() <= rows.keys():
+                raise ValueError("Current onboard model removes a generic source key")
+            for mode in ("NormalMode", "HypershiftMode"):
+                order = [key for key in rows if key[0] == mode and key in base_rows]
+                if order != [key for key in base_rows if key[0] == mode]:
+                    raise ValueError("Current onboard model reorders inherited source keys")
+            patch = tuple(value for key, value in rows.items() if base_rows.get(key) != value)
+            if patch not in patches:
+                name = "DEFAULT_PATCH_" + str(len(patches))
+                patches[patch] = name
+                lines.extend(["const " + name + ": &[DefaultMapping] = &[", *[row + "," for row in patch], "];"])
+            model_names[identity] = patches[patch]
+        selections, seen, used = [], set(), set()
+        for product in variants["products"]:
+            pid = bounded(product["product_id"], 0xffffffff, "onboard default product", 1)
+            if pid in seen:
+                raise ValueError("Onboard default product repeats")
+            seen.add(pid)
+            choices, layouts = [], set()
+            for choice in product["choices"]:
+                layout, identity = choice["layout_id"], choice["model"]
+                if layout in layouts or identity not in model_names:
+                    raise ValueError("Onboard default layout is repeated or unresolved")
+                if layout is not None:
+                    bounded(layout, 0xffffffff, "onboard default layout")
+                layouts.add(layout); used.add(identity)
+                choices.append((layout, model_names[identity]))
+            if None not in layouts:
+                raise ValueError("Onboard default product has no source fallback layout")
+            selections.append((pid, choices))
+        if used != set(model_names):
+            raise ValueError("Onboard default model has no current product owner")
+    lines.extend(["pub(super) fn defaults(product: u32, layout: u32) -> Option<DefaultMappings> {",
+                  "let overrides = match product {"])
+    for pid, choices in sorted(selections):
+        default = next(name for layout, name in choices if layout is None)
+        specialized = {}
+        for layout, name in choices:
+            if layout is not None and name != default:
+                specialized.setdefault(name, []).append(layout)
+        if not specialized:
+            lines.append(str(pid) + " => " + default + ",")
+        else:
+            lines.append(str(pid) + " => match layout {")
+            for name, layouts in specialized.items():
+                lines.append(" | ".join(map(str, sorted(layouts))) + " => " + name + ",")
+            lines.extend(["_ => " + default + ",", "},"])
+    lines.extend(["_ => return None,", "};", "Some(DefaultMappings { base: KEYBOARD, overrides })", "}", "",
+                  "pub(super) const MOUSE: &[(Mode, u8, MouseAction)] = &["])
     exact_fields(projection["mouse"], {"NormalMode", "HypershiftMode"}, "onboard mouse modes")
     for mode, rows in projection["mouse"].items():
         ids = set()
@@ -1981,39 +2199,6 @@ def render_current_onboard_mapping(projection):
                 + ", " + action("MouseAction", group["mouseAssignment"], encoding["mouse_names"].values()) + "),")
     lines.extend([" ];", ""])
     return "\n".join(lines).encode()
-
-
-def current_read_inventory_selection_contract(selection, merging):
-    """Reject changed layout or override semantics before projecting the key tables."""
-    import sys
-    sys.path.insert(0, str(Path(__file__).resolve().parent / "analyzers/python-static"))
-    from tree_sitter import Language, Parser
-    import tree_sitter_javascript
-    parser = Parser(Language(tree_sitter_javascript.language()))
-
-    def syntax(body):
-        tree = parser.parse(body.encode())
-        if tree.root_node.has_error:
-            raise ValueError("Current keyboard inventory selection has a JavaScript AST error")
-
-        def shape(node):
-            children = [child for child in node.children if child.type != "comment"]
-            return (node.type, tuple(shape(child) for child in children)) if children else (node.type, node.text)
-        return shape(tree.root_node)
-
-    expected_selection = ('w=()=>{let e=[];return e=o.Yi0.includes(m.A.runtimeData.layoutId)&&n.BUTTON_LIST_UK?'
-        '[...n.BUTTON_LIST_UK]:m.A.runtimeData.layoutId===_.Z7j.Japanese&&n.BUTTON_LIST_JP?'
-        '[...n.BUTTON_LIST_JP]:[...n.BUTTON_LIST],e}')
-    expected_merging = ('C=()=>{var e,t;if(O)return O;let i={};'
-        'const{inputMapping:n,inputMappingJP:r,inputMappingUK:s}=p.A.getFeatureParam("isObm","yes");'
-        'return i=m.A.runtimeData.layoutId===_.Z7j.Japanese&&r?r:o.Yi0.includes(m.A.runtimeData.layoutId)&&s?s:n,'
-        'i?(O={NormalMode:Object.assign(Object.assign({},a.Bx.NormalMode),'
-        '(null===(e=i.keyboard)||void 0===e?void 0:e.NormalMode)||{}),'
-        'HypershiftMode:Object.assign(Object.assign({},a.Bx.HypershiftMode),'
-        '(null===(t=i.keyboard)||void 0===t?void 0:t.HypershiftMode)||{})},O):(O=a.Bx,O)}')
-    if syntax(selection) != syntax(expected_selection) or syntax(merging) != syntax(expected_merging):
-        raise ValueError("Current keyboard layout inventory or firmware override semantics changed")
-    return {"layout_and_override_selection_equal": True}
 
 
 def verify_current_read_key_fixtures(expected, rust_raw, python_raw):
@@ -2059,8 +2244,9 @@ def current_read_sources():
     import host
     audit = host.HostLocalAudit()
     indexed = json.loads(audit.artifact(ROOT / ".analysis/inputs.json"))
+    keyboard_namespace = current_keyboard_namespace(679)
     physical = analysis.feature_report_callers(audit.parser, {row["path"]: row for row in indexed["inputs"]},
-        selected_capabilities=[{"product_id": 190}, {"product_id": 679}])
+        selected_capabilities=[{"product_id": 190}, {"product_id": 679, "namespace": keyboard_namespace}])
     capabilities, products = [], []
 
     def binding_value(source, binding):
@@ -2206,116 +2392,8 @@ def current_read_sources():
         "function Je(e=o.razerWindow.rzDevice,t=f.default.runtimeData)", {"function_declaration"})
     mouse["firmware_consumer"] = firmware
     keyboard = next(row for row in products if row["product_id"] == 679)
-    _, files = audit.source_set("keyboard-mw-679-current")
-    generic = audit.webpack_export("current_679_firmware_mapping", files, 32906, "Bx")
-    generic_node = binding_value(generic["original"], generic["binding"])
-    normal = next(pair.child_by_field_name("value") for pair in generic_node.named_children
-                  if pair.child_by_field_name("key").text == b"NormalMode")
-    inventories = {}
-    for export in ("BUTTON_LIST", "BUTTON_LIST_UK"):
-        owner = audit.webpack_export("current_679_" + export, files, 26061, export)
-        inventories[export] = {"export": owner, "keys": current_read_key_inventory(
-            binding_value(owner["original"], owner["binding"]), normal)}
-    selection = audit.webpack_export("current_679_layout_key_selection", files, 26192, "NA")
-    merging = audit.webpack_export("current_679_firmware_mapping_selection", files, 26192, "Aq")
-    selection_contract = current_read_inventory_selection_contract(selection["binding"]["body"], merging["binding"]["body"])
-    for name, module_id in (("n", 26061), ("a", 32906), ("o", 11469), ("_", 93490)):
-        dependency = audit.binding("current_679_inventory_dependency_" + name, selection["original"], name,
-                                   selection["binding"]["start_byte"])
-        value = binding_value(selection["original"], dependency)
-        if (value.type != "call_expression" or len(value.child_by_field_name("arguments").named_children) != 1
-                or value.child_by_field_name("arguments").named_children[0].text != str(module_id).encode()):
-            raise ValueError("Current keyboard inventory dependency no longer selects its actual module")
-    uk = audit.webpack_export("current_679_uk_layouts", files, 11469, "Yi0")
-    layout = audit.webpack_export("current_679_layout_enum", files, 93490, "Z7j")
-    layout_node = binding_value(layout["original"], layout["binding"])
-    layout_codes = {pair.child_by_field_name("key").text.decode(): int(pair.child_by_field_name("value").text)
-                    for pair in layout_node.named_children if pair.type == "pair"}
-    uk_node = binding_value(uk["original"], uk["binding"])
-    if uk_node.type != "array" or any(node.type != "member_expression" for node in uk_node.named_children):
-        raise ValueError("Current keyboard UK layout selection is not a fixed enum list")
-    uk_layout_ids = [layout_codes[node.child_by_field_name("property").text.decode()]
-                     for node in uk_node.named_children]
-    main = inventories["BUTTON_LIST"]["export"]["original"]
-    feature = audit.retain("current_679_obm_registration", main, 'useFeature("isObm","yes"', {"call_expression"})
-    if len(feature) != 1:
-        raise ValueError("Current keyboard OBM registration is ambiguous")
-    feature_owner = audit.owners[feature[0]]
-    feature_node = audit.tree(main).root_node.descendant_for_byte_range(feature_owner["byte_start"], feature_owner["byte_end"] - 1)
-    arguments = feature_node.child_by_field_name("arguments").named_children
-    if len(arguments) != 3 or arguments[2].type != "object":
-        raise ValueError("Current keyboard OBM registration is not a literal feature")
-    options = {pair.child_by_field_name("key").text: pair.child_by_field_name("value") for pair in arguments[2].named_children
-               if pair.type == "pair"}
-    if b"inputMappingJP" in options or b"inputMappingUK" in options or options[b"engineType"].text != b'"obmEngineKeyboardCalMaxMem"':
-        raise ValueError("Current keyboard OBM registration adds an unaudited layout or engine override")
-    mapping = options[b"inputMapping"]
-    keyboard_mapping = next(pair.child_by_field_name("value") for pair in mapping.named_children
-                            if pair.child_by_field_name("key").text == b"keyboard")
-    normal_override = next(pair.child_by_field_name("value") for pair in keyboard_mapping.named_children
-                           if pair.child_by_field_name("key").text == b"NormalMode")
-    if normal_override.type != "object" or normal_override.named_children:
-        raise ValueError("Current keyboard adds an unaudited normal-mode firmware key override")
-    mouse_mapping = audit.webpack_export("current_679_mount_mouse_mapping", files, 32906, "InputIDToMapping_Mouse_Generic")
-    onboard_inventories = {
-        name: current_onboard_key_inventory(
-            binding_value(item["export"]["original"], item["export"]["binding"]), generic_node,
-            keyboard_mapping, binding_value(mouse_mapping["original"], mouse_mapping["binding"]))
-        for name, item in inventories.items()
-    }
-    if "BUTTON_LIST_JP" in audit.owners[inventories["BUTTON_LIST"]["export"]["complete_factory_owner"]]["body"]:
-        raise ValueError("Current keyboard adds a Japanese inventory requiring its own source projection")
-    factory = audit.webpack_export("current_679_obm_engine", files, 17317, "default")
-    factory_root = binding_value(factory["original"], factory["binding"])
-    callers = {}
-    for method in ("init", "getButtonIdFromUIMappingList", "getAllButtonAssignmentInfo", "getButtonAssignmentListDetail",
-                   "createButtonMappingFromFnDataByte"):
-        _, owner = audit.callable_member("current_679_" + method, factory["original"], factory_root, method,
-                                          receiver="this")
-        callers[method] = owner
-    engine_source = next(row for row in files if Path(row["path"]).name.startswith("obmEngineKeyboard."))
-    encoding, encoding_owners = {}, {}
-    for field, module, export in (
-            ("function_ids", 36475, "rA"), ("modifier_bits", 39674, "rw"),
-            ("modifier_names", 68214, "_A"), ("media_codes", 39674, "w0"),
-            ("media_names", 68214, "tC"), ("power_codes", 39674, "ox"),
-            ("razer_codes", 68214, "ZI"), ("shortcut_codes", 39674, "V7"),
-            ("shortcut_names", 68214, "wo"), ("mouse_names", 68214, "AX"),
-            ("profile_names", 68214, "E7")):
-        owner = audit.webpack_export("current_679_mapping_" + field,
-                                    [engine_source] if module == 39674 else files, module, export)
-        encoding[field] = current_onboard_literal(binding_value(owner["original"], owner["binding"]))
-        encoding_owners[field] = owner
-    defaults = current_onboard_literal(generic_node)
-    overrides = current_onboard_literal(keyboard_mapping)
-    for mode, rows in overrides.items():
-        if mode not in defaults:
-            raise ValueError("Current onboard mapping adds an unaudited mode")
-        defaults[mode].update(rows)
-    keyboard["onboard_mapping"] = {
-        "projection": {"keyboard": defaults, "mouse": current_onboard_literal(
-            binding_value(mouse_mapping["original"], mouse_mapping["binding"])), "encoding": encoding},
-        "encoding_owners": encoding_owners,
-        "decoder": callers["createButtonMappingFromFnDataByte"],
-        "raw_observation_preserved": True,
-        "unknown_output_preserved": True,
-    }
-    subclass = audit.webpack_export("current_679_calculated_memory_engine", files, 65711, "default")
-    mounting_source = selection["original"]
-    mounting = audit.retain("current_679_obm_mounting", mounting_source, "obmEngine.init(",
-                            {"function_expression", "function_declaration", "arrow_function"})
-    keyboard["analog_key_inventory"] = {"inventories": inventories, "normal_firmware_mapping": generic,
-        "onboard_physical_keys": {"inventories": onboard_inventories, "uk_layout_ids": uk_layout_ids},
-        "shared_mouse_mapping": mouse_mapping,
-        "selection_contract": selection_contract,
-        "layout_selection": selection, "firmware_mapping_selection": merging, "uk_layout_codes": uk,
-        "layout_enum": layout, "uk_layout_ids": uk_layout_ids, "feature_registration": feature[0],
-        "engine": factory, "calculated_memory_subclass": subclass, "callers": callers, "mounting": mounting,
-        "japanese_specific_ui_inventory": "absent; source selector uses BUTTON_LIST when BUTTON_LIST_JP is absent",
-        "other_layouts": "source selector uses BUTTON_LIST for every layout outside uk_layout_ids",
-        "profile_id_source": "obmJson.profiles[e].id from actual profile inventory; caller passes profile ID",
-        "memory_type": 0, "actuation_batch_limit": 15, "rapid_trigger_batch_limit": 13,
-        "key_identity": "firmware fwID from mounted NormalMode mapping; not analogKeyID or HID scan code"}
+    keyboard.update(current_keyboard_obm_read_sources(audit))
+    inventories = keyboard["analog_key_inventory"]["inventories"]
     fixture_rust = ROOT / "crates/razer-hid/tests/connected_devices.rs"
     fixture_python = ROOT / "tools/native_runtime.py"
     expected_keys = [row["firmware_key_id"] for row in inventories["BUTTON_LIST"]["keys"]]
@@ -2424,7 +2502,8 @@ def prepare_current_read_table(*, check=False, record=True):
     inventory = keyboard["analog_key_inventory"]["onboard_physical_keys"]
     inventory_path = ROOT / ONBOARD_KEY_OUTPUT
     inventory_bytes = subprocess.run(["rustfmt", "--edition", "2024", "--emit", "stdout"],
-        input=render_current_onboard_inventory(inventory), capture_output=True, check=True).stdout
+        input=render_current_onboard_inventory(inventory, current_onboard_input_variants()),
+        capture_output=True, check=True).stdout
     receiver_table_tree(inventory_bytes)
     if not check:
         inventory_path.write_bytes(inventory_bytes)

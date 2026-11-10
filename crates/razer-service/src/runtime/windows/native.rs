@@ -57,6 +57,13 @@ pub(super) fn keyboard_profile_inventory(
     device_reads::keyboard_metadata(target, super::KeyboardRead::ProfileInventory)
 }
 
+pub(super) fn keyboard_function_swap(
+    target: &razer_device::device_reads::DeviceReadTarget,
+    primary: razer_device::keyboard_function_swap::FunctionKeyPrimary,
+) -> anyhow::Result<Value> {
+    device_reads::keyboard_metadata(target, super::KeyboardRead::FunctionSwap(primary))
+}
+
 pub(super) fn keyboard_mode(
     target: &razer_device::keyboard_mode::Target,
     operation: razer_device::keyboard_mode::Operation,
@@ -551,6 +558,7 @@ impl NativeRuntime {
             | ServiceRequest::HidNodeKeyboardReceiverBrightness { .. }
             | ServiceRequest::HidNodeKeyboardMetadataRead { .. }
             | ServiceRequest::KeyboardMode { .. }
+            | ServiceRequest::KeyboardFunctionSwap { .. }
             | ServiceRequest::KeyboardProfileInventoryRead { .. }
             | ServiceRequest::KeyboardOnboardProfilesRead { .. }
             | ServiceRequest::HidNodeKeyboardSerialRead { .. }

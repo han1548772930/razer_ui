@@ -5,6 +5,10 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub enum Operation {
+    ReadPowerSaving,
+    SetPowerSaving { setting: crate::earbuds_power::Setting },
+    ReadMicrophoneMute,
+    SetMicrophoneMute { muted: bool },
     Equalizer { setting: crate::earbuds_equalizer::Setting },
     /// Source audioInputSource command; no persisted value or restore.
     SwitchInputSource,
@@ -78,6 +82,12 @@ pub struct Report {
     pub anc: Option<crate::earbuds_anc::Report>,
     #[serde(default)]
     pub activation_code: Option<ActivationCode>,
+    #[serde(default)]
+    pub power: Option<crate::earbuds_power::Report>,
+    #[serde(default)]
+    pub microphone_mute: Option<crate::earbuds_microphone::MuteReport>,
+    #[serde(default)]
+    pub equalizer: Option<crate::earbuds_equalizer::Report>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
@@ -97,6 +107,30 @@ impl ActivationCode {
 }
 
 impl Report {
+    pub fn from_equalizer(product_id: u32, submission: crate::earbuds_equalizer::Report) -> Result<Self> {
+        ensure!(supports_auto_pause(product_id), "Unknown earbud EQ product");
+        submission.validate()?;
+        Ok(Self {
+            product_id,
+            operation: Operation::Equalizer { setting: submission.setting },
+            connected: None,
+            left_battery: None,
+            right_battery: None,
+            observation: AutoPauseObservation::Unobserved,
+            write: submission.outcome(),
+            do_not_disturb: None,
+            voice_prompt: None,
+            firmware: FirmwareObservation::Unobserved,
+            gesture: None,
+            tap_speed: None,
+            anc: None,
+            activation_code: None,
+            power: None,
+            microphone_mute: None,
+            equalizer: Some(submission),
+        })
+    }
+
     pub fn has_disconnected_earbud(&self) -> bool {
         self.connected == Some(false)
             || (self.connected == Some(true)
@@ -153,6 +187,38 @@ pub fn execute<S: Sleeper>(
     validate_connection: &dyn Fn() -> Result<()>,
 ) -> Result<Report> {
     transport(product_id)?;
+    if matches!(operation, Operation::ReadPowerSaving | Operation::SetPowerSaving { .. }
+        | Operation::ReadMicrophoneMute | Operation::SetMicrophoneMute { .. }) {
+        let mut report = Report {
+            product_id, operation, connected: None, left_battery: None, right_battery: None,
+            observation: AutoPauseObservation::Unobserved, write: WriteOutcome::Skipped,
+            do_not_disturb: None, voice_prompt: None, firmware: FirmwareObservation::Unobserved,
+            gesture: None, tap_speed: None, anc: None, activation_code: None,
+            power: None, microphone_mute: None, equalizer: None,
+        };
+        match operation {
+            Operation::ReadPowerSaving | Operation::SetPowerSaving { .. } => {
+                let setting = match operation {
+                    Operation::SetPowerSaving { setting } => Some(setting),
+                    _ => None,
+                };
+                let power = crate::earbuds_power::execute(session, setting, validate)?;
+                report.write = power.outcome();
+                report.power = Some(power);
+            }
+            Operation::ReadMicrophoneMute | Operation::SetMicrophoneMute { .. } => {
+                let muted = match operation {
+                    Operation::SetMicrophoneMute { muted } => Some(muted),
+                    _ => None,
+                };
+                let microphone = crate::earbuds_microphone::execute(session, muted, validate)?;
+                report.write = microphone.write().clone();
+                report.microphone_mute = Some(microphone);
+            }
+            _ => unreachable!(),
+        }
+        return Ok(report);
+    }
     if operation == Operation::ActivationCode {
         let reply = session.send_command_as(CommandHeader::new([0,24,161]), &[],
             TransactionDeviceType::DockDongle, validate)?;
@@ -161,20 +227,20 @@ pub fn execute<S: Sleeper>(
             product_id, operation, connected: None, left_battery: None, right_battery: None,
             observation: AutoPauseObservation::Unobserved, write: WriteOutcome::Skipped,
             do_not_disturb: None, voice_prompt: None, firmware: FirmwareObservation::Unobserved,
-            gesture: None, tap_speed: None, anc: None, activation_code: Some(activation_code),
+            gesture: None, tap_speed: None, anc: None, activation_code: Some(activation_code), power: None, microphone_mute: None, equalizer: None,
         });
     }
-    if operation == Operation::SwitchInputSource || matches!(operation, Operation::Equalizer { .. }) {
-        if let Operation::Equalizer { setting } = operation {
-            crate::earbuds_equalizer::apply(session, product_id, setting, validate)?;
-        } else {
-            session.send_command(CommandHeader::new([0, 24, 29]), &[], validate)?;
-        }
+    if let Operation::Equalizer { setting } = operation {
+        let submission = crate::earbuds_equalizer::apply(session, product_id, setting, validate)?;
+        return Report::from_equalizer(product_id, submission);
+    }
+    if operation == Operation::SwitchInputSource {
+        session.send_command(CommandHeader::new([0, 24, 29]), &[], validate)?;
         return Ok(Report {
             product_id, operation, connected: None, left_battery: None, right_battery: None,
             observation: AutoPauseObservation::Unobserved, write: WriteOutcome::Confirmed,
             do_not_disturb: None, voice_prompt: None, firmware: FirmwareObservation::Unobserved,
-            gesture: None, tap_speed: None, anc: None, activation_code: None,
+            gesture: None, tap_speed: None, anc: None, activation_code: None, power: None, microphone_mute: None, equalizer: None,
         });
     }
     if let Operation::Anc { setting } = operation {
@@ -192,7 +258,7 @@ pub fn execute<S: Sleeper>(
             firmware: FirmwareObservation::Unobserved,
             gesture: None,
             tap_speed: None,
-            anc: Some(anc), activation_code: None,
+            anc: Some(anc), activation_code: None, power: None, microphone_mute: None, equalizer: None,
         });
     }
     if matches!(
@@ -243,7 +309,7 @@ pub fn execute<S: Sleeper>(
             firmware: FirmwareObservation::Unobserved,
             gesture: observed_gesture,
             tap_speed,
-            anc: None, activation_code: None,
+            anc: None, activation_code: None, power: None, microphone_mute: None, equalizer: None,
         });
     }
     if operation == Operation::Firmware {
@@ -267,7 +333,7 @@ pub fn execute<S: Sleeper>(
             firmware,
             gesture: None,
             tap_speed: None,
-            anc: None, activation_code: None,
+            anc: None, activation_code: None, power: None, microphone_mute: None, equalizer: None,
         });
     }
     if let Operation::VoicePrompt { enabled } = operation {
@@ -285,7 +351,7 @@ pub fn execute<S: Sleeper>(
             firmware: FirmwareObservation::Unobserved,
             gesture: None,
             tap_speed: None,
-            anc: None, activation_code: None,
+            anc: None, activation_code: None, power: None, microphone_mute: None, equalizer: None,
         });
     }
     if let Operation::RestoreVoicePrompt { enabled } = operation {
@@ -303,7 +369,7 @@ pub fn execute<S: Sleeper>(
             firmware: FirmwareObservation::Unobserved,
             gesture: None,
             tap_speed: None,
-            anc: None, activation_code: None,
+            anc: None, activation_code: None, power: None, microphone_mute: None, equalizer: None,
         });
     }
     if let Operation::DoNotDisturb { enabled } = operation {
@@ -335,7 +401,7 @@ pub fn execute<S: Sleeper>(
             firmware: FirmwareObservation::Unobserved,
             gesture: None,
             tap_speed: None,
-            anc: None, activation_code: None,
+            anc: None, activation_code: None, power: None, microphone_mute: None, equalizer: None,
         });
     }
     // Source user writes and profile restore do not run the battery setup again.
@@ -355,7 +421,7 @@ pub fn execute<S: Sleeper>(
             firmware: FirmwareObservation::Unobserved,
             gesture: None,
             tap_speed: None,
-            anc: None, activation_code: None,
+            anc: None, activation_code: None, power: None, microphone_mute: None, equalizer: None,
         });
     }
     if let Operation::Restore { enabled } = operation {
@@ -384,7 +450,7 @@ pub fn execute<S: Sleeper>(
             firmware: FirmwareObservation::Unobserved,
             gesture: None,
             tap_speed: None,
-            anc: None, activation_code: None,
+            anc: None, activation_code: None, power: None, microphone_mute: None, equalizer: None,
         });
     }
     // Earlier four helpers explicitly supply Mouse; 2689 uses the instance type.
@@ -422,7 +488,7 @@ pub fn execute<S: Sleeper>(
         firmware: FirmwareObservation::Unobserved,
         gesture: None,
         tap_speed: None,
-        anc: None, activation_code: None,
+        anc: None, activation_code: None, power: None, microphone_mute: None, equalizer: None,
     };
     if !connected {
         return Ok(report);

@@ -652,6 +652,10 @@ impl ProductWorkspace {
     pub fn keyboard_actuation_request_current(&self, generation: u64, cx: &App) -> bool {
         matches!(&self.body, Body::Source(body) if body.read(cx).keyboard_actuation_request_current(generation, cx))
     }
+    pub fn earbuds_notifications_active(&self, cx: &App) -> bool {
+        matches!(&self.body, Body::Source(body) if body.read(cx).earbuds_notifications_active())
+    }
+
     pub fn audio_mixer_page(&self, cx: &App) -> Option<Entity<super::AudioProductWorkspace>> {
         match &self.body {
             Body::Source(body) => body.read(cx).audio_mixer_page(),

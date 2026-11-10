@@ -2241,6 +2241,37 @@ class ArchitectureBoundaryTests(unittest.TestCase):
                 self.assertFalse(self.inspect(source, owner))
             self.assertFalse(self.inspect('fn another(id:u32)->bool { match id {740|746=>true,_=>false} }', consumer))
 
+    def test_mouse_dpi_physical_adapters_share_the_source_identity_owner(self):
+        for owner, entry in (
+                ('crates/razer-service/src/runtime/mouse_current_dpi.rs', 'mouse_current_dpi'),
+                ('crates/razer-service/src/runtime/windows/mouse/mouse_current_dpi.rs', 'run')):
+            good = f'fn {entry}() {{ let radio = source.is_dongle(physical)?; }}'
+            self.assertFalse(self.inspect(good, owner))
+            for body in ('let radio = identity.is_dongle;',
+                         'let radio = source.is_physical_branch(physical, false);'):
+                failures = self.inspect(f'fn {entry}() {{ {body} }}', owner)
+                self.assertEqual([row['kind'] for row in failures],
+                                 ['mouse_dpi_adapter_bypasses_physical_identity'])
+            self.assertFalse(self.inspect('fn unrelated() { custom.is_physical_branch(physical); }', owner))
+            self.assertFalse(self.inspect(f'#[cfg(test)] mod tests {{ fn {entry}() {{}} }}', owner))
+            self.assertFalse(self.inspect((workspace.ROOT / owner).read_text(encoding='utf-8'), owner))
+        self.assertFalse(self.inspect('impl Capability { fn is_dongle() { self.is_physical_branch(pid, radio); } }',
+            'crates/razer-device/src/mouse/mouse_current_dpi.rs'))
+
+    def test_earbud_controls_share_one_physical_notification_owner(self):
+        owner = 'crates/razer-shell/src/shell/audio/earbuds_events.rs'
+        for source in (
+                'fn start() { razer_service::earbuds_auto_pause::monitor(route, active, refresh, publish, finish); }',
+                'use razer_service::earbuds_auto_pause as events; fn start() { events::monitor(route,active,refresh,publish,finish); }'):
+            self.assertFalse(self.inspect(source, owner))
+            for name in ('earbuds_auto_pause', 'earbuds_power', 'earbuds_microphone'):
+                consumer = f'crates/razer-shell/src/shell/audio/{name}.rs'
+                self.assertEqual([row['kind'] for row in self.inspect(source, consumer)],
+                                 ['earbud_notification_has_multiple_gui_owners'])
+                self.assertFalse(self.inspect('#[cfg(test)] mod tests {' + source + '}', consumer))
+                self.assertFalse(self.inspect('fn start() { another::monitor(); }', consumer))
+        self.assertFalse(self.inspect((workspace.ROOT / owner).read_text(encoding='utf-8'), owner))
+
     def test_mapping_document_compilation_has_one_shared_owner(self):
         owner = 'crates/razer-model/src/mapping.rs'
         consumers = (

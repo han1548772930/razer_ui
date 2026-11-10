@@ -119,6 +119,9 @@ pub fn prepare_profile_document(
             settings,
             fresh_guids,
         )?,
+        pid if razer_device::keyboard_receiver_mapping::supports(pid) => razer_device::keyboard_receiver_mapping::prepare_document(
+            pid, &profiles, &active.guid, device.layout_id, previous, settings, fresh_guids,
+        )?,
         _ => razer_device::keyboard_legacy_mapping::prepare_document(
             &profiles,
             &active.guid,
@@ -380,6 +383,11 @@ mod saved_revision_tests {
                 razer_device::keyboard_latest_mapping::default_profile()
             }
             70 => serde_json::json!({"mappings":[]}),
+            pid if razer_device::keyboard_receiver_mapping::supports(pid) => {
+                let recipe = keyboard::local::initial_template(pid, 0, "Desktop").unwrap();
+                source.source_device_settings = Some(serde_json::to_value(recipe.device).unwrap());
+                serde_json::to_value(&recipe.profiles[0]).unwrap()
+            }
             pid if razer_device::mapping_document::MappingProduct::for_product_id(pid)
                 .is_some_and(|product| product.is_ordinary_mouse()) =>
             {
@@ -429,6 +437,53 @@ mod saved_revision_tests {
         assert!(prepare_document(&source, &Default::default(), []).is_err());
         source.profiles[0].source_settings = Some(serde_json::json!({"mappings":[]}));
         source.active_profile = "missing-profile".into();
+        assert!(prepare_document(&source, &Default::default(), []).is_err());
+    }
+
+    #[test]
+    fn mounted_mouse_save_uses_source_identity_and_retains_its_saved_revision() {
+        use razer_device::mapping_document::MappingProduct;
+        use serde_json::json;
+        let mut source = initialized_source(105);
+        let product = MappingProduct::for_product_id(source.product_id).unwrap();
+        let mut previous = prepare_profile_document(
+            &source,
+            (0..256).map(|index| format!("00000000-0000-4000-8000-{index:012}")),
+        )
+        .unwrap()
+        .unwrap();
+        previous["version"] = json!(37);
+        previous["retainedDocumentExtension"] = json!({"source":104});
+        let serial = "CURRENT-SERIAL";
+        let metadata = json!({(serial):{"activeProfileGuid":source.profiles[0].guid}});
+        source.source_device_settings = Some(json!({
+            (product.storage_field()):previous,
+            "deviceMetadatas":metadata,
+        }));
+        let before = source.clone();
+        source.profiles[0].source_settings.as_mut().unwrap()["mappings"] = json!([{
+            "inputType":"DKMInput","inputID":"DKM_M_01","outputType":"sensitivityGroup",
+            "sensitivityGroup":{"sensitivityAssignment":"DPI_Down"}
+        }]);
+        let saved = prepare_document(&source, &Default::default(), [])
+            .unwrap()
+            .unwrap();
+        assert_eq!(source.product_id, 105);
+        assert_eq!(saved["productId"], 104);
+        assert_eq!(saved["category"], "MOUSEPLUSMAT");
+        assert_eq!(saved["version"], 38);
+        assert_eq!(saved["retainedDocumentExtension"], json!({"source":104}));
+        assert_eq!(saved["deviceMetadatas"], metadata);
+        assert!(!matches_saved_revision(&source, &before));
+        assert_eq!(source.source_device_settings, before.source_device_settings);
+        let mappings = saved["profiles"][0]["appEngine"]["mappings"]
+            .as_array()
+            .unwrap();
+        assert!(mappings.iter().any(|row| row["input"]["key"] == 32
+            && row["output"]["type"] == "sensitivity"
+            && row["output"]["sensitivityGroup"]["sensitivityAssignment"] == "DPI_Down"));
+        source.source_device_settings.as_mut().unwrap()[product.storage_field()]["productId"] =
+            json!(105);
         assert!(prepare_document(&source, &Default::default(), []).is_err());
     }
 

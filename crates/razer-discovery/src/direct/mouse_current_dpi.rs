@@ -2,6 +2,11 @@ use super::*;
 use razer_device::mouse_current_dpi::{self as dpi, DpiChange, DpiReport};
 use razer_ipc::mouse_current_dpi_ble::{Context as BleContext, Outcome};
 
+fn source_product_id(observed: &ObservedDevice) -> u32 {
+    razer_device::mapping_document::MappingProduct::for_product_id(observed.product_id())
+        .map_or(observed.product_id(), |product| product.source_product_id())
+}
+
 pub fn available(observed: &ObservedDevice) -> bool {
     if observed.transport() == Some(crate::discovery::ObservedTransport::Ble) {
         return cfg!(windows)
@@ -15,7 +20,7 @@ pub(super) fn feature_available(observed: &ObservedDevice) -> bool {
     if observed.peer_product_id().is_some() {
         return receiver_session(observed).is_ok();
     }
-    dpi::capability(observed.product_id()).is_some_and(|source| match observed.transport() {
+    dpi::capability(source_product_id(observed)).is_some_and(|source| match observed.transport() {
         Some(crate::discovery::ObservedTransport::Wired) => {
             source.is_physical_branch(observed.physical_product_id(), false)
                 && observed.peer_product_id().is_none()
@@ -39,7 +44,7 @@ fn receiver_session(
                 == razer_model::model::DeviceConnectionObservation::ReceiverPeer(1),
         "Current DPI requires an online receiver observation"
     );
-    dpi::capability(observed.product_id())
+    dpi::capability(source_product_id(observed))
         .context("Current DPI source is absent")?
         .receiver_session(
             observed.physical_product_id(),
@@ -99,7 +104,7 @@ pub(super) fn request_with(
         "Current mouse DPI has no live source route"
     );
     if let Some(change) = &change {
-        dpi::validate_change_for(observed.product_id(), change)?;
+        dpi::validate_change_for(source_product_id(observed), change)?;
     }
     if observed.transport() == Some(crate::discovery::ObservedTransport::Ble) {
         #[cfg(windows)]
@@ -144,7 +149,7 @@ pub(super) fn request_with(
             reply["obm_persistence_verified"] == false,
             "Source Mt setter acknowledgements cannot claim OBM readback"
         );
-        decode_reply(observed.product_id(), &reply, change)
+        decode_reply(source_product_id(observed), &reply, change)
     } else {
         resolve_with(observed, &mut request)?.mouse_current_dpi_with(change, &mut request)
     }
@@ -241,7 +246,7 @@ pub(super) fn resolve_with(
     observed: &ObservedDevice,
     request: &mut impl FnMut(ServiceRequest) -> anyhow::Result<Value>,
 ) -> anyhow::Result<DirectRoute> {
-    let source = dpi::capability(observed.product_id())
+    let source = dpi::capability(source_product_id(observed))
         .context("Mouse DPI observation has no current source factory capability")?;
     let cap = source.transport();
     ensure!(
@@ -275,12 +280,14 @@ pub(super) fn resolve_with(
         source_reports_match_with(node, cap.report_bytes, request)?;
         return Ok(DirectRoute::Collection {
             node: node.clone(),
-            product_id: observed.product_id(),
+            product_id: source.product_id(),
         });
     }
     #[cfg(windows)]
     {
-        windows::resolve_with(observed, cap, request).map(DirectRoute::Container)
+        let mut target = windows::resolve_with(observed, cap, request)?;
+        target.product_id = source.product_id();
+        Ok(DirectRoute::Container(target))
     }
     #[cfg(not(windows))]
     {
@@ -619,6 +626,124 @@ fn validate_report(
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[cfg(windows)]
+    fn mounted105() -> ObservedDevice {
+        let snapshot = crate::discovery::discover_with(
+            &Ok(json!({"complete":true,"devices":[{
+                "vendor_id":5426,"product_id":105,"device_container_id":"dpi-105"
+            }]})),
+            &Ok(json!({"complete":true,"interfaces":[]})),
+            &mut |_| panic!("discovery must not initialize the device"),
+        )
+        .unwrap();
+        let [observed] = snapshot.devices() else {
+            panic!("the current dashboard mounts one product105");
+        };
+        assert_eq!(observed.product_id(), 105);
+        assert_eq!(observed.physical_product_id(), 105);
+        assert_eq!(
+            observed.transport(),
+            Some(crate::discovery::ObservedTransport::Dongle)
+        );
+        observed.clone()
+    }
+
+    #[cfg(windows)]
+    fn mounted105_hid() -> Value {
+        json!({"complete":true,"interfaces":[{
+            "vendor_id":5426,"product_id":105,"device_container_id":"dpi-105",
+            "claim_interface":0,"feature_report_bytes":91,"path":"current-dpi-105"
+        }]})
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn mounted105_dpi_dispatches_source104_and_preserves_device_readback() {
+        let observed = mounted105();
+        assert!(available(&observed));
+        for change in [
+            None,
+            Some(DpiChange {
+                stages: None,
+                active: Some(dpi::DpiPair { x: 1700, y: 1800 }),
+                profile_guid: None,
+                initialize: false,
+            }),
+        ] {
+            let mut calls = 0;
+            let actual = request_with(&observed, change.clone(), |request| {
+                calls += 1;
+                match request {
+                    ServiceRequest::HidDevices => Ok(mounted105_hid()),
+                    ServiceRequest::DeviceMouseCurrentDpi {
+                        target,
+                        change: requested,
+                    } => {
+                        assert_eq!(target.product_id, 104);
+                        assert_eq!(target.physical_product_id, 105);
+                        assert_eq!(target.device_container_id, "dpi-105");
+                        assert_eq!(target.path, "current-dpi-105");
+                        assert_eq!(target.peer_product_id, None);
+                        assert_eq!(requested, change);
+                        Ok(json!({"target":target,"source_class":"rzDevice25",
+                        "profile_scope":"stage_1_active_0","report":{
+                            "requested":requested,"active":{"x":1700,"y":1800},
+                            "verified":true,"acknowledgements":[],
+                            "stages":{"profile_id":1,"active_stage":1,
+                                "number_of_active_stages":1,"response_bytes":10,
+                                "records":[{"index":1,"x":700,"y":900,"z":0}]}
+                        }}))
+                    }
+                    _ => panic!("DPI must use the independent source104 feature adapter"),
+                }
+            })
+            .unwrap();
+            assert_eq!(calls, 2);
+            assert_eq!(actual.active, Some(dpi::DpiPair { x: 1700, y: 1800 }));
+            assert_eq!(actual.stages.unwrap().records[0].x, 700);
+            assert_eq!(observed.product_id(), 105);
+        }
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn mounted105_dpi_rejects_stale_targets_missing_interfaces_and_transport_failure() {
+        let observed = mounted105();
+        for (field, value) in [
+            ("product_id", json!(105)),
+            ("physical_product_id", json!(104)),
+            ("path", json!("previous-connection")),
+            ("device_container_id", json!("other-device")),
+        ] {
+            let result = request_with(&observed, None, |request| match request {
+                ServiceRequest::HidDevices => Ok(mounted105_hid()),
+                ServiceRequest::DeviceMouseCurrentDpi { target, .. } => {
+                    let mut target = serde_json::to_value(target)?;
+                    target[field] = value.clone();
+                    Ok(json!({"target":target}))
+                }
+                _ => panic!("unexpected DPI request"),
+            });
+            assert!(result.is_err(), "{field}");
+        }
+        let mut calls = 0;
+        assert!(
+            request_with(&observed, None, |request| {
+                calls += 1;
+                assert!(matches!(request, ServiceRequest::HidDevices));
+                Ok(json!({"interfaces":[]}))
+            })
+            .is_err()
+        );
+        assert_eq!(calls, 1);
+        let result = request_with(&observed, None, |request| match request {
+            ServiceRequest::HidDevices => Ok(mounted105_hid()),
+            ServiceRequest::DeviceMouseCurrentDpi { .. } => anyhow::bail!("device disconnected"),
+            _ => panic!("unexpected DPI request"),
+        });
+        assert_eq!(result.unwrap_err().to_string(), "device disconnected");
+    }
 
     fn ble_reply() -> (razer_device::mouse_runtime_artwork::WindowsBleTarget, Value) {
         let container = "{01234567-89AB-CDEF-0123-456789ABCDEF}";

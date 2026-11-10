@@ -19,6 +19,7 @@ enum RequestSource {
     UserEdit,
     ProfileRestore,
     HardwareNotification,
+    DeviceAction(Uuid),
 }
 
 #[derive(Clone, Copy)]
@@ -42,6 +43,15 @@ pub struct EarbudsAutoPauseRequested {
 #[path = "earbuds_auto_pause_tests.rs"]
 mod tests;
 impl EarbudsAutoPauseRequested {
+    pub(super) fn device_action(scope: Uuid, monitor: Arc<AtomicBool>, action: super::earbuds_sound_actions::Action) -> Self {
+        Self { id: Uuid::new_v4(), profile_id: String::new(), initialize_profile: false,
+            operation: action.operation(), active: Arc::new(AtomicBool::new(true)), monitor,
+            source: RequestSource::DeviceAction(scope) }
+    }
+    pub(super) fn device_scope(&self) -> Option<Uuid> {
+        match self.source { RequestSource::DeviceAction(scope) => Some(scope), _ => None }
+    }
+    pub fn is_device_action(&self) -> bool { self.device_scope().is_some() }
     pub fn id(&self) -> Uuid {
         self.id
     }
@@ -84,10 +94,7 @@ pub(super) struct State {
     pub(super) eq_graph: super::earbuds_equalizer_graph::State,
     pub(super) eq_ui: super::earbuds_equalizer_view::State,
     pub(super) eq_profile_error: Option<String>,
-    pub(super) eq_result: Option<Result<WriteOutcome, String>>,
-    pub(super) input_popup: bool,
-    pub(super) input_disabled_cursor: Option<Point<Pixels>>,
-    pub(super) input_result: Option<Result<WriteOutcome, String>>,
+    pub(super) eq_result: Option<Result<Report, String>>,
     pub(super) controls: Option<EarbudsControls>,
     identity: String,
     profile_id: String,
@@ -125,6 +132,7 @@ pub(super) struct State {
 }
 impl State {
     fn cancel_profile_requests(&mut self) {
+        self.eq_result = None;
         if let Some(request) = &self.pending {
             if request.source != RequestSource::Observation {
                 request.active.store(false, Ordering::Release);
@@ -141,9 +149,6 @@ impl State {
         self.eq_graph = super::earbuds_equalizer_graph::State::default();
         self.eq_ui = super::earbuds_equalizer_view::State::default();
         self.eq_result = None;
-        self.input_popup = false;
-        self.input_disabled_cursor = None;
-        self.input_result = None;
         if let Some(guard) = self.monitor.take() {
             guard.store(false, Ordering::Release);
         }
@@ -490,7 +495,7 @@ impl AudioProductWorkspace {
         }
         if !ready {
             self.earbuds_graphic.leave();
-            self.earbuds_activation.cancel();
+            if !active || !connected { self.cancel_earbuds_activation(); }
         }
         if changed {
             let continuing_connection = self.earbuds.identity == device.workspace_identity()
@@ -639,7 +644,6 @@ impl AudioProductWorkspace {
             self.earbuds.eq_revision = self.earbuds.eq_revision.wrapping_add(1);
             self.earbuds.eq_graph = super::earbuds_equalizer_graph::State::default();
             self.earbuds.eq_ui = super::earbuds_equalizer_view::State::default();
-            self.earbuds.input_disabled_cursor = None;
             if let Some(guard) = self.earbuds.monitor.take() {
                 guard.store(false, Ordering::Release);
             }
@@ -735,6 +739,9 @@ impl AudioProductWorkspace {
         if operation == Operation::Firmware {
             self.earbuds.firmware_due = false;
         }
+        if matches!(operation, Operation::Equalizer { .. }) {
+            self.earbuds.eq_result = None;
+        }
         if source == RequestSource::ProfileRestore {
             match operation {
                 Operation::Anc { setting, .. } => {
@@ -780,6 +787,7 @@ impl AudioProductWorkspace {
     }
 
     pub fn earbuds_request_current(&self, request: &EarbudsAutoPauseRequested) -> bool {
+        if request.is_device_action() { return self.earbuds_sound_request_current(request); }
         self.earbuds.active
             && request.active.load(Ordering::Acquire)
             && (request.source == RequestSource::Observation
@@ -841,7 +849,9 @@ impl AudioProductWorkspace {
             }
             Operation::Write { enabled } => enabled,
             Operation::Restore { enabled } => enabled.unwrap_or(true),
-            Operation::Read | Operation::Battery { .. } | Operation::Firmware | Operation::SwitchInputSource | Operation::ActivationCode => return false,
+            Operation::Read | Operation::Battery { .. } | Operation::Firmware | Operation::SwitchInputSource | Operation::ActivationCode
+                | Operation::ReadPowerSaving | Operation::SetPowerSaving { .. }
+                | Operation::ReadMicrophoneMute | Operation::SetMicrophoneMute { .. } => return false,
             Operation::DoNotDisturb { enabled } => {
                 self.earbuds.dnd_persisted = Some(enabled);
                 return true;
@@ -900,6 +910,10 @@ impl AudioProductWorkspace {
         result: Result<Report, String>,
         cx: &mut Context<Self>,
     ) {
+        if request.is_device_action() {
+            self.finish_earbuds_sound_action(request, result, cx);
+            return;
+        }
         if request.is_hardware_notification() {
             let error = Some(match result {
                 Err(error) => error,
@@ -924,28 +938,26 @@ impl AudioProductWorkspace {
                 Ok(report)
             }
         });
+        if current && matches!(request.operation, Operation::Read | Operation::Battery { .. }) {
+            match &result {
+                Ok(report) => self.observe_earbuds_shared_connection(report, cx),
+                Err(error) => self.observe_earbuds_shared_connection_error(error.clone(), cx),
+            }
+        }
         self.earbuds.pending = None;
-        if request.operation == Operation::ActivationCode {
-            if current {
-                self.earbuds_activation.code = Some(result.and_then(|report| {
-                    report.activation_code.ok_or_else(|| "Activation response omitted the code".into())
-                }));
-                self.earbuds_activation.loading = false;
-            }
-            self.start_earbuds_request(cx);
-            cx.notify();
-            return;
-        }
-        if request.operation == Operation::SwitchInputSource {
-            if current {
-                self.earbuds.input_result = Some(result.map(|report| report.write));
-            }
-            self.start_earbuds_request(cx);
-            cx.notify();
-            return;
-        }
         if matches!(request.operation, Operation::Equalizer { .. }) {
-            if current { self.earbuds.eq_result = Some(result.map(|report| report.write)); }
+            if current {
+                self.earbuds.eq_result = Some(result.and_then(|report| {
+                    let Some(submission) = &report.equalizer else {
+                        return Err("Earbud EQ reply omitted the command confirmations".into());
+                    };
+                    submission.validate().map_err(|error| format!("{error:#}"))?;
+                    if !matches!(request.operation, Operation::Equalizer { setting } if setting == submission.setting) {
+                        return Err("Earbud EQ confirmations belong to another setting".into());
+                    }
+                    Ok(report)
+                }));
+            }
             self.start_earbuds_request(cx);
             cx.notify();
             return;
@@ -1163,7 +1175,7 @@ impl AudioProductWorkspace {
                     }
                     if report.connected.is_some() {
                         if controls.earbud_disconnected != report.has_disconnected_earbud() {
-                            self.earbuds.input_disabled_cursor = None;
+                            self.earbuds_sound.input_disabled_cursor = None;
                         }
                         controls.earbud_disconnected = report.has_disconnected_earbud();
                         if controls.earbud_disconnected {
@@ -1300,6 +1312,7 @@ impl AudioProductWorkspace {
             }
         }
         match event {
+            Notification::MicrophoneMute { .. } => {},
             Notification::Anc { state } => self.observe_anc_notification(state, cx),
             Notification::Connection { status: 0, .. } => {
                 self.earbuds_graphic.clear();

@@ -1,9 +1,129 @@
-//! Compiled by cargo check --all-targets; not executed under the source-audit policy.
+//! Headless workspace state and event tests; no device or native-window acceptance.
 use super::{SourceProductWorkspace, active_profile_settings_dirty, mouse_connection_navigation};
 use gpui_kit::component::Root;
 use gpui_kit::test::TestWindowExt;
 use gpui_kit::{AppContext, TestAppContext, px, size};
 use serde_json::json;
+
+#[gpui_kit::test]
+fn earbuds_global_power_save_does_not_require_profiles_or_overwrite_a_newer_edit(
+    cx: &mut TestAppContext,
+) {
+    use razer_device::earbuds_power::Setting;
+    use razer_storage::earbuds_profiles::{merge_power, read_power};
+    cx.update(gpui_kit::init);
+    for product in [2657, 2660, 2664, 2668, 2689] {
+        let mut owner = None;
+        let _handle = cx.open_window(size(px(1200.), px(900.)), |window, cx| {
+            let view = cx.new(|cx| SourceProductWorkspace::new(
+                razer_model::product_preview::registered_preview(product).unwrap(), window, cx,
+            ));
+            owner = Some(view.clone());
+            Root::new(view, window, cx)
+        });
+        owner.unwrap().update(cx, |workspace, cx| {
+            assert!(workspace.device.profiles.is_empty());
+            let accepted = Setting::new(true, 900);
+            let mut snapshot = workspace.device.clone();
+            merge_power(&mut snapshot, accepted).unwrap();
+            workspace.mark_saved(snapshot, cx);
+            assert_eq!(read_power(&workspace.device).unwrap(), Some(accepted));
+            assert!(workspace.device.profiles.is_empty());
+
+            let newer_edit = Setting::new(false, 2700);
+            merge_power(&mut workspace.device, newer_edit).unwrap();
+            let older_save = Setting::new(true, 1800);
+            let mut snapshot = workspace.saved.clone();
+            merge_power(&mut snapshot, older_save).unwrap();
+            workspace.mark_saved(snapshot, cx);
+            assert_eq!(read_power(&workspace.device).unwrap(), Some(newer_edit));
+            assert_eq!(read_power(&workspace.saved).unwrap(), Some(older_save));
+            assert!(workspace.dirty());
+        });
+    }
+}
+
+#[gpui_kit::test]
+fn mounted105_profile_application_reaches_the_current_dpi_owner(cx: &mut TestAppContext) {
+    use super::WorkspaceEvent;
+    use crate::features::mouse_products::MouseCurrentDpiRequested;
+    cx.update(gpui_kit::init);
+    let mut owner = None;
+    let _handle = cx.open_window(size(px(1400.), px(1100.)), |window, cx| {
+        let mut device = razer_model::product_preview::registered_preview(105).unwrap();
+        device.active_profile = "saved-105".into();
+        device.profiles.push(razer_model::model::Profile {
+            id: "saved-105".into(),
+            guid: "saved-105".into(),
+            name: "Saved".into(),
+            settings: None,
+            dpi_stages: None,
+            source_settings: Some(json!({"dpiStages":{"enable":true,"active":1,"count":1,
+                "stages":[{"x":700,"y":900,"visible":true,"independent":true}]}})),
+        });
+        let view = cx.new(|cx| SourceProductWorkspace::new(device, window, cx));
+        owner = Some(view.clone());
+        Root::new(view, window, cx)
+    });
+    let owner = owner.unwrap();
+    let requests = cx.new(|_| Vec::<MouseCurrentDpiRequested>::new());
+    let _subscription = requests.update(cx, |_, cx| {
+        cx.subscribe(&owner, |requests, _, event: &WorkspaceEvent, _| {
+            if let WorkspaceEvent::MouseCurrentDpiRequested(request) = event {
+                requests.push(request.clone());
+            }
+        })
+    });
+    owner.update(cx, |workspace, cx| {
+        workspace.initialize_current_mouse_profile(Some("source104-radio105".into()), false, cx);
+    });
+    cx.run_until_parked();
+    let initial = requests.update(cx, |requests, _| {
+        assert_eq!(requests.len(), 1);
+        requests.remove(0)
+    });
+    assert!(initial.is_read());
+    assert!(initial.change().is_none());
+    owner.update(cx, |workspace, cx| {
+        workspace.finish_current_dpi_result(&initial, Err("read interrupted".into()), cx);
+        workspace.persist_source_profile(true, cx);
+    });
+    cx.run_until_parked();
+    let applied = requests.update(cx, |requests, _| {
+        assert_eq!(
+            requests.len(),
+            1,
+            "explicit profile application must reach the DPI queue"
+        );
+        assert!(requests[0].change().unwrap().stages.is_some());
+        requests.remove(0)
+    });
+    let mapping_owner = uuid::Uuid::new_v4();
+    owner.update(cx, |workspace, cx| {
+        workspace.finish_current_dpi_result(&applied, Err("write interrupted".into()), cx);
+        workspace.configure_shared_mouse_mapping(mapping_owner, 105, cx);
+        assert!(workspace.consume_interdevice_mapping(json!({
+            "eventName":"interDevice","type":"unsupportedmapping","input":"{\"scancode\":5}",
+            "output":json!({"type":"sensitivity","flag":0,
+                "sensitivityGroup":{"sensitivityAssignment":"DPI_Clutch","x":900,"y":1200}}).to_string()
+        }), cx));
+    });
+    cx.run_until_parked();
+    requests.read_with(cx, |requests, _| {
+        assert_eq!(requests.len(), 1);
+        assert!(
+            requests[0].profile().is_none(),
+            "clutch is not a saved profile edit"
+        );
+        assert_eq!(
+            requests[0].change().unwrap().active,
+            Some(razer_device::mouse_current_dpi::DpiPair { x: 900, y: 1200 })
+        );
+    });
+    owner.read_with(cx, |workspace, _| {
+        assert_eq!(workspace.device.product_id, 105)
+    });
+}
 
 #[::core::prelude::v1::test]
 fn matcher_library_migration_keeps_device_scope_and_profile_local_selection_for_all_products() {

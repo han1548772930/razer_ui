@@ -715,6 +715,10 @@ pub enum ServiceRequest {
         target: razer_device::keyboard_mode::Target,
         mode_operation: razer_device::keyboard_mode::Operation,
     },
+    KeyboardFunctionSwap {
+        target: keyboard_profile_inventory::Target,
+        primary: razer_device::keyboard_function_swap::FunctionKeyPrimary,
+    },
     KeyboardProfileInventoryRead {
         target: keyboard_profile_inventory::Target,
     },
@@ -1523,6 +1527,7 @@ impl ServiceClient {
                     | ServiceRequest::StartShortcutCapture
                     | ServiceRequest::HidNodeWrite { .. }
                     | ServiceRequest::KeyboardMode { .. }
+                    | ServiceRequest::KeyboardFunctionSwap { .. }
                     | ServiceRequest::HidNodeHanboCooler { .. }
                     | ServiceRequest::HidNodeMixerWrite { .. }
                     | ServiceRequest::HidNodeMixerLocalWrite { .. }
@@ -1895,7 +1900,7 @@ impl ServiceClient {
                 };
                 let error = self.stop_after_error(anyhow::Error::msg(message));
                 let error = match response.data {
-                    Some(data) => anyhow::Error::new(request_cancellation::CanceledBleReply {
+                    Some(data) => anyhow::Error::new(request_cancellation::CanceledResponse {
                         data,
                         error: format!("{error:#}"),
                     }),
@@ -1908,6 +1913,13 @@ impl ServiceClient {
                 None => "设备操作范围已取消；旧响应未提交，已发送的设置仍可能生效".to_owned(),
             };
             let error = self.stop_after_error(anyhow::Error::msg(message));
+            let error = match response.data {
+                Some(data) => anyhow::Error::new(request_cancellation::CanceledResponse {
+                    data,
+                    error: format!("{error:#}"),
+                }),
+                None => error,
+            };
             return Err(failure_diagnostics::retain(error, response.diagnostics));
         }
         let confirmation = shutting_down.then(|| worker_shutdown::confirm(&response, id));

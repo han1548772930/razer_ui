@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import concurrent.futures
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 import base64
 from collections import Counter, defaultdict, deque
 from datetime import datetime, timezone
@@ -6588,11 +6588,88 @@ def native_chain_function_reference(record):
                                         "type", "full_assembly", "full_pseudocode") if key in record}
 
 
+def feature_factory_descriptor(row, parser, factory_owner, expected):
+    """Resolve the current factory's top-level DeviceInfo destructuring alias."""
+    import sqlite3
+    import evidence
+    import keyboard_profile_templates as recipes
+    source = next(source for source in row["sources"] if factory_owner in source["owners"])
+    raw = (ROOT / source["original"]["path"]).read_bytes()
+    tree = parser.parse(raw)
+    bindings = evidence.JavascriptBindings(raw, tree)
+    factory = tree.root_node.descendant_for_byte_range(factory_owner["byte_start"], factory_owner["byte_end"] - 1)
+    for node in recipes.walk(factory):
+        if node.type != "member_expression" or node.child_by_field_name("property").text != b"dongleId":
+            continue
+        obj = node.child_by_field_name("object")
+        if (obj.text == b"DeviceInfo" or obj.type == "member_expression"
+                and obj.child_by_field_name("property").text == b"DeviceInfo"):
+            return "DeviceInfo"
+    claim_names = {node.child_by_field_name("object").text for node in recipes.walk(factory)
+                   if node.type == "member_expression" and node.child_by_field_name("property").text == b"claimInterface"
+                   and node.child_by_field_name("object").type == "identifier"}
+    references = [node.child_by_field_name("object") for node in recipes.walk(factory)
+                  if node.type == "member_expression" and node.child_by_field_name("property").text == b"dongleId"
+                  and node.child_by_field_name("object").type == "identifier"
+                  and node.child_by_field_name("object").text in claim_names
+                  and node.child_by_field_name("object").text != b"DeviceInfo"]
+    if not references:
+        return "DeviceInfo"
+    aliases = {}
+    for reference in references:
+        name = reference.text.decode()
+        resolved = bindings.resolve(name, reference.start_byte)
+        if resolved["resolution"] != "destructuring_requires_value_analysis":
+            raise ValueError("Factory DeviceInfo alias is not a resolved destructuring")
+        declaration = tree.root_node.descendant_for_byte_range(resolved["start_byte"], resolved["end_byte"] - 1)
+        pattern = declaration.child_by_field_name("name")
+        if declaration.type != "variable_declarator" or pattern.type != "object_pattern":
+            raise ValueError("Factory DeviceInfo alias does not have an object source")
+        pairs = [node for node in pattern.named_children if node.type == "pair_pattern"
+                 and node.child_by_field_name("key").text == b"DeviceInfo"
+                 and node.child_by_field_name("value").text.decode() == name]
+        if len(pairs) != 1:
+            raise ValueError("Factory alias selects another property instead of DeviceInfo")
+        declarations = (resolved["start_byte"], resolved["end_byte"])
+        claim_refs = [node.child_by_field_name("object") for node in recipes.walk(factory)
+                      if node.type == "member_expression" and node.child_by_field_name("property").text == b"claimInterface"
+                      and node.child_by_field_name("object").text.decode() == name]
+        if not claim_refs or any((lambda binding: (binding.get("start_byte"), binding.get("end_byte")))(
+                bindings.resolve(name, node.start_byte)) != declarations for node in claim_refs):
+            raise ValueError("Factory claim interface and dongle identity select different bindings")
+        aliases[name] = declaration
+    if len(aliases) != 1:
+        raise ValueError("Factory has multiple DeviceInfo aliases")
+    name, declaration = next(iter(aliases.items()))
+    database = ROOT / ".analysis/results/code-identity.sqlite3"
+    with closing(sqlite3.connect("file:" + database.as_posix() + "?mode=ro", uri=True)) as db:
+        db.row_factory = sqlite3.Row
+        record = db.execute("SELECT * FROM factories WHERE source_sha=? AND start_byte<=? AND end_byte>=? "
+                            "AND kind='webpack_factory' ORDER BY end_byte-start_byte LIMIT 1",
+                            (source["original"]["sha256"], declaration.start_byte, declaration.end_byte)).fetchone()
+        if record is None:
+            raise ValueError("Factory DeviceInfo alias has no indexed source owner")
+        module = recipes.Module(recipes.Index(db, layer="mw"), row["product_id"], dict(record), source["original"])
+        observed = {}
+        for field in expected:
+            try:
+                observed[field] = module.member_value(declaration.child_by_field_name("value"), ["DeviceInfo", field])
+            except KeyError:
+                observed[field] = None
+        if observed != expected:
+            raise ValueError("Factory DeviceInfo alias differs from its actual product declaration")
+    factory_owner["device_info_alias"] = {"name": name, "declaration_start": declaration.start_byte,
+        "declaration_end": declaration.end_byte, "declaration_sha256": hashlib.sha256(declaration.text).hexdigest(),
+        "fields": observed, "provider_layer": "mw"}
+    return name
+
+
 def feature_physical_transports(row, parser, originals):
     """Resolve the retained mounted factory; never use a capability class label."""
     owners = [owner for source in row["sources"] for owner in source["owners"]]
     infos = [owner["body"] for owner in owners if owner["role"] == "device_info"]
-    factories = [owner["body"] for owner in owners if owner["role"] == "physical_transport_factory"]
+    factory_owners = [owner for owner in owners if owner["role"] == "physical_transport_factory"]
+    factories = [owner["body"] for owner in factory_owners]
     if len(infos) != 1 or len(factories) != 1:
         raise ValueError("Physical transport requires exactly one current DeviceInfo and factory")
     info, factory = infos[0], factories[0]
@@ -6649,7 +6726,9 @@ def feature_physical_transports(row, parser, originals):
     is_dual, is_mika = settings.get("isDualLinkDevice") == "!0", settings.get("isMikaDevice") == "!0"
     if is_dual and is_mika:
         raise ValueError("Combined DualLink/Mika precedence needs a separate audit")
-    if not all(token in factory for token in ("DeviceInfo.dongleId", "rzDevice25()", "rzDevice25DualLink")):
+    descriptor = feature_factory_descriptor(row, parser, factory_owners[0],
+        {"productId": pid, "claimInterface": interfaces, "dongleId": dongle})
+    if not all(token in factory for token in (descriptor + ".dongleId", "rzDevice25()", "rzDevice25DualLink")):
         raise ValueError("Complete physical factory no longer has the selected wired/DualLink branches")
     classes = {}
     for name in ("rzDevice25", "rzDevice25DualLinkMouse", "rzDevice25DualLinkKeyboard"):
@@ -6854,7 +6933,10 @@ def feature_report_callers(parser, originals, selected_capabilities=None):
     for cap in capabilities:
         pid = cap["product_id"]
         family = "keyboard" if 500 <= pid < 1000 else "mouse"
-        namespace = f"{family}-mw-{pid}-current"
+        namespace = cap.get("namespace", f"{family}-mw-{pid}-current")
+        if (type(namespace) is not str
+                or re.fullmatch(rf"{family}-mw-{pid}-current(?:-[A-Za-z0-9_-]+)?", namespace) is None):
+            raise ValueError("Feature-report namespace differs from its selected product/layer")
         root = ROOT / ".analysis/inputs/frontend" / namespace
         row = {"product_id": pid, "namespace": namespace,
                "selected_capability": cap, "sources": [], "failures": [],
@@ -6887,7 +6969,11 @@ def feature_report_callers(parser, originals, selected_capabilities=None):
                 if not name.endswith(".js") or name in seen or name not in current_paths:
                     continue
                 seen.add(name)
-                path = resolve(name, rel(root))
+                # Current captures can reference one byte-verified shared
+                # original in another frontend acquisition. The current
+                # deployment membership and receipt/index identities below
+                # remain mandatory; namespace-folder duplication is not.
+                path = resolve(name, ".analysis/inputs/frontend")
                 # Read source as inert bytes; parse only framing, connection,
                 # factory or DeviceInfo carriers. Never execute vendor JS.
                 if not path.is_file():
@@ -6930,8 +7016,7 @@ def feature_report_callers(parser, originals, selected_capabilities=None):
                     for match in re.finditer(re.escape(b'getFeatures("rzDeviceType")'), raw):
                         node = tree.root_node.descendant_for_byte_range(match.start(), match.end())
                         while node is not None and not (node.type in {"arrow_function", "function_expression"}
-                                and b"DeviceInfo.claimInterface" in node.text
-                                and b"DeviceInfo.dongleId" in node.text):
+                                and b".claimInterface" in node.text and b".dongleId" in node.text):
                             node = node.parent
                         if node is None:
                             row["failures"].append({"kind": "complete_transport_factory_unresolved", "path": name})

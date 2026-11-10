@@ -778,6 +778,10 @@ pub(super) fn keyboard_metadata(
         response["mode_report"] = serde_json::to_value(razer_device::keyboard_mode::execute_hid(
             &device, cap, operation, || transaction(target, cap), &validate,
         )?)?;
+    } else if let KeyboardRead::FunctionSwap(primary) = query {
+        response["function_swap_report"] = serde_json::to_value(razer_device::keyboard_function_swap::apply_hid(
+            &device,cap,primary,||transaction(target,cap),&validate,
+        )?)?;
     } else if matches!(query, KeyboardRead::Serial) {
         response["method"] = json!("getSerialNumber");
         response["serial_number"] = json!(keyboard_metadata::read_serial(

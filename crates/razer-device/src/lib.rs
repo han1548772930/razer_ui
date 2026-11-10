@@ -81,6 +81,10 @@ pub mod dpi_matcher_storage;
 pub mod earbuds_controls;
 #[path = "audio/earbuds_auto_pause.rs"]
 pub mod earbuds_auto_pause;
+#[path = "audio/earbuds_power.rs"]
+pub mod earbuds_power;
+#[path = "audio/earbuds_microphone.rs"]
+pub mod earbuds_microphone;
 #[path = "audio/earbuds_equalizer.rs"]
 pub mod earbuds_equalizer;
 #[path = "audio/earbuds_system_volume.rs"]
@@ -151,6 +155,8 @@ pub mod keyboard_latest_restore;
 pub mod keyboard_legacy_calibration;
 #[path = "keyboard/keyboard_legacy_mapping.rs"]
 pub mod keyboard_legacy_mapping;
+#[path = "keyboard/keyboard_receiver_mapping.rs"]
+pub mod keyboard_receiver_mapping;
 #[path = "keyboard/keyboard_magnetic_mapping.rs"]
 pub mod keyboard_magnetic_mapping;
 #[path = "keyboard/keyboard_metadata.rs"]
@@ -161,6 +167,8 @@ pub mod keyboard_mode;
 pub mod keyboard_onboard_inventory;
 #[path = "keyboard/keyboard_onboard_profiles.rs"]
 pub mod keyboard_onboard_profiles;
+#[path = "keyboard/keyboard_onboard_keymap.rs"]
+pub mod keyboard_onboard_keymap;
 #[path = "keyboard/keyboard_profile_inventory.rs"]
 pub mod keyboard_profile_inventory;
 #[path = "keyboard/keyboard_settings.rs"]

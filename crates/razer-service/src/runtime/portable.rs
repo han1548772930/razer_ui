@@ -841,6 +841,23 @@ impl PortableRuntime {
             ServiceRequest::HidNodeKeyboardSerialRead { node, product_id } => {
                 self.keyboard_metadata(&node, product_id, KeyboardRead::Serial, None)
             }
+            ServiceRequest::KeyboardFunctionSwap { target, primary } => {
+                target.validate()?;
+                ensure!(target.product_id()==717,"Function-key swap is not registered for this product");
+                let response=match &target {
+                    razer_ipc::keyboard_profile_inventory::Target::Collection { node, product_id, peer_product_id }=>
+                        self.keyboard_metadata(node,*product_id,KeyboardRead::FunctionSwap(primary),*peer_product_id)?,
+                    razer_ipc::keyboard_profile_inventory::Target::WindowsContainer { target }=> {
+                        #[cfg(windows)]
+                        { super::native::keyboard_function_swap(target,primary)? }
+                        #[cfg(not(windows))]
+                        { let _=target; bail!("Windows function-key target requires its platform transport") }
+                    }
+                };
+                let report:razer_device::keyboard_function_swap::FunctionKeySwapWriteReport=serde_json::from_value(response["function_swap_report"].clone())?;
+                report.validate_write_ack(primary)?;
+                Ok(json!({"target":target,"report":report}))
+            }
             ServiceRequest::HidNodeKeyboardRelayMetadataRead { node, product_id, peer_product_id } => {
                 self.keyboard_metadata(&node, product_id, KeyboardRead::Metadata, Some(peer_product_id))
             }
@@ -1269,6 +1286,10 @@ impl PortableRuntime {
         if let KeyboardRead::Mode(operation) = query {
             response["mode_report"] = serde_json::to_value(razer_device::keyboard_mode::execute_hid(
                 device.as_ref(), cap, operation, next_transaction, &validate,
+            )?)?;
+        } else if let KeyboardRead::FunctionSwap(primary)=query {
+            response["function_swap_report"]=serde_json::to_value(razer_device::keyboard_function_swap::apply_hid(
+                device.as_ref(),cap,primary,next_transaction,&validate,
             )?)?;
         } else if matches!(query, KeyboardRead::Serial) {
             response["method"] = json!("getSerialNumber");

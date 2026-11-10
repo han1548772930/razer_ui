@@ -21,6 +21,33 @@ def catalog():
 
 
 class TypedTableTests(unittest.TestCase):
+    def test_current_keyboard_namespace_uses_verified_index_and_never_the_old_alias(self):
+        import sqlite3
+        from contextlib import closing
+        with tempfile.TemporaryDirectory() as directory, patch.object(typed_tables, "ROOT", Path(directory)):
+            root = Path(directory)
+            current = root / ".analysis/inputs/frontend/keyboard-mw-679-current-refresh-test/acquisition.json"
+            current.parent.mkdir(parents=True)
+            current.write_bytes(b'{"current":true}')
+            old = root / ".analysis/inputs/frontend/keyboard-mw-679-current/acquisition.json"
+            old.parent.mkdir(parents=True)
+            old.write_bytes(b'{"older":true}')
+            database = root / ".analysis/results/code-identity.sqlite3"
+            database.parent.mkdir(parents=True)
+            with closing(sqlite3.connect(database)) as db:
+                db.execute("CREATE TABLE deployments(product_id,family,layer,acquisition,acquisition_sha,failure)")
+                db.execute("INSERT INTO deployments VALUES(679,'keyboard','mw',?,?,NULL)", (
+                    current.relative_to(root).as_posix(), hashlib.sha256(current.read_bytes()).hexdigest()))
+                db.commit()
+                self.assertEqual(typed_tables.current_keyboard_namespace(679), current.parent.name)
+                current.write_bytes(b'{"changed":true}')
+                with self.assertRaises(ValueError):
+                    typed_tables.current_keyboard_namespace(679)
+                db.execute("DELETE FROM deployments")
+                db.commit()
+                with self.assertRaises(ValueError):
+                    typed_tables.current_keyboard_namespace(679)
+
     def current_read_fixture(self):
         template = json.loads(self.source_fixture("device-read-capabilities.json"))["products"][0]
         template.pop("alternate_commands")
@@ -134,36 +161,6 @@ class TypedTableTests(unittest.TestCase):
             typed_tables.current_read_decoder_contract("getTimeToSleep", idle.replace("r.data[0],r.data[1]", "r.data[1],r.data[0]"),
                                                        decoder_only=True)
 
-    def test_current_read_key_inventory_uses_normal_fwids_and_rejects_ambiguous_or_dynamic_keys(self):
-        import sys
-        sys.path.insert(0, str(Path(typed_tables.__file__).resolve().parent / "analyzers/python-static"))
-        from tree_sitter import Language, Parser
-        import tree_sitter_javascript
-        parser = Parser(Language(tree_sitter_javascript.language()))
-
-        def project(buttons, mapping):
-            button_tree = parser.parse(("const keys=" + buttons).encode())
-            mapping_tree = parser.parse(("const keys=" + mapping).encode())
-            return typed_tables.current_read_key_inventory(
-                button_tree.root_node.named_children[0].named_children[0].child_by_field_name("value"),
-                mapping_tree.root_node.named_children[0].named_children[0].child_by_field_name("value"))
-
-        buttons = '[{inputID:"W"},{inputID:"A"},{inputID:"W"},{isHyperShift:!0,inputID:"only_shift"}]'
-        mapping = '{W:{fwID:18,inputID:"W",analogKeyID:17},A:{fwID:31,inputID:"A",HID:4}}'
-        self.assertEqual(project(buttons, mapping), [
-            {"firmware_key_id": 18, "input_id": "W"}, {"firmware_key_id": 31, "input_id": "A"}])
-        for changed_buttons, changed_mapping in (
-                (buttons, mapping.replace("fwID:18", "fwID:255")),
-                (buttons, mapping.replace("fwID:31", "fwID:18")),
-                (buttons, mapping.replace("fwID:18", "fwID:deviceKey()")),
-                (buttons, mapping.replace('inputID:"W"', 'inputID:"other"')),
-                (buttons, mapping.replace("analogKeyID:17", "ignoreInObm:!0")),
-                (buttons.replace('inputID:"A"', 'inputID:"missing"'), mapping),
-                (buttons.replace("isHyperShift:!0", "isHyperShift:dynamic"), mapping),
-                (buttons.replace('{inputID:"W"}', '{...deviceKey}'), mapping)):
-            with self.assertRaises(ValueError):
-                project(changed_buttons, changed_mapping)
-
     def test_current_read_probe_allowlists_match_literal_source_inventory_and_module_ownership(self):
         expected = [18, 31, 32, 33]
         rust = b"const KEYBOARD_679_LAYOUT_1_KEYS:&[u8]=&[18,31,32,33];"
@@ -183,43 +180,6 @@ class TypedTableTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 typed_tables.verify_current_read_key_fixtures(expected, invalid_rust, invalid_python)
 
-    def test_current_onboard_inventory_applies_whole_entry_overrides_and_independent_mode_filters(self):
-        import sys
-        sys.path.insert(0, str(Path(typed_tables.__file__).resolve().parent / "analyzers/python-static"))
-        from tree_sitter import Language, Parser
-        import tree_sitter_javascript
-        parser = Parser(Language(tree_sitter_javascript.language()))
-
-        def value(source):
-            tree = parser.parse(("const value=" + source).encode())
-            self.assertFalse(tree.root_node.has_error)
-            return tree.root_node.named_children[0].named_children[0].child_by_field_name("value")
-
-        buttons = '[{inputID:"B"},{inputID:"A"},{inputID:"A"},{inputID:"only_shift",isHyperShift:!0}]'
-        generic = ('{NormalMode:{A:{inputID:"A",fwID:18},B:{inputID:"B",fwID:31}},'
-            'HypershiftMode:{A:{inputID:"A",fwID:18,ignoreInObm:!0},B:{inputID:"B",fwID:31}}}')
-        overrides = '{HypershiftMode:{A:{inputID:"A",fwID:18},B:{inputID:"B",fwID:31,ignoreInObm:!0}}}'
-        mouse = '{NormalMode:{M:{inputID:"M",fwID:18,ignoreInObm:!0}},HypershiftMode:{}}'
-
-        def project(ui=buttons, base=generic, patch=overrides, shared=mouse):
-            return typed_tables.current_onboard_key_inventory(value(ui), value(base), value(patch), value(shared))
-
-        self.assertEqual(project(), [
-            {"input_id": "A", "firmware_key_id": 18, "ignore_normal": True, "ignore_hypershift": False},
-            {"input_id": "B", "firmware_key_id": 31, "ignore_normal": False, "ignore_hypershift": True}])
-        for changed_ui, changed_base, changed_patch, changed_mouse in (
-                (buttons, generic, overrides.replace("ignoreInObm:!0", "ignoreInObm:enabled"), mouse),
-                (buttons, generic, overrides.replace('A:{inputID:"A",fwID:18}', 'A:{inputID:"A",fwID:19}'), mouse),
-                (buttons, generic.replace('B:{inputID:"B",fwID:31}', 'B:{inputID:"B",fwID:18}'), overrides, mouse),
-                (buttons.replace('inputID:"B"', 'inputID:"missing"'), generic, overrides, mouse),
-                (buttons.replace('isHyperShift:!0', 'isHyperShift:enabled'), generic, overrides, mouse),
-                (buttons, generic, '{OtherMode:{}}', mouse),
-                (buttons, generic, overrides, mouse.replace('fwID:18,', '')),
-                (buttons, generic, overrides, mouse.replace('fwID:18', 'fwID:getKey()')),
-                (buttons, generic, overrides, mouse.replace('inputID:"M"', 'inputID:"other"'))):
-            with self.assertRaises(ValueError):
-                project(changed_ui, changed_base, changed_patch, changed_mouse)
-
     def test_current_onboard_inventory_renderer_checks_fields_identity_order_and_all_layouts(self):
         keys = [{"input_id": "A", "firmware_key_id": 18, "ignore_normal": False, "ignore_hypershift": True},
                 {"input_id": "B", "firmware_key_id": 31, "ignore_normal": True, "ignore_hypershift": False}]
@@ -228,7 +188,7 @@ class TypedTableTests(unittest.TestCase):
         typed_tables.receiver_table_tree(output)
         self.assertIn(b'Key::new("A", 18, false, true)', output)
         self.assertIn(b'Key::new("B", 31, true, false)', output)
-        self.assertIn(b'if [2, 9].contains(&layout_id)', output)
+        self.assertIn(b'2 | 9 => UK_KEYS', output)
         for changed in (
                 {**inventory, "uk_layout_ids": [2, 2]},
                 {**inventory, "uk_layout_ids": []},
@@ -240,26 +200,56 @@ class TypedTableTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 typed_tables.render_current_onboard_inventory(changed)
 
-    def test_current_onboard_literal_rejects_dynamic_members_duplicates_and_sparse_arrays(self):
-        import sys
-        sys.path.insert(0, str(Path(typed_tables.__file__).resolve().parent / "analyzers/python-static"))
-        from tree_sitter import Language, Parser
-        import tree_sitter_javascript
-        parser = Parser(Language(tree_sitter_javascript.language()))
-
-        def decode(source):
-            tree = parser.parse(("const value=" + source).encode())
-            value = tree.root_node.named_children[0].named_children[0].child_by_field_name("value")
-            return typed_tables.current_onboard_literal(value)
-
-        self.assertEqual(decode('{NormalMode:{"A":[7,!0,false,/* source comment */"key",]},1:!1}'),
-                         {"NormalMode": {"A": [7, True, False, "key"]}, "1": False})
-        for invalid in ('{key:1,key:2}', '{key:1,"key":2}', '{...shared}', '{[name]:1}',
-                        '{key}', '{key(){return 1}}', '[...keys]', '[,1]', '[1,,2]', '[1,,]',
-                        '{key:lookup()}', '{key:state.value}', '{key:null}', '{key:undefined}',
-                        '{key:-1}', '{key:1.5}', '{key:0x10}', '{key:01}'):
-            with self.subTest(source=invalid), self.assertRaises(ValueError):
-                decode(invalid)
+    def test_onboard_variant_renderer_rejects_missing_and_ambiguous_product_layouts(self):
+        keys = [{"input_id": "A", "firmware_key_id": 18, "ignore_normal": False, "ignore_hypershift": True},
+                {"input_id": "B", "firmware_key_id": 31, "ignore_normal": True, "ignore_hypershift": False}]
+        inventory = {"inventories": {"BUTTON_LIST": keys, "BUTTON_LIST_UK": keys[:1]}, "uk_layout_ids": [2, 9]}
+        variants = {"models": {"base": keys, "uk": keys[:1], "jp": keys[1:]}, "features": [
+            {"product_id": 679, "options": {"macros": True, "brightness": True, "analogKeyboardV3": True}},
+            {"product_id": 747, "options": {"macros": True, "brightness": True, "analogKeyboardV3": True}}], "products": [
+            {"product_id": 679, "uk_layout_ids": [2, 9], "japanese_layout_id": 12, "models": [
+                {"layout_id": None, "key_model_sha256": "base"},
+                {"layout_id": 2, "key_model_sha256": "uk"},
+                {"layout_id": 9, "key_model_sha256": "uk"},
+                {"layout_id": 12, "key_model_sha256": "base"}]},
+            {"product_id": 747, "uk_layout_ids": [2, 9], "japanese_layout_id": 12, "models": [
+                {"layout_id": None, "key_model_sha256": "jp"},
+                {"layout_id": 2, "key_model_sha256": "base"},
+                {"layout_id": 9, "key_model_sha256": "base"},
+                {"layout_id": 12, "key_model_sha256": "uk"}]}]}
+        typed_tables.receiver_table_tree(typed_tables.render_current_onboard_inventory(inventory, variants))
+        changes = []
+        for ix in [0, 3]:
+            altered = copy.deepcopy(variants)
+            altered["products"][1]["models"].pop(ix)
+            changes.append(altered)
+        altered = copy.deepcopy(variants)
+        altered["products"].append(copy.deepcopy(altered["products"][0]))
+        changes.append(altered)
+        altered = copy.deepcopy(variants)
+        altered["products"][1]["models"][1]["layout_id"] = 9
+        changes.append(altered)
+        altered = copy.deepcopy(variants)
+        altered["products"][1]["models"][0]["key_model_sha256"] = "missing"
+        changes.append(altered)
+        altered = copy.deepcopy(variants)
+        altered["models"]["unreferenced"] = keys
+        changes.append(altered)
+        altered = copy.deepcopy(variants)
+        altered["products"][0]["models"][1]["key_model_sha256"] = "jp"
+        changes.append(altered)
+        altered = copy.deepcopy(variants)
+        altered["features"].pop()
+        changes.append(altered)
+        altered = copy.deepcopy(variants)
+        altered["features"][0]["options"]["snapTap"] = 1
+        changes.append(altered)
+        altered = copy.deepcopy(variants)
+        altered["features"][0]["options"]["unreviewed"] = True
+        changes.append(altered)
+        for changed in changes:
+            with self.assertRaises(ValueError):
+                typed_tables.render_current_onboard_inventory(inventory, changed)
 
     @staticmethod
     def current_onboard_mapping_fixture():
@@ -337,28 +327,6 @@ class TypedTableTests(unittest.TestCase):
             mutate(projection)
             with self.subTest(mutation=index), self.assertRaises(ValueError):
                 typed_tables.render_current_onboard_mapping(projection)
-
-    def test_current_read_inventory_selection_rejects_swapped_layouts_and_override_precedence(self):
-        selection = ('w=()=>{let e=[];return e=o.Yi0.includes(m.A.runtimeData.layoutId)&&n.BUTTON_LIST_UK?'
-            '[...n.BUTTON_LIST_UK]:m.A.runtimeData.layoutId===_.Z7j.Japanese&&n.BUTTON_LIST_JP?'
-            '[...n.BUTTON_LIST_JP]:[...n.BUTTON_LIST],e}')
-        merging = ('C=()=>{var e,t;if(O)return O;let i={};'
-            'const{inputMapping:n,inputMappingJP:r,inputMappingUK:s}=p.A.getFeatureParam("isObm","yes");'
-            'return i=m.A.runtimeData.layoutId===_.Z7j.Japanese&&r?r:o.Yi0.includes(m.A.runtimeData.layoutId)&&s?s:n,'
-            'i?(O={NormalMode:Object.assign(Object.assign({},a.Bx.NormalMode),'
-            '(null===(e=i.keyboard)||void 0===e?void 0:e.NormalMode)||{}),'
-            'HypershiftMode:Object.assign(Object.assign({},a.Bx.HypershiftMode),'
-            '(null===(t=i.keyboard)||void 0===t?void 0:t.HypershiftMode)||{})},O):(O=a.Bx,O)}')
-        self.assertTrue(typed_tables.current_read_inventory_selection_contract(selection, merging)["layout_and_override_selection_equal"])
-        for invalid_selection, invalid_merging in (
-                (selection.replace("[...n.BUTTON_LIST_UK]", "[...n.BUTTON_LIST]"), merging),
-                (selection.replace("===_.Z7j.Japanese", "!==_.Z7j.Japanese"), merging),
-                (selection.replace("&&n.BUTTON_LIST_JP", "||n.BUTTON_LIST_JP"), merging),
-                (selection, merging.replace("a.Bx.NormalMode", "a.Bx.HypershiftMode")),
-                (selection, merging.replace("&&s?s:n", "&&s?n:s")),
-                (selection, merging.replace('getFeatureParam("isObm","yes")', 'getFeatureParam("other","yes")'))):
-            with self.assertRaises(ValueError):
-                typed_tables.current_read_inventory_selection_contract(invalid_selection, invalid_merging)
 
     @staticmethod
     def battery_peer_manifest():

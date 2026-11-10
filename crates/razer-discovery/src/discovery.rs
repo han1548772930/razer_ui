@@ -39,6 +39,38 @@ pub enum ObservedTransport {
     Ble,
 }
 
+struct DirectIdentity {
+    source_product_id: u32,
+    transport: Option<ObservedTransport>,
+}
+
+impl DirectIdentity {
+    fn from_catalog(identity: &device_identity::ProductIdentity) -> Self {
+        let endpoint_alias = device_identity::middleware_product_identity(identity.product_id)
+            .filter(|source| source.product_id != identity.product_id);
+        // Host catalog routing chooses the mounted page. An independently
+        // mounted endpoint can still name a dongle in its actual DeviceInfo.
+        // Same-PID wired/radio declarations keep their existing host branch.
+        let transport = if identity.is_ble {
+            Some(ObservedTransport::Ble)
+        } else if identity.is_dongle
+            || endpoint_alias
+                .is_some_and(|source| source.dongle_id == Some(identity.real_product_id))
+        {
+            Some(ObservedTransport::Dongle)
+        } else if identity.real_product_id == identity.source_product_id {
+            Some(ObservedTransport::Wired)
+        } else {
+            None
+        };
+        Self {
+            source_product_id: endpoint_alias
+                .map_or(identity.product_id, |source| source.product_id),
+            transport,
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct ObservedDevice {
     product_id: u32,
@@ -545,6 +577,7 @@ pub(crate) fn discover_with(
     for ((container, pid), items) in groups {
         let identity = device_identity::lookup(pid);
         for identity in identity.candidates() {
+            let direct = DirectIdentity::from_catalog(identity);
             let serials: BTreeSet<_> = items
                 .iter()
                 .filter_map(|(item, _)| text(item, "serial_number"))
@@ -560,21 +593,14 @@ pub(crate) fn discover_with(
                 hid_node: None,
                 container: container.clone(),
                 // A receiver's USB string is not a queried wireless peer serial.
-                serial: if !identity.is_dongle && serials.len() == 1 {
+                serial: if direct.transport != Some(ObservedTransport::Dongle) && serials.len() == 1
+                {
                     serials.first().unwrap().to_string()
                 } else {
                     String::new()
                 },
                 use_ble: identity.is_ble,
-                transport: if identity.is_ble {
-                    Some(ObservedTransport::Ble)
-                } else if identity.is_dongle {
-                    Some(ObservedTransport::Dongle)
-                } else if identity.real_product_id == identity.source_product_id {
-                    Some(ObservedTransport::Wired)
-                } else {
-                    None
-                },
+                transport: direct.transport,
                 connection: if items
                     .iter()
                     .any(|(_, connection)| *connection == DeviceConnectionObservation::UsbPresent)

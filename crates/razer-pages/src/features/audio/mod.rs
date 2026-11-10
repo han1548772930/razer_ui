@@ -100,6 +100,12 @@ mod earbuds_equalizer;
 mod earbuds_equalizer_graph;
 mod earbuds_equalizer_view;
 mod earbuds_system_volume;
+mod earbuds_power;
+mod earbuds_microphone;
+mod earbuds_sound_actions;
+pub use earbuds_microphone::EarbudsMicrophoneRequested;
+mod earbuds_connection;
+pub use earbuds_power::EarbudsPowerRequested;
 mod earbuds_graphic;
 mod earbuds_activation;
 mod earbuds_system_integration;
@@ -296,6 +302,10 @@ pub struct AudioProductWorkspace {
     pod_runtime_devices: Vec<RuntimeAudioDevice>,
     volume: audio_volume::State,
     earbuds_volume: earbuds_system_volume::State,
+    earbuds_power: earbuds_power::State,
+    earbuds_microphone: earbuds_microphone::State,
+    earbuds_sound: earbuds_sound_actions::State,
+    earbuds_connection: earbuds_connection::State,
     earbuds_graphic: earbuds_graphic::State,
     earbuds_activation: earbuds_activation::State,
     earbuds_system: earbuds_system_integration::State,
@@ -389,6 +399,10 @@ impl AudioProductWorkspace {
             pod_runtime_devices: Vec::new(),
             volume: audio_volume::State::default(),
             earbuds_volume: earbuds_system_volume::State::default(),
+            earbuds_power: earbuds_power::State::default(),
+            earbuds_microphone: earbuds_microphone::State::default(),
+            earbuds_sound: earbuds_sound_actions::State::default(),
+            earbuds_connection: earbuds_connection::State::default(),
             earbuds_graphic: earbuds_graphic::State::default(),
             earbuds_activation: earbuds_activation::State::default(),
             earbuds_system: earbuds_system_integration::State::default(),
@@ -578,6 +592,7 @@ impl AudioProductWorkspace {
         self.invalidate_volume();
         self.cancel_earbuds_volume();
         self.invalidate_mixer();
+        self.invalidate_earbuds_microphone();
         self.mixer_profile_routing = None;
         self.restore_mixer(saved, window, cx);
         let staged_oled_language = self.staged.get("/device/oledLanguage").cloned();
@@ -701,6 +716,8 @@ impl AudioProductWorkspace {
         cx.notify();
     }
     pub fn set_page(&mut self, page: &str, window: &mut Window, cx: &mut Context<Self>) {
+        self.earbuds_connection.leave();
+        if page != "TAB_MIC" { self.leave_earbuds_microphone_page(); }
         if page != "TAB_ENHANCEMENT" { self.close_earbuds_gestures(window, cx); }
         if page != "TAB_SOUND" {
             if self.page == "TAB_SOUND" && sound::product(self.spec.product_id).is_some() {
@@ -710,10 +727,10 @@ impl AudioProductWorkspace {
                 self.clear_local_eq_observation();
             }
             self.cancel_earbuds_volume();
-            self.earbuds.input_popup = false;
-            self.earbuds_activation.cancel();
+            self.earbuds_sound.input_popup = false;
+            self.cancel_earbuds_activation();
             self.earbuds_graphic.leave();
-            self.earbuds.input_disabled_cursor = None;
+            self.earbuds_sound.input_disabled_cursor = None;
             self.earbuds.eq_graph = earbuds_equalizer_graph::State::default();
             self.earbuds.eq_ui = earbuds_equalizer_view::State::default();
         }
@@ -1499,6 +1516,10 @@ impl AudioProductWorkspace {
         self.earbuds_graphic.clear();
         self.earbuds_system.cancel();
         self.cancel_earbuds_volume();
+        self.earbuds_connection.stop();
+        self.leave_earbuds_power();
+        self.leave_earbuds_microphone_page();
+        self.earbuds_sound.stop();
         self.set_surround_active(false, "", cx);
         self.cancel_oled_editor(cx);
         self.stop_preset_shortcut_capture(cx);
@@ -2169,6 +2190,12 @@ impl AudioProductWorkspace {
         }
         if key=="TAB_ENHANCEMENT" && razer_device::earbuds_protocol40::supports_auto_pause(self.spec.product_id) {
             return self.earbuds_enhancement_page(window,cx);
+        }
+        if key == "TAB_POWER" && razer_device::earbuds_protocol40::supports_auto_pause(self.spec.product_id) {
+            return self.earbuds_power_page(cx);
+        }
+        if key == "TAB_MIC" && razer_device::earbuds_protocol40::supports_auto_pause(self.spec.product_id) {
+            return self.earbuds_microphone_page(cx);
         }
         if let Some(page) = self.enhancements_page(key, cx) {
             return page;

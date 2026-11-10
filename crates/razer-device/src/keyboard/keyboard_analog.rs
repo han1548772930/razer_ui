@@ -28,7 +28,7 @@ const SET_KILL_SWITCH: [u8; 3] = [4, 2, 33];
 const GET_KILL_SWITCH: [u8; 3] = [4, 2, 161];
 const SET_SNAP_TAP: [u8; 3] = [15, 2, 39];
 const GET_SNAP_TAP: [u8; 3] = [15, 2, 167];
-const SET_TARGET_OBM_KEYMAP: [u8; 3] = [1, 2, 55];
+const SET_TARGET_OBM_KEYMAP: [u8; 3] = crate::keyboard_onboard_keymap::SET_TARGET;
 
 /// Static transport facts for the analog command family. This descriptor is
 /// intentionally independent from `KeyboardSettingsCapability`: analog-only
@@ -687,13 +687,11 @@ fn set_target_obm_keymap(
     validate: &impl Fn() -> anyhow::Result<()>,
     selection: &mut KeyboardAnalogTargetSelection,
 ) -> anyhow::Result<()> {
-    let result = feature_exchange::exchange_with_report_data_size_observing_send(
+    let result = crate::keyboard_onboard_keymap::select_target_observing_send(
         device,
         &cap.transport,
-        SET_TARGET_OBM_KEYMAP,
-        &[keymap_id],
+        keymap_id,
         next_wire_transaction(transaction)?,
-        1,
         validate,
         &mut || {
             selection.attempted = true;
@@ -724,7 +722,7 @@ fn read_prepared(
         &cap.transport,
         request.command,
         &request.payload,
-        next_wire_transaction(transaction)?,
+        transaction,
         request.data_size,
         validate,
     )?;
@@ -748,6 +746,60 @@ pub fn read<C: KeyboardAnalogCapabilitySource>(
         "Keypad per-key reads require read_scoped with an observed target keymap"
     );
     read_prepared(device, &analog, &query, &r, transaction, &validate)
+}
+
+/// OBM already owns an exact direct/radio/relay route and its wire transaction.
+/// Only transport identity changes here; the shared query owner still decides
+/// which analog commands the product actually supports.
+pub(crate) fn read_onboard(
+    device: &dyn FeatureTransport,
+    cap: &DeviceReadCapability,
+    query: KeyboardAnalogQuery,
+    transaction: u8,
+    validate: &impl Fn() -> anyhow::Result<()>,
+) -> anyhow::Result<KeyboardAnalogObservation> {
+    crate::keyboard_profile_inventory::validate_capability(cap)?;
+    let features = crate::keyboard_onboard_inventory::features(cap.product_id)
+        .context("Onboard analog query has no current source registration")?;
+    let analog = AnalogCapabilityView {
+        analog_v3: features.analog_keyboard_v3,
+        kill_switch: features.kill_switch,
+        snap_tap: features.snap_tap,
+        target_keymap_for_per_key: cap.product_id == 747,
+        target_keymap_id: None,
+        transport: cap.clone(),
+    };
+    ensure!(
+        !requires_target_keymap(&query) || !analog.target_keymap_for_per_key,
+        "Keypad per-key reads require the selected-keymap owner"
+    );
+    let request = query_request(&analog, &query)?;
+    read_prepared(device, &analog, &query, &request, transaction, validate)
+}
+
+/// The enclosing OBM read already selected this keymap while retaining the
+/// physical session lock. Its per-mode batches must not issue another SET.
+pub(crate) fn read_selected_keymap(
+    device: &dyn FeatureTransport,
+    cap: &DeviceReadCapability,
+    keymap_id: u8,
+    query: KeyboardAnalogQuery,
+    transaction: u8,
+    validate: &impl Fn() -> anyhow::Result<()>,
+) -> anyhow::Result<KeyboardAnalogObservation> {
+    crate::keyboard_onboard_keymap::validate_capability(cap)?;
+    let mut analog = transport_capability(cap.product_id)
+        .context("Keymap analog protocol is absent")?
+        .with_target_keymap(keymap_id)
+        .analog_capability_view()?;
+    ensure!(
+        requires_target_keymap(&query),
+        "Keymap batch requires a per-key analog read"
+    );
+    require_target_keymap(&analog)?;
+    analog.transport = cap.clone();
+    let request = query_request(&analog, &query)?;
+    read_prepared(device, &analog, &query, &request, transaction, validate)
 }
 
 /// Select the observed keypad keymap, then perform the requested read while the

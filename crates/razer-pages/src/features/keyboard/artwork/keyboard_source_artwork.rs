@@ -678,6 +678,7 @@ impl KeyboardProductWorkspace {
         }
         drop(regions);
         if changed {
+            self.dismiss_mapping_popup_tip(position);
             cx.notify();
         }
     }
@@ -749,6 +750,8 @@ impl KeyboardProductWorkspace {
                     normal_icon
                 };
                 let pressed_id = id.clone();
+                let hovered_id = id.clone();
+                let tip_bounds = self.special_key_tip_bounds(&id);
                 let selected = self.selected_key.as_deref() == Some(&id);
                 let row =
                     BaseButton::new(SharedString::from(format!("keyboard-special-{index}-{id}")))
@@ -766,6 +769,12 @@ impl KeyboardProductWorkspace {
                         .hover(|style| style.bg(C::hover()))
                         .active(|style| style.bg(C::background()).border_color(C::accent()))
                         .focus_visible(|style| style.border_color(C::accent()))
+                        .when_some(tip_bounds, |row, bounds| row.on_prepaint(move |rect, _, _| bounds.set(rect)))
+                        .on_hover(cx.listener(move |this, entered: &bool, _, cx| {
+                            this.hover_special_key_tip(&hovered_id, *entered, cx);
+                            cx.notify();
+                        }))
+                        .hover_listener_mode(HoverListenerMode::InputModalityIndependent)
                         .on_mouse_down(
                             MouseButton::Left,
                             cx.listener(move |this, _, _, cx| {

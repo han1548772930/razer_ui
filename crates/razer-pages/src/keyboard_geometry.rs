@@ -4,7 +4,7 @@
 use gpui_kit::base::{ElementExt as _, TestSupportExt as _};
 use gpui_kit::component::tooltip::Tooltip;
 use gpui_kit::{
-    App, Bounds, ClickEvent, FillOptions, FillRule, Hsla, InteractiveElement, IntoElement,
+    App, Bounds, ClickEvent, FillOptions, FillRule, Hsla, HoverListenerMode, InteractiveElement, IntoElement,
     MouseButton, ParentElement, PathBuilder, PathStyle, Pixels, Point, RenderOnce, SharedString,
     StatefulInteractiveElement, Styled, Window, canvas, div, point, prelude::FluentBuilder as _,
     px,
@@ -341,6 +341,8 @@ pub struct KeyRegion {
     selected: bool,
     hovered: bool,
     disabled: bool,
+    hover_when_disabled: bool,
+    hover_mode: HoverListenerMode,
     tooltip_enabled: bool,
     on_click: ClickHandler,
     on_hover: HoverHandler,
@@ -362,6 +364,8 @@ impl KeyRegion {
             selected,
             hovered,
             disabled: false,
+            hover_when_disabled: false,
+            hover_mode: HoverListenerMode::InputModalityAware,
             tooltip_enabled: true,
             on_click: Rc::new(on_click),
             on_hover: Rc::new(on_hover),
@@ -379,12 +383,22 @@ impl KeyRegion {
         self.tooltip_enabled = enabled;
         self
     }
+    /// Source read-only key layers still expose their hardware assignment tip.
+    pub fn hover_when_disabled(mut self, enabled: bool) -> Self {
+        self.hover_when_disabled = enabled;
+        self
+    }
+    pub fn hover_listener_mode(mut self, mode: HoverListenerMode) -> Self {
+        self.hover_mode = mode;
+        self
+    }
 }
 
 impl RenderOnce for KeyRegion {
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         let key = self.key;
         let enabled = key.enabled && !self.disabled;
+        let hover_enabled = enabled || self.hover_when_disabled;
         let id = SharedString::from(format!("keyboard-input-{}", key.id));
         let focus = window
             .use_keyed_state(id.clone(), cx, |_, cx| cx.focus_handle())
@@ -405,17 +419,18 @@ impl RenderOnce for KeyRegion {
             .test_support()
             .relative()
             .size_full()
+            .hover_listener_mode(self.hover_mode)
             .on_prepaint(move |bounds, _, _| for_measure.set(bounds))
             .on_mouse_move(move |event, window, cx| {
                 hovered(
-                    &(enabled && key.contains_window_point(event.position, for_move.get())),
+                    &(hover_enabled && key.contains_window_point(event.position, for_move.get())),
                     window,
                     cx,
                 );
             })
             .on_hover(move |inside, window, cx| {
                 enter(
-                    &(enabled
+                    &(hover_enabled
                         && *inside
                         && key.contains_window_point(window.mouse_position(), for_enter.get())),
                     window,

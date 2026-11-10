@@ -1743,6 +1743,27 @@ impl StreamMixerColors {
 
 /// Current 515/679 `.key-record-item`, `.snap-tap-*` and warning dialog palette.
 pub struct SnapTapColors;
+
+/// PID717 shared `.radio-item` circle and label palette.
+pub struct KeyboardFunctionPrimaryColors;
+impl KeyboardFunctionPrimaryColors {
+    pub fn text() -> Hsla { rgb(0xcccccc).into() }
+    pub fn border() -> Hsla { rgb(0x737373).into() }
+    pub fn selected() -> Hsla { rgb(0x44d62c).into() }
+}
+
+/// Current keyboard mapping `.key-tip`, status bands and index labels.
+pub struct KeyboardMappingTipColors;
+impl KeyboardMappingTipColors {
+    pub fn text() -> Hsla { rgb(0xcccccc).into() }
+    pub fn index() -> Hsla { rgb(0x707070).into() }
+    pub fn border() -> Hsla { rgb(0x5d5d5d).into() }
+    pub fn background() -> Hsla { rgb(0x000000).into() }
+    pub fn dark_text() -> Hsla { rgb(0x000000).into() }
+    pub fn required() -> Hsla { rgb(0x44d62c).into() }
+    pub fn hyper() -> Hsla { rgb(0xfd8611).into() }
+    pub fn unavailable() -> Hsla { rgb(0xc8323c).into() }
+}
 impl SnapTapColors {
     /// PID679 `.key-record-item-assignment-deactive`.
     pub fn snapped() -> Hsla {

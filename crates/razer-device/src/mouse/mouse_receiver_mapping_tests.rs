@@ -29,6 +29,10 @@ fn ordinary_shared_compiler_batch_keeps_actual_default_inputs_and_report_ids() {
         .unwrap();
         assert_eq!(doc["productId"], pid);
         assert_eq!(
+            doc["category"],
+            if pid == 104 { "MOUSEPLUSMAT" } else { "MOUSE" }
+        );
+        assert_eq!(
             doc["reportIDs"].as_object().unwrap().len(),
             if pid == 145 { 1 } else { 2 }
         );

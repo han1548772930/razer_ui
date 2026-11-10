@@ -1,20 +1,23 @@
 //! Request-owned cancellation observed without waiting for the worker's stdin loop.
 use serde::{Deserialize, Serialize};
 
-/// A canceled BLE request's actual response, retained only for validated diagnostics.
+/// A canceled request's actual response, retained only for validated diagnostics.
 #[derive(Debug)]
-pub struct CanceledBleReply {
+pub struct CanceledResponse {
     pub data: serde_json::Value,
     pub error: String,
 }
 
-impl std::fmt::Display for CanceledBleReply {
+impl std::fmt::Display for CanceledResponse {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         formatter.write_str(&self.error)
     }
 }
 
-impl std::error::Error for CanceledBleReply {}
+impl std::error::Error for CanceledResponse {}
+
+/// BLE consumers use the same diagnostic carrier as other canceled requests.
+pub type CanceledBleReply = CanceledResponse;
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(try_from = "String", into = "String")]

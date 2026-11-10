@@ -45,6 +45,8 @@ pub enum FunctionId {
     ScrollWheelMode,
     #[serde(rename = "Win8ShortcutsKey")]
     Win8ShortcutsKey,
+    #[serde(rename = "Perfect180")]
+    Perfect180,
 }
 
 pub(super) fn function_id(code: u16) -> Option<FunctionId> {
@@ -69,6 +71,7 @@ pub(super) fn function_id(code: u16) -> Option<FunctionId> {
         17 => Some(FunctionId::RazerKey),
         18 => Some(FunctionId::ScrollWheelMode),
         21 => Some(FunctionId::Win8ShortcutsKey),
+        22 => Some(FunctionId::Perfect180),
         _ => None,
     }
 }
@@ -297,6 +300,8 @@ pub enum MouseAction {
     RepeatScrollRight,
     #[serde(rename = "ScrollModeSwitch")]
     ScrollModeSwitch,
+    #[serde(rename = "Perfect180")]
+    Perfect180,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]

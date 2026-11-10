@@ -24,6 +24,15 @@ pub struct Document {
     serial: Option<String>,
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Runtime {
+    running_games: Option<usize>,
+}
+
+impl Runtime {
+    pub const fn new(running_games: Option<usize>) -> Self { Self { running_games } }
+}
+
 pub struct Projection {
     document: Value,
     products: Vec<u32>,
@@ -175,7 +184,8 @@ pub fn plans(
                     .collect::<Vec<_>>();
                 let mut members = vec![member(observed)];
                 if let [peer] = peers.as_slice()
-                    && mouse_receiver_mapping::supports_ordinary(peer.product_id())
+                    && (mouse_receiver_mapping::supports_ordinary(peer.product_id())
+                        || razer_device::keyboard_receiver_mapping::supports(peer.product_id()))
                 {
                     members.push(member(peer));
                 }
@@ -205,11 +215,23 @@ impl Plan {
         &self.target
     }
 
+    pub fn is_game_dependent(&self) -> bool {
+        matches!(self.publication, Publication::Single { peer, .. } if razer_device::keyboard_receiver_mapping::supports(peer) && self.target.contains_product(peer))
+    }
+
     /// Wait for saved documents without accepting their local contents as a
     /// publication acknowledgement. A peer serial is an independent reading.
     pub fn project(
         &self,
         documents: &BTreeMap<u32, Document>,
+    ) -> anyhow::Result<Option<Projection>> {
+        self.project_with_runtime(documents, Runtime::default())
+    }
+
+    pub fn project_with_runtime(
+        &self,
+        documents: &BTreeMap<u32, Document>,
+        runtime: Runtime,
     ) -> anyhow::Result<Option<Projection>> {
         let master = match self.publication {
             Publication::Ordinary { product } => product.product_id(),
@@ -255,11 +277,16 @@ impl Plan {
                             .map(|_| peer),
                     )
                     .collect();
-                let peer = ReceiverPeer::new(
+                let prepared = slave.filter(|_|razer_device::keyboard_receiver_mapping::supports(peer))
+                    .and_then(|slave|slave.serial.as_deref().filter(|serial|!serial.is_empty()).map(|serial|(slave,serial)))
+                    .map(|(slave,serial)|razer_device::keyboard_receiver_mapping::prepare_peer_document(source_product.source_product_id(),&slave.value,serial,runtime.running_games))
+                    .transpose()?;
+                let mut peer = ReceiverPeer::new(
                     PeerIdentity::new(peer, peer_dongle)?,
-                    slave.map(|slave| &slave.value),
+                    prepared.as_ref().map(|prepared|prepared.document()).or_else(||slave.map(|slave|&slave.value)),
                     slave.and_then(|slave| slave.serial.as_deref()),
                 );
+                if let Some(prepared)=&prepared { peer=peer.with_selected_profile(prepared.selected_profile()); }
                 let document = ReceiverProjection::new(
                     self.target.physical_product_id(),
                     ReceiverRoute::Normal,

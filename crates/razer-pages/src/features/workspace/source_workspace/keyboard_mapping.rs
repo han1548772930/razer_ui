@@ -48,7 +48,9 @@ impl SourceProductWorkspace {
     pub fn consume_interdevice_mapping(&mut self, raw: Value, cx: &mut Context<Self>) -> bool {
         match &self.body {
             FamilyBody::Mouse(body) => body.update(cx, |body, cx| {
-                if razer_device::mouse_receiver_mapping::supports_ordinary(self.device.product_id) {
+                if razer_device::mapping_document::MappingProduct::for_product_id(self.device.product_id)
+                    .is_some_and(|product| product.is_ordinary_mouse())
+                {
                     body.consume_receiver_interdevice_mapping(raw, cx)
                 } else {
                     body.consume_interdevice_mapping(raw, cx)

@@ -18,6 +18,8 @@ use anyhow::{Context as _, Result, ensure};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 
+#[path = "keyboard_onboard_keymap_reader.rs"]
+pub mod keymaps;
 #[path = "keyboard_onboard_mapping.rs"]
 pub mod mapping;
 
@@ -164,18 +166,18 @@ impl ProfileReading {
     /// Analog fields are read once after both assignment modes, across all keys.
     pub fn actuation(&self, key_id: u8) -> Option<&ActuationPoint> {
         self.actuation
-                .iter()
-                .filter_map(|batch| batch.reading.observed())
-                .flat_map(|points| points.iter())
-                .find(|point| point.key_id == key_id)
+            .iter()
+            .filter_map(|batch| batch.reading.observed())
+            .flat_map(|points| points.iter())
+            .find(|point| point.key_id == key_id)
     }
 
     pub fn rapid_trigger(&self, key_id: u8) -> Option<&RapidTriggerKey> {
         self.rapid_trigger
-                .iter()
-                .filter_map(|batch| batch.reading.observed())
-                .flat_map(|points| points.iter())
-                .find(|point| point.key_id == key_id)
+            .iter()
+            .filter_map(|batch| batch.reading.observed())
+            .flat_map(|points| points.iter())
+            .find(|point| point.key_id == key_id)
     }
 
     pub fn assignment(&self, mode: Mode, key_id: u8) -> Option<&ButtonAssignment> {
@@ -274,27 +276,33 @@ impl Snapshot {
                     }
                 }
             }
-            let keys: Vec<_> = self.key_inventory.iter().map(|key| key.firmware_key_id).collect();
-            ensure!(profile.rapid_trigger.len() == keys.chunks(13).len()
-                && profile.actuation.len() == keys.chunks(15).len(),
-                "OBM analog snapshot batches are missing or exceed source limits");
-                for (batch, expected) in profile.rapid_trigger.iter().zip(keys.chunks(13)) {
-                    ensure!(
-                        batch.key_ids == expected,
-                        "OBM rapid-trigger batch keys differ"
-                    );
-                    batch.reading.validate_attempt()?;
-                    if let Some(points) = batch.reading.observed() {
-                        validate_returned_keys(expected, points.iter().map(|point| point.key_id))?;
-                    }
+            let keys: Vec<_> = self
+                .key_inventory
+                .iter()
+                .map(|key| key.firmware_key_id)
+                .collect();
+            ensure!(
+                profile.rapid_trigger.len() == keys.chunks(13).len()
+                    && profile.actuation.len() == keys.chunks(15).len(),
+                "OBM analog snapshot batches are missing or exceed source limits"
+            );
+            for (batch, expected) in profile.rapid_trigger.iter().zip(keys.chunks(13)) {
+                ensure!(
+                    batch.key_ids == expected,
+                    "OBM rapid-trigger batch keys differ"
+                );
+                batch.reading.validate_attempt()?;
+                if let Some(points) = batch.reading.observed() {
+                    validate_returned_keys(expected, points.iter().map(|point| point.key_id))?;
                 }
-                for (batch, expected) in profile.actuation.iter().zip(keys.chunks(15)) {
-                    ensure!(batch.key_ids == expected, "OBM actuation batch keys differ");
-                    batch.reading.validate_attempt()?;
-                    if let Some(points) = batch.reading.observed() {
-                        validate_returned_keys(expected, points.iter().map(|point| point.key_id))?;
-                    }
+            }
+            for (batch, expected) in profile.actuation.iter().zip(keys.chunks(15)) {
+                ensure!(batch.key_ids == expected, "OBM actuation batch keys differ");
+                batch.reading.validate_attempt()?;
+                if let Some(points) = batch.reading.observed() {
+                    validate_returned_keys(expected, points.iter().map(|point| point.key_id))?;
                 }
+            }
             profile.kill_switch.validate_attempt()?;
         }
         Ok(())
@@ -339,7 +347,8 @@ fn settings_capability(cap: &DeviceReadCapability) -> Result<KeyboardSettingsCap
 }
 
 fn selected_keys(layout_id: u32) -> Result<Vec<KeyIdentity>> {
-    let mut keys: Vec<_> = keyboard_onboard_inventory::current_679_inventory(layout_id)
+    let mut keys: Vec<_> = keyboard_onboard_inventory::inventory(PRODUCT_ID, layout_id)
+        .context("Current keyboard source key inventory is absent")?
         .iter()
         .map(|key| KeyIdentity {
             input_id: key.input_id.to_owned(),
@@ -421,7 +430,7 @@ fn read_assignments(
 
 fn read_mode(
     device: &dyn FeatureTransport,
-    cap: &KeyboardSettingsCapability,
+    cap: &DeviceReadCapability,
     slot_id: u8,
     mode: Mode,
     keys: &[u8],
@@ -438,8 +447,7 @@ fn read_mode(
             attempts: Vec::new(),
         };
         for _ in 0..2 {
-            let result =
-                read_assignments(device, &cap.transport, slot_id, mode, chunk, next, validate);
+            let result = read_assignments(device, cap, slot_id, mode, chunk, next, validate);
             let reading = retain(result, validate)?;
             let retry = matches!(&reading, Reading::Observed(rows)
                 if rows.iter().all(|row| row.data.iter().all(|byte| *byte == 0)));
@@ -453,6 +461,61 @@ fn read_mode(
     Ok(pass)
 }
 
+struct AnalogReadings {
+    rapid_trigger: Vec<KeyBatch<RapidTriggerKey>>,
+    actuation: Vec<KeyBatch<ActuationPoint>>,
+}
+
+fn read_analog_batches(
+    slot_id: u8,
+    keys: &[u8],
+    next: &mut impl FnMut() -> Result<u8>,
+    validate: &impl Fn() -> Result<()>,
+    mut read: impl FnMut(KeyboardAnalogQuery, u8) -> Result<KeyboardAnalogObservation>,
+) -> Result<AnalogReadings> {
+    let mut readings = AnalogReadings {
+        rapid_trigger: Vec::new(),
+        actuation: Vec::new(),
+    };
+    for chunk in keys.chunks(13) {
+        validate()?;
+        let result = read(
+            KeyboardAnalogQuery::RapidTrigger {
+                profile_id: slot_id,
+                key_ids: chunk.to_vec(),
+            },
+            next()?,
+        )
+        .and_then(|observation| match observation {
+            KeyboardAnalogObservation::RapidTrigger { keys, .. } => Ok(keys),
+            _ => anyhow::bail!("OBM rapid-trigger reply has a different observation kind"),
+        });
+        readings.rapid_trigger.push(KeyBatch {
+            key_ids: chunk.to_vec(),
+            reading: retain(result, validate)?,
+        });
+    }
+    for chunk in keys.chunks(15) {
+        validate()?;
+        let result = read(
+            KeyboardAnalogQuery::Actuation {
+                profile_id: slot_id,
+                key_ids: chunk.to_vec(),
+            },
+            next()?,
+        )
+        .and_then(|observation| match observation {
+            KeyboardAnalogObservation::Actuation { points, .. } => Ok(points),
+            _ => anyhow::bail!("OBM actuation reply has a different observation kind"),
+        });
+        readings.actuation.push(KeyBatch {
+            key_ids: chunk.to_vec(),
+            reading: retain(result, validate)?,
+        });
+    }
+    Ok(readings)
+}
+
 fn read_analog(
     device: &dyn FeatureTransport,
     cap: &KeyboardSettingsCapability,
@@ -461,49 +524,17 @@ fn read_analog(
     next: &mut impl FnMut() -> Result<u8>,
     validate: &impl Fn() -> Result<()>,
 ) -> Result<()> {
-    let slot_id = profile.slot_id;
-    for chunk in keys.chunks(13) {
-        validate()?;
-        let result = keyboard_analog::read(
-            device,
-            cap,
-            KeyboardAnalogQuery::RapidTrigger {
-                profile_id: slot_id,
-                key_ids: chunk.to_vec(),
-            },
-            next()?,
-            validate,
-        )
-        .and_then(|observation| match observation {
-            KeyboardAnalogObservation::RapidTrigger { keys, .. } => Ok(keys),
-            _ => anyhow::bail!("OBM rapid-trigger reply has a different observation kind"),
-        });
-        profile.rapid_trigger.push(KeyBatch {
-            key_ids: chunk.to_vec(),
-            reading: retain(result, validate)?,
-        });
-    }
-    for chunk in keys.chunks(15) {
-        validate()?;
-        let result = keyboard_analog::read(
-            device,
-            cap,
-            KeyboardAnalogQuery::Actuation {
-                profile_id: slot_id,
-                key_ids: chunk.to_vec(),
-            },
-            next()?,
-            validate,
-        )
-        .and_then(|observation| match observation {
-            KeyboardAnalogObservation::Actuation { points, .. } => Ok(points),
-            _ => anyhow::bail!("OBM actuation reply has a different observation kind"),
-        });
-        profile.actuation.push(KeyBatch {
-            key_ids: chunk.to_vec(),
-            reading: retain(result, validate)?,
-        });
-    }
+    let readings = read_analog_batches(
+        profile.slot_id,
+        keys,
+        next,
+        validate,
+        |query, transaction| {
+            keyboard_analog::read_onboard(device, &cap.transport, query, transaction, validate)
+        },
+    )?;
+    profile.rapid_trigger = readings.rapid_trigger;
+    profile.actuation = readings.actuation;
     Ok(())
 }
 
@@ -559,7 +590,7 @@ fn read_selected(
                 .collect();
             profile.passes.push(read_mode(
                 device,
-                settings,
+                &settings.transport,
                 profile.slot_id,
                 mode,
                 &key_ids,
@@ -573,9 +604,9 @@ fn read_selected(
     // Kill-switch follows all slot assignment passes, not each slot's pass.
     for profile in &mut profiles {
         validate()?;
-        let result = keyboard_analog::read(
+        let result = keyboard_analog::read_onboard(
             device,
-            settings,
+            &settings.transport,
             KeyboardAnalogQuery::KillSwitch {
                 profile_id: profile.slot_id,
             },
@@ -701,10 +732,10 @@ impl ImportDetails {
                 if let Some(reading) = detail.content.observed() {
                     ensure!(
                         reading.metadata == summary.metadata
-                            && reading.data_size <= snapshot.macros.inventory.storage.max_memory
-                            && reading.data.len() == usize::try_from(reading.data_size)?,
+                            && reading.data_size <= snapshot.macros.inventory.storage.max_memory,
                         "OBM macro detail bytes differ from their observed metadata or size"
                     );
+                    reading.validate_keyboard_content(snapshot.product_id)?;
                 }
             }
         }
@@ -734,7 +765,7 @@ pub fn read_import_details(
     mut next: impl FnMut() -> Result<u8>,
     validate: &impl Fn() -> Result<()>,
 ) -> Result<ImportDetails> {
-    let settings = settings_capability(cap)?;
+    settings_capability(cap)?;
     ensure!(
         snapshot.product_id == cap.product_id,
         "OBM detail snapshot belongs to another product"
@@ -762,9 +793,9 @@ pub fn read_import_details(
     let mut continuous_rapid_trigger = Vec::with_capacity(snapshot.inventory.slots.len());
     for slot in &snapshot.inventory.slots {
         validate()?;
-        let result = keyboard_analog::read(
+        let result = keyboard_analog::read_onboard(
             device,
-            &settings,
+            cap,
             KeyboardAnalogQuery::ContinuousRapidTrigger {
                 profile_id: slot.slot_id,
             },

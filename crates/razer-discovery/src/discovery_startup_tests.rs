@@ -3,6 +3,55 @@ use super::{receiver_peers, startup_receiver_query_with};
 use serde_json::{Value, json};
 
 #[test]
+fn mounted_alias_uses_source_radio_transport_without_relabeling_the_catalog() {
+    use super::{DeviceConnectionObservation, ObservedTransport};
+    for (physical, expected, serial) in [
+        (104, ObservedTransport::Wired, "USB-DEVICE-SERIAL"),
+        (105, ObservedTransport::Dongle, ""),
+    ] {
+        let snapshot = super::discover_with(
+            &Ok(
+                json!({"complete":true,"devices":[{"vendor_id":5426,"product_id":physical,
+                "device_container_id":"mounted-alias","serial_number":"USB-DEVICE-SERIAL"}]}),
+            ),
+            &Ok(json!({"complete":true,"interfaces":[]})),
+            &mut |_| panic!("USB presence does not establish radio connectivity"),
+        )
+        .unwrap();
+        let [observed] = snapshot.devices() else {
+            panic!("one mounted product required")
+        };
+        assert_eq!(observed.product_id(), physical);
+        assert_eq!(observed.physical_product_id(), physical);
+        assert_eq!(observed.transport(), Some(expected));
+        assert_eq!(
+            observed.connection(),
+            DeviceConnectionObservation::UsbPresent
+        );
+        assert_eq!(observed.peer_product_id(), None);
+        assert_eq!(observed.serial, serial);
+    }
+    for product in [148, 185, 224] {
+        let super::device_identity::IdentityLookup::Unique(identity) =
+            super::device_identity::lookup(product)
+        else {
+            panic!("source catalog identity required")
+        };
+        let source = super::device_identity::middleware_product_identity(product).unwrap();
+        assert_eq!(source.product_id, product);
+        let selected = super::DirectIdentity::from_catalog(&identity);
+        assert_eq!(
+            selected.transport,
+            Some(if identity.is_dongle {
+                ObservedTransport::Dongle
+            } else {
+                ObservedTransport::Wired
+            })
+        );
+    }
+}
+
+#[test]
 fn mika_host_discovery_keeps_both_product_owners_without_fabricating_online_state() {
     for (physical, keyboard, mouse) in [(2308, 574, 117), (2593, 2595, 2594)] {
         let usb = Ok(

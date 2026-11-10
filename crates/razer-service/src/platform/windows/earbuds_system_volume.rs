@@ -1,4 +1,4 @@
-//! Mapping AudioService's default-render monitor, implemented with system COM.
+//! Mapping AudioService's default-endpoint monitor, implemented with system COM.
 use super::{Backend, Notifications};
 use anyhow::{Context as _, Result};
 use std::{
@@ -19,7 +19,7 @@ use windows::{
                 IAudioEndpointVolumeCallback_Impl,
             },
             IMMDeviceEnumerator, IMMNotificationClient, IMMNotificationClient_Impl,
-            MMDeviceEnumerator, eMultimedia, eRender,
+            MMDeviceEnumerator, eCapture, eMultimedia, eRender,
         },
         System::Com::{
             CLSCTX_ALL, COINIT_MULTITHREADED, CoCreateInstance, CoInitializeEx, CoTaskMemFree,
@@ -109,6 +109,7 @@ impl IAudioEndpointVolumeCallback_Impl for VolumeNotice_Impl {
 }
 #[implement(IMMNotificationClient)]
 struct DeviceNotice {
+    flow: EDataFlow,
     dirty: Arc<Dirty>,
     activity: Arc<Activity>,
 }
@@ -141,7 +142,7 @@ impl IMMNotificationClient_Impl for DeviceNotice_Impl {
         if let Some(_call) = self.activity.enter() {
             // Current b6710 checks flow, ignores the notified role, and then
             // b5ff2 resolves the current eMultimedia default.
-            if flow == eRender {
+            if flow == self.flow {
                 self.dirty.default_device.store(true, Ordering::Release);
             }
         }
@@ -158,7 +159,8 @@ struct DefaultEndpoint {
     callback: IAudioEndpointVolumeCallback,
     activity: Arc<Activity>,
 }
-pub(super) struct Monitor {
+pub(crate) struct Monitor {
+    flow: EDataFlow,
     endpoint: Option<DefaultEndpoint>,
     enumerator: IMMDeviceEnumerator,
     callback: Option<IMMNotificationClient>,
@@ -168,6 +170,12 @@ pub(super) struct Monitor {
 }
 impl Monitor {
     pub(super) fn open() -> Result<Self> {
+        Self::open_for(eRender)
+    }
+    pub(crate) fn open_capture() -> Result<Self> {
+        Self::open_for(eCapture)
+    }
+    fn open_for(flow: EDataFlow) -> Result<Self> {
         let apartment = Apartment::open()?;
         // Typed bindings target the system MMDeviceEnumerator; no business DLL.
         let enumerator: IMMDeviceEnumerator =
@@ -176,6 +184,7 @@ impl Monitor {
         let dirty = Arc::new(Dirty::default());
         let activity = Arc::new(Activity::new());
         let callback: IMMNotificationClient = DeviceNotice {
+            flow,
             dirty: dirty.clone(),
             activity: activity.clone(),
         }
@@ -184,6 +193,7 @@ impl Monitor {
             .context("Register volume endpoint notifications")?;
         dirty.default_device.store(true, Ordering::Release);
         Ok(Self {
+            flow,
             endpoint: None,
             enumerator,
             callback: Some(callback),
@@ -209,7 +219,7 @@ impl Monitor {
     fn rebind(&mut self) -> Result<Option<String>> {
         let device = match unsafe {
             self.enumerator
-                .GetDefaultAudioEndpoint(eRender, eMultimedia)
+                .GetDefaultAudioEndpoint(self.flow, eMultimedia)
         } {
             Ok(device) => device,
             Err(error) if error.code().0 as u32 == 0x80070490 => {
@@ -247,6 +257,13 @@ impl Monitor {
             activity,
         });
         Ok(Some(id))
+    }
+    pub(crate) fn capture_changed(&mut self) -> Result<bool> {
+        let change = <Self as Backend>::notifications(self)?;
+        Ok(change.speaker || change.default_endpoint.is_some() || change.topology)
+    }
+    pub(crate) fn finish(&mut self) -> Result<()> {
+        <Self as Backend>::close(self)
     }
 }
 impl Backend for Monitor {
@@ -303,6 +320,24 @@ mod tests {
     use windows::Win32::Media::Audio::{eCapture, eCommunications, eConsole};
 
     #[test]
+    fn capture_monitor_filters_flow_and_accepts_all_notified_roles() {
+        let dirty = Arc::new(Dirty::default());
+        let activity = Arc::new(Activity::new());
+        let device: IMMNotificationClient = DeviceNotice {
+            flow: eCapture, dirty: dirty.clone(), activity: activity.clone(),
+        }.into();
+        unsafe { device.OnDefaultDeviceChanged(eRender, eMultimedia, PCWSTR::null()).unwrap(); }
+        assert!(!dirty.default_device.load(Ordering::Acquire));
+        for role in [eConsole, eMultimedia, eCommunications] {
+            unsafe { device.OnDefaultDeviceChanged(eCapture, role, PCWSTR::null()).unwrap(); }
+            assert!(dirty.default_device.swap(false, Ordering::AcqRel));
+        }
+        activity.stop();
+        unsafe { device.OnDefaultDeviceChanged(eCapture, eMultimedia, PCWSTR::null()).unwrap(); }
+        assert!(!dirty.default_device.load(Ordering::Acquire));
+    }
+
+    #[test]
     fn stopped_com_callbacks_ignore_late_notifications_and_render_roles_share_one_refresh() {
         let dirty = Arc::new(Dirty::default());
         let activity = Arc::new(Activity::new());
@@ -312,6 +347,7 @@ mod tests {
         }
         .into();
         let device: IMMNotificationClient = DeviceNotice {
+            flow: eRender,
             dirty: dirty.clone(),
             activity: activity.clone(),
         }

@@ -316,6 +316,10 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
     dpi_runtime = "crates/razer-shell/src/shell/mouse/mouse_current_dpi_runtime.rs"
     dpi_worker = "crates/razer-shell/src/shell/mouse/mouse_current_dpi_worker.rs"
     dpi_page = "crates/razer-pages/src/features/mouse/dpi/mouse_current_dpi.rs"
+    dpi_physical_adapters = {
+        "crates/razer-service/src/runtime/mouse_current_dpi.rs": "mouse_current_dpi",
+        "crates/razer-service/src/runtime/windows/mouse/mouse_current_dpi.rs": "run",
+    }
     dpi_gui_owners = {dpi_caller, dpi_runtime, dpi_page,
                       "crates/razer-pages/src/features/mouse/dpi/mouse_current_dpi_observation.rs"}
     dpi_gui = owner in dpi_gui_owners
@@ -1266,6 +1270,12 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
             scope = next((parent for parent in ancestors(node) if parent.type in {"closure_expression", "function_item"}), None)
             if scope is not None and "observe_current_dpi_connection" in called_methods(scope):
                 fail(node, "mouse182_initializer_has_a_second_connection_owner", dpi_page + "::State::initialize_connection")
+        if node.type == "function_item" and not in_test(node) \
+                and text(node.child_by_field_name("name")) == dpi_physical_adapters.get(owner):
+            methods = called_methods(node)
+            if "is_dongle" not in methods or "is_physical_branch" in methods:
+                fail(node, "mouse_dpi_adapter_bypasses_physical_identity",
+                     "crates/razer-device/src/mouse/mouse_current_dpi.rs::Capability::is_dongle")
         if node.type == "function_item" and owner == dpi_caller \
                 and text(node.child_by_field_name("name")) == "submit_current_dpi_device":
             def uses_operation(function):
@@ -1389,6 +1399,10 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
             function = node.child_by_field_name("function")
             if function.type != "field_expression":
                 path = resolved_call(text(function).split("::"))
+                if path == ("razer_service", "earbuds_auto_pause", "monitor") \
+                        and owner != "crates/razer-shell/src/shell/audio/earbuds_events.rs":
+                    fail(node, "earbud_notification_has_multiple_gui_owners",
+                         "crates/razer-shell/src/shell/audio/earbuds_events.rs")
                 if path[:1] == ("razer_device",) and path[-1:] in {
                         ("prepare_document",), ("prepare_document_with_device_settings",)} \
                         and len(path) >= 3 and path[-2] in {
@@ -8160,7 +8174,7 @@ def _clean_json_dependencies(value, *, own_receipt=False, field=None, ended_batc
         yield value
 
 
-def _clean_stream_json_dependencies(path):
+def _clean_stream_json_dependencies(path, *, with_paths=False):
     """Read large pretty or compact receipts without retaining their object graphs."""
     stack, root_done = [], False
     scalar = re.compile(r'(?:-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?|true|false|null)')
@@ -8213,17 +8227,18 @@ def _clean_stream_json_dependencies(path):
                         stack.pop()
                         continue
                     ignored = frame["ignored"] or frame.get("key") == "scratch_cleanup"
+                    value_path = (*frame["path"], frame["key"] if frame["object"] else None)
                     frame["state"] = "comma"
                 else:
                     if root_done:
                         raise ValueError("Multiple retained JSON roots")
-                    root_done, ignored = True, False
+                    root_done, ignored, value_path = True, False, ()
                 if kind in {"{", "["}:
                     stack.append({"object": kind == "{", "state": "key_or_end" if kind == "{" else "value_or_end",
-                                  "ignored": ignored, "key": None})
+                                  "ignored": ignored, "key": None, "path": value_path})
                 elif kind == "string":
                     if not ignored and re.search(r"\.work|target[/\\]verification-temp", token, re.IGNORECASE):
-                        yield token
+                        yield (value_path, token) if with_paths else token
                 elif kind != "scalar":
                     raise ValueError("Malformed retained JSON value")
     if stack or not root_done:
@@ -8299,9 +8314,14 @@ def _clean_references(candidates, *, exclude=(), bind_history=False):
             continue
         if before.st_size > 64 * 1024 * 1024 and path.suffix == ".json":
             try:
+                import scratch_files
+                historical = {name: scratch_files.historical_paths(sys.modules[__name__], filename, names[name])
+                              for name in matched_names}
                 remaining = set(matched_names)
-                for value in _clean_stream_json_dependencies(path):
-                    found = {name for name in remaining if _clean_dependency_mentions(name, value)}
+                for value_path, value in _clean_stream_json_dependencies(path, with_paths=True):
+                    found = {name for name in remaining
+                             if not any(value_path[:len(prefix)] == prefix for prefix in historical[name])
+                             and _clean_dependency_mentions(name, value)}
                     for name in found:
                         references.setdefault(name, []).append(filename)
                     remaining.difference_update(found)

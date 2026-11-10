@@ -24,7 +24,10 @@ use std::collections::BTreeMap;
 pub enum WorkspaceEvent {
     MouseOtfsRequested(super::mouse_products::MouseOtfsRequested),
     ReceiverMappingPublication(super::ReceiverMappingPublication),
+    KeyboardFunctionSwapRequested(super::KeyboardFunctionSwapRequested),
     EarbudsAutoPauseRequested(super::audio_products::EarbudsAutoPauseRequested),
+    EarbudsPowerRequested(super::audio_products::EarbudsPowerRequested),
+    EarbudsMicrophoneRequested(super::audio_products::EarbudsMicrophoneRequested),
     ResourceStateChanged,
     Changed,
     SourceProfileImportRequested(razer_model::profile_transfer::SourceProfileImport),

@@ -14,6 +14,7 @@ struct Io {
     sent: RefCell<Vec<Vec<u8>>>,
     replies: RefCell<VecDeque<Vec<u8>>>,
     canceled_after_read: Cell<bool>,
+    cancel_after_command: Cell<Option<u8>>,
     canceled: Cell<bool>,
 }
 impl Io {
@@ -41,7 +42,7 @@ impl FeatureTransport for Io {
             .pop_front()
             .context("scripted read failed")?;
         out[..data.len()].copy_from_slice(&data);
-        if self.canceled_after_read.get() {
+        if self.canceled_after_read.get() || self.cancel_after_command.get() == Some(data[8]) {
             self.canceled.set(true);
         }
         Ok(data.len())
@@ -68,6 +69,132 @@ fn execute<S: Sleeper>(
 
 fn valid() -> Result<()> {
     Ok(())
+}
+
+#[test]
+fn earbuds_power_all_products_read_then_write_mode_and_big_endian_seconds() {
+    use crate::earbuds_power::Setting;
+    for pid in AUTO_PAUSE_PRODUCTS {
+        let io = Io::default();
+        io.reply(2, 0x61, 7, 136, &[1, 0]);
+        io.reply(2, 0x62, 7, 131, &[3, 132]);
+        io.reply(2, 0x63, 7, 8, &[1, 1]);
+        io.reply(2, 0x64, 7, 3, &[1, 44]);
+        let report = execute(&mut Protocol40Session::with_sleeper(&io, NoSleep), pid,
+            Operation::SetPowerSaving { setting: Setting::new(true, 300) }, &valid).unwrap();
+        assert_eq!(report.write, WriteOutcome::Confirmed);
+        let power = report.power.unwrap();
+        assert_eq!(power.observation().setting(), Some(Setting::new(true, 300)));
+        assert_eq!(power.mode_write(), &WriteOutcome::Confirmed);
+        assert_eq!(power.time_write(), &WriteOutcome::Confirmed);
+        let sent = io.sent.borrow();
+        assert_eq!(sent.len(), 4);
+        assert_eq!(&sent[0][6..10], &[1, 7, 136, 1]);
+        assert_eq!(&sent[1][6..9], &[0, 7, 131]);
+        assert_eq!(&sent[2][6..11], &[2, 7, 8, 1, 1]);
+        assert_eq!(&sent[3][6..11], &[2, 7, 3, 1, 44]);
+        assert_eq!(sent.iter().map(|packet| packet[62]).collect::<Vec<_>>(), [0x8f, 0x84, 0x0d, 0x2b]);
+    }
+}
+
+#[test]
+fn earbuds_power_skips_only_values_read_from_the_current_device() {
+    use crate::earbuds_power::Setting;
+    for pid in AUTO_PAUSE_PRODUCTS {
+        for seconds in [300_u16, 900] {
+            let io = Io::default();
+            io.reply(2, 0x61, 7, 136, &[1, 1]);
+            io.reply(2, 0x62, 7, 131, &seconds.to_be_bytes());
+            if seconds != 300 { io.reply(2, 0x63, 7, 3, &[1, 44]); }
+            let report = execute(&mut Protocol40Session::with_sleeper(&io, NoSleep), pid,
+                Operation::SetPowerSaving { setting: Setting::new(true, 300) }, &valid).unwrap();
+            assert_eq!(io.sent.borrow().len(), if seconds == 300 { 2 } else { 3 });
+            assert_eq!(report.write, if seconds == 300 { WriteOutcome::Skipped } else { WriteOutcome::Confirmed });
+        }
+    }
+}
+
+#[test]
+fn earbuds_power_unknown_truncated_and_partial_write_results_stay_separate() {
+    use crate::earbuds_power::{Setting, TimeObservation};
+    let io = Io::default();
+    io.reply(2, 0x61, 7, 136, &[1, 9]);
+    io.reply(2, 0x62, 7, 131, &[0, 10]);
+    let report = execute(&mut Protocol40Session::with_sleeper(&io, NoSleep), 2657,
+        Operation::SetPowerSaving { setting: Setting::new(true, 300) }, &valid).unwrap();
+    let power = report.power.unwrap();
+    assert_eq!(power.observation().mode(), &ToggleObservation::Unknown(9));
+    assert_eq!(power.observation().time(), &TimeObservation::Observed(10));
+    assert!(power.observation().setting().is_none());
+    assert!(matches!(power.outcome(), WriteOutcome::Failed(_)));
+    assert_eq!(io.sent.borrow().len(), 2);
+    let io = Io::default();
+    io.reply(2, 0x61, 7, 136, &[1]);
+    let report = execute(&mut Protocol40Session::with_sleeper(&io, NoSleep), 2689,
+        Operation::ReadPowerSaving, &valid).unwrap();
+    assert_eq!(report.power.unwrap().observation().time(), &TimeObservation::Unobserved);
+    assert_eq!(io.sent.borrow().len(), 1);
+    let io = Io::default();
+    io.reply(2, 0x61, 7, 136, &[1, 0]);
+    io.reply(2, 0x62, 7, 131, &[3, 132]);
+    io.reply(2, 0x63, 7, 8, &[1, 1]);
+    io.reply(3, 0x64, 7, 3, &[]);
+    let report = execute(&mut Protocol40Session::with_sleeper(&io, NoSleep), 2660,
+        Operation::SetPowerSaving { setting: Setting::new(true, 300) }, &valid).unwrap();
+    let power = report.power.unwrap();
+    assert_eq!(power.observation().setting(), Some(Setting::new(true, 900)));
+    assert_eq!(power.mode_write(), &WriteOutcome::Confirmed);
+    assert!(matches!(power.time_write(), WriteOutcome::Failed(_)));
+}
+
+#[test]
+fn earbuds_microphone_hid_controls_keep_profile_channel_and_mute_polarity() {
+    for pid in AUTO_PAUSE_PRODUCTS {
+        let io = Io::default();
+        io.reply(2, 0x61, 24, 132, &[1, 2, 1]);
+        io.reply(2, 0x62, 24, 4, &[1, 2, 0]);
+        let report = execute(&mut Protocol40Session::with_sleeper(&io, NoSleep), pid,
+            Operation::SetMicrophoneMute { muted: false }, &valid).unwrap();
+        assert_eq!(report.microphone_mute.unwrap().observation(), &ToggleObservation::Observed(false));
+        assert_eq!(report.write, WriteOutcome::Confirmed);
+        let packets = io.sent.borrow();
+        assert_eq!(packets.len(), 2);
+        assert_eq!(&packets[0][6..11], &[2, 24, 132, 1, 2]);
+        assert_eq!(&packets[1][6..12], &[3, 24, 4, 1, 2, 0]);
+    }
+}
+
+#[test]
+fn earbuds_microphone_unknown_and_wrong_channel_never_establish_unmuted() {
+    for payload in [&[1, 2, 9][..], &[1, 1, 0], &[2, 2, 0], &[1, 2]] {
+        let io = Io::default();
+        io.reply(2, 0x61, 24, 132, payload);
+        let report = execute(&mut Protocol40Session::with_sleeper(&io, NoSleep), 2689,
+            Operation::SetMicrophoneMute { muted: false }, &valid).unwrap();
+        let mute = report.microphone_mute.unwrap();
+        assert!(!matches!(mute.observation(), ToggleObservation::Observed(_)));
+        assert!(matches!(mute.write(), WriteOutcome::Failed(_)));
+        assert_eq!(io.sent.borrow().len(), 1);
+    }
+    assert_eq!(crate::earbuds_events::notification(&[5, 17, 1]).unwrap(),
+        Some(crate::earbuds_events::Notification::MicrophoneMute { muted: 1 }));
+    assert!(crate::earbuds_events::notification(&[5, 17]).is_err());
+}
+
+#[test]
+fn earbuds_power_and_microphone_cancel_before_io_and_reject_late_read() {
+    for operation in [Operation::ReadPowerSaving, Operation::ReadMicrophoneMute] {
+        let io = Io::default();
+        assert!(execute(&mut Protocol40Session::with_sleeper(&io, NoSleep), 2657,
+            operation, &|| anyhow::bail!("cancelled")).is_err());
+        assert!(io.sent.borrow().is_empty());
+    }
+    let io = Io::default();
+    io.reply(2, 0x61, 7, 136, &[1, 1]);
+    io.canceled_after_read.set(true);
+    assert!(execute(&mut Protocol40Session::with_sleeper(&io, NoSleep), 2657,
+        Operation::ReadPowerSaving, &|| { ensure!(!io.canceled.get(), "cancelled"); Ok(()) }).is_err());
+    assert_eq!(io.sent.borrow().len(), 1);
 }
 
 #[test]
@@ -110,7 +237,7 @@ fn activation_code_rejects_empty_failed_and_cancelled_observations() {
 
 #[test]
 fn equalizer_submission_sends_preset_then_sign_magnitude_bands_without_readback() {
-    use crate::earbuds_equalizer::{Mode, Preset, Setting};
+    use crate::earbuds_equalizer::{Mode, Preset, Setting, Submission};
     for pid in AUTO_PAUSE_PRODUCTS {
         for (preset, index) in [
             (Preset::Game, 1),
@@ -136,6 +263,10 @@ fn equalizer_submission_sends_preset_then_sign_magnitude_bands_without_readback(
             .unwrap();
             assert_eq!(report.write, WriteOutcome::Confirmed);
             assert_eq!(report.observation, AutoPauseObservation::Unobserved);
+            let submission = report.equalizer.unwrap();
+            assert_eq!(submission.setting, setting);
+            assert_eq!(submission.preset, Submission::Confirmed);
+            assert_eq!(submission.bands, Submission::Confirmed);
             let sent = io.sent.borrow();
             assert_eq!(sent.len(), 2);
             assert_eq!(&sent[0][6..13], &[4, 24, 0, 1, 1, 0, index]);
@@ -149,7 +280,7 @@ fn equalizer_submission_sends_preset_then_sign_magnitude_bands_without_readback(
 
 #[test]
 fn equalizer_rejects_range_and_stops_after_failed_or_cancelled_preset() {
-    use crate::earbuds_equalizer::{Mode, Preset, Setting};
+    use crate::earbuds_equalizer::{Mode, Preset, Setting, Submission};
     let mut setting = Setting {
         mode: Mode::Standard,
         preset: Preset::Custom,
@@ -182,18 +313,25 @@ fn equalizer_rejects_range_and_stops_after_failed_or_cancelled_preset() {
                 ensure!(!io.canceled.get(), "canceled");
                 Ok(())
             },
-        );
-        assert!(result.is_err());
+        ).unwrap();
+        assert!(matches!(result.write, WriteOutcome::Failed(_)));
+        let result = result.equalizer.unwrap();
+        assert_eq!(result.bands, Submission::NotSubmitted);
+        if canceled {
+            assert!(matches!(result.preset, Submission::Cancelled { acknowledged: true, .. }));
+        } else {
+            assert!(matches!(result.preset, Submission::Failed { acknowledged: false, .. }));
+        }
         assert!(io.sent.borrow().iter().all(|packet| packet[8] == 0));
     }
 }
 
 #[test]
 fn equalizer_second_command_failure_retains_acknowledged_preset_diagnostic() {
-    use crate::earbuds_equalizer::{Mode, Preset, Setting};
+    use crate::earbuds_equalizer::{Mode, Preset, Setting, Submission};
     let io = Io::default();
     io.reply(2, 0x61, 24, 0, &[]);
-    let error = execute(
+    let report = execute(
         &mut Protocol40Session::with_sleeper(&io, NoSleep),
         2657,
         Operation::Equalizer {
@@ -205,10 +343,70 @@ fn equalizer_second_command_failure_retains_acknowledged_preset_diagnostic() {
         },
         &valid,
     )
-    .unwrap_err();
-    assert!(format!("{error:#}").contains("preset was acknowledged"));
+    .unwrap();
+    assert!(matches!(report.write, WriteOutcome::Failed(error) if error.contains("preset was acknowledged")));
+    let report = report.equalizer.unwrap();
+    assert_eq!(report.preset, Submission::Confirmed);
+    assert!(matches!(report.bands, Submission::Failed { acknowledged: false, .. }));
     assert_eq!(io.sent.borrow()[0][8], 0);
     assert!(io.sent.borrow()[1..].iter().all(|packet| packet[8] == 1));
+}
+
+#[test]
+fn equalizer_cancellation_after_band_ack_keeps_both_acknowledgements_without_success() {
+    use crate::earbuds_equalizer::{Mode, Preset, Setting, Submission};
+    for pid in AUTO_PAUSE_PRODUCTS {
+        let io = Io::default();
+        io.reply(2, 0x61, 24, 0, &[]);
+        io.reply(2, 0x62, 24, 1, &[]);
+        io.cancel_after_command.set(Some(1));
+        let report = execute(
+            &mut Protocol40Session::with_sleeper(&io, NoSleep), pid,
+            Operation::Equalizer { setting: Setting { mode: Mode::Standard,
+                preset: Preset::Custom, bands: [3; 10] } },
+            &|| { ensure!(!io.canceled.get(), "cancelled after actual EQ reply"); Ok(()) },
+        ).unwrap();
+        assert!(matches!(report.write, WriteOutcome::Failed(_)));
+        assert_eq!(report.connected, None);
+        assert_eq!(report.observation, AutoPauseObservation::Unobserved);
+        let report = report.equalizer.unwrap();
+        assert_eq!(report.preset, Submission::Confirmed);
+        assert!(matches!(report.bands, Submission::Cancelled { acknowledged: true, .. }));
+        assert_eq!(io.sent.borrow().len(), 2);
+    }
+}
+
+#[test]
+fn equalizer_exchange_release_failure_retains_ack_and_stops_before_next_command() {
+    use crate::backend::{ExchangeLease, ExchangeOptions};
+    use crate::earbuds_equalizer::{Mode, Preset, Setting, Submission};
+    struct Transport(Io);
+    struct Lease<'a>(&'a Transport);
+    impl FeatureTransport for Transport {
+        fn begin_exchange(&self, _: ExchangeOptions) -> Result<Box<dyn ExchangeLease + '_>> {
+            Ok(Box::new(Lease(self)))
+        }
+        fn send_feature(&self, bytes: &[u8]) -> Result<()> { self.0.send_feature(bytes) }
+        fn get_feature(&self, out: &mut [u8]) -> Result<usize> { self.0.get_feature(out) }
+        fn metadata(&self) -> serde_json::Value { serde_json::Value::Null }
+    }
+    impl ExchangeLease for Lease<'_> {
+        fn transport(&self) -> &dyn FeatureTransport { self.0 }
+        fn retry_release(&self) -> Result<()> { Ok(()) }
+        fn finish(self: Box<Self>) -> Result<()> { anyhow::bail!("physical release failed") }
+    }
+    let transport = Transport(Io::default());
+    transport.0.reply(2, 0x61, 24, 0, &[]);
+    let report = execute(
+        &mut Protocol40Session::with_sleeper(&transport, NoSleep), 2657,
+        Operation::Equalizer { setting: Setting { mode: Mode::Standard,
+            preset: Preset::Movie, bands: [0; 10] } }, &valid,
+    ).unwrap();
+    assert!(matches!(report.write, WriteOutcome::Failed(_)));
+    let report = report.equalizer.unwrap();
+    assert!(matches!(report.preset, Submission::Failed { acknowledged: true, .. }));
+    assert_eq!(report.bands, Submission::NotSubmitted);
+    assert_eq!(transport.0.sent.borrow().len(), 1);
 }
 
 #[test]

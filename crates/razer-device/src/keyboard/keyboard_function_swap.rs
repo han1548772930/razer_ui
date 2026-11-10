@@ -44,7 +44,8 @@ impl FunctionKeySwap {
     }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct FunctionKeySwapWriteReport {
     pub requested_primary: FunctionKeyPrimary,
     /// Set immediately before an actual transport send, including retries.
@@ -56,6 +57,12 @@ pub struct FunctionKeySwapWriteReport {
 }
 
 impl FunctionKeySwapWriteReport {
+    pub fn validate_write_ack(&self, primary: FunctionKeyPrimary) -> anyhow::Result<()> {
+        ensure!(self.requested_primary == primary && self.attempted && self.send_attempts > 0
+            && self.acknowledgment_data.is_some() && self.observed.is_none() && !self.verified,
+            "Function-key setter response does not match the requested ACK-only operation");
+        Ok(())
+    }
     pub fn verified(&self) -> bool {
         self.verified
     }
@@ -178,23 +185,7 @@ fn apply_with_cap(
         keyboard_settings::wire_transaction(next_sequence()?)
     })()
     .map_err(|error| fail(SwapFailurePhase::Prepare, report.clone(), error))?;
-    let result = feature_exchange::exchange_with_report_data_size_observing_send(
-        device,
-        &cap.transport,
-        SET,
-        &[primary.swap_byte()],
-        transaction,
-        SET[0],
-        validate,
-        &mut || {
-            report.attempted = true;
-            report.send_attempts += 1;
-        },
-    );
-    // Original setter constructs jsonData from the requested byte, not a GET.
-    report.acknowledgment_data = feature_exchange::acknowledged_reply(&result).map(<[u8]>::to_vec);
-    result.map_err(|error| fail(SwapFailurePhase::Write, report.clone(), error))?;
-    validate().map_err(|error| fail(SwapFailurePhase::Write, report.clone(), error))?;
+    write_transport(device, &cap.transport, primary, transaction, validate, &mut report)?;
     if confirm_with_readback {
         let observed = next_sequence()
             .and_then(|sequence| read_with_cap(device, cap, sequence, validate))
@@ -209,6 +200,56 @@ fn apply_with_cap(
         }
         report.verified = true;
     }
+    Ok(report)
+}
+
+fn write_transport(
+    device: &dyn FeatureTransport,
+    cap: &crate::device_reads::DeviceReadCapability,
+    primary: FunctionKeyPrimary,
+    transaction: u8,
+    validate: &impl Fn() -> anyhow::Result<()>,
+    report: &mut FunctionKeySwapWriteReport,
+) -> Result<(), FunctionKeySwapWriteFailure> {
+    let result = feature_exchange::exchange_with_report_data_size_observing_send(
+        device,
+        cap,
+        SET,
+        &[primary.swap_byte()],
+        transaction,
+        SET[0],
+        validate,
+        &mut || {
+            report.attempted = true;
+            report.send_attempts += 1;
+        },
+    );
+    // Original setter constructs jsonData from the requested byte, not a GET.
+    report.acknowledgment_data = feature_exchange::acknowledged_reply(&result).map(<[u8]>::to_vec);
+    let fail=|error|FunctionKeySwapWriteFailure { phase:SwapFailurePhase::Write,report:report.clone(),error };
+    result.map_err(&fail)?;
+    validate().map_err(fail)?;
+    Ok(())
+}
+
+/// Current 717 HID task setter. The platform supplies its already qualified
+/// direct/radio/peer transport and that owner's complete wire transaction ID.
+pub fn apply_hid(
+    device: &dyn FeatureTransport,
+    cap: &crate::device_reads::DeviceReadCapability,
+    primary: FunctionKeyPrimary,
+    mut next_transaction: impl FnMut() -> anyhow::Result<u8>,
+    validate: &impl Fn() -> anyhow::Result<()>,
+) -> Result<FunctionKeySwapWriteReport, FunctionKeySwapWriteFailure> {
+    let mut report=FunctionKeySwapWriteReport::new(primary);
+    let transaction=(|| {
+        ensure!(cap.product_id==717 && cap.vendor_id==0x1532 && cap.report_bytes==91
+            && matches!(cap.source_class.as_str(),"rzDevice25"|"rzDevice25WirelessKeyboard"|"rzDevice25DualLinkKeyboard"),
+            "Function-key setter transport differs from the current 717 provider");
+        validate()?;
+        next_transaction()
+    })().map_err(|error|FunctionKeySwapWriteFailure { phase:SwapFailurePhase::Prepare,report:report.clone(),error })?;
+    write_transport(device,cap,primary,transaction,validate,&mut report)?;
     Ok(report)
 }
 

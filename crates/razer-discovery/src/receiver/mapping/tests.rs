@@ -119,6 +119,7 @@ fn ordinary_dongle_keeps_saved_logical_document_and_routes_only_its_callback() {
     let plan = plans(&observations(191, &[(191, 1)]), Some(&json!([])))
         .unwrap()
         .remove(0);
+    assert!(!plan.is_game_dependent());
     let mut documents = BTreeMap::new();
     assert!(plan.project(&documents).unwrap().is_none());
     let document = json!({"productId":190,"profiles":[],"version":37});
@@ -158,6 +159,46 @@ fn ordinary_dongle_keeps_saved_logical_document_and_routes_only_its_callback() {
         Document::new(json!({"productId":192}), Some("serial".into())),
     );
     assert!(plan.project(&documents).is_err());
+}
+
+#[test]
+fn real_keyboard_partners_project_runtime_games_and_report_only_consumed_members() {
+    let master=razer_device::mouse_receiver_mapping::prepare_document_for(
+        196,&[json!({"guid":"master-profile","name":"Master","mappings":[]})],"master-profile",None,None,
+        (0..512).map(|n|format!("00000000-0000-4000-8000-{n:012x}")),
+    ).unwrap();
+    for (product,raw) in [(600,625),(602,604),(658,656),(664,662),(697,698),(716,713),(717,730),(724,722),(727,725)] {
+        assert!(razer_device::receiver_capabilities::capability(197).is_some());
+        assert!(razer_device::receiver_pairing::catalog_device(197).unwrap().pairing_buddies().contains(&(raw as u16)));
+        let observed=observations(197,&[(197,1),(raw,1)]);
+        let records=json!([{"productId":product,"dongleId":raw,"deviceContainerId":observed[0].container(),"master":{"productId":196,"dongleId":197}}]);
+        let plan=plans(&observed,Some(&records)).unwrap().remove(0);
+        assert!(plan.is_game_dependent());
+        assert!(plan.target().contains_product(product));
+        let recipe=razer_device::keyboard_current_profile::local::initial_template(product,0,"Desktop").unwrap();
+        let mut profile=serde_json::to_value(&recipe.profiles[0]).unwrap();
+        profile["guid"]="peer-profile".into();
+        profile["gamingMode"]["state"]=2.into();
+        profile["gamingMode"]["isWindowsKeyDisabled"]=true.into();
+        let peer=razer_device::keyboard_receiver_mapping::prepare_document(
+            product,&[profile],"peer-profile",1,None,Some(&serde_json::to_value(recipe.device).unwrap()),
+            (512..1024).map(|n|format!("00000000-0000-4000-8000-{n:012x}")),
+        ).unwrap();
+        let mut documents=BTreeMap::from([(196,Document::new(master.clone(),Some("master-serial".into()))),(product,Document::new(peer.clone(),None))]);
+        assert_eq!(plan.project_with_runtime(&documents,Runtime::new(Some(1))).unwrap().unwrap().products(),&[196]);
+        documents.get_mut(&product).unwrap().serial=Some("peer-serial".into());
+        for count in [None,Some(0),Some(1)] {
+            let projection=plan.project_with_runtime(&documents,Runtime::new(count)).unwrap().unwrap();
+            assert_eq!(projection.products(),&[196,product]);
+            assert_eq!(projection.document()["profiles"][0]["appEngine"].get("gamemode"),if count==Some(1){Some(&Value::Bool(true))}else{None});
+            assert_eq!(documents[&product].value,peer);
+        }
+        documents.get_mut(&product).unwrap().value["deviceMetadatas"]=json!({"peer-serial":{"activeProfileGuid":"missing"}});
+        let defaults_only=plan.project_with_runtime(&documents,Runtime::new(Some(1))).unwrap().unwrap();
+        assert_eq!(defaults_only.products(),&[196,product]);
+        assert!(defaults_only.document()["defaultMappings"]["appEngine"]["mappings"].as_array().unwrap().iter().any(|row|row["input"]["unitId"]==43981 || row["input"]["reportId"]==8));
+        assert!(defaults_only.document()["profiles"][0]["appEngine"].get("gamemode").is_none());
+    }
 }
 
 #[test]

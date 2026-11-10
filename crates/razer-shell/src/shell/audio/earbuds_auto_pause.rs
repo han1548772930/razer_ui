@@ -12,7 +12,6 @@ use uuid::Uuid;
 pub(super) struct State {
     registered: bool,
     workers: BTreeMap<Uuid, (Arc<AtomicBool>, Task<()>)>,
-    monitors: BTreeMap<Uuid, Arc<AtomicBool>>,
 }
 impl Drop for State {
     fn drop(&mut self) {
@@ -173,7 +172,9 @@ impl AppShell {
                         use razer_storage::earbuds_profiles as profiles;
                         let id = local.request.profile_id();
                         match local.request.operation() {
-                            Operation::Equalizer { setting } => profiles::merge_equalizer(&mut saved, id, setting)?,
+                            Operation::Equalizer { setting } => {
+                                profiles::merge_equalizer(&mut saved, id, setting)?
+                            }
                             Operation::Anc { setting, .. } => {
                                 profiles::merge_anc(&mut saved, id, setting)?
                             }
@@ -251,30 +252,41 @@ impl AppShell {
         let Some(page) = workspace.read(cx).audio_mixer_page(cx) else {
             return;
         };
-        let device = workspace.read(cx).device(cx);
-        let route = self
-            .device_observations
-            .iter()
-            .find(|route| route.matches(device))
-            .cloned();
-        let Some(route) = route else {
-            page.update(cx, |page, cx| {
-                page.finish_earbuds_request(
-                    &request,
-                    Err("No current earbud device observation".into()),
-                    cx,
-                )
-            });
+        if !page.read(cx).earbuds_request_current(&request) {
+            return;
+        }
+        self.with_earbuds_session(
+            workspace.clone(),
+            request.guard(),
+            (!request.is_device_action()).then(|| request.monitor_guard()),
+            cx,
+            move |ready, shell, cx| match ready {
+                Ok(lease) => shell.run_earbuds_auto_pause(workspace, request, lease, cx),
+                Err(error) => page.update(cx, |page, cx| {
+                    page.finish_earbuds_request(&request, Err(error), cx)
+                }),
+            },
+        );
+    }
+
+    fn run_earbuds_auto_pause(
+        &mut self,
+        workspace: Entity<ProductWorkspace>,
+        request: EarbudsAutoPauseRequested,
+        lease: earbuds_events::Lease,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(page) = workspace.read(cx).audio_mixer_page(cx) else {
             return;
         };
         if !page.read(cx).earbuds_request_current(&request) {
             return;
         }
+        let route = lease.route().clone();
         if !self.earbuds_auto_pause.registered {
             self.earbuds_auto_pause.registered = true;
             self.register_exit_cleanup(|shell, _| {
                 let workers = std::mem::take(&mut shell.earbuds_auto_pause.workers);
-                shell.earbuds_auto_pause.monitors.clear();
                 for (guard, _) in workers.values() {
                     guard.store(false, Ordering::Release);
                 }
@@ -285,16 +297,6 @@ impl AppShell {
                 }
             });
         }
-        let monitor = request.monitor_guard();
-        if !self
-            .earbuds_auto_pause
-            .monitors
-            .values()
-            .any(|current| Arc::ptr_eq(current, &monitor))
-        {
-            self.start_earbuds_monitor(workspace, request, route, cx);
-            return;
-        }
         let id = request.id();
         let guard = request.guard();
         let active = guard.clone();
@@ -304,6 +306,7 @@ impl AppShell {
         let task = cx.spawn(async move |shell, cx| {
             let completion = cx
                 .background_spawn(async move {
+                    let _lease = lease;
                     razer_service::earbuds_auto_pause::device(route, operation, active)
                 })
                 .await;
@@ -316,6 +319,19 @@ impl AppShell {
                 }
                 let result = match (completion.result, completion.cleanup_failure) {
                     (Ok(report), None) => Ok(report),
+                    (Ok(mut report), Some(error)) if report.equalizer.is_some() => {
+                        let previous = match &report.write {
+                            razer_device::earbuds_protocol40::WriteOutcome::Failed(error) => Some(error.clone()),
+                            _ => report.equalizer.as_ref().and_then(|eq| eq.diagnostic()),
+                        };
+                        report.write = razer_device::earbuds_protocol40::WriteOutcome::Failed(
+                            previous.map_or_else(
+                                || format!("Earbud EQ cleanup failed: {error}"),
+                                |previous| format!("{previous}; cleanup: {error}"),
+                            ),
+                        );
+                        Ok(report)
+                    }
                     (Err(error), None) | (Ok(_), Some(error)) => Err(error),
                     (Err(error), Some(cleanup)) => Err(format!("{error}; cleanup: {cleanup}")),
                 };
@@ -353,114 +369,6 @@ impl AppShell {
                 shell.earbuds_auto_pause.workers.remove(&id);
             });
         });
-        self.earbuds_auto_pause.workers.insert(id, (guard, task));
-    }
-
-    fn start_earbuds_monitor(
-        &mut self,
-        workspace: Entity<ProductWorkspace>,
-        request: EarbudsAutoPauseRequested,
-        route: razer_discovery::discovery::ObservedDevice,
-        cx: &mut Context<Self>,
-    ) {
-        let Some(page) = workspace.read(cx).audio_mixer_page(cx) else {
-            return;
-        };
-        let id = Uuid::new_v4();
-        let guard = request.monitor_guard();
-        let keep = guard.clone();
-        let revision = workspace.read(cx).connection_revision();
-        let identity = workspace.read(cx).identity(cx);
-        let (send, receive) = async_channel::bounded(128);
-        let workspace = workspace.downgrade();
-        let page = page.downgrade();
-        let task = cx.spawn(async move |shell, cx| {
-            let signal = keep.clone();
-            let worker = cx.background_spawn(async move {
-                razer_service::earbuds_auto_pause::monitor(route, signal, |update| {
-                    send.try_send(update)
-                        .map_err(|_| anyhow::anyhow!("Earbud event consumer is absent or full"))
-                })
-            });
-            while let Ok(update) = receive.recv().await {
-                let accepted = shell
-                    .update(cx, |shell, cx| {
-                        let (Some(workspace), Some(page)) = (workspace.upgrade(), page.upgrade())
-                        else {
-                            keep.store(false, Ordering::Release);
-                            return false;
-                        };
-                        if !shell.devices.contains(&workspace)
-                            || workspace.read(cx).connection_revision() != revision
-                            || workspace.read(cx).identity(cx) != identity
-                            || !keep.load(Ordering::Acquire)
-                        {
-                            keep.store(false, Ordering::Release);
-                            return false;
-                        }
-                        match update {
-                            razer_service::earbuds_auto_pause::MonitorUpdate::Ready => shell
-                                .submit_earbuds_auto_pause(workspace.clone(), request.clone(), cx),
-                            razer_service::earbuds_auto_pause::MonitorUpdate::Notification(
-                                event,
-                            ) => {
-                                if let razer_device::earbuds_events::Notification::Connection {
-                                    status,
-                                    ..
-                                } = &event
-                                {
-                                    if let Err(error) =
-                                        razer_device::earbuds_auto_pause::connection_is_online(
-                                            *status,
-                                        )
-                                    {
-                                        shell.status = format!("耳塞连接状态无效：{error:#}");
-                                    }
-                                }
-                                page.update(cx, |page, cx| {
-                                    page.observe_earbuds_notification(&keep, event, cx)
-                                });
-                            }
-                        }
-                        true
-                    })
-                    .unwrap_or(false);
-                if !accepted {
-                    keep.store(false, Ordering::Release);
-                    break;
-                }
-            }
-            drop(receive);
-            let completion = worker.await;
-            let _ = shell.update(cx, |shell, cx| {
-                let error = completion.cleanup_failure.or_else(|| {
-                    keep.load(Ordering::Acquire).then(|| {
-                        completion
-                            .result
-                            .err()
-                            .unwrap_or_else(|| "Earbud event source stopped unexpectedly".into())
-                    })
-                });
-                if let Some(error) = &error {
-                    shell.status = format!("耳塞状态观察失败：{error}");
-                }
-                if let Some(page) = page.upgrade() {
-                    page.update(cx, |page, cx| {
-                        page.finish_earbuds_request(
-                            &request,
-                            Err(error
-                                .clone()
-                                .unwrap_or_else(|| "Earbud event scope canceled".into())),
-                            cx,
-                        );
-                        page.finish_earbuds_monitor(&keep, error, cx);
-                    });
-                }
-                shell.earbuds_auto_pause.monitors.remove(&id);
-                shell.earbuds_auto_pause.workers.remove(&id);
-            });
-        });
-        self.earbuds_auto_pause.monitors.insert(id, guard.clone());
         self.earbuds_auto_pause.workers.insert(id, (guard, task));
     }
 }

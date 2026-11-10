@@ -41,7 +41,7 @@ mod tests {
 }
 
 impl MappingProduct {
-    pub const ALL: [Self; 27] = [
+    pub const ALL: [Self; 36] = [
         Self::same(70),
         Self::same(89),
         Self::same(96),
@@ -72,6 +72,15 @@ impl MappingProduct {
         Self::same(740),
         Self::same(746),
         Self::same(756),
+        Self::same(600),
+        Self::same(602),
+        Self::same(658),
+        Self::same(664),
+        Self::same(697),
+        Self::same(716),
+        Self::same(717),
+        Self::same(724),
+        Self::same(727),
     ];
 
     pub const fn for_product_id(product_id: u32) -> Option<Self> {
@@ -118,6 +127,7 @@ impl MappingProduct {
             679 => crate::keyboard_current_mapping::STORAGE_FIELD,
             740 | 746 => crate::keyboard_magnetic_mapping::STORAGE_FIELD,
             756 => crate::keyboard_latest_restore::STORAGE_FIELD,
+            pid if crate::keyboard_receiver_mapping::supports(pid) => crate::keyboard_receiver_mapping::STORAGE_FIELD,
             _ => unreachable!(),
         }
     }

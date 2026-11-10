@@ -106,3 +106,22 @@ def reference_view(document, filename, row):
         result[key] = {name: value for name, value in document[key].items()
                        if name not in history["fields"]}
     return result
+
+
+def historical_paths(workspace, filename, row):
+    """Validate the exact history fields omitted by a streaming reference scan."""
+    if row.get("kind") != "completed_analysis_input_file":
+        return set()
+    if filename in {row["completed_file_manifest"], row["path"]}:
+        return {()}
+    paths = set()
+    for history in row["historical_references"]:
+        reference = history["section"]
+        if reference["receipt"] != filename:
+            continue
+        _section(workspace, reference)
+        if not set(history["fields"]) <= HISTORY_FIELDS:
+            raise ValueError("Only explicit temporary-creation fields are historical")
+        prefix = () if reference["pointer"] == "" else (reference["pointer"][1:],)
+        paths.update((*prefix, field) for field in history["fields"])
+    return paths

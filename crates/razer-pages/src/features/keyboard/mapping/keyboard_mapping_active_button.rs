@@ -49,6 +49,9 @@ impl KeyboardProductWorkspace {
     }
 
     pub(in super::super::super) fn keyboard_physical_enabled(&self, input: &str) -> bool {
+        if self.function_system_layer(input) {
+            return false;
+        }
         self.mapping_buttons()
             .iter()
             .find(|button| {

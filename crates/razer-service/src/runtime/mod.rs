@@ -51,6 +51,7 @@ enum KeyboardRead<'a> {
     Metadata,
     Serial,
     Mode(razer_device::keyboard_mode::Operation),
+    FunctionSwap(razer_device::keyboard_function_swap::FunctionKeyPrimary),
     ProfileInventory,
     OnboardProfiles(&'a razer_device::keyboard_onboard_profiles::ReadOptions),
 }
@@ -59,7 +60,7 @@ impl KeyboardRead<'_> {
     fn deadline(self) -> std::time::Duration {
         std::time::Duration::from_secs(match self {
             Self::ProfileInventory | Self::OnboardProfiles(_) => 120,
-            Self::Metadata | Self::Serial | Self::Mode(_) => 20,
+            Self::Metadata | Self::Serial | Self::Mode(_) | Self::FunctionSwap(_) => 20,
         })
     }
 }

@@ -810,6 +810,93 @@ class FeatureReportInventoryTests(unittest.TestCase):
         self.assertEqual([row["product_id"] for row in result["products"]], [190])
         self.assertFalse(result["source_owners_complete"])
 
+    def test_explicit_current_namespace_never_substitutes_the_older_acquisition(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(analysis, "ROOT", Path(directory)):
+            old = Path(directory) / ".analysis/inputs/frontend/keyboard-mw-679-current/acquisition.json"
+            old.parent.mkdir(parents=True)
+            old.write_text("{}", encoding="utf8")
+            namespace = "keyboard-mw-679-current-refresh-abcd"
+            result = analysis.feature_report_callers(None, {}, selected_capabilities=[{
+                "product_id": 679, "namespace": namespace}])
+            row = result["products"][0]
+            self.assertEqual(row["namespace"], namespace)
+            self.assertNotIn("acquisition", row)
+            self.assertTrue(row["failures"])
+            for invalid in ("../keyboard-mw-679-current", "keyboard-mw-680-current", "keyboard-ui-679-current"):
+                with self.assertRaises(ValueError):
+                    analysis.feature_report_callers(None, {}, selected_capabilities=[{
+                        "product_id": 679, "namespace": invalid}])
+
+    def test_current_namespace_accepts_only_declared_shared_frontend_originals(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(analysis, "ROOT", Path(directory)):
+            root = Path(directory)
+            namespace = "keyboard-mw-679-current-refresh-abcd"
+            shared = root / ".analysis/inputs/frontend/shared-current/raw/library.js"
+            shared.parent.mkdir(parents=True)
+            shared.write_bytes(b"const harmless=1;")
+            original = {"path": shared.relative_to(root).as_posix(), "bytes": shared.stat().st_size,
+                        "sha256": hashlib.sha256(shared.read_bytes()).hexdigest()}
+            acquisition = root / ".analysis/inputs/frontend" / namespace / "acquisition.json"
+            acquisition.parent.mkdir(parents=True)
+            acquisition.write_text(json.dumps({"source_current_during_acquisition": True, "files": [original]}), encoding="utf8")
+            index = {original["path"]: original, acquisition.relative_to(root).as_posix(): {
+                "path": acquisition.relative_to(root).as_posix(), "bytes": acquisition.stat().st_size,
+                "sha256": hashlib.sha256(acquisition.read_bytes()).hexdigest()}}
+            deployment = {"sources": [{"original": original, "identity_verified": True}],
+                          "retained_without_current_reference": [], "failures": []}
+            with patch.object(evidence, "frontend_deployment_sources", return_value=deployment):
+                result = analysis.feature_report_callers(None, index, selected_capabilities=[{
+                    "product_id": 679, "namespace": namespace}])
+            row = result["products"][0]
+            self.assertEqual(row["current_originals"], [original])
+            self.assertFalse(any("Path outside" in str(failure) for failure in row["failures"]))
+
+    def test_factory_device_info_alias_keeps_lexical_binding_and_product_fields(self):
+        import sqlite3
+        import keyboard_profile_templates as recipes
+        import code_identity
+        from tree_sitter import Language, Parser
+        import tree_sitter_javascript
+        parser = Parser(Language(tree_sitter_javascript.language()))
+        for selected_field, interface, parameter, valid in [
+                ("DeviceInfo", 3, "device", True),
+                ("DeviceInfo", 6, "device", False),
+                ("OtherInfo", 3, "device", False),
+                ("DeviceInfo", 3, "Q", False)]:
+            raw = ('({7(module,exports,require){const meta={DeviceInfo:{productId:679,claimInterface:'
+                   + str(interface) + '}}, {' + selected_field + ':Q}=meta;const create=('
+                   + parameter + ')=>{const claim=Q.claimInterface;return Q.dongleId?claim:0;};}});').encode()
+            tree = parser.parse(raw)
+            self.assertFalse(tree.root_node.has_error)
+            nodes = list(recipes.walk(tree.root_node))
+            factory = next(node for node in nodes if node.type == "method_definition")
+            constructor = next(node for node in nodes if node.type == "arrow_function")
+            with tempfile.TemporaryDirectory() as directory, \
+                    patch.object(analysis, "ROOT", Path(directory)), patch.object(recipes, "ROOT", Path(directory)):
+                root = Path(directory)
+                source = root / ".analysis/inputs/frontend/keyboard-mw-679-current-refresh-test/main.js"
+                source.parent.mkdir(parents=True)
+                source.write_bytes(raw)
+                identity = {"path": source.relative_to(root).as_posix(), "sha256": hashlib.sha256(raw).hexdigest(), "bytes": len(raw)}
+                path = root / ".analysis/results/code-identity.sqlite3"
+                path.parent.mkdir(parents=True)
+                with closing(sqlite3.connect(path)) as db:
+                    db.execute("CREATE TABLE factories(source_sha,start_byte,end_byte,module_id,normalized_sha,raw_sha,kind,dependencies)")
+                    db.execute("INSERT INTO factories VALUES(?,?,?,?,?,?,?,?)", (
+                        identity["sha256"], factory.start_byte, factory.end_byte, "7",
+                        code_identity.normalized_ast(factory, factory=True), hashlib.sha256(factory.text).hexdigest(), "webpack_factory", "[]"))
+                    db.commit()
+                owner = {"role": "physical_transport_factory", "byte_start": constructor.start_byte,
+                         "byte_end": constructor.end_byte, "body": constructor.text.decode()}
+                row = {"product_id": 679, "sources": [{"original": identity, "owners": [owner]}]}
+                expected = {"productId": 679, "claimInterface": 3, "dongleId": None}
+                if valid:
+                    self.assertEqual(analysis.feature_factory_descriptor(row, parser, owner, expected), "Q")
+                    self.assertEqual(owner["device_info_alias"]["fields"], expected)
+                else:
+                    with self.assertRaises(ValueError):
+                        analysis.feature_factory_descriptor(row, parser, owner, expected)
+
     def test_typed_inventory_rejects_dynamic_duplicate_or_unowned_product_rows(self):
         import typed_tables
         for content in [

@@ -5,6 +5,17 @@ use razer_device::{
 };
 
 impl AudioProductWorkspace {
+    pub(super) fn earbuds_equalizer_error(&self) -> Option<String> {
+        match self.earbuds.eq_result.as_ref()? {
+            Err(error) => Some(error.clone()),
+            Ok(report) => match &report.write {
+                razer_device::earbuds_protocol40::WriteOutcome::Failed(error) => Some(error.clone()),
+                razer_device::earbuds_protocol40::WriteOutcome::Confirmed => report.equalizer.as_ref().and_then(|eq| eq.diagnostic()),
+                _ => Some("Earbud EQ completion omitted the write confirmation".into()),
+            },
+        }
+    }
+
     pub(super) fn earbuds_equalizer_disabled(&self) -> bool {
         razer_device::earbuds_protocol40::supports_auto_pause(self.spec.product_id)
             && (!self.earbuds.active

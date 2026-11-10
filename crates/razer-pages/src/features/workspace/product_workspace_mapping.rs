@@ -1,11 +1,28 @@
 //! Mapping observations require the same product, physical owner and profile.
 use super::*;
+use crate::features::KeyboardFunctionSwapRequested;
 use crate::features::keyboard_products::{
     KeyboardMappingAiObservation, KeyboardMappingInterDeviceObservation,
     KeyboardMappingMacroObservation,
 };
 
 impl ProductWorkspace {
+    pub fn set_function_primary_recorder_held(&mut self, held: bool, cx: &mut Context<Self>) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| body.set_function_primary_recorder_held(held, cx));
+        }
+    }
+    pub fn keyboard_function_swap_current(&self,request:&KeyboardFunctionSwapRequested,cx:&App)->bool {
+        matches!(&self.body,Body::Source(body) if body.read(cx).keyboard_function_swap_current(request,cx))
+    }
+    pub fn finish_keyboard_function_swap(
+        &mut self,
+        request:&KeyboardFunctionSwapRequested,
+        result:Result<razer_device::keyboard_function_swap::FunctionKeySwapWriteReport,String>,
+        cx:&mut Context<Self>,
+    )->Option<Device> {
+        match &self.body { Body::Source(body)=>body.update(cx,|body,cx|body.finish_keyboard_function_swap(request,result,cx)),_=>None }
+    }
     pub fn receiver_mapping_serial(&self, cx: &App) -> Option<String> {
         match &self.body {
             Body::Source(body) => body.read(cx).receiver_mapping_serial().map(str::to_owned),

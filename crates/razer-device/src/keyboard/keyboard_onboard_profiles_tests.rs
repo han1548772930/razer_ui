@@ -228,7 +228,7 @@ fn keyboard_onboard_profiles_keeps_source_batch_sizes_and_modes() {
     let settings = settings_capability(&cap).unwrap();
     let reading = read_mode(
         &device,
-        &settings,
+        &settings.transport,
         3,
         Mode::Hypershift,
         &ids,
@@ -237,9 +237,23 @@ fn keyboard_onboard_profiles_keeps_source_batch_sizes_and_modes() {
     )
     .unwrap();
     assert_eq!(reading.assignments.len(), 5);
-    let mut profile = ProfileReading { slot_id:3, brightness:Reading::Unobserved,
-        passes:vec![reading],rapid_trigger:Vec::new(),actuation:Vec::new(),kill_switch:Reading::Unobserved };
-    read_analog(&device,&settings,&mut profile,&ids,&mut sequence(),&|| Ok(())).unwrap();
+    let mut profile = ProfileReading {
+        slot_id: 3,
+        brightness: Reading::Unobserved,
+        passes: vec![reading],
+        rapid_trigger: Vec::new(),
+        actuation: Vec::new(),
+        kill_switch: Reading::Unobserved,
+    };
+    read_analog(
+        &device,
+        &settings,
+        &mut profile,
+        &ids,
+        &mut sequence(),
+        &|| Ok(()),
+    )
+    .unwrap();
     assert_eq!(profile.rapid_trigger.len(), 3);
     assert_eq!(profile.actuation.len(), 3);
     let reports = device.sent();
@@ -259,11 +273,11 @@ fn keyboard_onboard_profiles_assignment_retries_zero_twice_and_keeps_unknown_fun
     let mut bad = zero.clone();
     bad.status = 3;
     for second in [zero.clone(), bad] {
-        let device = Mock::new([zero.clone(),second]);
+        let device = Mock::new([zero.clone(), second]);
         let settings = settings_capability(&capability()).unwrap();
         let pass = read_mode(
             &device,
-            &settings,
+            &settings.transport,
             3,
             Mode::Normal,
             &[4],
@@ -331,7 +345,7 @@ fn keyboard_onboard_profiles_retains_assignment_when_analog_read_fails() {
     let device = Mock::new(replies);
     let observed = read_small(&device, &[4]).unwrap();
     let profile = &observed.profiles[0];
-    assert!(profile.assignment(Mode::Normal,4).is_some());
+    assert!(profile.assignment(Mode::Normal, 4).is_some());
     assert!(profile.actuation(4).is_none());
     assert!(profile.rapid_trigger(4).is_none());
     assert!(matches!(
@@ -449,7 +463,9 @@ fn keyboard_onboard_profiles_detail_consumer_skips_known_guids_and_reads_size_co
                     name: "device profile".into(),
                     owner: "owner".into(),
                 },
-                mapping_hash: crate::keyboard_profile_inventory::MappingHashObservation::Observed([0; 6]),
+                mapping_hash: crate::keyboard_profile_inventory::MappingHashObservation::Observed(
+                    [0; 6],
+                ),
             },
         }],
     };

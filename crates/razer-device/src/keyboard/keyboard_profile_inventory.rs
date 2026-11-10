@@ -9,14 +9,8 @@ use serde::{Deserialize, Serialize};
 
 /// Current product registrations that actually mount `isObm` over HID. Merely
 /// shipping the shared OBM chunk does not establish that a product mounts it.
-const OBM_PRODUCTS: &[u32] = &[
-    550, 551, 552, 577, 579, 590, 599, 600, 602, 614, 617, 619, 620, 642, 647, 653, 658, 661, 664,
-    677, 678, 679, 688, 691, 697, 708, 716, 717, 719, 720, 721, 724, 727, 728, 739, 740, 741, 742,
-    746, 747, 752, 756,
-];
-
 pub fn supports(product_id: u32) -> bool {
-    OBM_PRODUCTS.contains(&product_id)
+    crate::keyboard_onboard_inventory::features(product_id).is_some()
 }
 
 fn analog_v3(product_id: u32) -> bool {
@@ -34,7 +28,7 @@ fn skips_first_metadata(product_id: u32) -> bool {
     !has_mapping_hash(product_id) && !analog_v3(product_id)
 }
 
-fn validate_capability(cap: &DeviceReadCapability) -> anyhow::Result<()> {
+pub(crate) fn validate_capability(cap: &DeviceReadCapability) -> anyhow::Result<()> {
     ensure!(
         supports(cap.product_id) && keyboard_metadata::capability(cap.product_id).is_some(),
         "Keyboard product does not mount the current HID OBM reader"
@@ -45,6 +39,26 @@ fn validate_capability(cap: &DeviceReadCapability) -> anyhow::Result<()> {
             "rzDevice25" | "rzDevice25DualLinkKeyboard" | "rzDevice25Oled"
         ),
         "Keyboard OBM read transport is not a verified HID factory"
+    );
+    let [physical_product_id] = cap.direct_pids.as_slice() else {
+        anyhow::bail!("Keyboard OBM requires one selected physical factory")
+    };
+    let matches = |expected: &DeviceReadCapability| {
+        cap.source_class == expected.source_class
+            && cap.vendor_id == expected.vendor_id
+            && cap.claim_interface == expected.claim_interface
+            && cap.claim_interfaces_by_pid == expected.claim_interfaces_by_pid
+            && cap.physical_transports_by_pid == expected.physical_transports_by_pid
+            && cap.report_id == expected.report_id
+            && cap.report_bytes == expected.report_bytes
+            && cap.transaction_prefix == expected.transaction_prefix
+            && cap.transaction_modulus == expected.transaction_modulus
+    };
+    let direct = keyboard_metadata::hid_capability(cap.product_id, *physical_product_id);
+    let relay = keyboard_metadata::relay_capability(cap.product_id, *physical_product_id);
+    ensure!(
+        direct.is_some_and(matches) || relay.as_ref().is_ok_and(matches),
+        "Keyboard OBM physical factory or report routing differs"
     );
     Ok(())
 }

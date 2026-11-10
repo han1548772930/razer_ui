@@ -1,6 +1,6 @@
-//! Current magnetic-keyboard macro worker conversion and firmware item codec.
+//! Current keyboard OBM macro worker conversion and firmware item codec.
 //! Editor source JSON is decoded once; storage receives only validated bytes.
-use crate::{mapping_engine, onboard_macro::MacroWriteRequest};
+use crate::onboard_macro::MacroWriteRequest;
 use anyhow::{Context as _, ensure};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -20,6 +20,24 @@ pub struct MacroSynchronization {
     pub random_candidates: Vec<u16>,
 }
 
+#[derive(Clone, Debug)]
+pub struct CompiledMacro {
+    request: MacroWriteRequest,
+    comparison_items: Vec<crate::onboard_macro::decode::Item>,
+}
+
+impl CompiledMacro {
+    pub fn request(&self) -> &MacroWriteRequest {
+        &self.request
+    }
+    pub fn comparison_items(&self) -> &[crate::onboard_macro::decode::Item] {
+        &self.comparison_items
+    }
+    pub fn into_request(self) -> MacroWriteRequest {
+        self.request
+    }
+}
+
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct MacroDocument {
@@ -34,6 +52,74 @@ struct EditorEvent {
     #[serde(rename = "Type")]
     kind: Value,
 }
+
+#[derive(Deserialize)]
+struct SourceProfile {
+    guid: String,
+    #[serde(default)]
+    mappings: Vec<SourceMapping>,
+}
+
+#[derive(Deserialize)]
+enum SourceInputKind {
+    AnalogInput,
+    #[serde(other)]
+    Other,
+}
+
+#[derive(Deserialize)]
+struct SourceMapping {
+    #[serde(rename = "inputType")]
+    input_type: SourceInputKind,
+    #[serde(default)]
+    mapping: Vec<Value>,
+    #[serde(flatten)]
+    output: serde_json::Map<String, Value>,
+}
+
+#[derive(Deserialize)]
+#[serde(tag = "outputType")]
+enum SourceOutput {
+    #[serde(rename = "macroGroup")]
+    Macro {
+        #[serde(rename = "macroGroup")]
+        reference: SourceMacroReference,
+    },
+    #[serde(other)]
+    Other,
+}
+
+#[derive(Deserialize)]
+struct SourceMacroReference {
+    guid: String,
+}
+
+fn profile_macro_references(value: &Value) -> anyhow::Result<ProfileMacroReferences> {
+    let profile: SourceProfile = serde_json::from_value(value.clone())?;
+    let mut macro_guids = Vec::new();
+    for row in profile.mappings {
+        let output = match row.input_type {
+            SourceInputKind::AnalogInput => row
+                .mapping
+                .into_iter()
+                .next()
+                .context("Analog macro mapping primary stage is absent")?,
+            SourceInputKind::Other => Value::Object(row.output),
+        };
+        // An unreadable primary stage must not become an empty reference set:
+        // the device reconciler uses that set to decide which macros to delete.
+        if let SourceOutput::Macro { reference } = serde_json::from_value(output)? {
+            if !macro_guids.contains(&reference.guid) {
+                macro_guids.push(reference.guid);
+            }
+        }
+    }
+    Ok(ProfileMacroReferences {
+        guid: profile.guid,
+        macro_guids,
+    })
+}
+
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct Engine {
@@ -78,53 +164,13 @@ pub fn prepare_synchronization(
     );
     let profiles = profiles
         .iter()
-        .map(|profile| {
-            let guid = profile["guid"]
-                .as_str()
-                .context("Macro profile GUID is absent")?;
-            let mappings = match profile.get("mappings") {
-                None => Vec::new(),
-                Some(Value::Array(rows)) => rows.clone(),
-                Some(_) => anyhow::bail!("Macro profile mappings are not a list"),
-            };
-            let mut macro_guids = Vec::new();
-            for row in mappings {
-                let stage = if row["inputType"] == "AnalogInput" {
-                    &row["mapping"][0]
-                } else {
-                    &row
-                };
-                if stage["outputType"] != "macroGroup" {
-                    continue;
-                }
-                let guid = stage["macroGroup"]["guid"]
-                    .as_str()
-                    .context("Macro mapping GUID is absent")?;
-                if !macro_guids.iter().any(|saved| saved == guid) {
-                    macro_guids.push(guid.to_owned());
-                }
-            }
-            Ok(ProfileMacroReferences {
-                guid: guid.into(),
-                macro_guids,
-            })
-        })
+        .map(profile_macro_references)
         .collect::<anyhow::Result<Vec<_>>>()?;
     let mut macros = Vec::new();
     for document in documents {
-        let document: MacroDocument = serde_json::from_value(document.clone())?;
-        if matches!(
-            document.app_engine.mouse_move_type.as_str(),
-            "absolute" | "foreground"
-        ) || document.macro_events.iter().any(|event| {
-            event
-                .kind
-                .as_u64()
-                .is_some_and(|kind| [6, 5, 4, 10].contains(&kind))
-        }) {
-            continue;
+        if let Some(compiled) = compile_document(product, document)? {
+            macros.push(compiled.into_request());
         }
-        macros.push(compile(product, document)?);
     }
     Ok(MacroSynchronization {
         profiles,
@@ -133,13 +179,49 @@ pub fn prepare_synchronization(
     })
 }
 
+/// Decodes the source document at the interchange boundary. The current
+/// worker and key-table identities qualify every registered OBM keyboard.
+pub fn compile_document(product: u32, document: &Value) -> anyhow::Result<Option<CompiledMacro>> {
+    ensure!(
+        crate::keyboard_profile_inventory::supports(product),
+        "Macro compiler product has no current keyboard OBM source"
+    );
+    let document: MacroDocument = serde_json::from_value(document.clone())?;
+    if matches!(
+        document.app_engine.mouse_move_type.as_str(),
+        "absolute" | "foreground"
+    ) || document.macro_events.iter().any(|event| {
+        event
+            .kind
+            .as_f64()
+            .is_some_and(|kind| [6.0, 5.0, 4.0, 10.0].contains(&kind))
+    }) {
+        return Ok(None);
+    }
+    compile(product, document).map(Some)
+}
+
+/// The three current OBM worker key-table variants have identical ordered
+/// scancode/HID/flag/name/key-code projections. Their differences are virtual-key input
+/// conversion fields, which are not consumed by this firmware compiler.
+pub(crate) fn keyboard_keys(
+    product: u32,
+) -> anyhow::Result<&'static [crate::mapping_engine::data::KeyDefinition]> {
+    ensure!(
+        crate::keyboard_profile_inventory::supports(product),
+        "Macro key table product has no current keyboard OBM source"
+    );
+    crate::mapping_engine::source_keys(679).context("Current shared OBM macro key table is absent")
+}
+
 fn wrapped_u16(value: f64) -> anyhow::Result<u16> {
     ensure!(value.is_finite(), "Macro coordinate is not finite");
     Ok(value.trunc().rem_euclid(65536.) as u16)
 }
 
-fn compile(product: u32, document: MacroDocument) -> anyhow::Result<MacroWriteRequest> {
-    let keys = mapping_engine::source_keys(product).context("Macro source keys are absent")?;
+fn compile(product: u32, document: MacroDocument) -> anyhow::Result<CompiledMacro> {
+    use crate::onboard_macro::decode::Item;
+    let keys = keyboard_keys(product)?;
     ensure!(
         matches!(
             document.app_engine.mouse_move_type.as_str(),
@@ -160,6 +242,7 @@ fn compile(product: u32, document: MacroDocument) -> anyhow::Result<MacroWriteRe
     });
     let mut data = Vec::new();
     let mut worker_items = Vec::new();
+    let mut comparison_items = Vec::new();
     let mut num_items = 0u32;
     let mut mouse_state = 0u8;
     for (event, original) in events.into_iter().zip(document.app_engine.events) {
@@ -195,11 +278,21 @@ fn compile(product: u32, document: MacroDocument) -> anyhow::Result<MacroWriteRe
                     worker_item["scancode"] = json!(scancode);
                 }
                 worker_item["flag"] = json!(flag % 2);
+                comparison_items.push(Item::Keyboard {
+                    hid,
+                    scancode: worker_scancode.or(scancode),
+                    key_name: None,
+                    flag: (flag % 2) as u8,
+                });
                 let hid =
                     source_fw_hid(hid).context("Macro HID has no current firmware encoding")?;
                 data.extend_from_slice(&[if flag % 2 == 0 { 1 } else { 2 }, hid]);
             }
             Event::Mouse { id, data: wheel } => {
+                comparison_items.push(Item::Mouse {
+                    id: Some(id),
+                    data: wheel,
+                });
                 for (mask, bit) in [(1, 1), (4, 2), (16, 4), (64, 8), (256, 16)] {
                     if id & mask != 0 {
                         mouse_state |= bit;
@@ -219,10 +312,11 @@ fn compile(product: u32, document: MacroDocument) -> anyhow::Result<MacroWriteRe
                 }
             }
             Event::Delay { ms } => {
-                ensure!(ms.is_finite() && ms >= 0., "Macro delay is invalid");
+                ensure!(ms.is_finite(), "Macro delay is invalid");
                 if ms == 0. {
                     continue;
                 }
+                comparison_items.push(Item::Delay { milliseconds: ms });
                 let count = if ms < 256. {
                     1
                 } else if ms < 65536. {
@@ -256,6 +350,7 @@ fn compile(product: u32, document: MacroDocument) -> anyhow::Result<MacroWriteRe
                 if relative {
                     worker_item = json!({"type":"mouseMove","x":x,"y":y});
                 }
+                comparison_items.push(Item::Cursor { x, y });
                 data.push(21);
                 data.extend_from_slice(&wrapped_u16(x)?.to_be_bytes());
                 data.extend_from_slice(&wrapped_u16(y)?.to_be_bytes());
@@ -267,13 +362,16 @@ fn compile(product: u32, document: MacroDocument) -> anyhow::Result<MacroWriteRe
             .checked_add(1)
             .context("Macro item count overflow")?;
     }
-    Ok(MacroWriteRequest {
-        guid: document.guid,
-        name: document.name,
-        num_items,
-        timestamp: String::new(),
-        hash: crate::mapping_engine_hash::source_hash(&json!(worker_items))?,
-        data,
+    Ok(CompiledMacro {
+        request: MacroWriteRequest {
+            guid: document.guid,
+            name: document.name,
+            num_items,
+            timestamp: String::new(),
+            hash: crate::mapping_engine_hash::source_hash(&json!(worker_items))?,
+            data,
+        },
+        comparison_items,
     })
 }
 
@@ -292,6 +390,99 @@ fn source_fw_hid(hid: u16) -> Option<u8> {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn all_current_obm_products_keep_worker_values_before_firmware_wrapping() {
+        let products = [
+            550, 551, 552, 577, 579, 590, 599, 600, 602, 614, 617, 619, 620, 642, 647, 653, 658,
+            661, 664, 677, 678, 679, 688, 691, 697, 708, 716, 717, 719, 720, 721, 724, 727, 728,
+            739, 740, 741, 742, 746, 747, 752, 756,
+        ];
+        for product in products {
+            let document = json!({"guid":"11223344-5566-7788-99aa-bbccddeeff12", "name":"wire boundaries",
+            "macroEvents":[], "appEngine":{"mouseMoveType":"none", "events":[
+                {"type":"keyboard","scancode":30,"flag":0},
+                {"type":"delay","ms":-1.5},
+                {"type":"mouseMove","x":65536,"y":1.5},
+                {"type":"keyboard","scancode":30,"flag":1}
+            ]}});
+            let result = compile_document(product, &document).unwrap().unwrap();
+            assert_eq!(
+                result.request().data,
+                [1, 4, 17, 255, 21, 0, 0, 0, 1, 2, 4],
+                "PID{product}"
+            );
+            assert!(matches!(
+                result.comparison_items()[1],
+                crate::onboard_macro::decode::Item::Delay { milliseconds: -1.5 }
+            ));
+            assert!(matches!(
+                result.comparison_items()[2],
+                crate::onboard_macro::decode::Item::Cursor { x: 65536.0, y: 1.5 }
+            ));
+            let decoded =
+                crate::onboard_macro::decode::keyboard_items(product, &result.request().data, 11)
+                    .unwrap();
+            assert!(crate::onboard_macro::decode::differs(
+                result.comparison_items(),
+                &decoded.items
+            ));
+        }
+    }
+
+    #[test]
+    fn source_eligibility_compares_numeric_types_without_coercing_strings() {
+        let mut document = json!({"guid":"one","name":"one","macroEvents":[{"Type":6.0}],
+            "appEngine":{"mouseMoveType":"none","events":[]}});
+        assert!(compile_document(739, &document).unwrap().is_none());
+        document["macroEvents"][0]["Type"] = json!("6");
+        assert!(compile_document(739, &document).unwrap().is_some());
+    }
+
+    #[test]
+    fn profile_references_keep_source_order_and_only_the_primary_analog_stage() {
+        for product in [740, 746] {
+            let profiles = [json!({"guid":"profile", "mappings":[
+                {"inputType":"KeyboardInput", "outputType":"macroGroup", "macroGroup":{"guid":"first"}},
+                {"inputType":"AnalogInput", "mapping":[
+                    {"outputType":"macroGroup", "macroGroup":{"guid":"second"}},
+                    {"outputType":"macroGroup", "macroGroup":{"guid":"secondary-stage"}}
+                ]},
+                {"inputType":"KeyboardInput", "outputType":"macroGroup", "macroGroup":{"guid":"first"}},
+                {"inputType":"KeyboardInput", "outputType":"disableGroup"}
+            ]})];
+            let result = prepare_synchronization(product, &profiles, &[], vec![]).unwrap();
+            assert_eq!(
+                result.profiles,
+                [ProfileMacroReferences {
+                    guid: "profile".into(),
+                    macro_guids: vec!["first".into(), "second".into()],
+                }]
+            );
+        }
+    }
+
+    #[test]
+    fn malformed_mapping_cannot_become_an_empty_macro_reference_set() {
+        for product in [740, 746] {
+            for row in [
+                Value::Null,
+                json!({"inputType":"AnalogInput"}),
+                json!({"inputType":"AnalogInput", "mapping":[]}),
+                json!({"inputType":"AnalogInput", "mapping":[null]}),
+                json!({"inputType":"AnalogInput", "mapping":[{}]}),
+                json!({"inputType":"KeyboardInput"}),
+                json!({"outputType":"macroGroup", "macroGroup":{"guid":"used"}}),
+                json!({"inputType":"KeyboardInput", "outputType":"macroGroup", "macroGroup":{"guid":5}}),
+            ] {
+                let profile = json!({"guid":"profile", "mappings":[row]});
+                assert!(
+                    prepare_synchronization(product, &[profile.clone()], &[], vec![]).is_err(),
+                    "PID{product}: {profile}"
+                );
+            }
+        }
+    }
 
     #[test]
     fn worker_relative_motion_delay_widths_and_source_mouse_state_are_preserved() {

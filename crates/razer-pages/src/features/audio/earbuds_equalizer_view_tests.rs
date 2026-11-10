@@ -42,11 +42,102 @@ fn complete_edit(
     };
     assert!(request.needs_persistence());
     assert!(view.mark_earbuds_persisted(&request));
-    let mut report = reading(view.spec.product_id, false);
-    report.operation = request.operation();
-    report.connected = None;
+    use razer_device::earbuds_equalizer::Submission;
+    let report = equalizer_reply(view.spec.product_id, setting, Submission::Confirmed, Submission::Confirmed);
     view.finish_earbuds_request(&request, Ok(report), cx);
     setting
+}
+
+#[gpui_kit::test]
+fn equalizer_partial_ack_and_cleanup_failure_are_visible_without_rolling_back_saved_draft(
+    cx: &mut TestAppContext,
+) {
+    use razer_device::{earbuds_equalizer::Submission, earbuds_protocol40::WriteOutcome};
+    for pid in [2657, 2660, 2664, 2668, 2689] {
+        let (handle, owner, mut device) = mount(pid, cx);
+        profile(pid, &mut device);
+        cx.update_window(handle, |_, window, cx| {
+            owner.update(cx, |view, cx| initialize(view, &device, window, cx));
+            for (button, cleanup) in [("earbuds-eq-preset-music", false), ("earbuds-eq-preset-movie", true)] {
+                window.render_frame(cx);
+                window.click(button, cx);
+                owner.update(cx, |view, cx| {
+                    let request = view.earbuds.pending.clone().unwrap();
+                    let Operation::Equalizer { setting } = request.operation() else { panic!("EQ edit") };
+                    assert!(view.mark_earbuds_persisted(&request));
+                    let saved = view.snapshot();
+                    let bands = if cleanup { Submission::Confirmed } else {
+                        Submission::Failed { message: "band reply missing".into(), acknowledged: false }
+                    };
+                    let mut report = equalizer_reply(pid, setting, Submission::Confirmed, bands);
+                    if cleanup { report.write = WriteOutcome::Failed("EQ cleanup failed".into()); }
+                    view.finish_earbuds_request(&request, Ok(report), cx);
+                    assert_eq!(view.snapshot(), saved, "failed hardware submission does not change the saved preference");
+                    let report = view.earbuds.eq_result.as_ref().unwrap().as_ref().unwrap();
+                    let confirmation = report.equalizer.as_ref().unwrap();
+                    assert!(confirmation.preset.acknowledged());
+                    assert_eq!(confirmation.bands.acknowledged(), cleanup);
+                    assert_eq!(report.observation, AutoPauseObservation::Unobserved);
+                    assert_eq!(report.connected, None);
+                    assert!(view.earbuds_equalizer_error().unwrap().contains(
+                        if cleanup { "cleanup failed" } else { "preset was acknowledged" }
+                    ));
+                });
+                window.render_frame(cx);
+                assert!(window.find("earbuds-eq-submission-error").visible());
+            }
+            window.click("earbuds-eq-preset-custom", cx);
+            owner.update(cx, |view, cx| { complete_edit(view, cx); });
+            window.render_frame(cx);
+            assert!(window.try_find("earbuds-eq-submission-error").is_none());
+        }).unwrap();
+    }
+}
+
+#[gpui_kit::test]
+fn equalizer_malformed_or_old_profile_completion_cannot_replace_current_submission(
+    cx: &mut TestAppContext,
+) {
+    use razer_device::earbuds_equalizer::Submission;
+    for pid in [2657, 2660, 2664, 2668, 2689] {
+        let (handle, owner, mut device) = mount(pid, cx);
+        profile(pid, &mut device);
+        cx.update_window(handle, |_, window, cx| {
+            owner.update(cx, |view, cx| initialize(view, &device, window, cx));
+            window.render_frame(cx);
+            window.click("earbuds-eq-preset-music", cx);
+            owner.update(cx, |view, cx| {
+                let request = view.earbuds.pending.clone().unwrap();
+                let mut incomplete = reading(pid, false);
+                incomplete.operation = request.operation();
+                view.finish_earbuds_request(&request, Ok(incomplete), cx);
+                assert!(view.earbuds_equalizer_error().unwrap().contains("omitted"));
+            });
+            window.render_frame(cx);
+            window.click("earbuds-eq-preset-movie", cx);
+            owner.update(cx, |view, cx| {
+                let old = view.earbuds.pending.clone().unwrap();
+                let Operation::Equalizer { setting } = old.operation() else { panic!("EQ edit") };
+                let mut next = device.profiles[0].clone();
+                next.id = "next-eq-profile".into();
+                next.guid = "next-eq-profile".into();
+                device.profiles.push(next);
+                device.active_profile = "next-eq-profile".into();
+                view.set_earbuds_context(&device, true, cx);
+                assert!(!old.guard().load(Ordering::Acquire));
+                view.finish_earbuds_request(&old, Ok(equalizer_reply(pid, setting,
+                    Submission::Confirmed, Submission::Failed {
+                        message: "old profile bands failed".into(), acknowledged: false,
+                    })), cx);
+                assert!(view.earbuds.eq_result.is_none());
+                assert_eq!(view.earbuds.profile_id, "next-eq-profile");
+                finish_initial_restores(view, pid, cx);
+                assert!(view.earbuds_equalizer_error().is_none());
+            });
+            window.render_frame(cx);
+            assert!(window.try_find("earbuds-eq-submission-error").is_none());
+        }).unwrap();
+    }
 }
 
 #[gpui_kit::test]

@@ -2,6 +2,7 @@
 import hashlib
 from pathlib import Path
 import sys
+import sqlite3
 from types import SimpleNamespace
 import unittest
 
@@ -13,6 +14,37 @@ import keyboard_profile_templates as recipes
 
 
 class RecipeParsing(unittest.TestCase):
+    def test_source_layers_keep_distinct_factories_and_do_not_borrow_missing_inputs(self):
+        with sqlite3.connect(":memory:") as db:
+            db.row_factory = sqlite3.Row
+            db.executescript("""
+                CREATE TABLE deployment_sources(product_id, layer, path);
+                CREATE TABLE sources(path, sha256, bytes);
+                CREATE TABLE factories(source_sha, start_byte, end_byte,
+                    module_id, normalized_sha, kind);
+            """)
+            sources = {}
+            for layer, value in [("mw", 30), ("ui", 71)]:
+                raw = ('(e,t,r)=>{r.d(t,{A:()=>v});const v=%d;}' % value).encode()
+                parsed = self.module(raw.decode())
+                source_sha = hashlib.sha256(raw).hexdigest()
+                path = "fixture-" + layer
+                sources[path] = raw
+                db.execute("INSERT INTO sources VALUES(?,?,?)", (path, source_sha, len(raw)))
+                db.execute("INSERT INTO deployment_sources VALUES(?,?,?)", (717, layer, path))
+                db.execute("INSERT INTO factories VALUES(?,?,?,?,?,?)",
+                    (source_sha, 0, len(raw), "9", parsed.record["normalized_sha"], "webpack_factory"))
+            for layer, expected in [("mw", 30), ("ui", 71)]:
+                index = recipes.Index(db, layer=layer)
+                index.sources.update(sources)
+                module = index.module(717, "9")
+                self.assertEqual(module.value(module.exports["A"]), expected)
+            db.execute("DELETE FROM deployment_sources WHERE layer='ui'")
+            with self.assertRaisesRegex(ValueError, "absent or ambiguous"):
+                recipes.Index(db, layer="ui").module(717, "9")
+            with self.assertRaisesRegex(ValueError, "layer"):
+                recipes.Index(db, layer="any")
+
     def module(self, text, *, product=515, modules=None, syntax=None):
         raw = text.encode()
         parser = Parser(Language(tree_sitter_javascript.language()))
@@ -89,6 +121,28 @@ class RecipeParsing(unittest.TestCase):
         self.assertTrue(module.value(module.bindings["profile"]))
         with self.assertRaises(ValueError):
             module.value(module.bindings["info"])
+
+    def test_nullary_constant_constructor_copies_current_analog_key_defaults(self):
+        module = self.module('function(e,t,r){const shared={thresholdH:18018,thresholdL:19656},specific=()=>({KEY_CAPS_LOCK:Object.assign({},shared),KEY_INSERT:{...shared}}),profile={specific:specific(),other:specific()};}')
+        value = module.value(module.bindings["profile"])
+        self.assertEqual(value["specific"]["KEY_CAPS_LOCK"], {"thresholdH": 18018, "thresholdL": 19656})
+        value["specific"]["KEY_CAPS_LOCK"]["thresholdL"] = 1
+        self.assertEqual(value["specific"]["KEY_INSERT"]["thresholdL"], 19656)
+        self.assertEqual(value["other"]["KEY_CAPS_LOCK"]["thresholdL"], 19656)
+
+    def test_constant_constructor_rejects_arguments_async_recursion_and_effects(self):
+        for definition, call in [
+            ('()=>({value:1})', 'make(1)'),
+            ('(value)=>({value})', 'make()'),
+            ('async()=>({value:1})', 'make()'),
+            ('()=>make()', 'make()'),
+            ('()=>{effect();return {value:1}}', 'make()'),
+            ('()=>(effect(),{value:1})', 'make()'),
+            ('()=>({value:readHardware()})', 'make()'),
+        ]:
+            module = self.module('function(e,t,r){const make=' + definition + ',profile=' + call + ';}')
+            with self.assertRaises(ValueError, msg=definition):
+                module.value(module.bindings["profile"])
 
     def test_namespace_copy_and_spread_keep_last_property_precedence(self):
         source = self.module('function(e,t,r){r.d(t,{TABLE:()=>v,unused:()=>unknown});const v={value:30};}')

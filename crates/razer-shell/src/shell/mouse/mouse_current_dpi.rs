@@ -112,7 +112,9 @@ impl AppShell {
         let macro_recording = self.receiver_macro_exclusive(cx);
         for workspace in &self.devices {
             let device = workspace.read(cx).device(cx);
-            if razer_device::mouse_current_dpi::capability(device.product_id).is_none() {
+            let source = razer_device::mapping_document::MappingProduct::for_product_id(device.product_id)
+                .map_or(device.product_id, |product| product.source_product_id());
+            if razer_device::mouse_current_dpi::capability(source).is_none() {
                 continue;
             }
             let routes: Vec<_> = self

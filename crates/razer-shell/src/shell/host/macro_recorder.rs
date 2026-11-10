@@ -171,4 +171,11 @@ impl AppShell {
     pub(super) fn receiver_macro_exclusive(&self, _: &App) -> bool {
         self.macro_recorder.lock.is_exclusive()
     }
+
+    pub(super) fn sync_function_primary_recorder(&mut self, cx: &mut Context<Self>) {
+        let held = self.macro_recorder.lock.is_exclusive();
+        for workspace in &self.devices {
+            workspace.update(cx, |workspace, cx| workspace.set_function_primary_recorder_held(held, cx));
+        }
+    }
 }

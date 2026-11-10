@@ -1,6 +1,6 @@
 //! Device activation-code reading and copying from the retained Sound page.
 use super::*;
-use razer_device::earbuds_auto_pause::{ActivationCode, Operation};
+use razer_device::earbuds_auto_pause::ActivationCode;
 use razer_widgets::{keyboard_navigation::Button, theme::AudioEnhancementColors as C};
 #[derive(Default)]
 pub(super) struct State {
@@ -24,14 +24,21 @@ impl State {
 }
 impl AudioProductWorkspace {
     fn open_earbuds_activation(&mut self, cx: &mut Context<Self>) {
-        if !self.earbuds.active {
+        if !self.earbuds_sound.active() {
             return;
         }
         self.earbuds_activation.open = true;
         self.earbuds_activation.copied = false;
         self.earbuds_activation.loading = true;
-        self.earbuds.queue_edit(Operation::ActivationCode);
-        self.start_earbuds_request(cx);
+        if self
+            .earbuds_activation
+            .code
+            .as_ref()
+            .is_some_and(Result::is_err)
+        {
+            self.earbuds_activation.code = None;
+        }
+        self.request_earbuds_sound_action(super::earbuds_sound_actions::Action::ActivationCode, cx);
         cx.notify();
     }
 
@@ -45,7 +52,7 @@ impl AudioProductWorkspace {
                 .flex()
                 .items_center()
                 .gap(surface::css(4.))
-                .disabled(!self.earbuds.active)
+                .disabled(!self.earbuds_sound.active())
                 .text_size(surface::css(14.))
                 .underline()
                 .text_color(C::text())
@@ -182,6 +189,22 @@ impl AudioProductWorkspace {
                                 .child(t("ACTIVATION_CODE_FOR_THX_SPATIAL_AUDIO").to_uppercase()),
                         )
                         .child(content)
+                        .children(
+                            self.earbuds_activation
+                                .code
+                                .as_ref()
+                                .and_then(|result| result.as_ref().err())
+                                .map(|error| {
+                                    div()
+                                        .id("earbuds-activation-error")
+                                        .test_support()
+                                        .px(surface::css(20.))
+                                        .pb(surface::css(10.))
+                                        .text_size(surface::css(12.))
+                                        .text_color(cx.theme().danger)
+                                        .child(error.clone())
+                                }),
+                        )
                         .child(
                             h_flex().justify_center().pb(surface::css(25.)).child(
                                 Button::new("earbuds-activation-close")
@@ -194,8 +217,7 @@ impl AudioProductWorkspace {
                                     .text_size(surface::css(12.))
                                     .child(t("CLOSE").to_uppercase())
                                     .on_click(cx.listener(|this, _, _, cx| {
-                                        this.earbuds_activation.open = false;
-                                        this.earbuds_activation.copied = false;
+                                        this.cancel_earbuds_activation();
                                         cx.notify();
                                     })),
                             ),

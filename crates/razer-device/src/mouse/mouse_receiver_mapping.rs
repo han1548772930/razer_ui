@@ -105,6 +105,12 @@ pub struct ReceiverPeer<'a> {
     identity: Option<PeerIdentity>,
     document: Option<&'a Value>,
     serial: Option<&'a str>,
+    selection: PeerSelection<'a>,
+}
+
+enum PeerSelection<'a> {
+    Serial,
+    Prepared(Option<&'a str>),
 }
 
 impl<'a> ReceiverPeer<'a> {
@@ -117,7 +123,14 @@ impl<'a> ReceiverPeer<'a> {
             identity: Some(identity),
             document,
             serial,
+            selection: PeerSelection::Serial,
         }
+    }
+
+    /// Preserve the source selection across a temporary profile reordering.
+    pub fn with_selected_profile(mut self, selected: Option<&'a str>) -> Self {
+        self.selection = PeerSelection::Prepared(selected);
+        self
     }
 }
 
@@ -198,7 +211,10 @@ impl ReceiverProjection {
                 slave.dual_linked.is_none(),
                 "Receiver peer document is already projected"
             );
-            let selected_slave = slave.profile_for_serial(serial);
+            let selected_slave = match peer.selection {
+                PeerSelection::Serial => slave.profile_for_serial(serial),
+                PeerSelection::Prepared(selected) => selected.and_then(|guid| slave.profiles.iter().position(|profile|profile.guid==guid)),
+            };
             let (unit, report) = self.peer_route(&slave.category);
             result.report_ids.extend(slave.report_ids);
             let owner = if self.multiple {
@@ -683,6 +699,7 @@ pub fn compose_receiver(
                 identity: None,
                 document: Some(slave.document),
                 serial: Some(slave.serial),
+                selection: PeerSelection::Serial,
             })
         })
         .transpose()?;
@@ -868,6 +885,10 @@ fn dkm_keys(product_id: u32) -> &'static [DkmKey] {
         158 | 178 | 194 => &DKM_KEYS,
         _ => &DKM_KEYS[2..],
     }
+}
+
+pub(crate) fn receiver_dkm_key(product_id:u32,input:&str)->Option<u8> {
+    supports_ordinary(product_id).then(||dkm_keys(product_id).iter().find(|key|key.input_id==input).map(|key|key.key)).flatten()
 }
 
 fn default_bindings_for(product_id: u32) -> Result<Vec<Value>> {
@@ -1178,7 +1199,7 @@ fn prepare_document_inner(
         version: next_source_version(previous.as_ref().map(|value| value.version))?,
         vendor_id: 5426,
         product_id,
-        category: "MOUSE".into(),
+        category: if product_id == 104 { "MOUSEPLUSMAT" } else { "MOUSE" }.into(),
         report_ids: [
             (4, "razerKeyReportID".into()),
             (5, "hardwareEventReportID".into()),

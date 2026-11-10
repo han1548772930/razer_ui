@@ -1,7 +1,7 @@
 //! One physical mapping session serves the current source-selected logical members.
 //! Saved documents, service publication receipts and device readings stay separate.
 use super::*;
-use razer_discovery::receiver::mapping::{self, Document, Plan};
+use razer_discovery::receiver::mapping::{self, Document, Plan, Runtime};
 use razer_pages::features::ReceiverMappingPublication;
 use razer_service::mapping::device::{Reply, Session};
 use std::{collections::BTreeMap, sync::mpsc, time::Duration};
@@ -72,6 +72,7 @@ struct Group {
     members: BTreeMap<u32, MappingTargetOwner>,
     serials: BTreeMap<u32, Option<String>>,
     documents: BTreeMap<u32, Document>,
+    runtime: Runtime,
     publications: Publications,
     projection: Option<Task<()>>,
     session: Option<Session>,
@@ -223,6 +224,7 @@ impl AppShell {
                         members,
                         serials: BTreeMap::new(),
                         documents: BTreeMap::new(),
+                        runtime: Runtime::new(self.game_observer.running_games()),
                         publications: Publications::default(),
                         projection: None,
                         session: Some(session),
@@ -304,12 +306,46 @@ impl AppShell {
         group
             .publications
             .request(request.product_id(), request.revision());
+        self.project_receiver_mapping(owner, cx);
+    }
+
+    pub(super) fn sync_receiver_mapping_runtime(&mut self, cx: &mut Context<Self>) {
+        if self.close_requested {
+            return;
+        }
+        let runtime = Runtime::new(self.game_observer.running_games());
+        let owners = self
+            .receiver_mapping
+            .groups
+            .iter()
+            .filter_map(|(owner, group)| {
+                (group.current
+                    && !group.draining
+                    && group.plan.is_game_dependent()
+                    && group.runtime != runtime)
+                    .then_some(*owner)
+            })
+            .collect::<Vec<_>>();
+        for owner in owners {
+            self.project_receiver_mapping(owner, cx);
+        }
+    }
+
+    fn project_receiver_mapping(&mut self, owner: Uuid, cx: &mut Context<Self>) {
+        let Some(group) = self.receiver_mapping.groups.get_mut(&owner) else {
+            return;
+        };
+        if !group.current || group.draining {
+            return;
+        }
+        let runtime = Runtime::new(self.game_observer.running_games());
+        group.runtime = runtime;
         let revision = group.publications.submit();
         let plan = group.plan.clone();
         let documents = group.documents.clone();
         group.projection = Some(cx.spawn(async move |shell, cx| {
             let result = cx
-                .background_spawn(async move { plan.project(&documents) })
+                .background_spawn(async move { plan.project_with_runtime(&documents, runtime) })
                 .await;
             let _ = shell.update(cx, |shell, cx| {
                 let Some(group) = shell.receiver_mapping.groups.get_mut(&owner) else {
@@ -349,6 +385,7 @@ impl AppShell {
                         .map_err(anyhow::Error::msg)
                 });
                 if let Err(error) = result {
+                    log::warn!("[receiver mapping projection] {error:#}");
                     let pending = group.publications.fail_all();
                     acknowledge(
                         group,
@@ -659,5 +696,34 @@ mod tests {
         let combined = publications.submit();
         publications.projected(combined, &[158, 190]);
         assert_eq!(publications.complete(combined), [(190, 2)]);
+    }
+
+    #[test]
+    fn game_reprojection_cannot_confirm_a_later_save_or_an_omitted_keyboard() {
+        let mut publications = Publications::default();
+        publications.request(158, 7);
+        publications.request(600, 4);
+        let saved = publications.submit();
+        publications.projected(saved, &[158, 600]);
+
+        // A game observation changes the physical document without adding a
+        // logical profile save. Its reply cannot confirm the following edit.
+        let game_changed = publications.submit();
+        publications.projected(game_changed, &[158, 600]);
+        publications.request(600, 5);
+        let edited = publications.submit();
+        assert!(publications.complete(saved).is_empty());
+        assert!(publications.complete(game_changed).is_empty());
+        publications.projected(edited, &[158]);
+        assert_eq!(publications.complete(edited), [(158, 7)]);
+
+        let keyboard_ready = publications.submit();
+        publications.projected(keyboard_ready, &[158, 600]);
+        assert_eq!(publications.complete(keyboard_ready), [(600, 5)]);
+        assert!(publications.complete(keyboard_ready).is_empty());
+
+        let no_pending_save = publications.submit();
+        publications.projected(no_pending_save, &[158, 600]);
+        assert!(publications.complete(no_pending_save).is_empty());
     }
 }

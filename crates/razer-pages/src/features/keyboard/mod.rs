@@ -39,6 +39,8 @@ pub use legacy_mapping::{KeyboardLegacyProfileNavigation, KeyboardLegacyRuntimeS
 mod chroma_status;
 #[path = "keyboard_customize_gates.rs"]
 mod customize_gates;
+#[path = "keyboard_function_primary.rs"]
+mod function_primary;
 #[path = "keyboard_keymap_bar.rs"]
 mod keymap_bar;
 #[path = "keyboard_layout.rs"]
@@ -234,6 +236,7 @@ pub struct KeyboardProductWorkspace {
     mapping_login_warning: mapping_login_warning::State,
     mapping_capabilities: Result<razer_model::mapping_requirements::MappingCapabilities, String>,
     legacy_mapping: legacy_mapping::State,
+    function_primary: function_primary::State,
 }
 
 #[derive(IntoElement)]
@@ -318,6 +321,7 @@ impl KeyboardProductWorkspace {
             analog_gamepad: analog_gamepad::State::default(),
             analog_controls: analog_controls::State::default(),
             gaming_combined: gaming_combined::State::default(),
+            function_primary: function_primary::State::default(),
             dual_link_widget: None,
             source_artwork: source_artwork::ArtworkState::default(),
             keymap_bar: keymap_bar::State::default(),
@@ -387,6 +391,7 @@ impl KeyboardProductWorkspace {
         this.restore_analog_controls();
         this.restore_gaming_combos();
         this.refresh_gaming_fn_sleep(cx);
+        this.prepare_mapping_key_tip_regions();
         // Outer workspace subscriptions become active at the end of the
         // construction effect cycle, before these first middleware requests.
         if matches!(pid, 555 | 580 | 747) {
@@ -413,6 +418,8 @@ impl KeyboardProductWorkspace {
     }
 
     pub fn dismiss_editors(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.function_primary.cancel();
+        self.reset_mapping_key_tip();
         self.set_keypad_active(false, cx);
         self.finish_gaming_recording(false, window, cx);
         self.leave_analog_controls(window, cx);
@@ -429,6 +436,8 @@ impl KeyboardProductWorkspace {
         cx: &mut Context<Self>,
     ) {
         if self.page != key {
+            self.function_primary.cancel();
+            self.reset_mapping_key_tip();
             self.finish_gaming_recording(false, window, cx);
             self.leave_analog_controls(window, cx);
             self.mapping_login_warning.unmount();
@@ -484,17 +493,19 @@ impl KeyboardProductWorkspace {
         if observation.product_id != self.spec.product_id {
             return;
         }
-        if self.source_artwork.observation().is_none_or(|previous| {
+        let layout_changed = self.source_artwork.observation().is_none_or(|previous| {
             previous.product_id != observation.product_id
                 || previous.edition_id != observation.edition_id
                 || previous.layout_id != observation.layout_id
-        }) {
+        });
+        if layout_changed {
             self.analog_gamepad.floating.key_bounds.borrow_mut().clear();
         }
         self.analog_gamepad.layout = Some(observation.layout_id);
         self.source_artwork.observe(observation);
         self.source_artwork
             .prepare_surface(self.page == "TAB_CUSTOMIZE");
+        if layout_changed { self.prepare_mapping_key_tip_regions(); }
         cx.notify();
     }
     fn keyboard_shapes(&self) -> &'static [razer_assets::KeyboardKey] {
@@ -518,6 +529,7 @@ impl KeyboardProductWorkspace {
         }
         self.cancel_pending_calibration_start();
         self.factory_default_profile = factory_default_profile;
+        self.reset_mapping_key_tip();
         if factory_default_profile {
             self.finish_gaming_recording(false, window, cx);
             self.leave_analog_controls(window, cx);
@@ -537,6 +549,8 @@ impl KeyboardProductWorkspace {
         snapshot
     }
     pub fn restore(&mut self, value: Option<&Value>, window: &mut Window, cx: &mut Context<Self>) {
+        self.function_primary.cancel();
+        self.reset_mapping_key_tip();
         self.cancel_pending_calibration_start();
         self.finish_gaming_recording(false, window, cx);
         self.leave_analog_controls(window, cx);
@@ -1123,6 +1137,7 @@ impl KeyboardProductWorkspace {
                 let [x, y, w, h] = key.bounds;
                 let drop_bounds = self.analog_gamepad.floating.key_bounds.clone();
                 let drop_region = format!("{id}-{x}-{y}");
+                let tip_region = drop_region.clone();
                 // Current 515/678/679/688/742 SVG callers consume the
                 // updateButtonWithMappings producer's `isMapped`, not merely
                 // the presence of a profile mapping or actuation-only entry.
@@ -1217,6 +1232,7 @@ impl KeyboardProductWorkspace {
                                     cx.notify();
                                 }),
                                 cx.listener(move |this, hover, _, cx| {
+                                    this.hover_mapping_key_tip(&hover_id, &tip_region, *hover, cx);
                                     if *hover {
                                         this.hovered_key = Some(hover_id.clone());
                                     } else if this.hovered_key.as_ref() == Some(&hover_id) {
@@ -1225,7 +1241,12 @@ impl KeyboardProductWorkspace {
                                     cx.notify();
                                 }),
                             )
-                            .tooltip_enabled(!keypad)
+                            .tooltip_enabled(!keypad && !self.mapping_key_tip_supported())
+                            .hover_when_disabled(self.mapping_key_tip_supported())
+                            .hover_listener_mode(if self.mapping_key_tip_supported() {
+                                // DOM mouse hover survives keyboard activation of another control.
+                                HoverListenerMode::InputModalityIndependent
+                            } else { HoverListenerMode::InputModalityAware })
                             .disabled(
                                 !key.enabled
                                     || (self.page == "TAB_CUSTOMIZE"
@@ -1579,7 +1600,8 @@ impl KeyboardProductWorkspace {
         }
         // Current Customize roots put BodyWidgets directly after the
         // `config-row mt20 mb10`; each widget already owns its 10px margin.
-        if gaming_mode || snap_visible || self.properties_icon.is_some() || polling_visible {
+        if gaming_mode || snap_visible || self.properties_icon.is_some() || polling_visible
+            || self.spec.product_id == 717 {
             page = page.child(
                 layout::columns()
                     .when(
@@ -1603,6 +1625,7 @@ impl KeyboardProductWorkspace {
                     )
                     .when(
                         snap_right
+                            || self.spec.product_id == 717
                             || (!self.properties_on_left() && !self.properties_full_width())
                             || (polling_visible && !self.polling_on_left()),
                         |columns| {
@@ -1612,6 +1635,7 @@ impl KeyboardProductWorkspace {
                                         column.children(self.polling_panel(cx))
                                     })
                                     .when(snap_right, |column| column.children(self.snap_panel(cx)))
+                                    .children(self.function_primary_panel(cx))
                                     .when(
                                         !self.properties_on_left() && !self.properties_full_width(),
                                         |column| column.children(self.keyboard_properties(cx)),

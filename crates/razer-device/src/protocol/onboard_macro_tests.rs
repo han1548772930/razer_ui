@@ -4,6 +4,90 @@ use crate::backend::FeatureTransport;
 use anyhow::Result;
 use std::{cell::RefCell, collections::VecDeque};
 
+#[test]
+fn keyboard_reader_preserves_selected_radio_factory_without_allocating_another_route() {
+    let device = Transport::new([]);
+    for product in [600, 602, 658, 664, 697, 716, 717, 724, 727] {
+        let cap = crate::keyboard_metadata::radio_capability(product).unwrap();
+        let reader = CurrentKeyboardMacroReader::new(&device, cap).unwrap();
+        assert_eq!(reader.inner.transport.report_id, cap.report_id);
+        assert_eq!(
+            reader.inner.transport.transaction_prefix,
+            cap.transaction_prefix
+        );
+        assert_eq!(reader.inner.transport.direct_pids, cap.direct_pids);
+        let mut invalid = cap.clone();
+        invalid.report_id = 255;
+        assert!(CurrentKeyboardMacroReader::new(&device, &invalid).is_err());
+        invalid = cap.clone();
+        invalid.claim_interface = 255;
+        assert!(CurrentKeyboardMacroReader::new(&device, &invalid).is_err());
+    }
+    let receiver = crate::receiver_capabilities::all()
+        .iter()
+        .find(|receiver| receiver.claim_interface > 0)
+        .unwrap();
+    let relay =
+        crate::keyboard_metadata::relay_capability(600, u32::from(receiver.product_id)).unwrap();
+    let reader = CurrentKeyboardMacroReader::new(&device, &relay).unwrap();
+    assert!(relay.report_id > 0);
+    assert_eq!(reader.inner.transport, relay);
+    device.finish();
+}
+
+#[test]
+fn keyboard_missing_final_key_up_keeps_raw_bytes_and_does_not_relax_exact_readback() {
+    let mut cap = crate::keyboard_metadata::capability(679).unwrap().clone();
+    cap.max_retry_in = 1;
+    cap.max_retry_out = 1;
+    cap.sleep_between_out_ms = 0;
+    cap.sleep_between_out_in_ms = 0;
+    cap.sleep_between_in_ms = 0;
+    let device = Transport::new([
+        send(GET_SIZE, &[0, 7], 1, 6),
+        reply(GET_SIZE, &[0, 7, 0, 0, 0, 4], 1),
+        send(GET_MEMORY, &[0, 7, 0, 0, 0, 0, 4], 2, 11),
+        reply(GET_MEMORY, &[0, 7, 0, 0, 0, 0, 2, 1, 4], 2),
+    ])
+    .with_read_report_id(3);
+    let summary = MacroSummary {
+        metadata: decode_metadata(7, vec![0; 250]).unwrap(),
+        data_size: 4,
+        allocated_size_with_name: 512,
+    };
+    let reading = CurrentKeyboardMacroReader::new(&device, &cap)
+        .unwrap()
+        .read_details(&summary, 100, &mut txs(), &|| Ok(()))
+        .unwrap();
+    assert_eq!(reading.data_size, 4);
+    assert_eq!(reading.data, [1, 4]);
+    let projection = reading.keyboard_projection(679).unwrap();
+    assert_eq!(projection.repaired_key_up, Some(4));
+    assert_eq!(projection.items.len(), 2);
+    device.finish();
+
+    let device = Transport::new([
+        send(GET_MEMORY, &[0, 7, 0, 0, 0, 0, 4], 1, 11),
+        reply(GET_MEMORY, &[0, 7, 0, 0, 0, 0, 2, 1, 4], 1),
+    ])
+    .with_read_report_id(3);
+    let mut blocks = Vec::new();
+    let error = OnboardMacro::from_transport(&device, &cap)
+        .unwrap()
+        .read_data_bytes(
+            7,
+            4,
+            &mut txs(),
+            &|| Ok(()),
+            &mut blocks,
+            DataReadPolicy::Exact,
+        )
+        .unwrap_err();
+    assert!(error.to_string().contains("block size differs"));
+    assert_eq!(blocks[0].returned_size, 2);
+    device.finish();
+}
+
 enum Step {
     Send(Vec<u8>),
     Get(Vec<u8>),
@@ -13,13 +97,19 @@ enum Step {
 
 struct Transport {
     steps: RefCell<VecDeque<Step>>,
+    read_report_id: u8,
 }
 
 impl Transport {
     fn new(steps: impl IntoIterator<Item = Step>) -> Self {
         Self {
             steps: RefCell::new(steps.into_iter().collect()),
+            read_report_id: 0,
         }
+    }
+    fn with_read_report_id(mut self, read_report_id: u8) -> Self {
+        self.read_report_id = read_report_id;
+        self
     }
     fn finish(&self) {
         assert!(self.steps.borrow().is_empty(), "synthetic I/O remains");
@@ -44,7 +134,9 @@ impl FeatureTransport for Transport {
         }
     }
     fn get_feature(&self, report: &mut [u8]) -> Result<usize> {
-        assert_eq!(report, [0; 91]);
+        let mut expected = [0; 91];
+        expected[0] = self.read_report_id;
+        assert_eq!(report, expected);
         match self.steps.borrow_mut().pop_front().expect("unexpected IN") {
             Step::Get(response) => {
                 report[..response.len()].copy_from_slice(&response);
@@ -632,7 +724,14 @@ fn content_response_checks_u32_offsets_ids_sizes_and_missing_bytes() {
         let mut blocks = Vec::new();
         assert!(
             mouse_test(&device)
-                .read_data_bytes(7, 1, &mut txs(), &|| Ok(()), &mut blocks)
+                .read_data_bytes(
+                    7,
+                    1,
+                    &mut txs(),
+                    &|| Ok(()),
+                    &mut blocks,
+                    DataReadPolicy::Exact
+                )
                 .is_err()
         );
         assert_eq!(blocks.len(), 1);

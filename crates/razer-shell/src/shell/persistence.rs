@@ -36,6 +36,7 @@ pub(super) enum ProductSave {
     MouseDynamic(mouse_dynamic::LocalSave),
     MouseRotation(mouse_rotation::LocalSave),
     EarbudsAutoPause(earbuds_auto_pause::LocalSave),
+    EarbudsPower(earbuds_power::LocalSave),
     ProductLighting(product_lighting::ProductLightingSave),
     KeyboardLighting(keyboard_lighting_save::LocalSave),
     MouseCurrentPower(MouseCurrentPowerSave),
@@ -73,6 +74,7 @@ impl ProductSave {
             Self::MouseDynamic(save) => save.owner(),
             Self::MouseRotation(save) => save.owner(),
             Self::EarbudsAutoPause(save) => save.owner(),
+            Self::EarbudsPower(save) => save.owner(),
             Self::ProductLighting(save) => save.owner(),
             Self::KeyboardLighting(save) => save.owner(),
             Self::MouseCurrentPower(save) => save.owner(),
@@ -488,6 +490,7 @@ impl AppShell {
                 self.finish_mouse_rotation_save(save, succeeded, cx)
             }
             ProductSave::EarbudsAutoPause(save) => self.finish_earbuds_auto_pause_save(save, succeeded, cx),
+            ProductSave::EarbudsPower(save) => self.finish_earbuds_power_save(save, succeeded, cx),
             ProductSave::ProductLighting(save) => {
                 self.finish_product_lighting_save(save, succeeded, window, cx)
             }

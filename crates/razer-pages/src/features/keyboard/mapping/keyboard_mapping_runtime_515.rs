@@ -3,6 +3,8 @@
 use super::*;
 use razer_service::mapping::device::{Reply, Session};
 use std::time::{Duration, Instant};
+#[path = "keyboard_mapping_receiver.rs"]
+mod receiver;
 
 pub struct KeyboardLegacyProfileNavigation(pub Value);
 pub struct KeyboardLegacyRuntimeStatus(pub String);
@@ -12,6 +14,8 @@ impl EventEmitter<crate::features::MappingCallbackRequested> for KeyboardProduct
 
 #[derive(Default)]
 pub(super) struct State {
+    shared_owner: Option<receiver::Owner>,
+    shared_completed: Option<u64>,
     container: Option<String>,
     owner: Option<Session>,
     stopping: bool,
@@ -40,12 +44,20 @@ impl State {
 }
 impl KeyboardProductWorkspace {
     pub fn set_mapping_callback_generation(&mut self, generation: u64) {
+        if self.legacy_mapping.callback_generation != generation {
+            self.function_primary.reconnect();
+            self.reconnect_mapping_key_tip();
+            self.stop_shared_keyboard_mapping();
+        }
         self.legacy_mapping.callback_generation = generation;
     }
     pub(super) fn snap_mapping_ready(&self) -> bool {
         self.legacy_mapping.ready && !self.legacy_mapping.stopping
     }
     pub fn finish_mapping_service(&mut self) {
+        self.function_primary.stop();
+        self.stop_mapping_key_tip();
+        self.stop_shared_keyboard_mapping();
         self.legacy_mapping.stopping = true;
         self.legacy_mapping.ready = false;
         self.legacy_mapping.held_brightness.clear();
@@ -201,6 +213,10 @@ impl KeyboardProductWorkspace {
     }
 
     pub fn set_legacy_mapping_connection(&mut self, container: Option<String>) {
+        if container.is_none() {
+            self.function_primary.cancel();
+            self.reset_mapping_key_tip();
+        }
         if !matches!(self.spec.product_id, 515 | 679 | 740 | 746)
             || self.legacy_mapping.container == container
         {
@@ -339,20 +355,7 @@ impl KeyboardProductWorkspace {
                                 }
                             }
                         }
-                        let now = Instant::now();
-                        let repeating = this
-                            .legacy_mapping
-                            .held_brightness
-                            .iter()
-                            .filter(|(_, next)| **next <= now)
-                            .map(|(name, _)| name.clone())
-                            .collect::<Vec<_>>();
-                        for name in repeating {
-                            this.legacy_mapping
-                                .held_brightness
-                                .insert(name.clone(), now + Duration::from_millis(110));
-                            this.legacy_brightness_action(&name, cx);
-                        }
+                        this.repeat_legacy_brightness(cx);
                         running
                     })
                     .unwrap_or(false);
@@ -510,6 +513,9 @@ impl KeyboardProductWorkspace {
         }
     }
     pub fn consume_interdevice_mapping(&mut self, mut raw: Value, cx: &mut Context<Self>) -> bool {
+        if razer_device::keyboard_receiver_mapping::supports(self.spec.product_id) {
+            return self.consume_shared_keyboard_interdevice(raw,cx);
+        }
         if !(matches!(self.spec.product_id, 515 | 679 | 740 | 746)
             && self.legacy_mapping.owner.is_some()
             || self.spec.product_id == 756 && self.legacy_mapping.latest_connected)
@@ -558,5 +564,15 @@ impl KeyboardProductWorkspace {
             });
         }
         self.request_brightness(cx);
+    }
+
+    fn repeat_legacy_brightness(&mut self, cx: &mut Context<Self>) {
+        let now = Instant::now();
+        let repeating = self.legacy_mapping.held_brightness.iter()
+            .filter(|(_, next)| **next <= now).map(|(name, _)| name.clone()).collect::<Vec<_>>();
+        for name in repeating {
+            self.legacy_mapping.held_brightness.insert(name.clone(), now + Duration::from_millis(110));
+            self.legacy_brightness_action(&name, cx);
+        }
     }
 }

@@ -151,7 +151,8 @@ impl ServiceRequest {
             return Scope::target(target).map(Some);
         }
         if let Self::KeyboardProfileInventoryRead { target }
-        | Self::KeyboardOnboardProfilesRead { target, .. } = self
+        | Self::KeyboardOnboardProfilesRead { target, .. }
+        | Self::KeyboardFunctionSwap { target, .. } = self
         {
             use crate::keyboard_profile_inventory::Target;
             target.validate()?;

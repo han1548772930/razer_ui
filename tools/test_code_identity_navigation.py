@@ -183,5 +183,24 @@ class NavigationTests(unittest.TestCase):
         self.assertEqual([p['kind'] for p in report['pages']],['TAB_LIGHTING'])
         self.assertEqual(report['pages'][0]['selection_status'],'preceding_name_unresolved')
 
+    def test_class_forwarder_keeps_the_hoc_with_property_overrides(self):
+        code='class Page{render(){return null}}'+navigation_class('Live','TAB_LIGHTING')
+        code+='function WithMapping(Component){return class extends R.Component{constructor(props){super(props);this.setCustom=value=>this.props.save(value)}render(){let save=this.props.save;return this.props.custom&&(save=this.setCustom),J.jsx(Component,{...this.props,save})}}}const Wrapped=WithMapping(Live);'
+        code+='R.createRoot(document.getElementById("root")).render(J.jsx(Wrapped,{}));'
+        report=self.inspect(code)
+        self.assertEqual([p['kind'] for p in report['pages']],['TAB_LIGHTING'])
+        owners=[o for o in report['owners'].values() if 'component_forwarding_hoc' in o['roles']]
+        self.assertEqual(len(owners),1)
+        self.assertIn('this.props.custom',code[owners[0]['start_byte']:owners[0]['end_byte']])
+        self.assertTrue(any('hoc_render_effect' in o['roles'] for o in report['owners'].values()))
+
+    def test_class_forwarder_does_not_follow_a_shadowed_component_parameter(self):
+        code='class Page{render(){return null}}'+navigation_class('Live','TAB_LIGHTING')
+        code+='function WithMapping(Component){return class extends R.Component{render(){const Component=Other;return J.jsx(Component,{...this.props})}}}const Wrapped=WithMapping(Live);'
+        code+='R.createRoot(document.getElementById("root")).render(J.jsx(Wrapped,{}));'
+        report=self.inspect(code)
+        self.assertEqual(report['pages'],[])
+        self.assertTrue(report['failures'])
+
 
 if __name__=='__main__':unittest.main()

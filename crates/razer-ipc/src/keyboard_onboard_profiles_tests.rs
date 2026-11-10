@@ -23,7 +23,8 @@ fn observation() -> Observation {
             snapshot: Snapshot {
                 product_id: 679,
                 layout_id: 1,
-                key_inventory: razer_device::keyboard_onboard_inventory::current_679_inventory(1)
+                key_inventory: razer_device::keyboard_onboard_inventory::inventory(679, 1)
+                    .unwrap()
                     .iter()
                     .map(|key| KeyIdentity {
                         input_id: key.input_id.into(),

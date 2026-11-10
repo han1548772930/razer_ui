@@ -45,6 +45,12 @@ mod audio_notifications;
 mod audio_volume;
 #[path = "shell/audio/earbuds_auto_pause.rs"]
 mod earbuds_auto_pause;
+#[path = "shell/audio/earbuds_events.rs"]
+mod earbuds_events;
+#[path = "shell/audio/earbuds_power.rs"]
+mod earbuds_power;
+#[path = "shell/audio/earbuds_microphone.rs"]
+mod earbuds_microphone;
 #[path = "shell/audio/earbuds_system_volume.rs"]
 mod earbuds_system_volume;
 #[path = "shell/windows/chroma_studio_window.rs"]
@@ -121,6 +127,8 @@ mod keyboard_lifecycle;
 mod keyboard_local_profiles;
 #[path = "shell/keyboard/keyboard_profile_inventory.rs"]
 mod keyboard_profile_inventory;
+#[path = "shell/keyboard/keyboard_function_swap.rs"]
+mod keyboard_function_swap;
 #[path = "shell/keyboard/keyboard_sensitivity_preference.rs"]
 mod keyboard_sensitivity_preference;
 #[path = "shell/keyboard/keyboard_wristrest.rs"]
@@ -365,6 +373,7 @@ pub struct AppShell {
     keyboard_identity_cache_pending: usize,
     keyboard_local_profiles: keyboard_local_profiles::State,
     keyboard_profile_inventory: keyboard_profile_inventory::State,
+    keyboard_function_swap: keyboard_function_swap::State,
     runtime: Entity<runtime_page::RuntimePanel>,
     runtime_exit_wait: Option<Subscription>,
     device_read_scopes: BTreeMap<String, device_discovery::DeviceReadScope>,
@@ -426,6 +435,9 @@ pub struct AppShell {
     mouse_dynamic: mouse_dynamic::State,
     mouse_rotation: mouse_rotation::State,
     earbuds_auto_pause: earbuds_auto_pause::State,
+    earbuds_events: earbuds_events::State,
+    earbuds_power: earbuds_power::State,
+    earbuds_microphone: earbuds_microphone::State,
     earbuds_volume: earbuds_system_volume::State,
     mouse_power: mouse_current_power_runtime::State,
     controller_trigger_workers: usize,
@@ -652,6 +664,7 @@ impl AppShell {
             keyboard_identity_cache_pending: 0,
             keyboard_local_profiles: keyboard_local_profiles::State::default(),
             keyboard_profile_inventory: keyboard_profile_inventory::State::default(),
+            keyboard_function_swap: keyboard_function_swap::State::default(),
             runtime: runtime.clone(),
             runtime_exit_wait: None,
             receiver_devices: BTreeMap::new(),
@@ -713,6 +726,9 @@ impl AppShell {
             mouse_dynamic: mouse_dynamic::State::default(),
             mouse_rotation: mouse_rotation::State::default(),
             earbuds_auto_pause: earbuds_auto_pause::State::default(),
+            earbuds_events: earbuds_events::State::default(),
+            earbuds_power: earbuds_power::State::default(),
+            earbuds_microphone: earbuds_microphone::State::default(),
             earbuds_volume: earbuds_system_volume::State::default(),
             mouse_power: mouse_current_power_runtime::State::default(),
             controller_trigger_workers: 0,
@@ -1676,6 +1692,9 @@ impl AppShell {
                 WorkspaceEvent::KeyboardLegacyProfileRequested => {
                     this.persist_legacy_keyboard_profile(entity.clone(), window, cx);
                 }
+                WorkspaceEvent::KeyboardFunctionSwapRequested(request) => {
+                    this.request_keyboard_function_swap(entity.clone(), request.clone(), window, cx);
+                }
                 WorkspaceEvent::KeyboardLatestProfileSwitchRequested {guid,defer_persistence} => {
                     this.switch_keyboard_latest_profile(entity.clone(),guid.clone(),*defer_persistence,cx);
                 }
@@ -1712,6 +1731,12 @@ impl AppShell {
                 }
                 WorkspaceEvent::EarbudsAutoPauseRequested(request) => {
                     this.request_earbuds_auto_pause(entity.clone(), request.clone(), window, cx);
+                }
+                WorkspaceEvent::EarbudsPowerRequested(request) => {
+                    this.request_earbuds_power(entity.clone(), request.clone(), window, cx);
+                }
+                WorkspaceEvent::EarbudsMicrophoneRequested(request) => {
+                    this.request_earbuds_microphone(entity.clone(), request.clone(), window, cx);
                 }
                 WorkspaceEvent::LeviathanRequested(request) => {
                     this.request_leviathan(entity.clone(),request.clone(),window,cx);
@@ -2637,6 +2662,12 @@ impl AppShell {
             self.continue_save_queue(false, cx);
             return false;
         }
+        if let Err(error) = self.rebase_earbuds_power_save(&mut request, cx) {
+            self.status = format!("耳塞电源配置保存失败：{error:#}");
+            self.cancel_prepared_save(request, cx);
+            self.continue_save_queue(false, cx);
+            return false;
+        }
         if let Err(error) = self.rebase_mouse_philips_save(&mut request, cx) {
             self.status = format!("Philips calibration local storage failed: {error:#}");
             self.cancel_prepared_save(request, cx);
@@ -2975,6 +3006,7 @@ impl AppShell {
             || self.keyboard_brightness.pending()
             || self.close_requested && self.power_observation.pending()
             || self.keyboard_profile_inventory.pending()
+            || self.keyboard_function_swap.pending()
             || self.keyboard_game_exit_pending()
             || self.keyboard_identity_cache_pending > 0
             || self.keyboard_local_profiles.pending_batches > 0

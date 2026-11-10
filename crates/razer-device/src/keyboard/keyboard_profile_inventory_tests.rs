@@ -1,4 +1,10 @@
 use super::*;
+
+const OBM_PRODUCTS: &[u32] = &[
+    550, 551, 552, 577, 579, 590, 599, 600, 602, 614, 617, 619, 620, 642, 647, 653, 658, 661, 664,
+    677, 678, 679, 688, 691, 697, 708, 716, 717, 719, 720, 721, 724, 727, 728, 739, 740, 741, 742,
+    746, 747, 752, 756,
+];
 use crate::keyboard_control_test_transport::{
     Mock, Reply, assert_report_integrity, assert_report_integrity_with_id, reply, sequence,
 };

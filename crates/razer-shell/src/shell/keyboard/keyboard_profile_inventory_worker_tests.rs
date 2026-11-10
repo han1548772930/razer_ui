@@ -29,7 +29,8 @@ fn target(pid: u32) -> Target {
 
 fn complete(options: &ReadOptions) -> CompleteReading {
     let mut keys =
-        razer_device::keyboard_onboard_inventory::current_679_inventory(options.layout_id)
+        razer_device::keyboard_onboard_inventory::inventory(679, options.layout_id)
+            .unwrap()
             .iter()
             .map(|key| KeyIdentity {
                 input_id: key.input_id.to_owned(),

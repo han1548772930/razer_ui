@@ -14,6 +14,8 @@ use std::path::Path;
 
 mod defaults;
 mod equalizer;
+mod power;
+pub use power::{accept_power_saved, merge_power, read_power, read_power_profile};
 pub use equalizer::{read_equalizer, merge_equalizer, initial_equalizer, read_equalizer_presets, merge_equalizer_source, initial_equalizer_presets, equalizer_defaults, initial_equalizer_source};
 
 const AUTO_PAUSE_FIELD: &str = "audioAutoPauseControl";

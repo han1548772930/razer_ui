@@ -75,6 +75,29 @@ impl FeatureTransport for Mock {
 }
 
 #[test]
+fn physical_dpi_identity_keeps_mounted105_as_source104_radio_and_rejects_other_routes() {
+    let source = capability(104).unwrap();
+    assert!(!source.is_dongle(104).unwrap());
+    assert!(source.is_dongle(105).unwrap());
+    for physical in [190, 191, 227, 228, 65535] {
+        assert!(source.is_dongle(physical).is_err(), "{physical}");
+    }
+    for (source, physical) in [(224, 224), (190, 191)] {
+        assert!(capability(source).unwrap().is_dongle(physical).unwrap());
+    }
+    for (source, physical) in [(148, 148), (185, 185), (182, 183)] {
+        assert!(
+            capability(source).unwrap().is_dongle(physical).is_err(),
+            "DualLink needs peer qualification"
+        );
+    }
+    assert!(
+        capability(226).unwrap().is_dongle(228).is_err(),
+        "BLE has its own adapter"
+    );
+}
+
+#[test]
 fn one_shot_admission_failure_stops_all_current_dpi_routes() {
     use crate::feature_exchange::tests::ExchangeProbe;
     use crate::keyboard_control_test_transport::Mock as Script;

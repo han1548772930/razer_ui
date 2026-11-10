@@ -64,6 +64,25 @@ impl Capability {
         }
     }
 
+    /// Qualify the single-device transport against its mounted and middleware
+    /// identities. A host catalogue entry can mount an ordinary dongle itself.
+    pub fn is_dongle(&self, physical_pid: u32) -> anyhow::Result<bool> {
+        use crate::device_identity::{self, IdentityLookup};
+        let IdentityLookup::Unique(identity) = device_identity::lookup(physical_pid) else {
+            anyhow::bail!("Current mouse DPI target has no unique physical identity");
+        };
+        let source = device_identity::middleware_product_identity(identity.product_id)
+            .context("Current mouse DPI middleware identity is absent")?;
+        let is_dongle = identity.is_dongle || source.dongle_id == Some(physical_pid);
+        ensure!(
+            source.product_id == self.product_id
+                && !identity.is_ble
+                && self.is_physical_branch(physical_pid, is_dongle),
+            "Current mouse DPI physical branch differs"
+        );
+        Ok(is_dongle)
+    }
+
     /// The command owner is inherited by the current DualLink mouse sender.
     /// Binding a master still requires the source peer and two live queries.
     pub fn receiver_session(

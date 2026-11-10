@@ -4,6 +4,7 @@ import os
 import io
 from contextlib import ExitStack, nullcontext, redirect_stdout
 from pathlib import Path
+from types import SimpleNamespace
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -65,6 +66,44 @@ class CompletedScratchFilesTests(unittest.TestCase):
         self.assertEqual(workspace._clean_tree(row["path"])["directories"], [])
         self.assertEqual(scratch_files.reference_view({}, self.manifest, row), {})
         self.assertEqual(scratch_files.reference_view({"self": row["path"]}, row["path"], row), {})
+
+    def test_large_owner_ignores_only_verified_creation_fields(self):
+        row = self.row()
+        owner = self.root / self.owner
+        original_stat = Path.stat
+
+        def stat(path, *args, **kwargs):
+            value = original_stat(path, *args, **kwargs)
+            if path != owner:
+                return value
+            fields = {name: getattr(value, name) for name in dir(value) if name.startswith("st_")}
+            fields["st_size"] = 65 * 1024 * 1024
+            return SimpleNamespace(**fields)
+
+        cases = [({}, False), ({"future_input": row["path"]}, True),
+                 ({"other": {"temporary_files_created": [row["path"]]}}, True)]
+        for siblings, retained in cases:
+            self.write(self.owner, {"done": self.report, **siblings})
+            with self.subTest(siblings=siblings), patch.object(Path, "stat", stat):
+                references, errors = workspace._clean_references([row])
+            self.assertEqual(errors, [])
+            self.assertEqual(references, {row["path"]: [self.owner]} if retained else {})
+
+        self.write(self.owner, {"done": {**self.report, "source_changed": True}})
+        with patch.object(Path, "stat", stat):
+            _, errors = workspace._clean_references([row])
+        self.assertEqual(len(errors), 1)
+        self.assertIn("canonical identity changed", errors[0])
+        self.assertTrue(self.file.exists())
+
+    def test_streamed_paths_keep_arrays_and_nested_history_distinct(self):
+        self.write(self.owner, {"done": self.report,
+                               "nested": [{"temporary_files_created": [self.item["path"]]}]})
+        self.assertEqual(list(workspace._clean_stream_json_dependencies(
+            self.root / self.owner, with_paths=True)), [
+                (("done", "temporary_files_created", None), self.item["path"]),
+                (("nested", None, "temporary_files_created", None), self.item["path"]),
+            ])
 
     def test_changed_bytes_changed_proof_and_unsafe_scope_fail(self):
         self.file.write_text('{"different":true}', encoding="utf-8")

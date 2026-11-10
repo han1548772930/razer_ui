@@ -988,12 +988,34 @@ fn cancellation_after_receipt_does_not_publish_the_old_response() {
     guard.store(false, std::sync::atomic::Ordering::Release);
     let error = client.complete_response(1, false, response).unwrap_err();
     assert!(format!("{error:#}").contains("旧响应未提交"));
+    assert_eq!(error.downcast_ref::<request_cancellation::CanceledResponse>().unwrap().data,
+        serde_json::json!({"layout":17}));
     assert!(client.is_stopped());
     assert!(matches!(
         pending.try_recv(),
         Err(mpsc::TryRecvError::Disconnected)
     ));
     assert!(client.request(ServiceRequest::KeyboardLayoutRead).is_err());
+}
+
+#[test]
+fn earbuds_equalizer_cancellation_retains_fixed_received_data_and_keeps_client_failed() {
+    let data: Value = serde_json::from_slice(br#"{"product_id":2657,"operation":{"Equalizer":{"setting":{"mode":"standard","preset":"music","bands":[1,1,1,1,1,1,1,1,1,1]}}},"connected":null,"left_battery":null,"right_battery":null,"observation":"Unobserved","write":"Confirmed","equalizer":{"setting":{"mode":"standard","preset":"music","bands":[1,1,1,1,1,1,1,1,1,1]},"preset":"Confirmed","bands":"Confirmed"}}"#).unwrap();
+    let (mut client, pending) = simulated_client(reply(1, Some(data.clone()), None, false));
+    let guard = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(true));
+    client.set_request_guard(guard.clone());
+    let response = client.responses.recv().unwrap().unwrap();
+    guard.store(false, std::sync::atomic::Ordering::Release);
+    let error = client.complete_response(1, false, response).unwrap_err();
+    let retained = error.downcast_ref::<request_cancellation::CanceledResponse>().unwrap();
+    assert_eq!(retained.data, data);
+    let diagnostic: razer_device::earbuds_auto_pause::Report = serde_json::from_value(retained.data.clone()).unwrap();
+    let submission = diagnostic.equalizer.unwrap();
+    assert!(submission.preset.acknowledged() && submission.bands.acknowledged());
+    assert!(client.is_stopped());
+    guard.store(true, std::sync::atomic::Ordering::Release);
+    assert!(client.request(ServiceRequest::HidNodes).is_err());
+    assert!(matches!(pending.try_recv(), Err(mpsc::TryRecvError::Disconnected)));
 }
 
 #[test]

@@ -80,6 +80,7 @@ pub use source_workspace::CameraIdentityRequested;
 pub use source_workspace::ControllerInitializationRequested;
 pub use source_workspace::ControllerSocdRequested;
 pub use source_workspace::ReceiverProfileSelectionRequested;
+pub use source_workspace::KeyboardFunctionSwapRequested;
 #[path = "gamepad/mod.rs"]
 pub mod gamepad_products;
 #[path = "keyboard/mod.rs"]
@@ -194,6 +195,8 @@ pub use audio_products::{
 pub use audio_products::{
     AudioVolumeCompletion, AudioVolumeOperation, AudioVolumeReply, AudioVolumeRequest,
     EarbudsAutoPauseRequested,
+    EarbudsPowerRequested,
+    EarbudsMicrophoneRequested,
     EarbudsVolumeRequested,
     LeviathanObservation, LeviathanOperation, LeviathanRequest, SurroundObservation,
     SurroundOperation, SurroundRequest,

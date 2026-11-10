@@ -111,6 +111,7 @@ impl AppShell {
                                 return None;
                             }
                             this.refresh_macro_recorder_storage();
+                            this.sync_function_primary_recorder(cx);
                             if this.keyboard_power.has_pending_recorder() {
                                 this.sync_keyboard_power_owners(cx);
                             }

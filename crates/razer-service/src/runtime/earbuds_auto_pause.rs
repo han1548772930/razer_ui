@@ -241,12 +241,57 @@ pub(super) fn execute(
             )
         })
         .context("Earbud enhancement operation")?;
+    encode_report(report, &source_validate)
+}
+
+pub(super) fn encode_report(
+    report: earbuds_auto_pause::Report,
+    validate: &dyn Fn() -> Result<()>,
+) -> Result<serde_json::Value> {
+    if let Some(submission) = &report.equalizer {
+        submission.validate()?;
+        let mut errors = Vec::new();
+        if let razer_device::earbuds_protocol40::WriteOutcome::Failed(error) = &report.write {
+            errors.push(error.clone());
+        }
+        if let Err(error) = validate() {
+            errors.push(format!("{error:#}"));
+        }
+        if !errors.is_empty() {
+            return Err(razer_device::earbuds_equalizer::Failure {
+                product_id: report.product_id,
+                submission: submission.clone(),
+                message: errors.join("; "),
+            }.into());
+        }
+    }
     serde_json::to_value(report).map_err(Into::into)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn earbuds_equalizer_worker_encodes_partial_ack_as_typed_failure_without_success_data() {
+        use razer_device::earbuds_equalizer::{Mode, Preset, Setting, Submission};
+        for completed in [false, true] {
+            let report = earbuds_auto_pause::Report::from_equalizer(2657,
+                razer_device::earbuds_equalizer::Report {
+                    setting: Setting { mode: Mode::Standard, preset: Preset::Music, bands: [2; 10] },
+                    preset: Submission::Confirmed,
+                    bands: if completed { Submission::Confirmed } else {
+                        Submission::Cancelled { message: "cancelled before band ACK".into(), acknowledged: false }
+                    },
+                }).unwrap();
+            let error = encode_report(report, &|| anyhow::bail!("worker scope expired")).unwrap_err();
+            let Some(razer_ipc::FailureDiagnostics::EarbudsEqualizer(failure)) =
+                razer_ipc::FailureDiagnostics::from_error(&error) else { panic!("EQ diagnostic domain") };
+            assert_eq!(failure.product_id, 2657);
+            assert!(failure.submission.preset.acknowledged());
+            assert_eq!(failure.submission.bands.acknowledged(), completed);
+            assert!(failure.message.contains("worker scope expired"));
+        }
+    }
     fn target(path: &str) -> Target {
         Target::Collection(HidNode {
             path: path.as_bytes().to_vec(),

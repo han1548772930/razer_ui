@@ -2,6 +2,78 @@ use super::*;
 use std::{cell::Cell, collections::VecDeque, sync::Mutex};
 
 #[test]
+fn onboard_read_preserves_radio_transaction_namespace_and_unknown_snap_state() {
+    use crate::keyboard_control_test_transport::{Mock as Transport, reply as response};
+    for product in [716, 724, 727] {
+        let mut cap = crate::keyboard_metadata::radio_capability(product)
+            .unwrap()
+            .clone();
+        cap.max_retry_in = 1;
+        cap.max_retry_out = 1;
+        cap.sleep_between_out_ms = 0;
+        cap.sleep_between_out_in_ms = 0;
+        cap.sleep_between_in_ms = 0;
+        let mut reply = response(&[2, 0, 7]);
+        reply.report_id = cap.report_id;
+        let device = Transport::new([reply]);
+        let value = read_onboard(
+            &device,
+            &cap,
+            KeyboardAnalogQuery::SnapTap { profile_id: 2 },
+            0x85,
+            &|| Ok(()),
+        )
+        .unwrap();
+        assert!(matches!(
+            value,
+            KeyboardAnalogObservation::SnapTap {
+                raw_enabled: 7,
+                declared_pairs: 0,
+                ..
+            }
+        ));
+        let sent = device.sent();
+        assert_eq!(sent.len(), 1);
+        assert_eq!(sent[0][0], cap.report_id);
+        assert_eq!(sent[0][2], 0x85);
+        assert_eq!(&sent[0][6..10], &[15, 2, 167, 2]);
+        assert!(
+            read_onboard(
+                &device,
+                &cap,
+                KeyboardAnalogQuery::SnapTap { profile_id: 2 },
+                5,
+                &|| Ok(())
+            )
+            .is_err()
+        );
+        assert_eq!(device.sent().len(), 1);
+    }
+    let mut cap = crate::keyboard_metadata::capability(739).unwrap().clone();
+    cap.sleep_between_out_ms = 0;
+    cap.sleep_between_out_in_ms = 0;
+    cap.sleep_between_in_ms = 0;
+    let device = Transport::new([response(&[3, 0, 0])]);
+    let value = read_onboard(
+        &device,
+        &cap,
+        KeyboardAnalogQuery::SnapTap { profile_id: 3 },
+        5,
+        &|| Ok(()),
+    )
+    .unwrap();
+    assert!(matches!(
+        value,
+        KeyboardAnalogObservation::SnapTap {
+            profile_id: 3,
+            raw_enabled: 0,
+            ..
+        }
+    ));
+    assert_eq!(device.sent().len(), 1);
+}
+
+#[test]
 fn release_failure_retains_analog_ack_without_readback_or_later_chunks() {
     let device = Mock::new([reply(&[0xd3])]);
     let probe = crate::feature_exchange::tests::ExchangeProbe::failing_finish(&device);

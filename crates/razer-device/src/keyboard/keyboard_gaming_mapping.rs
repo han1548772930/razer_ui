@@ -142,6 +142,16 @@ impl KeyboardGamingMappingPlan {
             supports_product(product_id),
             "Gaming mapping product was not source audited"
         );
+        Self::prepare_receiver(app_engine, default_engine, settings, context, validate)
+    }
+
+    pub(crate) fn prepare_receiver(
+        app_engine: &Value,
+        default_engine: &Value,
+        settings: GamingModeSettings,
+        context: GamingMappingContext,
+        validate: impl Fn() -> Result<()>,
+    ) -> Result<Self> {
         ensure!(
             settings.state <= 2,
             "Unknown gaming-mode state {}",

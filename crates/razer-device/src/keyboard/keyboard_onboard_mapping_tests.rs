@@ -328,3 +328,40 @@ fn undefined_source_branches_remain_unknown_with_complete_raw_fields() {
     }
     assert_eq!(output(12, 0, [255, 0, 0, 0, 0]), Output::Hypershift);
 }
+
+#[test]
+fn current_raw_perfect180_fields_remain_separate_from_keyboard_ui_defaults() {
+    assert_eq!(
+        output(22, 0, [1, 1, 2, 7, 0]),
+        Output::Perfect180(Perfect180Output {
+            raw_direction: 1,
+            direction: Some(Perfect180Direction::Left),
+            report_count: 258,
+            raw_enabled: 7,
+        })
+    );
+    assert!(matches!(
+        output(22, 0, [9, 0, 0, 0, 0]),
+        Output::Perfect180(Perfect180Output {
+            direction: None,
+            raw_direction: 9,
+            report_count: 0,
+            raw_enabled: 0
+        })
+    ));
+    assert!(matches!(
+        default_output("KEY_A", Mode::Normal),
+        Some(Output::Keyboard(_))
+    ));
+    for (function_id, required) in [(22, 4), (13, 4), (3, 3), (4, 2), (10, 2), (17, 1)] {
+        let wire = ButtonAssignment {
+            data_size: required - 1,
+            ..raw(function_id, 0, [1, 2, 3, 4, 5])
+        };
+        let reading = decode(&wire, &catalog()).unwrap();
+        assert_eq!(reading.raw, wire);
+        assert!(
+            matches!(reading.output, Output::Unknown { reason: UnknownReason::IncompleteFunctionData { required: value, returned }, .. } if value == required && returned == required - 1)
+        );
+    }
+}

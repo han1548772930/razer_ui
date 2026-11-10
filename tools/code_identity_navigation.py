@@ -340,6 +340,27 @@ class Navigation:
         if len(returned) != 1:
             return False
         call = ast.unwrap(returned[0])
+        if call.type in {"class", "class_declaration"}:
+            renderer = ast.callable_member(call, b"render")
+            output = self.returns(renderer)
+            if len(output) != 1:
+                return False
+            jsx = output[0]
+            while jsx.type in {"parenthesized_expression", "sequence_expression"}:
+                for prefix in jsx.named_children[:-1]:
+                    self.retain(src, prefix, "hoc_render_effect")
+                jsx = jsx.named_children[-1]
+            if jsx.type != "call_expression":
+                return False
+            callee = ast.unwrap(jsx.child_by_field_name("function"))
+            args = ast.arguments(jsx)
+            if (not (ast.member(callee, b"jsx") or ast.member(callee, b"jsxs"))
+                    or len(args) != 2 or args[0].type != "identifier"):
+                return False
+            # The complete HOC remains retained by resolve: constructor work
+            # and prop overrides are not claimed to be behaviorally transparent.
+            binding = ast.bindings.resolve(args[0].text.decode(), args[0].start_byte)
+            return binding.get("start_byte") == params[0].start_byte
         if call.type in {'arrow_function','function_expression'}:
             output=self.returns(call)
             if len(output)!=1:return False

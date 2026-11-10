@@ -38,10 +38,19 @@ fn discover_with(
             continue;
         }
         for identity in identities.candidates() {
+            let direct = DirectIdentity::from_catalog(identity);
             let read_cap = razer_device::keyboard_settings::capability(identity.product_id)
                 .map(|cap| &cap.transport)
                 .or_else(|| razer_device::keyboard_metadata::capability(identity.product_id))
-                .or_else(|| razer_device::device_reads::capability(identity.product_id));
+                .or_else(|| razer_device::device_reads::capability(identity.product_id))
+                .or_else(|| {
+                    (direct.source_product_id != identity.product_id)
+                        .then(|| {
+                            razer_device::mouse_current_dpi::capability(direct.source_product_id)
+                        })
+                        .flatten()
+                        .map(|source| source.transport())
+                });
             let receiver = razer_device::receiver_capabilities::capability(node.product_id);
             let indicator = razer_device::mouse_indicator_led::capability(identity.product_id)
                 .filter(|source| source.accepts(pid, None))
@@ -154,21 +163,13 @@ fn discover_with(
                 keyboard_serial: None,
                 hid_node: Some(node.clone()),
                 container: scope.clone(),
-                serial: if identity.is_dongle {
+                serial: if direct.transport == Some(ObservedTransport::Dongle) {
                     String::new()
                 } else {
                     node.serial_number.clone().unwrap_or_default()
                 },
                 use_ble: identity.is_ble,
-                transport: if identity.is_ble {
-                    Some(ObservedTransport::Ble)
-                } else if identity.is_dongle {
-                    Some(ObservedTransport::Dongle)
-                } else if identity.real_product_id == identity.source_product_id {
-                    Some(ObservedTransport::Wired)
-                } else {
-                    None
-                },
+                transport: direct.transport,
                 connection: DeviceConnectionObservation::HidPresent,
             });
             if receiver.is_none() || !queried_receivers.insert(scope.clone()) {
@@ -201,6 +202,61 @@ fn discover_with(
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn mounted_alias_collection_uses_source_specification_and_keeps_radio_unobserved() {
+        let node = HidNode {
+            path: b"mounted105-interface0".to_vec(),
+            vendor_id: 0x1532,
+            product_id: 105,
+            interface_number: 0,
+            usage_page: 0xff00,
+            usage: 1,
+            release_number: 0,
+            serial_number: Some("RECEIVER-USB-STRING".into()),
+            manufacturer: None,
+            product: None,
+        };
+        let mut requests = 0;
+        let snapshot = discover_with(&Ok(json!({"nodes":[node]})), &mut |request| {
+            requests += 1;
+            match request {
+                ServiceRequest::HidNodeReports { node: actual } => {
+                    assert_eq!(actual, node);
+                    Ok(json!({"node":actual,"reports":{"feature":{"0":91}}}))
+                }
+                _ => panic!("A descriptor query must not imply a radio query or write"),
+            }
+        })
+        .unwrap();
+        assert_eq!(requests, 1);
+        let [observed] = snapshot.devices() else {
+            panic!("source104 collection must mount105")
+        };
+        assert_eq!(observed.product_id(), 105);
+        assert_eq!(observed.physical_product_id(), 105);
+        assert_eq!(observed.transport(), Some(ObservedTransport::Dongle));
+        assert_eq!(
+            observed.connection(),
+            DeviceConnectionObservation::HidPresent
+        );
+        assert_eq!(observed.hid_node(), Some(&node));
+        assert!(observed.serial.is_empty());
+        assert!(observed.read_values().is_none());
+        assert!(crate::direct::mouse_current_dpi::available(observed));
+        let mut wrong = node.clone();
+        wrong.interface_number = 1;
+        let rejected = discover_with(&Ok(json!({"nodes":[wrong]})), &mut |_| {
+            panic!("wrong source interface must not request a report")
+        })
+        .unwrap();
+        assert!(rejected.devices().is_empty());
+        let failed = discover_with(&Ok(json!({"nodes":[node]})), &mut |_| {
+            anyhow::bail!("descriptor unavailable")
+        })
+        .unwrap();
+        assert!(failed.devices().is_empty());
+    }
 
     #[test]
     fn mika_shared_collection_publishes_both_products_without_guessing_a_peer() {

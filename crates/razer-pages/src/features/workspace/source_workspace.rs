@@ -48,6 +48,9 @@ mod keyboard_linked_profiles;
 mod keyboard_local_profiles;
 #[path = "source_workspace/keyboard_mapping.rs"]
 mod keyboard_mapping;
+#[path = "source_workspace/keyboard_function_swap.rs"]
+mod keyboard_function_swap;
+pub use keyboard_function_swap::KeyboardFunctionSwapRequested;
 #[path = "source_workspace/keyboard_profile_inventory.rs"]
 mod keyboard_profile_inventory;
 pub use camera_identity::CameraIdentityRequested;
@@ -146,6 +149,7 @@ pub struct SourceProductWorkspace {
     mouse_scroll_connection_key: Option<String>,
     mapping_connection_generation: u64,
     mapping_reconnect: mapping_reconnect::State,
+    keyboard_function_swap: keyboard_function_swap::State,
     keyboard_latest_ble: bool,
     keyboard_profile_inventory: keyboard_profile_inventory::Owner,
     controller_initialization: controller_initialization::Owner,
@@ -1069,6 +1073,7 @@ impl SourceProductWorkspace {
         if connection_changed {
             self.mapping_connection_generation = self.mapping_connection_generation.wrapping_add(1);
             self.mapping_serial_generation = None;
+            self.keyboard_function_swap.invalidate();
             self.mouse_profile_observed_serial = None;
             self.invalidate_keyboard_profile_inventory(observation.is_some());
             self.invalidate_controller_initialization(cx);
@@ -1302,32 +1307,47 @@ impl SourceProductWorkspace {
     fn sync_audio_volume_activity(&self, cx: &mut Context<Self>) {
         if let FamilyBody::Audio(body) = &self.body {
             body.update(cx, |body, cx| body.set_earbuds_context(&self.device, self.active, cx));
+            let connected = matches!(
+                self.device.dashboard.connection_observation,
+                Some(
+                    razer_model::model::DeviceConnectionObservation::UsbPresent
+                        | razer_model::model::DeviceConnectionObservation::HidPresent
+                )
+            );
             let active = self.active
-                && self
-                    .current_page()
-                    .is_some_and(|page| page.kind().key() == "TAB_SOUND")
-                && matches!(
-                    self.device.dashboard.connection_observation,
-                    Some(
-                        razer_model::model::DeviceConnectionObservation::UsbPresent
-                            | razer_model::model::DeviceConnectionObservation::HidPresent
-                    )
-                );
+                && connected
+                && self.current_page().is_some_and(|page| page.kind().key() == "TAB_SOUND");
+            let local_active = self.active && connected && !self.exiting;
+            let microphone_active = local_active
+                && self.current_page().is_some_and(|page| page.kind().key() == "TAB_MIC");
             body.update(cx, |body, cx| {
+                body.set_earbuds_power_context(
+                    &self.device, local_active, self.mapping_connection_generation, cx,
+                );
+                body.set_earbuds_microphone_context(
+                    &self.device, microphone_active, self.mapping_connection_generation, cx,
+                );
+                body.set_earbuds_sound_context(
+                    &self.device, local_active, self.mapping_connection_generation, cx,
+                );
                 body.set_earbuds_volume_context(&self.device, active && !self.exiting, self.mapping_connection_generation, cx);
                 body.set_volume_active(active, cx);
                 body.set_leviathan_active(active, cx);
-                let surround_active = self.active
-                    && !self.exiting
-                    && matches!(
-                        self.device.dashboard.connection_observation,
-                        Some(
-                            razer_model::model::DeviceConnectionObservation::UsbPresent
-                                | razer_model::model::DeviceConnectionObservation::HidPresent
-                        )
-                    );
-                body.set_surround_active(surround_active, &self.device.device_container_id, cx);
+                body.set_surround_active(local_active, &self.device.device_container_id, cx);
             });
+        }
+    }
+    pub fn earbuds_notifications_active(&self) -> bool {
+        self.active
+            && !self.exiting
+            && razer_device::earbuds_protocol40::supports_auto_pause(self.device.product_id)
+            && matches!(self.device.dashboard.connection_observation,
+                Some(razer_model::model::DeviceConnectionObservation::UsbPresent
+                    | razer_model::model::DeviceConnectionObservation::HidPresent))
+    }
+    pub fn set_function_primary_recorder_held(&mut self, held: bool, cx: &mut Context<Self>) {
+        if let FamilyBody::Keyboard(body) = &self.body {
+            body.update(cx, |body, cx| body.set_function_primary_recorder_held(held, cx));
         }
     }
     fn sync_camera_activity(&self, cx: &mut Context<Self>) {
@@ -2830,6 +2850,10 @@ impl SourceProductWorkspace {
         }
     }
     fn persist_source_profile(&mut self, apply: bool, cx: &mut Context<Self>) {
+        if let Err(error)=self.update_keyboard_selection_for_save() {
+            cx.emit(WorkspaceEvent::KeyboardLegacyRuntimeStatus(format!("键盘配置未保存：{error}")));
+            return;
+        }
         if let FamilyBody::Audio(body) = &self.body {
             body.update(cx, |body, cx| body.set_earbuds_context(&self.device, self.active, cx));
         }
@@ -2885,13 +2909,16 @@ impl SourceProductWorkspace {
             }
             return;
         }
-        if razer_device::mouse_current_dpi::capability(self.device.product_id).is_some() && apply {
+        let source_product = razer_device::mapping_document::MappingProduct::for_product_id(self.device.product_id)
+            .map_or(self.device.product_id, |product| product.source_product_id());
+        if razer_device::mouse_current_dpi::capability(source_product).is_some() && apply {
             if let FamilyBody::Mouse(body) = &self.body {
                 body.update(cx, |body, cx| body.apply_current_dpi_profile(cx));
             }
             return;
         }
-        if matches!(self.device.product_id, 515 | 679 | 740 | 746 | 756) {
+        if matches!(self.device.product_id, 515 | 679 | 740 | 746 | 756)
+            || razer_device::keyboard_receiver_mapping::supports(self.device.product_id) {
             cx.emit(WorkspaceEvent::KeyboardLegacyProfileRequested);
             return;
         }
@@ -3390,8 +3417,7 @@ impl SourceProductWorkspace {
                  body,
                  _: &super::keyboard_products::KeyboardProductChanged,
                  cx| {
-                    this.capture(body.read(cx).snapshot(), cx);
-                    this.persist_source_profile(false, cx);
+                    this.capture_keyboard_product_change(body.read(cx).snapshot(), cx);
                 },
             ));
             subscriptions.push(cx.subscribe(
@@ -3403,6 +3429,11 @@ impl SourceProductWorkspace {
                     cx.emit(WorkspaceEvent::KeyboardLegacyRuntimeStatus(event.0.clone()));
                 },
             ));
+            subscriptions.push(cx.subscribe(&body, |this: &mut Self, _, request: &super::ReceiverMappingPublication, cx| {
+                if let Some(request)=request.for_mounted_product(this.device.product_id) {
+                    cx.emit(WorkspaceEvent::ReceiverMappingPublication(request));
+                }
+            }));
             subscriptions.push(cx.subscribe(
                 &body,
                 |_: &mut Self, _, event: &super::MappingCallbackRequested, cx| {
@@ -3417,7 +3448,7 @@ impl SourceProductWorkspace {
                  event: &super::keyboard_products::KeyboardLegacyProfileNavigation,
                  window,
                  cx| {
-                    if this.device.product_id != 515 {
+                    if this.device.product_id != 515 && !razer_device::keyboard_receiver_mapping::supports(this.device.product_id) {
                         return;
                     }
                     let mut profiles = this.device.profiles.iter().collect::<Vec<_>>();
@@ -3765,6 +3796,12 @@ impl SourceProductWorkspace {
             ));
             subscriptions.push(cx.subscribe(&body, |_: &mut Self, _, request: &super::audio_products::EarbudsAutoPauseRequested, cx| {
                 cx.emit(WorkspaceEvent::EarbudsAutoPauseRequested(request.clone()));
+            }));
+            subscriptions.push(cx.subscribe(&body, |_: &mut Self, _, request: &super::audio_products::EarbudsPowerRequested, cx| {
+                cx.emit(WorkspaceEvent::EarbudsPowerRequested(request.clone()));
+            }));
+            subscriptions.push(cx.subscribe(&body, |_: &mut Self, _, request: &super::audio_products::EarbudsMicrophoneRequested, cx| {
+                cx.emit(WorkspaceEvent::EarbudsMicrophoneRequested(request.clone()));
             }));
             subscriptions.push(cx.subscribe(&body, |_: &mut Self, _, request: &super::audio_products::EarbudsVolumeRequested, cx| {
                 cx.emit(WorkspaceEvent::EarbudsVolumeRequested(request.clone()));
@@ -4191,6 +4228,7 @@ impl SourceProductWorkspace {
             mouse_scroll_connection_key: None,
             mapping_connection_generation: 0,
             mapping_reconnect: Default::default(),
+            keyboard_function_swap: Default::default(),
             keyboard_latest_ble: false,
             keyboard_profile_inventory: Default::default(),
             controller_initialization: Default::default(),
@@ -4522,7 +4560,11 @@ impl SourceProductWorkspace {
             });
         } else if let FamilyBody::Keyboard(body) = &self.body {
             body.update(cx, |body, cx| {
-                body.publish_legacy_mapping(container, document, cx)
+                if shared_mapping {
+                    body.publish_shared_keyboard_mapping(document,cx);
+                } else {
+                    body.publish_legacy_mapping(container, document, cx)
+                }
             });
         }
     }
@@ -4602,6 +4644,13 @@ impl SourceProductWorkspace {
                 })
     }
     pub fn mark_saved(&mut self, snapshot: Device, cx: &mut Context<Self>) {
+        if let Err(error) = razer_storage::earbuds_profiles::accept_power_saved(
+            &mut self.device,
+            &self.saved,
+            &snapshot,
+        ) {
+            eprintln!("[earbud global power acknowledgement] {error:#}");
+        }
         if razer_storage::keyboard_lighting::supported(self.device.product_id) {
             if let Err(error) = razer_storage::keyboard_lighting::accept_saved(
                 &mut self.device, &self.saved, &snapshot,
@@ -4925,6 +4974,11 @@ impl SourceProductWorkspace {
                     v.set_factory_default_profile(factory_default_profile, window, cx);
                     v.restore(value.as_ref(), window, cx);
                 });
+                if self.device.product_id==717 {
+                    if let Err(error)=self.keyboard_function_swap.restored(&self.device.active_profile,e.read(cx).snapshot().get("functionKeyPrimary")) {
+                        cx.emit(WorkspaceEvent::KeyboardLegacyRuntimeStatus(error));
+                    }
+                }
             }
             FamilyBody::Gamepad(e) => {
                 e.update(cx, |v, cx| {

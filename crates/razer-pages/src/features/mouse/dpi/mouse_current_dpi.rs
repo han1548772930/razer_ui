@@ -1260,6 +1260,61 @@ mod tests {
     }
 
     #[gpui_kit::test]
+    fn mounted105_dpi_read_and_reconnect_keep_source104_and_page_identity(cx: &mut TestAppContext) {
+        use gpui_kit::component::Root;
+        use serde_json::json;
+        cx.update(gpui_kit::init);
+        let mut page = None;
+        let handle = cx.open_window(size(px(1400.), px(1100.)), |window, cx| {
+            let owner = cx.new(|cx| MouseProductWorkspace::new(105, window, cx));
+            page = Some(owner.clone());
+            Root::new(owner, window, cx)
+        });
+        let page = page.unwrap();
+        cx.update_window(handle.into(), |_, window, cx| {
+            page.update(cx, |owner, cx| {
+                let mut profile = owner.snapshot();
+                profile["dpiStages"] =
+                    razer_storage::host_local_profile::stage_value(&configured_stages());
+                owner.restore(Some(&profile), window, cx);
+                assert_eq!(owner.spec.product_id, 105);
+                assert_eq!(owner.mapping_source_product_id(), 104);
+                owner.observe_current_dpi_connection(Some("first-105".into()), cx);
+                let first = owner
+                    .current_dpi
+                    .pending
+                    .clone()
+                    .expect("source104 initial read");
+                assert!(first.is_read());
+                assert!(
+                    first.change().is_none(),
+                    "opening must not overwrite the device"
+                );
+                let report = serde_json::from_value(json!({
+                    "requested":null,"stages":null,"active":{"x":1700,"y":1800},
+                    "acknowledgements":[],"verified":false,
+                    "read_errors":{"stages":"stage query rejected","active":null}
+                }))
+                .unwrap();
+                owner.finish_current_dpi_result(&first, Ok(report), cx);
+                assert_eq!(owner.current_dpi.observed.current.unwrap().x, 1700);
+                assert!(!owner.current_dpi_row_available(0));
+                owner.observe_current_dpi_connection(None, cx);
+                assert!(owner.current_dpi.observed.current.is_none());
+                owner.observe_current_dpi_connection(Some("second-105".into()), cx);
+                let second = owner.current_dpi.pending.clone().expect("reconnect read");
+                assert!(!owner.current_dpi_request_matches(&first, cx));
+                assert!(owner.current_dpi_request_matches(&second, cx));
+                owner.finish_current_dpi_result(&second, Err("device disconnected".into()), cx);
+                assert!(owner.current_dpi.observed.current.is_none());
+                assert!(!owner.current_dpi_row_available(0));
+                assert_eq!(owner.spec.product_id, 105);
+            });
+        })
+        .unwrap();
+    }
+
+    #[gpui_kit::test]
     fn source_current_dpi_actual_pair_syncs_original_input_and_preserves_uncommitted_text(
         cx: &mut TestAppContext,
     ) {

@@ -4,6 +4,16 @@ use anyhow::{Context as _, ensure};
 use razer_device::keyboard_metadata::KeyboardMetadataReading;
 use razer_ipc::{ServiceClient, ServiceRequest};
 
+pub fn function_swap_available(observed:&ObservedDevice)->bool {
+    observed.product_id()==717
+        && matches!(observed.transport(),Some(ObservedTransport::Wired|ObservedTransport::Dongle))
+        && matches!(observed.connection(),razer_model::model::DeviceConnectionObservation::UsbPresent
+            |razer_model::model::DeviceConnectionObservation::HidPresent
+            |razer_model::model::DeviceConnectionObservation::ReceiverPeer(1))
+        && (razer_device::keyboard_metadata::hid_capability(717,observed.physical_product_id()).is_some()
+            || observed.peer_product_id().is_some() && razer_device::keyboard_metadata::relay_capability(717,observed.physical_product_id()).is_ok())
+}
+
 pub enum Route {
     Hid(DirectRoute),
     RelayCollection {
@@ -114,6 +124,41 @@ pub fn resolve(client: &mut ServiceClient, observed: &ObservedDevice) -> anyhow:
 }
 
 impl Route {
+    pub fn write_function_primary(
+        &self,
+        client:&mut ServiceClient,
+        primary:razer_device::keyboard_function_swap::FunctionKeyPrimary,
+    )->anyhow::Result<razer_device::keyboard_function_swap::FunctionKeySwapWriteReport> {
+        self.write_function_primary_with(primary,|request|client.request(request))
+    }
+
+    fn write_function_primary_with(
+        &self,
+        primary:razer_device::keyboard_function_swap::FunctionKeyPrimary,
+        request:impl FnOnce(ServiceRequest)->anyhow::Result<serde_json::Value>,
+    )->anyhow::Result<razer_device::keyboard_function_swap::FunctionKeySwapWriteReport> {
+        use razer_ipc::keyboard_profile_inventory::Target;
+        let target=match self {
+            Self::Hid(DirectRoute::Collection {node,product_id})=>Target::Collection{node:node.clone(),product_id:*product_id,peer_product_id:None},
+            Self::RelayCollection {node,product_id,peer_product_id}=>Target::Collection{node:node.clone(),product_id:*product_id,peer_product_id:Some(*peer_product_id)},
+            #[cfg(windows)]
+            Self::Hid(DirectRoute::Container(target))=>Target::WindowsContainer{target:target.clone()},
+            #[cfg(windows)]
+            Self::Ble(_)=>anyhow::bail!("Function-key swap requires the current HID transport"),
+        };
+        target.validate()?;
+        ensure!(target.product_id()==717,"Function-key swap product differs from its current source");
+        #[derive(serde::Deserialize)]
+        struct Reply {
+            target:Target,
+            report:razer_device::keyboard_function_swap::FunctionKeySwapWriteReport,
+        }
+        let reply:Reply=serde_json::from_value(request(ServiceRequest::KeyboardFunctionSwap {target:target.clone(),primary})?)?;
+        ensure!(reply.target==target,"Function-key response belongs to another physical owner");
+        reply.report.validate_write_ack(primary)?;
+        Ok(reply.report)
+    }
+
     pub fn mode_target(&self) -> razer_device::keyboard_mode::Target {
         use razer_device::keyboard_mode::Target;
         match self {
@@ -466,5 +511,23 @@ mod tests {
                 .set_source_mode_with(Operation::Release, |_| anyhow::bail!("disconnected"))
                 .is_err()
         );
+    }
+
+    #[test]
+    fn function_swap_ack_requires_the_current_receiver_target_and_requested_value() {
+        use razer_device::keyboard_function_swap::FunctionKeyPrimary;
+        let DirectRoute::Collection{mut node,..}=route() else {unreachable!()};
+        node.product_id=197;node.interface_number=0;
+        let route=super::Route::RelayCollection{node,product_id:717,peer_product_id:730};
+        for (returned_peer,acknowledged,primary) in [(730,true,"function"),(717,true,"function"),(730,false,"function"),(730,true,"multimedia")] {
+            let result=route.write_function_primary_with(FunctionKeyPrimary::Function,|request|{
+                let ServiceRequest::KeyboardFunctionSwap{mut target,primary:requested}=request else {panic!("wrong function request")};
+                assert_eq!(requested,FunctionKeyPrimary::Function);
+                if let razer_ipc::keyboard_profile_inventory::Target::Collection{peer_product_id,..}=&mut target { *peer_product_id=Some(returned_peer); }
+                Ok(json!({"target":target,"report":{"requested_primary":primary,"attempted":true,"send_attempts":1,
+                    "acknowledgment_data":if acknowledged {json!([])}else{serde_json::Value::Null},"observed":null,"verified":false}}))
+            });
+            assert_eq!(result.is_ok(),returned_peer==730 && acknowledged && primary=="function");
+        }
     }
 }

@@ -14,6 +14,8 @@ mod profile_context;
 mod voice_prompt;
 #[path = "earbuds_equalizer_view_tests.rs"]
 mod equalizer_view;
+#[path = "earbuds_sound_actions_tests.rs"]
+mod sound_actions;
 use std::sync::{
     Arc,
     atomic::{AtomicBool, Ordering},
@@ -78,6 +80,8 @@ fn mount_with_dnd(
             let mut view = AudioProductWorkspace::new(pid, window, cx);
             view.set_page("TAB_ENHANCEMENT", window, cx);
             view.set_earbuds_context(&device, true, cx);
+            view.set_earbuds_power_context(&device, true, 1, cx);
+            view.set_earbuds_sound_context(&device, true, 1, cx);
             view
         });
         owner = Some(view.clone());
@@ -90,6 +94,23 @@ fn reading(pid: u32, _enabled: bool) -> Report {
     serde_json::from_value(json!({"product_id":pid,"operation":"Read","connected":true,
         "left_battery":80,"right_battery":90,"observation":"Unobserved","write":"Skipped"}))
     .unwrap()
+}
+
+fn equalizer_reply(
+    pid: u32,
+    setting: razer_device::earbuds_equalizer::Setting,
+    preset: razer_device::earbuds_equalizer::Submission,
+    bands: razer_device::earbuds_equalizer::Submission,
+) -> Report {
+    let submission = razer_device::earbuds_equalizer::Report { setting, preset, bands };
+    let mut report = reading(pid, false);
+    report.operation = Operation::Equalizer { setting };
+    report.connected = None;
+    report.left_battery = None;
+    report.right_battery = None;
+    report.write = submission.outcome();
+    report.equalizer = Some(submission);
+    report
 }
 
 #[gpui_kit::test]
@@ -150,7 +171,10 @@ fn finish_initial_restores(
         report.operation = request.operation();
         report.connected = None;
         match request.operation() {
-            Operation::Equalizer { .. } => {}
+            Operation::Equalizer { setting } => {
+                use razer_device::earbuds_equalizer::Submission;
+                report = equalizer_reply(pid, setting, Submission::Confirmed, Submission::Confirmed);
+            }
             Operation::Anc { setting } => {
                 report.anc = Some(razer_device::earbuds_anc::Report {
                     runtime: razer_device::earbuds_protocol40::AncRuntimeState(setting),
@@ -627,9 +651,8 @@ fn equalizer_same_profile_refreshes_unselected_curves_and_own_save_does_not_rest
             assert_eq!(request.operation(), Operation::Equalizer { setting });
             razer_storage::earbuds_profiles::merge_equalizer(&mut device, "eq-profile", setting).unwrap();
             assert!(view.mark_earbuds_persisted(&request));
-            let mut report = reading(2660, false);
-            report.operation = request.operation();
-            report.connected = None;
+            use razer_device::earbuds_equalizer::Submission;
+            let report = equalizer_reply(2660, setting, Submission::Confirmed, Submission::Confirmed);
             view.finish_earbuds_request(&request, Ok(report), cx);
             view.set_earbuds_context(&device, true, cx);
             assert!(view.earbuds.pending.is_none(), "Own save must not repeat hardware restore");
@@ -713,7 +736,7 @@ fn input_source_buttons_open_and_confirm_once_without_saving(cx: &mut TestAppCon
             owner.update(cx, |view, cx| view.set_page("TAB_SOUND", window, cx));
             window.render_frame(cx);
             window.click("earbuds-input-open", cx);
-            assert!(!owner.read(cx).earbuds.input_popup);
+            assert!(!owner.read(cx).earbuds_sound.input_popup);
             owner.update(cx, |view, cx| {
                 let read = view.earbuds.pending.clone().unwrap();
                 view.finish_earbuds_request(&read, Ok(reading(pid, false)), cx);
@@ -728,8 +751,8 @@ fn input_source_buttons_open_and_confirm_once_without_saving(cx: &mut TestAppCon
             assert!(window.try_find("earbuds-input-confirmation").is_some());
             assert_eq!(window.find("earbuds-input-open").focused(), Some(true));
             window.press("space", cx);
-            assert!(owner.read(cx).earbuds.input_popup);
-            assert!(owner.read(cx).earbuds.pending.is_none());
+            assert!(owner.read(cx).earbuds_sound.input_popup);
+            assert!(owner.read(cx).earbuds_sound.pending.is_none());
             assert_eq!(
                 window
                     .find("earbuds-input-confirmation")
@@ -741,19 +764,19 @@ fn input_source_buttons_open_and_confirm_once_without_saving(cx: &mut TestAppCon
             // The source is an inline confirmation: interacting inside it
             // neither dismisses it nor dispatches the device command.
             window.click("earbuds-input-confirmation", cx);
-            assert!(owner.read(cx).earbuds.input_popup);
-            assert!(owner.read(cx).earbuds.pending.is_none());
+            assert!(owner.read(cx).earbuds_sound.input_popup);
+            assert!(owner.read(cx).earbuds_sound.pending.is_none());
             window.right_click("earbuds-input-description", cx);
-            assert!(owner.read(cx).earbuds.input_popup);
+            assert!(owner.read(cx).earbuds_sound.input_popup);
             window.click("earbuds-input-description", cx);
-            assert!(!owner.read(cx).earbuds.input_popup);
-            assert!(owner.read(cx).earbuds.pending.is_none());
+            assert!(!owner.read(cx).earbuds_sound.input_popup);
+            assert!(owner.read(cx).earbuds_sound.pending.is_none());
             window.render_frame(cx);
             window.click("earbuds-input-open", cx);
-            assert!(owner.read(cx).earbuds.pending.is_none());
+            assert!(owner.read(cx).earbuds_sound.pending.is_none());
             owner.update(cx, |view, cx| view.set_page("TAB_ENHANCEMENT", window, cx));
-            assert!(!owner.read(cx).earbuds.input_popup);
-            assert!(owner.read(cx).earbuds.pending.is_none());
+            assert!(!owner.read(cx).earbuds_sound.input_popup);
+            assert!(owner.read(cx).earbuds_sound.pending.is_none());
             owner.update(cx, |view, cx| view.set_page("TAB_SOUND", window, cx));
             window.render_frame(cx);
             window.click("earbuds-input-open", cx);
@@ -762,7 +785,7 @@ fn input_source_buttons_open_and_confirm_once_without_saving(cx: &mut TestAppCon
             window.render_frame(cx);
             assert!(window.try_find("earbuds-input-confirmation").is_none());
             let view = owner.read(cx);
-            let request = view.earbuds.pending.as_ref().unwrap();
+            let request = view.earbuds_sound.pending.as_ref().unwrap();
             assert_eq!(request.operation(), Operation::SwitchInputSource);
             assert!(!request.needs_persistence());
             assert!(view.earbuds.edits.is_empty());
@@ -790,7 +813,7 @@ fn earbuds_activation_reads_copies_and_rejects_stale_results_without_saving(cx: 
             window.render_frame(cx);
             assert_eq!(window.find("earbuds-activation-copy").disabled(),Some(true));
             owner.update(cx, |view,cx| {
-                let request=view.earbuds.pending.clone().unwrap();
+                let request=view.earbuds_sound.pending.clone().unwrap();
                 assert_eq!(request.operation(),Operation::ActivationCode);
                 assert!(!request.needs_persistence());
                 let report: Report=serde_json::from_value(json!({"product_id":pid,"operation":"ActivationCode",
@@ -805,7 +828,7 @@ fn earbuds_activation_reads_copies_and_rejects_stale_results_without_saving(cx: 
             window.click("earbuds-activation-close",cx);
             window.click("earbuds-activation-show",cx);
             owner.update(cx,|view,cx| {
-                let request=view.earbuds.pending.clone().unwrap();
+                let request=view.earbuds_sound.pending.clone().unwrap();
                 view.finish_earbuds_request(&request,Err("device read failed".into()),cx);
             });
             window.render_frame(cx);
@@ -813,8 +836,9 @@ fn earbuds_activation_reads_copies_and_rejects_stale_results_without_saving(cx: 
             window.click("earbuds-activation-close",cx);
             window.click("earbuds-activation-show",cx);
             owner.update(cx,|view,cx| {
-                let stale=view.earbuds.pending.clone().unwrap();
+                let stale=view.earbuds_sound.pending.clone().unwrap();
                 let monitor = view.earbuds.monitor.clone().unwrap();
+                view.observe_earbuds_power_notification(&razer_device::earbuds_events::Notification::Connection { status:0, status_bt:0 },cx);
                 view.observe_earbuds_notification(&monitor,
                     razer_device::earbuds_events::Notification::Connection { status:0, status_bt:0 },cx);
                 assert!(view.earbuds_activation.code.is_none());
@@ -822,6 +846,8 @@ fn earbuds_activation_reads_copies_and_rejects_stale_results_without_saving(cx: 
                 assert!(view.earbuds_activation.code.is_none());
                 device.dashboard.connection_observation=None;
                 view.set_earbuds_context(&device,true,cx);
+                view.set_earbuds_power_context(&device,false,2,cx);
+                view.set_earbuds_sound_context(&device,false,2,cx);
                 view.finish_earbuds_request(&stale,Err("stale result".into()),cx);
                 assert!(view.earbuds_activation.code.is_none());
             });
@@ -855,9 +881,9 @@ fn input_source_disconnected_hint_follows_observation_and_page_lifetime(cx: &mut
                 "tip {:?}, panel {:?}, cursor {:?}",
                 window.find("earbuds-input-disabled-tip").bounds(),
                 window.find("earbuds-input-panel").bounds(),
-                owner.read(cx).earbuds.input_disabled_cursor);
+                owner.read(cx).earbuds_sound.input_disabled_cursor);
             let tip = window.find("earbuds-input-disabled-tip").bounds();
-            let cursor = owner.read(cx).earbuds.input_disabled_cursor.unwrap();
+            let cursor = owner.read(cx).earbuds_sound.input_disabled_cursor.unwrap();
             let unit = window.rem_size() / 16.;
             assert_eq!(tip.center().x, cursor.x.max(unit * 168.)
                 .min(window.viewport_size().width - unit * 168.));
@@ -869,21 +895,25 @@ fn input_source_disconnected_hint_follows_observation_and_page_lifetime(cx: &mut
             assert_eq!(tip.top(), top);
             let before = owner.read(cx).snapshot();
             window.click("earbuds-input-open", cx);
-            assert!(!owner.read(cx).earbuds.input_popup);
+            assert!(!owner.read(cx).earbuds_sound.input_popup);
             assert_eq!(owner.read(cx).snapshot(), before);
             assert!(!owner.read(cx).earbuds.edits.iter()
                 .any(|edit| edit.operation == Operation::SwitchInputSource));
             owner.update(cx, |view, cx| view.set_page("TAB_ENHANCEMENT", window, cx));
             window.render_frame(cx);
-            assert!(owner.read(cx).earbuds.input_disabled_cursor.is_none());
+            assert!(owner.read(cx).earbuds_sound.input_disabled_cursor.is_none());
             assert!(window.try_find("earbuds-input-disabled-tip").is_none());
             owner.update(cx, |view, cx| view.set_page("TAB_SOUND", window, cx));
             window.render_frame(cx);
             window.hover("earbuds-input-disabled", cx);
             window.render_frame(cx);
             assert!(window.find("earbuds-input-disabled-tip").visible());
-            owner.update(cx, |view, cx| view.set_earbuds_context(&device, false, cx));
-            assert!(owner.read(cx).earbuds.input_disabled_cursor.is_none());
+            owner.update(cx, |view, cx| {
+                view.set_earbuds_context(&device, false, cx);
+                view.set_earbuds_power_context(&device, false, 1, cx);
+                view.set_earbuds_sound_context(&device, false, 1, cx);
+            });
+            assert!(owner.read(cx).earbuds_sound.input_disabled_cursor.is_none());
             window.render_frame(cx);
             window.hover("earbuds-input-panel", cx);
             window.render_frame(cx);
@@ -905,21 +935,21 @@ fn input_source_confirmation_queues_an_unsaved_command_and_preserves_failure(
             finish_initial_restores(view, 2660, cx);
             view.set_page("TAB_SOUND", window, cx);
             view.confirm_earbuds_input(cx);
-            assert!(view.earbuds.pending.is_none());
-            view.earbuds.input_popup = true;
+            assert!(view.earbuds_sound.pending.is_none());
+            view.earbuds_sound.input_popup = true;
             view.confirm_earbuds_input(cx);
-            assert!(!view.earbuds.input_popup);
-            let request = view.earbuds.pending.clone().unwrap();
+            assert!(!view.earbuds_sound.input_popup);
+            let request = view.earbuds_sound.pending.clone().unwrap();
             assert_eq!(request.operation(), Operation::SwitchInputSource);
             assert!(!request.needs_persistence());
             view.finish_earbuds_request(&request, Err("transport failed".into()), cx);
-            assert!(matches!(&view.earbuds.input_result, Some(Err(error)) if error == "transport failed"));
-            view.earbuds.input_popup = true;
+            assert!(matches!(&view.earbuds_sound.input_result, Some(Err(error)) if error == "transport failed"));
+            view.earbuds_sound.input_popup = true;
             view.confirm_earbuds_input(cx);
-            let old = view.earbuds.pending.clone().unwrap();
-            view.earbuds.cancel();
+            let old = view.earbuds_sound.pending.clone().unwrap();
+            view.earbuds_sound.cancel();
             view.finish_earbuds_request(&old, Err("late".into()), cx);
-            assert!(view.earbuds.input_result.is_none());
+            assert!(view.earbuds_sound.input_result.is_none());
         });
     }).unwrap();
 }

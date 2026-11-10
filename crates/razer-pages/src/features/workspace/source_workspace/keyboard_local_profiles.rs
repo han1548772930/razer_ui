@@ -14,6 +14,7 @@ pub(super) fn active_keyboard_factory_profile(device: &Device) -> bool {
 
 impl SourceProductWorkspace {
     pub fn observe_keyboard_serial(&mut self, serial: &str, cx: &mut Context<Self>) {
+        self.mapping_reconnect.observe_keyboard_serial(self.mapping_connection_generation,serial);
         self.device.observe_keyboard_serial(serial);
         self.saved.observe_keyboard_serial(serial);
         cx.notify();

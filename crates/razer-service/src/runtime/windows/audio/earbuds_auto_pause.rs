@@ -108,5 +108,5 @@ pub(super) fn request(target: &DeviceReadTarget, operation: Operation) -> anyhow
             &source_physical,
         )
     })?;
-    serde_json::to_value(report).map_err(Into::into)
+    crate::runtime::earbuds_auto_pause::encode_report(report, &source_validate)
 }

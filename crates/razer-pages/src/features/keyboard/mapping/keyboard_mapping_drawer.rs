@@ -14,6 +14,8 @@ use std::{cell::Cell, rc::Rc};
 
 #[path = "keyboard_mapping_header.rs"]
 mod header;
+#[path = "keyboard_mapping_key_tooltip.rs"]
+mod key_tip;
 #[path = "keyboard_mapping_keypad_artwork.rs"]
 mod keypad_artwork;
 pub(in super::super) use keypad_artwork::KeypadSurface;
@@ -272,6 +274,7 @@ pub(super) struct State {
     panel_value: panel_value::State,
     panel_secondary: panel_secondary::State,
     panel_dropdown: panel_dropdown::State,
+    key_tip: key_tip::State,
 }
 fn text(value: &Value) -> String {
     value.as_str().map(str::to_owned).unwrap_or_else(|| {
@@ -424,14 +427,18 @@ impl KeyboardProductWorkspace {
             .unwrap_or(&source.default_buttons)
     }
     fn current_mapping(&self, input: &str, shift: bool) -> Option<&Value> {
-        self.draft
+        let mapping = self.draft
             .pointer(&self.mapping_path())
             .and_then(Value::as_array)?
             .iter()
             .find(|mapping| {
                 mapping["inputID"].as_str() == Some(input)
-                    && (!shift || mapping["isHyperShift"].as_bool().unwrap_or(false))
-            })
+                    && mapping["isHyperShift"].as_bool().unwrap_or(false) == shift
+            })?;
+        if self.function_system_layer(input) && !(shift && mapping["outputType"] == "hyperShiftGroup") {
+            return None;
+        }
+        Some(mapping)
     }
     pub(in super::super) fn analog_mapping_next(
         &mut self,
@@ -442,7 +449,8 @@ impl KeyboardProductWorkspace {
         if self.customize_controls_disabled() {
             return;
         }
-        if matches!(&next, Next::Key(id, _) if self.mapping_selection_matches(id)) {
+        if matches!(&next, Next::Key(id, _) if self.mapping_selection_matches(id)
+            || self.function_system_layer(id)) {
             return;
         }
         if self
@@ -478,7 +486,8 @@ impl KeyboardProductWorkspace {
                     || (self.hypershift
                         && button["disableHypershiftMapping"]
                             .as_bool()
-                            .unwrap_or(false))
+                            .unwrap_or(false)
+                        && !self.function_hypershift_mapping_allowed(&id))
                 {
                     return;
                 }
@@ -841,6 +850,7 @@ impl KeyboardProductWorkspace {
             .on_mouse_move(cx.listener(|this, event: &MouseMoveEvent, _, cx| {
                 this.source_special_pointer(event.position, cx);
             }))
+            .children(self.mapping_key_tip())
             .child(
                 h_flex()
                     .items_start()
@@ -920,10 +930,25 @@ impl KeyboardProductWorkspace {
             .iter()
             .map(|button| self.mapping_active_button(button))
             .filter(|button| {
-                (!self.hypershift
-                    || !panel_truthy(&button["HID"])
-                    || !panel_truthy(&button["disableHypershiftMapping"]))
-                    && (!state.filter_customized || panel_truthy(&button["isMapped"]))
+                // PID717 module5035 chooses a distinct drawer list for each
+                // multimedia-primary layer; isKeyToggle=false is significant.
+                let visible = if self.spec.product_id == 717
+                    && self.function_primary() == Some(
+                        razer_device::keyboard_function_swap::FunctionKeyPrimary::Multimedia,
+                    )
+                {
+                    if self.hypershift {
+                        !panel_truthy(&button["HID"]) || button["isKeyToggle"] != false
+                    } else {
+                        !panel_truthy(&button["disableHypershiftMapping"])
+                            || button["isKeyToggle"] == false
+                    }
+                } else {
+                    !self.hypershift
+                        || !panel_truthy(&button["HID"])
+                        || !panel_truthy(&button["disableHypershiftMapping"])
+                };
+                visible && (!state.filter_customized || panel_truthy(&button["isMapped"]))
             })
             .collect::<Vec<_>>();
         if rows.iter().all(|button| {

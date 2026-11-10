@@ -39,6 +39,7 @@ impl Target {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Notification {
+    MicrophoneMute { muted: u8 },
     Anc { state: crate::earbuds_anc::State },
     Battery { left: u8, right: u8 },
     Connection { status: u8, status_bt: u8 },
@@ -52,6 +53,9 @@ pub fn notification(bytes: &[u8]) -> Result<Option<Notification>> {
         .get(1)
         .context("Earbud notification header is truncated")?;
     Ok(match event {
+        17 => Some(Notification::MicrophoneMute {
+            muted: *bytes.get(2).context("Earbud microphone mute notification is truncated")?,
+        }),
         33 => Some(Notification::Anc { state: crate::earbuds_anc::State::from_raw(
             *bytes.get(2).context("ANC notification omits state")?) }),
         49 => {
