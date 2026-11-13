@@ -5,7 +5,11 @@ use crate::keyboard_control_test_transport::{
 use crate::onboard_macro::{MacroMetadata, MacroSummary};
 
 fn capability() -> DeviceReadCapability {
-    let mut cap = crate::keyboard_metadata::capability(PRODUCT_ID)
+    capability_for(PRODUCT_ID)
+}
+
+fn capability_for(product_id: u32) -> DeviceReadCapability {
+    let mut cap = crate::keyboard_metadata::capability(product_id)
         .unwrap()
         .clone();
     cap.max_retry_in = 1;
@@ -14,6 +18,241 @@ fn capability() -> DeviceReadCapability {
     cap.sleep_between_out_ms = 0;
     cap.sleep_between_out_in_ms = 0;
     cap
+}
+
+#[test]
+fn keyboard_onboard_profiles_reads_complete_digital_and_kill_switch_variants() {
+    let products = [
+        550, 551, 552, 577, 579, 590, 599, 600, 602, 617, 658, 661, 664, 678, 679, 691, 697, 717,
+    ];
+    for product in products {
+        let cap = capability_for(product);
+        let settings = settings_capability(&cap).unwrap();
+        let keys = selected_keys(product, 1).unwrap();
+        let mut replies = initial_replies(&[2, 5]);
+        if product == 691 {
+            replies.drain(5..9);
+        }
+        let initial_count = replies.len();
+        for (slot, raw) in [(2, 51), (5, 153)] {
+            if settings.all_region == 0 {
+                replies.extend(brightness(slot, raw));
+            } else {
+                replies.push(reply(&[slot, settings.all_region, raw]));
+            }
+        }
+        let assignments_start = replies.len();
+        for slot in [2, 5] {
+            for mode in [Mode::Normal, Mode::Hypershift] {
+                let ids = keys
+                    .iter()
+                    .filter(|key| match mode {
+                        Mode::Normal => !key.ignore_normal,
+                        Mode::Hypershift => !key.ignore_hypershift,
+                    })
+                    .map(|key| key.firmware_key_id)
+                    .collect::<Vec<_>>();
+                if analog_v3(product) {
+                    replies.extend(mode_replies(slot, mode, &ids, 1234));
+                } else {
+                    for key in ids {
+                        replies.push(reply(&[slot, key, mode.wire(), 2, 2, 0, 4, 0, 0, 0]));
+                    }
+                }
+            }
+            if analog_v3(product) {
+                let ids = keys
+                    .iter()
+                    .map(|key| key.firmware_key_id)
+                    .collect::<Vec<_>>();
+                replies.extend(analog_replies(slot, &ids, 1234));
+            }
+        }
+        if analog_v3(product) {
+            replies.extend([reply(&[2, 1, 4, 8]), reply(&[5, 0, 4, 8])]);
+            replies.extend([reply(&[2, 7]), reply(&[5, 0])]);
+        }
+        let expected_count = replies.len();
+        let device = Mock::new(replies);
+        let options = ReadOptions {
+            layout_id: 1,
+            locally_known_macro_guids: BTreeSet::new(),
+        };
+        let reading = read_complete(&device, &cap, &options, sequence(), &|| Ok(())).unwrap();
+        reading.validate_for(&options).unwrap();
+        assert_eq!(reading.snapshot.product_id, product);
+        assert_eq!(
+            reading.snapshot.profiles[0]
+                .brightness
+                .observed()
+                .unwrap()
+                .percent,
+            20
+        );
+        assert_eq!(
+            reading.snapshot.profiles[1]
+                .brightness
+                .observed()
+                .unwrap()
+                .percent,
+            60
+        );
+        let sent = device.sent();
+        assert_eq!(sent.len(), expected_count, "PID {product}");
+        assert_eq!(&sent[0][6..9], &[14, 6, 142]);
+        assert_eq!(&sent[1][6..9], &[2, 6, 128]);
+        assert!(
+            sent[initial_count..assignments_start]
+                .iter()
+                .all(|report| report[7] == 15)
+        );
+        assert!(
+            sent.iter().all(|report| report[8] >= 128),
+            "read issued a SET for PID {product}"
+        );
+        if !analog_v3(product) {
+            assert!(reading.import_details.continuous_rapid_trigger.is_empty());
+            assert!(
+                sent[assignments_start..]
+                    .iter()
+                    .all(|report| report[6..9] == [10, 2, 141])
+            );
+            assert_eq!(
+                reading.snapshot.profiles[0].passes[0].assignments[0]
+                    .attempts
+                    .len(),
+                1
+            );
+            assert!(
+                reading
+                    .snapshot
+                    .profiles
+                    .iter()
+                    .all(|profile| profile.actuation.is_empty()
+                        && profile.rapid_trigger.is_empty()
+                        && matches!(profile.kill_switch, Reading::Unobserved))
+            );
+        }
+        assert_report_integrity(&sent);
+    }
+}
+
+#[test]
+fn keyboard_onboard_profiles_single_assignment_failure_retains_other_keys_and_stops_cancellation() {
+    let cap = capability_for(550);
+    let mut failure = reply(&[]);
+    failure.status = 5;
+    let device = Mock::new([failure, reply(&[2, 8, 0, 2, 2, 0, 4, 0, 0, 0])]);
+    let pass = read_mode(
+        &device,
+        &cap,
+        2,
+        Mode::Normal,
+        &[4, 8],
+        &mut sequence(),
+        &|| Ok(()),
+    )
+    .unwrap();
+    assert!(matches!(
+        pass.assignments[0].attempts[0],
+        Reading::Failed { .. }
+    ));
+    assert_eq!(pass.assignments[1].observed().unwrap()[0].key_id, 8);
+    assert_eq!(device.sent().len(), 2);
+    let device = Mock::new([reply(&[2, 4, 0, 2, 2, 0, 4, 0, 0, 0])]);
+    let error = read_mode(
+        &device,
+        &cap,
+        2,
+        Mode::Normal,
+        &[4, 8],
+        &mut sequence(),
+        &|| {
+            ensure!(device.sent().is_empty(), "replaced connection");
+            Ok(())
+        },
+    )
+    .unwrap_err();
+    assert!(crate::backend::exchange_interrupted(&error));
+    assert_eq!(device.sent().len(), 1);
+}
+
+#[test]
+fn keyboard_onboard_profiles_single_assignment_rejects_foreign_or_malformed_replies() {
+    for malformed in [
+        vec![3, 4, 0, 2, 2, 0, 4, 0, 0, 0],
+        vec![2, 5, 0, 2, 2, 0, 4, 0, 0, 0],
+        vec![2, 4, 1, 2, 2, 0, 4, 0, 0, 0],
+        vec![2, 4, 0, 2, 6, 0, 4, 0, 0, 0],
+        vec![2, 4, 0, 2, 2, 0, 4, 0, 0],
+    ] {
+        let device = Mock::new([
+            reply(&malformed),
+            reply(&[2, 8, 0, 255, 5, 10, 20, 30, 40, 50]),
+        ]);
+        let pass = read_mode(
+            &device,
+            &capability_for(550),
+            2,
+            Mode::Normal,
+            &[4, 8],
+            &mut sequence(),
+            &|| Ok(()),
+        )
+        .unwrap();
+        assert!(matches!(pass.assignments[0].attempts[0], Reading::Failed { .. }));
+        assert_eq!(pass.assignments[0].observed(), None);
+        assert_eq!(
+            pass.assignments[1].observed().unwrap(),
+            &[ButtonAssignment {
+                key_id: 8,
+                mode: 0,
+                function_id: 255,
+                data_size: 5,
+                data: [10, 20, 30, 40, 50],
+            }]
+        );
+        assert_eq!(device.sent().len(), 2);
+    }
+}
+
+#[test]
+fn keyboard_onboard_profiles_complete_radio_reads_keep_actual_factory_and_transaction() {
+    for (product, physical, prefix, interface) in [
+        (600, 625, 128, 3),
+        (602, 604, 128, 2),
+        (658, 656, 128, 2),
+        (664, 662, 128, 2),
+        (691, 692, 0, 2),
+        (697, 698, 128, 3),
+        (717, 730, 128, 2),
+    ] {
+        let mut cap = crate::keyboard_metadata::hid_capability(product, physical).unwrap().clone();
+        cap.max_retry_in = 1;
+        cap.max_retry_out = 1;
+        cap.sleep_between_in_ms = 0;
+        cap.sleep_between_out_ms = 0;
+        cap.sleep_between_out_in_ms = 0;
+        assert_eq!(cap.transaction_prefix, prefix);
+        assert_eq!(cap.claim_interface, interface);
+        let device = Mock::new(initial_replies(&[]));
+        let mut counter = 0;
+        let options = ReadOptions { layout_id: 1, locally_known_macro_guids: BTreeSet::new() };
+        let reading = read_complete(&device, &cap, &options, || {
+            let transaction = prefix | counter;
+            counter = (counter + 1) % 31;
+            Ok(transaction)
+        }, &|| Ok(())).unwrap();
+        reading.validate_for(&options).unwrap();
+        assert_eq!(reading.snapshot.product_id, product);
+        assert!(reading.snapshot.inventory.slots.is_empty());
+        assert_eq!(device.sent().len(), 5);
+        for (index, report) in device.sent().iter().enumerate() {
+            assert_eq!(report[0], cap.report_id);
+            assert_eq!(report[2], prefix | index as u8);
+            assert!(report[8] >= 128);
+        }
+    }
 }
 
 fn keys(ids: &[u8]) -> Vec<KeyIdentity> {
@@ -406,7 +645,7 @@ fn keyboard_onboard_profiles_cancellation_stops_before_other_commands() {
 
 #[test]
 fn keyboard_onboard_profiles_uses_generated_physical_inventory_and_rejects_wrong_factory() {
-    let keys = selected_keys(1).unwrap();
+    let keys = selected_keys(PRODUCT_ID, 1).unwrap();
     assert_eq!(keys.len(), 82);
     assert!(
         keys.windows(2)

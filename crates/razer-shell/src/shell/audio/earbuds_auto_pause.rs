@@ -8,6 +8,10 @@ use std::sync::{
 };
 use uuid::Uuid;
 
+#[cfg(test)]
+#[path = "earbuds_auto_pause_tests.rs"]
+mod tests;
+
 #[derive(Default)]
 pub(super) struct State {
     registered: bool,
@@ -31,6 +35,26 @@ impl LocalSave {
         (&self.identity, self.workspace.downgrade())
     }
 }
+
+fn admit_earbuds_request(
+    page: &Entity<razer_pages::features::AudioProductWorkspace>,
+    request: &EarbudsAutoPauseRequested,
+    cx: &mut App,
+) -> bool {
+    if page.read(cx).earbuds_request_current(request) {
+        return true;
+    }
+    // No worker owns this request yet, so its cancellation must complete here.
+    page.update(cx, |page, cx| {
+        page.finish_earbuds_request(
+            request,
+            Err("Earbud operation was cancelled before device execution".into()),
+            cx,
+        )
+    });
+    false
+}
+
 impl AppShell {
     pub(super) fn request_earbuds_auto_pause(
         &mut self,
@@ -42,7 +66,7 @@ impl AppShell {
         let Some(page) = workspace.read(cx).audio_mixer_page(cx) else {
             return;
         };
-        if !page.read(cx).earbuds_request_current(&request) {
+        if !admit_earbuds_request(&page, &request, cx) {
             return;
         }
         if self.close_requested || (request.needs_persistence() && self.storage_error.is_some()) {
@@ -252,7 +276,7 @@ impl AppShell {
         let Some(page) = workspace.read(cx).audio_mixer_page(cx) else {
             return;
         };
-        if !page.read(cx).earbuds_request_current(&request) {
+        if !admit_earbuds_request(&page, &request, cx) {
             return;
         }
         self.with_earbuds_session(
@@ -279,7 +303,7 @@ impl AppShell {
         let Some(page) = workspace.read(cx).audio_mixer_page(cx) else {
             return;
         };
-        if !page.read(cx).earbuds_request_current(&request) {
+        if !admit_earbuds_request(&page, &request, cx) {
             return;
         }
         let route = lease.route().clone();

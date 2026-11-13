@@ -132,6 +132,7 @@ struct Target {
 #[derive(Default)]
 pub(super) struct State {
     target: Option<Target>,
+    pending: Option<Target>,
     generation: u64,
     closing: bool,
     popup_regions: BTreeMap<String, Rc<Cell<Bounds<Pixels>>>>,
@@ -140,6 +141,7 @@ impl State {
     fn invalidate(&mut self) {
         self.generation = self.generation.wrapping_add(1);
         self.target = None;
+        self.pending = None;
     }
 }
 
@@ -632,7 +634,10 @@ impl PresentationContext {
             unlimited: hyper && self.shift,
             tall_name: self.policy.family == Family::Classic && counter == "Å",
             secondary_padding: self.policy.family == Family::Analog
-                && button.secondary_assignment_value.as_ref().is_some_and(|value| !value.is_empty()),
+                && button
+                    .secondary_assignment_value
+                    .as_ref()
+                    .is_some_and(|value| !value.is_empty()),
         }
     }
 }
@@ -731,13 +736,12 @@ impl KeyboardProductWorkspace {
             return;
         }
         if !entered {
-            if self
-                .analog_gamepad
-                .mapping
-                .key_tip
+            let state = &self.analog_gamepad.mapping.key_tip;
+            if state
                 .target
-                .as_ref()
-                .is_some_and(|target| target.input == input && target.anchor.same(&anchor))
+                .iter()
+                .chain(state.pending.iter())
+                .any(|target| target.input == input && target.anchor.same(&anchor))
             {
                 self.reset_mapping_key_tip();
             }
@@ -787,13 +791,15 @@ impl KeyboardProductWorkspace {
             .wrapping_add(1);
         let generation = self.analog_gamepad.mapping.key_tip.generation;
         if self.spec.product_id == 708 {
+            self.analog_gamepad.mapping.key_tip.pending = Some(target);
             let owner = cx.entity().downgrade();
             cx.defer(move |cx| {
                 let _ = owner.update(cx, |this, cx| {
                     if this.analog_gamepad.mapping.key_tip.generation == generation
                         && !this.analog_gamepad.mapping.key_tip.closing
                     {
-                        this.analog_gamepad.mapping.key_tip.target = Some(target);
+                        let state = &mut this.analog_gamepad.mapping.key_tip;
+                        state.target = state.pending.take();
                         cx.notify();
                     }
                 });

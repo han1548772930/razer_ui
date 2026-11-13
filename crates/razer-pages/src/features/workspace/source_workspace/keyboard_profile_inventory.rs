@@ -94,7 +94,8 @@ impl Owner {
                         complete::validate_target(&observed.target)?;
                         reading.validate_for(options)?;
                         anyhow::ensure!(
-                            reading.snapshot.inventory == observed.inventory,
+                            reading.snapshot.product_id == request.product_id
+                                && reading.snapshot.inventory == observed.inventory,
                             "Complete keyboard read and inventory differ"
                         );
                     }
@@ -241,31 +242,30 @@ impl SourceProductWorkspace {
         {
             return Err("Keyboard inventory owner is unavailable".into());
         }
-        let options =
-            if self.device.product_id == razer_device::keyboard_onboard_profiles::PRODUCT_ID {
-                if self.device.dashboard.readonly_keyboard_metadata.is_none() {
-                    return Err("Keyboard inventory requires the current layout reading".into());
-                }
-                let known = self
-                    .local_mapping_macros
-                    .iter()
-                    .map(|row| {
-                        row.get("guid")
-                            .and_then(Value::as_str)
-                            .filter(|guid| !guid.is_empty())
-                            .map(str::to_owned)
-                            .ok_or_else(|| "Local keyboard macro identity is absent".to_owned())
-                    })
-                    .collect::<Result<_, _>>()?;
-                let options = ReadOptions {
-                    layout_id: self.device.layout_id,
-                    locally_known_macro_guids: known,
-                };
-                options.validate().map_err(|error| format!("{error:#}"))?;
-                Some(options)
-            } else {
-                None
+        let options = if razer_device::keyboard_onboard_profiles::supports(self.device.product_id) {
+            if self.device.dashboard.readonly_keyboard_metadata.is_none() {
+                return Err("Keyboard inventory requires the current layout reading".into());
+            }
+            let known = self
+                .local_mapping_macros
+                .iter()
+                .map(|row| {
+                    row.get("guid")
+                        .and_then(Value::as_str)
+                        .filter(|guid| !guid.is_empty())
+                        .map(str::to_owned)
+                        .ok_or_else(|| "Local keyboard macro identity is absent".to_owned())
+                })
+                .collect::<Result<_, _>>()?;
+            let options = ReadOptions {
+                layout_id: self.device.layout_id,
+                locally_known_macro_guids: known,
             };
+            options.validate().map_err(|error| format!("{error:#}"))?;
+            Some(options)
+        } else {
+            None
+        };
         self.keyboard_profile_inventory.begin(Request {
             id,
             generation: self.mapping_connection_generation,

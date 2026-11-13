@@ -492,3 +492,43 @@ fn keyboard_profile_inventory_shared_decoder_keeps_source_utf8_and_owner_boundar
     assert_eq!(latest.owner, identity.owner);
     assert!(decode_identity(&bytes[..249]).is_err());
 }
+
+#[test]
+fn keyboard_profile_inventory_uses_text_decoder_bom_semantics_for_every_mounted_product() {
+    for product_id in OBM_PRODUCTS {
+        let mut bytes = metadata("\u{feff}设备名称");
+        // A BOM is removed only from the start of the decoded name. The owner
+        // uses String.fromCharCode and retains the same bytes as byte characters.
+        bytes[116..180].fill(0);
+        bytes[116..119].copy_from_slice(&[0xef, 0xbb, 0xbf]);
+        let mut replies = inventory_replies(6, &[1, 2]);
+        if ![691, 739, 752].contains(product_id) {
+            replies.extend(metadata_replies(1, &bytes));
+        }
+        replies.extend(metadata_replies(2, &bytes));
+        let device = Mock::new(replies);
+        let inventory =
+            read_hid(&device, &capability(*product_id), sequence(), &|| Ok(())).unwrap();
+        for slot in &inventory.slots {
+            if let ProfileMetadataObservation::Observed { identity, .. } = &slot.metadata {
+                assert_eq!(identity.name, "设备名称", "PID {product_id}");
+                assert_eq!(identity.owner, "\u{ef}\u{bb}\u{bf}", "PID {product_id}");
+            }
+        }
+        inventory.validate(*product_id).unwrap();
+    }
+    let bytes = metadata("内部\u{feff}名称");
+    assert_eq!(decode_identity(&bytes).unwrap().name, "内部\u{feff}名称");
+    let mut bytes = metadata("\u{feff}设备名称");
+    bytes[19] = 0xff;
+    assert!(
+        decode_identity(&bytes)
+            .unwrap()
+            .name
+            .starts_with('\u{fffd}')
+    );
+    let metadata =
+        crate::keyboard_latest_protocol::profile_metadata(2, &metadata("\u{feff}恢复槽位"))
+            .unwrap();
+    assert_eq!(metadata.name, "恢复槽位");
+}

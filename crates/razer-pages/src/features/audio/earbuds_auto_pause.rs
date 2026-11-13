@@ -1290,7 +1290,6 @@ impl AudioProductWorkspace {
         if let Notification::Connection { status, .. } = &event {
             if let Err(error) = razer_device::earbuds_auto_pause::connection_is_online(*status) {
                 self.earbuds_graphic.clear();
-                self.earbuds_activation.clear_device();
                 let error = format!("{error:#}");
                 if let Some(request) = &self.earbuds.pending {
                     request.active.store(false, Ordering::Release);
@@ -1316,7 +1315,6 @@ impl AudioProductWorkspace {
             Notification::Anc { state } => self.observe_anc_notification(state, cx),
             Notification::Connection { status: 0, .. } => {
                 self.earbuds_graphic.clear();
-                self.earbuds_activation.clear_device();
                 self.earbuds.was_off = true;
                 self.earbuds.initialized = false;
                 self.earbuds.firmware = FirmwareObservation::Unobserved;

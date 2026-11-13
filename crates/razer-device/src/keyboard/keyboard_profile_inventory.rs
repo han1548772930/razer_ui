@@ -253,8 +253,6 @@ pub fn decode_identity(bytes: &[u8]) -> anyhow::Result<ProfileIdentity> {
         "Keyboard profile metadata is incomplete"
     );
     let guid = guid_text(bytes[..16].try_into()?);
-    let name = &bytes[16..116];
-    let length = name.iter().position(|byte| *byte == 0).unwrap_or(99);
     let owner = bytes[116..180]
         .iter()
         .copied()
@@ -263,7 +261,7 @@ pub fn decode_identity(bytes: &[u8]) -> anyhow::Result<ProfileIdentity> {
     Ok(ProfileIdentity {
         guid_status: guid_status(&guid),
         guid,
-        name: String::from_utf8_lossy(&name[..length]).into_owned(),
+        name: crate::onboard_macro::source_text(&bytes[16..116], true),
         owner: owner.trim_matches('\0').to_owned(),
     })
 }

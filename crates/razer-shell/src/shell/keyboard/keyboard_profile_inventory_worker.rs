@@ -107,7 +107,7 @@ fn read<T: Transport>(
         Some(options) => {
             razer_ipc::keyboard_onboard_profiles::validate_target(&target)?;
             options.validate()?;
-            // The mounted 679 load begins with macro storage, then reads this
+            // The mounted load begins with macro storage, then reads this
             // inventory once before brightness, assignments and kill switch.
             let reading = transport.complete(&target, &options)?;
             let observation = razer_ipc::keyboard_onboard_profiles::Observation {
@@ -120,8 +120,8 @@ fn read<T: Transport>(
         }
         None => {
             ensure!(
-                target.product_id() != razer_device::keyboard_onboard_profiles::PRODUCT_ID,
-                "679 must use its complete mounted read order"
+                !razer_device::keyboard_onboard_profiles::supports(target.product_id()),
+                "Keyboard must use its complete mounted read order"
             );
             let inventory = transport.inventory(&target)?;
             let observation = Observation {

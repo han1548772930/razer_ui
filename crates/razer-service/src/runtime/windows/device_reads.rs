@@ -730,18 +730,51 @@ pub(super) fn keyboard_metadata(
     let device =
         hid_transport::open_validated(&target.path, feature_bytes, std::rc::Rc::new(&validate))?;
     let observe_peer = relay
-        || (matches!(query, KeyboardRead::ProfileInventory) && target.peer_product_id.is_some());
-    if observe_peer {
+        || (matches!(
+            query,
+            KeyboardRead::ProfileInventory | KeyboardRead::OnboardProfiles(_)
+        ) && target.peer_product_id.is_some());
+    if observe_peer && !matches!(query, KeyboardRead::OnboardProfiles(_)) {
         keyboard_peer_online(&device, target, &validate)?;
     }
     if let KeyboardRead::OnboardProfiles(options) = query {
-        let reading = razer_device::keyboard_onboard_profiles::read_complete(
-            &device,
+        struct Session<'a, V> {
+            device: &'a dyn razer_device::backend::FeatureTransport,
+            cap: &'a DeviceReadCapability,
+            target: &'a DeviceReadTarget,
+            options: &'a razer_device::keyboard_onboard_profiles::ReadOptions,
+            observe_peer: bool,
+            validate: &'a V,
+        }
+        impl<V: Fn() -> anyhow::Result<()>> super::super::keyboard_onboard_profiles::Session
+            for Session<'_, V>
+        {
+            fn confirm_peer(&mut self) -> anyhow::Result<()> {
+                if self.observe_peer {
+                    keyboard_peer_online(self.device, self.target, self.validate)?;
+                }
+                Ok(())
+            }
+            fn read_profiles(
+                &mut self,
+            ) -> anyhow::Result<razer_device::keyboard_onboard_profiles::CompleteReading> {
+                razer_device::keyboard_onboard_profiles::read_complete(
+                    self.device,
+                    self.cap,
+                    self.options,
+                    || transaction(self.target, self.cap),
+                    self.validate,
+                )
+            }
+        }
+        let reading = super::super::keyboard_onboard_profiles::read(&mut Session {
+            device: &device,
             cap,
+            target,
             options,
-            || transaction(target, cap),
-            &validate,
-        )?;
+            observe_peer,
+            validate: &validate,
+        })?;
         validate()?;
         return Ok(serde_json::to_value(
             razer_ipc::keyboard_onboard_profiles::Observation {

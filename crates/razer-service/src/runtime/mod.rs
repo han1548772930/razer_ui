@@ -20,6 +20,7 @@ mod earbuds_events;
 mod hid_broker;
 #[path = "keyboard_submission_controller.rs"]
 mod keyboard_submission_controller;
+mod keyboard_onboard_profiles;
 #[path = "keyboard_wristrest_controller.rs"]
 mod keyboard_wristrest_controller;
 mod leviathan_events;

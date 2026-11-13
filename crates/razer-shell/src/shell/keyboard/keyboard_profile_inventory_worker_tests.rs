@@ -27,9 +27,9 @@ fn target(pid: u32) -> Target {
     }
 }
 
-fn complete(options: &ReadOptions) -> CompleteReading {
+fn complete(product_id: u32, options: &ReadOptions) -> CompleteReading {
     let mut keys =
-        razer_device::keyboard_onboard_inventory::inventory(679, options.layout_id)
+        razer_device::keyboard_onboard_inventory::inventory(product_id, options.layout_id)
             .unwrap()
             .iter()
             .map(|key| KeyIdentity {
@@ -42,7 +42,7 @@ fn complete(options: &ReadOptions) -> CompleteReading {
     keys.sort_unstable_by_key(|key| key.firmware_key_id);
     CompleteReading {
         snapshot: Snapshot {
-            product_id: 679,
+            product_id,
             layout_id: options.layout_id,
             key_inventory: keys,
             macros: MacroCatalog {
@@ -123,14 +123,16 @@ impl Transport for Mock {
             declared_profile_count: 1,
             slots: vec![ProfileSlot {
                 slot_id: 9,
-                metadata: ProfileMetadataObservation::Failed { message: "metadata read failed".into() },
+                metadata: ProfileMetadataObservation::Failed {
+                    message: "metadata read failed".into(),
+                },
             }],
         })
     }
     fn complete(&mut self, _: &Target, options: &ReadOptions) -> anyhow::Result<CompleteReading> {
         self.record("complete");
         self.read_status()?;
-        let mut reading = complete(options);
+        let mut reading = complete(self.pid, options);
         if self.wrong_layout {
             reading.snapshot.layout_id = options.layout_id.wrapping_add(1);
         }
@@ -158,7 +160,7 @@ impl Drop for Mock {
 fn keyboard_inventory_worker_delivers_only_after_service_shutdown_termination_and_release() {
     let events = Arc::new(Mutex::new(vec![]));
     let canceled = Arc::new(AtomicBool::new(false));
-    let result = run_with(None, &canceled, || Ok(Mock::new(&events, &canceled, 550)));
+    let result = run_with(None, &canceled, || Ok(Mock::new(&events, &canceled, 740)));
     assert_eq!(
         *events.lock().unwrap(),
         ["resolve", "inventory", "shutdown", "terminate", "release"]
@@ -168,40 +170,46 @@ fn keyboard_inventory_worker_delivers_only_after_service_shutdown_termination_an
     else {
         panic!("wrong read mode")
     };
-    assert_eq!(observation.target, target(550));
+    assert_eq!(observation.target, target(740));
     assert_eq!(observation.inventory.max_profiles_supported, 7);
     assert_eq!(observation.inventory.slots[0].slot_id, 9);
 }
 
 #[test]
-fn keyboard_inventory_worker_679_uses_complete_read_once_without_an_extra_inventory_read() {
-    let events = Arc::new(Mutex::new(vec![]));
-    let canceled = Arc::new(AtomicBool::new(false));
-    let options = ReadOptions {
-        layout_id: 0,
-        locally_known_macro_guids: ["local-macro-guid".to_owned()].into(),
-    };
-    let result = run_with(Some(options.clone()), &canceled, || {
-        Ok(Mock::new(&events, &canceled, 679))
-    });
-    assert_eq!(
-        *events.lock().unwrap(),
-        ["resolve", "complete", "shutdown", "terminate", "release"]
-    );
-    let Reading::Complete(observation) = result.result.unwrap_or_else(|error| panic!("{error}"))
-    else {
-        panic!("wrong read mode")
-    };
-    assert_eq!(observation.options, options);
-    assert_eq!(
-        observation
-            .reading
-            .snapshot
-            .inventory
-            .max_profiles_supported,
-        7
-    );
-    assert!(observation.reading.snapshot.inventory.slots.is_empty());
+fn keyboard_inventory_worker_uses_complete_read_once_without_an_extra_inventory_read() {
+    for product_id in [
+        550, 551, 552, 577, 579, 590, 599, 600, 602, 617, 658, 661, 664, 678, 679, 691, 697, 717,
+    ] {
+        let events = Arc::new(Mutex::new(vec![]));
+        let canceled = Arc::new(AtomicBool::new(false));
+        let options = ReadOptions {
+            layout_id: 0,
+            locally_known_macro_guids: ["local-macro-guid".to_owned()].into(),
+        };
+        let result = run_with(Some(options.clone()), &canceled, || {
+            Ok(Mock::new(&events, &canceled, product_id))
+        });
+        assert_eq!(
+            *events.lock().unwrap(),
+            ["resolve", "complete", "shutdown", "terminate", "release"]
+        );
+        let Reading::Complete(observation) =
+            result.result.unwrap_or_else(|error| panic!("{error}"))
+        else {
+            panic!("wrong read mode")
+        };
+        assert_eq!(observation.options, options);
+        assert_eq!(
+            observation
+                .reading
+                .snapshot
+                .inventory
+                .max_profiles_supported,
+            7
+        );
+        assert!(observation.reading.snapshot.inventory.slots.is_empty());
+        assert_eq!(observation.reading.snapshot.product_id, product_id);
+    }
 }
 
 #[test]
@@ -220,7 +228,7 @@ fn keyboard_inventory_worker_cancel_failure_and_panic_always_complete_cleanup() 
         let events = Arc::new(Mutex::new(vec![]));
         let canceled = Arc::new(AtomicBool::new(false));
         let result = run_with(None, &canceled, || {
-            let mut mock = Mock::new(&events, &canceled, 550);
+            let mut mock = Mock::new(&events, &canceled, 740);
             mock.cancel_after_read = branch == 0;
             mock.fail_read = branch == 1;
             mock.panic_read = branch == 2;
@@ -241,7 +249,7 @@ fn keyboard_inventory_worker_retains_independent_cleanup_failures_and_rejects_wr
     let events = Arc::new(Mutex::new(vec![]));
     let canceled = Arc::new(AtomicBool::new(false));
     let result = run_with(None, &canceled, || {
-        let mut mock = Mock::new(&events, &canceled, 550);
+        let mut mock = Mock::new(&events, &canceled, 740);
         mock.fail_cleanup = true;
         Ok(mock)
     });

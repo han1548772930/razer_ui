@@ -1,5 +1,5 @@
 use super::{ButtonData, GameMode, Peer, PresentationContext, Tone, policy};
-use crate::features::keyboard_products::KeyboardProductWorkspace;
+use crate::features::keyboard_products::{KeyboardProductWorkspace, SourceArtworkObservation};
 use gpui_kit::test::TestWindowExt;
 use gpui_kit::{AppContext, TestAppContext, component::Root, px, size};
 use razer_device::keyboard_function_swap::FunctionKeyPrimary;
@@ -201,6 +201,164 @@ fn key_tip_uses_the_selected_mapping_layer_and_clears_on_page_leave(cx: &mut Tes
         page.update(cx, |page, cx| page.set_page("TAB_LIGHTING", window, cx));
         window.render_frame(cx);
         assert!(window.try_find("keyboard-mapping-key-tip").is_none());
+    })
+    .unwrap();
+}
+
+#[gpui_kit::test]
+fn key_tip_keypad_buttons_follow_mapping_layers_and_connection_lifetime(cx: &mut TestAppContext) {
+    cx.update(gpui_kit::init);
+    for product_id in [555, 580, 747] {
+        let mut page = None;
+        let handle = cx.open_window(size(px(1600.), px(1800.)), |window, cx| {
+            let view = cx.new(|cx| KeyboardProductWorkspace::new(product_id, false, window, cx));
+            view.update(cx, |page, cx| {
+                let input = page
+                    .mapping_buttons()
+                    .iter()
+                    .find(|row| row["buttonKey"] == "DIRECTION_LEFT")
+                    .expect("current keypad left button")["inputID"]
+                    .clone();
+                let mut saved = page.snapshot();
+                saved["directionMode"] = 1.into();
+                *saved
+                    .pointer_mut(&page.mapping_path())
+                    .expect("selected keymap mappings") = json!([
+                    {"inputID": input, "inputType":"KeyInput", "isHyperShift":false,
+                     "outputType":"keyboardGroup", "keyboardGroup":{"key":"KEY_A","modifiers":[]}},
+                    {"inputID": input, "inputType":"KeyInput", "isHyperShift":true,
+                     "outputType":"keyboardGroup", "keyboardGroup":{"key":"KEY_B","modifiers":[]}}
+                ]);
+                page.restore(Some(&saved), window, cx);
+            });
+            page = Some(view.clone());
+            Root::new(view, window, cx)
+        });
+        let page = page.unwrap();
+        cx.update_window(handle.into(), |_, window, cx| {
+            window.render_frame(cx);
+            let key_id = "keypad-artwork-button-DIRECTION_LEFT";
+            assert!(
+                window.find(key_id).visible(),
+                "PID {product_id}: {:?}",
+                window.find(key_id).bounds()
+            );
+            window.hover(key_id, cx);
+            assert_eq!(
+                window.find("keyboard-key-tip-name").label(),
+                Some("A"),
+                "{product_id}"
+            );
+            assert_eq!(
+                window.find("keyboard-key-tip-notice").label(),
+                Some(razer_i18n::t("MAPPING_REQUIRES_RAZER_SYNAPSE").as_str())
+            );
+            let key = window.find(key_id).bounds();
+            let tip = window.find("keyboard-mapping-key-tip").bounds();
+            assert!(tip.bottom() <= key.top() - px(5.) || tip.top() >= key.bottom() + px(5.));
+            window.click("keyboard-hypershift", cx);
+            window.hover(key_id, cx);
+            assert_eq!(
+                window.find("keyboard-key-tip-name").label(),
+                Some("B"),
+                "{product_id}"
+            );
+            page.update(cx, |page, _| page.set_mapping_callback_generation(21));
+            window.render_frame(cx);
+            assert!(window.try_find("keyboard-mapping-key-tip").is_none());
+        })
+        .unwrap();
+    }
+}
+
+#[gpui_kit::test]
+fn key_tip_special_rows_follow_hovered_control_and_dismiss_with_popup(cx: &mut TestAppContext) {
+    cx.update(gpui_kit::init);
+    let mut page = None;
+    let handle = cx.open_window(size(px(1300.), px(1800.)), |window, cx| {
+        let view = cx.new(|cx| KeyboardProductWorkspace::new(679, false, window, cx));
+        view.update(cx, |page, cx| {
+            page.observe_source_artwork(
+                SourceArtworkObservation {
+                    product_id: 679,
+                    edition_id: 0,
+                    layout_id: 1,
+                    wristrest_connected: None,
+                },
+                cx,
+            )
+        });
+        page = Some(view.clone());
+        Root::new(view, window, cx)
+    });
+    let page = page.unwrap();
+    cx.update_window(handle.into(), |_, window, cx| {
+        window.render_frame(cx);
+        for (anchor, row, expected) in [
+            (
+                "keyboard-hit-DIAL_CLICK",
+                "keyboard-special-0-DIAL_LEFT_ROTATION",
+                "VOLUME_DOWN",
+            ),
+            (
+                "keyboard-hit-DKM_KBMK_02",
+                "keyboard-special-1-MEDIA_NEXT",
+                "NEXT_TRACK",
+            ),
+        ] {
+            window.hover(anchor, cx);
+            window.hover(row, cx);
+            let state = &page.read(cx).analog_gamepad.mapping.key_tip;
+            assert!(
+                state.target.is_some(),
+                "{row}: no hovered tip owner; bounds {:?}",
+                window.find(row).bounds()
+            );
+            assert!(
+                state.target.as_ref().unwrap().button.is_none_tip != Some(true),
+                "{row}: source suppresses tooltip"
+            );
+            assert_eq!(
+                window.find("keyboard-key-tip-name").label(),
+                Some(razer_i18n::t(expected).as_str())
+            );
+            let control = window.find(row).bounds();
+            let tip = window.find("keyboard-mapping-key-tip").bounds();
+            assert!(
+                tip.bottom() <= control.top() - px(5.) || tip.top() >= control.bottom() + px(5.)
+            );
+            window.hover("keyboard-hypershift", cx);
+            assert!(window.try_find("keyboard-mapping-key-tip").is_none());
+            assert!(window.try_find(row).is_none());
+        }
+    })
+    .unwrap();
+}
+
+#[gpui_kit::test]
+fn key_tip_deferred_hover_cannot_reappear_after_pointer_leave(cx: &mut TestAppContext) {
+    cx.update(gpui_kit::init);
+    let handle = cx.open_window(size(px(1300.), px(1800.)), |window, cx| {
+        let view = cx.new(|cx| KeyboardProductWorkspace::new(708, false, window, cx));
+        Root::new(view, window, cx)
+    });
+    cx.update_window(handle.into(), |_, window, cx| {
+        window.render_frame(cx);
+        window.hover("keyboard-hit-KEY_A", cx);
+        window.hover("keyboard-hypershift", cx);
+    })
+    .unwrap();
+    cx.run_until_parked();
+    cx.update_window(handle.into(), |_, window, cx| {
+        window.render_frame(cx);
+        assert!(window.try_find("keyboard-mapping-key-tip").is_none());
+        window.hover("keyboard-hit-KEY_A", cx);
+    })
+    .unwrap();
+    cx.run_until_parked();
+    cx.update_window(handle.into(), |_, window, cx| {
+        window.render_frame(cx);
+        assert_eq!(window.find("keyboard-key-tip-name").label(), Some("A"));
     })
     .unwrap();
 }

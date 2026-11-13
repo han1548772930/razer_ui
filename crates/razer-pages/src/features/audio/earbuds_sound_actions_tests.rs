@@ -52,36 +52,48 @@ fn earbuds_sound_global_actions_ignore_missing_profiles_and_serialize_through_co
         let (handle, owner, mut device) = mount(pid, cx);
         cx.simulate_window_resize(handle, size(px(1600.), px(1400.)));
         let (requests, _subscription) = capture(&owner, cx);
+        let before = cx
+            .update_window(handle, |_, window, cx| {
+                owner.update(cx, |view, cx| {
+                    missing_profile(view, &mut device, window, cx)
+                });
+                window.render_frame(cx);
+                let before = owner.read(cx).snapshot();
+                window.click("earbuds-input-open", cx);
+                assert!(owner.read(cx).earbuds_sound.input_popup);
+                window.click("earbuds-input-confirm", cx);
+                before
+            })
+            .unwrap();
+        let first = requests.borrow()[0].clone();
+        assert_eq!(first.operation(), Operation::SwitchInputSource);
+        assert!(!first.needs_persistence() && !first.initializes_profile());
         cx.update_window(handle, |_, window, cx| {
-            owner.update(cx, |view, cx| {
-                missing_profile(view, &mut device, window, cx)
-            });
-            window.render_frame(cx);
-            let before = owner.read(cx).snapshot();
-            assert_eq!(window.find("earbuds-input-open").disabled(), Some(false));
-            window.click("earbuds-input-open", cx);
-            window.click("earbuds-input-confirm", cx);
-            let first = requests.borrow()[0].clone();
-            assert_eq!(first.operation(), Operation::SwitchInputSource);
-            assert!(!first.needs_persistence() && !first.initializes_profile());
-            window.render_frame(cx);
             window.click("earbuds-activation-show", cx);
-            assert_eq!(
-                requests.borrow().len(),
-                1,
-                "later read waits for the real worker completion"
-            );
+            assert!(owner.read(cx).earbuds_activation.loading);
+        })
+        .unwrap();
+        assert_eq!(
+            requests.borrow().len(),
+            1,
+            "later read waits for worker completion"
+        );
+        cx.update(|cx| {
             owner.update(cx, |view, cx| {
                 view.finish_earbuds_request(&first, Err("switch failed".into()), cx)
-            });
-            let second = requests.borrow()[1].clone();
-            assert_eq!(second.operation(), Operation::ActivationCode);
-            assert!(!second.needs_persistence());
+            })
+        });
+        let second = requests.borrow()[1].clone();
+        assert_eq!(second.operation(), Operation::ActivationCode);
+        assert!(!second.needs_persistence());
+        cx.update_window(handle, |_, window, cx| {
             window.render_frame(cx);
             assert!(window.find("earbuds-input-error").visible());
+            cx.write_to_clipboard(gpui_kit::ClipboardItem::new_string("UNCHANGED".into()));
+            window.click("earbuds-activation-copy", cx);
             assert_eq!(
-                window.find("earbuds-activation-copy").disabled(),
-                Some(true)
+                cx.read_from_clipboard().and_then(|item| item.text()),
+                Some("UNCHANGED".into())
             );
             owner.update(cx, |view, cx| {
                 view.finish_earbuds_request(&second, Ok(code(pid, "LOCAL-123")), cx)
@@ -97,6 +109,7 @@ fn earbuds_sound_global_actions_ignore_missing_profiles_and_serialize_through_co
             assert_eq!(device.active_profile, "missing-profile");
         })
         .unwrap();
+        assert_eq!(requests.borrow().len(), 2);
     }
 }
 
@@ -114,28 +127,41 @@ fn earbuds_sound_modal_reopen_and_reconnect_wait_for_old_cleanup_and_reject_old_
             });
             window.render_frame(cx);
             window.click("earbuds-activation-show", cx);
-            let first = requests.borrow()[0].clone();
+        })
+        .unwrap();
+        let first = requests.borrow()[0].clone();
+        cx.update_window(handle, |_, window, cx| {
             window.click("earbuds-activation-close", cx);
             window.click("earbuds-activation-show", cx);
-            assert!(!first.guard().load(Ordering::Acquire));
-            assert_eq!(requests.borrow().len(), 1);
+        })
+        .unwrap();
+        assert!(!first.guard().load(Ordering::Acquire));
+        assert_eq!(requests.borrow().len(), 1);
+        cx.update(|cx| {
             owner.update(cx, |view, cx| {
-                view.finish_earbuds_request(&first, Ok(code(pid, "OLD")), cx)
-            });
-            assert!(owner.read(cx).earbuds_activation.code.is_none());
-            let second = requests.borrow()[1].clone();
+                view.finish_earbuds_request(&first, Ok(code(pid, "OLD")), cx);
+                assert!(view.earbuds_activation.code.is_none());
+            })
+        });
+        let second = requests.borrow()[1].clone();
+        cx.update_window(handle, |_, window, cx| {
             owner.update(cx, |view, cx| {
                 view.finish_earbuds_request(&second, Err("code read failed".into()), cx)
             });
             window.render_frame(cx);
             assert!(window.find("earbuds-activation-error").visible());
+            cx.write_to_clipboard(gpui_kit::ClipboardItem::new_string("UNCHANGED".into()));
+            window.click("earbuds-activation-copy", cx);
             assert_eq!(
-                window.find("earbuds-activation-copy").disabled(),
-                Some(true)
+                cx.read_from_clipboard().and_then(|item| item.text()),
+                Some("UNCHANGED".into())
             );
             window.click("earbuds-activation-close", cx);
             window.click("earbuds-activation-show", cx);
-            let third = requests.borrow()[2].clone();
+        })
+        .unwrap();
+        let third = requests.borrow()[2].clone();
+        cx.update_window(handle, |_, window, cx| {
             owner.update(cx, |view, cx| {
                 view.set_earbuds_power_context(&device, true, 2, cx);
                 view.set_earbuds_sound_context(&device, true, 2, cx);
@@ -144,18 +170,20 @@ fn earbuds_sound_modal_reopen_and_reconnect_wait_for_old_cleanup_and_reject_old_
             window.render_frame(cx);
             window.click("earbuds-input-open", cx);
             window.click("earbuds-input-confirm", cx);
-            assert!(!third.guard().load(Ordering::Acquire));
-            assert_eq!(requests.borrow().len(), 3);
-            owner.update(cx, |view, cx| {
-                view.finish_earbuds_request(&third, Ok(code(pid, "STALE")), cx)
-            });
-            let next = requests.borrow()[3].clone();
-            assert_eq!(next.operation(), Operation::SwitchInputSource);
-            assert_ne!(next.device_scope(), third.device_scope());
-            assert!(owner.read(cx).earbuds_activation.code.is_none());
-            assert!(owner.read(cx).earbuds_sound.input_result.is_none());
         })
         .unwrap();
+        assert!(!third.guard().load(Ordering::Acquire));
+        assert_eq!(requests.borrow().len(), 3);
+        cx.update(|cx| {
+            owner.update(cx, |view, cx| {
+                view.finish_earbuds_request(&third, Ok(code(pid, "STALE")), cx);
+                assert!(view.earbuds_activation.code.is_none());
+                assert!(view.earbuds_sound.input_result.is_none());
+            })
+        });
+        let next = requests.borrow()[3].clone();
+        assert_eq!(next.operation(), Operation::SwitchInputSource);
+        assert_ne!(next.device_scope(), third.device_scope());
     }
 }
 
@@ -222,4 +250,175 @@ fn earbuds_sound_current_radio_reads_update_and_successful_nonradio_reports_pres
             assert!(view.earbuds_connection.ready());
         });
     }).unwrap();
+}
+
+#[gpui_kit::test]
+fn earbuds_sound_input_survives_profile_and_tab_changes_without_synthetic_radio_state(
+    cx: &mut TestAppContext,
+) {
+    use razer_device::earbuds_protocol40::WriteOutcome;
+    for pid in [2657, 2660, 2664, 2668, 2689] {
+        let (handle, owner, mut device) = mount(pid, cx);
+        cx.simulate_window_resize(handle, size(px(1600.), px(1400.)));
+        cx.update_window(handle, |_, window, cx| {
+            owner.update(cx, |view, cx| {
+                missing_profile(view, &mut device, window, cx)
+            });
+            window.render_frame(cx);
+            window.click("earbuds-input-open", cx);
+            window.click("earbuds-input-confirm", cx);
+            let request = owner.read(cx).earbuds_sound.pending.clone().unwrap();
+            owner.update(cx, |view, cx| {
+                device.active_profile = "another-missing-profile".into();
+                view.set_earbuds_context(&device, true, cx);
+                view.set_earbuds_sound_context(&device, true, 1, cx);
+                view.set_page("TAB_MIC", window, cx);
+                assert!(view.earbuds_request_current(&request));
+                let mut radio = reading(pid, false);
+                radio.left_battery = Some(255);
+                view.observe_earbuds_shared_connection(&radio, cx);
+                assert!(view.earbuds_request_current(&request));
+                let mut response = reading(pid, false);
+                response.operation = Operation::SwitchInputSource;
+                response.connected = None;
+                response.left_battery = None;
+                response.right_battery = None;
+                response.write = WriteOutcome::Confirmed;
+                view.finish_earbuds_request(&request, Ok(response), cx);
+                assert_eq!(
+                    view.earbuds_sound.input_result,
+                    Some(Ok(WriteOutcome::Confirmed))
+                );
+                assert!(view.earbuds_connection.disconnected());
+                view.set_page("TAB_SOUND", window, cx);
+            });
+            window.render_frame(cx);
+            window.hover("earbuds-input-disabled", cx);
+            assert!(owner.read(cx).earbuds_sound.input_disabled_cursor.is_some());
+            owner.update(cx, |view, cx| {
+                view.observe_earbuds_shared_connection(&reading(pid, false), cx);
+                assert!(view.earbuds_sound.input_disabled_cursor.is_none());
+                let mut radio = reading(pid, false);
+                radio.left_battery = Some(255);
+                view.observe_earbuds_shared_connection(&radio, cx);
+                assert!(view.earbuds_sound.input_disabled_cursor.is_none());
+            });
+        })
+        .unwrap();
+    }
+}
+
+#[gpui_kit::test]
+fn earbuds_sound_radio_changes_preserve_submitted_device_actions(cx: &mut TestAppContext) {
+    use razer_device::{earbuds_events::Notification, earbuds_protocol40::WriteOutcome};
+    for (pid, missing) in [2657, 2660, 2664, 2668, 2689]
+        .into_iter()
+        .flat_map(|pid| [(pid, false), (pid, true)])
+    {
+        let (handle, owner, mut device) = mount(pid, cx);
+        cx.simulate_window_resize(handle, size(px(1600.), px(1400.)));
+        cx.update_window(handle, |_, window, cx| {
+            owner.update(cx, |view, cx| {
+                if missing {
+                    missing_profile(view, &mut device, window, cx);
+                } else {
+                    view.observe_earbuds_shared_connection(&reading(pid, false), cx);
+                    view.set_page("TAB_SOUND", window, cx);
+                }
+            });
+            window.render_frame(cx);
+            window.click("earbuds-input-open", cx);
+            window.click("earbuds-input-confirm", cx);
+            owner.update(cx, |view, cx| {
+                let request = view.earbuds_sound.pending.clone().unwrap();
+                view.observe_earbuds_power_notification(
+                    &Notification::Connection {
+                        status: 0,
+                        status_bt: 1,
+                    },
+                    cx,
+                );
+                assert!(view.earbuds_connection.disconnected());
+                assert!(
+                    view.earbuds_request_current(&request),
+                    "wireless input switching does not replace the physical connection"
+                );
+                view.observe_earbuds_shared_connection_error("radio read failed".into(), cx);
+                assert!(!view.earbuds_connection.ready());
+                assert!(view.earbuds_request_current(&request));
+                assert!(view.earbuds_sound.input_result.is_none());
+                assert!(view.earbuds_activation.code.is_none());
+                let mut response = reading(pid, false);
+                response.operation = Operation::SwitchInputSource;
+                response.connected = None;
+                response.left_battery = None;
+                response.right_battery = None;
+                response.write = WriteOutcome::Confirmed;
+                view.finish_earbuds_request(&request, Ok(response), cx);
+                assert_eq!(
+                    view.earbuds_sound.input_result,
+                    Some(Ok(WriteOutcome::Confirmed))
+                );
+                assert!(!view.earbuds_connection.ready());
+                view.observe_earbuds_shared_connection_error("second radio failure".into(), cx);
+                assert_eq!(
+                    view.earbuds_sound.input_result,
+                    Some(Ok(WriteOutcome::Confirmed))
+                );
+                view.observe_earbuds_shared_connection(&reading(pid, false), cx);
+            });
+            window.render_frame(cx);
+            window.click("earbuds-activation-show", cx);
+            owner.update(cx, |view, cx| {
+                let request = view.earbuds_sound.pending.clone().unwrap();
+                for status in [0, 7] {
+                    view.observe_earbuds_power_notification(
+                        &Notification::Connection {
+                            status,
+                            status_bt: 1,
+                        },
+                        cx,
+                    );
+                    if !missing {
+                        let monitor = view
+                            .earbuds
+                            .monitor
+                            .clone()
+                            .expect("active profile monitor");
+                        view.observe_earbuds_notification(
+                            &monitor,
+                            Notification::Connection {
+                                status,
+                                status_bt: 1,
+                            },
+                            cx,
+                        );
+                    } else {
+                        assert!(!view.earbuds.active);
+                    }
+                    assert!(view.earbuds_request_current(&request));
+                    assert!(view.earbuds_activation.loading);
+                }
+                view.observe_earbuds_shared_connection_error("radio retry failed".into(), cx);
+                assert!(view.earbuds_activation.loading);
+                assert!(view.earbuds_activation.code.is_none());
+                view.finish_earbuds_request(&request, Ok(code(pid, "DONGLE-CODE")), cx);
+            });
+            window.render_frame(cx);
+            window.click("earbuds-activation-copy", cx);
+            assert_eq!(
+                cx.read_from_clipboard().and_then(|item| item.text()),
+                Some("DONGLE-CODE".into())
+            );
+            owner.update(cx, |view, cx| {
+                view.set_earbuds_power_context(&device, false, 2, cx);
+                view.set_earbuds_sound_context(&device, false, 2, cx);
+                assert!(view.earbuds_activation.code.is_none());
+                assert!(view.earbuds_sound.input_result.is_none());
+            });
+            window.render_frame(cx);
+            assert!(window.try_find("earbuds-activation-modal").is_none());
+        })
+        .unwrap();
+    }
 }

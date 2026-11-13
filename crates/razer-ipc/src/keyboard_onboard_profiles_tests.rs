@@ -136,3 +136,32 @@ fn keyboard_onboard_profiles_wire_never_claims_unmigrated_product_or_radio_branc
         assert!(request.synchronous_device_task().is_err());
     }
 }
+
+#[test]
+fn keyboard_onboard_profiles_wire_admits_only_actual_complete_reader_routes_and_product_results() {
+    for (product_id, physical_product_id) in [(550, 550), (551, 551), (691, 692), (678, 678)] {
+        let target = Target::WindowsContainer {
+            target: razer_device::device_reads::DeviceReadTarget {
+                product_id,
+                physical_product_id,
+                peer_product_id: None,
+                device_container_id: "actual-container".into(),
+                path: "actual-hid".into(),
+            },
+        };
+        validate_target(&target).unwrap();
+        let mut foreign = observation();
+        foreign.target = target.clone();
+        assert!(foreign.validate_for(&target, &foreign.options).is_err());
+    }
+    let invented_alias = Target::WindowsContainer {
+        target: razer_device::device_reads::DeviceReadTarget {
+            product_id: 551,
+            physical_product_id: 585,
+            peer_product_id: None,
+            device_container_id: "actual-container".into(),
+            path: "actual-hid".into(),
+        },
+    };
+    assert!(validate_target(&invented_alias).is_err());
+}

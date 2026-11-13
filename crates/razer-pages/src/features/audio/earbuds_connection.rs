@@ -89,13 +89,17 @@ impl AudioProductWorkspace {
         if report.product_id != self.spec.product_id || !self.earbuds_connection.active {
             return;
         }
-        self.earbuds_connection.disconnected = match report.connected {
+        let disconnected = match report.connected {
             Some(false) => Some(true),
             Some(true) if report.left_battery.is_some() && report.right_battery.is_some() => {
                 Some(report.has_disconnected_earbud())
             }
             _ => None,
         };
+        if self.earbuds_connection.disconnected != disconnected {
+            self.earbuds_sound.input_disabled_cursor = None;
+        }
+        self.earbuds_connection.disconnected = disconnected;
         self.earbuds_connection.error = None;
         if self.earbuds_connection.ready() {
             self.resume_earbuds_power(cx);
@@ -113,10 +117,7 @@ impl AudioProductWorkspace {
     ) {
         self.earbuds_connection.disconnected = None;
         self.earbuds_connection.error = Some(error.clone());
-        self.earbuds_sound.cancel();
-        self.earbuds_sound.input_result = Some(Err(error.clone()));
-        self.earbuds_activation.code = Some(Err(error.clone()));
-        self.earbuds_activation.loading = false;
+        self.earbuds_sound.input_disabled_cursor = None;
         self.finish_earbuds_power_monitor(error.clone(), cx);
         self.finish_earbuds_microphone_monitor(error, cx);
     }
@@ -129,10 +130,9 @@ impl AudioProductWorkspace {
             return;
         }
         if let Notification::Connection { status, .. } = event {
-            if *status == 0 {
-                self.earbuds_sound.cancel();
-                self.earbuds_activation.clear_device();
-            }
+            self.earbuds_sound.input_disabled_cursor = None;
+            // The radio can disconnect as the input-switch command takes effect.
+            // Device-global actions retain their physical connection scope until completion.
             self.earbuds_connection.disconnected = if *status == 0 { Some(true) } else { None };
             self.earbuds_power.cancel();
             self.cancel_earbuds_microphone();

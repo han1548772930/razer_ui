@@ -1227,25 +1227,56 @@ impl PortableRuntime {
             device.report_lengths()?.feature.values().max().copied() == Some(cap.report_bytes),
             "Keyboard metadata Feature descriptor differs from source"
         );
-        if let Some(peer) = peer_product_id {
-            self.keyboard_peer_online(device.as_ref(), node, product_id, peer, &validate)?;
+        if !matches!(query, KeyboardRead::OnboardProfiles(_)) {
+            if let Some(peer) = peer_product_id {
+                self.keyboard_peer_online(device.as_ref(), node, product_id, peer, &validate)?;
+            }
         }
-        let next_transaction = || {
-            self.transaction(
-                node,
-                &cap.source_class,
-                cap.transaction_prefix,
-                cap.transaction_modulus,
-            )
-        };
         if let KeyboardRead::OnboardProfiles(options) = query {
-            let reading = razer_device::keyboard_onboard_profiles::read_complete(
-                device.as_ref(),
+            struct Session<'a, V> {
+                runtime: &'a mut PortableRuntime,
+                device: &'a dyn razer_device::backend::FeatureTransport,
+                cap: &'a razer_device::device_reads::DeviceReadCapability,
+                node: &'a HidNode,
+                options: &'a razer_device::keyboard_onboard_profiles::ReadOptions,
+                peer: Option<u32>,
+                validate: &'a V,
+            }
+            impl<V: Fn() -> anyhow::Result<()>> super::keyboard_onboard_profiles::Session
+                for Session<'_, V>
+            {
+                fn confirm_peer(&mut self) -> anyhow::Result<()> {
+                    if let Some(peer) = self.peer {
+                        self.runtime.keyboard_peer_online(
+                            self.device, self.node, self.cap.product_id, peer, self.validate,
+                        )?;
+                    }
+                    Ok(())
+                }
+                fn read_profiles(
+                    &mut self,
+                ) -> anyhow::Result<razer_device::keyboard_onboard_profiles::CompleteReading> {
+                    razer_device::keyboard_onboard_profiles::read_complete(
+                        self.device,
+                        self.cap,
+                        self.options,
+                        || self.runtime.transaction(
+                            self.node, &self.cap.source_class,
+                            self.cap.transaction_prefix, self.cap.transaction_modulus,
+                        ),
+                        self.validate,
+                    )
+                }
+            }
+            let reading = super::keyboard_onboard_profiles::read(&mut Session {
+                runtime: self,
+                device: device.as_ref(),
                 cap,
+                node,
                 options,
-                next_transaction,
-                &validate,
-            )?;
+                peer: peer_product_id,
+                validate: &validate,
+            })?;
             validate()?;
             return Ok(serde_json::to_value(
                 razer_ipc::keyboard_onboard_profiles::Observation {
@@ -1259,6 +1290,14 @@ impl PortableRuntime {
                 },
             )?);
         }
+        let next_transaction = || {
+            self.transaction(
+                node,
+                &cap.source_class,
+                cap.transaction_prefix,
+                cap.transaction_modulus,
+            )
+        };
         if matches!(query, KeyboardRead::ProfileInventory) {
             let inventory = razer_device::keyboard_profile_inventory::read_hid(
                 device.as_ref(),

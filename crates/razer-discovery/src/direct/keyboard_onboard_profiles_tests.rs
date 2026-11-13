@@ -32,25 +32,53 @@ fn device_reply() -> serde_json::Value {
             })
         })
         .collect::<Vec<_>>();
-    let passes = [("Normal", false), ("Hypershift", true)].into_iter().map(|(mode, hyper)| {
-        let ids: Vec<_> = keys.iter().filter(|key| if hyper { !key.ignore_hypershift } else { !key.ignore_normal })
-            .map(|key| key.firmware_key_id).collect();
-        let batches = |size| ids.chunks(size).map(|chunk| json!({"key_ids":chunk,
-            "reading":{"Failed":{"message":"actual device command failed"}}})).collect::<Vec<_>>();
-        let assignments = ids.chunks(8).map(|chunk| json!({"key_ids":chunk,
-            "attempts":[{"Failed":{"message":"actual assignment read failed"}}]})).collect::<Vec<_>>();
-        json!({"mode":mode,"assignments":assignments,"rapid_trigger":batches(13),"actuation":batches(15)})
-    }).collect::<Vec<_>>();
+    let passes = [("Normal", false), ("Hypershift", true)]
+        .into_iter()
+        .map(|(mode, hyper)| {
+            let ids: Vec<_> = keys
+                .iter()
+                .filter(|key| {
+                    if hyper {
+                        !key.ignore_hypershift
+                    } else {
+                        !key.ignore_normal
+                    }
+                })
+                .map(|key| key.firmware_key_id)
+                .collect();
+            let assignments = ids
+                .chunks(8)
+                .map(|chunk| {
+                    json!({"key_ids":chunk,
+            "attempts":[{"Failed":{"message":"actual assignment read failed"}}]})
+                })
+                .collect::<Vec<_>>();
+            json!({"mode":mode,"assignments":assignments})
+        })
+        .collect::<Vec<_>>();
+    let ids = keys
+        .iter()
+        .map(|key| key.firmware_key_id)
+        .collect::<Vec<_>>();
+    let batches = |size| {
+        ids.chunks(size)
+            .map(|chunk| {
+                json!({"key_ids":chunk,
+        "reading":{"Failed":{"message":"actual device command failed"}}})
+            })
+            .collect::<Vec<_>>()
+    };
     json!({"target":target(),"options":options(),"reading":{
         "snapshot":{"product_id":679,"layout_id":1,"key_inventory":key_inventory,
             "macros":{"inventory":{"storage":{"max_macro_id":32767,"max_memory":65536,
                 "available_memory":43210,"recyclable_memory":17},"count":0,"ids":[],"pages":[]},"macros":[]},
             "inventory":{"max_profiles_supported":6,"declared_profile_count":1,"slots":[{
                 "slot_id":3,"metadata":{"Observed":{"identity":{"guid":"12345678-1234-5678-1234-567812345678",
-                    "guid_status":"Recognized","name":"Actual hardware profile","owner":"hardware-owner"},"mapping_hash":"Unobserved"}}
+                    "guid_status":"Recognized","name":"Actual hardware profile","owner":"hardware-owner"},"mapping_hash":{"Observed":[1,2,3,4,5,6]}}}
             }]},
             "profiles":[{"slot_id":3,"brightness":{"Observed":{"profile_id":3,"region_id":7,"raw_value":51,"percent":20}},
-                "passes":passes,"kill_switch":{"Observed":{"raw_enabled":9,"key_id1":4,"key_id2":8}}}]
+                "passes":passes,"rapid_trigger":batches(13),"actuation":batches(15),
+                "kill_switch":{"Observed":{"raw_enabled":9,"key_id1":4,"key_id2":8}}}]
         },
         "import_details":{"macros":[],"continuous_rapid_trigger":[{"slot_id":3,"raw_enabled":{"Observed":7}}]}
     }})
@@ -104,7 +132,7 @@ fn keyboard_onboard_profiles_discovery_rejects_missing_failed_and_stale_observat
     stale["target"]["target"]["path"] = json!("old-hid");
     assert!(read_with(&target(), &options(), |_| Ok(stale.clone())).is_err());
     let mut missing = device_reply();
-    missing["reading"]["snapshot"]["profiles"][0]["passes"][1]["actuation"]
+    missing["reading"]["snapshot"]["profiles"][0]["actuation"]
         .as_array_mut()
         .unwrap()
         .pop();
