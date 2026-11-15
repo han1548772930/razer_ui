@@ -121,7 +121,7 @@ fn keypad_profile_reads_both_modes_and_analog_batches_without_extra_target_write
 #[test]
 fn keypad_target_failure_retains_prior_observations_and_does_not_read_another_scope() {
     let mut failed = reply(&[]);
-    failed.status = 5;
+    failed.count = 90;
     let device = Mock::new([reply(&[2, 1, 3]), reply(&[2, 3]), failed]);
     let failure = read(&device, &capability(), 2, 1, sequence(), &|| Ok(())).unwrap_err();
     let reading = failure.snapshot();
@@ -132,4 +132,28 @@ fn keypad_target_failure_retains_prior_observations_and_does_not_read_another_sc
     assert!(matches!(reading.keymaps[0].name, Reading::Unobserved));
     assert!(reading.keymaps[0].passes.is_empty());
     assert_eq!(device.sent().len(), 3);
+}
+
+#[test]
+fn keypad_rejected_inner_selection_keeps_raw_read_with_unconfirmed_target() {
+    let mut replies = initial_replies();
+    let mut normal = mode_replies(0, 1000);
+    normal[0].status = 5;
+    replies.extend(normal);
+    replies.extend(mode_replies(1, 2000));
+    let device = Mock::new(replies);
+    let reading = observe(&device, &capability(), 2, 1, sequence(), &|| Ok(())).unwrap();
+    assert!(reading.failure.is_none());
+    assert_eq!(reading.snapshot.selections[1].returned_status, Some(5));
+    assert!(reading.snapshot.selections[1].acknowledgement.is_none());
+    assert!(!reading.snapshot.keymaps[0].passes[0].target_selected);
+    assert!(reading.snapshot.keymaps[0].passes[1].target_selected);
+    assert_eq!(
+        reading.snapshot.keymaps[0].passes[0].actuation[0]
+            .reading
+            .observed()
+            .unwrap()[0]
+            .threshold_low,
+        1002
+    );
 }

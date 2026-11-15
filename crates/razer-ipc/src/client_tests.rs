@@ -1019,6 +1019,35 @@ fn earbuds_equalizer_cancellation_retains_fixed_received_data_and_keeps_client_f
 }
 
 #[test]
+fn earbuds_input_source_fixed_request_and_late_cancellation_keep_device_scope() {
+    use razer_device::earbuds_auto_pause::{Operation, Report};
+    use razer_device::earbuds_protocol40::{AutoPauseObservation, WriteOutcome};
+    let request: ServiceRequest = serde_json::from_slice(br#"{"operation":"hid_node_earbuds_auto_pause","node":{"path":[69,65,82],"vendor_id":5426,"product_id":2657,"usage_page":1,"usage":2,"interface_number":3,"release_number":0,"serial_number":null,"manufacturer":null,"product":null},"product_id":2657,"auto_pause_operation":"SwitchInputSource"}"#).unwrap();
+    let data: Value = serde_json::from_slice(br#"{"product_id":2657,"operation":"SwitchInputSource","connected":null,"left_battery":null,"right_battery":null,"observation":"Unobserved","write":"Confirmed"}"#).unwrap();
+    let (mut client, pending) = simulated_client(reply(1, Some(data.clone()), None, false));
+    let report: Report = serde_json::from_value(client.request(request.clone()).unwrap()).unwrap();
+    assert_eq!(report.operation, Operation::SwitchInputSource);
+    assert_eq!(report.write, WriteOutcome::Confirmed);
+    assert_eq!(report.observation, AutoPauseObservation::Unobserved);
+    assert_eq!((report.connected, report.left_battery, report.right_battery), (None, None, None));
+    let frame: Value = serde_json::from_slice(&pending.try_recv().unwrap()).unwrap();
+    assert_eq!(frame["request"]["auto_pause_operation"], "SwitchInputSource");
+    assert_eq!(frame["request"]["product_id"], 2657);
+    assert!(frame["request"].get("profile_id").is_none());
+
+    let (mut client, pending) = simulated_client(reply(1, Some(data), None, false));
+    let guard = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(true));
+    client.set_request_guard(guard.clone());
+    let received = client.responses.recv().unwrap().unwrap();
+    guard.store(false, std::sync::atomic::Ordering::Release);
+    let error = client.complete_response(1, false, received).unwrap_err();
+    assert!(error.downcast_ref::<request_cancellation::CanceledResponse>().is_some());
+    assert!(client.is_stopped());
+    assert!(client.request(request).is_err());
+    assert!(matches!(pending.try_recv(), Err(mpsc::TryRecvError::Disconnected)));
+}
+
+#[test]
 fn shutdown_after_scope_cancellation_preserves_service_result_and_closes() {
     for (data, error) in [
         (Some(serde_json::json!({"stopped": true})), None),

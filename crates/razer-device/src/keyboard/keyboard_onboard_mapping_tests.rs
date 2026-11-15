@@ -365,3 +365,93 @@ fn current_raw_perfect180_fields_remain_separate_from_keyboard_ui_defaults() {
         );
     }
 }
+
+#[test]
+fn current_products_keep_own_physical_inputs_and_decoder_version() {
+    let products = [
+        550, 551, 552, 577, 579, 590, 599, 600, 602, 614, 617, 619, 620, 642, 647, 653, 658, 661,
+        664, 677, 678, 679, 688, 691, 697, 708, 716, 717, 719, 720, 721, 724, 727, 728, 739, 740,
+        741, 742, 746, 747, 752, 756,
+    ];
+    for product in products {
+        for layout in [0, 3, 4, 6, 7, 10, 12, 15, 16, 17, 18] {
+            let assigned = decode_for(product, layout, &raw(0, 0, [0; 5]), &catalog()).unwrap();
+            assert_eq!(
+                assigned.input_id, "KEY_A",
+                "product {product}, layout {layout}"
+            );
+            assert_eq!(assigned.output, Output::Disabled);
+            let decoded =
+                decode_for(product, layout, &raw(22, 0, [0, 0, 1, 1, 0]), &catalog()).unwrap();
+            assert_eq!(
+                matches!(decoded.output, Output::Perfect180(_)),
+                !matches!(product, 691 | 721 | 739 | 752)
+            );
+        }
+    }
+    assert!(decode_for(1, 0, &raw(0, 0, [0; 5]), &catalog()).is_err());
+}
+
+#[test]
+fn keypad_new_inputs_retain_dkm_identity_after_base_replacement() {
+    for (firmware, input) in [
+        (217, "DKM_KEYPAD_104"),
+        (218, "DKM_KEYPAD_103"),
+        (219, "KEY_ID_RIGHT_STICK_BTN"),
+    ] {
+        let wire = ButtonAssignment {
+            key_id: firmware,
+            ..raw(0, 0, [0; 5])
+        };
+        let assigned = decode_for(747, 0, &wire, &catalog()).unwrap();
+        assert_eq!(assigned.input_id, input);
+        assert_eq!(assigned.input_kind, InputKind::Dkm);
+        assert_eq!(assigned.input_hid, None);
+        assert_eq!(assigned.raw, wire);
+    }
+    let wire = ButtonAssignment {
+        key_id: 59,
+        ..raw(0, 0, [0; 5])
+    };
+    assert_eq!(
+        decode_for(747, 0, &wire, &catalog()).unwrap().input_id,
+        "KEY_FN"
+    );
+    assert_eq!(
+        decode_for(550, 0, &wire, &catalog()).unwrap().input_id,
+        "KEY_RIGHT_GUI"
+    );
+}
+
+#[test]
+fn incomplete_source_keyboard_groups_remain_unresolved() {
+    for (product, hid, key) in [
+        (677, 75, "KEY_HOME"),
+        (677, 78, "KEY_END"),
+        (691, 19, "KEY_PRINT_SCREEN"),
+        (691, 73, "KEY_PAUSE"),
+    ] {
+        let assigned = decode_for(product, 0, &raw(2, 1, [0, hid, 0, 0, 0]), &catalog()).unwrap();
+        assert!(
+            matches!(assigned.output,Output::Unknown { reason:UnknownReason::SourceNamedKeyboardKey { key:actual },..} if actual==key)
+        );
+    }
+    // This source row has no keyboard group; the source ordinary-key branch
+    // explicitly retries the Normal dictionary, while Turbo does not.
+    let assigned = decode_for(677, 0, &raw(2, 1, [0, 76, 0, 0, 0]), &catalog()).unwrap();
+    assert!(matches!(
+        assigned.output,
+        Output::Keyboard(KeyboardOutput {
+            key: HidKey { hid: 76, .. },
+            ..
+        })
+    ));
+    let assigned = decode_for(677, 0, &raw(13, 1, [0, 76, 0, 100, 0]), &catalog()).unwrap();
+    assert!(matches!(
+        assigned.output,
+        Output::Unknown {
+            reason: UnknownReason::KeyboardGroup { hid: 76, .. },
+            ..
+        }
+    ));
+}

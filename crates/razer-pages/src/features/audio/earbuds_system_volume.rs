@@ -190,6 +190,12 @@ impl AudioProductWorkspace {
         if !self.earbuds_volume_current(scope_id) {
             return;
         }
+        if update
+            .request_id()
+            .is_some_and(|id| !self.earbuds_volume.pending.contains(&id))
+        {
+            return;
+        }
         let latest = update
             .request_id()
             .is_some_and(|id| self.earbuds_volume.pending.last() == Some(&id));

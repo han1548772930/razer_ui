@@ -20,6 +20,7 @@ struct Policy {
     raw_default_kind: bool,
     xena: bool,
     remappable_fn: bool,
+    deferred_hover: bool,
 }
 fn policy(pid: u32) -> Option<Policy> {
     let family = match pid {
@@ -42,6 +43,35 @@ fn policy(pid: u32) -> Option<Policy> {
         raw_default_kind: pid == 756,
         xena: matches!(pid, 716 | 724),
         remappable_fn: pid == 747,
+        deferred_hover: matches!(
+            pid,
+            542 | 550
+                | 552
+                | 593
+                | 602
+                | 605
+                | 606
+                | 614
+                | 620
+                | 653
+                | 660
+                | 661
+                | 674
+                | 675
+                | 678
+                | 679
+                | 691
+                | 708
+                | 719
+                | 720
+                | 721
+                | 728
+                | 740
+                | 741
+                | 742
+                | 746
+                | 756
+        ),
     })
 }
 
@@ -128,6 +158,104 @@ struct Target {
     input: String,
     anchor: Anchor,
     button: ButtonData,
+}
+#[derive(Clone, Copy)]
+enum KeypadDirection {
+    Up,
+    Down,
+    Left,
+    Right,
+    TopLeft,
+    TopRight,
+    BottomLeft,
+    BottomRight,
+    Press,
+}
+impl KeypadDirection {
+    fn from_button(key: &str) -> Self {
+        match key {
+            "DIRECTION_DOWN" | "BUTTON_DOWN" => Self::Down,
+            "DIRECTION_LEFT" | "BUTTON_LEFT" => Self::Left,
+            "DIRECTION_RIGHT" | "BUTTON_RIGHT" => Self::Right,
+            "BUTTON_UPLEFT" => Self::TopLeft,
+            "BUTTON_UPRIGHT" => Self::TopRight,
+            "BUTTON_DOWNLEFT" => Self::BottomLeft,
+            "BUTTON_DOWNRIGHT" => Self::BottomRight,
+            "DKM_JOYSTICK_PRESS" => Self::Press,
+            _ => Self::Up,
+        }
+    }
+}
+#[derive(Clone, Copy)]
+struct DirectionalKeypadTip {
+    direction: KeypadDirection,
+    drawer_open: bool,
+}
+#[derive(Clone, Copy)]
+enum KeypadTipPlacement {
+    Legacy,
+    Directional(DirectionalKeypadTip),
+}
+impl KeypadTipPlacement {
+    fn origin(
+        self,
+        target: Bounds<Pixels>,
+        size: Size<Pixels>,
+        frame: Bounds<Pixels>,
+        viewport: Bounds<Pixels>,
+        scroll: Point<Pixels>,
+        rem_size: Pixels,
+    ) -> Point<Pixels> {
+        match self {
+            Self::Directional(placement) => placement.origin(target, size, frame, rem_size),
+            Self::Legacy => {
+                let css = |value| surface::css(value).to_pixels(rem_size);
+                let top = target.top() - frame.top();
+                let y = if top <= css(135.) + size.height {
+                    top + target.size.height - css(95.) + scroll.y
+                } else {
+                    top - size.height + css(20.)
+                };
+                point(
+                    viewport.left()
+                        + px(f32::from(target.center().x - frame.left() - size.width / 2.).ceil())
+                        + scroll.x,
+                    viewport.top() + y,
+                )
+            }
+        }
+    }
+}
+impl DirectionalKeypadTip {
+    fn origin(
+        self,
+        target: Bounds<Pixels>,
+        size: Size<Pixels>,
+        frame: Bounds<Pixels>,
+        rem_size: Pixels,
+    ) -> Point<Pixels> {
+        let css = |value| surface::css(value).to_pixels(rem_size);
+        let shift = if self.drawer_open { css(-230.) } else { px(0.) };
+        let center_x = target.center().x - size.width / 2. + shift;
+        let center_y = target.center().y - size.height / 2.;
+        let left = target.left() - size.width - css(4.) + shift;
+        let right = target.right() + css(4.) + shift;
+        let (x, y) = match self.direction {
+            KeypadDirection::Press => (target.right() - css(75.), target.bottom() + css(4.)),
+            KeypadDirection::Down => (center_x, target.bottom() + css(4.)),
+            KeypadDirection::Left => (left, center_y),
+            KeypadDirection::Right => (right, center_y),
+            KeypadDirection::TopLeft => (left, target.bottom() - size.height + css(10.)),
+            KeypadDirection::TopRight => (right, target.bottom() - size.height + css(10.)),
+            KeypadDirection::BottomLeft => (left, target.top() - css(10.)),
+            KeypadDirection::BottomRight => (right, target.top() - css(10.)),
+            KeypadDirection::Up => (center_x, target.top() - size.height - css(4.)),
+        };
+        point(
+            px(f32::from(x.max(frame.left()).min(frame.right() - size.width)).ceil()),
+            px(f32::from(y).ceil()),
+        )
+    }
 }
 #[derive(Default)]
 pub(super) struct State {
@@ -790,7 +918,7 @@ impl KeyboardProductWorkspace {
             .generation
             .wrapping_add(1);
         let generation = self.analog_gamepad.mapping.key_tip.generation;
-        if self.spec.product_id == 708 {
+        if policy(self.spec.product_id).is_some_and(|policy| policy.deferred_hover) {
             self.analog_gamepad.mapping.key_tip.pending = Some(target);
             let owner = cx.entity().downgrade();
             cx.defer(move |cx| {
@@ -996,11 +1124,150 @@ impl KeyboardProductWorkspace {
                 policy,
                 shapes: self.analog_gamepad.floating.key_bounds.clone(),
                 keypad: self.analog_gamepad.mapping.button_regions.clone(),
-                viewport: self.analog_gamepad.mapping.viewport_bounds.clone(),
+                viewport: Viewport::Measured(self.analog_gamepad.mapping.viewport_bounds.clone()),
+                keypad_placement: if matches!(target.anchor, Anchor::Keypad(_)) {
+                    match self.spec.product_id {
+                        580 => Some(KeypadTipPlacement::Legacy),
+                        747 => Some(KeypadTipPlacement::Directional(DirectionalKeypadTip {
+                            direction: KeypadDirection::from_button(&target.button.button_key),
+                            drawer_open: self.button_drawer_open,
+                        })),
+                        _ => None,
+                    }
+                } else {
+                    None
+                },
+                app_frame: self.analog_gamepad.mapping.app_frame_bounds.clone(),
+                scroll: self.analog_gamepad.mapping.page_scroll.clone(),
             })
             .with_priority(999)
             .into_any_element(),
         )
+    }
+}
+
+/// The retained 653 workspace supplies its committed local-profile assignment.
+/// Device observations and an open mapping editor remain separate owners.
+pub(in crate::features) struct ProfileKeyTip {
+    button: ButtonData,
+}
+impl ProfileKeyTip {
+    pub(in crate::features) fn new(source: &razer_assets::KeyboardSourceInput) -> Self {
+        Self {
+            button: ButtonData {
+                button_key: source.button_key().into(),
+                input_id: Some(source.id().into()),
+                counter: Some(match source.counter() {
+                    razer_assets::InputCounter::Label(value) => Counter::Text(value.clone()),
+                    razer_assets::InputCounter::Number(value) => Counter::Number((*value).into()),
+                }),
+                assignment: Some(source.assignment().into()),
+                assignment_value: Some(source.assignment_value().into()),
+                default_value: Some(source.default_value().into()),
+                assignment_group: None,
+                secondary_assignment: None,
+                secondary_assignment_value: None,
+                secondary_assignment_group: None,
+                mapping_group: source.mapping_group().map(str::to_owned),
+                is_mapped: Some(false),
+                is_none_tip: None,
+                disabled_key: None,
+                unremappable: None,
+                disable_hypershift_mapping: Some(source.disable_hypershift_mapping()),
+                has_hw_func: None,
+                has_sw_func: None,
+                is_require_synapse: None,
+                default_require_synapse: None,
+                condition_text: None,
+            },
+        }
+    }
+    pub(in crate::features) fn mapped(mut self, kind: Option<&str>, value: String) -> Self {
+        self.button.assignment = kind.map(str::to_owned);
+        self.button.assignment_value = Some(value);
+        self.button.is_mapped = Some(true);
+        self
+    }
+    pub(in crate::features) fn render(
+        self,
+        shift: bool,
+        gaming: bool,
+        in_game: bool,
+        anchor: Rc<Cell<Bounds<Pixels>>>,
+        viewport: ScrollHandle,
+    ) -> AnyElement {
+        let policy = policy(653).expect("653 current source key tip");
+        let context = PresentationContext {
+            pid: 653,
+            policy,
+            shift,
+            primary: None,
+            gaming: Some(GameMode {
+                state: if !gaming {
+                    0
+                } else if in_game {
+                    2
+                } else {
+                    1
+                },
+                // A local 'in game' preference is not a running-game observation.
+                is_game_on: None,
+            }),
+            peer: Peer::Unobserved,
+        };
+        let button = &self.button;
+        let name = if button.is_mapped == Some(true) || shift {
+            button.assignment_value.clone().unwrap_or_default()
+        } else if media(653, &button.button_key)
+            || matches!(
+                button.button_key.as_str(),
+                "DKM_KB_SIDE1" | "DKM_KB_SIDE2" | "DKM_KB_SIDE3"
+            )
+            || button.default_value.as_deref() == Some("DISABLE")
+        {
+            button.default_value.clone().unwrap_or_default()
+        } else if button.assignment_value.as_deref() == Some("Razer Hypershift")
+            || button.input_id.as_deref().is_some_and(|id| {
+                matches!(
+                    id,
+                    "DKM_M_01" | "DKM_M_02" | "DKM_M_03" | "DKM_M_04" | "DKM_M_05" | "DKM_M_06"
+                )
+            })
+        {
+            button.assignment_value.clone().unwrap_or_default()
+        } else {
+            button
+                .counter
+                .as_ref()
+                .map(Counter::text)
+                .unwrap_or_default()
+        };
+        razer_assets::deferred_resource(KeyTip {
+            card: context.card(button, name, String::new()),
+            anchor: Anchor::Popup(anchor),
+            policy,
+            shapes: Rc::default(),
+            keypad: Rc::default(),
+            viewport: Viewport::Scroll(viewport),
+            keypad_placement: None,
+            app_frame: Rc::default(),
+            scroll: ScrollHandle::default(),
+        })
+        .with_priority(999)
+        .into_any_element()
+    }
+}
+
+enum Viewport {
+    Measured(Rc<Cell<Bounds<Pixels>>>),
+    Scroll(ScrollHandle),
+}
+impl Viewport {
+    fn bounds(&self) -> Bounds<Pixels> {
+        match self {
+            Self::Measured(bounds) => bounds.get(),
+            Self::Scroll(scroll) => scroll.bounds(),
+        }
     }
 }
 
@@ -1013,7 +1280,10 @@ struct KeyTip {
     policy: Policy,
     shapes: ShapeBounds,
     keypad: Rc<RefCell<BTreeMap<String, Bounds<Pixels>>>>,
-    viewport: Rc<Cell<Bounds<Pixels>>>,
+    viewport: Viewport,
+    keypad_placement: Option<KeypadTipPlacement>,
+    app_frame: Rc<Cell<Bounds<Pixels>>>,
+    scroll: ScrollHandle,
 }
 impl Card {
     fn label(&self) -> String {
@@ -1153,6 +1423,9 @@ impl RenderOnce for KeyTip {
             shapes: self.shapes,
             keypad: self.keypad,
             viewport: self.viewport,
+            keypad_placement: self.keypad_placement,
+            app_frame: self.app_frame,
+            scroll: self.scroll,
             child: self.card.render(),
             child_layout: None,
         }
@@ -1163,7 +1436,10 @@ struct PositionedTip {
     policy: Policy,
     shapes: ShapeBounds,
     keypad: Rc<RefCell<BTreeMap<String, Bounds<Pixels>>>>,
-    viewport: Rc<Cell<Bounds<Pixels>>>,
+    viewport: Viewport,
+    keypad_placement: Option<KeypadTipPlacement>,
+    app_frame: Rc<Cell<Bounds<Pixels>>>,
+    scroll: ScrollHandle,
     child: AnyElement,
     child_layout: Option<LayoutId>,
 }
@@ -1208,7 +1484,7 @@ impl Element for PositionedTip {
         &mut self,
         _: Option<&GlobalElementId>,
         _: Option<&InspectorElementId>,
-        bounds: Bounds<Pixels>,
+        _: Bounds<Pixels>,
         _: &mut (),
         window: &mut Window,
         cx: &mut App,
@@ -1227,7 +1503,27 @@ impl Element for PositionedTip {
             return false;
         };
         let child = window.layout_bounds(layout);
-        let viewport = self.viewport.get();
+        let viewport = self.viewport.bounds();
+        if let Some(placement) = self.keypad_placement {
+            let frame = self.app_frame.get();
+            let frame = if frame.size.width > px(0.) {
+                frame
+            } else {
+                Bounds::new(Point::default(), window.viewport_size())
+            };
+            let origin = placement.origin(
+                target,
+                child.size,
+                frame,
+                viewport,
+                self.scroll.offset(),
+                window.rem_size(),
+            );
+            window.with_element_offset(origin - child.origin, |window| {
+                self.child.prepaint(window, cx)
+            });
+            return true;
+        }
         let gap = surface::css(5.).to_pixels(window.rem_size());
         let mut left = px(f32::from(target.center().x - child.size.width / 2.).ceil());
         if self.policy.family == Family::Classic && viewport.size.width > px(0.) {
@@ -1255,7 +1551,7 @@ impl Element for PositionedTip {
                     px(0.)
                 }
         };
-        window.with_element_offset(point(left, top) - bounds.origin, |window| {
+        window.with_element_offset(point(left, top) - child.origin, |window| {
             self.child.prepaint(window, cx)
         });
         true

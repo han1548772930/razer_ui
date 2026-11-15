@@ -1,4 +1,4 @@
-//! Current679's createButtonMappingFromFnDataByte consumer. Source defaults
+//! Current keyboard createButtonMappingFromFnDataByte consumer. Source defaults
 //! resolve HID identities; they never substitute for an unread assignment.
 use super::Mode;
 use crate::{
@@ -7,6 +7,7 @@ use crate::{
 };
 use anyhow::{Result, ensure};
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 
 #[path = "keyboard_onboard_mapping_source.rs"]
 mod source;
@@ -134,6 +135,9 @@ pub enum ActionFamily {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum UnknownReason {
+    SourceNamedKeyboardKey { key: Cow<'static, str> },
+    SourceKeyboardGroupAbsent,
+    SourceRazerAssignmentAbsent,
     Function,
     SourceHasNoDecoder,
     KeyboardHid { hid: u16, mode: Mode },
@@ -170,41 +174,96 @@ pub enum Output {
 pub struct Assignment {
     pub raw: ButtonAssignment,
     pub input_id: String,
+    pub input_kind: InputKind,
+    pub input_hid: Option<u16>,
     pub mode: Mode,
     pub output: Output,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum InputKind {
+    Key,
+    Dkm,
+    QuotedAnalog,
+}
+
 struct DefaultMapping {
+    source_key: &'static str,
     input_id: &'static str,
     mode: Mode,
+    input_kind: InputKind,
     firmware_key_id: Option<u8>,
     input_hid: Option<u16>,
+    use_turbo: Option<bool>,
     output: Output,
+}
+
+#[derive(Clone, Copy)]
+struct DefaultMappings {
+    base: &'static [DefaultMapping],
+    overrides: &'static [DefaultMapping],
+}
+
+impl DefaultMappings {
+    /// Object assignment replaces existing keys in place, then appends new keys.
+    /// Firmware/HID dictionaries retain the last row in that resulting order.
+    fn rows(self) -> impl DoubleEndedIterator<Item = &'static DefaultMapping> {
+        self.base
+            .iter()
+            .map(move |row| {
+                self.overrides
+                    .iter()
+                    .find(|patch| patch.mode == row.mode && patch.source_key == row.source_key)
+                    .unwrap_or(row)
+            })
+            .chain(self.overrides.iter().filter(move |row| {
+                !self
+                    .base
+                    .iter()
+                    .any(|base| base.mode == row.mode && base.source_key == row.source_key)
+            }))
+    }
+
+    fn hid(self, hid: u16, mode: Mode) -> Option<&'static DefaultMapping> {
+        self.rows()
+            .rev()
+            .find(|row| row.mode == mode && row.input_hid == Some(hid))
+    }
 }
 
 /// Explicit source defaults are for comparing or constructing local profiles.
 /// Their presence says nothing about the connected device's current mapping.
 pub fn default_output(input_id: &str, mode: Mode) -> Option<&'static Output> {
-    source::KEYBOARD
-        .iter()
+    default_output_for(super::PRODUCT_ID, 0, input_id, mode)
+}
+
+pub fn default_output_for(
+    product: u32,
+    layout: u32,
+    input_id: &str,
+    mode: Mode,
+) -> Option<&'static Output> {
+    source::defaults(product, layout)?
+        .rows()
         .rev()
         .find(|row| row.input_id == input_id && row.mode == mode)
         .map(|row| &row.output)
 }
 
 pub fn keyboard_input(hid: u16, mode: Mode) -> Option<&'static str> {
-    hid_mapping(hid, mode).map(|row| row.input_id)
+    source::defaults(super::PRODUCT_ID, 0)?
+        .hid(hid, mode)
+        .map(|row| row.input_id)
 }
 
-fn hid_mapping(hid: u16, mode: Mode) -> Option<&'static DefaultMapping> {
-    // Object assignment in init retains the last row for each input HID.
-    source::KEYBOARD
-        .iter()
-        .rev()
-        .find(|row| row.mode == mode && row.input_hid == Some(hid))
+pub(super) fn default_use_turbo_for(product: u32, layout: u32, input: &str, mode: Mode) -> Option<bool> {
+    source::defaults(product, layout)?.rows().rev()
+        .find(|row| row.input_id == input && row.mode == mode)
+        .and_then(|row| row.use_turbo)
 }
 
 fn keyboard_output(
+    defaults: DefaultMappings,
     data: &[u8; 5],
     mode: Mode,
     turbo: bool,
@@ -225,16 +284,30 @@ fn keyboard_output(
     } else {
         u16::from(data[1])
     };
-    let row = hid_mapping(hid, mode).ok_or(UnknownReason::KeyboardHid { hid, mode })?;
+    let row = defaults
+        .hid(hid, mode)
+        .ok_or(UnknownReason::KeyboardHid { hid, mode })?;
+    if let Output::Unknown {
+        reason: UnknownReason::SourceNamedKeyboardKey { .. },
+        ..
+    } = &row.output
+    {
+        return Err(match &row.output {
+            Output::Unknown { reason, .. } => reason.clone(),
+            _ => unreachable!(),
+        });
+    }
     let group = match &row.output {
         Output::Keyboard(group) => Some(*group),
-        _ if mode == Mode::Hypershift && !turbo => hid_mapping(hid, Mode::Normal).and_then(|row| {
-            if let Output::Keyboard(group) = row.output {
-                Some(group)
-            } else {
-                None
-            }
-        }),
+        _ if mode == Mode::Hypershift && !turbo => {
+            defaults.hid(hid, Mode::Normal).and_then(|row| {
+                if let Output::Keyboard(group) = row.output {
+                    Some(group)
+                } else {
+                    None
+                }
+            })
+        }
         _ => None,
     };
     let mut group = group.ok_or(UnknownReason::KeyboardGroup { hid, mode })?;
@@ -266,6 +339,17 @@ fn mouse_output(
 /// Decode one actual five-byte assignment, retaining its exact wire fields
 /// even when the current source cannot resolve the output or macro identity.
 pub fn decode(raw: &ButtonAssignment, macros: &MacroCatalog) -> Result<Assignment> {
+    decode_for(super::PRODUCT_ID, 0, raw, macros)
+}
+
+pub fn decode_for(
+    product: u32,
+    layout: u32,
+    raw: &ButtonAssignment,
+    macros: &MacroCatalog,
+) -> Result<Assignment> {
+    let defaults = source::defaults(product, layout)
+        .ok_or_else(|| anyhow::anyhow!("OBM assignment product has no current source mapping"))?;
     let mode = match raw.mode {
         0 => Mode::Normal,
         1 => Mode::Hypershift,
@@ -275,12 +359,14 @@ pub fn decode(raw: &ButtonAssignment, macros: &MacroCatalog) -> Result<Assignmen
         raw.data_size <= 5,
         "OBM assignment data size exceeds its wire field"
     );
-    let physical = source::KEYBOARD
-        .iter()
+    let physical = defaults
+        .rows()
         .rev()
         .find(|row| row.mode == Mode::Normal && row.firmware_key_id == Some(raw.key_id))
         .ok_or_else(|| anyhow::anyhow!("OBM assignment firmware key has no source identity"))?;
-    let function = source::function_id(u16::from(raw.function_id));
+    let function = source::function_id(u16::from(raw.function_id)).filter(|function| {
+        *function != FunctionId::Perfect180 || !matches!(product, 691 | 721 | 739 | 752)
+    });
     let data = &raw.data;
     let unknown_action = |family, code| UnknownReason::Action { family, code };
     let required = match function {
@@ -310,7 +396,7 @@ pub fn decode(raw: &ButtonAssignment, macros: &MacroCatalog) -> Result<Assignmen
             None => Err(UnknownReason::Function),
             Some(FunctionId::Off) => Ok(Output::Disabled),
             Some(FunctionId::ButtonCode) => mouse_output(data[0], mode, None),
-            Some(FunctionId::KeyCode) => keyboard_output(data, mode, false),
+            Some(FunctionId::KeyCode) => keyboard_output(defaults, data, mode, false),
             Some(FunctionId::MacroTypeI | FunctionId::MacroTypeII | FunctionId::MacroTypeIII) => {
                 let macro_id = u16::from_be_bytes([data[0], data[1]]);
                 let guid = macros
@@ -391,7 +477,7 @@ pub fn decode(raw: &ButtonAssignment, macros: &MacroCatalog) -> Result<Assignmen
                 turbo: None,
             })),
             Some(FunctionId::ModeButtonkey) => Ok(Output::Hypershift),
-            Some(FunctionId::TurboModeKey) => keyboard_output(data, mode, true),
+            Some(FunctionId::TurboModeKey) => keyboard_output(defaults, data, mode, true),
             Some(FunctionId::TurboModeButton) => mouse_output(
                 data[0],
                 mode,
@@ -423,6 +509,8 @@ pub fn decode(raw: &ButtonAssignment, macros: &MacroCatalog) -> Result<Assignmen
     Ok(Assignment {
         raw: *raw,
         input_id: physical.input_id.into(),
+        input_kind: physical.input_kind,
+        input_hid: physical.input_hid,
         mode,
         output: output.unwrap_or_else(|reason| Output::Unknown { function, reason }),
     })

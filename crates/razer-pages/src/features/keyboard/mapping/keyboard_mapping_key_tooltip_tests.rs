@@ -209,6 +209,10 @@ fn key_tip_uses_the_selected_mapping_layer_and_clears_on_page_leave(cx: &mut Tes
 fn key_tip_keypad_buttons_follow_mapping_layers_and_connection_lifetime(cx: &mut TestAppContext) {
     cx.update(gpui_kit::init);
     for product_id in [555, 580, 747] {
+        assert!(
+            crate::features::keyboard_products::source_product(product_id).is_some(),
+            "PID {product_id} has no current catalog"
+        );
         let mut page = None;
         let handle = cx.open_window(size(px(1600.), px(1800.)), |window, cx| {
             let view = cx.new(|cx| KeyboardProductWorkspace::new(product_id, false, window, cx));
@@ -255,7 +259,14 @@ fn key_tip_keypad_buttons_follow_mapping_layers_and_connection_lifetime(cx: &mut
             );
             let key = window.find(key_id).bounds();
             let tip = window.find("keyboard-mapping-key-tip").bounds();
-            assert!(tip.bottom() <= key.top() - px(5.) || tip.top() >= key.bottom() + px(5.));
+            if product_id == 747 {
+                assert_eq!(tip.right(), key.left() - px(4.));
+                assert!((tip.center().y - key.center().y).abs() <= px(0.5));
+            } else if product_id == 580 {
+                assert_eq!(tip.top(), key.top() - tip.size.height + px(20.));
+            } else {
+                assert!(tip.bottom() <= key.top() - px(5.) || tip.top() >= key.bottom() + px(5.));
+            }
             window.click("keyboard-hypershift", cx);
             window.hover(key_id, cx);
             assert_eq!(
@@ -292,22 +303,27 @@ fn key_tip_special_rows_follow_hovered_control_and_dismiss_with_popup(cx: &mut T
         Root::new(view, window, cx)
     });
     let page = page.unwrap();
-    cx.update_window(handle.into(), |_, window, cx| {
-        window.render_frame(cx);
-        for (anchor, row, expected) in [
-            (
-                "keyboard-hit-DIAL_CLICK",
-                "keyboard-special-0-DIAL_LEFT_ROTATION",
-                "VOLUME_DOWN",
-            ),
-            (
-                "keyboard-hit-DKM_KBMK_02",
-                "keyboard-special-1-MEDIA_NEXT",
-                "NEXT_TRACK",
-            ),
-        ] {
+    for (anchor, row, expected) in [
+        (
+            "keyboard-hit-DIAL_CLICK",
+            "keyboard-special-0-DIAL_LEFT_ROTATION",
+            "VOLUME_DOWN",
+        ),
+        (
+            "keyboard-hit-DKM_KBMK_02",
+            "keyboard-special-1-MEDIA_NEXT",
+            "NEXT_TRACK",
+        ),
+    ] {
+        cx.update_window(handle.into(), |_, window, cx| {
+            window.render_frame(cx);
             window.hover(anchor, cx);
             window.hover(row, cx);
+        })
+        .unwrap();
+        cx.run_until_parked();
+        cx.update_window(handle.into(), |_, window, cx| {
+            window.render_frame(cx);
             let state = &page.read(cx).analog_gamepad.mapping.key_tip;
             assert!(
                 state.target.is_some(),
@@ -318,6 +334,17 @@ fn key_tip_special_rows_follow_hovered_control_and_dismiss_with_popup(cx: &mut T
                 state.target.as_ref().unwrap().button.is_none_tip != Some(true),
                 "{row}: source suppresses tooltip"
             );
+            if let super::Anchor::Popup(bounds) = &state.target.as_ref().unwrap().anchor {
+                assert!(
+                    bounds.get().size.width > px(0.),
+                    "{row}: missing popup bounds {:?}",
+                    bounds.get()
+                );
+            }
+            assert!(
+                window.try_find("keyboard-key-tip-name").is_some(),
+                "{row}: tooltip was not painted"
+            );
             assert_eq!(
                 window.find("keyboard-key-tip-name").label(),
                 Some(razer_i18n::t(expected).as_str())
@@ -325,14 +352,85 @@ fn key_tip_special_rows_follow_hovered_control_and_dismiss_with_popup(cx: &mut T
             let control = window.find(row).bounds();
             let tip = window.find("keyboard-mapping-key-tip").bounds();
             assert!(
-                tip.bottom() <= control.top() - px(5.) || tip.top() >= control.bottom() + px(5.)
+                tip.bottom() <= control.top() - px(5.) || tip.top() >= control.bottom() + px(5.),
+                "{row}: control {control:?}, tip {tip:?}"
             );
             window.hover("keyboard-hypershift", cx);
             assert!(window.try_find("keyboard-mapping-key-tip").is_none());
             assert!(window.try_find(row).is_none());
-        }
-    })
-    .unwrap();
+        })
+        .unwrap();
+    }
+}
+
+#[test]
+fn key_tip_directional_keypad_preserves_each_source_direction_and_drawer_offset() {
+    use super::{DirectionalKeypadTip, KeypadDirection};
+    use gpui_kit::{Bounds, Point, point};
+    let key = Bounds::new(point(px(400.), px(300.)), size(px(100.), px(30.)));
+    let tip = size(px(120.), px(80.));
+    let frame = Bounds::new(Point::default(), size(px(1000.), px(800.)));
+    for (direction, expected) in [
+        (KeypadDirection::Up, (390., 216.)),
+        (KeypadDirection::Down, (390., 334.)),
+        (KeypadDirection::Left, (276., 275.)),
+        (KeypadDirection::Right, (504., 275.)),
+        (KeypadDirection::TopLeft, (276., 260.)),
+        (KeypadDirection::TopRight, (504., 260.)),
+        (KeypadDirection::BottomLeft, (276., 290.)),
+        (KeypadDirection::BottomRight, (504., 290.)),
+        (KeypadDirection::Press, (425., 334.)),
+    ] {
+        let placement = DirectionalKeypadTip {
+            direction,
+            drawer_open: false,
+        };
+        assert_eq!(
+            placement.origin(key, tip, frame, px(16.)),
+            point(px(expected.0), px(expected.1))
+        );
+    }
+    let drawer = DirectionalKeypadTip {
+        direction: KeypadDirection::Left,
+        drawer_open: true,
+    };
+    assert_eq!(
+        drawer.origin(key, tip, frame, px(16.)),
+        point(px(46.), px(275.))
+    );
+    let clipped = Bounds::new(point(px(100.), px(300.)), key.size);
+    assert_eq!(
+        drawer.origin(clipped, tip, frame, px(16.)),
+        point(px(0.), px(275.))
+    );
+    let press = DirectionalKeypadTip {
+        direction: KeypadDirection::Press,
+        drawer_open: true,
+    };
+    assert_eq!(
+        press.origin(key, tip, frame, px(16.)),
+        point(px(425.), px(334.))
+    );
+}
+
+#[test]
+fn key_tip_legacy_keypad_keeps_distinct_scroll_and_threshold_branches() {
+    use super::KeypadTipPlacement;
+    use gpui_kit::{Bounds, point};
+    let frame = Bounds::new(point(px(50.), px(30.)), size(px(1000.), px(800.)));
+    let viewport = Bounds::new(point(px(50.), px(126.)), size(px(1000.), px(704.)));
+    let scroll = point(px(-10.), px(-40.));
+    let tip = size(px(120.), px(80.));
+    let key = Bounds::new(point(px(450.), px(330.)), size(px(100.), px(30.)));
+    assert_eq!(
+        KeypadTipPlacement::Legacy.origin(key, tip, frame, viewport, scroll, px(16.)),
+        point(px(430.), px(366.))
+    );
+    let upper_key = Bounds::new(point(px(450.), px(200.)), key.size);
+    assert_eq!(
+        KeypadTipPlacement::Legacy.origin(upper_key, tip, frame, viewport, scroll, px(16.)),
+        point(px(430.), px(191.))
+    );
 }
 
 #[gpui_kit::test]
@@ -361,4 +459,64 @@ fn key_tip_deferred_hover_cannot_reappear_after_pointer_leave(cx: &mut TestAppCo
         assert_eq!(window.find("keyboard-key-tip-name").label(), Some("A"));
     })
     .unwrap();
+}
+
+#[gpui_kit::test]
+fn key_tip_source_keyboard_roots_mount_hover_and_reject_disconnected_state(
+    cx: &mut TestAppContext,
+) {
+    cx.update(gpui_kit::init);
+    // PID 653 mounts DeviceWorkspace; the other 72 products use this source owner.
+    for product_id in [
+        515, 521, 529, 534, 542, 545, 550, 551, 552, 554, 556, 565, 567, 574, 575, 577, 579, 585,
+        590, 591, 592, 593, 599, 600, 602, 605, 606, 614, 617, 619, 620, 631, 642, 647, 654, 655,
+        658, 659, 660, 661, 664, 673, 674, 675, 677, 678, 679, 688, 689, 691, 697, 708, 716, 717,
+        719, 720, 721, 724, 727, 728, 739, 740, 741, 742, 746, 752, 756, 2595, 2596,
+    ] {
+        assert!(
+            crate::features::keyboard_products::source_product(product_id).is_some(),
+            "PID {product_id} has no current catalog"
+        );
+        let mut page = None;
+        let handle = cx.open_window(size(px(1600.), px(1800.)), |window, cx| {
+            let view = cx.new(|cx| KeyboardProductWorkspace::new(product_id, false, window, cx));
+            view.update(cx, |page, cx| {
+                page.observe_source_artwork(
+                    SourceArtworkObservation {
+                        product_id,
+                        edition_id: 0,
+                        layout_id: 1,
+                        wristrest_connected: None,
+                    },
+                    cx,
+                )
+            });
+            page = Some(view.clone());
+            Root::new(view, window, cx)
+        });
+        let page = page.unwrap();
+        cx.update_window(handle.into(), |_, window, cx| {
+            window.render_frame(cx);
+            window.hover("keyboard-hit-KEY_A", cx);
+        })
+        .unwrap();
+        cx.run_until_parked();
+        cx.update_window(handle.into(), |_, window, cx| {
+            window.render_frame(cx);
+            assert_eq!(
+                window.find("keyboard-key-tip-name").label(),
+                Some("A"),
+                "PID {product_id}"
+            );
+            page.update(cx, |page, _| page.set_mapping_callback_generation(3));
+            window.render_frame(cx);
+            assert!(
+                window.try_find("keyboard-mapping-key-tip").is_none(),
+                "PID {product_id}"
+            );
+            window.remove_window();
+        })
+        .unwrap();
+        cx.run_until_parked();
+    }
 }

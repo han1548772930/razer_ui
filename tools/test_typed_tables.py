@@ -286,7 +286,7 @@ class TypedTableTests(unittest.TestCase):
         self.assertIn(b'input_hid: Some(4), output: Output::Keyboard(KeyboardOutput { key: HidKey { hid: 5, flag: 1, page_id: 7 }', output)
         self.assertIn(b'modifiers: 1, extended_modifier: true, extended_key: Some(ExtendedKey::Extended00)', output)
         self.assertIn(b'input_id: "A", mode: Mode::Hypershift', output)
-        self.assertIn(b'input_id: "DKM", mode: Mode::Normal, firmware_key_id: Some(64), input_hid: None, output: Output::Disabled', output)
+        self.assertIn(b'input_id: "DKM", mode: Mode::Normal, input_kind: InputKind::Dkm, firmware_key_id: Some(64), input_hid: None, output: Output::Disabled', output)
         self.assertIn(b'(Mode::Normal, 1, MouseAction::Click)', output)
         self.assertIn(b'(Mode::Hypershift, 1, MouseAction::Click)', output)
         self.assertLess(output.index(b'input_id: "A", mode: Mode::Normal'), output.index(b'input_id: "DKM"'))
@@ -305,7 +305,7 @@ class TypedTableTests(unittest.TestCase):
             lambda p: p["encoding"]["modifier_bits"].update(LeftCtrl=True),
             lambda p: p["encoding"]["modifier_names"].update(RightGUI="Left_Ctrl"),
             lambda p: p["keyboard"].update(OtherMode={}),
-            lambda p: p["keyboard"]["NormalMode"]["A"].update(inputID="other"),
+            lambda p: p["keyboard"]["NormalMode"]["A"].update(inputID=""),
             lambda p: p["keyboard"]["NormalMode"]["A"].update(fwID=None),
             lambda p: p["keyboard"]["NormalMode"]["A"].update(fwID=64),
             lambda p: p["keyboard"]["NormalMode"]["A"].update(isHyperShift=1),
@@ -327,6 +327,28 @@ class TypedTableTests(unittest.TestCase):
             mutate(projection)
             with self.subTest(mutation=index), self.assertRaises(ValueError):
                 typed_tables.render_current_onboard_mapping(projection)
+
+    def test_current_onboard_mapping_keeps_source_key_distinct_from_input_and_rejects_unknown_shape(self):
+        projection = self.current_onboard_mapping_fixture()
+        row = projection["keyboard"]["NormalMode"]["A"]
+        row["inputID"] = "KEY_F9"
+        row["keyboardGroup"] = {"key": "KEY_HOME"}
+        output = typed_tables.render_current_onboard_mapping(projection)
+        self.assertIn(b'source_key: "A", input_id: "KEY_F9"', output)
+        self.assertIn(b'SourceNamedKeyboardKey { key: std::borrow::Cow::Borrowed("KEY_HOME")', output)
+        row["keyboardGroup"]["key"] = "unresolved_new_key"
+        with self.assertRaises(ValueError):
+            typed_tables.render_current_onboard_mapping(projection)
+
+    def test_current_onboard_mapping_preserves_quoted_input_without_hid_admission(self):
+        projection = self.current_onboard_mapping_fixture()
+        row = projection["keyboard"]["HypershiftMode"]["A"]
+        row["inputType"] = '\"AnalogInput\"'
+        output = typed_tables.render_current_onboard_mapping(projection)
+        self.assertIn(b'input_kind: InputKind::QuotedAnalog, firmware_key_id: Some(31), input_hid: None', output)
+        row["inputType"] = "AnalogInput"
+        with self.assertRaises(ValueError):
+            typed_tables.render_current_onboard_mapping(projection)
 
     @staticmethod
     def battery_peer_manifest():

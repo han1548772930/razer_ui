@@ -42,6 +42,10 @@ impl CustomizeDrawer {
         window.focus(&self.toggle_focus, cx);
     }
 
+    pub(super) fn body_scroll(&self) -> ScrollHandle {
+        self.body_scroll.clone()
+    }
+
     pub(super) fn reset_scroll(&self) {
         self.scroll.set_offset(point(px(0.), px(0.)));
     }
@@ -355,6 +359,11 @@ impl DeviceWorkspace {
         .clamp(min_left, max_left);
         gpui_kit::component::h_flex()
             .id("customize-surface")
+            .children(self.keyboard_mapping_key_tip())
+            .children(self.keyboard_media_tip(cx))
+            .on_mouse_move(cx.listener(|this, event: &MouseMoveEvent, _, cx| {
+                this.keyboard_media_pointer(event.position, cx);
+            }))
             .test_support()
             .relative()
             .items_stretch()

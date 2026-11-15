@@ -138,6 +138,349 @@ fn keyboard_onboard_profiles_reads_complete_digital_and_kill_switch_variants() {
 }
 
 #[test]
+fn keyboard_onboard_profiles_complete_registered_setting_and_analog_variants() {
+    // Current mounted registrations and engine selections. The response stream
+    // deliberately uses values different from the local profile templates.
+    for (products, analog, polling, debounce, knob, mod_tap, kill, snap, single, interrupt, dual) in [
+        (
+            &[614, 642][..],
+            1,
+            false,
+            false,
+            None,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+        ),
+        (
+            &[619, 647, 677, 752][..],
+            0,
+            true,
+            true,
+            None,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+        ),
+        (
+            &[620][..],
+            0,
+            true,
+            false,
+            None,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+        ),
+        (
+            &[653][..],
+            0,
+            true,
+            true,
+            Some(36),
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+        ),
+        (
+            &[688][..],
+            2,
+            false,
+            false,
+            None,
+            true,
+            true,
+            true,
+            false,
+            false,
+            false,
+        ),
+        (
+            &[708][..],
+            0,
+            false,
+            false,
+            Some(39),
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+        ),
+        (
+            &[716, 724, 727][..],
+            0,
+            true,
+            false,
+            None,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+        ),
+        (
+            &[719, 720, 728, 740, 746, 756][..],
+            2,
+            true,
+            false,
+            None,
+            false,
+            false,
+            true,
+            true,
+            true,
+            true,
+        ),
+        (
+            &[721][..],
+            3,
+            true,
+            false,
+            None,
+            true,
+            false,
+            true,
+            true,
+            true,
+            true,
+        ),
+        (
+            &[741, 742][..],
+            2,
+            true,
+            false,
+            None,
+            false,
+            false,
+            true,
+            true,
+            true,
+            false,
+        ),
+        (
+            &[739][..],
+            0,
+            false,
+            false,
+            None,
+            false,
+            false,
+            true,
+            true,
+            true,
+            true,
+        ),
+    ] {
+        for &product in products {
+            let cap = capability_for(product);
+            let keys = selected_keys(product, 1).unwrap();
+            let settings = settings_capability(&cap).unwrap();
+            let mut replies = initial_replies(&[2]);
+            if matches!(product, 739 | 752) {
+                replies.drain(5..9);
+            }
+            if settings.all_region == 0 {
+                replies.extend(brightness(2, 153));
+            } else {
+                replies.push(reply(&[2, settings.all_region, 153]));
+            }
+            let mut expected = Vec::new();
+            if polling {
+                replies.push(reply(&[2, 16]));
+                expected.push([2, 0, 192]);
+            }
+            if analog >= 2 && polling {
+                replies.push(reply(&[2, 23]));
+                expected.push([2, 2, 168]);
+            }
+            if debounce {
+                replies.push(reply(&[2, 9, 11, 13, 15]));
+                expected.push([5, 2, 149]);
+            }
+            for mode in [Mode::Normal, Mode::Hypershift] {
+                let ids = keys
+                    .iter()
+                    .filter(|key| match mode {
+                        Mode::Normal => !key.ignore_normal,
+                        Mode::Hypershift => !key.ignore_hypershift,
+                    })
+                    .map(|key| key.firmware_key_id)
+                    .collect::<Vec<_>>();
+                if analog >= 2 {
+                    replies.extend(mode_replies(2, mode, &ids, 1234));
+                    for chunk in ids.chunks(8) {
+                        expected.push([(1 + 9 * chunk.len()) as u8, 2, 158]);
+                    }
+                } else {
+                    for &key in &ids {
+                        if analog == 1 {
+                            replies.push(reply(&[
+                                2,
+                                key,
+                                mode.wire(),
+                                17,
+                                29,
+                                2,
+                                2,
+                                0,
+                                4,
+                                0,
+                                0,
+                                0,
+                            ]));
+                            expected.push([10, 2, 146]);
+                        } else {
+                            replies.push(reply(&[2, key, mode.wire(), 2, 2, 0, 4, 0, 0, 0]));
+                            expected.push([10, 2, 141]);
+                        }
+                    }
+                }
+                if analog == 3 {
+                    replies.extend(analog_replies(2, &ids, 1234));
+                    for chunk in ids.chunks(13) {
+                        expected.push([(2 + 6 * chunk.len()) as u8, 2, 154]);
+                    }
+                    for chunk in ids.chunks(15) {
+                        expected.push([(2 + 5 * chunk.len()) as u8, 2, 153]);
+                    }
+                }
+            }
+            if analog == 2 {
+                let ids = keys
+                    .iter()
+                    .map(|key| key.firmware_key_id)
+                    .collect::<Vec<_>>();
+                replies.extend(analog_replies(2, &ids, 1234));
+                for chunk in ids.chunks(13) {
+                    expected.push([(2 + 6 * chunk.len()) as u8, 2, 154]);
+                }
+                for chunk in ids.chunks(15) {
+                    expected.push([(2 + 5 * chunk.len()) as u8, 2, 153]);
+                }
+            }
+            if let Some(knob) = knob {
+                let mut bytes = vec![2, knob];
+                for index in 0..8 {
+                    bytes.extend_from_slice(&[0, index, 9, 21, 33, 45]);
+                }
+                replies.push(reply(&bytes));
+                replies.push(reply(&[2, knob, 0, 7, 9, 21, 33, 45]));
+                expected.extend([[50, 3, 146], [8, 3, 147]]);
+            }
+            if mod_tap {
+                replies.push(reply(&[
+                    2, 62, 9, 4, 5, 64, 0, 6, 7, 129, 1, 8, 9, 57, 2, 10, 11,
+                ]));
+                expected.push([17, 2, 155]);
+            }
+            if kill {
+                replies.push(reply(&[2, 7, 4, 8]));
+                expected.push([4, 2, 161]);
+            }
+            if snap {
+                replies.push(reply(&[2, 1, 9, 4, 8, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0]));
+                expected.push([15, 2, 167]);
+            }
+            if single {
+                replies.push(reply(&[2, 1, 7, 4, 17, 0, 0, 0, 0, 0, 0]));
+                expected.push([11, 2, 172]);
+            }
+            if interrupt {
+                replies.extend([
+                    reply(&[2, 7, 9, 4, 8, 0, 0]),
+                    reply(&[2, 8, 10, 16, 32, 0, 0]),
+                ]);
+                expected.extend([[7, 2, 174], [7, 2, 173]]);
+            }
+            if dual {
+                replies.push(reply(&[2, 2, 9, 17, 23, 41, 43]));
+                expected.push([7, 2, 177]);
+            }
+            if analog >= 2 {
+                replies.push(reply(&[2, 7]));
+                expected.push([2, 2, 160]);
+            }
+            let prefix_len = replies.len() - expected.len();
+            let device = Mock::new(replies);
+            let options = ReadOptions {
+                layout_id: 1,
+                locally_known_macro_guids: BTreeSet::new(),
+            };
+            let reading = read_complete(&device, &cap, &options, sequence(), &|| Ok(())).unwrap();
+            reading.validate_for(&options).unwrap();
+            let profile = &reading.snapshot.profiles[0];
+            assert_eq!(
+                profile.brightness.observed().unwrap().percent,
+                60,
+                "PID {product}"
+            );
+            assert_eq!(
+                profile
+                    .settings
+                    .polling_rate
+                    .observed()
+                    .map(|value| value.hertz),
+                polling.then_some(Some(500)),
+                "PID {product}"
+            );
+            assert_eq!(
+                profile
+                    .settings
+                    .debounce
+                    .observed()
+                    .map(|value| value.break_mask_ms),
+                debounce.then_some(15),
+                "PID {product}"
+            );
+            assert_eq!(
+                profile
+                    .settings
+                    .snap_tap
+                    .observed()
+                    .map(|value| value.raw_enabled),
+                snap.then_some(9),
+                "PID {product}"
+            );
+            if analog == 1 {
+                let point = &profile.passes[0].legacy_actuation[0]
+                    .reading
+                    .observed()
+                    .unwrap()[0];
+                assert_eq!((point.threshold_low, point.threshold_high), (17, 29));
+            }
+            if analog == 3 {
+                assert!(profile.actuation.is_empty());
+                assert!(!profile.passes[1].actuation.is_empty());
+            }
+            let sent = device.sent();
+            assert_eq!(sent.len(), prefix_len + expected.len(), "PID {product}");
+            for (actual, expected) in sent[prefix_len..].iter().zip(&expected) {
+                assert_eq!(&actual[6..9], expected, "PID {product}");
+            }
+            assert!(
+                sent.iter().all(|report| report[8] >= 128),
+                "read issued SET for PID {product}"
+            );
+        }
+    }
+}
+
+#[test]
 fn keyboard_onboard_profiles_single_assignment_failure_retains_other_keys_and_stops_cancellation() {
     let cap = capability_for(550);
     let mut failure = reply(&[]);
@@ -200,7 +543,10 @@ fn keyboard_onboard_profiles_single_assignment_rejects_foreign_or_malformed_repl
             &|| Ok(()),
         )
         .unwrap();
-        assert!(matches!(pass.assignments[0].attempts[0], Reading::Failed { .. }));
+        assert!(matches!(
+            pass.assignments[0].attempts[0],
+            Reading::Failed { .. }
+        ));
         assert_eq!(pass.assignments[0].observed(), None);
         assert_eq!(
             pass.assignments[1].observed().unwrap(),
@@ -227,7 +573,9 @@ fn keyboard_onboard_profiles_complete_radio_reads_keep_actual_factory_and_transa
         (697, 698, 128, 3),
         (717, 730, 128, 2),
     ] {
-        let mut cap = crate::keyboard_metadata::hid_capability(product, physical).unwrap().clone();
+        let mut cap = crate::keyboard_metadata::hid_capability(product, physical)
+            .unwrap()
+            .clone();
         cap.max_retry_in = 1;
         cap.max_retry_out = 1;
         cap.sleep_between_in_ms = 0;
@@ -237,12 +585,22 @@ fn keyboard_onboard_profiles_complete_radio_reads_keep_actual_factory_and_transa
         assert_eq!(cap.claim_interface, interface);
         let device = Mock::new(initial_replies(&[]));
         let mut counter = 0;
-        let options = ReadOptions { layout_id: 1, locally_known_macro_guids: BTreeSet::new() };
-        let reading = read_complete(&device, &cap, &options, || {
-            let transaction = prefix | counter;
-            counter = (counter + 1) % 31;
-            Ok(transaction)
-        }, &|| Ok(())).unwrap();
+        let options = ReadOptions {
+            layout_id: 1,
+            locally_known_macro_guids: BTreeSet::new(),
+        };
+        let reading = read_complete(
+            &device,
+            &cap,
+            &options,
+            || {
+                let transaction = prefix | counter;
+                counter = (counter + 1) % 31;
+                Ok(transaction)
+            },
+            &|| Ok(()),
+        )
+        .unwrap();
         reading.validate_for(&options).unwrap();
         assert_eq!(reading.snapshot.product_id, product);
         assert!(reading.snapshot.inventory.slots.is_empty());
@@ -483,6 +841,8 @@ fn keyboard_onboard_profiles_keeps_source_batch_sizes_and_modes() {
         rapid_trigger: Vec::new(),
         actuation: Vec::new(),
         kill_switch: Reading::Unobserved,
+        settings: settings::Observation::unobserved(),
+        keymaps: None,
     };
     read_analog(
         &device,
@@ -741,4 +1101,320 @@ fn keyboard_onboard_profiles_detail_consumer_skips_known_guids_and_reads_size_co
     );
     assert_eq!(&reports[1][9..16], &[0, 8, 0, 0, 0, 0, 3]);
     assert_report_integrity(&reports);
+}
+
+fn keypad_read_replies(slot: u8, keymap_id: u8) -> Vec<Reply> {
+    // The current keypad's 30 physical IDs and two full mode passes.
+    const KEYS: [u8; 30] = [
+        1, 2, 3, 4, 5, 6, 16, 17, 18, 19, 20, 21, 24, 30, 31, 32, 33, 34, 35, 44, 46, 47, 48, 49,
+        50, 58, 59, 61, 217, 218,
+    ];
+    let mut replies = vec![
+        reply(&[slot, 1, keymap_id]),
+        reply(&[slot, keymap_id]),
+        reply(&[keymap_id]),
+    ];
+    let mut name = [0; 120];
+    name[..16].fill(slot);
+    name[16..20].copy_from_slice(b"read");
+    for offset in [0, 64] {
+        let mut bytes = vec![slot, keymap_id, offset as u8, 120];
+        bytes.extend_from_slice(&name[offset..(offset + 64).min(120)]);
+        replies.push(reply(&bytes));
+    }
+    for mode in [Mode::Normal, Mode::Hypershift] {
+        replies.push(reply(&[keymap_id]));
+        replies.extend(mode_replies(slot, mode, &KEYS, 1234));
+        replies.extend(analog_replies(slot, &KEYS, 1234));
+    }
+    replies
+}
+
+fn keypad_complete_replies(failed_first: bool) -> Vec<Reply> {
+    let mut replies = initial_replies(&[2, 5]);
+    replies.extend([reply(&[2, 3, 51]), reply(&[5, 3, 153])]);
+    replies.extend([reply(&[2, 16]), reply(&[5, 8])]);
+    replies.extend([reply(&[2, 23]), reply(&[5, 37])]);
+    for slot in [2, 5] {
+        replies.push(reply(&[slot, 1, 9, 4, 8, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0]));
+    }
+    for slot in [2, 5] {
+        replies.push(reply(&[slot, 1, 7, 4, 17, 0, 0, 0, 0, 0, 0]));
+    }
+    for slot in [2, 5] {
+        replies.push(reply(&[slot, 2, 9, 17, 23, 41, 43]));
+    }
+    if failed_first {
+        let mut keymap = keypad_read_replies(2, 3);
+        keymap[2].status = 5;
+        keymap.truncate(5);
+        replies.extend(keymap);
+    } else {
+        replies.extend(keypad_read_replies(2, 3));
+    }
+    replies.extend(keypad_read_replies(5, 4));
+    replies.extend([reply(&[2, 7]), reply(&[5, 0])]);
+    replies
+}
+
+#[test]
+fn keyboard_onboard_profiles_keypad_reads_settings_then_keymaps_and_keeps_selection_rejection() {
+    for failed_first in [false, true] {
+        let device = Mock::new(keypad_complete_replies(failed_first));
+        let options = ReadOptions {
+            layout_id: 1,
+            locally_known_macro_guids: BTreeSet::new(),
+        };
+        let reading = read_complete(&device, &capability_for(747), &options, sequence(), &|| {
+            Ok(())
+        })
+        .unwrap();
+        reading.validate_for(&options).unwrap();
+        assert!(
+            reading
+                .snapshot
+                .profiles
+                .iter()
+                .all(|profile| profile.passes.is_empty()
+                    && profile.actuation.is_empty()
+                    && profile.rapid_trigger.is_empty())
+        );
+        let first = reading.snapshot.profiles[0].keymaps.as_ref().unwrap();
+        assert!(first.failure.is_none());
+        assert_eq!(
+            first.snapshot.selections[0].returned_status,
+            Some(if failed_first { 5 } else { 2 })
+        );
+        assert_eq!(
+            first.snapshot.keymaps[0].passes.len(),
+            if failed_first { 0 } else { 2 }
+        );
+        assert_eq!(
+            first.snapshot.keymaps[0].name.observed().unwrap().name(),
+            "read"
+        );
+        assert_eq!(first.snapshot.active_keymap.observed(), Some(&3));
+        assert_eq!(
+            first.snapshot.selections.len(),
+            if failed_first { 1 } else { 3 }
+        );
+        assert_eq!(
+            first.snapshot.selections[0].acknowledgement.is_some(),
+            !failed_first
+        );
+        let last = reading.snapshot.profiles[1].keymaps.as_ref().unwrap();
+        assert!(last.failure.is_none());
+        assert_eq!(
+            last.snapshot.keymaps[0].name.observed().unwrap().name(),
+            "read"
+        );
+        assert_eq!(last.snapshot.keymaps[0].passes.len(), 2);
+        assert_eq!(
+            reading.import_details.continuous_rapid_trigger[0]
+                .raw_enabled
+                .observed(),
+            Some(&7)
+        );
+        let sent = device.sent();
+        let first_keymap = sent.iter().position(|r| r[7..9] == [2, 178]).unwrap();
+        let last_setting = sent.iter().rposition(|r| r[7..9] == [2, 177]).unwrap();
+        assert_eq!(first_keymap, last_setting + 1);
+        let selections = sent.iter().filter(|r| r[8] < 128).collect::<Vec<_>>();
+        assert_eq!(selections.len(), if failed_first { 4 } else { 6 });
+        assert!(selections.iter().all(|r| r[6..9] == [1, 2, 55]));
+        assert_report_integrity(&sent);
+        let mut corrupt = reading.clone();
+        corrupt.snapshot.profiles[1]
+            .keymaps
+            .as_mut()
+            .unwrap()
+            .snapshot
+            .selections[1]
+            .acknowledgement = None;
+        assert!(corrupt.validate_for(&options).is_err());
+        let mut corrupt = reading.clone();
+        corrupt.snapshot.profiles[1]
+            .keymaps
+            .as_mut()
+            .unwrap()
+            .snapshot
+            .profile_id = 2;
+        assert!(corrupt.validate_for(&options).is_err());
+    }
+}
+
+#[test]
+fn keyboard_onboard_profiles_keypad_cancellation_stops_after_target_without_next_profile() {
+    let device = Mock::new(keypad_complete_replies(false));
+    let options = ReadOptions {
+        layout_id: 1,
+        locally_known_macro_guids: BTreeSet::new(),
+    };
+    let guard = || {
+        anyhow::ensure!(
+            !device.sent().iter().any(|report| report[7..9] == [2, 55]),
+            "connection generation changed"
+        );
+        Ok(())
+    };
+    let result = read_complete(&device, &capability_for(747), &options, sequence(), &guard);
+    assert!(result.is_err());
+    assert!(crate::backend::exchange_interrupted(
+        result.as_ref().unwrap_err()
+    ));
+    let sent = device.sent();
+    assert_eq!(&sent.last().unwrap()[6..10], &[1, 2, 55, 3]);
+    assert_eq!(
+        sent.iter()
+            .filter(|report| report[7..9] == [2, 178])
+            .count(),
+        1
+    );
+}
+
+#[test]
+fn keyboard_onboard_profiles_known_macro_details_follow_actual_runner_variants() {
+    for product in [679, 739, 747] {
+        let initial = Mock::new(initial_replies(&[]));
+        let mut snapshot = read_hid(
+            &initial,
+            &capability_for(product),
+            1,
+            sequence(),
+            &|| Ok(()),
+        )
+        .unwrap();
+        snapshot.macros.macros = vec![summary(7, "already-local")];
+        let device = Mock::new([
+            reply(&[0, 7, 0, 0, 0, 3]),
+            reply(&[0, 7, 0, 0, 0, 0, 3, 0x10, 0x20, 0x30]),
+        ]);
+        let details = read_import_details(
+            &device,
+            &capability_for(product),
+            &snapshot,
+            &BTreeSet::from(["already-local".to_owned()]),
+            sequence(),
+            &|| Ok(()),
+        )
+        .unwrap();
+        if product == 679 {
+            assert!(matches!(details.macros[0].content, Reading::Unobserved));
+            assert!(device.sent().is_empty());
+        } else {
+            assert_eq!(
+                details.macros[0].content.observed().unwrap().data,
+                [0x10, 0x20, 0x30]
+            );
+            assert_eq!(
+                device
+                    .sent()
+                    .iter()
+                    .map(|r| [r[6], r[7], r[8]])
+                    .collect::<Vec<_>>(),
+                [[6, 6, 136], [10, 6, 137]]
+            );
+        }
+    }
+}
+
+#[test]
+fn keyboard_onboard_settings_keep_unknown_codes_and_failed_prerequisites_separate() {
+    let cap = capability_for(653);
+    let features = keyboard_onboard_inventory::features(653).unwrap();
+    let mut observation = settings::Observation::unobserved();
+    let mut failed = reply(&[]);
+    failed.status = 5;
+    let device = Mock::new([reply(&[2, 3]), reply(&[2, 9, 11, 13, 15]), failed]);
+    let mut next = sequence();
+    for phase in settings::BEFORE_ASSIGNMENTS {
+        settings::read_phase(
+            phase,
+            &device,
+            &cap,
+            features,
+            2,
+            &mut observation,
+            &mut next,
+            &|| Ok(()),
+        )
+        .unwrap();
+    }
+    settings::read_phase(
+        settings::Phase::Knob,
+        &device,
+        &cap,
+        features,
+        2,
+        &mut observation,
+        &mut next,
+        &|| Ok(()),
+    )
+    .unwrap();
+    observation.validate(features).unwrap();
+    assert_eq!(observation.polling_rate.observed().unwrap().hertz, None);
+    assert_eq!(observation.polling_rate.observed().unwrap().raw_code, 3);
+    assert!(matches!(
+        observation.knob_configuration,
+        Reading::Failed { .. }
+    ));
+    assert!(matches!(observation.knob_current, Reading::Unobserved));
+    assert_eq!(device.sent().len(), 3);
+    let mut corrupt = observation.clone();
+    corrupt.polling_rate = Reading::Unobserved;
+    assert!(corrupt.validate(features).is_err());
+    let cap = capability_for(747);
+    let features = keyboard_onboard_inventory::features(747).unwrap();
+    let device = Mock::new([reply(&[2, 8, 7, 4, 17, 0, 0, 0, 0, 0, 0])]);
+    let mut observation = settings::Observation::unobserved();
+    settings::read_phase(
+        settings::Phase::SingleKeySnapTap,
+        &device,
+        &cap,
+        features,
+        2,
+        &mut observation,
+        &mut sequence(),
+        &|| Ok(()),
+    )
+    .unwrap();
+    assert!(matches!(
+        observation.single_key_snap_tap,
+        Reading::Failed { .. }
+    ));
+}
+
+#[test]
+fn keyboard_onboard_profiles_keypad_transport_failure_keeps_snapshot_and_continues_next_profile() {
+    let mut replies = keypad_complete_replies(true);
+    let first_keymap = initial_replies(&[2, 5]).len() + 12;
+    replies[first_keymap + 2].status = 2;
+    replies[first_keymap + 2].count = 90;
+    replies.drain(first_keymap + 3..first_keymap + 5);
+    let device = Mock::new(replies);
+    let options = ReadOptions {
+        layout_id: 1,
+        locally_known_macro_guids: BTreeSet::new(),
+    };
+    let reading = read_complete(&device, &capability_for(747), &options, sequence(), &|| {
+        Ok(())
+    })
+    .unwrap();
+    let first = reading.snapshot.profiles[0].keymaps.as_ref().unwrap();
+    assert!(first.failure.as_ref().unwrap().contains("truncated"));
+    assert_eq!(first.snapshot.active_keymap.observed(), Some(&3));
+    assert!(matches!(
+        first.snapshot.keymaps[0].name,
+        Reading::Unobserved
+    ));
+    assert_eq!(first.snapshot.selections[0].returned_status, None);
+    assert!(
+        reading.snapshot.profiles[1]
+            .keymaps
+            .as_ref()
+            .unwrap()
+            .failure
+            .is_none()
+    );
+    reading.validate_for(&options).unwrap();
 }

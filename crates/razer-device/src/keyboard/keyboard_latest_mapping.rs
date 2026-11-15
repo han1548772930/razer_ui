@@ -269,9 +269,9 @@ fn repair_output(output: &Value, default: &Value, obm: bool) -> anyhow::Result<V
     Ok(repaired)
 }
 
-/// Current k/$: repair malformed output then materialize default Copilot. The
-/// UI-only representation is kept separate by `ui_mappings` below.
-pub fn materialize(rows: &[Value], obm: bool) -> anyhow::Result<Vec<Value>> {
+/// Current 42656.wx only repairs a malformed Copilot output. In particular,
+/// explicit default outputs stay default during the OBM import comparison.
+pub(crate) fn repair(rows: &[Value], obm: bool) -> anyhow::Result<Vec<Value>> {
     rows.iter()
         .map(|row| {
             if !object(row) || row["defaultGroup"] == true {
@@ -285,27 +285,43 @@ pub fn materialize(rows: &[Value], obm: bool) -> anyhow::Result<Vec<Value>> {
                 let Some(stages) = row["mapping"].as_array().filter(|v| !v.is_empty()) else {
                     return Ok(result);
                 };
-                let mut output = repair_output(&stages[0], default, obm)?;
-                if output["outputType"] == "keyboardGroup" && empty_object(&output["keyboardGroup"])
-                {
-                    output["keyboardGroup"] =
-                        copilot_output(default, obm)?["keyboardGroup"].clone();
-                }
-                result["mapping"][0] = output;
+                result["mapping"][0] = repair_output(&stages[0], default, obm)?;
             } else {
                 result = repair_output(row, default, obm)?;
-                if result["outputType"] == "defaultGroup"
-                    || result["outputType"] == "keyboardGroup"
-                        && empty_object(&result["keyboardGroup"])
-                {
-                    result["outputType"] = json!("keyboardGroup");
-                    result["keyboardGroup"] =
-                        copilot_output(default, obm)?["keyboardGroup"].clone();
-                }
             }
             Ok(result)
         })
         .collect()
+}
+
+/// Current k/$: repair malformed output then materialize default Copilot. The
+/// UI-only representation is kept separate by `ui_mappings` below.
+pub fn materialize(rows: &[Value], obm: bool) -> anyhow::Result<Vec<Value>> {
+    let mut rows = repair(rows, obm)?;
+    for row in &mut rows {
+        if !object(row) || row["defaultGroup"] == true {
+            continue;
+        }
+        let Some(default) = default_for(row) else {
+            continue;
+        };
+        if row["inputType"] == "AnalogInput" {
+            let Some(stages) = row["mapping"].as_array_mut().filter(|v| !v.is_empty()) else {
+                continue;
+            };
+            if stages[0]["outputType"] == "keyboardGroup"
+                && empty_object(&stages[0]["keyboardGroup"])
+            {
+                stages[0]["keyboardGroup"] = copilot_output(default, obm)?["keyboardGroup"].clone();
+            }
+        } else if row["outputType"] == "defaultGroup"
+            || row["outputType"] == "keyboardGroup" && empty_object(&row["keyboardGroup"])
+        {
+            row["outputType"] = json!("keyboardGroup");
+            row["keyboardGroup"] = copilot_output(default, obm)?["keyboardGroup"].clone();
+        }
+    }
+    Ok(rows)
 }
 
 pub fn ui_mappings(rows: &[Value]) -> Vec<Value> {

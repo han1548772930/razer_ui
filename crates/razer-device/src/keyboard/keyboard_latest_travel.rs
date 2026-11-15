@@ -69,7 +69,8 @@ impl Caps {
         }
         Ok(result)
     }
-    pub(super) fn rows(&self, rows: &[Value], guid: &str) -> Vec<Value> {
+    /// Current 18065.I6 / 88758.ju bounds existing rows without adding mappings.
+    pub(crate) fn clamp_rows(&self, rows: &[Value]) -> Vec<Value> {
         let mut result = rows.to_vec();
         if !self.active {
             return result;
@@ -130,6 +131,13 @@ impl Caps {
                     }
                 }
             }
+        }
+        result
+    }
+    pub(super) fn rows(&self, rows: &[Value], guid: &str) -> Vec<Value> {
+        let mut result = self.clamp_rows(rows);
+        if !self.active {
+            return result;
         }
         for (input, cap) in &self.keys {
             if input == "KEY_FN"
@@ -323,6 +331,25 @@ fn clamp_curve(group: &mut Value, maximum: f64, previous: f64) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn obm_travel_clamp_does_not_add_absent_default_mappings() {
+        let document = json!({"magneticKeySwitchTypes":[
+            {"serialNumber":"actual","switchTypes":[{"keyId":31,"keyTravel":10}]}]});
+        let caps = Caps::for_serial(&document, "actual").unwrap();
+        assert!(caps.clamp_rows(&[]).is_empty());
+        assert_eq!(caps.rows(&[], "custom").len(), 1);
+        let mapping = json!({"inputID":"KEY_A","inputType":"AnalogInput","mapping":[
+            {"outputType":"keyboardGroup","keyboardGroup":{},"actuationPoint":[19656,18018]},
+            {"outputType":"defaultGroup","actuationPoint":[19656,18018]}]});
+        let bounded = caps.clamp_rows(&[mapping.clone()]);
+        assert_eq!(bounded.len(), 1);
+        assert_eq!(
+            bounded[0]["mapping"][0]["actuationPoint"],
+            json!([16380.0, 14742.0])
+        );
+        assert_eq!(caps.rows(&[mapping], "custom"), bounded);
+    }
 
     #[test]
     fn serial_caps_bound_both_stages_before_hardware_primary_is_selected() {

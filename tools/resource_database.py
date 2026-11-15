@@ -26,6 +26,73 @@ def installation_policy(root=None):
     return policy
 
 
+def cargo_test(arguments):
+    """Stage the installed catalog at Cargo-reported executable paths, then test."""
+    import os
+    import subprocess
+    import sys
+    import tempfile
+
+    policy = installation_policy()
+    source = ROOT / policy["catalog_source"]
+    seed = source.read_bytes()
+    cargo_args = list(arguments)
+    if cargo_args[:1] == ["--"]:
+        cargo_args.pop(0)
+    build_args = cargo_args[:cargo_args.index("--")] if "--" in cargo_args else cargo_args
+    if any(arg == "--message-format" or arg.startswith("--message-format=") for arg in build_args):
+        raise ValueError("cargo-test owns Cargo's artifact message format")
+    executables = set()
+    process = subprocess.Popen(
+        ["cargo", "test", "--no-run", "--message-format=json", *build_args],
+        cwd=ROOT, stdout=subprocess.PIPE, text=True, encoding="utf-8",
+        **({"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP} if os.name == "nt" else {"start_new_session": True}),
+    )
+    try:
+        for line in process.stdout:
+            message = json.loads(line)
+            if message.get("reason") == "compiler-artifact" and message.get("executable"):
+                executables.add(Path(message["executable"]))
+            elif message.get("reason") == "compiler-message":
+                rendered = message.get("message", {}).get("rendered")
+                if rendered:
+                    print(rendered, end="", file=sys.stderr)
+        status = process.wait()
+    finally:
+        if process.poll() is None:
+            if os.name == "nt":
+                subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+            else:
+                import signal
+                os.killpg(process.pid, signal.SIGTERM)
+            process.wait()
+        process.stdout.close()
+    if status:
+        return status
+    if source.read_bytes() != seed:
+        raise ValueError("Packaged catalog changed while Cargo was building")
+    for executable in sorted(executables):
+        if not executable.is_absolute() or not executable.is_file():
+            raise ValueError("Cargo reported a missing or relative executable")
+        target = executable.parent / policy["catalog_filename"]
+        if target.is_symlink() or target.is_junction():
+            raise ValueError("Packaged catalog destination is a link")
+        if target.is_file() and target.read_bytes() == seed:
+            continue
+        fd, name = tempfile.mkstemp(prefix=policy["catalog_filename"] + ".", suffix=".tmp", dir=target.parent)
+        temporary = Path(name)
+        try:
+            with os.fdopen(fd, "wb") as output:
+                output.write(seed)
+                output.flush()
+                os.fsync(output.fileno())
+            os.replace(temporary, target)
+        finally:
+            temporary.unlink(missing_ok=True)
+    return subprocess.run(["cargo", "test", *cargo_args], cwd=ROOT).returncode
+
+
 OUTPUT = installation_policy()["catalog_source"]
 SCHEMA = "crates/razer-resource-db/src/schema.sql"
 APPLICATION_ID = 0x525A5549

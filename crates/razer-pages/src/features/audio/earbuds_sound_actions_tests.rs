@@ -422,3 +422,68 @@ fn earbuds_sound_radio_changes_preserve_submitted_device_actions(cx: &mut TestAp
         .unwrap();
     }
 }
+
+#[gpui_kit::test]
+fn earbuds_sound_input_invalid_or_cancelled_completion_keeps_radio_and_releases_next_action(
+    cx: &mut TestAppContext,
+) {
+    use razer_device::earbuds_protocol40::WriteOutcome;
+    for pid in [2657, 2660, 2664, 2668, 2689] {
+        let (handle, owner, mut device) = mount(pid, cx);
+        cx.simulate_window_resize(handle, size(px(1600.), px(1400.)));
+        cx.update_window(handle, |_, window, cx| {
+            owner.update(cx, |view, cx| {
+                missing_profile(view, &mut device, window, cx)
+            });
+            for failure in 0..5 {
+                window.render_frame(cx);
+                window.click("earbuds-input-open", cx);
+                window.click("earbuds-input-confirm", cx);
+                let input = owner.read(cx).earbuds_sound.pending.clone().unwrap();
+                window.click("earbuds-activation-show", cx);
+                assert_eq!(
+                    owner.read(cx).earbuds_sound.pending.as_ref().unwrap().id(),
+                    input.id()
+                );
+                owner.update(cx, |view, cx| {
+                    let mut report = reading(pid, false);
+                    report.operation = Operation::SwitchInputSource;
+                    report.connected = Some(false);
+                    report.left_battery = Some(255);
+                    report.write = WriteOutcome::Confirmed;
+                    match failure {
+                        0 => report.product_id = 1,
+                        1 => report.operation = Operation::ActivationCode,
+                        2 => report.write = WriteOutcome::Skipped,
+                        3 => report.write = WriteOutcome::Failed("input transport failed".into()),
+                        4 => input.guard().store(false, Ordering::Release),
+                        _ => unreachable!(),
+                    }
+                    view.finish_earbuds_request(&input, Ok(report), cx);
+                    assert!(view.earbuds_sound.input_result.as_ref().unwrap().is_err());
+                    assert!(
+                        view.earbuds_connection.ready(),
+                        "a command result is not a radio observation"
+                    );
+                    let next = view.earbuds_sound.pending.clone().unwrap();
+                    assert_eq!(next.operation(), Operation::ActivationCode);
+                    assert_ne!(next.id(), input.id());
+                    view.finish_earbuds_request(&input, Err("repeated old completion".into()), cx);
+                    assert_eq!(view.earbuds_sound.pending.as_ref().unwrap().id(), next.id());
+                    view.finish_earbuds_request(&next, Ok(code(pid, "CURRENT-CODE")), cx);
+                    assert!(view.earbuds_sound.pending.is_none());
+                });
+                window.render_frame(cx);
+                assert!(window.find("earbuds-input-error").visible());
+                window.click("earbuds-activation-copy", cx);
+                assert_eq!(
+                    cx.read_from_clipboard().and_then(|item| item.text()),
+                    Some("CURRENT-CODE".into())
+                );
+                window.click("earbuds-activation-close", cx);
+                assert!(device.profiles.is_empty());
+            }
+        })
+        .unwrap();
+    }
+}

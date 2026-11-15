@@ -430,6 +430,7 @@ impl DeviceWorkspace {
                         let id = key.id.clone();
                         let bounds = key.bounds;
                         let hover_id = id.clone();
+                        let tip_region = self.keyboard_key_tip_region(&id);
                         let selected = self.mapping.as_ref().is_some_and(|m| m.input == id);
                         let hovered = self.hovered_input.as_deref() == Some(id.as_str());
                         let enabled = self.mapping_input_enabled(&id);
@@ -469,9 +470,12 @@ impl DeviceWorkspace {
                                     selected,
                                     hovered,
                                     cx.listener(move |this, _, w, cx| {
-                                        this.continue_with(Continue::Input(id.clone()), w, cx)
+                                        if id != "DIAL_CLICK" {
+                                            this.continue_with(Continue::Input(id.clone()), w, cx);
+                                        }
                                     }),
                                     cx.listener(move |this, hovered: &bool, _, cx| {
+                                        this.hover_keyboard_key_tip(&hover_id, *hovered, cx);
                                         let was_hovered = this.hovered_input.as_deref()
                                             == Some(hover_id.as_str());
                                         if *hovered && !was_hovered {
@@ -483,7 +487,11 @@ impl DeviceWorkspace {
                                         }
                                     }),
                                 )
-                                .disabled(!enabled),
+                                .when_some(tip_region, |this, bounds| this.track_bounds(bounds))
+                                .disabled(!enabled)
+                                .tooltip_enabled(false)
+                                .hover_when_disabled(true)
+                                .hover_listener_mode(HoverListenerMode::InputModalityIndependent),
                             )
                     })),
             )
@@ -520,9 +528,13 @@ impl DeviceWorkspace {
             .child(surface::page_column(
                 v_flex()
                     .flex_1()
+                    .child(canvas(|_, _, _| (), |_, _, _, _| eprintln!("before gaming")).absolute().size(px(1.)))
                     .child(self.keyboard_gaming_panel(cx))
+                    .child(canvas(|_, _, _| (), |_, _, _, _| eprintln!("after gaming")).absolute().size(px(1.)))
                     .child(self.snap_tap_panel(cx))
+                    .child(canvas(|_, _, _| (), |_, _, _, _| eprintln!("after snap")).absolute().size(px(1.)))
                     .child(self.polling_panel(cx))
+                    .child(canvas(|_, _, _| (), |_, _, _, _| eprintln!("after polling")).absolute().size(px(1.)))
                     .child(surface::panel("键盘属性", cx).child(
                         super::device_pages::system_button(
                             "keyboard-properties",
@@ -532,6 +544,7 @@ impl DeviceWorkspace {
                     )),
             ))
             .child(surface::page_column(self.command_dial_panel(cx)))
+            .child(canvas(|_, _, _| (), |_, _, _, cx| { eprintln!("after dial"); cx.defer(|cx| { eprintln!("after draw defer"); cx.defer(|_| eprintln!("second defer")); }); }).absolute().size(px(1.)))
             .into_any_element()
     }
 

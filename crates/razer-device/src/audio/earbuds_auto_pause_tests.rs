@@ -460,6 +460,41 @@ fn input_source_failure_and_cancel_do_not_confirm_switching() {
 }
 
 #[test]
+fn input_source_late_cancellation_and_foreign_ack_never_confirm_a_switch() {
+    for pid in AUTO_PAUSE_PRODUCTS {
+        let io = Io::default();
+        io.reply(2, 0x61, 24, 29, &[]);
+        io.canceled_after_read.set(true);
+        let result = execute(
+            &mut Protocol40Session::with_sleeper(&io, NoSleep),
+            pid,
+            Operation::SwitchInputSource,
+            &|| {
+                anyhow::ensure!(!io.canceled.get(), "physical connection replaced");
+                Ok(())
+            },
+        );
+        assert!(format!("{:#}", result.unwrap_err()).contains("physical connection replaced"));
+        assert_eq!(io.sent.borrow().len(), 1);
+
+        for (transaction, class, command) in [(0x62, 24, 29), (0x61, 24, 30), (0x61, 25, 29)] {
+            let io = Io::default();
+            io.reply(2, transaction, class, command, &[]);
+            assert!(
+                execute(
+                    &mut Protocol40Session::with_sleeper(&io, NoSleep),
+                    pid,
+                    Operation::SwitchInputSource,
+                    &valid,
+                )
+                .is_err()
+            );
+            assert!(io.sent.borrow().iter().all(|packet| packet[6..9] == [0, 24, 29]));
+        }
+    }
+}
+
+#[test]
 fn firmware_job_keeps_failures_separate_from_other_device_observations() {
     for pid in AUTO_PAUSE_PRODUCTS {
         let io = Io::default();

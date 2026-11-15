@@ -62,6 +62,8 @@ struct Fake {
     fail_destroy: bool,
     fail_terminate: bool,
     pending_frames: Vec<EngineFrame>,
+    polls: u32,
+    fail_poll_at: Option<u32>,
 }
 impl EngineAdapter for Fake {
     fn create_device(&mut self, c: &LedConfiguration) -> anyhow::Result<u32> {
@@ -98,6 +100,11 @@ impl EngineAdapter for Fake {
     }
     fn frames(&mut self) -> anyhow::Result<Vec<EngineFrame>> {
         self.calls.borrow_mut().push("poll".into());
+        self.polls += 1;
+        anyhow::ensure!(
+            self.fail_poll_at != Some(self.polls),
+            "input sampling failed"
+        );
         Ok(std::mem::take(&mut self.pending_frames))
     }
     fn destroy_engine(&mut self, e: u32) -> anyhow::Result<()> {
@@ -298,6 +305,49 @@ fn shared_runtime_discard_preserves_other_devices_and_termination_failure_receip
 }
 
 #[test]
+fn shared_runtime_termination_stops_buffered_frames_for_every_borrower() {
+    for fail_terminate in [false, true] {
+        let calls = Rc::new(RefCell::new(Vec::new()));
+        let frame = |device_handle| EngineFrame {
+            device_handle,
+            region_id: 0,
+            num_row: 1,
+            num_col: 1,
+            frame: vec![4, 5, 6],
+        };
+        let mut runtime = SharedEngine::new(Fake {
+            calls: calls.clone(),
+            fail_terminate,
+            pending_frames: vec![frame(7), frame(12)],
+            ..Default::default()
+        });
+        let mut borrower = runtime.clone();
+        runtime.discard_frames_for(7).unwrap();
+        let termination = runtime.terminate().map_err(|error| error.to_string());
+        assert_eq!(termination.is_err(), fail_terminate);
+        let calls_after_stop = calls.borrow().clone();
+        for owner in [&mut runtime, &mut borrower] {
+            let frames = owner.frames().map_err(|error| error.to_string());
+            assert_eq!(frames, termination.clone().map(|()| Vec::new()));
+            assert_eq!(
+                owner
+                    .discard_frames_for(12)
+                    .map_err(|error| error.to_string()),
+                termination
+            );
+            assert_eq!(
+                owner.terminate().map_err(|error| error.to_string()),
+                termination
+            );
+        }
+        assert_eq!(*calls.borrow(), calls_after_stop);
+        drop(borrower);
+        drop(runtime);
+        assert_eq!(*calls.borrow(), calls_after_stop);
+    }
+}
+
+#[test]
 fn shared_device_session_never_destroys_borrowed_device_or_global_runtime() {
     let calls = Rc::new(RefCell::new(Vec::new()));
     let mut session = Session::with_shared_device(
@@ -317,4 +367,29 @@ fn shared_device_session_never_destroys_borrowed_device_or_global_runtime() {
             || call.starts_with("destroy-device:")
             || call == "terminate")
     );
+}
+
+#[test]
+fn shared_runtime_discard_invalidates_cached_device_frames_when_sampling_fails() {
+    let frame = |device_handle| EngineFrame {
+        device_handle,
+        region_id: 0,
+        num_row: 1,
+        num_col: 1,
+        frame: vec![4, 5, 6],
+    };
+    let mut runtime = SharedEngine::new(Fake {
+        pending_frames: vec![frame(7), frame(12), frame(19)],
+        fail_poll_at: Some(2),
+        ..Default::default()
+    });
+    let mut borrower = runtime.clone();
+    runtime.discard_frames_for(7).unwrap();
+    assert_eq!(
+        borrower.discard_frames_for(12).unwrap_err().to_string(),
+        "input sampling failed"
+    );
+    assert_eq!(runtime.frames().unwrap(), vec![frame(19)]);
+    assert!(borrower.frames().unwrap().is_empty());
+    runtime.terminate().unwrap();
 }

@@ -116,6 +116,17 @@ class RecipeParsing(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "assigned more than once"):
             self.module('function(e,t,r){t.default=0;t.default=1;}')
 
+    def test_constant_factory_without_require_does_not_invent_an_import_binding(self):
+        module = self.module('3691(e,t){const keys=[{inputID:"KEY_A",HID:"4"}];t.KEYS=keys;}')
+        self.assertEqual(module.value(module.exports["KEYS"]), [{"inputID": "KEY_A", "HID": "4"}])
+        self.assertIsNone(module.require)
+        for body in ['r(9)', '(r(9),{HID:"4"})']:
+            invalid = self.module('3691(e,t){const key=' + body + ';t.KEYS=key;}')
+            with self.assertRaises(ValueError):
+                invalid.value(invalid.exports["KEYS"])
+        with self.assertRaisesRegex(ValueError, "unsupported binding parameters"):
+            self.module('3691(e,{KEYS}){}')
+
     def test_nested_fields_do_not_evaluate_unrelated_source_calls(self):
         module = self.module('function(e,t,r){const info={stamp:readClock(),obm:{brightness:!0}},profile=info.obm.brightness;}')
         self.assertTrue(module.value(module.bindings["profile"]))

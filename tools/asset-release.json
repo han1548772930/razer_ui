@@ -1,8 +1,8 @@
 {
   "schema_version": 2,
   "format": "files",
-  "tag": "assets-5aae9b8f096e87d6237a",
-  "source_sha256": "5aae9b8f096e87d6237a8676e0cd7d6ac046e9139b5c146297e670cdb5fffcd9",
+  "tag": "assets-c7ed0c3394c37e3f2903",
+  "source_sha256": "c7ed0c3394c37e3f290376aa8bd25f74e64f9b1c70f1d62ebb7b2dd9ad5c1928",
   "git_files": [
     {
       "path": "assets/synapse/shared/pending-source-audit/33892a0b56b91958-tray-gear-light.rgba",
@@ -34133,6 +34133,11 @@
           "sha256": "1846c270122cd57583983fbfca383dae316317f48fd4f0272ba90a65fb79c6f6"
         },
         {
+          "path": "assets/synapse/shared/products/18941814d723d873b6176083d1c244a55ee5de446d776efa1501927626460152.svg",
+          "bytes": 276,
+          "sha256": "18941814d723d873b6176083d1c244a55ee5de446d776efa1501927626460152"
+        },
+        {
           "path": "assets/synapse/shared/products/189764e413687536299d468dc5023ad698401f4ea650bb630ae076c20ba20f18.webp",
           "bytes": 3954458,
           "sha256": "189764e413687536299d468dc5023ad698401f4ea650bb630ae076c20ba20f18"
@@ -34171,6 +34176,11 @@
           "path": "assets/synapse/shared/products/1a598f6e8b92c016-current-dashboard-1406-0-0-product-3x.png",
           "bytes": 196192,
           "sha256": "1a598f6e8b92c016b6b1f9003bd2fc9b5b2d5ab090de32682fae619216177a1c"
+        },
+        {
+          "path": "assets/synapse/shared/products/1aa5f4bf845c9aaef8815141607401ec2b5d760c6c8a21528d573281c6766a12.svg",
+          "bytes": 273,
+          "sha256": "1aa5f4bf845c9aaef8815141607401ec2b5d760c6c8a21528d573281c6766a12"
         },
         {
           "path": "assets/synapse/shared/products/1afba2363f2c89fa-preview-source-624-0-16-1x.png",
@@ -34861,6 +34871,11 @@
           "path": "assets/synapse/shared/products/3af2a0b4395ab42f-preview-source-624-0-9-3x.png",
           "bytes": 305027,
           "sha256": "3af2a0b4395ab42f96a2415d2eda56c46bfe547ed35cff4d1d5cb0ed496cc04b"
+        },
+        {
+          "path": "assets/synapse/shared/products/3bcd8583ee182a726d2624706b912b2854c43d9332daabf7bcb2317e29d85589.svg",
+          "bytes": 272,
+          "sha256": "3bcd8583ee182a726d2624706b912b2854c43d9332daabf7bcb2317e29d85589"
         },
         {
           "path": "assets/synapse/shared/products/3be437d0343c9263-mapping-lighting.png",
@@ -35843,6 +35858,11 @@
           "sha256": "69c5db3055cba7cba8b401b394a62588fe7c37a8460ab51917cce295eea79333"
         },
         {
+          "path": "assets/synapse/shared/products/69f04368754da62ca9ff5d15c5e3202ce9963036b4b0e575dc606ac7a48152b8.png",
+          "bytes": 11608,
+          "sha256": "69f04368754da62ca9ff5d15c5e3202ce9963036b4b0e575dc606ac7a48152b8"
+        },
+        {
           "path": "assets/synapse/shared/products/6a5ad09037710adb-2-3x.1af98d90.png",
           "bytes": 477730,
           "sha256": "6a5ad09037710adbef91149750b1903abe9b7728356858056710a0bc4e2bc0ce"
@@ -36441,6 +36461,11 @@
           "path": "assets/synapse/shared/products/82e8a5fc04852efb-6-3x.c8dfcdc1.png",
           "bytes": 456936,
           "sha256": "82e8a5fc04852efb583095da89fe3e18c486785ad76f7a186bdc9c03a6aa477a"
+        },
+        {
+          "path": "assets/synapse/shared/products/8332b10cb8b59187d7dabe85e99ae4948bfd262cc515dbddaf254bd796b4bdea.svg",
+          "bytes": 269,
+          "sha256": "8332b10cb8b59187d7dabe85e99ae4948bfd262cc515dbddaf254bd796b4bdea"
         },
         {
           "path": "assets/synapse/shared/products/843acc76ed820505-audio-sound-843acc76ed820505.svg",
@@ -37276,6 +37301,11 @@
           "path": "assets/synapse/shared/products/b13e923351468bb7-preview-source-3909-0-0-1x.png",
           "bytes": 42215,
           "sha256": "b13e923351468bb7c6d105f001adcc966c55b8374b5e032544db69f82e06c417"
+        },
+        {
+          "path": "assets/synapse/shared/products/b14a4664e5fad1ad36d0d56fb73d2d17db32941c38b8ab279c476dd33e58a6df.png",
+          "bytes": 11064,
+          "sha256": "b14a4664e5fad1ad36d0d56fb73d2d17db32941c38b8ab279c476dd33e58a6df"
         },
         {
           "path": "assets/synapse/shared/products/b1ac8e27f3c382201d5388e88da902715a2fca03332a887d3da3478bb1df580f.svg",
@@ -41873,6 +41903,6 @@
   "storage": {
     "provider": "huggingface",
     "repository": "han1548772930/razer-ui-assets",
-    "revision": "125a317cc4afa0d12c959a191ce5a2562b195d97"
+    "revision": "d7a7ec8d2d65c49385f54a53537b1ff7da1b677a"
   }
 }

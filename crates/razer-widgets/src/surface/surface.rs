@@ -771,6 +771,7 @@ pub fn dot_background(cx: &App) -> AnyElement {
             let width = f32::from(bounds.size.width);
             let height = f32::from(bounds.size.height);
             let step = f32::from(step);
+            eprintln!("dot background {width} {height} step={step}");
             if width <= 0. || height <= 0. {
                 return;
             }
@@ -805,6 +806,7 @@ pub fn dot_background(cx: &App) -> AnyElement {
                     ));
                 }
             }
+            eprintln!("dot done");
         },
     )
     .absolute()

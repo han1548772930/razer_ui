@@ -77,10 +77,11 @@ fn main() {
         digest
     );
     fs::write(output.join("installation.rs"), constants).expect("Cannot write catalog metadata");
-    // OUT_DIR is <target>/<profile>/build/<package>/out, including cross targets.
+    // Cargo's per-unit directories vary by version; the profile owns build/.
     let profile = output
         .ancestors()
-        .nth(3)
+        .find(|directory| directory.file_name().is_some_and(|name| name == "build"))
+        .and_then(Path::parent)
         .expect("Invalid Cargo output layout");
     stage(profile, filename, &bytes);
     stage(&profile.join("deps"), filename, &bytes);

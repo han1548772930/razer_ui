@@ -323,7 +323,7 @@ fn validate_ids(profile_id: u8, knob_id: u8) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn parse_configuration(
+pub(crate) fn parse_configuration(
     data: &[u8],
     profile_id: u8,
     knob_id: u8,
@@ -349,7 +349,7 @@ fn parse_configuration(
     }))
 }
 
-fn parse_current(data: &[u8], profile_id: u8, knob_id: u8) -> anyhow::Result<CurrentKnobMode> {
+pub(crate) fn parse_current(data: &[u8], profile_id: u8, knob_id: u8) -> anyhow::Result<CurrentKnobMode> {
     ensure!(data.len() >= 8, "Current knob mode response is truncated");
     ensure!(
         data[0] == profile_id && data[1] == knob_id,

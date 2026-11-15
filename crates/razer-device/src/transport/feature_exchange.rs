@@ -208,6 +208,35 @@ pub(crate) fn finish_feature_reply(
     }
 }
 
+#[derive(Debug)]
+struct ReturnedFeatureStatus(u8);
+
+impl std::fmt::Display for ReturnedFeatureStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.0 {
+            1 => f.write_str("Device is busy"),
+            0 | 3 | 4 => write!(f, "Feature response status {}", self.0),
+            status => write!(
+                f,
+                "Feature command is unsupported or returned status {status}"
+            ),
+        }
+    }
+}
+
+impl std::error::Error for ReturnedFeatureStatus {}
+
+/// A status from a validated command/transaction response, distinct from I/O,
+/// malformed responses, or a canceled exchange.
+pub(crate) fn returned_status(error: &anyhow::Error) -> Option<u8> {
+    if crate::backend::exchange_interrupted(error) {
+        return None;
+    }
+    error
+        .downcast_ref::<ReturnedFeatureStatus>()
+        .map(|status| status.0)
+}
+
 enum DecodedFeatureReply {
     Acknowledged(Vec<u8>),
     Busy,
@@ -231,12 +260,11 @@ fn decode_feature_reply(
         1 => return Ok(DecodedFeatureReply::Busy),
         2 => {}
         0 | 3 | 4 => {
-            return Ok(DecodedFeatureReply::Retry(anyhow::anyhow!(
-                "Feature response status {}",
-                packet[0]
-            )));
+            return Ok(DecodedFeatureReply::Retry(
+                ReturnedFeatureStatus(packet[0]).into(),
+            ));
         }
-        state => anyhow::bail!("Feature command is unsupported or returned status {state}"),
+        state => return Err(ReturnedFeatureStatus(state).into()),
     }
     let length = usize::from(packet[5]);
     ensure!(
@@ -451,7 +479,7 @@ fn exchange_inner(
                     ensure!(count == incoming.len(), "Feature response is truncated");
                     match decode_feature_reply(&incoming, command, transaction)? {
                         DecodedFeatureReply::Busy => {
-                            last_error = anyhow::anyhow!("Device is busy");
+                            last_error = ReturnedFeatureStatus(1).into();
                             continue;
                         }
                         DecodedFeatureReply::Retry(error) => {

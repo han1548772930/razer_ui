@@ -16,6 +16,7 @@ use std::{cell::Cell, rc::Rc};
 mod header;
 #[path = "keyboard_mapping_key_tooltip.rs"]
 mod key_tip;
+pub(in crate::features) use key_tip::ProfileKeyTip;
 #[path = "keyboard_mapping_keypad_artwork.rs"]
 mod keypad_artwork;
 pub(in super::super) use keypad_artwork::KeypadSurface;

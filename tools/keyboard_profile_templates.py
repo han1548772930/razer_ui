@@ -63,8 +63,11 @@ class Module:
             raise ValueError("Keyboard profile factory normalized identity differs")
         self.bindings, self.exports, self.namespaces = {}, {}, {}
         self.guid_functions, self.dynamic_guids = set(), {}
-        self.require = self.factory.child_by_field_name("parameters").named_children[2].text
-        self.export_object = self.factory.child_by_field_name("parameters").named_children[1].text
+        parameters = self.factory.child_by_field_name("parameters").named_children
+        if len(parameters) not in {2, 3} or any(node.type != "identifier" for node in parameters):
+            raise ValueError("Keyboard profile factory has unsupported binding parameters")
+        self.require = parameters[2].text if len(parameters) == 3 else None
+        self.export_object = parameters[1].text
         self.body = self.factory.child_by_field_name("body")
         for statement in self.body.named_children:
             if statement.type in {"lexical_declaration", "variable_declaration"}:

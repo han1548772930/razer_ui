@@ -1624,6 +1624,139 @@ def current_onboard_mapping_variants(review=None):
     return {"models": models, "products": products, "mouse": mouse}
 
 
+def current_onboard_import_tables():
+    """Resolve current converter selectors and their complete typed source inputs."""
+    import sqlite3
+    import keyboard_profile_templates as recipes
+    import code_identity as ci
+    review = current_onboard_input_review()
+    products = [row["product_id"] for row in review["obm_input_model_bindings"]]
+
+    class Scoped(recipes.Index):
+        def module(self, product, module_id):
+            row = self.database.execute(
+                "SELECT f.*,s.path,s.bytes FROM factories f JOIN sources s ON s.sha256=f.source_sha "
+                "WHERE f.source_sha=? AND f.module_id=? AND f.kind='webpack_factory'",
+                (self.scope.get(product), str(module_id))).fetchone()
+            if row is None:
+                return super().module(product, str(module_id))
+            key = product, str(module_id), row["normalized_sha"]
+            if key not in self.modules:
+                self.modules[key] = recipes.Module(self, product, dict(row), {
+                    "path": row["path"], "bytes": row["bytes"], "sha256": row["source_sha"]})
+            return self.modules[key]
+
+    rows, row_ids, models, model_ids, bindings = [], {}, [], {}, []
+    analog, analog_ids, analog_bindings = [], {}, []
+    with closing(sqlite3.connect("file:" + (ROOT / ".analysis/results/code-identity.sqlite3").as_posix() + "?mode=ro", uri=True)) as db:
+        db.row_factory = sqlite3.Row
+        index = Scoped(db)
+        index.scope = {}
+        for product in products:
+            candidates = db.execute(
+                "SELECT DISTINCT f.module_id FROM deployment_sources ds JOIN sources s ON s.path=ds.path "
+                "JOIN factories f ON f.source_sha=s.sha256 WHERE ds.product_id=? AND ds.layer='mw' "
+                "AND f.module_id IN ('26192','38349')", (product,)).fetchall()
+            if len(candidates) != 1:
+                raise ValueError("Current keyboard import converter is absent or ambiguous")
+            converter = index.module(product, candidates[0][0])
+            index.scope[product] = converter.original["sha256"]
+            export = "NA" if "NA" in converter.exports else "jY"
+            selector = converter.bindings[converter.exports[export].text.decode()]
+            refs = [node for node in recipes.walk(selector) if node.type == "member_expression"
+                    and node.child_by_field_name("property").text == b"BUTTON_LIST"]
+            if len(refs) != 1:
+                raise ValueError("Current keyboard import button selector differs")
+            base = refs[0].child_by_field_name("object")
+            choices = {}
+            for name in ("BUTTON_LIST", "BUTTON_LIST_UK", "BUTTON_LIST_JP"):
+                try:
+                    values = converter.member_value(base, [name])
+                except KeyError:
+                    continue
+                indexes = []
+                for value in values:
+                    identity = ci.digest(value)
+                    if identity not in row_ids:
+                        row_ids[identity] = len(rows)
+                        rows.append(value)
+                    indexes.append(row_ids[identity])
+                key = tuple(indexes)
+                if key not in model_ids:
+                    model_ids[key] = len(models)
+                    models.append(indexes)
+                choices[name] = model_ids[key]
+            if "BUTTON_LIST" not in choices:
+                raise ValueError("Current import has no base button list")
+            dkm = converter.member_value(base, ["DKMKEYS"])
+            bindings.append({"product": product, "choices": choices,
+                             "dkm": [row["inputID"] for row in dkm]})
+            if product not in (678, 679, 688, 719, 720, 721, 728, 740, 741, 742, 746, 747, 756):
+                continue
+            config = index.module(product, "24255" if product == 747 else "72233")
+            values = {}
+            for node in recipes.walk(config.body):
+                if (node.type != "method_definition" or node.child_by_field_name("name").text != b"constructor"
+                        or b"defaultActuation" not in node.text):
+                    continue
+                for assignment in recipes.walk(node):
+                    if assignment.type != "assignment_expression":
+                        continue
+                    left, right = assignment.child_by_field_name("left"), assignment.child_by_field_name("right")
+                    if left.type != "member_expression":
+                        continue
+                    name = left.child_by_field_name("property").text.decode()
+                    if name not in {"defaultActuation", "defaultRapidTrigger", "defaultPresetActuation", "defaultPresetRapidTrigger", "injectMapping"}:
+                        continue
+                    if right.type == "new_expression":
+                        right = right.child_by_field_name("arguments").named_children[0]
+                    values[name] = config.value(right)
+            if len(values) != 5:
+                raise ValueError("Current keyboard import analog defaults are incomplete")
+            identity = ci.digest(values)
+            if identity not in analog_ids:
+                analog_ids[identity] = len(analog)
+                analog.append(values)
+            analog_bindings.append((product, analog_ids[identity]))
+    return {"rows": rows, "models": models, "products": bindings,
+            "analog": analog, "analog_products": analog_bindings}
+
+
+def render_current_onboard_import(tables):
+    from rust_data import RustData, rust_string
+    schema_path = "crates/razer-device/src/keyboard/keyboard_onboard_import_source.rs"
+    schema = RustData(ROOT / "crates/razer-device")
+    mappings = schema.render(tables["rows"], "Vec<Mapping>", schema_path)
+    if schema.excluded or schema.value_fields:
+        raise ValueError("Current import defaults contain untyped fields: " + str(schema.excluded))
+    analog = schema.render(tables["analog"], "Vec<AnalogDefaults>", schema_path)
+    if schema.excluded or schema.value_fields:
+        raise ValueError("Current import analog defaults contain untyped fields: " + str(schema.excluded))
+    parts = ["// Generated by tools/workspace.py prepare-local-protocol-tables --current-reads.\nuse super::*;",
+             "pub(super) fn mappings() -> Vec<Mapping> { " + mappings + " }",
+             "pub(super) fn analog() -> Vec<AnalogDefaults> { " + analog + " }"]
+    for i, indexes in enumerate(tables["models"]):
+        parts.append(f"const MAPPINGS_{i}: &[u16] = &[" + ",".join(map(str, indexes)) + "];")
+    parts.append("pub(super) fn mapping_indexes(product:u32, layout:u32)->Option<&'static [u16]>{Some(match product {")
+    for row in tables["products"]:
+        choices = row["choices"]
+        body = "MAPPINGS_" + str(choices["BUTTON_LIST"])
+        if "BUTTON_LIST_JP" in choices:
+            body = f"if layout==12 {{ MAPPINGS_{choices['BUTTON_LIST_JP']} }} else {{ {body} }}"
+        if "BUTTON_LIST_UK" in choices:
+            body = f"if [3,4,6,7,10,15,16,17,18].contains(&layout) {{ MAPPINGS_{choices['BUTTON_LIST_UK']} }} else {{ {body} }}"
+        parts.append(f"{row['product']} => {body},")
+    parts.append("_ => return None,})}")
+    parts.append("pub(super) fn dkm_inputs(product:u32)->&'static [&'static str]{match product {")
+    for row in tables["products"]:
+        parts.append(f"{row['product']}=> &[" + ",".join(rust_string(value) for value in row["dkm"]) + "],")
+    parts.append("_=>&[],}}")
+    parts.append("pub(super) fn analog_index(product:u32)->Option<usize>{match product {")
+    parts.extend(f"{product}=>Some({index})," for product, index in tables["analog_products"])
+    parts.append("_=>None,}}")
+    return "\n".join(parts) + "\n"
+
+
 def current_keyboard_namespace(product_id):
     """Select the indexed current acquisition; an absent index never selects an older alias."""
     import sqlite3
@@ -1929,7 +2062,7 @@ def render_current_onboard_mapping(projection, variants=None):
 
     lines = ["//! Current keyboard onboard output and source default mapping tables.",
              "//! Generated by tools/workspace.py prepare-local-protocol-tables --current-reads.",
-             "use super::{DefaultMapping, DefaultMappings, ExtendedKey, HidKey, InputKind, KeyboardOutput, Mode, Output, ProfileNavigation};",
+             "use super::{DefaultMapping, DefaultMappings, ExtendedKey, HidKey, InputKind, KeyboardOutput, Mode, Output, ProfileNavigation, UnknownReason};",
              "use serde::{Deserialize, Serialize};", ""]
 
     def enum(name, values):
@@ -1992,6 +2125,10 @@ def render_current_onboard_mapping(projection, variants=None):
                 raise ValueError("Onboard Hypershift default adds a group")
             return "Output::Hypershift"
         if kind == "keyboardGroup":
+            if group is None and row.get("powerKeyGroup") == {"powerKeyAssignment": "SystemSleep"}:
+                return "Output::Unknown { function: None, reason: UnknownReason::SourceKeyboardGroupAbsent }"
+            if isinstance(group, dict) and set(group) == {"key"} and group["key"] in {"KEY_HOME", "KEY_END", "KEY_PRINT_SCREEN", "KEY_PAUSE"}:
+                return "Output::Unknown { function: None, reason: UnknownReason::SourceNamedKeyboardKey { key: std::borrow::Cow::Borrowed(" + json.dumps(group["key"]) + ") } }"
             if not isinstance(group, dict) or set(group) - {"key", "modifiers", "extendedKey"} or not {"key", "modifiers"} <= set(group):
                 raise ValueError("Onboard keyboard group fields changed")
             exact_fields(group["key"], {"HID", "flag", "pageID"}, "onboard keyboard key")
@@ -2017,7 +2154,7 @@ def render_current_onboard_mapping(projection, variants=None):
                 + ", extended_key: " + ("Some(ExtendedKey::Extended00)" if extension else "None") + ", turbo: None })")
         if kind in {"multimediaGroup", "powerKeyGroup", "razerKeyGroup", "win8ShortcutsGroup"}:
             if kind == "razerKeyGroup" and group == {}:
-                return "Output::EmptyRazerGroup"
+                return "Output::Unknown { function: None, reason: UnknownReason::SourceRazerAssignmentAbsent }"
             field, family, values, result = {
                 "multimediaGroup": ("multimediaAssignment", "MediaAction", encoding["media_names"].values(), "Media"),
                 "powerKeyGroup": ("powerKeyAssignment", "PowerAction", encoding["power_codes"], "Power"),
@@ -2042,7 +2179,7 @@ def render_current_onboard_mapping(projection, variants=None):
             raise ValueError("Onboard default mapping has no source identity")
         base = {"inputID", "inputType", "outputType"}
         kind = row.get("outputType")
-        inputs = {"KeyInput": "keyInput", "DKMInput": "dkmInput"}
+        inputs = {"KeyInput": "keyInput", "DKMInput": "dkmInput", '"AnalogInput"': "keyInput"}
         if mouse:
             inputs["MouseInput"] = "mouseInput"
             base.add("fwID")
@@ -2055,10 +2192,12 @@ def render_current_onboard_mapping(projection, variants=None):
             optional.add("razerKeyGroup")
         if not isinstance(kind, str):
             raise ValueError("Onboard default output type is absent")
-        if kind not in {"disableGroup", "hyperShiftGroup"}:
+        if kind == "keyboardGroup" and "keyboardGroup" not in row and row.get("powerKeyGroup") == {"powerKeyAssignment": "SystemSleep"}:
+            base.add("powerKeyGroup")
+        elif kind not in {"disableGroup", "hyperShiftGroup"}:
             base.add(kind)
-        if set(row) - base - optional or not base <= set(row) or row["inputID"] != name:
-            raise ValueError("Onboard default mapping fields or identity changed")
+        if set(row) - base - optional or not base <= set(row) or not isinstance(row["inputID"], str) or not row["inputID"] or mouse and row["inputID"] != name:
+            raise ValueError("Onboard default mapping fields or identity changed: " + json.dumps(row, sort_keys=True))
         firmware_id = row.get("fwID")
         if "fwID" in row:
             number(firmware_id)
@@ -2066,6 +2205,8 @@ def render_current_onboard_mapping(projection, variants=None):
             exact_fields(row["keyInput"], {"HID", "pageID"}, "onboard input key")
             number(row["keyInput"]["pageID"], 65535)
             input_hid = number(row["keyInput"]["HID"], 65535)
+            if row["inputType"] != "KeyInput":
+                input_hid = None
         else:
             if row[input_field] != name:
                 raise ValueError("Onboard default input identity changed")
@@ -2088,14 +2229,13 @@ def render_current_onboard_mapping(projection, variants=None):
                         raise ValueError("Onboard default firmware identity repeats")
                     ids.add(firmware_id)
                 hid = "None" if input_hid is None else "Some(" + str(input_hid) + ")"
-                group = row.get(row["outputType"], {})
-                use_turbo = group.get("useTurbo")
-                turbo = "None" if use_turbo is None else "Some(" + str(use_turbo).lower() + ")"
-                result[mode, name] = ("DefaultMapping { input_id: " + json.dumps(name) + ", mode: Mode::"
+                result[mode, name] = ("DefaultMapping { source_key: " + json.dumps(name) + ", input_id: " + json.dumps(row["inputID"]) + ", mode: Mode::"
                     + ("Normal" if mode == "NormalMode" else "Hypershift") + ", input_kind: InputKind::"
-                    + ("Key" if row["inputType"] == "KeyInput" else "Dkm") + ", firmware_key_id: "
+                    + ({"KeyInput": "Key", "DKMInput": "Dkm", '"AnalogInput"': "QuotedAnalog"}[row["inputType"]]) + ", firmware_key_id: "
                     + ("None" if firmware_id is None else "Some(" + str(firmware_id) + ")")
-                    + ", input_hid: " + hid + ", use_turbo: " + turbo + ", output: " + output(row) + " }")
+                    + ", input_hid: " + hid + ", use_turbo: "
+                    + ("Some(" + str(row[row["outputType"]]["useTurbo"]).lower() + ")" if isinstance(row.get(row["outputType"]), dict) and "useTurbo" in row[row["outputType"]] else "None")
+                    + ", output: " + output(row) + " }")
         return result
 
     base_rows = rendered_rows(projection["keyboard"])
@@ -2511,16 +2651,26 @@ def prepare_current_read_table(*, check=False, record=True):
         raise ValueError("Current onboard physical key inventory differs from source keys or mode filters")
     mapping_path = ROOT / ONBOARD_MAPPING_OUTPUT
     mapping_bytes = subprocess.run(["rustfmt", "--edition", "2024", "--emit", "stdout"],
-        input=render_current_onboard_mapping(keyboard["onboard_mapping"]["projection"]),
+        input=render_current_onboard_mapping(keyboard["onboard_mapping"]["projection"], current_onboard_mapping_variants()),
         capture_output=True, check=True).stdout
     receiver_table_tree(mapping_bytes)
     if not check:
         mapping_path.write_bytes(mapping_bytes)
     if mapping_path.read_bytes() != mapping_bytes:
         raise ValueError("Current onboard output mapping differs from its source enums or complete defaults")
+    import_path = ROOT / "crates/razer-device/src/keyboard/keyboard_onboard_import_defaults.rs"
+    import_bytes = subprocess.run(["rustfmt", "--edition", "2024", "--emit", "stdout"],
+        input=render_current_onboard_import(current_onboard_import_tables()).encode(),
+        capture_output=True, check=True).stdout
+    receiver_table_tree(import_bytes)
+    if not check:
+        import_path.write_bytes(import_bytes)
+    if import_path.read_bytes() != import_bytes:
+        raise ValueError("Current onboard import defaults differ from their complete source providers")
     report.update(tool=families.identity(Path(__file__)), output=families.identity(path), check_only=check,
                   constructors_verified=products, onboard_key_output=families.identity(inventory_path),
-                  onboard_mapping_output=families.identity(mapping_path))
+                  onboard_mapping_output=families.identity(mapping_path),
+                  onboard_import_output=families.identity(import_path))
     if record:
         destination = ROOT / ".analysis/results/typed-data.json"
         with analysis.index_lock(ROOT / ".work/typed-data-registry.lock"):

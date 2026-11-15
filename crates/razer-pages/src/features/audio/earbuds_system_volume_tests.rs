@@ -288,3 +288,57 @@ fn profile_connection_and_page_switch_cancel_old_callbacks_and_slider_subscripti
     })
     .unwrap();
 }
+
+#[gpui_kit::test]
+fn earbuds_volume_repeated_or_foreign_completion_cannot_replace_current_device_state(
+    cx: &mut TestAppContext,
+) {
+    for pid in [2657, 2660, 2664, 2668, 2689] {
+        let (handle, owner, _) = mount(pid, cx);
+        cx.update_window(handle, |_, window, cx| {
+            let scope = owner.read(cx).earbuds_volume.scope.as_ref().unwrap().id();
+            owner.update(cx, |view, cx| {
+                view.finish_earbuds_volume(scope, reading(83, false, None), window, cx);
+            });
+            window.render_frame(cx);
+            window.click("earbuds-volume-switch", cx);
+            let first = *owner.read(cx).earbuds_volume.pending.last().unwrap();
+            window.click("earbuds-volume-switch", cx);
+            let second = *owner.read(cx).earbuds_volume.pending.last().unwrap();
+            assert_ne!(first, second);
+            owner.update(cx, |view, cx| {
+                view.finish_earbuds_volume(scope, reading(83, true, Some(first)), window, cx);
+                view.finish_earbuds_volume(scope, reading(83, false, Some(second)), window, cx);
+                assert!(view.earbuds_volume.pending.is_empty());
+                view.finish_earbuds_volume(scope, reading(46, false, None), window, cx);
+                let observed = view.earbuds_volume.observed.as_ref().unwrap().setting();
+                let endpoint = view
+                    .earbuds_volume
+                    .observed
+                    .as_ref()
+                    .unwrap()
+                    .endpoint()
+                    .clone();
+                let draft = view.earbuds_volume.draft;
+                for request in [first, second, Uuid::new_v4()] {
+                    view.finish_earbuds_volume(scope, reading(99, true, Some(request)), window, cx);
+                    assert_eq!(
+                        view.earbuds_volume.observed.as_ref().unwrap().setting(),
+                        observed
+                    );
+                    assert_eq!(
+                        view.earbuds_volume.observed.as_ref().unwrap().endpoint(),
+                        &endpoint
+                    );
+                    assert_eq!(view.earbuds_volume.draft, draft);
+                    assert!(view.earbuds_volume.pending.is_empty());
+                }
+                assert_eq!(
+                    view.earbuds_volume.visible(),
+                    Some(Setting::new(true, 46).unwrap())
+                );
+            });
+        })
+        .unwrap();
+    }
+}

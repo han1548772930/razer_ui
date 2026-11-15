@@ -14347,12 +14347,14 @@ def validate_rust(selected_suites=None, cargo_config=None):
     results = []
     unexecuted_suites = []
     for command_index, (name, command) in enumerate(commands):
-        print(json.dumps({"checking": name, "argv": command}), flush=True)
+        execution = ([sys.executable, "-X", "utf8", str(ROOT / "tools/workspace.py"), "cargo-test", "--", *command[2:]]
+                     if command[:2] == ["cargo", "test"] else command)
+        print(json.dumps({"checking": name, "argv": command, "execution_argv": execution}), flush=True)
         started = datetime.now(timezone.utc).isoformat()
         with tempfile.TemporaryFile(dir=destination, mode="w+b") as output:
             try:
                 with verification_environment(name) as (environment, temporary_directory):
-                    completed = subprocess.run(command, cwd=ROOT, env=environment, stdout=output,
+                    completed = subprocess.run(execution, cwd=ROOT, env=environment, stdout=output,
                                                stderr=subprocess.STDOUT, check=False)
             finally:
                 output.flush()
@@ -14368,7 +14370,7 @@ def validate_rust(selected_suites=None, cargo_config=None):
             errors.append("command_failed")
         if command[1] == "test" and executed_tests == 0:
             errors.append("no_tests_executed")
-        row = {"name": name, "argv": command, "started_at_utc": started,
+        row = {"name": name, "argv": command, "execution_argv": execution, "started_at_utc": started,
                "temporary_directory": temporary_directory,
                "temporary_directory_variables": ["TEMP", "TMP", "TMPDIR"],
                "finished_at_utc": datetime.now(timezone.utc).isoformat(),
@@ -14543,6 +14545,8 @@ def main():
     commands = parser.add_subparsers(dest="command", required=True)
     for name in ("inventory", "verify", "audit-inputs", "recover-inputs", "prepare-analysis", "prepare-static-python", "prepare-product-names", "prepare-keyboard-identity"):
         commands.add_parser(name)
+    cargo_test_command = commands.add_parser("cargo-test", help="Prepare packaged catalogs at Cargo artifact paths and run pure tests")
+    cargo_test_command.add_argument("arguments", nargs=argparse.REMAINDER)
     capability_ledger_command = commands.add_parser(
         "capability-ledger", help="Rebuild the first-tier product x capability progress ledger")
     capability_ledger_command.add_argument("--workers", type=int, choices=range(2, 9), default=4)
@@ -14669,7 +14673,9 @@ def main():
     evidence.add_commands(commands)
     families.add_commands(commands)
     args = parser.parse_args()
-    if args.command == "inventory":
+    if args.command == "cargo-test":
+        return resource_database.cargo_test(args.arguments)
+    elif args.command == "inventory":
         rows = inventory()
         print(json.dumps({name: {"files": len(files), "bytes": sum(r["bytes"] for r in files)} for name, files in rows.items()}))
     elif args.command == "clean":

@@ -228,6 +228,7 @@ pub struct DeviceWorkspace {
     mouse_dpi: mouse_dpi_profile::State,
     pub(super) keyboard_controls: super::keyboard_controls::KeyboardControls,
     pub(super) keyboard_wristrest: keyboard_wristrest::State,
+    keyboard_key_tip: keyboard_mapping_tip::State,
     subscriptions: Vec<Subscription>,
     body_scroll: ScrollHandle,
     pub(super) customize_drawer: super::customize_drawer::CustomizeDrawer,
@@ -267,6 +268,8 @@ pub struct DeviceWorkspace {
 impl EventEmitter<WorkspaceEvent> for DeviceWorkspace {}
 #[path = "../keyboard/keyboard_wristrest.rs"]
 mod keyboard_wristrest;
+#[path = "../customize/keyboard_mapping_tip.rs"]
+mod keyboard_mapping_tip;
 #[path = "../mapping/mapping_editor.rs"]
 mod mapping_editor;
 #[path = "../mouse/dpi/mouse_dpi_profile.rs"]
@@ -324,8 +327,13 @@ impl DeviceWorkspace {
         reading: Option<razer_device::keyboard_metadata::KeyboardMetadataReading>,
         cx: &mut Context<Self>,
     ) {
+        let layout = self.device.layout_id;
+        self.keyboard_key_tip.close();
         self.device.observe_keyboard_metadata(reading.clone());
         self.saved.observe_keyboard_metadata(reading);
+        if self.device.layout_id != layout {
+            self.keyboard_key_tip.replace_layout(self.device.layout_id);
+        }
         cx.notify();
     }
 
@@ -359,6 +367,8 @@ impl DeviceWorkspace {
         if self.device.dashboard.connection_observation != observation {
             self.cancel_profile_transfer(cx);
             self.invalidate_mouse_polling_connection();
+            self.keyboard_key_tip.close();
+            self.hovered_input = None;
         }
         self.device.observe_connection(observation.clone());
         self.saved.observe_connection(observation);
@@ -507,6 +517,11 @@ impl DeviceWorkspace {
         let sensitivity_controls = super::sensitivity::SensitivityControls::new(window, cx);
         let keyboard_controls = super::keyboard_controls::KeyboardControls::new(window, cx);
         let mouse_polling = mouse_polling_profile::State::new(device.product_id);
+        let keyboard_key_tip = if device.product_id == 653 {
+            keyboard_mapping_tip::State::new(device.layout_id)
+        } else {
+            keyboard_mapping_tip::State::default()
+        };
         let mut this = Self {
             saved: device.clone(),
             device,
@@ -537,6 +552,7 @@ impl DeviceWorkspace {
             mouse_dpi: mouse_dpi_profile::State::default(),
             keyboard_controls,
             keyboard_wristrest: keyboard_wristrest::State::default(),
+            keyboard_key_tip,
             subscriptions: vec![],
             body_scroll: ScrollHandle::default(),
             customize_drawer,
@@ -1015,6 +1031,13 @@ impl DeviceWorkspace {
         self.controls.sliders.insert(key, state);
     }
     pub(super) fn sync_controls(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        #[cfg(test)]
+        {
+            static COUNT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+            let count = COUNT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            eprintln!("sync controls {count}");
+            assert!(count < 20, "sync controls diagnostic limit");
+        }
         self.mouse_polling.sync_profile(&self.device.active_profile);
         self.sync_dpi_scope(cx);
         let s = self.settings().clone();
@@ -1240,6 +1263,13 @@ impl DeviceWorkspace {
         }
     }
     fn apply_continue(&mut self, next: Continue, window: &mut Window, cx: &mut Context<Self>) {
+        self.keyboard_key_tip.reset();
+        if matches!(
+            next,
+            Continue::Page(_) | Continue::HistoryPage { .. } | Continue::Profile(_) | Continue::Layer(_)
+        ) {
+            self.keyboard_key_tip.close();
+        }
         if matches!(
             next,
             Continue::Page(_) | Continue::HistoryPage { .. } | Continue::Profile(_)
@@ -1506,6 +1536,7 @@ impl DeviceWorkspace {
 }
 impl Render for DeviceWorkspace {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        eprintln!("workspace render");
         let stacked = surface::stacked_device_columns(
             f32::from(window.viewport_size().width),
             f32::from(window.rem_size()),

@@ -81,6 +81,12 @@ impl KeyboardSourceInput {
     pub fn assignment(&self) -> &str {
         &self.assignment
     }
+    pub fn assignment_value(&self) -> &str {
+        &self.assignment_value
+    }
+    pub fn mapping_group(&self) -> Option<&str> {
+        self.mapping_group.as_deref()
+    }
     pub fn hid(&self) -> Option<&str> {
         self.hid.as_deref()
     }

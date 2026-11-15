@@ -585,7 +585,7 @@ fn special_icons(default: &str) -> Option<(&'static str, &'static str)> {
         _ => return None,
     })
 }
-fn special_label(name: &str) -> String {
+pub(in crate::features) fn special_label(name: &str) -> String {
     // Exact SM.getLocalizationMapping dictionary; custom mapping names stay literal.
     let key = name.replace([' ', '/'], "_").to_uppercase();
     const LOCALIZED: &[&str] = &[
@@ -769,7 +769,11 @@ impl KeyboardProductWorkspace {
                         .hover(|style| style.bg(C::hover()))
                         .active(|style| style.bg(C::background()).border_color(C::accent()))
                         .focus_visible(|style| style.border_color(C::accent()))
-                        .when_some(tip_bounds, |row, bounds| row.on_prepaint(move |rect, _, _| bounds.set(rect)))
+                        .when_some(tip_bounds, |row, bounds| row.on_prepaint(move |rect, _, _| {
+                            // ElementExt observes the padding box; the source anchors
+                            // to getBoundingClientRect, including this one-pixel border.
+                            bounds.set(rect.dilate(px(1.)));
+                        }))
                         .on_hover(cx.listener(move |this, entered: &bool, _, cx| {
                             this.hover_special_key_tip(&hovered_id, *entered, cx);
                             cx.notify();

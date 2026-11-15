@@ -6,6 +6,7 @@ use razer_widgets::theme::KeyboardAnalogControlColors as Colors;
 
 #[path = "../mapping/keyboard_mapping_drawer.rs"]
 mod mapping_drawer;
+pub(in crate::features) use mapping_drawer::ProfileKeyTip;
 pub use mapping_drawer::KeyboardMappingAiObservation;
 pub use mapping_drawer::KeyboardMappingInterDeviceConfigureRequested;
 pub use mapping_drawer::KeyboardMappingInterDeviceObservation;

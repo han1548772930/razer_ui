@@ -83,12 +83,14 @@ pub use power::{KeyboardIndicatorLedObservation, KeyboardIndicatorLedRequested};
 mod analog_controls;
 #[path = "actuation/keyboard_analog_gamepad.rs"]
 mod analog_gamepad;
+pub(in crate::features) use analog_gamepad::ProfileKeyTip;
 pub use analog_controls::KeyboardAnalogControlsObservation;
 use analog_gamepad::KeypadSurface;
 #[path = "controller/keyboard_floating_controller.rs"]
 mod floating_controller;
 #[path = "artwork/keyboard_source_artwork.rs"]
 mod source_artwork;
+pub(in crate::features) use source_artwork::special_label as keyboard_special_label;
 pub use analog_gamepad::source_keypad_product_image;
 pub use source_artwork::{
     SourceArtworkObservation, source_preview_image_for_scale, source_preview_layouts,
@@ -1574,6 +1576,10 @@ impl KeyboardProductWorkspace {
             return div()
                 .relative()
                 .w_full()
+                .on_mouse_move(cx.listener(|this, event: &MouseMoveEvent, _, cx| {
+                    this.source_special_pointer(event.position, cx);
+                }))
+                .children(self.mapping_key_tip())
                 .child(
                     h_flex()
                         .items_start()

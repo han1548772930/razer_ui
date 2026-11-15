@@ -344,6 +344,7 @@ pub struct KeyRegion {
     hover_when_disabled: bool,
     hover_mode: HoverListenerMode,
     tooltip_enabled: bool,
+    reported_bounds: Option<Rc<Cell<Bounds<Pixels>>>>,
     on_click: ClickHandler,
     on_hover: HoverHandler,
 }
@@ -367,6 +368,7 @@ impl KeyRegion {
             hover_when_disabled: false,
             hover_mode: HoverListenerMode::InputModalityAware,
             tooltip_enabled: true,
+            reported_bounds: None,
             on_click: Rc::new(on_click),
             on_hover: Rc::new(on_hover),
         }
@@ -375,6 +377,12 @@ impl KeyRegion {
     /// Mapping policy can disable a source-enabled key, for example in Hypershift.
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.disabled = disabled;
+        self
+    }
+
+    /// Report the existing hit region measurement to its owning page.
+    pub fn track_bounds(mut self, bounds: Rc<Cell<Bounds<Pixels>>>) -> Self {
+        self.reported_bounds = Some(bounds);
         self
     }
 
@@ -408,6 +416,7 @@ impl RenderOnce for KeyRegion {
         let pointer_focus = focus.clone();
         let measured = Rc::new(Cell::new(Bounds::<Pixels>::default()));
         let for_measure = measured.clone();
+        let reported_bounds = self.reported_bounds;
         let for_move = measured.clone();
         let for_enter = measured.clone();
         let for_down = measured.clone();
@@ -420,7 +429,10 @@ impl RenderOnce for KeyRegion {
             .relative()
             .size_full()
             .hover_listener_mode(self.hover_mode)
-            .on_prepaint(move |bounds, _, _| for_measure.set(bounds))
+            .on_prepaint(move |bounds, _, _| {
+                for_measure.set(bounds);
+                if let Some(reported) = reported_bounds { reported.set(bounds); }
+            })
             .on_mouse_move(move |event, window, cx| {
                 hovered(
                     &(hover_enabled && key.contains_window_point(event.position, for_move.get())),
@@ -444,6 +456,7 @@ impl RenderOnce for KeyRegion {
                 canvas(
                     |_, _, _| (),
                     move |bounds, _, window, _| {
+                        eprintln!("key paint {} {:?} {} {}", key.id, bounds, self.fill.a, active);
                         if self.fill.a > 0. {
                             if let Ok(path) = key.path(bounds, false).build() {
                                 window.paint_path(path, self.fill);
@@ -454,6 +467,7 @@ impl RenderOnce for KeyRegion {
                                 window.paint_path(path, self.stroke);
                             }
                         }
+                        eprintln!("key done {}", key.id);
                     },
                 )
                 .absolute()

@@ -26,6 +26,27 @@ fn copilot_repairs_only_source_candidates_and_round_trips_the_ui_default() {
     assert_eq!(original["keyboardGroup"]["key"], "KEY_RIGHT_CTRL");
 }
 #[test]
+fn obm_repair_preserves_explicit_defaults_until_materialization() {
+    let explicit = json!({"inputID":"KEY_RIGHT_CTRL","inputType":"KeyInput","isHyperShift":true,"outputType":"defaultGroup"});
+    assert_eq!(
+        repair(&[explicit.clone()], true).unwrap(),
+        [explicit.clone()]
+    );
+    let expanded = materialize(&[explicit], true).unwrap();
+    assert_eq!(expanded[0]["outputType"], "keyboardGroup");
+    assert_eq!(expanded[0]["keyboardGroup"]["key"]["HID"], "114");
+    let broken = json!({"inputID":"KEY_RIGHT_CTRL","inputType":"AnalogInput","isHyperShift":true,"mapping":[
+        {"outputType":"perfect180Group","perfect180Group":{"mouseAssignment":"Perfect180","reportCount":0},"actuationPoint":[10000,9000]},
+        {"outputType":"defaultGroup","actuationPoint":[20000,19000]}]});
+    let repaired = repair(&[broken.clone()], true).unwrap();
+    assert_eq!(repaired[0]["mapping"][0]["outputType"], "keyboardGroup");
+    assert_eq!(
+        repaired[0]["mapping"][0]["actuationPoint"],
+        broken["mapping"][0]["actuationPoint"]
+    );
+    assert_eq!(repaired[0]["mapping"][1], broken["mapping"][1]);
+}
+#[test]
 fn recovery_fails_closed_on_missing_cache_and_preserves_unrelated_engine_outputs() {
     let row = copilot("KeyInput");
     let mut context = EngineContext::default();

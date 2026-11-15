@@ -321,7 +321,7 @@ impl Element for LabelPosition {
         &mut self,
         _: Option<&GlobalElementId>,
         _: Option<&InspectorElementId>,
-        _: Bounds<Pixels>,
+        bounds: Bounds<Pixels>,
         child: &mut LayoutId,
         window: &mut Window,
         cx: &mut App,
@@ -338,7 +338,9 @@ impl Element for LabelPosition {
                 + surface::css(self.y).to_pixels(window.rem_size())
                 + measured.height * self.ty,
         );
-        self.child.prepaint_at(origin, window, cx);
+        window.with_element_offset(origin - bounds.origin, |window| {
+            self.child.prepaint(window, cx)
+        });
     }
     fn paint(
         &mut self,

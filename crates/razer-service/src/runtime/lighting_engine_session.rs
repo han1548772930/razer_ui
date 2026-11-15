@@ -79,6 +79,12 @@ impl<E: EngineAdapter> EngineAdapter for SharedEngine<E> {
     }
     fn frames(&mut self) -> anyhow::Result<Vec<EngineFrame>> {
         let mut runtime = self.0.borrow_mut();
+        if let Some(result) = &runtime.termination {
+            return result
+                .clone()
+                .map(|()| Vec::new())
+                .map_err(anyhow::Error::msg);
+        }
         let frames = runtime.engine.frames()?;
         runtime.frames.extend(frames);
         Ok(std::mem::take(&mut runtime.frames))
@@ -90,9 +96,18 @@ impl<E: EngineAdapter> EngineAdapter for SharedEngine<E> {
     }
     fn discard_frames_for(&mut self, device: u32) -> anyhow::Result<()> {
         let mut runtime = self.0.borrow_mut();
-        let frames = runtime.engine.frames()?;
-        runtime.frames.extend(frames);
+        if let Some(result) = &runtime.termination {
+            return result.clone().map_err(anyhow::Error::msg);
+        }
+        // Invalidate retained frames even when sampling another input fails.
+        // A failed refresh cannot keep a superseded effect or released device alive.
         runtime.frames.retain(|frame| frame.device_handle != device);
+        let frames = runtime.engine.frames()?;
+        runtime.frames.extend(
+            frames
+                .into_iter()
+                .filter(|frame| frame.device_handle != device),
+        );
         Ok(())
     }
     fn destroy_engine(&mut self, engine: u32) -> anyhow::Result<()> {
@@ -103,6 +118,9 @@ impl<E: EngineAdapter> EngineAdapter for SharedEngine<E> {
     }
     fn terminate(&mut self) -> anyhow::Result<()> {
         let mut runtime = self.0.borrow_mut();
+        // Frames retained for another device must not outlive the shared
+        // renderer, including when releasing an input provider fails.
+        runtime.frames.clear();
         if runtime.termination.is_none() {
             runtime.termination = Some(
                 runtime

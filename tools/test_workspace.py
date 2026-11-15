@@ -661,6 +661,94 @@ class CurrentFrontendRefreshTests(unittest.TestCase):
             analysis.index_files([{**identity, "sha256": "wrong"}], preserve_existing=True)
 
 
+class CargoCatalogTests(unittest.TestCase):
+    def fixture(self, root, layout="target/debug/build/razer-pages/hash/out/tests.exe"):
+        policy = {"schema_version": 1, "catalog_source": "assets/catalog.sqlite3",
+                  "catalog_filename": "catalog.sqlite3", "cache_relative": "assets/cache"}
+        path = root / resource_database.INSTALLATION
+        path.parent.mkdir(parents=True)
+        path.write_text(json.dumps(policy), encoding="utf-8")
+        source = root / policy["catalog_source"]
+        source.parent.mkdir(parents=True)
+        source.write_bytes(b"packaged catalog bytes")
+        executable = root / layout
+        executable.parent.mkdir(parents=True)
+        executable.write_bytes(b"test executable")
+        process = mock.Mock()
+        process.stdout = io.StringIO(json.dumps({"reason": "compiler-artifact", "executable": str(executable)}) + "\n")
+        process.wait.return_value = 0
+        process.poll.return_value = 0
+        return source, executable, process
+
+    def test_cargo_reported_paths_cover_legacy_new_and_custom_target_layouts(self):
+        for layout in ("target/debug/deps/tests.exe", "target/debug/build/razer-pages/hash/out/tests.exe",
+                       "custom/aarch64-pc-windows-msvc/test-profile/build/razer-pages/hash/out/tests.exe"):
+            with self.subTest(layout=layout), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory).resolve()
+                source, executable, process = self.fixture(root, layout)
+                with mock.patch.object(resource_database, "ROOT", root), \
+                        mock.patch("subprocess.Popen", return_value=process) as build, \
+                        mock.patch("subprocess.run", return_value=mock.Mock(returncode=7)) as run:
+                    self.assertEqual(resource_database.cargo_test(["--", "--locked", "--lib", "filter", "--", "--exact"]), 7)
+                self.assertEqual((executable.parent / "catalog.sqlite3").read_bytes(), source.read_bytes())
+                self.assertEqual(build.call_args.args[0], ["cargo", "test", "--no-run", "--message-format=json", "--locked", "--lib", "filter"])
+                self.assertEqual(run.call_args.args[0], ["cargo", "test", "--locked", "--lib", "filter", "--", "--exact"])
+                self.assertEqual(list(executable.parent.glob("*.tmp")), [])
+
+    def test_build_failure_does_not_publish_or_run_tests(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            _, executable, process = self.fixture(root)
+            process.wait.return_value = 101
+            with mock.patch.object(resource_database, "ROOT", root), \
+                    mock.patch("subprocess.Popen", return_value=process), mock.patch("subprocess.run") as run:
+                self.assertEqual(resource_database.cargo_test([]), 101)
+            run.assert_not_called()
+            self.assertFalse((executable.parent / "catalog.sqlite3").exists())
+
+    def test_changed_source_and_failed_publication_preserve_existing_seed(self):
+        for failure in ("changed", "publish"):
+            with self.subTest(failure=failure), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory).resolve()
+                source, executable, process = self.fixture(root)
+                target = executable.parent / "catalog.sqlite3"
+                target.write_bytes(b"previous packaged catalog")
+                if failure == "changed":
+                    def finish():
+                        source.write_bytes(b"changed during build")
+                        return 0
+                    process.wait.side_effect = finish
+                with mock.patch.object(resource_database, "ROOT", root), \
+                        mock.patch("subprocess.Popen", return_value=process), mock.patch("subprocess.run") as run, \
+                        mock.patch("os.replace", side_effect=OSError("publication failed")):
+                    with self.assertRaises((ValueError, OSError)):
+                        resource_database.cargo_test([])
+                run.assert_not_called()
+                self.assertEqual(target.read_bytes(), b"previous packaged catalog")
+                self.assertEqual(list(executable.parent.glob("*.tmp")), [])
+
+    def test_invalid_compiler_stream_terminates_and_reaps_owned_process(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            _, _, process = self.fixture(root)
+            process.stdout = io.StringIO("invalid compiler stream\n")
+            process.poll.return_value = None
+            process.pid = 12345
+            with mock.patch.object(resource_database, "ROOT", root), \
+                    mock.patch("subprocess.Popen", return_value=process), mock.patch("subprocess.run") as run, \
+                    mock.patch("os.killpg", create=True) as kill_group:
+                with self.assertRaises(ValueError):
+                    resource_database.cargo_test([])
+            if os.name == "nt":
+                self.assertEqual(run.call_args.args[0], ["taskkill", "/PID", "12345", "/T", "/F"])
+            else:
+                import signal
+                kill_group.assert_called_once_with(12345, signal.SIGTERM)
+                run.assert_not_called()
+            process.wait.assert_called_once()
+            self.assertTrue(process.stdout.closed)
+
+
 class LocalizationCatalogTests(unittest.TestCase):
     def document(self):
         return {"schema_version": 1, "locales": [
@@ -5185,7 +5273,8 @@ class RustValidationBoundaryTests(unittest.TestCase):
 
                 commands = [call.args[0] for call in runner.call_args_list]
                 self.assertCountEqual(commands, [
-                    ['cargo', 'test', '--locked', '--offline', '-p', package, '--lib', selected_filter]
+                    [workspace.sys.executable, '-X', 'utf8', str(root / 'tools/workspace.py'), 'cargo-test', '--',
+                     '--locked', '--offline', '-p', package, '--lib', selected_filter]
                     for package, selected_filter in expected.values()
                 ])
                 receipt = write_receipt.call_args.args[1]
@@ -5369,7 +5458,8 @@ class RustValidationBoundaryTests(unittest.TestCase):
             self.assertEqual(actual, set(expected.values()))
             macro_phases = next(call.args[0] for call in runner.call_args_list
                                 if 'macro_page::phased::tests' in call.args[0])
-            self.assertEqual(macro_phases, ['cargo', 'test', '--locked', '--offline', '-p',
+            self.assertEqual(macro_phases, [workspace.sys.executable, '-X', 'utf8', str(Path(directory) / 'tools/workspace.py'),
+                                            'cargo-test', '--', '--locked', '--offline', '-p',
                                             'razer-app-pages', '--lib', 'macro_page::phased::tests'])
             settings = next(call.args[0] for call in runner.call_args_list if 'razer-settings' in call.args[0])
             self.assertEqual([settings[ix + 1] for ix, argument in enumerate(settings) if argument == '--skip'], [

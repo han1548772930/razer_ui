@@ -586,6 +586,23 @@ fn categories_for_layout(pid: u32, layout: u32, input: &str, hypershift: bool) -
 }
 
 impl DeviceWorkspace {
+    pub(super) fn profile_mapping_key_tip(&self, input: &str) -> Option<super::super::keyboard_products::ProfileKeyTip> {
+        let source = razer_assets::keyboard_source_for_layout(self.device.layout_id)?
+            .iter().flat_map(razer_assets::KeyboardSourceGroup::inputs)
+            .find(|source| source.id() == input || source.button_key() == input)?;
+        let tip = super::super::keyboard_products::ProfileKeyTip::new(source);
+        let bindings = if self.hypershift { &self.settings().hypershift_bindings } else { &self.settings().bindings };
+        let Some(value) = bindings.get(input).filter(|value| value.as_str() != "default") else { return Some(tip); };
+        let action = Assignment::decode(value);
+        let kind = action.category().map(|category| category.capability());
+        let name = match action {
+            Assignment::Disable => "DISABLE".into(),
+            Assignment::Hypershift => "Razer Hypershift".into(),
+            _ => self.mapping_summary(value).1,
+        };
+        Some(tip.mapped(kind, name))
+    }
+
     pub(in crate::features) fn mapping_is_disabled(&self, value: &str) -> bool {
         matches!(Assignment::decode(value), Assignment::Disable)
     }
