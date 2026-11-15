@@ -63,6 +63,222 @@ fn keyboard_initial_document_preserves_each_current_recipe_and_multi_profile_bra
 }
 
 #[test]
+fn keyboard_obm_numeric_snap_enable_preserves_file_shape_and_typed_consumer_value() {
+    use razer_device::keyboard_current_profile::SnapTap;
+    for pid in [721, 739, 752, 756] {
+        let source = initial_local_document(&initial_device(pid), "TEST").unwrap();
+        for (flag, enabled) in [
+            (json!(0), false),
+            (json!(1), true),
+            (json!(false), false),
+            (json!(true), true),
+        ] {
+            let mut document = source.source_document().unwrap();
+            let snap = &mut document["profiles"][0]["snapTap"];
+            snap["isEnabled"] = flag.clone();
+            snap["futureField"] = json!({"revision":7});
+            let expected = snap.clone();
+            let decoded = decode(pid, "actual-serial", &document.to_string()).unwrap();
+            assert_eq!(decoded.source_document().unwrap(), document);
+            let projected = decoded.project().unwrap();
+            let payload = &projected.profiles()[0].source_settings.as_ref().unwrap()["snapTap"];
+            assert_eq!(payload, &expected);
+            let typed: SnapTap = serde_json::from_value(payload.clone()).unwrap();
+            assert_eq!(typed.is_enabled, enabled);
+        }
+        for rejected in [
+            json!(2),
+            json!(255),
+            json!(-1),
+            json!(256),
+            json!(1.5),
+            json!("1"),
+            Value::Null,
+        ] {
+            let mut document = source.source_document().unwrap();
+            document["profiles"][0]["snapTap"]["isEnabled"] = rejected;
+            assert!(decode(pid, "actual-serial", &document.to_string()).is_err());
+        }
+    }
+}
+
+#[test]
+fn keyboard_obm_keymap_slots_preserve_numeric_imports_and_string_templates() {
+    let source = initial_local_document(&initial_device(747), "TEST").unwrap();
+    let original = source.source_document().unwrap();
+    for numeric in [false, true] {
+        let mut document = original.clone();
+        let keymaps = document["profiles"][0]["keymaps"].as_array_mut().unwrap();
+        for (index, keymap) in keymaps.iter_mut().enumerate() {
+            let slot = index + 1;
+            keymap["slot"] = if numeric {
+                json!(slot)
+            } else {
+                json!(slot.to_string())
+            };
+            keymap["futureField"] = json!({"preserved":true});
+        }
+        let loaded = decode(747, "actual-serial", &document.to_string()).unwrap();
+        assert_eq!(loaded.source_document().unwrap(), document);
+        assert_eq!(
+            loaded.project().unwrap().profiles()[0]
+                .source_settings
+                .as_ref()
+                .unwrap()["keymaps"],
+            document["profiles"][0]["keymaps"]
+        );
+    }
+    for invalid in [
+        Value::Null,
+        json!({}),
+        json!(true),
+        json!(1.5),
+        json!(-1),
+        json!(256),
+    ] {
+        let mut document = original.clone();
+        document["profiles"][0]["keymaps"][0]["slot"] = invalid;
+        assert!(decode(747, "actual-serial", &document.to_string()).is_err());
+    }
+}
+
+#[test]
+fn keyboard_keypad_thumbstick_keeps_profile_and_keymap_settings_separate() {
+    use local::{ThumbstickOrientation, ThumbstickOutput};
+
+    let source = initial_local_document(&initial_device(747), "TEST").unwrap();
+    let absent = &source.profiles()[0].settings;
+    assert_eq!(absent.thumbstick_output, None);
+    assert_eq!(absent.thumbstick_orientation, None);
+    let mut document = source.source_document().unwrap();
+    let profile = &mut document["profiles"][0];
+    profile["thumbstickOutput"] = json!("left");
+    profile["thumbstickOrientation"] = json!("rotated");
+    profile["keymaps"][0]["thumbstickOutput"] = json!("right");
+    profile["keymaps"][0]["thumbstickOrientation"] = json!("normal");
+    profile["keymaps"][1]["thumbstickOutput"] = json!("left");
+    profile["keymaps"][1]["thumbstickOrientation"] = json!("rotated");
+    profile["keymaps"][2]
+        .as_object_mut()
+        .unwrap()
+        .remove("thumbstickOutput");
+    profile["keymaps"][2]
+        .as_object_mut()
+        .unwrap()
+        .remove("thumbstickOrientation");
+    profile["futureField"] = json!({"preserved": true});
+
+    let decoded = decode(747, "actual-serial", &document.to_string()).unwrap();
+    let profile = &decoded.profiles()[0].settings;
+    assert_eq!(profile.thumbstick_output, Some(ThumbstickOutput::Left));
+    assert_eq!(
+        profile.thumbstick_orientation,
+        Some(ThumbstickOrientation::Rotated)
+    );
+    assert!(!profile.extensions.contains_key("thumbstickOutput"));
+    assert!(!profile.extensions.contains_key("thumbstickOrientation"));
+    let keymaps = profile.keymaps.as_ref().unwrap();
+    assert_eq!(keymaps[0].thumbstick_output, Some(ThumbstickOutput::Right));
+    assert_eq!(
+        keymaps[0].thumbstick_orientation,
+        Some(ThumbstickOrientation::Normal)
+    );
+    assert_eq!(keymaps[2].thumbstick_output, None);
+    assert_eq!(keymaps[2].thumbstick_orientation, None);
+    assert_eq!(decoded.source_document().unwrap(), document);
+    let projected = decoded.project().unwrap();
+    let settings = projected.profiles()[0].source_settings.as_ref().unwrap();
+    assert_eq!(settings["thumbstickOutput"], "left");
+    assert_eq!(settings["thumbstickOrientation"], "rotated");
+    assert_eq!(settings["keymaps"], document["profiles"][0]["keymaps"]);
+}
+
+#[test]
+fn keyboard_keypad_thumbstick_rejects_invalid_present_options_at_both_levels() {
+    let source = initial_local_document(&initial_device(747), "TEST").unwrap();
+    for keymap in [false, true] {
+        for field in ["thumbstickOutput", "thumbstickOrientation"] {
+            for invalid in [
+                Value::Null,
+                json!(0),
+                json!(true),
+                json!(""),
+                json!("unknown"),
+                json!({}),
+                json!([]),
+            ] {
+                let mut document = source.source_document().unwrap();
+                let profile = &mut document["profiles"][0];
+                let target = if keymap {
+                    &mut profile["keymaps"][0]
+                } else {
+                    profile
+                };
+                target[field] = invalid;
+                assert!(decode(747, "actual-serial", &document.to_string()).is_err());
+            }
+        }
+    }
+}
+
+#[test]
+fn keyboard_external_field_order_survives_typed_decode_and_restore_projection() {
+    fn keys(value: &Value) -> Vec<String> {
+        value.as_object().unwrap().keys().cloned().collect()
+    }
+
+    let source = initial_local_document(&initial_device(550), "TEST").unwrap();
+    let mut document = source.source_document().unwrap();
+    let profile = document["profiles"][0].as_object_mut().unwrap();
+    let original = std::mem::take(profile);
+    for field in [
+        "guid",
+        "name",
+        "switchOffLighting",
+        "brightness",
+        "quickEffects",
+        "gamingMode",
+        "snapTap",
+        "macro",
+        "mappings",
+    ] {
+        profile.insert(field.to_owned(), original[field].clone());
+    }
+    profile.insert("futureField".into(), json!({"preserved": true}));
+    let profile_order = keys(&document["profiles"][0]);
+    for reverse_document_fields in [false, true] {
+        let mut entries = document
+            .as_object()
+            .unwrap()
+            .clone()
+            .into_iter()
+            .collect::<Vec<_>>();
+        if reverse_document_fields {
+            entries.reverse();
+        }
+        let input = Value::Object(entries.into_iter().collect());
+        let document_order = keys(&input);
+        let loaded = decode(550, "actual-serial", &input.to_string()).unwrap();
+        let serialized = loaded.source_document().unwrap();
+        assert_eq!(keys(&serialized), document_order);
+        assert_eq!(keys(&serialized["profiles"][0]), profile_order);
+        assert_eq!(serialized, input);
+        let projection = loaded.project().unwrap();
+        assert_eq!(
+            keys(projection.profiles()[0].source_settings.as_ref().unwrap()),
+            profile_order
+        );
+        assert_eq!(
+            keys(projection.source_device_settings()),
+            document_order
+                .into_iter()
+                .filter(|key| key != "profiles")
+                .collect::<Vec<_>>()
+        );
+    }
+}
+
+#[test]
 fn keyboard_initial_document_requires_a_connected_receiver_peer() {
     use razer_model::model::DeviceConnectionObservation;
     let mut device = initial_device(658);
@@ -134,6 +350,38 @@ fn document() -> Value {
 
 fn decode_value(serial: &str, value: &Value) -> Result<LocalProfiles> {
     decode(679, serial, &value.to_string())
+}
+
+#[test]
+fn keyboard_fractional_rapid_trigger_survives_local_read_and_page_projection() {
+    for continuous in [Some(false), Some(true), None] {
+        let mut source = document();
+        let mut rapid = json!({
+            "isEnableUpStroke":true,"makeSensitivity":1.2,"breakSensitivity":0.4,
+            "futureTrigger":{"retained":7}
+        });
+        if let Some(continuous) = continuous {
+            rapid["continuous"] = json!(continuous);
+        }
+        let mapping = json!({
+            "inputID":"KEY_A","inputType":"AnalogInput","isHyperShift":false,
+            "mapping":[
+                {"outputType":"defaultGroup","actuationPoint":{"0":22000,"1":20000},
+                 "rapidTrigger":rapid},
+                {"outputType":"keyboardGroup","keyboardGroup":{"key":"KEY_B"},
+                 "actuationPoint":{"0":65520,"1":63882}}
+            ]
+        });
+        source["profiles"][1]["mappings"] = json!([mapping]);
+        let loaded = decode_value("real", &source).unwrap();
+        let projected = loaded.project().unwrap();
+        let settings = projected.profiles()[1].source_settings.as_ref().unwrap();
+        assert_eq!(settings["mappings"][0], mapping);
+        assert_eq!(
+            loaded.source_document().unwrap()["profiles"][1]["mappings"][0],
+            mapping
+        );
+    }
 }
 
 #[test]

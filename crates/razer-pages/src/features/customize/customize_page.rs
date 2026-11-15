@@ -88,6 +88,7 @@ impl DeviceWorkspace {
             .border_color(border)
             .bg(background)
             .id("mapping-layer-switch")
+            .test_support()
             // 源码的 `role="switch"` + `aria-checked`：本地用 kit 的 `Role` 与
             // `aria_label`（GPUI 没有 `aria-checked`，因此把状态并入标签）。
             .role(Role::Switch)
@@ -130,6 +131,7 @@ impl DeviceWorkspace {
         );
         div()
             .id(id)
+            .test_support()
             .relative()
             .h(surface::css(24.))
             .pt(surface::css(6.))
@@ -528,13 +530,9 @@ impl DeviceWorkspace {
             .child(surface::page_column(
                 v_flex()
                     .flex_1()
-                    .child(canvas(|_, _, _| (), |_, _, _, _| eprintln!("before gaming")).absolute().size(px(1.)))
                     .child(self.keyboard_gaming_panel(cx))
-                    .child(canvas(|_, _, _| (), |_, _, _, _| eprintln!("after gaming")).absolute().size(px(1.)))
                     .child(self.snap_tap_panel(cx))
-                    .child(canvas(|_, _, _| (), |_, _, _, _| eprintln!("after snap")).absolute().size(px(1.)))
                     .child(self.polling_panel(cx))
-                    .child(canvas(|_, _, _| (), |_, _, _, _| eprintln!("after polling")).absolute().size(px(1.)))
                     .child(surface::panel("键盘属性", cx).child(
                         super::device_pages::system_button(
                             "keyboard-properties",
@@ -544,7 +542,6 @@ impl DeviceWorkspace {
                     )),
             ))
             .child(surface::page_column(self.command_dial_panel(cx)))
-            .child(canvas(|_, _, _| (), |_, _, _, cx| { eprintln!("after dial"); cx.defer(|cx| { eprintln!("after draw defer"); cx.defer(|_| eprintln!("second defer")); }); }).absolute().size(px(1.)))
             .into_any_element()
     }
 

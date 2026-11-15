@@ -125,6 +125,8 @@ mod keyboard_legacy_calibration;
 mod keyboard_lifecycle;
 #[path = "shell/keyboard/keyboard_local_profiles.rs"]
 mod keyboard_local_profiles;
+#[path = "shell/keyboard/keyboard_macro_import.rs"]
+mod keyboard_macro_import;
 #[path = "shell/keyboard/keyboard_profile_inventory.rs"]
 mod keyboard_profile_inventory;
 #[path = "shell/keyboard/keyboard_function_swap.rs"]
@@ -2586,6 +2588,12 @@ impl AppShell {
             return false;
         }
         if let Err(error) = self.rebase_source_profile_import(&mut request, cx) {
+            self.status = error;
+            self.cancel_prepared_save(request, cx);
+            self.continue_save_queue(false, cx);
+            return false;
+        }
+        if let Err(error) = self.rebase_keyboard_macro_import(&mut request, cx) {
             self.status = error;
             self.cancel_prepared_save(request, cx);
             self.continue_save_queue(false, cx);

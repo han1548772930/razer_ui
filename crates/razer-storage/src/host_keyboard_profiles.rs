@@ -8,6 +8,69 @@ use std::{collections::BTreeMap, path::Path};
 
 type Extensions = BTreeMap<String, serde_json::Value>;
 
+/// The source restore consumer walks document and profile fields in insertion
+/// order. Keep that wire ordering alongside the validated typed object.
+#[derive(Clone, Debug)]
+struct SourceObject<T> {
+    fields: T,
+    field_order: Vec<String>,
+}
+
+impl<T> std::ops::Deref for SourceObject<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.fields
+    }
+}
+
+impl<T> std::ops::DerefMut for SourceObject<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.fields
+    }
+}
+
+impl<'de, T: serde::de::DeserializeOwned> Deserialize<'de> for SourceObject<T> {
+    fn deserialize<D: serde::Deserializer<'de>>(
+        deserializer: D,
+    ) -> std::result::Result<Self, D::Error> {
+        let object = serde_json::Map::<String, serde_json::Value>::deserialize(deserializer)?;
+        let field_order = object.keys().cloned().collect();
+        let fields = serde_json::from_value(serde_json::Value::Object(object))
+            .map_err(serde::de::Error::custom)?;
+        Ok(Self {
+            fields,
+            field_order,
+        })
+    }
+}
+
+impl<T: Serialize> Serialize for SourceObject<T> {
+    fn serialize<S: serde::Serializer>(
+        &self,
+        serializer: S,
+    ) -> std::result::Result<S::Ok, S::Error> {
+        use serde::ser::SerializeMap as _;
+
+        let value = serde_json::to_value(&self.fields).map_err(serde::ser::Error::custom)?;
+        let object = value
+            .as_object()
+            .ok_or_else(|| serde::ser::Error::custom("Keyboard source value is not an object"))?;
+        let mut output = serializer.serialize_map(Some(object.len()))?;
+        for key in &self.field_order {
+            if let Some(value) = object.get(key) {
+                output.serialize_entry(key, value)?;
+            }
+        }
+        for (key, value) in object {
+            if !self.field_order.contains(key) {
+                output.serialize_entry(key, value)?;
+            }
+        }
+        output.end()
+    }
+}
+
 fn present<'de, D, T>(deserializer: D) -> std::result::Result<Option<T>, D::Error>
 where
     D: serde::Deserializer<'de>,
@@ -134,14 +197,16 @@ impl LocalProfiles {
         value
             .as_object_mut()
             .expect("typed keyboard document is an object")
-            .remove("profiles");
+            .shift_remove("profiles");
         Ok(value)
     }
 }
 
+type Document = SourceObject<DocumentFields>;
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-struct Document {
+struct DocumentFields {
     version: u64,
     vendor_id: u32,
     product_id: u32,
@@ -190,7 +255,7 @@ struct Metadata {
 #[serde(rename_all = "camelCase")]
 pub struct Profile {
     #[serde(flatten)]
-    settings: local::Profile,
+    settings: SourceObject<local::Profile>,
 }
 
 impl Profile {

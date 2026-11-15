@@ -38,7 +38,7 @@ impl CompiledMacro {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct MacroDocument {
     guid: String,
@@ -47,7 +47,7 @@ struct MacroDocument {
     #[serde(default)]
     macro_events: Vec<EditorEvent>,
 }
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize)]
 struct EditorEvent {
     #[serde(rename = "Type")]
     kind: Value,
@@ -120,7 +120,7 @@ fn profile_macro_references(value: &Value) -> anyhow::Result<ProfileMacroReferen
     })
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct Engine {
     mouse_move_type: String,
@@ -182,23 +182,54 @@ pub fn prepare_synchronization(
 /// Decodes the source document at the interchange boundary. The current
 /// worker and key-table identities qualify every registered OBM keyboard.
 pub fn compile_document(product: u32, document: &Value) -> anyhow::Result<Option<CompiledMacro>> {
-    ensure!(
-        crate::keyboard_profile_inventory::supports(product),
-        "Macro compiler product has no current keyboard OBM source"
-    );
-    let document: MacroDocument = serde_json::from_value(document.clone())?;
-    if matches!(
-        document.app_engine.mouse_move_type.as_str(),
-        "absolute" | "foreground"
-    ) || document.macro_events.iter().any(|event| {
-        event
-            .kind
-            .as_f64()
-            .is_some_and(|kind| [6.0, 5.0, 4.0, 10.0].contains(&kind))
-    }) {
-        return Ok(None);
+    LocalDocument::parse(document)?.compile(product)
+}
+
+/// A local library document decoded at its storage boundary. Reconciliation
+/// compiles each document at its source execution point so a later conversion
+/// failure does not erase earlier device mutations.
+#[derive(Clone)]
+pub struct LocalDocument {
+    document: MacroDocument,
+}
+
+impl LocalDocument {
+    pub fn parse(document: &Value) -> anyhow::Result<Self> {
+        Ok(Self {
+            document: serde_json::from_value(document.clone())?,
+        })
     }
-    compile(product, document).map(Some)
+
+    pub fn guid(&self) -> &str {
+        &self.document.guid
+    }
+
+    pub fn name(&self) -> &str {
+        &self.document.name
+    }
+
+    pub fn supports_onboard(&self) -> bool {
+        !matches!(
+            self.document.app_engine.mouse_move_type.as_str(),
+            "absolute" | "foreground"
+        ) && !self.document.macro_events.iter().any(|event| {
+            event
+                .kind
+                .as_f64()
+                .is_some_and(|kind| [6.0, 5.0, 4.0, 10.0].contains(&kind))
+        })
+    }
+
+    pub fn compile(&self, product: u32) -> anyhow::Result<Option<CompiledMacro>> {
+        ensure!(
+            crate::keyboard_profile_inventory::supports(product),
+            "Macro compiler product has no current keyboard OBM source"
+        );
+        if !self.supports_onboard() {
+            return Ok(None);
+        }
+        compile(product, self.document.clone()).map(Some)
+    }
 }
 
 /// The three current OBM worker key-table variants have identical ordered
@@ -217,6 +248,107 @@ pub(crate) fn keyboard_keys(
 fn wrapped_u16(value: f64) -> anyhow::Result<u16> {
     ensure!(value.is_finite(), "Macro coordinate is not finite");
     Ok(value.trunc().rem_euclid(65536.) as u16)
+}
+
+fn encode_item(
+    item: &crate::onboard_macro::decode::Item,
+    data: &mut Vec<u8>,
+    mouse_state: &mut u8,
+) -> anyhow::Result<()> {
+    use crate::onboard_macro::decode::Item;
+    match item {
+        Item::Keyboard { hid, flag, .. } => {
+            ensure!(*flag <= 1, "Macro keyboard flag has no firmware encoding");
+            let hid = source_fw_hid(*hid).context("Macro HID has no current firmware encoding")?;
+            data.extend_from_slice(&[if *flag == 0 { 1 } else { 2 }, hid]);
+        }
+        Item::Mouse { id, data: wheel } => {
+            // Missing id undergoes the source bitwise conversion to zero.
+            let id = id.unwrap_or(0);
+            for (mask, bit) in [(1, 1), (4, 2), (16, 4), (64, 8), (256, 16)] {
+                if id & mask != 0 {
+                    *mouse_state |= bit;
+                }
+            }
+            // The source tests bit16 for both middle-button branches.
+            for (mask, bit) in [(2, 1), (8, 2), (16, 4), (128, 8), (512, 16)] {
+                if id & mask != 0 {
+                    *mouse_state &= !bit;
+                }
+            }
+            if id == 1024 {
+                data.extend_from_slice(&[10, if *wheel == Some(120) { 1 } else { 255 }]);
+            } else {
+                data.extend_from_slice(&[8, *mouse_state]);
+            }
+        }
+        Item::Delay { milliseconds } => {
+            ensure!(milliseconds.is_finite(), "Macro delay is invalid");
+            let count = if *milliseconds < 256. {
+                1
+            } else if *milliseconds < 65536. {
+                2
+            } else if *milliseconds < 16777216. {
+                3
+            } else {
+                4
+            };
+            let value = milliseconds.trunc().rem_euclid(4294967296.) as u32;
+            data.push(16 + count as u8);
+            data.extend_from_slice(&value.to_be_bytes()[4 - count..]);
+        }
+        Item::Cursor { x, y } => {
+            data.push(21);
+            data.extend_from_slice(&wrapped_u16(*x)?.to_be_bytes());
+            data.extend_from_slice(&wrapped_u16(*y)?.to_be_bytes());
+        }
+    }
+    Ok(())
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct RebuiltMacro {
+    pub request: MacroWriteRequest,
+    pub encoded_items: usize,
+    pub stopped: Option<String>,
+}
+
+/// Firmware-memory reconstruction re-encodes the observed items in place. It
+/// retains the original declared count, stops at the first unencodable item,
+/// and omits timestamp/hash exactly as the source addMacroLocal call does.
+pub fn rebuild_observed(
+    product: u32,
+    reading: &crate::onboard_macro::MacroReading,
+) -> anyhow::Result<RebuiltMacro> {
+    reading.validate_keyboard_content(product)?;
+    let decoded = reading.keyboard_projection(product)?;
+    let mut result = RebuiltMacro {
+        request: MacroWriteRequest {
+            guid: reading.metadata.guid.clone(),
+            name: reading.metadata.name.clone(),
+            num_items: reading.metadata.num_items,
+            timestamp: String::new(),
+            hash: String::new(),
+            data: Vec::new(),
+        },
+        encoded_items: 0,
+        stopped: None,
+    };
+    let mut mouse_state = 0;
+    for index in 0..usize::try_from(reading.metadata.num_items)? {
+        let Some(item) = decoded.items.get(index) else {
+            result.stopped = Some(format!("Observed macro item {index} is absent"));
+            break;
+        };
+        let before = result.request.data.len();
+        if let Err(error) = encode_item(item, &mut result.request.data, &mut mouse_state) {
+            result.request.data.truncate(before);
+            result.stopped = Some(format!("Observed macro item {index}: {error:#}"));
+            break;
+        }
+        result.encoded_items += 1;
+    }
+    Ok(result)
 }
 
 fn compile(product: u32, document: MacroDocument) -> anyhow::Result<CompiledMacro> {
@@ -284,32 +416,12 @@ fn compile(product: u32, document: MacroDocument) -> anyhow::Result<CompiledMacr
                     key_name: None,
                     flag: (flag % 2) as u8,
                 });
-                let hid =
-                    source_fw_hid(hid).context("Macro HID has no current firmware encoding")?;
-                data.extend_from_slice(&[if flag % 2 == 0 { 1 } else { 2 }, hid]);
             }
             Event::Mouse { id, data: wheel } => {
                 comparison_items.push(Item::Mouse {
                     id: Some(id),
                     data: wheel,
                 });
-                for (mask, bit) in [(1, 1), (4, 2), (16, 4), (64, 8), (256, 16)] {
-                    if id & mask != 0 {
-                        mouse_state |= bit;
-                    }
-                }
-                // The retained source tests bit16 in both branches. Preserve
-                // that actual codec behavior, including the middle-button row.
-                for (mask, bit) in [(2, 1), (8, 2), (16, 4), (128, 8), (512, 16)] {
-                    if id & mask != 0 {
-                        mouse_state &= !bit;
-                    }
-                }
-                if id == 1024 {
-                    data.extend_from_slice(&[10, if wheel == Some(120) { 1 } else { 255 }]);
-                } else {
-                    data.extend_from_slice(&[8, mouse_state]);
-                }
             }
             Event::Delay { ms } => {
                 ensure!(ms.is_finite(), "Macro delay is invalid");
@@ -317,18 +429,6 @@ fn compile(product: u32, document: MacroDocument) -> anyhow::Result<CompiledMacr
                     continue;
                 }
                 comparison_items.push(Item::Delay { milliseconds: ms });
-                let count = if ms < 256. {
-                    1
-                } else if ms < 65536. {
-                    2
-                } else if ms < 16777216. {
-                    3
-                } else {
-                    4
-                };
-                let ms = ms.trunc().rem_euclid(4294967296.) as u32;
-                data.push(16 + count as u8);
-                data.extend_from_slice(&ms.to_be_bytes()[4 - count..]);
             }
             Event::MouseMove { x, y } => {
                 let (x, y) = if relative {
@@ -351,12 +451,14 @@ fn compile(product: u32, document: MacroDocument) -> anyhow::Result<CompiledMacr
                     worker_item = json!({"type":"mouseMove","x":x,"y":y});
                 }
                 comparison_items.push(Item::Cursor { x, y });
-                data.push(21);
-                data.extend_from_slice(&wrapped_u16(x)?.to_be_bytes());
-                data.extend_from_slice(&wrapped_u16(y)?.to_be_bytes());
             }
             Event::Unsupported => anyhow::bail!("Macro contains an event without a firmware codec"),
         }
+        encode_item(
+            comparison_items.last().expect("Supported worker item"),
+            &mut data,
+            &mut mouse_state,
+        )?;
         worker_items.push(worker_item);
         num_items = num_items
             .checked_add(1)

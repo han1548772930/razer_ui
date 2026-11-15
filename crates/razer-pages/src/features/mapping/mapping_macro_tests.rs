@@ -22,6 +22,7 @@ fn library(entries: &[(u64, &str, MacroType)]) -> MacroLibraryFile {
                 xml_guid: None,
                 xml_mouse_mode: 0,
                 source_document: None,
+                imported_at_millis: None,
                 execution: None,
             })
             .collect(),

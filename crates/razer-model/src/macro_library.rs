@@ -10,6 +10,7 @@ use std::collections::{HashMap, HashSet};
 mod compile;
 mod execution;
 mod import;
+pub mod onboard_import;
 pub use execution::{
     EngineEvent, EngineState, ExecutionSnapshot, MovementMode, RecordedAppend, ScanCode,
 };
@@ -183,6 +184,9 @@ pub struct Entry {
     /// h.nu retains the compiled lanes alongside its exact editor actions.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub execution: Option<ExecutionSnapshot>,
+    /// Local OBM import index timestamp, separate from the source macro body.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub imported_at_millis: Option<u64>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -491,6 +495,7 @@ impl MacroLibraryFile {
                     && a.xml_mouse_mode == b.xml_mouse_mode
                     && a.source_document == b.source_document
                     && a.execution == b.execution
+                    && a.imported_at_millis == b.imported_at_millis
             })
     }
 }

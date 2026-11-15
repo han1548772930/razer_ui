@@ -249,7 +249,12 @@ impl MappingCapabilities {
         macros
             .iter()
             .find(|entry| Some(entry.guid.as_str()) == guid)
-            .is_some_and(MacroRequirement::requires_synapse)
+            .is_some_and(|entry| {
+                entry.requires_synapse(!matches!(
+                    self.category,
+                    MappingCategory::Mouse | MappingCategory::MousePlusMat
+                ))
+            })
     }
 
     fn mouse_requires_synapse(&self, payload: &MouseRequirement) -> bool {
@@ -607,7 +612,7 @@ mod tests {
             ("relative", false),
             ("absolute", true),
             ("event", true),
-            ("button", true),
+            ("button", false),
         ] {
             let mapping = requirement(
                 "macroGroup",
@@ -634,6 +639,12 @@ mod tests {
         );
         assert!(device.requires_synapse(&queued, &observations, false));
         assert!(obm(json!({})).requires_synapse(&mapping, &observations, false));
+        let keyboard = capabilities(
+            json!({"category":"KEYBOARD","isOBMDevice":true,
+                "OBMSpecs":{"supportedMappings":{"macroGroup":true}}}),
+            json!({}),
+        );
+        assert!(keyboard.macro_requires_synapse(Some("button"), &macros));
     }
 
     #[test]
@@ -663,7 +674,7 @@ mod tests {
     #[test]
     fn current_mouse_capabilities_cover_registry_and_keep_firmware_membership_branches() {
         let current = mouse_capabilities::current_mouse_capabilities();
-        assert_eq!(current.len(), 75);
+        assert_eq!(current.len(), 77);
         for pair in current.windows(2) {
             assert!(
                 pair[0].0 < pair[1].0,
@@ -677,6 +688,10 @@ mod tests {
             );
         }
         assert!(current_mouse_mapping_capabilities(162).is_none());
+        for pid in [154, 45061, 45063] {
+            assert!(current_mouse_mapping_capabilities(pid).unwrap()
+                .macro_requires_synapse(None, &[]));
+        }
         let viper = current_mouse_mapping_capabilities(229).unwrap();
         assert!(!evaluate(
             viper,
@@ -748,7 +763,7 @@ impl MacroRequirement {
             .collect()
     }
 
-    fn requires_synapse(&self) -> bool {
+    fn requires_synapse(&self, extended_mouse_buttons: bool) -> bool {
         let Some(engine) = &self.app_engine else {
             return false;
         };
@@ -761,10 +776,11 @@ impl MacroRequirement {
         self.events.as_ref().is_some_and(|events| {
             events.iter().any(|event| {
                 matches!(event.event_type, Some(6 | 5 | 4 | 10))
-                    || event
-                        .mouse
-                        .as_ref()
-                        .is_some_and(|mouse| matches!(mouse.button, Some(8 | 9)))
+                    || extended_mouse_buttons
+                        && event
+                            .mouse
+                            .as_ref()
+                            .is_some_and(|mouse| matches!(mouse.button, Some(8 | 9)))
             })
         })
     }

@@ -50,6 +50,7 @@ fn existing_file(kind: MacroType, tutorial: Tutorial) -> MacroLibraryFile {
             xml_guid: Some("d1ee0ca7-e747-42cc-929a-282c8cde55f2".into()),
             xml_mouse_mode: 0,
             source_document: None,
+            imported_at_millis: None,
             execution: None,
         }],
         current: Some(1),

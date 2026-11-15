@@ -118,7 +118,12 @@ fn scrollbar_tracks_stay_at_the_viewport_edges_after_scrolling(cx: &mut TestAppC
         assert_eq!(viewport.bottom(), footer.top());
         window.scroll(
             "limited-scroll",
-            ScrollDelta::Pixels(point(px(-120.), px(-120.))),
+            ScrollDelta::Pixels(point(px(-120.), px(0.))),
+            cx,
+        );
+        window.scroll(
+            "limited-scroll",
+            ScrollDelta::Pixels(point(px(0.), px(-120.))),
             cx,
         );
         assert!(scroll.offset().x < px(0.) && scroll.offset().y < px(0.));
@@ -159,7 +164,12 @@ fn scrollbar_tracks_stay_at_the_viewport_edges_after_scrolling(cx: &mut TestAppC
 
         window.scroll(
             "limited-scroll",
-            ScrollDelta::Pixels(point(px(2000.), px(2000.))),
+            ScrollDelta::Pixels(point(px(2000.), px(0.))),
+            cx,
+        );
+        window.scroll(
+            "limited-scroll",
+            ScrollDelta::Pixels(point(px(0.), px(2000.))),
             cx,
         );
         assert_eq!(scroll.offset(), point(px(0.), px(0.)));
@@ -167,6 +177,83 @@ fn scrollbar_tracks_stay_at_the_viewport_edges_after_scrolling(cx: &mut TestAppC
         window.drag(grab, grab + point(px(0.), px(70.)), cx);
         assert!(scroll.offset().y < px(0.));
         assert_eq!(scroll.offset().x, px(0.));
+    })
+    .unwrap();
+}
+
+struct FullHeightPanel {
+    scroll: ScrollHandle,
+}
+
+impl Render for FullHeightPanel {
+    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+        v_flex()
+            .size_full()
+            .child(div().h(px(40.)).flex_shrink_0())
+            .child(
+                gpui_kit::component::h_flex()
+                    .items_stretch()
+                    .flex_1()
+                    .min_h_0()
+                    .min_w_0()
+                    .overflow_hidden()
+                    .child(
+                        div()
+                            .id("full-height-scroll")
+                            .test_support()
+                            .flex_1()
+                            .h_full()
+                            .min_h_0()
+                            .min_w_0()
+                            .scrollable_both()
+                            .track_scroll(&self.scroll)
+                            .child(
+                                div()
+                                    .id("full-height-content")
+                                    .test_support()
+                                    .w_full()
+                                    .min_w(px(870.8))
+                                    .max_w(px(1260.))
+                                    .mx_auto()
+                                    .px(px(20.))
+                                    .pt(px(10.))
+                                    .pb(px(20.))
+                                    .child(div().h(px(1100.))),
+                            ),
+                    ),
+            )
+    }
+}
+
+#[gpui_kit::test]
+fn full_height_scroll_in_a_flex_row_keeps_its_viewport(cx: &mut TestAppContext) {
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
+    let scroll = ScrollHandle::new();
+    let handle = cx.open_window(size(px(1280.), px(960.)), |window, cx| {
+        let panel = cx.new(|_| FullHeightPanel {
+            scroll: scroll.clone(),
+        });
+        Root::new(panel, window, cx)
+    });
+    cx.update_window(handle.into(), |_, window, cx| {
+        window.render_frame(cx);
+        let viewport = window.find("full-height-scroll").bounds();
+        assert_eq!(viewport.top(), px(40.));
+        assert_eq!(viewport.bottom(), px(960.));
+        window.scroll(
+            "full-height-scroll",
+            ScrollDelta::Pixels(point(px(0.), px(-2000.))),
+            cx,
+        );
+        assert!(scroll.offset().y < px(0.));
+        assert_eq!(window.find("full-height-scroll").bounds(), viewport);
+        assert_eq!(
+            window.find("full-height-content").bounds().bottom(),
+            viewport.bottom()
+        );
     })
     .unwrap();
 }

@@ -168,6 +168,7 @@ impl MacroPage {
             xml_guid: (kind == EntryKind::Macro).then(|| uuid::Uuid::new_v4().to_string()),
             xml_mouse_mode: 0,
             source_document: None,
+            imported_at_millis: None,
             execution: None,
         });
         if kind == EntryKind::Macro {

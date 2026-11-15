@@ -14,6 +14,21 @@ import keyboard_profile_templates as recipes
 
 
 class RecipeParsing(unittest.TestCase):
+    def test_source_json_identity_preserves_fractional_values_types_and_structure(self):
+        identity = lambda value: ci.digest(recipes.source_json_identity(value))
+        original = {"rapidTrigger": {"makeSensitivity": 3, "breakSensitivity": 0.4, "continuous": True}}
+        self.assertEqual(identity(original), identity({"rapidTrigger": {
+            "makeSensitivity": 3.0, "breakSensitivity": 0.4, "continuous": True}}))
+        for changed in [
+            {"makeSensitivity": 3.01, "breakSensitivity": 0.4, "continuous": True},
+            {"makeSensitivity": 3, "breakSensitivity": 0.4000000000000001, "continuous": True},
+            {"makeSensitivity": 3, "breakSensitivity": 0.4, "continuous": 1},
+            {"makeSensitivity": "3", "breakSensitivity": 0.4, "continuous": True},
+            {"makeSensitivity": 3, "breakSensitivity": 0.4},
+        ]:
+            self.assertNotEqual(identity(original), identity({"rapidTrigger": changed}))
+        self.assertNotEqual(identity([1, 2]), identity([2, 1]))
+
     def test_source_layers_keep_distinct_factories_and_do_not_borrow_missing_inputs(self):
         with sqlite3.connect(":memory:") as db:
             db.row_factory = sqlite3.Row

@@ -360,7 +360,7 @@ impl DeviceWorkspace {
         gpui_kit::component::h_flex()
             .id("customize-surface")
             .children(self.keyboard_mapping_key_tip())
-            .children(self.keyboard_media_tip(cx))
+            .children(self.keyboard_media_tip(window, cx))
             .on_mouse_move(cx.listener(|this, event: &MouseMoveEvent, _, cx| {
                 this.keyboard_media_pointer(event.position, cx);
             }))
@@ -392,19 +392,27 @@ impl DeviceWorkspace {
             })
             .child(content)
             .when(self.mapping.is_some(), |this| {
-                this.child(
-                    div()
-                        .id("mapping-overlay")
-                        .test_support()
-                        .absolute()
-                        .top(surface::css(4.))
-                        .left(surface::css(left))
-                        .w(surface::css(292.))
-                        .h_full()
-                        .max_h_full()
-                        .pb(surface::css(8.))
-                        .child(self.mapping_panel(window, cx)),
-                )
+                let overlay = div()
+                    .id("mapping-overlay")
+                    .test_support()
+                    .absolute()
+                    .top(surface::css(4.))
+                    .left(surface::css(left))
+                    .w(surface::css(292.))
+                    .h_full()
+                    .max_h_full()
+                    .pb(surface::css(8.))
+                    .child(self.mapping_panel(window, cx))
+                    .into_any_element();
+                // 653 #key-mapping-relative-wrapper is above .tip-special:
+                // z-index 103 versus 102, including overlapping media rows.
+                this.child(if self.pid() == 653 {
+                    razer_assets::deferred_resource(overlay)
+                        .with_priority(103)
+                        .into_any_element()
+                } else {
+                    overlay
+                })
             })
             .into_any_element()
     }
@@ -680,6 +688,8 @@ mod tests {
             let mut device = crate::test_devices::mouse();
             device.dkm_keys.clear();
             let view = cx.new(|cx| DeviceWorkspace::new(device, true, window, cx));
+            // This tests the retained renderer, not the source-registry route.
+            view.update(cx, |view, _| view.page = crate::nav::Tab::Customize);
             workspace = Some(view.clone());
             Root::new(view, window, cx)
         });
@@ -805,6 +815,7 @@ mod tests {
             assert!(window.try_find("drawer-input-KEY_F9").is_some());
             window.within("drawer-filter").click("input", cx);
             window.press("down", cx);
+            window.press("down", cx);
             window.press("enter", cx);
         })
         .unwrap();
@@ -839,6 +850,7 @@ mod tests {
                 Some(razer_i18n::t("CUSTOMIZED").as_str())
             );
             window.within("drawer-filter").click("input", cx);
+            window.press("up", cx);
             window.press("up", cx);
             window.press("enter", cx);
         })
@@ -898,6 +910,8 @@ mod tests {
             let mut device = crate::test_devices::mouse();
             device.dkm_keys.clear();
             let view = cx.new(|cx| DeviceWorkspace::new(device, true, window, cx));
+            // This tests the retained renderer, not the source-registry route.
+            view.update(cx, |view, _| view.page = crate::nav::Tab::Customize);
             workspace = Some(view.clone());
             Root::new(view, window, cx)
         });
@@ -907,10 +921,14 @@ mod tests {
             window.click("customize-drawer-toggle", cx);
             window.click("drawer-input-RightButton", cx);
             window.click("mapping-category-mouse", cx);
-            // The current key and layer are not navigation requests.
+            // Re-selecting the input is unchanged; the source layer wrapper
+            // toggles even when its currently selected label is clicked.
             window.click("drawer-input-RightButton", cx);
-            window.click("mapping-standard", cx);
             assert!(window.try_find("mapping-keep-editing").is_none());
+            window.click("mapping-standard", cx);
+            assert!(window.find("mapping-keep-editing").visible());
+            window.click("mapping-keep-editing", cx);
+            assert!(!view.read(cx).hypershift);
             window.click("customize-drawer-close", cx);
             assert!(window.find("mapping-keep-editing").visible());
             window.click("mapping-keep-editing", cx);
@@ -1019,6 +1037,9 @@ mod tests {
             Root::new(view, window, cx)
         });
         let view = workspace.unwrap();
+        cx.update_window(handle.into(), |_, window, _| window.activate_window())
+            .unwrap();
+        cx.run_until_parked();
         cx.update_window(handle.into(), |_, window, cx| {
             window.render_frame(cx);
             window.click("customize-drawer-toggle", cx);
@@ -1031,33 +1052,58 @@ mod tests {
         })
         .unwrap();
         cx.simulate_window_resize(handle.into(), size(px(900.), px(430.)));
+        let product_key = cx
+            .update_window(handle.into(), |_, window, cx| {
+                window.render_frame(cx);
+                let product_key = window.find("keyboard-input-KEY_A").bounds();
+                assert!(!window.find("drawer-input-DKM_M_01").visible());
+                for _ in 0..7 {
+                    window.press("tab", cx);
+                }
+                product_key
+            })
+            .unwrap();
+        cx.run_until_parked();
         cx.update_window(handle.into(), |_, window, cx| {
-            window.render_frame(cx);
-            let product_key = window.find("keyboard-input-KEY_A").bounds();
-            assert!(!window.find("drawer-input-DKM_M_01").visible());
-            for _ in 0..7 {
-                window.press("tab", cx);
-            }
             window.render_frame(cx);
             let row = window.find("drawer-input-DKM_M_01");
             let list = window.find("drawer-list").bounds();
             assert_eq!(row.focused(), Some(true));
-            assert!(row.visible());
+            assert!(
+                row.visible(),
+                "focused row {:?} must be inside list {:?}, scroll offset {:?}",
+                row.bounds(),
+                list,
+                view.read(cx).customize_drawer.scroll.offset(),
+            );
             assert!(row.bounds().top() >= list.top());
             assert!(row.bounds().bottom() <= list.bottom());
             assert_eq!(window.find("keyboard-input-KEY_A").bounds(), product_key);
             window.press("enter", cx);
-            assert_eq!(window.find("drawer-input-DKM_M_01").selected(), Some(true));
+            assert_eq!(view.read(cx).mapping.as_ref().unwrap().input, "DKM_M_01");
+            assert_eq!(
+                view.read(cx).customize_drawer.source_input.as_deref(),
+                Some("DKM_M_01")
+            );
+            assert!(window.find("mapping-overlay").visible());
             window.click("customize-drawer-close", cx);
         })
         .unwrap();
         cx.run_until_parked();
         cx.update_window(handle.into(), |_, window, cx| {
+            // ScrollAnchor restores the trigger on the next platform frame.
+            window.simulate_next_frame(cx);
             window.render_frame(cx);
             assert!(window.try_find("customize-drawer").is_none());
             let toggle = window.find("customize-drawer-toggle");
             assert_eq!(toggle.focused(), Some(true));
-            assert!(toggle.visible());
+            assert!(
+                toggle.visible(),
+                "toggle {:?}, body {:?}, offset {:?}",
+                toggle.bounds(),
+                view.read(cx).customize_drawer.body_scroll.bounds(),
+                view.read(cx).customize_drawer.body_scroll.offset(),
+            );
         })
         .unwrap();
         cx.simulate_window_resize(handle.into(), size(px(1100.), px(850.)));
@@ -1070,6 +1116,7 @@ mod tests {
                 cx,
             );
             window.within("drawer-filter").click("input", cx);
+            window.press("down", cx);
             window.press("down", cx);
             window.press("enter", cx);
         })
@@ -1089,11 +1136,15 @@ mod tests {
             window.render_frame(cx);
             assert!(window.try_find("drawer-input-KEY_NUMPAD_PERIOD").is_none());
             assert!(window.try_find("mapping-overlay").is_none());
-            assert_eq!(
-                window.within("drawer-filter").find("input").focused(),
-                Some(true)
+            assert!(
+                view.read(cx)
+                    .customize_drawer
+                    .filter_focus(cx)
+                    .is_focused(window)
             );
+            assert!(window.within("drawer-filter").find("input").visible());
             window.press("enter", cx);
+            window.press("up", cx);
             window.press("up", cx);
             window.press("enter", cx);
         })

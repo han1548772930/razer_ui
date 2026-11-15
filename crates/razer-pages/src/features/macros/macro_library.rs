@@ -71,6 +71,23 @@ impl MacroLibrary {
         cx.emit(MacroLibraryProfileImported);
         cx.notify();
     }
+
+    pub fn publish_onboard_import(
+        &mut self,
+        import: &razer_model::macro_library::onboard_import::Import,
+        cx: &mut Context<Self>,
+    ) -> Result<(), String> {
+        if !import.matches(&self.live) {
+            return Err("Macro library changed during onboard import persistence".into());
+        }
+        self.live = import.candidate().clone();
+        self.saved = self.live.clone();
+        if import.phase() == razer_model::macro_library::onboard_import::Phase::Index {
+            cx.emit(MacroLibraryProfileImported);
+        }
+        cx.notify();
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -93,6 +110,7 @@ mod tests {
                 xml_guid: None,
                 xml_mouse_mode: 0,
                 source_document: None,
+                imported_at_millis: None,
                 execution: None,
             }],
             ..Default::default()

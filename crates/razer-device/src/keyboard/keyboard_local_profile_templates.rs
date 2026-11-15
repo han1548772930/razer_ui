@@ -43,8 +43,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -113,8 +113,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -183,8 +183,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -342,8 +342,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -363,7 +363,7 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
                 name: "Keymap 1".into(),
                 guid: "dec1bc49-6b29-4fd8-b23a-6854aeb38537".into(),
                 mappings: vec![],
-                slot: "1".into(),
+                slot: crate::keyboard_current_profile::local::KeymapSlot::Text("1".into()),
                 dpad_mode: None,
                 thumbstick_output: None,
                 thumbstick_orientation: None,
@@ -410,8 +410,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -471,8 +471,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -529,8 +529,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -573,7 +573,7 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
                         extensions: Default::default()
                     }
                 ],
-                slot: "1".into(),
+                slot: crate::keyboard_current_profile::local::KeymapSlot::Text("1".into()),
                 dpad_mode: Some(1u8),
                 thumbstick_output: None,
                 thumbstick_orientation: None,
@@ -1641,7 +1641,7 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
                         extensions: Default::default()
                     }
                 ],
-                slot: "2".into(),
+                slot: crate::keyboard_current_profile::local::KeymapSlot::Text("2".into()),
                 dpad_mode: Some(1u8),
                 thumbstick_output: None,
                 thumbstick_orientation: None,
@@ -2382,7 +2382,7 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
                         extensions: Default::default()
                     }
                 ],
-                slot: "3".into(),
+                slot: crate::keyboard_current_profile::local::KeymapSlot::Text("3".into()),
                 dpad_mode: Some(1u8),
                 thumbstick_output: None,
                 thumbstick_orientation: None,
@@ -2438,8 +2438,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -2493,8 +2493,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -2609,8 +2609,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -2725,8 +2725,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -2786,8 +2786,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -2847,8 +2847,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -2972,8 +2972,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -3036,8 +3036,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -3096,8 +3096,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -3166,8 +3166,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -3236,8 +3236,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -3298,8 +3298,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -3810,8 +3810,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -3885,8 +3885,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -3955,8 +3955,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -4026,8 +4026,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -4097,8 +4097,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -4168,8 +4168,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -4238,8 +4238,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -4308,8 +4308,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -4378,8 +4378,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -4439,8 +4439,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -4501,8 +4501,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -4572,8 +4572,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -4644,8 +4644,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -5341,6 +5341,495 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
     polling_rate_wireless: Some(1000u32),
     ..Default::default()
 },
+(708, _) => crate::keyboard_current_profile::local::Profile{
+    guid: "".into(),
+    name: "".into(),
+    mappings: vec![],
+    switch_off_lighting: Some(
+        crate::keyboard_current_profile::LightingOff{
+            is_display_on: false,
+            is_idle_enabled: false,
+            idle_minutes: 1u32,
+            extensions: Default::default()
+        }
+    ),
+    brightness: Some(
+        crate::keyboard_current_profile::Brightness{
+            is_enabled: true,
+            value: 50u8,
+            extensions: Default::default()
+        }
+    ),
+    quick_effects: Some(
+        crate::keyboard_current_profile::QuickEffects{
+            selected_effect_id: 3u32,
+            selected_effect_setting: None,
+            extensions: Default::default()
+        }
+    ),
+    gaming_mode: Some(
+        crate::keyboard_current_profile::GamingMode{
+            state: 0u8,
+            is_windows_key_disabled: false,
+            is_alt_f4_disabled: false,
+            is_alt_tab_disabled: false,
+            is_fn_z_disabled: None,
+            is_alt_space_disabled: None,
+            combos: None,
+            extensions: Default::default()
+        }
+    ),
+    r#macro: Some(
+        crate::keyboard_current_profile::local::MacroSettings{
+            mouse_move_type: None,
+            extensions: Default::default()
+        }
+    ),
+    led_power_settings: Some(
+        crate::keyboard_current_profile::local::LedPowerSettings{
+            idle_state: 1u8,
+            idle_value: 60u32,
+            extensions: Default::default()
+        }
+    ),
+    sleep_mode_in_seconds: Some(15u32),
+    function_key_primary: Some("multi".into()),
+    command_dial: Some(
+        crate::keyboard_current_profile::local::CommandDial{
+            current_mode_uid: ids.get(0).to_owned(),
+            modes: vec![
+                crate::keyboard_current_profile::local::DialMode{
+                    uid: ids.get(0).to_owned(),
+                    is_custom: false,
+                    color: Some("#00FF00".into()),
+                    name: "KEYBOARD_BRIGHTNESS".into(),
+                    is_enabled: true,
+                    mappings: vec![
+                        crate::keyboard_current_profile::Mapping{
+                            input_id: "ScrollRight".into(),
+                            input_type: "MouseInput".into(),
+                            output_type: Some("backlightGroup".into()),
+                            is_hyper_shift: Some(false),
+                            mapping: None,
+                            is_default: None,
+                            keymap_group: None,
+                            analog_input: None,
+                            backlight_group: Some(
+                                crate::keyboard_current_profile::local::BacklightAssignment{
+                                    backlight_assignment: "BrightnessUp".into(),
+                                    extensions: Default::default()
+                                }
+                            ),
+                            win8_shortcuts_group: None,
+                            multimedia_group: None,
+                            mouse_group: None,
+                            oled_light_group: None,
+                            extensions: Default::default()
+                        },
+                        crate::keyboard_current_profile::Mapping{
+                            input_id: "ScrollLeft".into(),
+                            input_type: "MouseInput".into(),
+                            output_type: Some("backlightGroup".into()),
+                            is_hyper_shift: Some(false),
+                            mapping: None,
+                            is_default: None,
+                            keymap_group: None,
+                            analog_input: None,
+                            backlight_group: Some(
+                                crate::keyboard_current_profile::local::BacklightAssignment{
+                                    backlight_assignment: "BrightnessDown".into(),
+                                    extensions: Default::default()
+                                }
+                            ),
+                            win8_shortcuts_group: None,
+                            multimedia_group: None,
+                            mouse_group: None,
+                            oled_light_group: None,
+                            extensions: Default::default()
+                        }
+                    ],
+                    mode_id: 0u8,
+                    extensions: Default::default()
+                },
+                crate::keyboard_current_profile::local::DialMode{
+                    uid: ids.get(1).to_owned(),
+                    is_custom: false,
+                    color: Some("#FF0000".into()),
+                    name: "WINDOWS_ZOOM".into(),
+                    is_enabled: true,
+                    mappings: vec![
+                        crate::keyboard_current_profile::Mapping{
+                            input_id: "ScrollRight".into(),
+                            input_type: "MouseInput".into(),
+                            output_type: Some("win8ShortcutsGroup".into()),
+                            is_hyper_shift: Some(false),
+                            mapping: None,
+                            is_default: None,
+                            keymap_group: None,
+                            analog_input: None,
+                            backlight_group: None,
+                            win8_shortcuts_group: Some(
+                                crate::keyboard_current_profile::local::WindowsShortcutAssignment{
+                                    windows_shortcut_assignment: "OfficeZoomIn".into(),
+                                    extensions: Default::default()
+                                }
+                            ),
+                            multimedia_group: None,
+                            mouse_group: None,
+                            oled_light_group: None,
+                            extensions: Default::default()
+                        },
+                        crate::keyboard_current_profile::Mapping{
+                            input_id: "ScrollLeft".into(),
+                            input_type: "MouseInput".into(),
+                            output_type: Some("win8ShortcutsGroup".into()),
+                            is_hyper_shift: Some(false),
+                            mapping: None,
+                            is_default: None,
+                            keymap_group: None,
+                            analog_input: None,
+                            backlight_group: None,
+                            win8_shortcuts_group: Some(
+                                crate::keyboard_current_profile::local::WindowsShortcutAssignment{
+                                    windows_shortcut_assignment: "OfficeZoomOut".into(),
+                                    extensions: Default::default()
+                                }
+                            ),
+                            multimedia_group: None,
+                            mouse_group: None,
+                            oled_light_group: None,
+                            extensions: Default::default()
+                        }
+                    ],
+                    mode_id: 1u8,
+                    extensions: Default::default()
+                },
+                crate::keyboard_current_profile::local::DialMode{
+                    uid: ids.get(2).to_owned(),
+                    is_custom: false,
+                    color: Some("#0000FF".into()),
+                    name: "SWITCH_APPLICATIONS".into(),
+                    is_enabled: true,
+                    mappings: vec![
+                        crate::keyboard_current_profile::Mapping{
+                            input_id: "ScrollRight".into(),
+                            input_type: "MouseInput".into(),
+                            output_type: Some("win8ShortcutsGroup".into()),
+                            is_hyper_shift: Some(false),
+                            mapping: None,
+                            is_default: None,
+                            keymap_group: None,
+                            analog_input: None,
+                            backlight_group: None,
+                            win8_shortcuts_group: Some(
+                                crate::keyboard_current_profile::local::WindowsShortcutAssignment{
+                                    windows_shortcut_assignment: "SwitchAppRight".into(),
+                                    extensions: Default::default()
+                                }
+                            ),
+                            multimedia_group: None,
+                            mouse_group: None,
+                            oled_light_group: None,
+                            extensions: Default::default()
+                        },
+                        crate::keyboard_current_profile::Mapping{
+                            input_id: "ScrollLeft".into(),
+                            input_type: "MouseInput".into(),
+                            output_type: Some("win8ShortcutsGroup".into()),
+                            is_hyper_shift: Some(false),
+                            mapping: None,
+                            is_default: None,
+                            keymap_group: None,
+                            analog_input: None,
+                            backlight_group: None,
+                            win8_shortcuts_group: Some(
+                                crate::keyboard_current_profile::local::WindowsShortcutAssignment{
+                                    windows_shortcut_assignment: "SwitchAppLeft".into(),
+                                    extensions: Default::default()
+                                }
+                            ),
+                            multimedia_group: None,
+                            mouse_group: None,
+                            oled_light_group: None,
+                            extensions: Default::default()
+                        }
+                    ],
+                    mode_id: 2u8,
+                    extensions: Default::default()
+                },
+                crate::keyboard_current_profile::local::DialMode{
+                    uid: ids.get(3).to_owned(),
+                    is_custom: false,
+                    color: Some("#FEED03".into()),
+                    name: "TRACK_JOGGING".into(),
+                    is_enabled: true,
+                    mappings: vec![
+                        crate::keyboard_current_profile::Mapping{
+                            input_id: "ScrollRight".into(),
+                            input_type: "MouseInput".into(),
+                            output_type: Some("multimediaGroup".into()),
+                            is_hyper_shift: Some(false),
+                            mapping: None,
+                            is_default: None,
+                            keymap_group: None,
+                            analog_input: None,
+                            backlight_group: None,
+                            win8_shortcuts_group: None,
+                            multimedia_group: Some(
+                                crate::keyboard_current_profile::local::MultimediaAssignment{
+                                    multimedia_assignment: "TrackJoggingForward".into(),
+                                    extensions: Default::default()
+                                }
+                            ),
+                            mouse_group: None,
+                            oled_light_group: None,
+                            extensions: Default::default()
+                        },
+                        crate::keyboard_current_profile::Mapping{
+                            input_id: "ScrollLeft".into(),
+                            input_type: "MouseInput".into(),
+                            output_type: Some("multimediaGroup".into()),
+                            is_hyper_shift: Some(false),
+                            mapping: None,
+                            is_default: None,
+                            keymap_group: None,
+                            analog_input: None,
+                            backlight_group: None,
+                            win8_shortcuts_group: None,
+                            multimedia_group: Some(
+                                crate::keyboard_current_profile::local::MultimediaAssignment{
+                                    multimedia_assignment: "TrackJoggingBackward".into(),
+                                    extensions: Default::default()
+                                }
+                            ),
+                            mouse_group: None,
+                            oled_light_group: None,
+                            extensions: Default::default()
+                        }
+                    ],
+                    mode_id: 3u8,
+                    extensions: Default::default()
+                },
+                crate::keyboard_current_profile::local::DialMode{
+                    uid: ids.get(4).to_owned(),
+                    is_custom: false,
+                    color: Some("#00FFFF".into()),
+                    name: "TRACK_SELECTOR".into(),
+                    is_enabled: false,
+                    mappings: vec![
+                        crate::keyboard_current_profile::Mapping{
+                            input_id: "ScrollRight".into(),
+                            input_type: "MouseInput".into(),
+                            output_type: Some("multimediaGroup".into()),
+                            is_hyper_shift: Some(false),
+                            mapping: None,
+                            is_default: None,
+                            keymap_group: None,
+                            analog_input: None,
+                            backlight_group: None,
+                            win8_shortcuts_group: None,
+                            multimedia_group: Some(
+                                crate::keyboard_current_profile::local::MultimediaAssignment{
+                                    multimedia_assignment: "NextTrack".into(),
+                                    extensions: Default::default()
+                                }
+                            ),
+                            mouse_group: None,
+                            oled_light_group: None,
+                            extensions: Default::default()
+                        },
+                        crate::keyboard_current_profile::Mapping{
+                            input_id: "ScrollLeft".into(),
+                            input_type: "MouseInput".into(),
+                            output_type: Some("multimediaGroup".into()),
+                            is_hyper_shift: Some(false),
+                            mapping: None,
+                            is_default: None,
+                            keymap_group: None,
+                            analog_input: None,
+                            backlight_group: None,
+                            win8_shortcuts_group: None,
+                            multimedia_group: Some(
+                                crate::keyboard_current_profile::local::MultimediaAssignment{
+                                    multimedia_assignment: "PrevTrack".into(),
+                                    extensions: Default::default()
+                                }
+                            ),
+                            mouse_group: None,
+                            oled_light_group: None,
+                            extensions: Default::default()
+                        }
+                    ],
+                    mode_id: 4u8,
+                    extensions: Default::default()
+                },
+                crate::keyboard_current_profile::local::DialMode{
+                    uid: ids.get(5).to_owned(),
+                    is_custom: false,
+                    color: Some("#FF00FF".into()),
+                    name: "VERTICAL_SCROLLING".into(),
+                    is_enabled: false,
+                    mappings: vec![
+                        crate::keyboard_current_profile::Mapping{
+                            input_id: "ScrollRight".into(),
+                            input_type: "MouseInput".into(),
+                            output_type: Some("mouseGroup".into()),
+                            is_hyper_shift: Some(false),
+                            mapping: None,
+                            is_default: None,
+                            keymap_group: None,
+                            analog_input: None,
+                            backlight_group: None,
+                            win8_shortcuts_group: None,
+                            multimedia_group: None,
+                            mouse_group: Some(
+                                crate::keyboard_current_profile::local::MouseAssignment{
+                                    mouse_assignment: "ScrollDown".into(),
+                                    extensions: Default::default()
+                                }
+                            ),
+                            oled_light_group: None,
+                            extensions: Default::default()
+                        },
+                        crate::keyboard_current_profile::Mapping{
+                            input_id: "ScrollLeft".into(),
+                            input_type: "MouseInput".into(),
+                            output_type: Some("mouseGroup".into()),
+                            is_hyper_shift: Some(false),
+                            mapping: None,
+                            is_default: None,
+                            keymap_group: None,
+                            analog_input: None,
+                            backlight_group: None,
+                            win8_shortcuts_group: None,
+                            multimedia_group: None,
+                            mouse_group: Some(
+                                crate::keyboard_current_profile::local::MouseAssignment{
+                                    mouse_assignment: "ScrollUp".into(),
+                                    extensions: Default::default()
+                                }
+                            ),
+                            oled_light_group: None,
+                            extensions: Default::default()
+                        }
+                    ],
+                    mode_id: 5u8,
+                    extensions: Default::default()
+                },
+                crate::keyboard_current_profile::local::DialMode{
+                    uid: ids.get(6).to_owned(),
+                    is_custom: false,
+                    color: Some("#FFFFFF".into()),
+                    name: "HORIZONTAL_SCROLLING".into(),
+                    is_enabled: false,
+                    mappings: vec![
+                        crate::keyboard_current_profile::Mapping{
+                            input_id: "ScrollRight".into(),
+                            input_type: "MouseInput".into(),
+                            output_type: Some("mouseGroup".into()),
+                            is_hyper_shift: Some(false),
+                            mapping: None,
+                            is_default: None,
+                            keymap_group: None,
+                            analog_input: None,
+                            backlight_group: None,
+                            win8_shortcuts_group: None,
+                            multimedia_group: None,
+                            mouse_group: Some(
+                                crate::keyboard_current_profile::local::MouseAssignment{
+                                    mouse_assignment: "ScrollRight".into(),
+                                    extensions: Default::default()
+                                }
+                            ),
+                            oled_light_group: None,
+                            extensions: Default::default()
+                        },
+                        crate::keyboard_current_profile::Mapping{
+                            input_id: "ScrollLeft".into(),
+                            input_type: "MouseInput".into(),
+                            output_type: Some("mouseGroup".into()),
+                            is_hyper_shift: Some(false),
+                            mapping: None,
+                            is_default: None,
+                            keymap_group: None,
+                            analog_input: None,
+                            backlight_group: None,
+                            win8_shortcuts_group: None,
+                            multimedia_group: None,
+                            mouse_group: Some(
+                                crate::keyboard_current_profile::local::MouseAssignment{
+                                    mouse_assignment: "ScrollLeft".into(),
+                                    extensions: Default::default()
+                                }
+                            ),
+                            oled_light_group: None,
+                            extensions: Default::default()
+                        }
+                    ],
+                    mode_id: 6u8,
+                    extensions: Default::default()
+                },
+                crate::keyboard_current_profile::local::DialMode{
+                    uid: ids.get(7).to_owned(),
+                    is_custom: false,
+                    color: Some("#FD8611".into()),
+                    name: "SWITCH_BROWSER_TABS".into(),
+                    is_enabled: false,
+                    mappings: vec![
+                        crate::keyboard_current_profile::Mapping{
+                            input_id: "ScrollRight".into(),
+                            input_type: "MouseInput".into(),
+                            output_type: Some("win8ShortcutsGroup".into()),
+                            is_hyper_shift: Some(false),
+                            mapping: None,
+                            is_default: None,
+                            keymap_group: None,
+                            analog_input: None,
+                            backlight_group: None,
+                            win8_shortcuts_group: Some(
+                                crate::keyboard_current_profile::local::WindowsShortcutAssignment{
+                                    windows_shortcut_assignment: "NextBrowserTab".into(),
+                                    extensions: Default::default()
+                                }
+                            ),
+                            multimedia_group: None,
+                            mouse_group: None,
+                            oled_light_group: None,
+                            extensions: Default::default()
+                        },
+                        crate::keyboard_current_profile::Mapping{
+                            input_id: "ScrollLeft".into(),
+                            input_type: "MouseInput".into(),
+                            output_type: Some("win8ShortcutsGroup".into()),
+                            is_hyper_shift: Some(false),
+                            mapping: None,
+                            is_default: None,
+                            keymap_group: None,
+                            analog_input: None,
+                            backlight_group: None,
+                            win8_shortcuts_group: Some(
+                                crate::keyboard_current_profile::local::WindowsShortcutAssignment{
+                                    windows_shortcut_assignment: "PreviousBrowserTab".into(),
+                                    extensions: Default::default()
+                                }
+                            ),
+                            multimedia_group: None,
+                            mouse_group: None,
+                            oled_light_group: None,
+                            extensions: Default::default()
+                        }
+                    ],
+                    mode_id: 7u8,
+                    extensions: Default::default()
+                }
+            ],
+            extensions: Default::default()
+        }
+    ),
+    polling_rate: Some(1000u32),
+    polling_rate_wireless: Some(1000u32),
+    ..Default::default()
+},
 (716, 0) | (716, 128) | (716, 129) | (716, 130) => crate::keyboard_current_profile::local::Profile{
     guid: "".into(),
     name: "".into(),
@@ -5389,8 +5878,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -5461,8 +5950,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -5532,8 +6021,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -5635,8 +6124,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -5738,8 +6227,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -5851,8 +6340,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -6355,8 +6844,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -6436,8 +6925,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -6517,8 +7006,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -6598,8 +7087,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -6679,8 +7168,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -6797,8 +7286,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -6893,8 +7382,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -6977,8 +7466,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -6998,10 +7487,14 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
                 name: "Default".into(),
                 guid: "013dfcf3-ca58-4516-9300-4709300".into(),
                 mappings: vec![],
-                slot: "1".into(),
+                slot: crate::keyboard_current_profile::local::KeymapSlot::Text("1".into()),
                 dpad_mode: None,
-                thumbstick_output: Some("right".into()),
-                thumbstick_orientation: Some("normal".into()),
+                thumbstick_output: Some(
+                    crate::keyboard_current_profile::local::ThumbstickOutput::Right
+                ),
+                thumbstick_orientation: Some(
+                    crate::keyboard_current_profile::local::ThumbstickOrientation::Normal
+                ),
                 extensions: Default::default()
             },
             crate::keyboard_current_profile::local::Keymap{
@@ -7037,9 +7530,9 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
                                     rapid_trigger: Some(
                                         crate::keyboard_current_profile::local::RapidTrigger{
                                             is_enable_up_stroke: false,
-                                            make_sensitivity: 3u32,
-                                            break_sensitivity: 3u32,
-                                            continuous: true,
+                                            make_sensitivity: 3.0f64,
+                                            break_sensitivity: 3.0f64,
+                                            continuous: Some(true),
                                             extensions: Default::default()
                                         }
                                     ),
@@ -7108,9 +7601,9 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
                                     rapid_trigger: Some(
                                         crate::keyboard_current_profile::local::RapidTrigger{
                                             is_enable_up_stroke: false,
-                                            make_sensitivity: 3u32,
-                                            break_sensitivity: 3u32,
-                                            continuous: true,
+                                            make_sensitivity: 3.0f64,
+                                            break_sensitivity: 3.0f64,
+                                            continuous: Some(true),
                                             extensions: Default::default()
                                         }
                                     ),
@@ -7179,9 +7672,9 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
                                     rapid_trigger: Some(
                                         crate::keyboard_current_profile::local::RapidTrigger{
                                             is_enable_up_stroke: false,
-                                            make_sensitivity: 3u32,
-                                            break_sensitivity: 3u32,
-                                            continuous: true,
+                                            make_sensitivity: 3.0f64,
+                                            break_sensitivity: 3.0f64,
+                                            continuous: Some(true),
                                             extensions: Default::default()
                                         }
                                     ),
@@ -7250,9 +7743,9 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
                                     rapid_trigger: Some(
                                         crate::keyboard_current_profile::local::RapidTrigger{
                                             is_enable_up_stroke: false,
-                                            make_sensitivity: 3u32,
-                                            break_sensitivity: 3u32,
-                                            continuous: true,
+                                            make_sensitivity: 3.0f64,
+                                            break_sensitivity: 3.0f64,
+                                            continuous: Some(true),
                                             extensions: Default::default()
                                         }
                                     ),
@@ -7419,20 +7912,28 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
                         extensions: Default::default()
                     }
                 ],
-                slot: "2".into(),
+                slot: crate::keyboard_current_profile::local::KeymapSlot::Text("2".into()),
                 dpad_mode: None,
-                thumbstick_output: Some("right".into()),
-                thumbstick_orientation: Some("normal".into()),
+                thumbstick_output: Some(
+                    crate::keyboard_current_profile::local::ThumbstickOutput::Right
+                ),
+                thumbstick_orientation: Some(
+                    crate::keyboard_current_profile::local::ThumbstickOrientation::Normal
+                ),
                 extensions: Default::default()
             },
             crate::keyboard_current_profile::local::Keymap{
                 name: "High Sensitivity".into(),
                 guid: "fee0d4f3-2130-445f-0000-00074".into(),
                 mappings: vec![],
-                slot: "3".into(),
+                slot: crate::keyboard_current_profile::local::KeymapSlot::Text("3".into()),
                 dpad_mode: None,
-                thumbstick_output: Some("right".into()),
-                thumbstick_orientation: Some("normal".into()),
+                thumbstick_output: Some(
+                    crate::keyboard_current_profile::local::ThumbstickOutput::Right
+                ),
+                thumbstick_orientation: Some(
+                    crate::keyboard_current_profile::local::ThumbstickOrientation::Normal
+                ),
                 extensions: Default::default()
             },
             crate::keyboard_current_profile::local::Keymap{
@@ -8015,50 +8516,70 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
                         extensions: Default::default()
                     }
                 ],
-                slot: "4".into(),
+                slot: crate::keyboard_current_profile::local::KeymapSlot::Text("4".into()),
                 dpad_mode: None,
-                thumbstick_output: Some("right".into()),
-                thumbstick_orientation: Some("normal".into()),
+                thumbstick_output: Some(
+                    crate::keyboard_current_profile::local::ThumbstickOutput::Right
+                ),
+                thumbstick_orientation: Some(
+                    crate::keyboard_current_profile::local::ThumbstickOrientation::Normal
+                ),
                 extensions: Default::default()
             },
             crate::keyboard_current_profile::local::Keymap{
                 name: "Default".into(),
                 guid: "7716c4fe-fa81-4e6f-0000-094340".into(),
                 mappings: vec![],
-                slot: "5".into(),
+                slot: crate::keyboard_current_profile::local::KeymapSlot::Text("5".into()),
                 dpad_mode: None,
-                thumbstick_output: Some("right".into()),
-                thumbstick_orientation: Some("normal".into()),
+                thumbstick_output: Some(
+                    crate::keyboard_current_profile::local::ThumbstickOutput::Right
+                ),
+                thumbstick_orientation: Some(
+                    crate::keyboard_current_profile::local::ThumbstickOrientation::Normal
+                ),
                 extensions: Default::default()
             },
             crate::keyboard_current_profile::local::Keymap{
                 name: "Default".into(),
                 guid: "233fe1db-81ff-4ab5-0180-00000".into(),
                 mappings: vec![],
-                slot: "6".into(),
+                slot: crate::keyboard_current_profile::local::KeymapSlot::Text("6".into()),
                 dpad_mode: None,
-                thumbstick_output: Some("right".into()),
-                thumbstick_orientation: Some("normal".into()),
+                thumbstick_output: Some(
+                    crate::keyboard_current_profile::local::ThumbstickOutput::Right
+                ),
+                thumbstick_orientation: Some(
+                    crate::keyboard_current_profile::local::ThumbstickOrientation::Normal
+                ),
                 extensions: Default::default()
             },
             crate::keyboard_current_profile::local::Keymap{
                 name: "Default".into(),
                 guid: "1d091232-69a6-4fe7-9100-360000".into(),
                 mappings: vec![],
-                slot: "7".into(),
+                slot: crate::keyboard_current_profile::local::KeymapSlot::Text("7".into()),
                 dpad_mode: None,
-                thumbstick_output: Some("right".into()),
-                thumbstick_orientation: Some("normal".into()),
+                thumbstick_output: Some(
+                    crate::keyboard_current_profile::local::ThumbstickOutput::Right
+                ),
+                thumbstick_orientation: Some(
+                    crate::keyboard_current_profile::local::ThumbstickOrientation::Normal
+                ),
                 extensions: Default::default()
             },
             crate::keyboard_current_profile::local::Keymap{
                 name: "Default".into(),
                 guid: "19fba301-952d-4ef6-0830-0150025".into(),
                 mappings: vec![],
-                slot: "8".into(),
+                slot: crate::keyboard_current_profile::local::KeymapSlot::Text("8".into()),
                 dpad_mode: None,
-                thumbstick_output: Some("right".into()),
-                thumbstick_orientation: Some("normal".into()),
+                thumbstick_output: Some(
+                    crate::keyboard_current_profile::local::ThumbstickOutput::Right
+                ),
+                thumbstick_orientation: Some(
+                    crate::keyboard_current_profile::local::ThumbstickOrientation::Normal
+                ),
                 extensions: Default::default()
             }
         ]
@@ -8155,8 +8676,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -8226,8 +8747,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),
@@ -8339,8 +8860,8 @@ pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Prof
         }
     ),
     snap_tap: Some(
-        crate::keyboard_current_profile::SnapTap{
-            is_enabled: false,
+        crate::keyboard_current_profile::local::SnapTap{
+            is_enabled: crate::keyboard_current_profile::local::SourceEnabled::Boolean(false),
             key_list: vec![
                 crate::keyboard_current_profile::SnapTapPair{
                     key1: "KEY_A".into(),

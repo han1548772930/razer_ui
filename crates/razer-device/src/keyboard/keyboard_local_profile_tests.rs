@@ -79,6 +79,13 @@ fn keyboard_local_recipe_preserves_global_lighting_and_all_application_profiles(
     assert_eq!(dial.modes.len(), 8);
     assert_eq!(dial.current_mode_uid, dial.modes[0].uid);
     assert_eq!(dial.modes[0].name, "KEYBOARD_BRIGHTNESS");
+    let imported = import_template(708, 255).unwrap();
+    assert!(imported.guid.is_empty() && imported.name.is_empty());
+    assert_eq!(imported.brightness.as_ref().unwrap().value, 50);
+    assert_eq!(imported.polling_rate, Some(1000));
+    assert_eq!(imported.polling_rate_wireless, Some(1000));
+    assert_eq!(imported.command_dial.as_ref().unwrap().modes.len(), 8);
+    assert!(imported.mappings.is_empty());
 }
 
 #[test]
@@ -152,9 +159,13 @@ fn keyboard_local_recipe_complete_original_comparison() {
         } else {
             vec![templates::profile(product, edition, &ids).expect("current edition template")]
         };
-        println!(
-            "KEYBOARD_RECIPE_COMPARE {}",
-            serde_json::json!({"product_id":product,"edition":edition,"device":device,"profiles":profiles})
-        );
+        let mut value = serde_json::json!({"product_id":product,"edition":edition,"device":device,"profiles":profiles});
+        if product == 708 {
+            value["import_profile"] = serde_json::to_value(
+                templates::profile(product, edition, &ids).expect("generic OBM profile"),
+            )
+            .unwrap();
+        }
+        println!("KEYBOARD_RECIPE_COMPARE {value}");
     }
 }

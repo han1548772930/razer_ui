@@ -54,6 +54,9 @@ pub enum SourceTooltipKind {
     ChromaStatus,
     /// `.manage .tip` overrides width with fit-content and min-width:165px.
     ChromaManage,
+    /// Module 7734 hoverTips: cursor +10px, option bottom, intrinsic width
+    /// under 300px; the option width selects the horizontal edge fallback.
+    PointerDropdown,
 }
 
 type Trigger = Box<dyn FnOnce(bool, &mut Window, &mut App) -> AnyElement>;
@@ -113,6 +116,7 @@ pub struct SourceTooltip {
     kind: SourceTooltipKind,
     hovered_priority: Option<usize>,
     dismiss_on_press: bool,
+    disabled: bool,
     hypershift_layout: Option<HypershiftHelpLayout>,
     trigger: Trigger,
 }
@@ -122,6 +126,7 @@ struct HoverState {
     trigger: bool,
     content: bool,
     bounds: Rc<Cell<Bounds<Pixels>>>,
+    pointer_x: Pixels,
     _activation: Option<Subscription>,
 }
 
@@ -134,6 +139,7 @@ impl SourceTooltip {
             kind: SourceTooltipKind::DropTips,
             hovered_priority: None,
             dismiss_on_press: false,
+            disabled: false,
             hypershift_layout: None,
             trigger: Box::new(|_, _, _| div().into_any_element()),
         }
@@ -147,6 +153,12 @@ impl SourceTooltip {
     /// Source controls may hide their delayed portal on the initial press.
     pub fn dismiss_on_press(mut self) -> Self {
         self.dismiss_on_press = true;
+        self
+    }
+
+    /// Keep the trigger mounted while its source condition suppresses the tip.
+    pub fn disabled(mut self, disabled: bool) -> Self {
+        self.disabled = disabled;
         self
     }
 
@@ -176,6 +188,8 @@ impl SourceTooltip {
                 | SourceTooltipKind::ChromaManage
         ) {
             if hovered { 100 } else { 99 }
+        } else if self.kind == SourceTooltipKind::PointerDropdown {
+            150
         } else if self.kind == SourceTooltipKind::Studio {
             1060
         } else if matches!(
@@ -210,7 +224,9 @@ impl RenderOnce for SourceTooltip {
             window.use_keyed_state((self.id.clone(), "tip-hover"), cx, move |window, cx| {
                 let activation = matches!(
                     kind,
-                    SourceTooltipKind::Alexa | SourceTooltipKind::Studio
+                    SourceTooltipKind::Alexa
+                        | SourceTooltipKind::Studio
+                        | SourceTooltipKind::PointerDropdown
                 )
                 .then(|| {
                     cx.observe_window_activation(window, |state: &mut HoverState, window, cx| {
@@ -225,8 +241,9 @@ impl RenderOnce for SourceTooltip {
                     ..Default::default()
                 }
             });
-        let hovered = state.read(cx).trigger
-            || (self.kind == SourceTooltipKind::ProfileWarning && state.read(cx).content);
+        let hovered = !self.disabled
+            && (state.read(cx).trigger
+                || (self.kind == SourceTooltipKind::ProfileWarning && state.read(cx).content));
         let priority = self.draw_priority(hovered);
         let anchor = state.read(cx).bounds.clone();
         // Both CSS paths retain opacity while hidden, including on reversal.
@@ -238,6 +255,7 @@ impl RenderOnce for SourceTooltip {
                         SourceTooltipKind::ProfilesNav
                             | SourceTooltipKind::ReceiverWidgetPortal
                             | SourceTooltipKind::WidgetTip
+                            | SourceTooltipKind::PointerDropdown
                     ) {
                         // `.body-widget-tip-portal{opacity:1;visibility:visible;
                         //  z-index:10001}` 覆盖 `.tip` 的 `opacity:0` 与 300ms
@@ -288,8 +306,11 @@ impl RenderOnce for SourceTooltip {
             .relative()
             .flex()
             .flex_shrink_0()
-            .on_hover(window.listener_for(&state, |state, hovered, _, cx| {
+            .on_hover(window.listener_for(&state, |state, hovered, window, cx| {
                 state.trigger = *hovered;
+                if *hovered {
+                    state.pointer_x = window.mouse_position().x;
+                }
                 cx.notify();
             }))
             .when(self.dismiss_on_press, |view| {
@@ -353,6 +374,24 @@ fn widget_tip_position(trigger: Bounds<Pixels>, width: Pixels, rem: Pixels) -> P
     point(
         trigger.right() - rem * (4. / 16.) - width,
         trigger.origin.y + rem * (24. / 16.),
+    )
+}
+
+fn pointer_dropdown_tip_position(
+    trigger: Bounds<Pixels>,
+    pointer_x: Pixels,
+    tip_width: Pixels,
+    viewport_width: Pixels,
+    rem: Pixels,
+) -> Point<Pixels> {
+    let left = pointer_x + rem * (10. / 16.);
+    point(
+        if left + trigger.size.width >= viewport_width {
+            left - tip_width
+        } else {
+            left
+        },
+        trigger.bottom(),
     )
 }
 
@@ -432,6 +471,20 @@ impl Element for TipOverlay {
             // JS copies clientWidth/clientHeight (border excluded) to the
             // portal's border-box width/height. Its `.on` height is auto.
             measured.map(|length| (length - px(2.)).max(px(1.)))
+        } else if self.kind == SourceTooltipKind::PointerDropdown {
+            let mut measurement = tip_surface(
+                (self.id.clone(), "tip-measure").into(),
+                self.text.clone(),
+                width,
+            )
+            .w_auto()
+            .max_w(width)
+            .into_any_element();
+            measurement.layout_as_root(
+                size(AvailableSpace::MaxContent, AvailableSpace::MinContent),
+                window,
+                cx,
+            )
         } else if self.kind == SourceTooltipKind::ChromaManage {
             let mut measurement = tip_surface(
                 (self.id.clone(), "tip-measure").into(),
@@ -585,6 +638,7 @@ impl Element for TipOverlay {
                 | SourceTooltipKind::GamepadTrigger
                 | SourceTooltipKind::ChromaStatus
                 | SourceTooltipKind::ChromaManage
+                | SourceTooltipKind::PointerDropdown
         ) {
             // Base Positioner always clamps to the viewport. The source CSS
             // sibling has no clamp, so retain Base Tooltip semantics and place
@@ -635,6 +689,13 @@ impl Element for TipOverlay {
     ) {
         let trigger = self.anchor.get();
         let target = match self.kind {
+            SourceTooltipKind::PointerDropdown => pointer_dropdown_tip_position(
+                trigger,
+                self.state.read(cx).pointer_x,
+                layout.source_size.width,
+                window.viewport_size().width,
+                window.rem_size(),
+            ),
             SourceTooltipKind::DropTips => {
                 drop_tip_position(trigger, layout.source_size, window.viewport_size())
             }

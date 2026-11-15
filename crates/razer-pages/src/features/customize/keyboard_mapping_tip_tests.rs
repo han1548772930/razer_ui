@@ -5,19 +5,6 @@ use gpui_kit::test::TestWindowExt;
 use gpui_kit::{AppContext, TestAppContext, px, size};
 
 #[gpui_kit::test]
-fn key_tip_diagnostic_unknown_layout(cx: &mut TestAppContext) {
-    cx.update(|cx| { gpui_kit::init(cx); cx.set_reduce_motion(true); });
-    let handle = cx.open_window(size(px(1280.), px(960.)), |window, cx| {
-        let mut device = crate::test_devices::keyboard();
-        device.layout_id = 999;
-        let view = cx.new(|cx| DeviceWorkspace::new(device, true, window, cx));
-        Root::new(view, window, cx)
-    });
-    eprintln!("unknown layout opened");
-    cx.update_window(handle.into(), |_, window, _| window.remove_window()).unwrap();
-}
-
-#[gpui_kit::test]
 fn key_tip_653_uses_real_workspace_mapping_layers_and_source_geometry(cx: &mut TestAppContext) {
     cx.update(|cx| {
         gpui_kit::init(cx);
@@ -87,34 +74,12 @@ fn key_tip_653_invalidates_pending_hover_on_leave_and_connection_change(cx: &mut
     let handle = cx.open_window(size(px(1280.), px(960.)), |window, cx| {
         let view =
             cx.new(|cx| DeviceWorkspace::new(crate::test_devices::keyboard(), true, window, cx));
-        view.update(cx, |view, cx| {
-            macro_rules! watch {
-                ($state:expr, $name:expr) => {{
-                    let mut count = 0;
-                    view.subscriptions.push(cx.observe($state, move |_, _, _| {
-                        count += 1;
-                        eprintln!("notify {} {count}", $name);
-                        assert!(count < 10, "control notification diagnostic limit");
-                    }));
-                }};
-            }
-            watch!(&view.controls.profile, "profile");
-            watch!(&view.controls.effect, "effect");
-            watch!(&view.controls.color, "color");
-            watch!(&view.controls.color2, "color2");
-            watch!(&view.controls.color_boost, "color_boost");
-            watch!(&view.controls.snap_left, "snap_left");
-            watch!(&view.controls.snap_right, "snap_right");
-            for state in view.controls.sliders.values() { watch!(state, "slider"); }
-        });
         page = Some(view.clone());
         Root::new(view, window, cx)
     });
-    eprintln!("opened");
     let page = page.unwrap();
     cx.update_window(handle.into(), |_, window, cx| {
         window.render_frame(cx);
-        eprintln!("rendered");
         window.hover("keyboard-hit-KEY_A", cx);
         window.hover("mapping-hypershift", cx);
     })
@@ -200,7 +165,11 @@ fn key_tip_653_media_popup_keeps_direction_order_text_anchor_and_dirty_cancel(
         let tip = window.find("keyboard-mapping-key-tip").bounds();
         assert_eq!(tip.bottom(), label.top() - px(5.));
         window.click("keyboard-media-ScrollUp", cx);
+        assert_eq!(page.read(cx).mapping.as_ref().unwrap().input, "ScrollUp");
+        assert!(page.read(cx).keyboard_key_tip.media_shown);
         window.click("mapping-category-mouse", cx);
+        assert!(page.read(cx).keyboard_key_tip.media_shown);
+        assert!(page.read(cx).mapping_dirty());
         window.hover("mapping-hypershift", cx);
         assert!(window.find("keyboard-media-popup").visible());
         window.click("mapping-cancel", cx);

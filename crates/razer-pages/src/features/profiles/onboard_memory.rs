@@ -137,9 +137,9 @@ impl OnboardMemoryPanel {
                 },
             ));
         }
-        if let Some(view) = workspace.upgrade() {
-            subscriptions.push(cx.observe(&view, |_, _, cx| cx.notify()));
-        }
+        // The uncached panel renders with its workspace. Keyed state already
+        // notifies that workspace when the panel changes; observing it back
+        // would create a notification cycle.
         Self {
             workspace,
             device,
@@ -555,7 +555,9 @@ impl OnboardMemoryPanel {
             );
         let owner = cx.entity().downgrade();
         gpui_kit::base::Dialog::new(cx)
-            .layer(1, true)
+            // gR's portal covers the still-mounted OBM popup. Kit adds 10 to
+            // this layer, placing it above Popup's priority 100.
+            .layer(100, true)
             .focus_handle(self.conflict_focus.clone())
             .close_on_backdrop_press(false)
             .on_cancel(|_, _, _| false)
@@ -731,6 +733,9 @@ impl OnboardMemoryPanel {
                     .child(profile_icon(None, hybrid_warning, cx))
                     .child(
                         div()
+                            .id("onboard-hybrid-profile")
+                            .test_support()
+                            .aria_label(profile_name.clone())
                             // `.white-text`: only a leading 10px margin; the
                             // help follows the 179px name without a second gap.
                             .ml(surface::css(10.))

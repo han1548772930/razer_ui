@@ -338,6 +338,7 @@ impl MouseProductWorkspace {
         let header_tip = !policy.babel_162 && state.header_hover && title_overflow;
         let head = div()
             .id("mouse-current-mapping-menu-header")
+            .occlude()
             .absolute()
             .top(-surface::css(36.))
             .left(-surface::css(1.))
@@ -404,6 +405,7 @@ impl MouseProductWorkspace {
         );
         Some(
             div()
+                .occlude()
                 .relative()
                 .w(surface::css(292.))
                 .h(body_height)

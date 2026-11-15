@@ -309,6 +309,7 @@ pub fn decode(text: &str) -> Result<Entry, String> {
         xml_guid: None,
         xml_mouse_mode: movement_mode,
         source_document: None,
+        imported_at_millis: None,
         execution: None,
     })
 }

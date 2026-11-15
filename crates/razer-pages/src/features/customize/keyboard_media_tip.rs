@@ -36,8 +36,27 @@ impl DeviceWorkspace {
             cx.notify();
         }
     }
-    pub(in crate::features) fn keyboard_media_tip(&self, cx: &Context<Self>) -> Option<AnyElement> {
-        if self.pid() != 653 || self.page != Tab::Customize || !self.keyboard_key_tip.media_shown {
+    pub(in crate::features) fn keyboard_media_tip(
+        &self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Option<AnyElement> {
+        if self.pid() != 653 || self.page != Tab::Customize {
+            return None;
+        }
+        // .tip-special transitions opacity for .3s, while visibility hides it
+        // immediately. Keep sampling while hidden so a re-entry can reverse.
+        let opacity = gpui_kit::base::motion::Presence::new(
+            "keyboard-media-opacity",
+            self.keyboard_key_tip.media_shown,
+        )
+        .transition(
+            gpui_kit::base::motion::Transition::new(std::time::Duration::from_millis(300))
+                .easing(gpui_kit::base::motion::Easing::Ease),
+        )
+        .sample(window, cx)
+        .progress;
+        if !self.keyboard_key_tip.media_shown {
             return None;
         }
         let anchor = self.keyboard_key_tip.regions.get("DIAL_CLICK")?.clone();
@@ -125,6 +144,7 @@ impl DeviceWorkspace {
                     .child(
                         div()
                             .ml(surface::css(10.))
+                            .hover(|style| style.text_color(Colors::text()))
                             .max_w(surface::css(155.))
                             .overflow_hidden()
                             .text_ellipsis()
@@ -152,6 +172,8 @@ impl DeviceWorkspace {
         let popup = div()
             .id("keyboard-media-popup")
             .test_support()
+            .occlude()
+            .opacity(opacity)
             .relative()
             .w(surface::css(234.))
             .h(surface::css(143.))

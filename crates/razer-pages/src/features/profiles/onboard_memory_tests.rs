@@ -5,6 +5,54 @@ use gpui_kit::test::TestWindowExt;
 use gpui_kit::{AppContext, TestAppContext, px, size};
 
 #[gpui_kit::test]
+fn workspace_profile_refresh_reaches_the_mounted_onboard_panel(cx: &mut TestAppContext) {
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
+    let mut workspace = None;
+    let handle = cx.open_window(size(px(1280.), px(900.)), |window, cx| {
+        let view =
+            cx.new(|cx| DeviceWorkspace::new(crate::test_devices::keyboard(), true, window, cx));
+        workspace = Some(view.clone());
+        Root::new(view, window, cx)
+    });
+    let workspace = workspace.unwrap();
+    cx.update_window(handle.into(), |_, window, cx| {
+        window.render_frame(cx);
+        window.click("profile-obm", cx);
+        let name = workspace
+            .read(cx)
+            .device
+            .active_profile_obj()
+            .unwrap()
+            .name
+            .clone();
+        assert_eq!(
+            window.find("onboard-hybrid-profile").label(),
+            Some(name.as_str())
+        );
+        workspace.update(cx, |view, cx| {
+            let active = view.device.active_profile.clone();
+            view.device
+                .profiles
+                .iter_mut()
+                .find(|profile| profile.id == active)
+                .unwrap()
+                .name = "Renamed local profile".into();
+            cx.notify();
+        });
+        window.render_frame(cx);
+        assert_eq!(
+            window.find("onboard-hybrid-profile").label(),
+            Some("Renamed local profile")
+        );
+        window.remove_window();
+    })
+    .unwrap();
+}
+
+#[gpui_kit::test]
 fn preview_slot_assignment_and_conflict_leave_workspace_untouched(cx: &mut TestAppContext) {
     cx.update(|cx| {
         gpui_kit::init(cx);
@@ -32,6 +80,7 @@ fn preview_slot_assignment_and_conflict_leave_workspace_untouched(cx: &mut TestA
     cx.run_until_parked();
     cx.update_window(handle.into(), |_, window, cx| {
         window.click(("onboard-slot-select", 3usize), cx);
+        window.press("down", cx);
         window.press("down", cx);
         window.press("enter", cx);
     })
@@ -83,8 +132,9 @@ fn live_device_cannot_enter_preview_or_accept_another_devices_readback(cx: &mut 
     });
     let mut entities = None;
     let handle = cx.open_window(size(px(1280.), px(900.)), |window, cx| {
-        let workspace =
-            cx.new(|cx| DeviceWorkspace::new(crate::test_devices::keyboard(), true, window, cx));
+        let mut device = crate::test_devices::keyboard();
+        device.serial_number = "TEST-KEYBOARD".into();
+        let workspace = cx.new(|cx| DeviceWorkspace::new(device, true, window, cx));
         let panel = cx.new(|cx| OnboardMemoryPanel::new(workspace.downgrade(), window, cx));
         entities = Some((workspace, panel.clone()));
         Root::new(panel, window, cx)

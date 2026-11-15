@@ -471,7 +471,11 @@ def recover():
                     profiles = module.value(arrays[0])
                     if not isinstance(profiles, list) or len(profiles) != 13:
                         raise ValueError("708 complete application profile recipes differ")
-                    variants = [{"edition": None, "profiles": profiles, "owner": generator["id"]}]
+                    generic = module.value(module.exports["DEFAULTPROFILE"], profile=True)
+                    if not isinstance(generic, dict) or "commandDial" not in generic:
+                        raise ValueError("708 OBM generic profile recipe is absent")
+                    variants = [{"edition": None, "profiles": profiles,
+                                 "import_profile": generic, "owner": generator["id"]}]
                 result.append({"product_id": pid, "templates": variants, "device": base,
                                "dynamic_guids": len(module.dynamic_guids)})
             except (ValueError, KeyError, IndexError, TypeError, AttributeError) as error:
@@ -595,11 +599,24 @@ def render_recipes(recovered=None):
         for variant in product["templates"]:
             if pid == 708:
                 applications = [render(profile, "Profile") for profile in variant["profiles"]]
+                expression = render(variant["import_profile"], "Profile")
+                profiles.setdefault(expression, []).append((pid, 0))
                 continue
             expression = render(variant["profile"], "Profile")
             profiles.setdefault(expression, []).append((pid, int(variant["edition"])))
     return {"profile_constructors": profiles, "device_constructors": devices,
             "application_constructors": applications, "recovery": recovered}
+
+
+def source_json_identity(value):
+    """Compare JSON numbers by their exact value, keeping booleans distinct."""
+    if type(value) is float and value.is_integer():
+        return int(value)
+    if isinstance(value, list):
+        return [source_json_identity(child) for child in value]
+    if isinstance(value, dict):
+        return {key: source_json_identity(child) for key, child in value.items()}
+    return value
 
 
 def verify_rust_recipes(binary, recovered):
@@ -622,6 +639,8 @@ def verify_rust_recipes(binary, recovered):
             device.pop("profiles", None)
             expected[pid, edition] = {"product_id": pid, "edition": edition, "device": instantiate(device),
                                      "profiles": instantiate(variant.get("profiles", [variant.get("profile")]))}
+            if "import_profile" in variant:
+                expected[pid, edition]["import_profile"] = instantiate(variant["import_profile"])
     environment = os.environ.copy()
     environment["RAZER_KEYBOARD_TEMPLATE_REQUESTS"] = json.dumps(list(expected))
     command = [str(Path(binary).resolve()), "keyboard_local_recipe_complete_original_comparison", "--ignored", "--nocapture"]
@@ -639,10 +658,12 @@ def verify_rust_recipes(binary, recovered):
         actual[key] = value
     if set(actual) != set(expected):
         raise ValueError("Rust keyboard template comparison omitted product editions")
-    differences = [key for key in expected if ci.digest(actual[key]) != ci.digest(expected[key])]
+    differences = [key for key in expected
+                   if ci.digest(source_json_identity(actual[key])) != ci.digest(source_json_identity(expected[key]))]
     if differences:
         raise ValueError("Rust keyboard complete profile fields differ: " + repr(differences))
     return {"command": command, "exit_code": 0, "compared_product_editions": len(expected),
+            "number_comparison": "exact JSON numeric values; integral floats and integers share identity",
             "actual_records_sha256": ci.digest([actual[key] for key in sorted(actual)]),
             "expected_records_sha256": ci.digest([expected[key] for key in sorted(expected)]),
             "device_io": False, "official_dll_execution": False}
@@ -657,7 +678,7 @@ def prepare(*, check=False, rust_test_binary=None):
              "pub(super) fn profile(product: u32, edition: u8, ids: &RecipeIds) -> Option<Profile> {",
              "    Some(match (product, edition) {"]
     for expression, variants in rendered["profile_constructors"].items():
-        patterns = [f"({pid}, _)" if pid == 691 else f"({pid}, {edition})" for pid, edition in variants]
+        patterns = [f"({pid}, _)" if pid in {691, 708} else f"({pid}, {edition})" for pid, edition in variants]
         patterns = list(dict.fromkeys(patterns))
         lines.append(" | ".join(patterns) + " => " + expression + ",")
     lines += ["_ => return None,", "})", "}", "",

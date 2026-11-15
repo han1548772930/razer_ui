@@ -24717,6 +24717,7 @@ pub(super) fn mappings() -> Vec<Mapping> {
 pub(super) fn analog() -> Vec<AnalogDefaults> {
     vec![
         AnalogDefaults {
+            factory_preset_guid: Some("af06d371-861f-4b98-8d78-bfaef5cfdebf".into()),
             default_actuation: ActuationDefaults {
                 specific: vec![
                     (
@@ -26652,6 +26653,7 @@ pub(super) fn analog() -> Vec<AnalogDefaults> {
             ],
         },
         AnalogDefaults {
+            factory_preset_guid: Some("af06d371-861f-4b98-8d78-bfaef5cfdebf".into()),
             default_actuation: ActuationDefaults {
                 specific: vec![].into_iter().collect(),
                 rest: Actuation {
@@ -28521,6 +28523,7 @@ pub(super) fn analog() -> Vec<AnalogDefaults> {
             ],
         },
         AnalogDefaults {
+            factory_preset_guid: None,
             default_actuation: ActuationDefaults {
                 specific: vec![].into_iter().collect(),
                 rest: Actuation {

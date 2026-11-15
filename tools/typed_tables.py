@@ -1713,6 +1713,24 @@ def current_onboard_import_tables():
                     values[name] = config.value(right)
             if len(values) != 5:
                 raise ValueError("Current keyboard import analog defaults are incomplete")
+            predicates = [node for node in recipes.walk(config.body)
+                          if node.type == "method_definition"
+                          and node.child_by_field_name("name").text == b"isFactoryPreset"]
+            marked = [config.value(node.parent) for node in recipes.walk(config.body)
+                      if node.type == "pair"
+                      and node.child_by_field_name("key").text == b"isFactoryPreset"]
+            if len(predicates) != 1:
+                raise ValueError("Current keyboard factory-preset predicate is ambiguous")
+            if product == 747:
+                returns = [node for node in recipes.walk(predicates[0]) if node.type == "return_statement"]
+                if marked or len(returns) != 1 or config.value(returns[0].named_children[0]) is not False:
+                    raise ValueError("Current keypad must not classify a keymap as a factory preset")
+                values["factoryPresetGuid"] = None
+            else:
+                if (len(marked) != 1 or marked[0].get("isFactoryPreset") is not True
+                        or not isinstance(marked[0].get("guid"), str) or not marked[0]["guid"]):
+                    raise ValueError("Current keyboard factory-preset identity is absent or ambiguous")
+                values["factoryPresetGuid"] = marked[0]["guid"]
             identity = ci.digest(values)
             if identity not in analog_ids:
                 analog_ids[identity] = len(analog)
@@ -2958,6 +2976,7 @@ def prepare_mapping_capabilities(*, check=False, workers=4):
     from importlib.metadata import version
     import families
     import analysis
+    import code_identity
     if type(workers) is not int or not 2 <= workers <= 16:
         raise ValueError("Mapping capability workers must be between two and sixteen")
     registry = ROOT / ".analysis/inputs/typed-tables/razer-catalog/product_registry.json"
@@ -2972,7 +2991,12 @@ def prepare_mapping_capabilities(*, check=False, workers=4):
     # and input identities; the coordinator extends both lists in registry order.
     def mapping_product(product):
         pid = product["id"]
-        receipt = ROOT / f".analysis/inputs/frontend/mouse-{pid}-current/acquisition.json"
+        deployment, _ = code_identity.select_deployment(("mouse", "mouse", pid, "ui"))
+        if deployment[5] is not None:
+            raise ValueError(f"Current mouse {pid} deployment is unresolved: {deployment[5]}")
+        receipt = ROOT / deployment[3]
+        if families.identity(receipt)["sha256"] != deployment[4]:
+            raise ValueError(f"Current mouse {pid} acquisition changed after selection")
         acquired = json.loads(receipt.read_bytes())
         product_inputs = [families.identity(receipt)]
         files = {row["url"]: row for row in acquired["files"]}

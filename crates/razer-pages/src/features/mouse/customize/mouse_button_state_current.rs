@@ -1,4 +1,4 @@
-//! Pure projection of the current non-attachment mouse button-state producer.
+//! Pure projection of the current mouse button-state producer.
 //! This observes local mappings; it performs no transport, persistence or device operation.
 use razer_model::mapping_requirements::{MappingObservations, MappingRequirement};
 use serde::Deserialize;
@@ -10,10 +10,70 @@ pub enum DeriveError {
     UnverifiedProduct(u32),
     UnsupportedCategory(String),
     AttachmentObservationRequired,
+    InvalidSidePanelMappings,
     InvalidButton,
     InvalidMappingPayload(String),
     InvalidRequirementObservation(String),
     UnresolvedAssignmentProducer(String),
+}
+
+/// Ordered local profile rows consumed by source `Object.values(sidePanelMappings)`.
+/// These are mapping drafts, never device observations.
+pub(super) struct SidePanelMappings<'a> {
+    panels: Vec<(&'a str, &'a [Value])>,
+}
+
+impl<'a> SidePanelMappings<'a> {
+    pub(super) fn from_profile(profile: &'a Value) -> Result<Self, DeriveError> {
+        let Some(value) = profile.get("sidePanelMappings") else {
+            // The Customize reducer initializes these four empty lists. Some
+            // source profiles (141) omit the optional side-panel property.
+            return Ok(Self {
+                panels: vec![
+                    ("2ButtonSide", &[]),
+                    ("7ButtonSide", &[]),
+                    ("12ButtonSide", &[]),
+                    ("6ButtonSide", &[]),
+                ],
+            });
+        };
+        let object = value
+            .as_object()
+            .ok_or(DeriveError::InvalidSidePanelMappings)?;
+        let panels = object
+            .iter()
+            .map(|(name, rows)| {
+                rows.as_array()
+                    .map(|rows| (name.as_str(), rows.as_slice()))
+                    .ok_or(DeriveError::InvalidSidePanelMappings)
+            })
+            .collect::<Result<_, _>>()?;
+        Ok(Self { panels })
+    }
+
+    pub(super) fn selected(
+        &self,
+        product_id: u32,
+        view_index: i32,
+    ) -> Result<&'a [Value], DeriveError> {
+        let name =
+            side_panel_name(product_id, view_index).ok_or(DeriveError::InvalidSidePanelMappings)?;
+        self.panels
+            .iter()
+            .find(|(key, _)| *key == name)
+            .map(|(_, rows)| *rows)
+            .ok_or(DeriveError::InvalidSidePanelMappings)
+    }
+}
+
+pub(super) fn side_panel_name(product_id: u32, view_index: i32) -> Option<&'static str> {
+    match (product_id, view_index) {
+        (80, 1) | (103 | 147, 2) => Some("7ButtonSide"),
+        (83 | 141 | 150 | 180, 1) | (103 | 143 | 147 | 167 | 231, 3) => Some("12ButtonSide"),
+        (103 | 143 | 147 | 167 | 231, 1) => Some("2ButtonSide"),
+        (143 | 167 | 231, 2) => Some("6ButtonSide"),
+        _ => None,
+    }
 }
 
 #[derive(Deserialize)]
@@ -42,23 +102,51 @@ fn policy(product_id: u32) -> Result<&'static Policy, DeriveError> {
 /// The source caller filters by layer with JS boolean coercion, while the primary
 /// helpers intentionally count only mappings whose `isHyperShift` is exactly false.
 /// `all_buttons` is the source loader's concatenation of all original view rows.
-/// Attachment/New additionally needs other side-panel mappings, so is an explicit gap.
 pub fn derive(
     product_id: u32,
     buttons: &[Value],
-    _all_buttons: &[Value],
+    all_buttons: &[Value],
     mappings: &[Value],
     hyper: bool,
     view_index: i32,
     observations: &MappingObservations<'_>,
 ) -> Result<Vec<Value>, DeriveError> {
+    derive_with_side_panels(
+        product_id,
+        buttons,
+        all_buttons,
+        mappings,
+        hyper,
+        view_index,
+        observations,
+        None,
+    )
+}
+
+pub(super) fn derive_with_side_panels(
+    product_id: u32,
+    buttons: &[Value],
+    all_buttons: &[Value],
+    main_mappings: &[Value],
+    hyper: bool,
+    view_index: i32,
+    observations: &MappingObservations<'_>,
+    side_panels: Option<&SidePanelMappings<'_>>,
+) -> Result<Vec<Value>, DeriveError> {
     let policy = policy(product_id)?;
     if !matches!(policy.category.as_str(), "MOUSE" | "MOUSEPLUSMAT") {
         return Err(DeriveError::UnsupportedCategory(policy.category.clone()));
     }
-    if policy.has_attachment {
+    if policy.has_attachment && side_panels.is_none() {
         return Err(DeriveError::AttachmentObservationRequired);
     }
+    let mappings = if policy.has_attachment && view_index != 0 {
+        side_panels
+            .ok_or(DeriveError::AttachmentObservationRequired)?
+            .selected(product_id, view_index)?
+    } else {
+        main_mappings
+    };
     let mut rows = buttons.to_vec();
     let babel = policy.source_family == "babel_162";
     for row in &mut rows {
@@ -91,7 +179,7 @@ pub fn derive(
         }
     }
     let left = rows.iter().position(|row| row["buttonKey"] == "LeftClick");
-    if let Some(index) = left {
+    if let Some(index) = left.filter(|_| !policy.has_attachment) {
         rows[index]["isEnabled"] = json!(hyper);
         // Preserve the original source's button-key vs value comparison.
         if view_index >= 0 && rows[index]["assignmentValue"] != "LeftClick" {
@@ -108,7 +196,10 @@ pub fn derive(
         else {
             continue;
         };
-        if !babel && let Some(parts) = mapping.get("mapping").filter(|parts| truthy(parts)) {
+        if !policy.has_attachment
+            && !babel
+            && let Some(parts) = mapping.get("mapping").filter(|parts| truthy(parts))
+        {
             // Source skips the entire outer mapping when a non-exempt first output
             // has an empty payload. It does not flatten this data for primary counts.
             if let Some(first) = parts.get(0)
@@ -143,14 +234,15 @@ pub fn derive(
                 observations,
             )?;
         }
-        if !hyper
+        if !policy.has_attachment
+            && !hyper
             && rows[index]["assignmentValue"] == "LEFT_CLICK"
             && let Some(left) = left
         {
             rows[left]["isEnabled"] = json!(true);
         }
     }
-    if !hyper {
+    if !hyper && !policy.has_attachment {
         let primary: Vec<_> = rows
             .iter_mut()
             .enumerate()
@@ -183,6 +275,77 @@ pub fn derive(
             && rows[primary[0]]["buttonKey"] == "LeftClick"
         {
             rows[primary[0]]["isEnabled"] = json!(false);
+        }
+    }
+    if !hyper && policy.has_attachment {
+        let panels = side_panels.ok_or(DeriveError::AttachmentObservationRequired)?;
+        let primary = rows
+            .iter_mut()
+            .enumerate()
+            .filter_map(|(index, row)| {
+                (row["assignmentValue"] == "LEFT_CLICK").then(|| {
+                    row["isEnabled"] = json!(true);
+                    index
+                })
+            })
+            .collect::<Vec<_>>();
+        let mut combined = mappings
+            .iter()
+            .filter(|mapping| !truthy(&mapping["isHyperShift"]))
+            .collect::<Vec<_>>();
+        if left.is_none()
+            && main_mappings
+                .iter()
+                .any(|row| row["mouseGroup"]["mouseAssignment"] == "Click")
+        {
+            combined.extend(main_mappings);
+        }
+        for (index, (_, panel)) in panels.panels.iter().enumerate() {
+            if index as i32 != view_index - 1 {
+                combined.extend(*panel);
+            }
+        }
+        if all_buttons
+            .iter()
+            .any(|row| row["buttonKey"] == "LeftClick")
+        {
+            let count = combined
+                .iter()
+                .filter(|row| row["mouseGroup"]["mouseAssignment"] == "Click")
+                .count();
+            let maps_left = combined.iter().any(|row| row["inputID"] == "LeftClick");
+            if count > 0 {
+                if maps_left {
+                    if count == 1 && primary.len() == 1 {
+                        rows[primary[0]]["isEnabled"] = json!(false);
+                    }
+                } else {
+                    let mut inputs = combined
+                        .iter()
+                        .map(|row| row["inputID"].as_str())
+                        .collect::<Vec<_>>();
+                    let remapped_left = main_mappings.iter().any(|row| {
+                        row["inputID"] == "LeftClick"
+                            && row["mouseGroup"]["mouseAssignment"] != "Click"
+                    });
+                    if !(remapped_left && view_index != 0) {
+                        inputs.push(Some("LeftClick"));
+                    }
+                    for row in &mut rows {
+                        row["isEnabled"] = json!(
+                            !(inputs.len() == 1
+                                && row["inputID"]
+                                    .as_str()
+                                    .is_some_and(|id| inputs.contains(&Some(id))))
+                        );
+                    }
+                }
+            } else if left.is_some()
+                && primary.len() == 1
+                && rows[primary[0]]["buttonKey"] == "LeftClick"
+            {
+                rows[primary[0]]["isEnabled"] = json!(false);
+            }
         }
     }
     for row in &mut rows {
@@ -430,6 +593,63 @@ mod tests {
     }
     fn state(mappings: &[Value], hyper: bool) -> Vec<Value> {
         derive(163, &buttons(), &buttons(), mappings, hyper, 0).unwrap()
+    }
+    #[::core::prelude::v1::test]
+    fn attachment_projection_selects_panel_and_protects_last_primary_across_sides() {
+        let side = vec![json!({"inputID":"SIDE1","buttonKey":"SIDE1","defaultValue":"1"})];
+        let main = vec![mouse("LeftClick", "Menu", false)];
+        let mut profile = json!({"sidePanelMappings": {
+            "2ButtonSide":[mouse("SIDE1","Click",false)],
+            "7ButtonSide":[],"12ButtonSide":[]
+        }});
+        let project = |profile: &Value, hyper| {
+            let panels = SidePanelMappings::from_profile(profile).unwrap();
+            super::derive_with_side_panels(
+                103,
+                &side,
+                &buttons(),
+                &main,
+                hyper,
+                1,
+                &MappingObservations::new(None, &[]),
+                Some(&panels),
+            )
+            .unwrap()
+        };
+        let rows = project(&profile, false);
+        assert_eq!(rows[0]["assignmentValue"], "LEFT_CLICK");
+        assert_eq!(rows[0]["isEnabled"], false);
+        profile["sidePanelMappings"]["7ButtonSide"] = json!([mouse("SIDE2", "Click", true)]);
+        // Source includes the other sides without filtering their layer.
+        assert_eq!(project(&profile, false)[0]["isEnabled"], true);
+        assert_eq!(project(&profile, true)[0]["assignmentValue"], "1");
+        assert_eq!(project(&profile, true)[0]["isEnabled"], true);
+        assert_eq!(main, vec![mouse("LeftClick", "Menu", false)]);
+    }
+    #[::core::prelude::v1::test]
+    fn attachment_projection_preserves_source_panel_order_and_rejects_bad_lists() {
+        let profile =
+            json!({"sidePanelMappings":{"12ButtonSide":[],"2ButtonSide":[],"7ButtonSide":[]}});
+        let panels = SidePanelMappings::from_profile(&profile).unwrap();
+        assert_eq!(
+            panels
+                .panels
+                .iter()
+                .map(|(name, _)| *name)
+                .collect::<Vec<_>>(),
+            ["12ButtonSide", "2ButtonSide", "7ButtonSide"]
+        );
+        assert!(panels.selected(103, 2).unwrap().is_empty());
+        assert!(panels.selected(103, 4).is_err());
+        assert!(SidePanelMappings::from_profile(&json!({"sidePanelMappings":null})).is_err());
+        assert!(
+            SidePanelMappings::from_profile(&json!({"sidePanelMappings":{"12ButtonSide":false}}))
+                .is_err()
+        );
+        let missing = json!({});
+        let initialized = SidePanelMappings::from_profile(&missing).unwrap();
+        assert!(initialized.selected(141, 1).unwrap().is_empty());
+        assert!(missing.get("sidePanelMappings").is_none());
     }
     #[::core::prelude::v1::test]
     fn layer_and_primary_protection_follow_mapping_state() {

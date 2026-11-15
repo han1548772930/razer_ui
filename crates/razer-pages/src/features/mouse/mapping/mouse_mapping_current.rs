@@ -153,7 +153,7 @@ impl MouseProductWorkspace {
             // slider/select values from the previous child instance.
             self.initialize_current_mouse_mapping(input, Some(function), window, cx);
         }
-        let local_child_flags = (self.spec.product_id == 70
+        let local_child_flags = ((function == "MACRO" || self.spec.product_id == 70)
             && matches!(
                 function,
                 "MACRO" | "SWITCH_PROFILE" | "SWITCH_LIGHTING" | "INTERDEVICE"
@@ -200,36 +200,65 @@ impl MouseProductWorkspace {
             .connection()
             .map(|connection| connection == crate::features::mouse_polling::PollingConnection::Ble);
         let observations = MappingObservations::new(bluetooth, macros);
-        button_state_current::derive(
+        let side_panels = button_state_current::SidePanelMappings::from_profile(&self.draft)?;
+        let main_mappings = match self.draft.get("mappings") {
+            None => &[][..],
+            Some(value) => value.as_array().map(Vec::as_slice).ok_or_else(|| {
+                button_state_current::DeriveError::InvalidMappingPayload("mappings".into())
+            })?,
+        };
+        button_state_current::derive_with_side_panels(
             self.spec.product_id,
             originals,
             all,
-            self.draft["mappings"]
-                .as_array()
-                .map(Vec::as_slice)
-                .unwrap_or(&[]),
+            main_mappings,
             self.hypershift,
             view_index,
             &observations,
+            Some(&side_panels),
         )
     }
 
+    fn current_mapping_list(&self) -> Option<&[Value]> {
+        if button_state_current::side_panel_name(self.spec.product_id, self.group_ix as i32)
+            .is_some()
+        {
+            button_state_current::SidePanelMappings::from_profile(&self.draft)
+                .ok()?
+                .selected(self.spec.product_id, self.group_ix as i32)
+                .ok()
+        } else {
+            match self.draft.get("mappings") {
+                Some(rows) => rows.as_array().map(Vec::as_slice),
+                None => Some(&[]),
+            }
+        }
+    }
+
     pub(super) fn current_mapping_source_button(&self, input: &str) -> Option<Value> {
-        let originals = self.spec.groups.get(self.group_ix)?["buttonList"].as_array()?;
-        let all = self
-            .spec
-            .groups
-            .iter()
-            .flat_map(|group| {
-                group["buttonList"]
-                    .as_array()
-                    .into_iter()
-                    .flatten()
-                    .cloned()
-            })
-            .collect::<Vec<_>>();
+        let originals = self.customize_source_buttons();
+        let all = if self.spec.groups.is_empty() {
+            self.spec
+                .buttons
+                .iter()
+                .chain(&self.spec.dkm)
+                .cloned()
+                .collect()
+        } else {
+            self.spec
+                .groups
+                .iter()
+                .flat_map(|group| {
+                    group["buttonList"]
+                        .as_array()
+                        .into_iter()
+                        .flatten()
+                        .cloned()
+                })
+                .collect::<Vec<_>>()
+        };
         let buttons = self
-            .derive_current_mapping_buttons(originals, &all, self.group_ix as i32)
+            .derive_current_mapping_buttons(&originals, &all, self.group_ix as i32)
             .ok()?;
         buttons
             .into_iter()
@@ -487,7 +516,7 @@ impl MouseProductWorkspace {
             cx.notify();
             return;
         }
-        if self.spec.product_id == 70 && function == "MACRO" {
+        if function == "MACRO" {
             self.initialize_mouse_macro_70(&button, window, cx);
             cx.notify();
             return;
@@ -727,10 +756,9 @@ impl MouseProductWorkspace {
         {
             return;
         }
-        let mut mappings = self.draft["mappings"]
-            .as_array()
-            .cloned()
-            .unwrap_or_default();
+        let Some(mut mappings) = self.current_mapping_list().map(<[Value]>::to_vec) else {
+            return;
+        };
         let reset_both_layers = !self.hypershift
             && (state.function == "RAZER_HYPERSHIFT"
                 || button["assignment"] == "RAZER_HYPERSHIFT"
@@ -768,7 +796,7 @@ impl MouseProductWorkspace {
                 return;
             };
             payloads
-        } else if self.spec.product_id == 70 && state.function == "MACRO" {
+        } else if state.function == "MACRO" {
             let Some(payloads) = self.mouse_macro_70_payload(&button) else {
                 return;
             };
@@ -823,11 +851,25 @@ impl MouseProductWorkspace {
                     || mapping["isHyperShift"].as_bool().unwrap_or(false) == self.hypershift))
         });
         mappings.extend(payloads);
-        self.draft["mappings"] = json!(mappings);
+        if let Some(name) =
+            button_state_current::side_panel_name(self.spec.product_id, self.group_ix as i32)
+        {
+            if self.draft.get("sidePanelMappings").is_none() {
+                self.draft["sidePanelMappings"] =
+                    json!({"2ButtonSide":[],"7ButtonSide":[],"12ButtonSide":[],"6ButtonSide":[]});
+            }
+            self.draft["sidePanelMappings"][name] = json!(mappings);
+        } else {
+            self.draft["mappings"] = json!(mappings);
+        }
         self.set_current_customize_input(None, false);
         self.mapping_current_state.clear();
         cx.emit(MouseProductChanged);
-        if self.spec.product_id == 70 || razer_device::mouse_receiver_mapping::supports_ordinary(self.mapping_source_product_id()) {
+        if self.spec.product_id == 70
+            || razer_device::mouse_receiver_mapping::supports_ordinary(
+                self.mapping_source_product_id(),
+            )
+        {
             cx.emit(super::dpi_70::MouseLegacyMappingCommitted);
         }
         cx.notify();
@@ -871,7 +913,7 @@ impl MouseProductWorkspace {
             body = body.children(self.current_mouse_launch_body(cx));
         } else if self.spec.product_id == 70 && state.function == "SWITCH_PROFILE" {
             body = body.child(self.mouse_profile_70_body(cx));
-        } else if self.spec.product_id == 70 && state.function == "MACRO" {
+        } else if state.function == "MACRO" {
             body = body.child(self.mouse_macro_70_body(cx));
         } else if self.spec.product_id == 70 && state.function == "KEYBOARD_FUNCTION" {
             body = body.child(self.mouse_keyboard_70_body(window, cx));

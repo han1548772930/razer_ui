@@ -308,6 +308,7 @@ impl GamingMode {
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SnapTap {
+    #[serde(deserialize_with = "local::snap_tap_enabled")]
     pub is_enabled: bool,
     pub key_list: Vec<SnapTapPair>,
     #[serde(flatten)]

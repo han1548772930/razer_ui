@@ -456,7 +456,6 @@ impl RenderOnce for KeyRegion {
                 canvas(
                     |_, _, _| (),
                     move |bounds, _, window, _| {
-                        eprintln!("key paint {} {:?} {} {}", key.id, bounds, self.fill.a, active);
                         if self.fill.a > 0. {
                             if let Ok(path) = key.path(bounds, false).build() {
                                 window.paint_path(path, self.fill);
@@ -467,7 +466,6 @@ impl RenderOnce for KeyRegion {
                                 window.paint_path(path, self.stroke);
                             }
                         }
-                        eprintln!("key done {}", key.id);
                     },
                 )
                 .absolute()

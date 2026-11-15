@@ -1031,13 +1031,6 @@ impl DeviceWorkspace {
         self.controls.sliders.insert(key, state);
     }
     pub(super) fn sync_controls(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        #[cfg(test)]
-        {
-            static COUNT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
-            let count = COUNT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-            eprintln!("sync controls {count}");
-            assert!(count < 20, "sync controls diagnostic limit");
-        }
         self.mouse_polling.sync_profile(&self.device.active_profile);
         self.sync_dpi_scope(cx);
         let s = self.settings().clone();
@@ -1536,7 +1529,6 @@ impl DeviceWorkspace {
 }
 impl Render for DeviceWorkspace {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        eprintln!("workspace render");
         let stacked = surface::stacked_device_columns(
             f32::from(window.viewport_size().width),
             f32::from(window.rem_size()),

@@ -28,6 +28,7 @@ pub struct SelectOptionDecoration {
     prefix_image: Option<OptionImage>,
     content_image: Option<OptionImage>,
     tooltip_icon: Option<(SharedString, SharedString)>,
+    tooltip: Option<SharedString>,
     separator_before: bool,
 }
 
@@ -41,6 +42,12 @@ struct OptionImage {
 impl SelectOptionDecoration {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Source disabled rows retain their tooltip even when the label fits.
+    pub fn tooltip(mut self, text: impl Into<SharedString>) -> Self {
+        self.tooltip = Some(text.into());
+        self
     }
 
     /// The source calls its trailing slot image an option/label prefix.
@@ -266,6 +273,8 @@ pub fn select<I: SelectItem<Value = String> + 'static>(
         on_trigger_click: None,
         pointer_only: false,
         pointer_decorations: BTreeMap::new(),
+        disabled_tooltip: None,
+        selected_tooltip: false,
         pointer_style: PointerSelectStyle::default(),
         pointer_placement: PointerSelectPlacement::default(),
         allow_one_item: false,
@@ -307,6 +316,8 @@ pub struct SynapseSelect<I: SelectItem<Value = String> + 'static> {
     on_trigger_click: Option<Rc<dyn Fn(&ClickEvent, &mut Window, &mut App)>>,
     pointer_only: bool,
     pointer_decorations: BTreeMap<String, SelectOptionDecoration>,
+    disabled_tooltip: Option<SharedString>,
+    selected_tooltip: bool,
     pointer_style: PointerSelectStyle,
     pointer_placement: PointerSelectPlacement,
     allow_one_item: bool,
@@ -338,6 +349,18 @@ impl<I: SelectItem<Value = String> + 'static> SynapseSelect<I> {
 
     pub fn pointer_style(mut self, style: PointerSelectStyle) -> Self {
         self.pointer_style = style;
+        self
+    }
+
+    /// Module 7734's disabledDropdownTooltip on the outer dropdown area.
+    pub fn disabled_tooltip(mut self, text: impl Into<SharedString>) -> Self {
+        self.disabled_tooltip = Some(text.into());
+        self
+    }
+
+    /// Module 7734 shows the selected text only when its label is truncated.
+    pub fn selected_tooltip(mut self, enabled: bool) -> Self {
+        self.selected_tooltip = enabled;
         self
     }
 
@@ -413,6 +436,8 @@ struct SynapseSelectView<I: SelectItem<Value = String> + 'static> {
     on_trigger_click: Option<Rc<dyn Fn(&ClickEvent, &mut Window, &mut App)>>,
     pointer_only: bool,
     pointer_decorations: BTreeMap<String, SelectOptionDecoration>,
+    disabled_tooltip: Option<SharedString>,
+    selected_tooltip: bool,
     pointer_style: PointerSelectStyle,
     pointer_placement: PointerSelectPlacement,
     pointer_scroll: ScrollHandle,
@@ -498,6 +523,8 @@ impl<I: SelectItem<Value = String> + 'static> SynapseSelectView<I> {
             on_trigger_click: None,
             pointer_only: false,
             pointer_decorations: BTreeMap::new(),
+            disabled_tooltip: None,
+            selected_tooltip: false,
             pointer_style: PointerSelectStyle::default(),
             pointer_placement: PointerSelectPlacement::default(),
             pointer_scroll: ScrollHandle::new(),
@@ -798,6 +825,8 @@ impl<I: SelectItem<Value = String> + 'static> RenderOnce for SynapseSelect<I> {
             view.on_trigger_click = self.on_trigger_click.clone();
             view.pointer_only = self.pointer_only;
             view.pointer_decorations = self.pointer_decorations;
+            view.disabled_tooltip = self.disabled_tooltip;
+            view.selected_tooltip = self.selected_tooltip;
             view.pointer_style = self.pointer_style;
             view.pointer_placement = self.pointer_placement;
             view.allow_one_item = self.allow_one_item;
@@ -1457,6 +1486,7 @@ mod tests {
         alexa: bool,
         pointer: bool,
         image_options: bool,
+        source_tooltips: bool,
         confirmed: Vec<Option<String>>,
         _subscription: Subscription,
     }
@@ -1479,6 +1509,7 @@ mod tests {
                 alexa: false,
                 pointer: false,
                 image_options: false,
+                source_tooltips: false,
                 confirmed: Vec::new(),
                 _subscription: subscription,
             }
@@ -1503,7 +1534,10 @@ mod tests {
     impl Render for SelectFixture {
         fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
             let control = if self.pointer {
-                select_pointer(&self.state).w(css(200.))
+                select_pointer(&self.state)
+                    .w(css(200.))
+                    .selected_tooltip(self.source_tooltips)
+                    .disabled_tooltip("This phased macro cannot be assigned to scrolling")
             } else if self.alexa {
                 select_alexa(&self.state)
             } else {
@@ -1544,6 +1578,53 @@ mod tests {
                     .disabled(self.disabled),
             )
         }
+    }
+
+    #[gpui_kit::test]
+    fn pointer_dropdown_selected_tooltip_requires_real_label_overflow(cx: &mut TestAppContext) {
+        cx.update(|cx| {
+            gpui_kit::init(cx);
+            cx.set_reduce_motion(true);
+        });
+        let mut fixture = None;
+        let text = "Repeat continuously while the macro assignment is held down";
+        let handle = cx.open_window(size(px(640.), px(400.)), |window, cx| {
+            let view = cx.new(|cx| SelectFixture::new(window, cx));
+            view.update(cx, |view, cx| {
+                view.pointer = true;
+                view.source_tooltips = true;
+                view.set_options(&[text, "Once"], text, window, cx);
+            });
+            fixture = Some(view.clone());
+            Root::new(view, window, cx)
+        });
+        let fixture = fixture.unwrap();
+        let trigger = (
+            gpui_kit::ElementId::from("source-pointer-selected-tip"),
+            "tip-trigger",
+        );
+        let popup = (
+            gpui_kit::ElementId::from("source-pointer-selected-tip"),
+            "tip-popup",
+        );
+        cx.update_window(handle.into(), |_, window, cx| {
+            window.render_frame(cx);
+            assert!(window.find("choice").visible());
+            window.hover(trigger.clone(), cx);
+            window.render_frame(cx);
+            assert!(window.find(popup.clone()).visible());
+            let label = window.find(trigger.clone()).bounds();
+            assert_eq!(window.find(popup.clone()).bounds().top(), label.bottom());
+            fixture.update(cx, |view, cx| {
+                view.set_options(&[text, "Once"], "Once", window, cx)
+            });
+            window.render_frame(cx);
+            assert!(!window.find(popup.clone()).visible());
+            assert!(fixture.read(cx).confirmed.is_empty());
+            window.remove_window();
+        })
+        .unwrap();
+        cx.run_until_parked();
     }
 
     fn assert_pointer_option_in_view(window: &mut Window, option: &str) {

@@ -46,7 +46,9 @@ pub enum Category {
 }
 
 impl Default for Category {
-    fn default() -> Self { Self::Keyboard }
+    fn default() -> Self {
+        Self::Keyboard
+    }
 }
 
 pub fn initial_template(product: u32, edition: u8, computer_name: &str) -> anyhow::Result<Recipe> {
@@ -65,6 +67,13 @@ pub fn initial_template(product: u32, edition: u8, computer_name: &str) -> anyho
         profile.guid = uuid::Uuid::new_v4().to_string();
     }
     Ok(Recipe { device, profiles })
+}
+
+/// The mounted DEFAULTPROFILE used for OBM conversion. Its command-dial
+/// identities belong to the caller's import lifecycle and are cloned per slot.
+pub fn import_template(product: u32, edition: u8) -> anyhow::Result<Profile> {
+    templates::profile(product, edition, &RecipeIds::fresh(product))
+        .ok_or_else(|| anyhow::anyhow!("Keyboard edition has no source import recipe"))
 }
 
 pub type EmptyObject = BTreeMap<String, serde_json::Value>;
@@ -93,6 +102,55 @@ pub struct ActuationFields {
     pub release: SourceNumber,
     #[serde(flatten)]
     pub extensions: super::Extensions,
+}
+
+/// Some current OBM converters retain the firmware byte while local templates
+/// and edits use booleans. Preserve that external representation on write-back.
+#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum SourceEnabled {
+    Boolean(bool),
+    Byte(u8),
+}
+
+impl SourceEnabled {
+    pub fn value(self) -> anyhow::Result<bool> {
+        match self {
+            Self::Boolean(value) => Ok(value),
+            Self::Byte(0) => Ok(false),
+            Self::Byte(1) => Ok(true),
+            Self::Byte(value) => anyhow::bail!("Unknown keyboard enable byte {value}"),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SnapTap {
+    pub is_enabled: SourceEnabled,
+    pub key_list: Vec<super::SnapTapPair>,
+    #[serde(flatten)]
+    pub extensions: super::Extensions,
+}
+
+impl SnapTap {
+    pub fn validate(&self) -> anyhow::Result<()> {
+        super::SnapTap {
+            is_enabled: self.is_enabled.value()?,
+            key_list: self.key_list.clone(),
+            extensions: self.extensions.clone(),
+        }
+        .validate()
+    }
+}
+
+pub(super) fn snap_tap_enabled<'de, D>(deserializer: D) -> Result<bool, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    SourceEnabled::deserialize(deserializer)?
+        .value()
+        .map_err(serde::de::Error::custom)
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
@@ -136,7 +194,7 @@ pub struct Profile {
         deserialize_with = "super::present",
         skip_serializing_if = "Option::is_none"
     )]
-    pub snap_tap: Option<super::SnapTap>,
+    pub snap_tap: Option<SnapTap>,
     #[serde(
         default,
         deserialize_with = "super::present",
@@ -149,6 +207,18 @@ pub struct Profile {
         skip_serializing_if = "Option::is_none"
     )]
     pub direction_mode: Option<u8>,
+    #[serde(
+        default,
+        deserialize_with = "super::present",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub thumbstick_output: Option<ThumbstickOutput>,
+    #[serde(
+        default,
+        deserialize_with = "super::present",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub thumbstick_orientation: Option<ThumbstickOrientation>,
     #[serde(
         default,
         deserialize_with = "super::present",
@@ -433,12 +503,33 @@ pub struct MacroSettings {
 }
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum KeymapSlot {
+    Number(u8),
+    Text(String),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ThumbstickOutput {
+    Right,
+    Left,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ThumbstickOrientation {
+    Normal,
+    Rotated,
+}
+
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Keymap {
     pub name: String,
     pub guid: String,
     pub mappings: Vec<super::Mapping>,
-    pub slot: String,
+    pub slot: KeymapSlot,
     #[serde(
         default,
         deserialize_with = "super::present",
@@ -450,13 +541,13 @@ pub struct Keymap {
         deserialize_with = "super::present",
         skip_serializing_if = "Option::is_none"
     )]
-    pub thumbstick_output: Option<String>,
+    pub thumbstick_output: Option<ThumbstickOutput>,
     #[serde(
         default,
         deserialize_with = "super::present",
         skip_serializing_if = "Option::is_none"
     )]
-    pub thumbstick_orientation: Option<String>,
+    pub thumbstick_orientation: Option<ThumbstickOrientation>,
     #[serde(flatten)]
     pub extensions: super::Extensions,
 }
@@ -634,9 +725,14 @@ pub struct JoystickAxes {
 #[serde(rename_all = "camelCase")]
 pub struct RapidTrigger {
     pub is_enable_up_stroke: bool,
-    pub make_sensitivity: u32,
-    pub break_sensitivity: u32,
-    pub continuous: bool,
+    pub make_sensitivity: f64,
+    pub break_sensitivity: f64,
+    #[serde(
+        default,
+        deserialize_with = "super::present",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub continuous: Option<bool>,
     #[serde(flatten)]
     pub extensions: super::Extensions,
 }

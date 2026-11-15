@@ -60,6 +60,7 @@ pub(super) enum ProductSave {
     Hyperpolling(hyperpolling_runtime::LocalSave),
     SourceProfileImport(profile_transfer::ImportSave),
     KeyboardLocalProfiles(keyboard_local_profiles::LocalSave),
+    KeyboardMacroImport(keyboard_macro_import::LocalSave),
 }
 impl ProductSave {
     fn owner(&self) -> (&str, WeakEntity<ProductWorkspace>) {
@@ -98,6 +99,7 @@ impl ProductSave {
             Self::Hyperpolling(save) => save.owner(),
             Self::SourceProfileImport(save) => save.owner(),
             Self::KeyboardLocalProfiles(save) => save.owner(),
+            Self::KeyboardMacroImport(save) => save.owner(),
         }
     }
 }
@@ -399,6 +401,9 @@ impl AppShell {
         match product {
             ProductSave::MouseOtfs(save) => self.finish_mouse_otfs_save(save, succeeded, cx),
             ProductSave::KeyboardLocalProfiles(_) => {}
+            ProductSave::KeyboardMacroImport(save) => {
+                self.finish_keyboard_macro_import(save, succeeded, cx)
+            }
             ProductSave::SourceProfileImport(save) => {
                 self.finish_source_profile_import(save, succeeded, window, cx)
             }
@@ -489,7 +494,9 @@ impl AppShell {
             ProductSave::MouseRotation(save) => {
                 self.finish_mouse_rotation_save(save, succeeded, cx)
             }
-            ProductSave::EarbudsAutoPause(save) => self.finish_earbuds_auto_pause_save(save, succeeded, cx),
+            ProductSave::EarbudsAutoPause(save) => {
+                self.finish_earbuds_auto_pause_save(save, succeeded, cx)
+            }
             ProductSave::EarbudsPower(save) => self.finish_earbuds_power_save(save, succeeded, cx),
             ProductSave::ProductLighting(save) => {
                 self.finish_product_lighting_save(save, succeeded, window, cx)

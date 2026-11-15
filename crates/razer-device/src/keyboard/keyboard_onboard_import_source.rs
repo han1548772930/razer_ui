@@ -205,13 +205,20 @@ pub struct Controller {
 }
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct ControllerMode { pub is_analog: bool }
+pub struct ControllerMode {
+    pub is_analog: bool,
+}
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct SensitivityCurve { pub analog_sensitivity_assignment: Vec<SensitivityPoint> }
+pub struct SensitivityCurve {
+    pub analog_sensitivity_assignment: Vec<SensitivityPoint>,
+}
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
-pub struct SensitivityPoint { pub x: f64, pub y: u16 }
+pub struct SensitivityPoint {
+    pub x: f64,
+    pub y: u16,
+}
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -289,6 +296,7 @@ pub struct RapidTriggerDefaults {
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct AnalogDefaults {
+    pub factory_preset_guid: Option<String>,
     pub default_actuation: ActuationDefaults,
     pub default_rapid_trigger: RapidTriggerDefaults,
     pub default_preset_actuation: Vec<(String, ActuationDefaults)>,

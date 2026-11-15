@@ -200,8 +200,8 @@ impl MacroCatalog {
 
 /// Current keyboard CalMaxMem loader starts from the observed available-memory
 /// field, subtracts allocated macros and non-live profile metadata, and tracks
-/// deletions separately. The keyboard branch reuses this allowance directly;
-/// only the mouse branch performs destructive storage defragmentation.
+/// deletions separately. Calculated-memory keyboards reuse this allowance;
+/// firmware-memory keyboards have a separate observed reconstruction owner.
 #[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
 pub(crate) struct KeyboardMacroMemory {
     available: i64,
@@ -298,12 +298,24 @@ pub struct MacroWriteReport {
     pub data_size_readback: Option<u32>,
     pub data_readback: Option<Vec<u8>>,
     pub data_readback_blocks: Vec<MacroReadBlock>,
+    /// Source addMacroLocal reached its return after handling name/data errors.
+    /// This is an execution fact, independent of successful acknowledgements.
+    #[serde(default)]
+    pub local_write_returned: bool,
     verified: bool,
 }
 
 impl MacroWriteReport {
     pub fn verified(&self) -> bool {
         self.verified
+    }
+
+    pub fn acknowledged(&self) -> bool {
+        !self.steps.is_empty()
+            && self
+                .steps
+                .iter()
+                .all(|step| step.attempted && step.acknowledgment_received && step.error.is_none())
     }
 }
 
@@ -331,6 +343,10 @@ pub struct MacroWriteFailure {
 }
 
 impl MacroWriteFailure {
+    pub(crate) fn into_error(self) -> anyhow::Error {
+        self.error
+    }
+
     pub fn device_state_may_have_changed(&self) -> bool {
         self.progress.steps.iter().any(|step| step.attempted)
     }
@@ -443,7 +459,7 @@ pub fn encode_metadata(request: &MacroWriteRequest) -> Result<Vec<u8>> {
     Ok(out)
 }
 
-fn decode_metadata(macro_id: u16, raw: Vec<u8>) -> Result<MacroMetadata> {
+pub(crate) fn decode_metadata(macro_id: u16, raw: Vec<u8>) -> Result<MacroMetadata> {
     ensure!(
         raw.len() == METADATA_BYTES,
         "macro metadata must contain 250 bytes"
@@ -461,7 +477,7 @@ fn decode_metadata(macro_id: u16, raw: Vec<u8>) -> Result<MacroMetadata> {
     })
 }
 
-fn required_memory(data_size: usize) -> Result<u32> {
+pub(crate) fn required_memory(data_size: usize) -> Result<u32> {
     let size = u32::try_from(data_size).context("macro content exceeds u32")?;
     let with_name = size
         .checked_add(256)
@@ -596,6 +612,26 @@ impl<'a> OnboardMacro<'a> {
             "Keyboard macro requires the captured magnetic-keyboard transport"
         );
         Self::from_transport(device, &cap.device_read_capability())
+    }
+
+    pub(crate) fn for_firmware_keyboard(
+        device: &'a dyn FeatureTransport,
+        cap: &DeviceReadCapability,
+    ) -> Result<Self> {
+        crate::keyboard_profile_inventory::validate_capability(cap)?;
+        ensure!(
+            matches!(cap.product_id, 579 | 600 | 602 | 697) && cap.source_class == "rzDevice25",
+            "Keyboard firmware-memory writer requires its current physical factory"
+        );
+        Self::from_transport(device, cap)
+    }
+
+    pub(crate) fn for_current_keyboard(
+        device: &'a dyn FeatureTransport,
+        cap: &DeviceReadCapability,
+    ) -> Result<Self> {
+        crate::keyboard_profile_inventory::validate_capability(cap)?;
+        Self::from_transport(device, cap)
     }
 
     fn from_transport(
@@ -1094,10 +1130,23 @@ impl<'a> OnboardMacro<'a> {
         validate: &impl Fn() -> Result<()>,
         report: &mut MacroWriteReport,
     ) -> Result<()> {
+        self.write_metadata_with_policy(macro_id, metadata, transactions, validate, report, false)
+    }
+
+    fn write_metadata_with_policy(
+        &self,
+        macro_id: u16,
+        metadata: &[u8],
+        transactions: &mut impl FnMut() -> Result<u8>,
+        validate: &impl Fn() -> Result<()>,
+        report: &mut MacroWriteReport,
+        continue_rejected_status: bool,
+    ) -> Result<()> {
         ensure!(
             metadata.len() == METADATA_BYTES,
             "metadata encoder returned wrong size"
         );
+        let mut rejected = None;
         for offset in (0..METADATA_BYTES).step_by(METADATA_CHUNK) {
             let count = (METADATA_BYTES - offset).min(METADATA_CHUNK);
             let mut payload = Vec::with_capacity(count + 6);
@@ -1105,7 +1154,7 @@ impl<'a> OnboardMacro<'a> {
             payload.extend_from_slice(&be16(u16::try_from(offset).unwrap()));
             payload.extend_from_slice(&be16(METADATA_BYTES as u16));
             payload.extend_from_slice(&metadata[offset..offset + count]);
-            self.sized_step(
+            let result = self.sized_step(
                 "set_macro_name",
                 SET_NAME,
                 payload,
@@ -1114,9 +1163,17 @@ impl<'a> OnboardMacro<'a> {
                 transactions,
                 validate,
                 report,
-            )?;
+            );
+            if let Err(error) = result {
+                if !continue_rejected_status
+                    || crate::feature_exchange::returned_status(&error).is_none()
+                {
+                    return Err(error);
+                }
+                rejected.get_or_insert(error);
+            }
         }
-        Ok(())
+        rejected.map_or(Ok(()), Err)
     }
 
     fn write_data(
@@ -1127,7 +1184,20 @@ impl<'a> OnboardMacro<'a> {
         validate: &impl Fn() -> Result<()>,
         report: &mut MacroWriteReport,
     ) -> Result<()> {
+        self.write_data_with_policy(macro_id, data, transactions, validate, report, false)
+    }
+
+    fn write_data_with_policy(
+        &self,
+        macro_id: u16,
+        data: &[u8],
+        transactions: &mut impl FnMut() -> Result<u8>,
+        validate: &impl Fn() -> Result<()>,
+        report: &mut MacroWriteReport,
+        continue_rejected_status: bool,
+    ) -> Result<()> {
         let mut offset = 0usize;
+        let mut rejected = None;
         while offset < data.len() {
             let count = (data.len() - offset).min(DATA_CHUNK);
             let mut payload = Vec::with_capacity(count + 7);
@@ -1135,7 +1205,7 @@ impl<'a> OnboardMacro<'a> {
             payload.extend_from_slice(&be32(u32::try_from(offset).context("macro data offset")?));
             payload.push(u8::try_from(count).unwrap());
             payload.extend_from_slice(&data[offset..offset + count]);
-            self.sized_step(
+            let result = self.sized_step(
                 "set_macro_memory_data",
                 SET_MEMORY,
                 payload,
@@ -1144,10 +1214,232 @@ impl<'a> OnboardMacro<'a> {
                 transactions,
                 validate,
                 report,
-            )?;
+            );
+            if let Err(error) = result {
+                if !continue_rejected_status
+                    || crate::feature_exchange::returned_status(&error).is_none()
+                {
+                    return Err(error);
+                }
+                rejected.get_or_insert(error);
+            }
             offset += count;
         }
-        Ok(())
+        rejected.map_or(Ok(()), Err)
+    }
+
+    /// Source addMacroLocal allocates before tuning, catches name/data errors,
+    /// and leaves their actual replies observable. Transport tuning is carried
+    /// by owned command capabilities, so cancellation cannot leak it to a later
+    /// operation. This path does not invent an independent readback.
+    pub(crate) fn write_firmware_local(
+        &self,
+        macro_id: u16,
+        request: &MacroWriteRequest,
+        transactions: &mut impl FnMut() -> Result<u8>,
+        validate: &impl Fn() -> Result<()>,
+    ) -> std::result::Result<MacroWriteReport, MacroWriteFailure> {
+        let mut report = MacroWriteReport {
+            macro_id,
+            ..Default::default()
+        };
+        let metadata = encode_metadata(request).map_err(|error| {
+            Self::failure(MacroFailurePhase::Prepare, report.clone(), None, error)
+        })?;
+        let size = u32::try_from(request.data.len()).map_err(|error| {
+            Self::failure(
+                MacroFailurePhase::Prepare,
+                report.clone(),
+                None,
+                error.into(),
+            )
+        })?;
+        let mut failure = None;
+        if let Err(error) = self.allocate(macro_id, size, transactions, validate, &mut report) {
+            if crate::feature_exchange::returned_status(&error).is_none() {
+                return Err(Self::failure(
+                    MacroFailurePhase::Allocate,
+                    report,
+                    Some(0),
+                    error,
+                ));
+            }
+            failure = Some((MacroFailurePhase::Allocate, error));
+        }
+        if let Err(error) = self.write_metadata_with_policy(
+            macro_id,
+            &metadata,
+            transactions,
+            validate,
+            &mut report,
+            true,
+        ) {
+            if crate::backend::exchange_interrupted(&error) || validate().is_err() {
+                let failed = report.steps.iter().rposition(|step| step.error.is_some());
+                return Err(Self::failure(
+                    MacroFailurePhase::Cancelled,
+                    report,
+                    failed,
+                    error,
+                ));
+            }
+            failure.get_or_insert((MacroFailurePhase::Metadata, error));
+        }
+        if let Err(error) = self.write_data_with_policy(
+            macro_id,
+            &request.data,
+            transactions,
+            validate,
+            &mut report,
+            true,
+        ) {
+            if crate::backend::exchange_interrupted(&error) || validate().is_err() {
+                let failed = report.steps.iter().rposition(|step| step.error.is_some());
+                return Err(Self::failure(
+                    MacroFailurePhase::Cancelled,
+                    report,
+                    failed,
+                    error,
+                ));
+            }
+            failure.get_or_insert((MacroFailurePhase::Data, error));
+        }
+        report.local_write_returned = true;
+        match failure {
+            Some((phase, error)) => {
+                let failed = report.steps.iter().position(|step| step.error.is_some());
+                Err(Self::failure(phase, report, failed, error))
+            }
+            None => Ok(report),
+        }
+    }
+
+    /// Initialization already owns a loaded catalog. The source delete method
+    /// sends DELETE then refreshes storage, without another inventory read.
+    pub(crate) fn delete_keyboard_local(
+        &self,
+        macro_id: u16,
+        transactions: &mut impl FnMut() -> Result<u8>,
+        validate: &impl Fn() -> Result<()>,
+    ) -> std::result::Result<MacroWriteReport, MacroWriteFailure> {
+        let mut report = MacroWriteReport {
+            macro_id,
+            ..Default::default()
+        };
+        if let Err(error) = self.step(
+            "delete_macro",
+            DELETE,
+            be16(macro_id).to_vec(),
+            &self.transport,
+            transactions,
+            validate,
+            &mut report,
+        ) {
+            return Err(Self::failure(
+                MacroFailurePhase::Delete,
+                report,
+                Some(0),
+                error,
+            ));
+        }
+        match self.read_storage_info(transactions, validate) {
+            Ok(storage) => report.storage_after = Some(storage),
+            Err(error) => {
+                return Err(Self::failure(
+                    MacroFailurePhase::StorageRefresh,
+                    report,
+                    None,
+                    error,
+                ));
+            }
+        }
+        Ok(report)
+    }
+
+    /// Calculated-memory initialization shares the source local writer's ACK
+    /// handling. Its model allowance is distinct from firmware observations.
+    pub(crate) fn add_calculated_keyboard_macro(
+        &self,
+        macro_id: u16,
+        request: &MacroWriteRequest,
+        memory: &mut KeyboardMacroMemory,
+        transactions: &mut impl FnMut() -> Result<u8>,
+        validate: &impl Fn() -> Result<()>,
+    ) -> std::result::Result<MacroWriteReport, MacroWriteFailure> {
+        let mut report = MacroWriteReport {
+            macro_id,
+            ..Default::default()
+        };
+        let required = required_memory(request.data.len()).map_err(|error| {
+            Self::failure(MacroFailurePhase::Prepare, report.clone(), None, error)
+        })?;
+        report.storage_before = Some(self.read_storage_info(transactions, validate).map_err(
+            |error| Self::failure(MacroFailurePhase::Observe, report.clone(), None, error),
+        )?);
+        let after = memory
+            .after_upload(required)
+            .map_err(|error| {
+                Self::failure(MacroFailurePhase::Prepare, report.clone(), None, error)
+            })?
+            .ok_or_else(|| {
+                Self::failure(
+                    MacroFailurePhase::InsufficientStorage,
+                    report.clone(),
+                    None,
+                    anyhow::anyhow!("Insufficient calculated keyboard macro storage"),
+                )
+            })?;
+        // The source folds recyclable memory before addMacroLocal, but only
+        // subtracts the uploaded allocation after its final storage refresh.
+        if i64::from(required) > memory.available {
+            memory.available += memory.recyclable;
+            memory.recyclable = 0;
+        }
+        let (mut upload, local_failure) =
+            match self.write_firmware_local(macro_id, request, transactions, validate) {
+                Ok(upload) => (upload, None),
+                Err(error) => {
+                    let interrupted =
+                        crate::backend::exchange_interrupted(error.error()) || validate().is_err();
+                    let throws = interrupted
+                        || matches!(error.phase, MacroFailurePhase::Prepare)
+                        || (matches!(error.phase, MacroFailurePhase::Allocate)
+                            && crate::feature_exchange::returned_status(error.error()).is_none());
+                    if throws {
+                        let mut error = error;
+                        error.progress.storage_before = report.storage_before;
+                        return Err(error);
+                    }
+                    let phase = error.phase;
+                    let message = error.to_string();
+                    (error.progress, Some((phase, message)))
+                }
+            };
+        upload.storage_before = report.storage_before;
+        match self.read_storage_info(transactions, validate) {
+            Ok(storage) => upload.storage_after = Some(storage),
+            Err(error) => {
+                return Err(Self::failure(
+                    MacroFailurePhase::StorageRefresh,
+                    upload,
+                    None,
+                    error,
+                ));
+            }
+        }
+        *memory = after;
+        match local_failure {
+            None => Ok(upload),
+            Some((phase, message)) => {
+                let failed = upload.steps.iter().position(|step| step.error.is_some());
+                Err(Self::failure(
+                    phase,
+                    upload,
+                    failed,
+                    anyhow::anyhow!(message),
+                ))
+            }
+        }
     }
 
     fn failure(

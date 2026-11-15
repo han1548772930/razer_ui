@@ -3,6 +3,7 @@
 use super::*;
 use crate::keyboard_navigation::Button as BaseButton;
 use crate::scroll::SourceScrollable as _;
+use crate::source_tooltip::{SourceTooltip, SourceTooltipKind};
 use gpui_kit::base::Positioner;
 use gpui_kit::component::v_flex;
 
@@ -98,13 +99,33 @@ impl<I: SelectItem<Value = String> + 'static> SynapseSelectView<I> {
                         .h(css(image.height)),
                 )
             } else {
+                let label = div().w_full().truncate().child(title.clone());
+                let label = if self.selected_tooltip {
+                    let unit = window.rem_size() / 16.;
+                    let available = self.pointer_bounds.get().size.width
+                        - unit * 2.
+                        - self.pointer_style.text_inset.to_pixels(window.rem_size())
+                        - self
+                            .pointer_style
+                            .text_trailing_inset
+                            .to_pixels(window.rem_size());
+                    let clipped = available > px(0.)
+                        && px(crate::surface::label_width(&title, 14., window)) * (f32::from(unit))
+                            > available;
+                    SourceTooltip::new("source-pointer-selected-tip", title.clone(), 300.)
+                        .kind(SourceTooltipKind::PointerDropdown)
+                        .disabled(!clipped)
+                        .trigger(move |_, _, _| label.into_any_element())
+                        .into_any_element()
+                } else {
+                    label.into_any_element()
+                };
                 div()
                     .absolute()
                     .left(self.pointer_style.text_inset)
                     .top(css(4.))
                     .right(self.pointer_style.text_trailing_inset)
-                    .truncate()
-                    .child(title.clone())
+                    .child(label)
             })
             .child(
                 div()
@@ -141,6 +162,11 @@ impl<I: SelectItem<Value = String> + 'static> SynapseSelectView<I> {
             .iter()
             .map(|(value, title, disabled)| {
                 let value = value.clone();
+                let tooltip = self
+                    .pointer_decorations
+                    .get(&value)
+                    .and_then(|decoration| decoration.tooltip.clone());
+                let tooltip_id = SharedString::from(format!("source-pointer-option-tip-{value}"));
                 let checked = selected.as_ref() == Some(&value);
                 let disabled = *disabled;
                 let focus = self
@@ -195,13 +221,34 @@ impl<I: SelectItem<Value = String> + 'static> SynapseSelectView<I> {
                         .on_click(cx.listener(move |this, _, window, cx| {
                             this.confirm(value.clone(), generation, window, cx)
                         }));
-                focus_target(row, &focus, FocusBehavior::LocalVertical, !disabled)
+                let row = focus_target(row, &focus, FocusBehavior::LocalVertical, !disabled)
                     .ring(FocusRing::Options)
+                    .into_any_element();
+                if let Some(text) = tooltip {
+                    SourceTooltip::new(tooltip_id, text, 300.)
+                        .kind(SourceTooltipKind::PointerDropdown)
+                        .dismiss_on_press()
+                        .trigger(move |_, _, _| row)
+                        .into_any_element()
+                } else {
+                    row
+                }
             })
             .collect::<Vec<_>>();
         let width = self.width;
+        let trigger = focus_target(trigger, &focus, FocusBehavior::LocalVertical, !disabled)
+            .into_any_element();
+        let trigger = if let Some(text) = self.disabled_tooltip.clone().filter(|_| disabled) {
+            SourceTooltip::new("source-pointer-disabled-tip", text, 300.)
+                .kind(SourceTooltipKind::PointerDropdown)
+                .dismiss_on_press()
+                .trigger(move |_, _, _| trigger)
+                .into_any_element()
+        } else {
+            trigger
+        };
         div()
-            .id("source-pointer-dropdown")
+            .id(self.id.clone())
             .relative()
             .w_full()
             .h(self.pointer_style.trigger_height)
@@ -212,12 +259,7 @@ impl<I: SelectItem<Value = String> + 'static> SynapseSelectView<I> {
                     let _ = owner.update(cx, |this, cx| this.did_layout(current, window, cx));
                 }
             })
-            .child(focus_target(
-                trigger,
-                &focus,
-                FocusBehavior::LocalVertical,
-                !disabled,
-            ))
+            .child(trigger)
             .when(open, |root| {
                 let reveal = Presence::new((self.id.clone(), "source-pointer-reveal"), true)
                     .transition(Transition::new(Duration::from_millis(200)).easing(Easing::Ease))

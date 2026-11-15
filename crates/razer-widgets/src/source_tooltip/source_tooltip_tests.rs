@@ -9,6 +9,65 @@ use gpui_kit::{
 use std::time::Duration;
 
 #[::core::prelude::v1::test]
+fn pointer_dropdown_uses_option_width_for_edge_and_preserves_source_vertical_position() {
+    use super::pointer_dropdown_tip_position;
+    use gpui_kit::Bounds;
+    let trigger = Bounds::new(point(px(100.), px(380.)), size(px(100.), px(27.)));
+    for (pointer, viewport, expected) in
+        [(150., 260., -40.), (150., 261., 160.), (50., 160., -140.)]
+    {
+        assert_eq!(
+            pointer_dropdown_tip_position(trigger, px(pointer), px(200.), px(viewport), px(16.)),
+            point(px(expected), px(407.))
+        );
+    }
+    let scaled = Bounds::new(point(px(200.), px(760.)), size(px(200.), px(54.)));
+    assert_eq!(
+        pointer_dropdown_tip_position(scaled, px(300.), px(400.), px(520.), px(32.)),
+        point(px(-80.), px(814.))
+    );
+}
+
+#[gpui_kit::test]
+fn pointer_dropdown_mounts_at_pointer_hides_on_press_and_releases_on_leave(
+    cx: &mut TestAppContext,
+) {
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        Theme::update(cx, |theme| theme.font_size = px(16.));
+        cx.set_reduce_motion(true);
+    });
+    let handle = cx.open_window(size(px(640.), px(400.)), |window, cx| {
+        let view = cx.new(|_| TipFixture {
+            kind: SourceTooltipKind::PointerDropdown,
+            at_edge: false,
+        });
+        Root::new(view, window, cx)
+    });
+    cx.update_window(handle.into(), |_, window, cx| {
+        window.render_frame(cx);
+        window.hover("explanation", cx);
+        window.render_frame(cx);
+        assert!(window.find(popup()).visible());
+        assert_eq!(
+            window.find(popup()).bounds().origin,
+            point(px(120.), px(120.))
+        );
+        assert!(window.find(popup()).bounds().size.width < px(300.));
+        window.click("explanation", cx);
+        assert!(!window.find(popup()).visible());
+        window.hover("outside", cx);
+        window.hover("explanation", cx);
+        assert!(window.find(popup()).visible());
+        window.hover("outside", cx);
+        assert!(!window.find(popup()).visible());
+        window.remove_window();
+    })
+    .unwrap();
+    cx.run_until_parked();
+}
+
+#[::core::prelude::v1::test]
 fn gamepad_rapid_trigger_help_uses_source_measured_vertical_fallback() {
     use super::gamepad_trigger_tip_position;
     use gpui_kit::Bounds;
@@ -62,6 +121,7 @@ impl Render for TipFixture {
                     .child(
                         SourceTooltip::new("explanation", "Information", 210.)
                             .kind(self.kind)
+                            .dismiss_on_press()
                             .trigger(|_, _, _| {
                                 Button::new("explanation").size(px(20.)).into_any_element()
                             }),

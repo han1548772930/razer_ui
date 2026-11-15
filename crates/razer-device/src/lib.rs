@@ -167,6 +167,13 @@ pub mod keyboard_mode;
 pub mod keyboard_onboard_inventory;
 #[path = "keyboard/keyboard_onboard_profiles.rs"]
 pub mod keyboard_onboard_profiles;
+#[path = "keyboard/keyboard_firmware_storage.rs"]
+pub mod keyboard_firmware_storage;
+#[path = "keyboard/keyboard_macro_reconciliation.rs"]
+pub mod keyboard_macro_reconciliation;
+#[cfg(test)]
+#[path = "keyboard/keyboard_macro_test_support.rs"]
+pub(crate) mod keyboard_macro_test_support;
 #[path = "keyboard/keyboard_onboard_keymap.rs"]
 pub mod keyboard_onboard_keymap;
 #[path = "keyboard/keyboard_profile_inventory.rs"]

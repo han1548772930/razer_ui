@@ -215,6 +215,7 @@ pub(super) fn source_entry(document: &Value, id: u64) -> Result<Entry, String> {
         xml_guid: Some(guid.to_owned()),
         xml_mouse_mode: mode,
         source_document: Some(document.clone()),
+        imported_at_millis: None,
         execution: None,
     })
 }

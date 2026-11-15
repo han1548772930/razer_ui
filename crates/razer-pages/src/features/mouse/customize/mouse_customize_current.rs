@@ -1231,13 +1231,7 @@ impl MouseProductWorkspace {
         h_flex()
             .w_full()
             .justify_center()
-            .children(surface.thumbnails.iter().filter_map(|image| {
-                let name = image.request.rsplit('/').next()?;
-                let index = name
-                    .strip_prefix("thumbview-")?
-                    .strip_suffix(".png")?
-                    .parse::<usize>()
-                    .ok()?;
+            .children(surface.thumbnails.iter().enumerate().map(|(index, image)| {
                 let selected = self.group_ix == index;
                 // A missing field uses the initial device reducer; an explicit
                 // null is the getter's undefined payload and has no plug mark.
@@ -1250,55 +1244,64 @@ impl MouseProductWorkspace {
                     143 | 167 | 231 => {
                         matches!((status, index), (Some(1), 1) | (Some(4), 2) | (Some(3), 3))
                     }
+                    80 | 83 | 180 => {
+                        status.is_some_and(|status| status != 0 && status as usize == index)
+                    }
                     _ => false,
                 };
-                Some(
-                    div()
-                        .id(SharedString::from(format!("mouse-source-view-{index}")))
-                        .relative()
-                        .w(surface::css(50.))
-                        .h(surface::css(50.))
-                        .mx(surface::css(5.))
-                        .border_2()
-                        .border_color(if selected {
-                            if self.hypershift {
-                                Colors::hypershift()
-                            } else {
-                                Colors::selected()
-                            }
+                BaseButton::new(SharedString::from(format!("mouse-source-view-{index}")))
+                    .accessibility_label(t(self.spec.groups[index]["groupName"]
+                        .as_str()
+                        .expect("source view name")))
+                    .relative()
+                    .p_0()
+                    .rounded_none()
+                    .w(surface::css(50.))
+                    .h(surface::css(50.))
+                    .mx(surface::css(5.))
+                    .border_2()
+                    .border_color(if selected {
+                        if self.hypershift {
+                            Colors::hypershift()
                         } else {
-                            rgb(0x5d5d5d).into()
-                        })
-                        .hover(|style| style.bg(rgba(0xffffff1a)))
-                        .child(
-                            img(SharedString::from(image.asset.clone()))
-                                .size_full()
-                                .object_fit(ObjectFit::Cover),
-                        )
-                        .children(surface.thumbnail_check.first().filter(|_| plugged).map(
-                            |image| {
+                            Colors::selected()
+                        }
+                    } else {
+                        rgb(0x5d5d5d).into()
+                    })
+                    .hover(|style| style.bg(rgba(0xffffff1a)))
+                    .child(
+                        img(SharedString::from(image.asset.clone()))
+                            .size_full()
+                            .object_fit(ObjectFit::Cover),
+                    )
+                    .children(
+                        surface
+                            .thumbnail_check
+                            .first()
+                            .filter(|_| plugged)
+                            .map(|image| {
                                 img(SharedString::from(image.asset.clone()))
                                     .absolute()
                                     .right(surface::css(3.))
                                     .bottom(surface::css(3.))
                                     .w(surface::css(16.))
                                     .h(surface::css(16.))
-                            },
-                        ))
-                        .on_click(cx.listener(move |this, _, _, cx| {
-                            if this.group_ix == index {
-                                return;
-                            }
-                            this.set_current_customize_input(None, false);
-                            this.group_ix = index;
-                            this.customize_hover = None;
-                            this.customize_label_hover = None;
-                            this.customize_cycle = None;
-                            this.customize_attachment.side_draw_repeat = false;
-                            this.mapping_assignment = None;
-                            cx.notify();
-                        })),
-                )
+                            }),
+                    )
+                    .on_click(cx.listener(move |this, _, _, cx| {
+                        if this.group_ix == index {
+                            return;
+                        }
+                        this.set_current_customize_input(None, false);
+                        this.group_ix = index;
+                        this.customize_hover = None;
+                        this.customize_label_hover = None;
+                        this.customize_cycle = None;
+                        this.customize_attachment.side_draw_repeat = false;
+                        this.mapping_assignment = None;
+                        cx.notify();
+                    }))
             }))
             .into_any_element()
     }

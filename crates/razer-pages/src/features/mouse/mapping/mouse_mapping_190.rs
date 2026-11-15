@@ -865,13 +865,11 @@ impl MouseProductWorkspace {
     /// Ut owns the popup and navigation; its lazy child owns the form draft.
     fn mapping_190_uses_current_form(&self) -> bool {
         (self.spec.product_id == 70
-            && matches!(
-                self.mapping_190_state.function.as_str(),
-                "SWITCH_PROFILE" | "MACRO"
-            ))
+            && matches!(self.mapping_190_state.function.as_str(), "SWITCH_PROFILE"))
             || matches!(
                 self.mapping_190_state.function.as_str(),
-                "RAZER_HYPERSHIFT"
+                "MACRO"
+                    | "RAZER_HYPERSHIFT"
                     | "DISABLE"
                     | "MULTIMEDIA"
                     | "WINDOWS_SHORTCUT"
@@ -919,9 +917,7 @@ impl MouseProductWorkspace {
             "SWITCH_PROFILE" if self.spec.product_id == 70 => {
                 self.initialize_mouse_profile_70(&button, window, cx)
             }
-            "MACRO" if self.spec.product_id == 70 => {
-                self.initialize_mouse_macro_70(&button, window, cx)
-            }
+            "MACRO" => self.initialize_mouse_macro_70(&button, window, cx),
             "TEXT_FUNCTION" => self.initialize_current_mouse_text(&button, window, cx),
             "LAUNCH_PROGRAM" => self.initialize_current_mouse_launch(&button, window, cx),
             "SENSITIVITY" => {
@@ -1512,7 +1508,7 @@ impl MouseProductWorkspace {
                 "SWITCH_PROFILE" if self.spec.product_id == 70 => {
                     self.mouse_profile_70_payload(&button)
                 }
-                "MACRO" if self.spec.product_id == 70 => self.mouse_macro_70_payload(&button),
+                "MACRO" => self.mouse_macro_70_payload(&button),
                 "TEXT_FUNCTION" => self.current_mouse_text_payload(&button),
                 "LAUNCH_PROGRAM" => self.current_mouse_launch_payload(&button),
                 "SENSITIVITY" => self.current_mouse_sensitivity_payload(&button),
@@ -1608,7 +1604,11 @@ impl MouseProductWorkspace {
         self.mapping_190_state.changed = false;
         self.mapping_current_state.changed = false;
         cx.emit(MouseProductChanged);
-        if self.spec.product_id == 70 || razer_device::mouse_receiver_mapping::supports_ordinary(self.mapping_source_product_id()) {
+        if self.spec.product_id == 70
+            || razer_device::mouse_receiver_mapping::supports_ordinary(
+                self.mapping_source_product_id(),
+            )
+        {
             cx.emit(super::dpi_70::MouseLegacyMappingCommitted);
         }
         true
@@ -2167,7 +2167,7 @@ impl MouseProductWorkspace {
             "SWITCH_PROFILE" if self.spec.product_id == 70 => {
                 body = body.child(self.mouse_profile_70_body(cx));
             }
-            "MACRO" if self.spec.product_id == 70 => {
+            "MACRO" => {
                 body = body.child(self.mouse_macro_70_body(cx));
             }
             "DEFAULT" => {
